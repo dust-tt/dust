@@ -8,53 +8,56 @@ use anyhow::Result;
 /// - a `blocks` directory (versioned blocks definitions).
 /// - a `cache` directory (cached block execution traces).
 pub fn init(target: String) -> Result<()> {
-  let target = &shellexpand::tilde(&target).into_owned();
-  let target = std::path::Path::new(target);
+    let target = &shellexpand::tilde(&target).into_owned();
+    let target = std::path::Path::new(target);
 
-  utils::info(&format!("Initializing Dust project in {}", target.display()));
-
-  if target.exists() {
-    if target.is_file() {
-      return Err(anyhow::anyhow!("{} is a file", target.display()));
-    }
-  } else {
-    println!("Creating target directory {}", target.display());
-    std::fs::create_dir_all(target)?;
-  }
-
-  if target.join("index.dust").exists() {
-    return Err(anyhow::anyhow!(
-      "{} already exists",
-      target.join("index.dust").display()
+    utils::info(&format!(
+        "Initializing Dust project in {}",
+        target.display()
     ));
-  }
 
-  let dirs = vec![
-    target.join(".data"),
-    target.join(".blocks"),
-    target.join(".cache"),
-  ];
-  for dir in dirs.clone() {
-    if dir.exists() {
-      return Err(anyhow::anyhow!("{} already exists", dir.display()));
+    if target.exists() {
+        if target.is_file() {
+            return Err(anyhow::anyhow!("{} is a file", target.display()));
+        }
+    } else {
+        utils::action(&format!("Creating target directory {}", target.display()));
+        std::fs::create_dir_all(target)?;
     }
-  }
 
-  let index_path = std::path::Path::new(file!())
-    .parent()
-    .unwrap()
-    .join("index.dust");
-  let index_content = std::fs::read_to_string(&index_path)?;
+    if target.join("index.dust").exists() {
+        return Err(anyhow::anyhow!(
+            "{} already exists",
+            target.join("index.dust").display()
+        ));
+    }
 
-  utils::action(&format!("Creating {}", target.join("index.dust").display()));
-  std::fs::write(target.join("index.dust"), index_content)?;
+    let dirs = vec![
+        target.join(".data"),
+        target.join(".blocks"),
+        target.join(".cache"),
+    ];
+    for dir in dirs.clone() {
+        if dir.exists() {
+            return Err(anyhow::anyhow!("{} already exists", dir.display()));
+        }
+    }
 
-  for dir in dirs {
-    utils::action(&format!("Creating {}", dir.display()));
-    std::fs::create_dir(dir)?;
-  }
+    let index_path = std::path::Path::new(file!())
+        .parent()
+        .unwrap()
+        .join("index.dust");
+    let index_content = std::fs::read_to_string(&index_path)?;
 
-  utils::info(&format!("Initialized Dust project in {}", target.display()));
+    utils::action(&format!("Creating {}", target.join("index.dust").display()));
+    std::fs::write(target.join("index.dust"), index_content)?;
 
-  Ok(())
+    for dir in dirs {
+        utils::action(&format!("Creating {}", dir.display()));
+        std::fs::create_dir(dir)?;
+    }
+
+    utils::done(&format!("Initialized Dust project in {}", target.display()));
+
+    Ok(())
 }

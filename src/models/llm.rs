@@ -16,11 +16,13 @@ pub struct Generation {
 
 #[async_trait]
 pub trait LLM {
-  fn model_id(self) -> String;
-  fn name(self) -> String;
+  fn model_id(&self) -> String;
+  fn name(&self) -> String;
+
+  fn initialize(&mut self) -> Result<()>;
 
   async fn generate(
-    self,
+    &self,
     prompt: String,
     max_tokens: Option<i32>,
     temperature: f32,

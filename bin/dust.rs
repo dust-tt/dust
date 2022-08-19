@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{data, init, utils};
+use dust::{data, init, models::provider, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -22,6 +22,11 @@ enum Commands {
         #[clap(subcommand)]
         command: DataCommands,
     },
+    /// Manage model provicers
+    Provider {
+        #[clap(subcommand)]
+        command: ProviderCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -38,6 +43,22 @@ enum DataCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum ProviderCommands {
+    /// Provides instructions to setup a new provider.
+    Setup {
+        /// Provider id
+        #[clap()]
+        provider_id: provider::ProviderID,
+    },
+    /// Tests whether a provider is properly setup.
+    Test {
+        /// Provider id
+        #[clap()]
+        provider_id: provider::ProviderID,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -45,6 +66,18 @@ fn main() -> Result<()> {
         Commands::Init { path } => init::init(path.clone()),
         Commands::Data { command } => match command {
             DataCommands::Register { id, path } => data::register(id.clone(), path.clone()),
+        },
+        Commands::Provider { command } => match command {
+            ProviderCommands::Setup { provider_id } => provider::provider(*provider_id).setup(),
+            ProviderCommands::Test { provider_id } => {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .thread_name("dust-provider-test")
+                    .worker_threads(1)
+                    .build()?;
+
+                rt.block_on(provider::provider(*provider_id).test())
+            }
         },
     };
 
