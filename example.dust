@@ -1,0 +1,70 @@
+root ROOT {
+  expected: {question, subject, difficulty}
+}
+
+data MATHD {
+  id: mathd/train
+  expected: []{question, subject, difficulty, explanation, anwer}
+}
+
+code RETRIEVE {
+  code:
+```
+ (env) => {
+   let s = env.get('ROOT')['subject'];
+   let d = env.get('ROOT')['difficulty'];
+   return env.get('MATHD').filter((r) => (r['subject] == s && r['difficulty'] == d))
+ }
+```
+  expected: []{question, explanation, answer}
+}
+
+llm MODEL {
+  examples_count: max
+  examples_prompt:
+```
+QUESTION: ${RETRIEVE.question}
+EXPLANATION: ${RETRIEVE.explanation}
+ANSWER: ${RETRIEVE.answer}
+```
+  prompt:
+```
+QUESTION: ${ROOT.question}
+```
+  extract:
+```
+EXPLANATION: ${explanation}
+ANSWER: ${answer}
+```
+  expected: {explanation, answer}
+}
+
+repeat REPEAT {
+  blocks: MODEL, EXTRACT
+  count: 20
+  expected: []{explanation, answer}
+}
+
+code CONSENSUS {
+  code:
+```
+(env) => {
+  let counts = {};
+  for d in env.get('REPEAT') {
+    if d['answer'] not in counts:
+      counts[d['answer']] = 0
+    counts[d['answer']] += 1
+  }
+  let answer = env.get('REPEAT')[0]['answer'];
+  let max_count = 0;
+  for a in counts.keys() {
+    if max_count < counts[a] {
+      max_count = counts[a];
+      answer = a;
+    }
+  }
+  return { "answer": answer };
+}
+```
+  expected: {answer}
+}

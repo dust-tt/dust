@@ -1,0 +1,22 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+key = @{ (ASCII_ALPHANUMERIC | "." | "_")+ }
+string = @{ (!("\n" | "\r") ~ (ASCII_ALPHANUMERIC | "." | "_" | " " | "," | "/" | "-")+) }
+content = @{ (!("```") ~ ANY)+ }
+multiline = @{ "```" ~ content ~ "```" }
+
+value = _{ string | multiline }
+pair = { !("expected") ~ key ~ ":" ~ value }
+
+block_type = @{ (ASCII_ALPHA_LOWER | ASCII_DIGIT | "." | "_")+ }
+block_name = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "." | "_")+ }
+block_body = {
+  "{" ~ (pair)* ~ ("expected" ~ ":" ~ expected)? ~ "}"
+}
+
+expected_array = { "[]" }
+expected = { (expected_array)* ~ "{" ~ key ~ ("," ~ key)* ~ "}" }
+
+block = { block_type ~ block_name ~ block_body }
+
+dust = { SOI ~ (block)* ~ EOI }
