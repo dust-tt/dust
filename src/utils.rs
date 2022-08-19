@@ -61,7 +61,7 @@ pub fn done(msg: &str) {
 }
 
 pub fn confirm(msg: &str) -> Result<bool> {
-    print!("{} {} Confirm ([y]/n) ? ", "[?]".yellow(), msg);
+    print!("{} {} Confirm ([y]/n) ? ", "[?]".cyan(), msg);
     std::io::stdout().flush()?;
 
     let mut input = String::new();

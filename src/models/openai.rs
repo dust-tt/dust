@@ -1,3 +1,4 @@
+use crate::models::llm::Tokens;
 use crate::models::llm::{Generation, LLM};
 use crate::models::provider::Provider;
 use crate::utils;
@@ -5,6 +6,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
+use itertools::izip;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -19,10 +21,6 @@ pub struct Logprobs {
 }
 
 impl Logprobs {
-    pub fn text(&self) -> String {
-        self.tokens.join("")
-    }
-
     pub fn logprob(&self) -> f32 {
         let mut logp = 0_f32;
         self.token_logprobs.iter().for_each(|lgp| match lgp {
@@ -138,11 +136,6 @@ impl OpenAILLM {
             }
         }?;
 
-        println!(
-            "Research API Completion prompt={} completion={:?}",
-            prompt, completion,
-        );
-
         Ok(completion)
     }
 }
@@ -175,11 +168,70 @@ impl LLM for OpenAILLM {
         n: usize,
         stop: Option<Vec<String>>,
     ) -> Result<Generation> {
+        assert!(n > 0);
+
         let c = self
-            .completion(prompt, max_tokens, temperature, n, Some(0), true, stop)
+            .completion(
+                prompt.clone(),
+                max_tokens,
+                temperature,
+                n,
+                Some(0),
+                true,
+                stop,
+            )
             .await?;
-        println!("{:?}", c);
-        Err(anyhow!("FOO"))?
+
+        assert!(c.choices.len() > 0);
+        assert!(c.choices[0].logprobs.is_some());
+
+        let logp = c.choices[0].logprobs.as_ref().unwrap();
+        assert!(logp.tokens.len() == logp.token_logprobs.len());
+        assert!(logp.tokens.len() == logp.text_offset.len());
+
+        // UTF-8 length of the prompt (as used by the API for text_offset).
+        let prompt_len = prompt.chars().count();
+
+        let mut token_offset: usize = 0;
+
+        let mut prompt_tokens = Tokens {
+            text: prompt,
+            tokens: Some(vec![]),
+            logprobs: Some(vec![]),
+        };
+        for (o, t, l) in izip!(
+            logp.text_offset.clone(),
+            logp.tokens.clone(),
+            logp.token_logprobs.clone()
+        ) {
+            if o < prompt_len {
+                prompt_tokens.tokens.as_mut().unwrap().push(t.clone());
+                prompt_tokens.logprobs.as_mut().unwrap().push(l);
+                token_offset += 1;
+            }
+        }
+
+        Ok(Generation {
+            provider: String::from("fOO"),
+            model: self.model_id.clone(),
+            completions: c
+                .choices
+                .iter()
+                .map(|c| {
+                    let logp = c.logprobs.as_ref().unwrap();
+                    assert!(logp.tokens.len() == logp.token_logprobs.len());
+                    assert!(logp.tokens.len() == logp.text_offset.len());
+                    assert!(logp.tokens.len() >= token_offset);
+
+                    Tokens {
+                        text: c.text.chars().skip(prompt_len).collect::<String>(),
+                        tokens: Some(logp.tokens[token_offset..].to_vec()),
+                        logprobs: Some(logp.token_logprobs[token_offset..].to_vec()),
+                    }
+                })
+                .collect::<Vec<_>>(),
+            prompt: prompt_tokens,
+        })
     }
 }
 
@@ -210,7 +262,7 @@ impl Provider for OpenAIProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 4 tokens  to `text-ada-001` on the OpenAI API.",
+            "You are about to make a request for 1 tokens  to `text-ada-001` on the OpenAI API.",
         )? {
             Err(anyhow!("User aborted OpenAI test."))?;
         }
@@ -218,9 +270,10 @@ impl Provider for OpenAIProvider {
         let mut llm = self.llm(String::from("text-ada-001"));
         llm.initialize()?;
 
-        let _g = llm
-            .generate(String::from("Hello,"), Some(4), 0.7, 1, None)
-            .await?;
+        let prompt = String::from("Hello 😊");
+        let _ = llm.generate(prompt, Some(1), 0.7, 1, None).await?;
+
+        utils::done("Test successfully completed! OpenAI is ready to use.");
 
         Ok(())
     }

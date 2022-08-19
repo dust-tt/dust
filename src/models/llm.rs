@@ -1,12 +1,14 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
+#[derive(Debug)]
 pub struct Tokens {
   pub text: String,
   pub tokens: Option<Vec<String>>,
   pub logprobs: Option<Vec<Option<f32>>>,
 }
 
+#[derive(Debug)]
 pub struct Generation {
   pub provider: String,
   pub model: String,
