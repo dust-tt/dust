@@ -1,5 +1,5 @@
-use crate::models::llm::LLM;
-use crate::models::openai::OpenAIProvider;
+use crate::providers::llm::LLM;
+use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;

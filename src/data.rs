@@ -6,6 +6,21 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
 
+// pub struct Data {
+//     id: String,
+//     data: Vec<Map<String, Value>>,
+// }
+//
+// impl Data {
+//     pub fn new(id: String) -> Self {
+//         Self { id }
+//     }
+//
+//     pub fn new_from_jsonl_file(id: String, path: String) -> Result<Self> {}
+//
+//     pub fn register(&self, path: String) {}
+// }
+
 pub fn register(id: String, path: String) -> Result<()> {
     let root_path = utils::init_check()?;
 
@@ -18,39 +33,41 @@ pub fn register(id: String, path: String) -> Result<()> {
     let mut all_keys: Option<HashSet<String>> = None;
     let mut hasher = blake3::Hasher::new();
 
-    let data = reader.lines().enumerate().map(|(line_number, line)| {
-    let line = line.unwrap();
-    let json: Value = serde_json::from_str(&line)?;
+    let data = reader.lines()
+      .enumerate()
+    .map(|(line_number, line)| {
+      let line = line.unwrap();
+      let json: Value = serde_json::from_str(&line)?;
 
-    // Check that json is an Object and its keys match `all_keys`, error otherwise.
-    let json = match json.as_object() {
-      Some(json) => {
-        let keys: HashSet<String> = json.keys().cloned().collect();
-        if let Some(all_keys) = &all_keys {
-          if *all_keys != keys {
-            Err(anyhow::anyhow!(
-              "Line {}: JSON Object has different keys from previous lines.",
-              line_number
-            ))?;
+      // Check that json is an Object and its keys match `all_keys`, error otherwise.
+      let json = match json.as_object() {
+        Some(json) => {
+          let keys: HashSet<String> = json.keys().cloned().collect();
+          if let Some(all_keys) = &all_keys {
+            if *all_keys != keys {
+              Err(anyhow::anyhow!(
+                "Line {}: JSON Object has different keys from previous lines.",
+                line_number
+              ))?;
+            }
+          } else {
+            // This is the first object we've seen, so store its keys.
+            all_keys = Some(keys);
           }
-        } else {
-          // This is the first object we've seen, so store its keys.
-          all_keys = Some(keys);
+          json
         }
-        json
-      }
-      None => Err(anyhow::anyhow!(
-        "Line {}: Not a JSON object. Only JSON Objects are expected at each line of the JSONL file.",
-        line_number
-      ))?,
-    };
+        None => Err(anyhow::anyhow!(
+          "Line {}: Not a JSON object. Only JSON Objects are expected at each line of the JSONL file.",
+          line_number
+        ))?,
+      };
 
-    // Reserialize json and hash it.
-    let json = serde_json::to_string(&json)?;
-    hasher.update(json.as_bytes());
+      // Reserialize json and hash it.
+      let json = serde_json::to_string(&json)?;
+      hasher.update(json.as_bytes());
 
-    Ok(json)
-  }).collect::<Result<Vec<_>>>()?;
+      Ok(json)
+    }).collect::<Result<Vec<_>>>()?;
 
     let hash = format!("{}", hasher.finalize().to_hex());
 

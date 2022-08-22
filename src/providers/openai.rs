@@ -1,6 +1,6 @@
-use crate::models::llm::Tokens;
-use crate::models::llm::{Generation, LLM};
-use crate::models::provider::Provider;
+use crate::providers::llm::Tokens;
+use crate::providers::llm::{Generation, LLM};
+use crate::providers::provider::Provider;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
