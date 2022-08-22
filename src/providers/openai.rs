@@ -1,6 +1,6 @@
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{Generation, LLM};
-use crate::providers::provider::Provider;
+use crate::providers::provider::{Provider,ProviderID};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -63,14 +63,14 @@ pub struct Error {
 }
 
 pub struct OpenAILLM {
-    model_id: String,
+    id: String,
     api_key: Option<String>,
 }
 
 impl OpenAILLM {
-    pub fn new(model_id: String) -> Self {
+    pub fn new(id: String) -> Self {
         OpenAILLM {
-            model_id,
+            id,
             api_key: None,
         }
     }
@@ -105,7 +105,7 @@ impl OpenAILLM {
             // .header("OpenAI-Organization", "openai")
             .body(Body::from(
                 json!({
-                    "model": self.model_id.clone(),
+                    "model": self.id.clone(),
                     "prompt": prompt.as_str(),
                     "max_tokens": max_tokens,
                     "temperature": temperature,
@@ -142,14 +142,15 @@ impl OpenAILLM {
 
 #[async_trait]
 impl LLM for OpenAILLM {
-    fn model_id(&self) -> String {
-        self.model_id.clone()
+    fn id(&self) -> String {
+        self.id.clone()
     }
 
     fn name(&self) -> String {
-        format!("llm.openai.{}", self.model_id)
+        format!("llm.openai.{}", self.id)
     }
 
+    // TODO(spolu): make async
     fn initialize(&mut self) -> Result<()> {
         match std::env::var("OPENAI_API_KEY") {
             Ok(key) => {
@@ -213,7 +214,7 @@ impl LLM for OpenAILLM {
 
         Ok(Generation {
             provider: String::from("fOO"),
-            model: self.model_id.clone(),
+            model: self.id.clone(),
             completions: c
                 .choices
                 .iter()
@@ -245,8 +246,8 @@ impl OpenAIProvider {
 
 #[async_trait]
 impl Provider for OpenAIProvider {
-    fn id(&self) -> String {
-        String::from("openai")
+    fn id(&self) -> ProviderID {
+        ProviderID::OpenAI
     }
 
     fn setup(&self) -> Result<()> {
@@ -281,7 +282,7 @@ impl Provider for OpenAIProvider {
         Ok(())
     }
 
-    fn llm(&self, model_id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(OpenAILLM::new(model_id))
+    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
+        Box::new(OpenAILLM::new(id))
     }
 }

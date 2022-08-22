@@ -9,7 +9,7 @@ value = _{ string | multiline }
 pair = { !("expected") ~ key ~ ":" ~ value }
 
 block_type = @{ (ASCII_ALPHA_LOWER | ASCII_DIGIT | "." | "_")+ }
-block_name = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "." | "_")+ }
+block_name = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_")+ }
 block_body = {
   "{" ~ (pair)* ~ ("expected" ~ ":" ~ expected)? ~ "}"
 }

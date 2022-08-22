@@ -10,11 +10,11 @@ data MATHD {
 code RETRIEVE {
   code:
 ```
- (env) => {
-   let s = env.get('ROOT')['subject'];
-   let d = env.get('ROOT')['difficulty'];
-   return env.get('MATHD').filter((r) => (r['subject] == s && r['difficulty'] == d))
- }
+_block = (env) => {
+  let s = env['state']['ROOT']['subject'];
+  let d = env['state']['ROOT']['difficulty'];
+  return env['state']['MATHD'].filter((r) => (r['subject] == s && r['difficulty'] == d))
+};
 ```
   expected: []{question, explanation, answer}
 }
@@ -40,7 +40,7 @@ ANSWER: ${answer}
 }
 
 repeat REPEAT {
-  blocks: MODEL, EXTRACT
+  blocks: MODEL
   count: 20
   expected: []{explanation, answer}
 }
@@ -48,14 +48,14 @@ repeat REPEAT {
 code CONSENSUS {
   code:
 ```
-(env) => {
+_block = (env) => {
   let counts = {};
-  for d in env.get('REPEAT') {
+  for d in env['state']['REPEAT'] {
     if d['answer'] not in counts:
       counts[d['answer']] = 0
     counts[d['answer']] += 1
   }
-  let answer = env.get('REPEAT')[0]['answer'];
+  let answer = env['state']['REPEAT'][0]['answer'];
   let max_count = 0;
   for a in counts.keys() {
     if max_count < counts[a] {
@@ -64,7 +64,7 @@ code CONSENSUS {
     }
   }
   return { "answer": answer };
-}
+};
 ```
   expected: {answer}
 }

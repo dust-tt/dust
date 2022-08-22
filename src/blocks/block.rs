@@ -1,9 +1,14 @@
+use crate::providers::provider::ProviderID;
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
+#[derive(Serialize, PartialEq)]
 pub struct Env {
+    pub provider: ProviderID,
+    pub model_id: String,
     pub state: HashMap<String, Value>,
     pub input: Value,
 }

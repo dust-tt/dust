@@ -18,7 +18,7 @@ pub struct Generation {
 
 #[async_trait]
 pub trait LLM {
-    fn model_id(&self) -> String;
+    fn id(&self) -> String;
     fn name(&self) -> String;
 
     fn initialize(&mut self) -> Result<()>;

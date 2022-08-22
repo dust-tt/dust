@@ -28,10 +28,10 @@ impl std::error::Error for ParseError {
     }
 }
 pub async fn init_check() -> Result<PathBuf> {
-    let current_dir = match std::env::var("DUST_DIR") {
+    let current_dir = tokio::task::block_in_place(|| match std::env::var("DUST_DIR") {
         Ok(dust_dir) => PathBuf::from(shellexpand::tilde(&dust_dir).into_owned()),
-        Err(_) => PathBuf::from(std::env::current_dir()?),
-    };
+        Err(_) => PathBuf::from(std::env::current_dir().unwrap()),
+    });
 
     let index_path = current_dir.join("index.dust");
     if !index_path.exists().await {
@@ -44,6 +44,7 @@ pub async fn init_check() -> Result<PathBuf> {
     Ok(current_dir)
 }
 
+// TODO(spolu): maybe make async eventually
 pub fn info(msg: &str) {
     println!("{} {}", "[i]".yellow(), msg);
 }

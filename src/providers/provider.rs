@@ -3,9 +3,10 @@ use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::Serialize;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 pub enum ProviderID {
     OpenAI,
 }
@@ -30,12 +31,12 @@ impl FromStr for ProviderID {
 
 #[async_trait]
 pub trait Provider {
-    fn id(&self) -> String;
+    fn id(&self) -> ProviderID;
 
     fn setup(&self) -> Result<()>;
     async fn test(&self) -> Result<()>;
 
-    fn llm(&self, model_id: String) -> Box<dyn LLM + Sync + Send>;
+    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send>;
 }
 
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync> {

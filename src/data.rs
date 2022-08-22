@@ -1,10 +1,10 @@
 use crate::utils;
 use anyhow::Result;
 use async_fs::File;
+use async_std::path::PathBuf;
 use futures::prelude::*;
 use serde_json::Value;
 use std::collections::HashSet;
-use async_std::path::PathBuf;
 
 pub struct Data {
     id: String,
@@ -24,7 +24,10 @@ impl Data {
     }
 
     async fn jsonl_path(id: &String, hash: &String) -> Result<PathBuf> {
-        Ok(Self::data_path(id).await?.join(hash).with_extension("jsonl"))
+        Ok(Self::data_path(id)
+            .await?
+            .join(hash)
+            .with_extension("jsonl"))
     }
 
     pub async fn new_from_hash(id: String, hash: String) -> Result<Self> {
@@ -49,7 +52,8 @@ impl Data {
 
         if !latest_path.exists().await {
             Err(anyhow::anyhow!(
-                "Expected latest file does not exist: {}",
+                "Data id does not exist: {} (expecting: {})",
+                id,
                 latest_path.display()
             ))?;
         }
@@ -163,6 +167,10 @@ impl Data {
         ));
 
         Ok(())
+    }
+
+    pub fn data_as_value(&self) -> Value {
+        self.data.iter().map(|r| r.clone()).collect::<Vec<_>>().into()
     }
 }
 

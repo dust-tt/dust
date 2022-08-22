@@ -10,4 +10,7 @@ pub mod providers {
 pub mod blocks {
     pub mod block;
     pub mod root;
+    pub mod data;
+    pub mod code;
+    pub mod llm;
 }
