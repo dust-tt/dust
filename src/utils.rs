@@ -1,7 +1,7 @@
 use anyhow::Result;
+use async_std::path::PathBuf;
 use colored::Colorize;
 use std::io::Write;
-use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct ParseError(&'static str);
@@ -27,14 +27,14 @@ impl std::error::Error for ParseError {
         self.0
     }
 }
-pub fn init_check() -> Result<PathBuf> {
+pub async fn init_check() -> Result<PathBuf> {
     let current_dir = match std::env::var("DUST_DIR") {
         Ok(dust_dir) => PathBuf::from(shellexpand::tilde(&dust_dir).into_owned()),
-        Err(_) => std::env::current_dir()?,
+        Err(_) => PathBuf::from(std::env::current_dir()?),
     };
 
     let index_path = current_dir.join("index.dust");
-    if !index_path.exists() {
+    if !index_path.exists().await {
         Err(anyhow::anyhow!(
             "Not a Dust directory (index.dust not found in {})",
             current_dir.display()

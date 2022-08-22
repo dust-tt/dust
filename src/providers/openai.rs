@@ -263,8 +263,9 @@ impl Provider for OpenAIProvider {
     }
 
     async fn test(&self) -> Result<()> {
+        // TODO(spolu): Move to a RequestScheduler call once it's implemented.
         if !utils::confirm(
-            "You are about to make a request for 1 tokens  to `text-ada-001` on the OpenAI API.",
+            "You are about to make a request for 1 token to `text-ada-001` on the OpenAI API.",
         )? {
             Err(anyhow!("User aborted OpenAI test."))?;
         }

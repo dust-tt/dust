@@ -39,7 +39,7 @@ enum DataCommands {
         id: String,
         /// Path to the JSONL data file
         #[clap()]
-        path: String,
+        jsonl_path: String,
     },
 }
 
@@ -61,23 +61,24 @@ enum ProviderCommands {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("dust-provider-test")
+        .worker_threads(1)
+        .build()?;
 
     let err = match &cli.command {
-        Commands::Init { path } => init::init(path.clone()),
+        Commands::Init { path } => rt.block_on(init::cmd_init(path.clone())),
         Commands::Data { command } => match command {
-            DataCommands::Register { id, path } => data::register(id.clone(), path.clone()),
+            DataCommands::Register { id, jsonl_path } => {
+                rt.block_on(data::cmd_register(id.clone(), jsonl_path.clone()))
+            }
         },
         Commands::Provider { command } => match command {
-            ProviderCommands::Setup { provider_id } => provider::provider(*provider_id).setup(),
-            ProviderCommands::Test { provider_id } => {
-                let rt = tokio::runtime::Builder::new_multi_thread()
-                    .enable_all()
-                    .thread_name("dust-provider-test")
-                    .worker_threads(1)
-                    .build()?;
-
-                rt.block_on(provider::provider(*provider_id).test())
+            ProviderCommands::Setup { provider_id } => {
+                rt.block_on(provider::cmd_setup(*provider_id))
             }
+            ProviderCommands::Test { provider_id } => rt.block_on(provider::cmd_test(*provider_id)),
         },
     };
 

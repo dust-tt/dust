@@ -3,7 +3,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
-pub struct Data {}
+pub struct Data {
+    id: String,
+}
 
 #[async_trait]
 impl Block for Data {
