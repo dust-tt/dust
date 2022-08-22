@@ -1,7 +1,7 @@
 use anyhow::Result;
 use colored::Colorize;
-use std::path::PathBuf;
 use std::io::Write;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct ParseError(&'static str);

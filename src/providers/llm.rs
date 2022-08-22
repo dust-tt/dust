@@ -3,32 +3,32 @@ use async_trait::async_trait;
 
 #[derive(Debug)]
 pub struct Tokens {
-  pub text: String,
-  pub tokens: Option<Vec<String>>,
-  pub logprobs: Option<Vec<Option<f32>>>,
+    pub text: String,
+    pub tokens: Option<Vec<String>>,
+    pub logprobs: Option<Vec<Option<f32>>>,
 }
 
 #[derive(Debug)]
 pub struct Generation {
-  pub provider: String,
-  pub model: String,
-  pub completions: Vec<Tokens>,
-  pub prompt: Tokens,
+    pub provider: String,
+    pub model: String,
+    pub completions: Vec<Tokens>,
+    pub prompt: Tokens,
 }
 
 #[async_trait]
 pub trait LLM {
-  fn model_id(&self) -> String;
-  fn name(&self) -> String;
+    fn model_id(&self) -> String;
+    fn name(&self) -> String;
 
-  fn initialize(&mut self) -> Result<()>;
+    fn initialize(&mut self) -> Result<()>;
 
-  async fn generate(
-    &self,
-    prompt: String,
-    max_tokens: Option<i32>,
-    temperature: f32,
-    n: usize,
-    stop: Option<Vec<String>>,
-  ) -> Result<Generation>;
+    async fn generate(
+        &self,
+        prompt: String,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        n: usize,
+        stop: Option<Vec<String>>,
+    ) -> Result<Generation>;
 }

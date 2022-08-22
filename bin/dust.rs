@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{data, init, models::provider, utils};
+use dust::{data, init, providers::provider, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
