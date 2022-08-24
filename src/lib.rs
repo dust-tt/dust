@@ -24,5 +24,4 @@ pub mod blocks {
     pub mod llm;
     pub mod map;
     pub mod reduce;
-    pub mod repeat;
 }

@@ -1,9 +1,11 @@
-use crate::blocks::block::{Block, Env, BlockType};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env};
 use crate::providers::llm::Tokens;
 use crate::providers::provider;
+use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
+use pest::iterators::Pair;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
@@ -16,11 +18,76 @@ pub struct LLM {
     max_tokens: i32,
     temperature: f32,
     stop: Option<Vec<String>>,
-
     run_if: Option<String>,
 }
 
 impl LLM {
+    pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
+        let mut few_shot_preprompt: Option<String> = None;
+        let mut few_shot_count: Option<usize> = None;
+        let mut few_shot_prompt: Option<String> = None;
+        let mut prompt: Option<String> = None;
+        let mut max_tokens: Option<i32> = None;
+        let mut temperature: Option<f32> = None;
+        let mut stop: Option<Vec<String>> = None;
+        let mut run_if: Option<String> = None;
+
+        for pair in block_pair.into_inner() {
+            match pair.as_rule() {
+                Rule::pair => {
+                    let (key, value) = parse_pair(pair)?;
+                    match key.as_str() {
+                        "few_shot_preprompt" => few_shot_preprompt = Some(value),
+                        "few_shot_count" => match value.parse::<usize>() {
+                            Ok(n) => few_shot_count = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `few_shot_count` in `llm` block, \
+                                 expecting unsigned integer"
+                            ))?,
+                        },
+                        "few_shot_prompt" => few_shot_prompt = Some(value),
+                        "prompt" => prompt = Some(value),
+                        "max_tokens" => match value.parse::<i32>() {
+                            Ok(n) => max_tokens = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `max_tokens` in `llm` block, expecting integer"
+                            ))?,
+                        },
+                        "temperature" => match value.parse::<f32>() {
+                            Ok(n) => temperature = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `temperature` in `llm` block, expecting float"
+                            ))?,
+                        },
+                        "stop" => stop = Some(value.split("\n").map(|s| String::from(s)).collect()),
+                        "run_if" => run_if = Some(value),
+                        _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
+                    }
+                }
+                Rule::expected => Err(anyhow!("`expected` is not yet supported in `llm` block"))?,
+                _ => unreachable!(),
+            }
+        }
+
+        if !max_tokens.is_some() {
+            Err(anyhow!("Missing required `max_tokens` in `llm` block"))?;
+        }
+        if !temperature.is_some() {
+            Err(anyhow!("Missing required `temperature` in `llm` block"))?;
+        }
+
+        Ok(LLM {
+            few_shot_preprompt,
+            few_shot_count,
+            few_shot_prompt,
+            prompt,
+            max_tokens: max_tokens.unwrap(),
+            temperature: temperature.unwrap(),
+            stop,
+            run_if,
+        })
+    }
+
     fn find_variables(text: &str) -> Vec<(String, String)> {
         lazy_static! {
             static ref RE: Regex =

@@ -44,7 +44,7 @@ impl Data {
         Ok(Data {
             id: id.unwrap(),
             hash: hash.unwrap(),
-            run_if: run_if,
+            run_if,
         })
     }
 }

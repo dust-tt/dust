@@ -1,12 +1,45 @@
-use crate::blocks::block::{Block, Env, BlockType};
-use anyhow::Result;
+use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::Rule;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use js_sandbox::Script;
+use pest::iterators::Pair;
 use serde_json::Value;
 
 pub struct Code {
-    source: String,
+    code: String,
     run_if: Option<String>,
+}
+
+impl Code {
+    pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
+        let mut code: Option<String> = None;
+        let mut run_if: Option<String> = None;
+
+        for pair in block_pair.into_inner() {
+            match pair.as_rule() {
+                Rule::pair => {
+                    let (key, value) = parse_pair(pair)?;
+                    match key.as_str() {
+                        "code" => code = Some(value),
+                        "run_if" => run_if = Some(value),
+                        _ => Err(anyhow!("Unexpected `{}` in `code` block", key))?,
+                    }
+                }
+                Rule::expected => Err(anyhow!("`expected` is not yet supported in `code` block"))?,
+                _ => unreachable!(),
+            }
+        }
+
+        if !code.is_some() {
+            Err(anyhow!("Missing required `code` in `code` block"))?;
+        }
+
+        Ok(Code {
+            code: code.unwrap(),
+            run_if,
+        })
+    }
 }
 
 #[async_trait]
@@ -22,7 +55,7 @@ impl Block for Code {
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("code".as_bytes());
-        hasher.update(self.source.as_bytes());
+        hasher.update(self.code.as_bytes());
         if let Some(run_if) = &self.run_if {
             hasher.update(run_if.as_bytes());
         }
@@ -33,7 +66,7 @@ impl Block for Code {
         // Assumes there is a _fun function defined in `source`.
 
         // TODO(spolu): make it non-blocking with tokio::block_in_place?
-        let mut script = Script::from_string(self.source.as_str())?;
+        let mut script = Script::from_string(self.code.as_str())?;
         let result: Value = script.call("_fun", env)?;
 
         Ok(result)

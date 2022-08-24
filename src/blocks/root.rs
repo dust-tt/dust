@@ -8,7 +8,7 @@ use serde_json::Value;
 pub struct Root {}
 
 impl Root {
-    pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
+    pub fn parse(_block_pair: Pair<Rule>) -> Result<Self> {
         // TODO(spolu): implement expected for Root as a starter
         Ok(Root {})
     }

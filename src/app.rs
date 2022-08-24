@@ -59,30 +59,12 @@ impl App {
                 Rule::EOI => {}
                 _ => unreachable!(),
             }
-            //println!("{:?}\n", record);
         }
 
         Ok(App {
             hash: "".to_string(),
             blocks: vec![],
         })
-
-        // let mut field_sum: f64 = 0.0;
-        // let mut record_count: u64 = 0;
-
-        // for record in file.into_inner() {
-        //     match record.as_rule() {
-        //         Rule::record => {
-        //             record_count += 1;
-
-        //             for field in record.into_inner() {
-        //                 field_sum += field.as_str().parse::<f64>().unwrap();
-        //             }
-        //         }
-        //         Rule::EOI => (),
-        //         _ => unreachable!(),
-        //     }
-        // }
     }
 }
 

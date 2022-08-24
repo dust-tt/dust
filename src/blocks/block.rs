@@ -1,6 +1,4 @@
-use crate::blocks::{
-    code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, repeat::Repeat, root::Root,
-};
+use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
 use crate::providers::provider::ProviderID;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -34,7 +32,6 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
-    Repeat,
 }
 
 impl ToString for BlockType {
@@ -46,7 +43,6 @@ impl ToString for BlockType {
             BlockType::LLM => String::from("llm"),
             BlockType::Map => String::from("map"),
             BlockType::Reduce => String::from("reduce"),
-            BlockType::Repeat => String::from("repeat"),
         }
     }
 }
@@ -61,7 +57,6 @@ impl FromStr for BlockType {
             "llm" => Ok(BlockType::LLM),
             "map" => Ok(BlockType::Map),
             "reduce" => Ok(BlockType::Reduce),
-            "repeat" => Ok(BlockType::Repeat),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -121,10 +116,15 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
     Ok((key.unwrap(), value.unwrap()))
 }
 
+// TODO(spolu): pass in block_name for better error messages.
 pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block + Sync + Send>> {
     match t {
         BlockType::Root => Ok(Box::new(Root::parse(block_pair)?)),
         BlockType::Data => Ok(Box::new(Data::parse(block_pair)?)),
+        BlockType::Code => Ok(Box::new(Code::parse(block_pair)?)),
+        BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
+        BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
+        BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
         _ => unimplemented!(),
     }
 }

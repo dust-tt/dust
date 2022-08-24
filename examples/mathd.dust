@@ -18,17 +18,13 @@ _fun = (env) => {
 ```
 }
 
-repeat REPEAT {
-  from: ROOT
-  count: 20
-}
-
 map LOOP {
-  from: REPEAT
+  from: ROOT
+  repeat: 20
 }
 
 llm MODEL {
-  max_tokens: 128
+  max_tokens: 1024
   temperature: 0.7
   few_shot_count: 4
   few_shot_prompt:
@@ -42,15 +38,27 @@ ANSWER: ${RETRIEVAL.answer}
 ```
 QUESTION: ${MAP.question}
 ```
-  extract:
+  stop:
 ```
-EXPLANATION: ${explanation}
-ANSWER: ${answer}
+QUESTION:
+```
+}
+
+code POSTPROCESS {
+  code:
+```
+_fun = (env) => {
+  let completion = env['state']['MODEL']['completion']['text'];
+  return {
+    "explanation": completion["text"].split("EXPLANATION:")[1].split("\nANSWER:")[0].trim(),
+    "answer": completion["text"].split("ANSWER:")[1].trim(),
+  };
+}
 ```
 }
 
 reduce LOOP {
-  from: MODEL
+  from: POSTPROCESS
 }
 
 code CONSENSUS {

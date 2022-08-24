@@ -7,7 +7,7 @@ data MUSIC_CLASSIFICATION_FEW_SHOT {
   hash: e2h23b
 }
 
-llm CLASSIFY_MUSIC {
+llm CLASSIFY_MUSIC_MODEL {
   max_tokens: 2
   temperature: 0.7
   few_shot_count: 8
@@ -21,12 +21,16 @@ CLASS: ${MUSIC_CLASSIFICATION_FEW_SHOT.class}
 ```
 QUERY: ${ROOT.query}
 ```
-  postprocess:
+}
+
+code CLASSIFY_MUSIC {
+code:
 ```
-_fun = (env, prompt, completion) => {
+_fun = (env) => {
+  let completion = env['state']['CLASSIFY_MUSIC_MODEL']['completion']['text'];
   return {
-    "music": completion['text] == "CLASS: music",
-    "not_music": completion['text] == "CLASS: not_music",
+    "music": completion == "CLASS: music",
+    "not_music": completion == "CLASS: not_music",
   };
 }
 ```
@@ -37,7 +41,8 @@ llm NOT_MUSIC_RESPONSE {
 ```
   _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'not_music'; }
 ```
-
+  max_tokens: 128
+  temperature: 0.7
 }
 
 llm MUSIC_INTENTION {
@@ -45,4 +50,6 @@ llm MUSIC_INTENTION {
 ```
   _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'music'; }
 ```
+  max_tokens: 128
+  temperature: 0.7
 }
