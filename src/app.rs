@@ -9,12 +9,9 @@ use std::str::FromStr;
 ///
 /// Blocks are versioned by their hash (inner_hash) and the hash of their predecessor in the App
 /// specification. The App hash is computed from its constituting blocks hashes.
-///
-/// Each block can be executed and their output represents a versioned block execution which is
-/// cached on disk.
 pub struct App {
     hash: String,
-    blocks: Vec<(String, String, Box<dyn Block>)>,
+    blocks: Vec<(String, String, Box<dyn Block>)>, // (hash, name, Block)
 }
 
 impl App {
@@ -26,6 +23,9 @@ impl App {
         let parsed = DustParser::parse(Rule::dust, &unparsed_file)?
             .next()
             .unwrap();
+
+        // Block names and parsed instantiations.
+        let mut blocks: Vec<(String, Box<dyn Block>)> = Vec::new();
 
         for pair in parsed.into_inner() {
             match pair.as_rule() {
@@ -50,7 +50,10 @@ impl App {
                                     block_name.as_ref().unwrap(),
                                 );
 
-                                let block = parse_block(block_type.unwrap(), pair)?;
+                                blocks.push((
+                                    block_name.as_ref().unwrap().clone(),
+                                    parse_block(block_type.unwrap(), pair)?,
+                                ));
                             }
                             _ => unreachable!(),
                         }
@@ -59,6 +62,52 @@ impl App {
                 Rule::EOI => {}
                 _ => unreachable!(),
             }
+        }
+
+        // Check that maps are matched by a reduce and that they are not nested.
+        let mut current_map: Option<String> = None;
+        for (name, block) in &blocks {
+            if block.block_type() == BlockType::Map {
+                if current_map.is_some() {
+                    return Err(anyhow!(
+                        "Nested maps are not currently supported, \
+                         found `map {}` nested in `map {}`",
+                        name,
+                        current_map.unwrap()
+                    ));
+                } else {
+                    current_map = Some(name.clone());
+                }
+            }
+            if block.block_type() == BlockType::Reduce {
+                match current_map.clone() {
+                    None => {
+                        Err(anyhow!(
+                            "Block `reduce {}` is not matched by a previous `map {}` block",
+                            name.as_str(),
+                            name.as_str()
+                        ))?;
+                    }
+                    Some(map) => {
+                        if map.as_str() != name.as_str() {
+                            Err(anyhow!(
+                                "Block `reduce {}` does not match the current `map {}` block",
+                                name.as_str(),
+                                map.as_str()
+                            ))?;
+                        } else {
+                            current_map = None;
+                        }
+                    }
+                }
+            }
+        }
+
+        // At this point the app looks valid (of course code blocks can fail in arbitrary ways).
+        // Let's compute the hash of each block and the hash of the app.
+        let mut hashes : Vec<String> = Vec::new();
+        let mut prev_hash: String = "".to_string();
+        for (name, block) in &blocks {
         }
 
         Ok(App {

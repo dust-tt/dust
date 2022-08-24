@@ -24,7 +24,7 @@ pub struct Env {
 //   Array(Box<Expectations>),
 // }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
     Root,
     Data,
@@ -125,6 +125,5 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
-        _ => unimplemented!(),
     }
 }
