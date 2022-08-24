@@ -1,0 +1,48 @@
+root ROOT {
+  expected: {query}
+}
+
+data MUSIC_CLASSIFICATION_FEW_SHOT {
+  id: music_classification_few_shot
+  hash: e2h23b
+}
+
+llm CLASSIFY_MUSIC {
+  max_tokens: 2
+  temperature: 0.7
+  few_shot_count: 8
+  few_shot_prompt:
+```
+QUERY: ${MUSIC_CLASSIFICATION_FEW_SHOT.query}
+CLASS: ${MUSIC_CLASSIFICATION_FEW_SHOT.class}
+
+```
+  prompt:
+```
+QUERY: ${ROOT.query}
+```
+  postprocess:
+```
+_fun = (env, prompt, completion) => {
+  return {
+    "music": completion['text] == "CLASS: music",
+    "not_music": completion['text] == "CLASS: not_music",
+  };
+}
+```
+}
+
+llm NOT_MUSIC_RESPONSE {
+  run_if:
+```
+  _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'not_music'; }
+```
+
+}
+
+llm MUSIC_INTENTION {
+  run_if:
+```
+  _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'music'; }
+```
+}

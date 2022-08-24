@@ -39,7 +39,7 @@ pub trait Provider {
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send>;
 }
 
-pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync> {
+pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
     }

@@ -174,7 +174,7 @@ impl Data {
     }
 }
 
-pub async fn cmd_register(id: String, jsonl_path: String) -> Result<()> {
-    let d = Data::new_from_jsonl(id, jsonl_path).await?;
+pub async fn cmd_register(data_id: String, jsonl_path: String) -> Result<()> {
+    let d = Data::new_from_jsonl(data_id, jsonl_path).await?;
     d.register().await
 }

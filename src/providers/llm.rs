@@ -1,7 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct Tokens {
     pub text: String,
     pub tokens: Option<Vec<String>>,

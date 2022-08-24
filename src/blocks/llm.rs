@@ -1,16 +1,23 @@
-use crate::blocks::block::{Block, Env};
+use crate::blocks::block::{Block, Env, BlockType};
+use crate::providers::llm::Tokens;
 use crate::providers::provider;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::Value;
 
 pub struct LLM {
-    introduction: Option<String>,
-    examples_count: Option<usize>,
-    examples_prompt: Option<String>,
+    few_shot_preprompt: Option<String>,
+    few_shot_count: Option<usize>,
+    few_shot_prompt: Option<String>,
     prompt: Option<String>,
+    max_tokens: i32,
+    temperature: f32,
+    stop: Option<Vec<String>>,
+
+    run_if: Option<String>,
 }
 
 impl LLM {
@@ -30,12 +37,13 @@ impl LLM {
             .collect::<Vec<_>>()
     }
 
-    fn replace_examples_prompt_variables(text: &str, env: &Env) -> Result<Vec<String>> {
+    fn replace_few_shot_prompt_variables(text: &str, env: &Env) -> Result<Vec<String>> {
         let variables = LLM::find_variables(text);
 
         if variables.len() == 0 {
             Err(anyhow!(
-                "`examples_prompt` must contain variables refering to a block output"
+                "`few_shot_prompt` must contain variables \
+                 refering to a block output (${{BLOCK.key}})"
             ))?
         }
 
@@ -44,7 +52,7 @@ impl LLM {
         for (n, _) in &variables {
             if n != &name {
                 Err(anyhow!(
-                    "Variables in `examples_prompt` must refer to the same block (`{}` != `{}`)",
+                    "Variables in `few_shot_prompt` must refer to the same block (`{}` != `{}`)",
                     n,
                     name
                 ))?;
@@ -59,14 +67,22 @@ impl LLM {
             .get(&name)
             .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
         if !output.is_array() {
-            Err(anyhow!("Block `{}` output is not an array", name))?;
+            Err(anyhow!(
+                "Block `{}` output is not an array, the block output referred in \
+                 `few_shot_prompt` must be an array",
+                name
+            ))?;
         }
         let output = output.as_array().unwrap();
 
         // Check that the block output elements are objects.
         for o in output {
             if !o.is_object() {
-                Err(anyhow!("Block `{}` output element is not an object", name))?;
+                Err(anyhow!(
+                    "Block `{}` output elements are not objects, the block output referred \
+                     in `few_shot_prompt` must be an array of objects",
+                    name
+                ))?;
             }
         }
 
@@ -74,12 +90,12 @@ impl LLM {
         for key in keys {
             if !output[0].as_object().unwrap().contains_key(&key) {
                 Err(anyhow!(
-                    "`{}` is not present in block `{}` output",
+                    "Key `{}` is not present in block `{}` output objects",
                     key,
                     name
                 ))?;
             }
-            // check that output[0][key] is a string.
+            // Check that output[0][key] is a string.
             if !output[0]
                 .as_object()
                 .unwrap()
@@ -87,11 +103,7 @@ impl LLM {
                 .unwrap()
                 .is_string()
             {
-                Err(anyhow!(
-                    "`{}` in block `{}` output is not a string",
-                    key,
-                    name
-                ))?;
+                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
             }
         }
 
@@ -100,60 +112,160 @@ impl LLM {
             .map(|o| {
                 let mut text = text.to_string();
                 for (name, key) in &variables {
-                    text = text.replace(
-                        &format!("${{{}.{}}}", name, key),
-                        &o[key].as_str().unwrap(),
-                    );
+                    text =
+                        text.replace(&format!("${{{}.{}}}", name, key), &o[key].as_str().unwrap());
                 }
                 text
             })
             .collect())
     }
 
-    fn replace_variables(text: &str, env: &Env) -> Result<String> {
+    fn replace_prompt_variables(text: &str, env: &Env) -> Result<String> {
         let variables = LLM::find_variables(text);
-        let value = |(name, key): (&str, &str)| -> Result<String> {
-            println!("{:?}", env.state.get(name));
-            match env.state.get(name) {
-                None => Err(anyhow!("Block output {} not found", name))?,
-                Some(o) => match o.get(key) {
-                    None => Err(anyhow!("Variable {}.{} not found", name, key))?,
-                    Some(v) => match v.is_string() {
-                        false => Err(anyhow!("Variable {}.{} is not a string", name, key))?,
-                        true => Ok(v.as_str().unwrap().to_string()),
-                    },
-                },
-            }
-        };
 
-        let mut text = String::from(text);
-        for (name, key) in variables {
-            let v = value((name.as_str(), key.as_str()))?;
-            text = text.replace(&format!("${{{}.{}}}", name, key), v.as_str());
-        }
+        let mut prompt = text.to_string();
 
-        Ok(text)
+        variables
+            .iter()
+            .map(|(name, key)| {
+                // Check that the block output exists and is an object.
+                let output = env
+                    .state
+                    .get(name)
+                    .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
+                if !output.is_object() {
+                    Err(anyhow!(
+                        "Block `{}` output is not an object, the blocks output referred in \
+                 `prompt` must be objects",
+                        name
+                    ))?;
+                }
+                let output = output.as_object().unwrap();
+
+                if !output.contains_key(key) {
+                    Err(anyhow!(
+                        "Key `{}` is not present in block `{}` output",
+                        key,
+                        name
+                    ))?;
+                }
+                // Check that output[key] is a string.
+                if !output.get(key).unwrap().is_string() {
+                    Err(anyhow!("`{}.{}` is not a string", name, key,))?;
+                }
+                prompt = prompt.replace(
+                    &format!("${{{}.{}}}", name, key),
+                    &output[key].as_str().unwrap(),
+                );
+
+                Ok(())
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(prompt)
     }
 
-    // fn prompt(&self) -> String {
-    //     // initialize a mutable prompt String
-    //     let mut prompt = String::new();
-    //     // if there is an introduction, add it to the prompt
-    //     if let Some(introduction) = &self.introduction {
-    //         prompt.push_str(introduction);
-    //     }
-    // }
+    fn prompt(&self, env: &Env) -> Result<String> {
+        // Initialize a mutable prompt String.
+        let mut prompt = String::new();
+
+        // If there is a few_shot_preprompt add it to the prompt.
+        if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
+            prompt.push_str(few_shot_preprompt);
+        }
+
+        // If `few_shot_prompt` is defined check that `few_shot_count` and add few shots to the
+        // prompt.
+        if let Some(few_shot_prompt) = &self.few_shot_prompt {
+            if let None = &self.few_shot_count {
+                Err(anyhow!(
+                    "If `few_shot_prompt` is defined, `few_shot_count` is required"
+                ))?;
+            }
+
+            // We take the `few_shot_count` first elements (leaving to the user the decision to
+            // shuffle the few_shots in a preprocessing code step).
+            Self::replace_few_shot_prompt_variables(few_shot_prompt, env)?
+                .iter()
+                .take(self.few_shot_count.unwrap())
+                .for_each(|p| prompt.push_str(p));
+        }
+
+        // If `prompt` is defined, replace variables in it and add it.
+        if let Some(p) = &self.prompt {
+            prompt.push_str(Self::replace_prompt_variables(p, env)?.as_str());
+        }
+
+        Ok(prompt)
+    }
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+struct LLMValue {
+    prompt: Tokens,
+    completion: Tokens,
 }
 
 #[async_trait]
 impl Block for LLM {
+    fn block_type(&self) -> BlockType {
+        BlockType::LLM
+    }
+
+    fn run_if(&self) -> Option<String> {
+        self.run_if.clone()
+    }
+
+    fn inner_hash(&self) -> String {
+        let mut hasher = blake3::Hasher::new();
+        hasher.update("llm".as_bytes());
+        if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
+            hasher.update(few_shot_preprompt.as_bytes());
+        }
+        if let Some(few_shot_count) = self.few_shot_count {
+            hasher.update(few_shot_count.to_string().as_bytes());
+        }
+        if let Some(few_shot_prompt) = &self.few_shot_prompt {
+            hasher.update(few_shot_prompt.as_bytes());
+        }
+        if let Some(prompt) = &self.prompt {
+            hasher.update(prompt.as_bytes());
+        }
+        hasher.update(self.max_tokens.to_string().as_bytes());
+        hasher.update(self.temperature.to_string().as_bytes());
+        if let Some(stop) = &self.stop {
+            for s in stop {
+                hasher.update(s.as_bytes());
+            }
+        }
+        if let Some(run_if) = &self.run_if {
+            hasher.update(run_if.as_bytes());
+        }
+        format!("{}", hasher.finalize().to_hex())
+    }
+
     async fn execute(&self, env: &Env) -> Result<Value> {
         let provider = provider::provider(env.provider);
 
         let mut model = provider.llm(env.model_id.clone());
         model.initialize()?;
 
-        Ok(Value::Null)
+        let g = model
+            .generate(
+                self.prompt(env)?,
+                Some(self.max_tokens),
+                self.temperature,
+                1,
+                self.stop.clone(),
+            )
+            .await?;
+
+        assert!(g.completions.len() == 1);
+
+        Ok(serde_json::to_value(LLMValue {
+            prompt: g.prompt,
+            completion: g.completions[0].clone(),
+        })?)
     }
 }
 
@@ -176,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn replace_examples_prompt_variables() -> Result<()> {
+    fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
             provider: ProviderID::OpenAI,
             model_id: "foo".to_string(),
@@ -187,11 +299,33 @@ mod tests {
             input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
         };
         assert_eq!(
-            LLM::replace_examples_prompt_variables(r#"QUESTION: ${RETRIEVE.question}"#, &env)?,
+            LLM::replace_few_shot_prompt_variables(r#"QUESTION: ${RETRIEVE.question}"#, &env)?,
             vec![
                 r#"QUESTION: What is your name?"#.to_string(),
                 r#"QUESTION: What is your dob"#.to_string(),
             ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn replace_prompt_variables() -> Result<()> {
+        let env = Env {
+            provider: ProviderID::OpenAI,
+            model_id: "foo".to_string(),
+            state: serde_json::from_str(
+                r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
+            )
+            .unwrap(),
+            input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
+        };
+        assert_eq!(
+            LLM::replace_prompt_variables(
+                r#"QUESTION: ${RETRIEVE.question} ANSWER: ${DATA.answer}"#,
+                &env
+            )?,
+            r#"QUESTION: What is your name? ANSWER: John"#.to_string()
         );
 
         Ok(())

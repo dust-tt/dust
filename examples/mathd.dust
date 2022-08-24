@@ -4,51 +4,59 @@ root ROOT {
 
 data MATHD {
   id: mathd/train
-  expected: []{question, subject, difficulty, explanation, anwer}
+  hash: eb74dd955868e34f397da411235a74c1ba5690d26851af481979fe9edee1cf94
 }
 
-code RETRIEVE {
+code RETRIEVAL {
   code:
 ```
-_block = (env) => {
+_fun = (env) => {
   let s = env['state']['ROOT']['subject'];
   let d = env['state']['ROOT']['difficulty'];
-  return env['state']['MATHD'].filter((r) => (r['subject] == s && r['difficulty'] == d))
+  return env['state']['MATHD'].filter((r) => (r['subject] == s && r['difficulty'] == d))[:4];
 };
 ```
-  expected: []{question, explanation, answer}
+}
+
+repeat REPEAT {
+  from: ROOT
+  count: 20
+}
+
+map LOOP {
+  from: REPEAT
 }
 
 llm MODEL {
-  examples_count: max
-  examples_prompt:
+  max_tokens: 128
+  temperature: 0.7
+  few_shot_count: 4
+  few_shot_prompt:
 ```
-QUESTION: ${RETRIEVE.question}
-EXPLANATION: ${RETRIEVE.explanation}
-ANSWER: ${RETRIEVE.answer}
+QUESTION: ${RETRIEVAL.question}
+EXPLANATION: ${RETRIEVAL.explanation}
+ANSWER: ${RETRIEVAL.answer}
+
 ```
   prompt:
 ```
-QUESTION: ${ROOT.question}
+QUESTION: ${MAP.question}
 ```
   extract:
 ```
 EXPLANATION: ${explanation}
 ANSWER: ${answer}
 ```
-  expected: {explanation, answer}
 }
 
-repeat REPEAT {
-  blocks: MODEL
-  count: 20
-  expected: []{explanation, answer}
+reduce LOOP {
+  from: MODEL
 }
 
 code CONSENSUS {
   code:
 ```
-_block = (env) => {
+_fun = (env) => {
   let counts = {};
   for d in env['state']['REPEAT'] {
     if d['answer'] not in counts:
@@ -66,5 +74,4 @@ _block = (env) => {
   return { "answer": answer };
 };
 ```
-  expected: {answer}
 }
