@@ -105,14 +105,24 @@ impl App {
 
         // At this point the app looks valid (of course code blocks can fail in arbitrary ways).
         // Let's compute the hash of each block and the hash of the app.
-        let mut hashes : Vec<String> = Vec::new();
+        let mut hashes: Vec<String> = Vec::new();
         let mut prev_hash: String = "".to_string();
         for (name, block) in &blocks {
+            let mut hasher = blake3::Hasher::new();
+            hasher.update(prev_hash.as_bytes());
+            hasher.update(name.as_bytes());
+            hasher.update(block.inner_hash().as_bytes());
+            prev_hash = format!("{}", hasher.finalize().to_hex());
+            hashes.push(prev_hash.clone());
         }
 
         Ok(App {
-            hash: "".to_string(),
-            blocks: vec![],
+            hash: prev_hash,
+            blocks: blocks
+                .into_iter()
+                .zip(hashes.into_iter())
+                .map(|((name, block), hash)| (hash, name, block))
+                .collect(),
         })
     }
 }
