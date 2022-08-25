@@ -11,12 +11,19 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Serialize, PartialEq)]
+#[derive(Serialize, PartialEq, Clone)]
+pub struct MapState {
+    pub name: String,
+    pub iteration: usize,
+}
+
+#[derive(Serialize, PartialEq, Clone)]
 pub struct Env {
-    pub provider: ProviderID,
+    pub provider_id: ProviderID,
     pub model_id: String,
     pub state: HashMap<String, Value>,
     pub input: Value,
+    pub map: Option<MapState>,
 }
 
 // pub enum Expectations {

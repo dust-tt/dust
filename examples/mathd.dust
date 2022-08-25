@@ -36,7 +36,7 @@ ANSWER: ${RETRIEVAL.answer}
 ```
   prompt:
 ```
-QUESTION: ${MAP.question}
+QUESTION: ${LOOP.question}
 ```
   stop:
 ```
@@ -57,9 +57,7 @@ _fun = (env) => {
 ```
 }
 
-reduce LOOP {
-  from: POSTPROCESS
-}
+reduce LOOP { }
 
 code CONSENSUS {
   code:

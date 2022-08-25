@@ -74,12 +74,12 @@ fn main() -> Result<()> {
         .build()?;
 
     let err = match &cli.command {
-        Commands::Init { path } => rt.block_on(init::cmd_init(path.clone())),
+        Commands::Init { path } => rt.block_on(init::cmd_init(path)),
         Commands::Data { command } => match command {
             DataCommands::Register {
                 data_id,
                 jsonl_path,
-            } => rt.block_on(data::cmd_register(data_id.clone(), jsonl_path.clone())),
+            } => rt.block_on(data::cmd_register(data_id, jsonl_path)),
         },
         Commands::Provider { command } => match command {
             ProviderCommands::Setup { provider_id } => {
@@ -87,7 +87,7 @@ fn main() -> Result<()> {
             }
             ProviderCommands::Test { provider_id } => rt.block_on(provider::cmd_test(*provider_id)),
         },
-        Commands::Run { data_id } => rt.block_on(app::cmd_run(data_id.clone())),
+        Commands::Run { data_id } => rt.block_on(app::cmd_run(data_id)),
     };
 
     match err {

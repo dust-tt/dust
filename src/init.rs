@@ -7,8 +7,8 @@ use anyhow::Result;
 /// - a `data` directory (versioned data files).
 /// - a `blocks` directory (versioned blocks definitions).
 /// - a `cache` directory (cached block execution traces).
-pub async fn cmd_init(target: String) -> Result<()> {
-    let target = &shellexpand::tilde(&target).into_owned();
+pub async fn cmd_init(target: &str) -> Result<()> {
+    let target = &shellexpand::tilde(target).into_owned();
     let target = async_std::path::Path::new(target);
 
     utils::info(&format!(

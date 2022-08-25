@@ -312,8 +312,7 @@ impl Block for LLM {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        let provider = provider::provider(env.provider);
-
+        let provider = provider::provider(env.provider_id);
         let mut model = provider.llm(env.model_id.clone());
         model.initialize()?;
 
@@ -357,13 +356,14 @@ mod tests {
     #[test]
     fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
-            provider: ProviderID::OpenAI,
+            provider_id: ProviderID::OpenAI,
             model_id: "foo".to_string(),
             state: serde_json::from_str(
                 r#"{"RETRIEVE":[{"question":"What is your name?"},{"question":"What is your dob"}],"DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
             input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
+            map: None,
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables(r#"QUESTION: ${RETRIEVE.question}"#, &env)?,
@@ -379,13 +379,14 @@ mod tests {
     #[test]
     fn replace_prompt_variables() -> Result<()> {
         let env = Env {
-            provider: ProviderID::OpenAI,
+            provider_id: ProviderID::OpenAI,
             model_id: "foo".to_string(),
             state: serde_json::from_str(
                 r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
             input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
+            map: None,
         };
         assert_eq!(
             LLM::replace_prompt_variables(

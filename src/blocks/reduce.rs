@@ -1,24 +1,19 @@
-use crate::blocks::block::{Block, BlockType, Env, parse_pair};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 
-pub struct Reduce {
-    from: String,
-}
+pub struct Reduce {}
 
 impl Reduce {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
-        let mut from: Option<String> = None;
-
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
                 Rule::pair => {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
-                        "from" => from = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `reduce` block", key))?,
                     }
                 }
@@ -29,13 +24,7 @@ impl Reduce {
             }
         }
 
-        if !from.is_some() {
-            Err(anyhow!("Missing required `from` in `reduce` block"))?;
-        }
-
-        Ok(Reduce {
-            from: from.unwrap(),
-        })
+        Ok(Reduce {})
     }
 }
 
@@ -52,20 +41,12 @@ impl Block for Reduce {
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("reduce".as_bytes());
-        hasher.update(self.from.as_bytes());
         format!("{}", hasher.finalize().to_hex())
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        match env.state.get(&self.from) {
-            Some(v) => match v.as_array() {
-                None => Err(anyhow::anyhow!(
-                    "Reduce `from` block `{}` output expeced to be an array",
-                    self.from
-                )),
-                Some(_) => Ok(v.clone()),
-            },
-            None => Err(anyhow::anyhow!("Block `{}` output not found", self.from)),
-        }
+        // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
+        // ignored and not stored in the environment as it has the same name as the map block.
+        Ok(Value::Null)
     }
 }

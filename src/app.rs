@@ -1,9 +1,45 @@
-use crate::blocks::block::{parse_block, Block, BlockType};
+use crate::blocks::block::{parse_block, Block, BlockType, Env};
+use crate::data::Data;
+use crate::providers::provider::ProviderID;
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use pest::Parser;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::str::FromStr;
+
+/// BlockExecution represents the execution of a block:
+/// - `env` used
+/// - returned value from `should_run`
+/// - if `should_run` is true:
+///   - `output` of a successful execution
+///   - or `error` message returned
+#[derive(Serialize, PartialEq)]
+pub struct BlockExecution {
+    pub env: Env,
+    pub should_run: bool,
+    pub output: Option<Value>,
+    pub error: Option<String>,
+}
+
+/// ExecutionTrace represents the execution trace of a full app on one input value.
+#[derive(Serialize, PartialEq)]
+pub struct ExecutionTrace {
+    pub input: Value,
+    pub block_executions: Vec<(String, Vec<BlockExecution>)>,
+}
+
+/// Execution represents the full execution of an app on input data.
+#[derive(Serialize, PartialEq)]
+pub struct Execution {
+    hash: String,
+    data_id: String,
+    data_hash: String,
+    app_hash: String,
+    traces: Vec<ExecutionTrace>,
+}
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -15,6 +51,10 @@ pub struct App {
 }
 
 impl App {
+    pub fn len(&self) -> usize {
+        self.blocks.len()
+    }
+
     pub async fn new() -> Result<Self> {
         let root_path = utils::init_check().await?;
         let spec_path = root_path.join("index.dust");
@@ -43,12 +83,6 @@ impl App {
                             Rule::block_body => {
                                 assert!(block_type.as_ref().is_some());
                                 assert!(block_name.as_ref().is_some());
-
-                                println!(
-                                    "Entering block body for {} {}",
-                                    block_type.unwrap().to_string(),
-                                    block_name.as_ref().unwrap(),
-                                );
 
                                 blocks.push((
                                     block_name.as_ref().unwrap().clone(),
@@ -125,9 +159,114 @@ impl App {
                 .collect(),
         })
     }
+
+    pub async fn run(
+        &mut self,
+        data: &Data,
+        provider_id: ProviderID,
+        model_id: &str,
+    ) -> Result<()> {
+        // Initialize the envs from data-points as `Vec<Vec<Env>>`. The first vector represents the
+        // data-point the second is used to handle map/reduces.
+        let mut envs = data
+            .iter()
+            .map(|d| {
+                vec![Env {
+                    provider_id,
+                    model_id: String::from(model_id),
+                    state: HashMap::new(),
+                    input: d.clone(),
+                    map: None,
+                }]
+            })
+            .collect::<Vec<Vec<Env>>>();
+        assert!(envs.len() > 0);
+
+        let mut current_map: Option<String> = None;
+        let mut current_map_blocks: Vec<String> = vec![];
+
+        for (hash, name, block) in &self.blocks {
+            // Special pre-processing for reduce blocks. Reduce the envs of the blocks that were
+            // executed as part of the map. If the env does not include an output we fail
+            // conservatively for now.
+            // TODO(spolu): re-evaluate or maybe parametrize behavior in maps. If we allow errors to
+            // go through we have an alignment problem if future blocks use elements from different
+            // blocks in the map assuming they are aligned. We would probably need to use
+            // Value::None?
+            if block.block_type() == BlockType::Reduce {
+                envs = envs
+                    .iter()
+                    .map(|item_envs| {
+                        assert!(item_envs.len() > 0);
+                        let mut env = item_envs[0].clone();
+                        current_map_blocks
+                            .iter()
+                            .map(|n| {
+                                env.state.insert(
+                                    n.clone(),
+                                    Value::Array(
+                                        item_envs
+                                            .iter()
+                                            .map(|e| match e.state.get(n) {
+                                                None => Err(anyhow!(
+                                                "Missing block output block `{}`, at iteration {}",
+                                                n, e.map.as_ref().unwrap().iteration
+                                            ))?,
+                                                Some(v) => Ok(v.clone()),
+                                            })
+                                            .collect::<Result<Vec<_>>>()?,
+                                    ),
+                                );
+                                Ok(())
+                            })
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(vec![env])
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                // No block execution for reduce, env coallescing only.
+            } else {
+                envs = envs
+                    .iter()
+                    .map(|item_envs| {
+                        assert!(item_envs.len() > 0);
+                        Ok(item_envs
+                            .iter()
+                            .map(|env| {
+                                // TODO(spolu): stream execution
+                                let v = block.execute(env).await?;
+                                let mut env = env.clone();
+                                env.state.insert(name.clone(), v);
+                                Ok(env)
+                            })
+                            .collect::<Result<Vec<_>>>()?)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+            }
+
+            // Special post-processing for map blocks.
+            if block.block_type() == BlockType::Map {}
+        }
+
+        Ok(())
+    }
 }
 
-pub async fn cmd_run(data_id: String) -> Result<()> {
-    let app = App::new().await?;
-    Ok(())
+pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> Result<()> {
+    let mut app = App::new().await?;
+    utils::info(format!("Parsed app specification, found {} blocks.", app.len()).as_str());
+
+    let d = Data::new_from_latest(data_id).await?;
+    if d.len() == 0 {
+        Err(anyhow!("Retrieved 0 records from `{data_id}`"))?
+    }
+    utils::info(
+        format!(
+            "Retrieved {} records from latest data version for `{}`.",
+            d.len(),
+            data_id
+        )
+        .as_str(),
+    );
+
+    Ok(app.run(&d, provider_id, model_id).await?)
 }
