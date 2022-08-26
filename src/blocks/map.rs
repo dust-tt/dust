@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct Map {
     from: String,
     repeat: Option<usize>,
@@ -97,5 +98,9 @@ impl Block for Map {
                 None => Err(anyhow::anyhow!("Block `{}` output not found", self.from)),
             },
         }
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }

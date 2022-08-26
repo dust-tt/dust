@@ -4,11 +4,14 @@ use crate::providers::provider::ProviderID;
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
+use futures::StreamExt;
+use futures::TryStreamExt;
 use pest::Parser;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
@@ -47,7 +50,7 @@ pub struct Execution {
 /// specification. The App hash is computed from its constituting blocks hashes.
 pub struct App {
     hash: String,
-    blocks: Vec<(String, String, Box<dyn Block>)>, // (hash, name, Block)
+    blocks: Vec<(String, String, Box<dyn Block + Send + Sync>)>, // (hash, name, Block)
 }
 
 impl App {
@@ -65,7 +68,7 @@ impl App {
             .unwrap();
 
         // Block names and parsed instantiations.
-        let mut blocks: Vec<(String, Box<dyn Block>)> = Vec::new();
+        let mut blocks: Vec<(String, Box<dyn Block + Send + Sync>)> = Vec::new();
 
         for pair in parsed.into_inner() {
             match pair.as_rule() {
@@ -161,10 +164,11 @@ impl App {
     }
 
     pub async fn run(
-        &mut self,
+        &self,
         data: &Data,
         provider_id: ProviderID,
         model_id: &str,
+        concurrency: usize,
     ) -> Result<()> {
         // Initialize the envs from data-points as `Vec<Vec<Env>>`. The first vector represents the
         // data-point the second is used to handle map/reduces.
@@ -225,22 +229,44 @@ impl App {
                     .collect::<Result<Vec<_>>>()?;
                 // No block execution for reduce, env coallescing only.
             } else {
-                envs = envs
-                    .iter()
-                    .map(|item_envs| {
-                        assert!(item_envs.len() > 0);
-                        Ok(item_envs
-                            .iter()
-                            .map(|env| {
-                                // TODO(spolu): stream execution
-                                let v = block.execute(env).await?;
-                                let mut env = env.clone();
-                                env.state.insert(name.clone(), v);
-                                Ok(env)
-                            })
-                            .collect::<Result<Vec<_>>>()?)
+                // We flatten the envs for concurrent and parrallel execution of the block which
+                // requires us to keep track of the indices of each Env.
+                let e = futures::stream::iter(
+                    envs.iter()
+                        .cloned()
+                        .enumerate()
+                        .map(|(item_idx, item_envs)| {
+                            item_envs
+                                .into_iter()
+                                .enumerate()
+                                .map(move |(idx, env)| (item_idx, idx, env))
+                        })
+                        .flatten(),
+                )
+                .map(|(item_idx, idx, mut e)| {
+                    // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
+                    // that calls into the Block trait's `clone_box` implemented on each Block. This
+                    // allows using the cloned block from parallel threads!
+                    let b = block.clone();
+                    let name = name.clone();
+                    tokio::spawn(async move {
+                        let v = b.execute(&e).await?;
+                        e.state.insert(name.clone(), v);
+                        Ok((item_idx, idx, e)) as Result<(usize, usize, Env), anyhow::Error>
                     })
-                    .collect::<Result<Vec<_>>>()?;
+                })
+                .buffer_unordered(concurrency)
+                .map(|r| match r {
+                    Err(e) => Err(anyhow!("Block execution spawn error: {}", e))?,
+                    Ok(r) => r,
+                })
+                .try_collect::<Vec<_>>()
+                .await?;
+
+                // There was no error so all envs have been updated and returned flattened, we can
+                // just update the origin mutable object.
+                e.into_iter()
+                    .for_each(|(item_idx, idx, e)| envs[item_idx][idx] = e);
             }
 
             // Special post-processing for map blocks.
@@ -268,5 +294,5 @@ pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> 
         .as_str(),
     );
 
-    Ok(app.run(&d, provider_id, model_id).await?)
+    Ok(app.run(&d, provider_id, model_id, 8).await?)
 }

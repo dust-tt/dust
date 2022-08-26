@@ -6,6 +6,7 @@ use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct Code {
     code: String,
     run_if: Option<String>,
@@ -70,5 +71,9 @@ impl Block for Code {
         let result: Value = script.call("_fun", env)?;
 
         Ok(result)
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }

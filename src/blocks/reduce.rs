@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct Reduce {}
 
 impl Reduce {
@@ -48,5 +49,9 @@ impl Block for Reduce {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(Value::Null)
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }

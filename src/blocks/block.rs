@@ -95,6 +95,14 @@ pub trait Block {
             }
         }
     }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
+}
+
+impl Clone for Box<dyn Block + Sync + Send> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 /// Parses a block pair from a pest parser Pair.
@@ -124,7 +132,10 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
 }
 
 // TODO(spolu): pass in block_name for better error messages.
-pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block + Sync + Send>> {
+pub fn parse_block(
+    t: BlockType,
+    block_pair: Pair<Rule>,
+) -> Result<Box<dyn Block + Sync + Send>> {
     match t {
         BlockType::Root => Ok(Box::new(Root::parse(block_pair)?)),
         BlockType::Data => Ok(Box::new(Data::parse(block_pair)?)),

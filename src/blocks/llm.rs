@@ -10,6 +10,7 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct LLM {
     few_shot_preprompt: Option<String>,
     few_shot_count: Option<usize>,
@@ -332,6 +333,10 @@ impl Block for LLM {
             prompt: g.prompt,
             completion: g.completions[0].clone(),
         })?)
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }
 

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct Root {}
 
 impl Root {
@@ -32,5 +33,9 @@ impl Block for Root {
 
     async fn execute(&self, env: &Env) -> Result<Value> {
         Ok(env.input.clone())
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }

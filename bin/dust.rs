@@ -27,11 +27,19 @@ enum Commands {
         #[clap(subcommand)]
         command: ProviderCommands,
     },
-    /// Run an App on some data
+    /// Runs an app on registered data using the specified model
     Run {
         /// Data id to run the app on
         #[clap(required = true)]
         data_id: String,
+
+        /// Provider id
+        #[clap(required = true)]
+        provider_id: provider::ProviderID,
+
+        /// Model id
+        #[clap(required = true)]
+        model_id: String,
     },
 }
 
@@ -54,13 +62,13 @@ enum ProviderCommands {
     /// Provides instructions to setup a new provider.
     Setup {
         /// Provider id
-        #[clap()]
+        #[clap(required = true)]
         provider_id: provider::ProviderID,
     },
     /// Tests whether a provider is properly setup.
     Test {
         /// Provider id
-        #[clap()]
+        #[clap(required = true)]
         provider_id: provider::ProviderID,
     },
 }
@@ -69,8 +77,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .thread_name("dust-provider-test")
-        .worker_threads(1)
+        .thread_name("dust")
+        .worker_threads(32)
         .build()?;
 
     let err = match &cli.command {
@@ -87,7 +95,11 @@ fn main() -> Result<()> {
             }
             ProviderCommands::Test { provider_id } => rt.block_on(provider::cmd_test(*provider_id)),
         },
-        Commands::Run { data_id } => rt.block_on(app::cmd_run(data_id)),
+        Commands::Run {
+            data_id,
+            provider_id,
+            model_id,
+        } => rt.block_on(app::cmd_run(data_id, *provider_id, model_id)),
     };
 
     match err {

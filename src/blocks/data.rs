@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct Data {
     id: String,
     hash: String,
@@ -73,5 +74,9 @@ impl Block for Data {
     async fn execute(&self, _env: &Env) -> Result<Value> {
         let d = data::Data::new_from_hash(self.id.as_str(), self.hash.as_str()).await?;
         Ok(d.data_as_value())
+    }
+
+    fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
+        Box::new(self.clone())
     }
 }
