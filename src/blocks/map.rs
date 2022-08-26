@@ -13,6 +13,10 @@ pub struct Map {
 }
 
 impl Map {
+    pub fn repeat(&self) -> Option<usize> {
+        self.repeat
+    }
+
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut from: Option<String> = None;
         let mut repeat: Option<usize> = None;
@@ -75,32 +79,33 @@ impl Block for Map {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        match self.repeat {
-            None => match env.state.get(&self.from) {
-                Some(v) => match v.as_array() {
+        match env.state.get(&self.from) {
+            None => Err(anyhow::anyhow!("Map `from` block `{}` output not found", self.from)),
+            Some(v) => match self.repeat {
+                None => match v.as_array() {
                     None => Err(anyhow::anyhow!(
                         "Map `from` block `{}` output must be an array, \
-                         or `repeat` must be defined",
+                            or `repeat` must be defined",
                         self.from
                     )),
                     Some(_) => Ok(v.clone()),
                 },
-                None => Err(anyhow::anyhow!("Block `{}` output not found", self.from)),
-            },
-            Some(repeat) => match env.state.get(&self.from) {
-                Some(v) => {
+                Some(repeat) => {
                     let mut output = Vec::new();
                     for _ in 0..repeat {
                         output.push(v.clone());
                     }
                     Ok(Value::Array(output))
                 }
-                None => Err(anyhow::anyhow!("Block `{}` output not found", self.from)),
             },
         }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
         Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

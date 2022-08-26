@@ -1,4 +1,5 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env};
+use crate::blocks::map;
 use crate::data::Data;
 use crate::providers::provider::ProviderID;
 use crate::utils;
@@ -10,6 +11,7 @@ use pest::Parser;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::hint::unreachable_unchecked;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -198,36 +200,40 @@ impl App {
             // blocks in the map assuming they are aligned. We would probably need to use
             // Value::None?
             if block.block_type() == BlockType::Reduce {
-                envs = envs
-                    .iter()
-                    .map(|item_envs| {
-                        assert!(item_envs.len() > 0);
-                        let mut env = item_envs[0].clone();
-                        current_map_blocks
-                            .iter()
-                            .map(|n| {
-                                env.state.insert(
-                                    n.clone(),
-                                    Value::Array(
-                                        item_envs
-                                            .iter()
-                                            .map(|e| match e.state.get(n) {
-                                                None => Err(anyhow!(
-                                                "Missing block output block `{}`, at iteration {}",
+                assert!(current_map.is_some());
+                envs =
+                    envs.iter()
+                        .map(|item_envs| {
+                            assert!(item_envs.len() > 0);
+                            let mut env = item_envs[0].clone();
+                            current_map_blocks
+                                .iter()
+                                .map(|n| {
+                                    env.state.insert(
+                                        n.clone(),
+                                        Value::Array(
+                                            item_envs
+                                                .iter()
+                                                .map(|e| match e.state.get(n) {
+                                                    None => Err(anyhow!(
+                                                "Missing block `{}` output, at iteration {}",
                                                 n, e.map.as_ref().unwrap().iteration
                                             ))?,
-                                                Some(v) => Ok(v.clone()),
-                                            })
-                                            .collect::<Result<Vec<_>>>()?,
-                                    ),
-                                );
-                                Ok(())
-                            })
-                            .collect::<Result<Vec<_>>>()?;
-                        Ok(vec![env])
-                    })
-                    .collect::<Result<Vec<_>>>()?;
+                                                    Some(v) => Ok(v.clone()),
+                                                })
+                                                .collect::<Result<Vec<_>>>()?,
+                                        ),
+                                    );
+                                    Ok(())
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            Ok(vec![env])
+                        })
+                        .collect::<Result<Vec<_>>>()?;
+
                 // No block execution for reduce, env coallescing only.
+                current_map = None;
+                current_map_blocks = vec![];
             } else {
                 // We flatten the envs for concurrent and parrallel execution of the block which
                 // requires us to keep track of the indices of each Env.
@@ -246,12 +252,13 @@ impl App {
                 .map(|(item_idx, idx, mut e)| {
                     // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
                     // that calls into the Block trait's `clone_box` implemented on each Block. This
-                    // allows using the cloned block from parallel threads!
+                    // allows cloning the Block (as a Trait) to use from parallel threads!
                     let b = block.clone();
                     let name = name.clone();
                     tokio::spawn(async move {
                         let v = b.execute(&e).await?;
-                        e.state.insert(name.clone(), v);
+                        utils::info(format!("EXECUTION {}: {:?}", name, v).as_str());
+                        e.state.insert(name, v);
                         Ok((item_idx, idx, e)) as Result<(usize, usize, Env), anyhow::Error>
                     })
                 })
@@ -264,13 +271,60 @@ impl App {
                 .await?;
 
                 // There was no error so all envs have been updated and returned flattened, we can
-                // just update the origin mutable object.
+                // just update the original envs mutable object directly.
                 e.into_iter()
                     .for_each(|(item_idx, idx, e)| envs[item_idx][idx] = e);
+
+                // If we're currently in a map, stack the current block.
+                if current_map.is_some() {
+                    current_map_blocks.push(name.clone());
+                }
             }
 
             // Special post-processing for map blocks.
-            if block.block_type() == BlockType::Map {}
+            // TODO(spolu): extract some configs from Map such as `on_error` (fail, null) and
+            // potentially `concurrency` override.
+            if block.block_type() == BlockType::Map {
+                current_map = Some(name.clone());
+                current_map_blocks = vec![];
+
+                let m = block.as_any().downcast_ref::<map::Map>().unwrap();
+
+                envs = envs
+                    .iter()
+                    .map(|item_envs| {
+                        assert!(item_envs.len() == 1);
+                        let env = item_envs[0].clone();
+                        match env.state.get(name) {
+                            None => unreachable!(), // Checked at block execution.
+                            Some(v) => match m.repeat() {
+                                None => match v.as_array() {
+                                    None => unreachable!(), // Checked at block execution.
+                                    Some(v) => v
+                                        .iter()
+                                        .map(|v| {
+                                            let mut e = env.clone();
+                                            e.state.insert(name.clone(), v.clone());
+                                            e
+                                        })
+                                        .collect::<Vec<_>>(),
+                                },
+                                Some(r) => match env.state.get(name) {
+                                    None => unreachable!(), // Checked at block execution.
+                                    Some(v) => std::iter::repeat(v)
+                                        .take(r)
+                                        .map(|v| {
+                                            let mut e = env.clone();
+                                            e.state.insert(name.clone(), v.clone());
+                                            e
+                                        })
+                                        .collect::<Vec<_>>(),
+                                },
+                            },
+                        }
+                    })
+                    .collect::<Vec<_>>();
+            }
         }
 
         Ok(())
@@ -278,7 +332,7 @@ impl App {
 }
 
 pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> Result<()> {
-    let mut app = App::new().await?;
+    let app = App::new().await?;
     utils::info(format!("Parsed app specification, found {} blocks.", app.len()).as_str());
 
     let d = Data::new_from_latest(data_id).await?;

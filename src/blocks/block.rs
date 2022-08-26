@@ -8,6 +8,7 @@ use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::Value;
+use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -97,6 +98,7 @@ pub trait Block {
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
+    fn as_any(&self) -> &dyn Any;
 }
 
 impl Clone for Box<dyn Block + Sync + Send> {
@@ -120,7 +122,8 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
                 value = Some(pair.as_str().to_string());
             }
             Rule::multiline => {
-                value = Some(pair.as_str().to_string());
+                let chars = pair.as_str().chars().collect::<Vec<char>>();
+                value = Some(chars.iter().skip(3).take(chars.len() - 6).collect());
             }
             _ => unreachable!(),
         }
@@ -132,10 +135,7 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
 }
 
 // TODO(spolu): pass in block_name for better error messages.
-pub fn parse_block(
-    t: BlockType,
-    block_pair: Pair<Rule>,
-) -> Result<Box<dyn Block + Sync + Send>> {
+pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block + Sync + Send>> {
     match t {
         BlockType::Root => Ok(Box::new(Root::parse(block_pair)?)),
         BlockType::Data => Ok(Box::new(Data::parse(block_pair)?)),

@@ -99,7 +99,7 @@ impl LLM {
             .map(|c| {
                 let name = c.name("name").unwrap().as_str();
                 let key = c.name("key").unwrap().as_str();
-                println!("{} {}", name, key);
+                // println!("{} {}", name, key);
                 (String::from(name), String::from(key))
             })
             .collect::<Vec<_>>()
@@ -337,6 +337,10 @@ impl Block for LLM {
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
         Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
