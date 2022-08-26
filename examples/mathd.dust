@@ -1,26 +1,26 @@
 root ROOT {
-  expected: {question, subject, difficulty}
+  expected: {question, type, level}
 }
 
 data MATHD {
-  id: mathd/train
-  hash: eb74dd955868e34f397da411235a74c1ba5690d26851af481979fe9edee1cf94
+  id: mathd_train
+  hash: a70e6899859844b9aaa11324db68065b84df502d2d348b24f31bf95bc04f2d79
 }
 
 code RETRIEVAL {
   code:
 ```
 _fun = (env) => {
-  let s = env['state']['ROOT']['subject'];
-  let d = env['state']['ROOT']['difficulty'];
-  return env['state']['MATHD'].filter((r) => (r['subject] == s && r['difficulty'] == d))[:4];
+  let l = env['state']['ROOT']['level'];
+  let t = env['state']['ROOT']['type'];
+  return env['state']['MATHD'].filter((r) => (r['type'] == t && r['level'] == l)).slice(0, 4);
 };
 ```
 }
 
 map LOOP {
   from: ROOT
-  repeat: 20
+  repeat: 10
 }
 
 llm MODEL {
