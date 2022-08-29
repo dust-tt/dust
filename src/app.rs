@@ -103,17 +103,37 @@ impl App {
             }
         }
 
-        // Check that maps are matched by a reduce and that they are not nested.
+        // Check that:
+        // - maps are matched by a reduce and that they are not nested.
+        // - there is only one root.
+        // - map blocks are preceded by the root block
+        //   TODO(spolu): probably waivable in the future
         let mut current_map: Option<String> = None;
+        let mut root_found = false;
         for (name, block) in &blocks {
+            if block.block_type() == BlockType::Root {
+                if root_found {
+                    Err(anyhow!(
+                        "Extraneous `root {}` block, only one root block is allowed",
+                        name
+                    ))?;
+                }
+                root_found = true;
+            }
             if block.block_type() == BlockType::Map {
+                if !root_found {
+                    Err(anyhow!(
+                        "Map blocks must be preceded by the root block, found `map {}` before root",
+                        name
+                    ))?;
+                }
                 if current_map.is_some() {
-                    return Err(anyhow!(
+                    Err(anyhow!(
                         "Nested maps are not currently supported, \
                          found `map {}` nested in `map {}`",
                         name,
-                        current_map.unwrap()
-                    ));
+                        current_map.as_ref().unwrap()
+                    ))?;
                 } else {
                     current_map = Some(name.clone());
                 }
@@ -140,6 +160,9 @@ impl App {
                     }
                 }
             }
+        }
+        if !root_found {
+            Err(anyhow!("No root block found"))?;
         }
 
         // At this point the app looks valid (of course code blocks can fail in arbitrary ways).
@@ -172,26 +195,35 @@ impl App {
         model_id: &str,
         concurrency: usize,
     ) -> Result<()> {
-        // Initialize the envs from data-points as `Vec<Vec<Env>>`. The first vector represents the
-        // data-point the second is used to handle map/reduces.
-        let mut envs = data
-            .iter()
-            .map(|d| {
-                vec![Env {
-                    provider_id,
-                    model_id: String::from(model_id),
-                    state: HashMap::new(),
-                    input: d.clone(),
-                    map: None,
-                }]
-            })
-            .collect::<Vec<Vec<Env>>>();
-        assert!(envs.len() > 0);
+        // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
+        // are executed only once instead of once per input data.
+        let mut envs = vec![vec![Env {
+            provider_id,
+            model_id: String::from(model_id),
+            state: HashMap::new(),
+            input: None,
+            map: None,
+        }]];
 
         let mut current_map: Option<String> = None;
         let mut current_map_blocks: Vec<String> = vec![];
 
         for (hash, name, block) in &self.blocks {
+            // Special pre-processing of the root blocks, injects data as input and build
+            // input_envs.
+            if block.block_type() == BlockType::Root {
+                assert!(envs.len() == 1 && envs[0].len() == 1);
+                envs = data
+                    .iter()
+                    .map(|d| {
+                        vec![Env {
+                            input: Some(d.clone()),
+                            ..envs[0][0].clone()
+                        }]
+                    })
+                    .collect::<Vec<_>>();
+            }
+
             // Special pre-processing for reduce blocks. Reduce the envs of the blocks that were
             // executed as part of the map. If the env does not include an output we fail
             // conservatively for now.
@@ -203,16 +235,16 @@ impl App {
                 assert!(current_map.is_some());
                 envs =
                     envs.iter()
-                        .map(|item_envs| {
-                            assert!(item_envs.len() > 0);
-                            let mut env = item_envs[0].clone();
+                        .map(|map_envs| {
+                            assert!(map_envs.len() > 0);
+                            let mut env = map_envs[0].clone();
                             current_map_blocks
                                 .iter()
                                 .map(|n| {
                                     env.state.insert(
                                         n.clone(),
                                         Value::Array(
-                                            item_envs
+                                            map_envs
                                                 .iter()
                                                 .map(|e| match e.state.get(n) {
                                                     None => Err(anyhow!(
@@ -234,22 +266,26 @@ impl App {
                 // No block execution for reduce, env coallescing only.
                 current_map = None;
                 current_map_blocks = vec![];
-            } else {
+            }
+
+            // Generic block execution (except for reduce blocks).
+            if block.block_type() != BlockType::Reduce {
                 // We flatten the envs for concurrent and parrallel execution of the block which
-                // requires us to keep track of the indices of each Env.
+                // requires us to keep track of the potential input and map indices of each Env,
+                // depending on the state of ExecutionEnvs.
                 let e = futures::stream::iter(
                     envs.iter()
                         .cloned()
                         .enumerate()
-                        .map(|(item_idx, item_envs)| {
-                            item_envs
+                        .map(|(input_idx, map_envs)| {
+                            map_envs
                                 .into_iter()
                                 .enumerate()
-                                .map(move |(idx, env)| (item_idx, idx, env))
+                                .map(move |(map_idx, env)| (input_idx, map_idx, env))
                         })
                         .flatten(),
                 )
-                .map(|(item_idx, idx, mut e)| {
+                .map(|(input_idx, map_idx, mut e)| {
                     // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
                     // that calls into the Block trait's `clone_box` implemented on each Block. This
                     // allows cloning the Block (as a Trait) to use from parallel threads!
@@ -259,7 +295,7 @@ impl App {
                         let v = b.execute(&e).await?;
                         utils::info(format!("EXECUTION {}: {:?}", name, v).as_str());
                         e.state.insert(name, v);
-                        Ok((item_idx, idx, e)) as Result<(usize, usize, Env), anyhow::Error>
+                        Ok((input_idx, map_idx, e)) as Result<(usize, usize, Env), anyhow::Error>
                     })
                 })
                 .buffer_unordered(concurrency)
@@ -273,7 +309,7 @@ impl App {
                 // There was no error so all envs have been updated and returned flattened, we can
                 // just update the original envs mutable object directly.
                 e.into_iter()
-                    .for_each(|(item_idx, idx, e)| envs[item_idx][idx] = e);
+                    .for_each(|(input_idx, map_idx, e)| envs[input_idx][map_idx] = e);
 
                 // If we're currently in a map, stack the current block.
                 if current_map.is_some() {
@@ -292,9 +328,9 @@ impl App {
 
                 envs = envs
                     .iter()
-                    .map(|item_envs| {
-                        assert!(item_envs.len() == 1);
-                        let env = item_envs[0].clone();
+                    .map(|map_envs| {
+                        assert!(map_envs.len() == 1);
+                        let env = map_envs[0].clone();
                         match env.state.get(name) {
                             None => unreachable!(), // Checked at block execution.
                             Some(v) => match m.repeat() {

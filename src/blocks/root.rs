@@ -32,7 +32,10 @@ impl Block for Root {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        Ok(env.input.clone())
+        match env.input.as_ref() {
+            Some(i) => Ok(i.clone()),
+            None => unreachable!(),
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

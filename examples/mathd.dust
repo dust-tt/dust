@@ -1,10 +1,10 @@
-root ROOT {
-  expected: {question, type, level}
-}
-
 data MATHD {
   id: mathd_train
   hash: a70e6899859844b9aaa11324db68065b84df502d2d348b24f31bf95bc04f2d79
+}
+
+root ROOT {
+  expected: {question, type, level}
 }
 
 code RETRIEVAL {
@@ -29,8 +29,8 @@ llm MODEL {
   few_shot_count: 4
   few_shot_prompt:
 ```
-QUESTION: ${RETRIEVAL.question}
-EXPLANATION: ${RETRIEVAL.explanation}
+QUESTION: ${RETRIEVAL.problem}
+EXPLANATION: ${RETRIEVAL.solution}
 ANSWER: ${RETRIEVAL.answer}
 
 ```

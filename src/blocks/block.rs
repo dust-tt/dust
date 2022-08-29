@@ -12,18 +12,18 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Serialize, PartialEq, Clone)]
+#[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
     pub name: String,
     pub iteration: usize,
 }
 
-#[derive(Serialize, PartialEq, Clone)]
+#[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct Env {
     pub provider_id: ProviderID,
     pub model_id: String,
     pub state: HashMap<String, Value>,
-    pub input: Value,
+    pub input: Option<Value>,
     pub map: Option<MapState>,
 }
 
