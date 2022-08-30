@@ -2,7 +2,7 @@ use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, 
 use crate::providers::provider::ProviderID;
 use crate::utils::ParseError;
 use crate::Rule;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use js_sandbox::Script;
 use pest::iterators::Pair;
@@ -123,7 +123,10 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
             }
             Rule::multiline => {
                 let chars = pair.as_str().chars().collect::<Vec<char>>();
-                value = Some(chars.iter().skip(3).take(chars.len() - 6).collect());
+                if chars[chars.len() - 4] != '\n' {
+                    Err(anyhow!("Multine values are expected to end with '\\n```'"))?;
+                }
+                value = Some(chars.iter().skip(4).take(chars.len() - 8).collect());
             }
             _ => unreachable!(),
         }

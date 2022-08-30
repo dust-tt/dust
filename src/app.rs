@@ -324,38 +324,23 @@ impl App {
                 current_map = Some(name.clone());
                 current_map_blocks = vec![];
 
-                let m = block.as_any().downcast_ref::<map::Map>().unwrap();
-
                 envs = envs
                     .iter()
                     .map(|map_envs| {
                         assert!(map_envs.len() == 1);
                         let env = map_envs[0].clone();
                         match env.state.get(name) {
-                            None => unreachable!(), // Checked at block execution.
-                            Some(v) => match m.repeat() {
-                                None => match v.as_array() {
-                                    None => unreachable!(), // Checked at block execution.
-                                    Some(v) => v
-                                        .iter()
-                                        .map(|v| {
-                                            let mut e = env.clone();
-                                            e.state.insert(name.clone(), v.clone());
-                                            e
-                                        })
-                                        .collect::<Vec<_>>(),
-                                },
-                                Some(r) => match env.state.get(name) {
-                                    None => unreachable!(), // Checked at block execution.
-                                    Some(v) => std::iter::repeat(v)
-                                        .take(r)
-                                        .map(|v| {
-                                            let mut e = env.clone();
-                                            e.state.insert(name.clone(), v.clone());
-                                            e
-                                        })
-                                        .collect::<Vec<_>>(),
-                                },
+                            None => unreachable!(), // Checked at map block execution.
+                            Some(v) => match v.as_array() {
+                                None => unreachable!(), // Checked at map block execution.
+                                Some(v) => v
+                                    .iter()
+                                    .map(|v| {
+                                        let mut e = env.clone();
+                                        e.state.insert(name.clone(), v.clone());
+                                        e
+                                    })
+                                    .collect::<Vec<_>>(),
                             },
                         }
                     })

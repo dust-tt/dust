@@ -204,7 +204,7 @@ impl LLM {
                 if !output.is_object() {
                     Err(anyhow!(
                         "Block `{}` output is not an object, the blocks output referred in \
-                 `prompt` must be objects",
+                         `prompt` must be objects",
                         name
                     ))?;
                 }
@@ -375,10 +375,10 @@ mod tests {
             map: None,
         };
         assert_eq!(
-            LLM::replace_few_shot_prompt_variables(r#"QUESTION: ${RETRIEVE.question}"#, &env)?,
+            LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
             vec![
-                r#"QUESTION: What is your name?"#.to_string(),
-                r#"QUESTION: What is your dob"#.to_string(),
+                "QUESTION: What is your name?\n".to_string(),
+                "QUESTION: What is your dob\n".to_string(),
             ]
         );
 

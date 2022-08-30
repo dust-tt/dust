@@ -36,20 +36,30 @@ _fun = (env) => {
 ```
 }
 
-llm NOT_MUSIC_RESPONSE {
-  run_if:
-```
-  _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'not_music'; }
-```
-  max_tokens: 128
-  temperature: 0.7
-}
-
-llm MUSIC_INTENTION {
+if IS_MUSIC {
   run_if:
 ```
   _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'music'; }
 ```
+}
+
+llm MUSIC_INTENTION {
   max_tokens: 128
   temperature: 0.7
 }
+
+end IS_MUSIC {}
+
+if IS_NOT_MUSIC {
+  run_if:
+```
+  _fun = (env) => { return env['state']['CLASSIFY_MUSIC']['class'] == 'not_music'; }
+```
+}
+
+llm NOT_MUSIC_RESPONSE {
+  max_tokens: 128
+  temperature: 0.7
+}
+
+end IS_NOT_MUSIC {}

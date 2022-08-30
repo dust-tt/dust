@@ -171,6 +171,8 @@ impl LLM for OpenAILLM {
     ) -> Result<Generation> {
         assert!(n > 0);
 
+        // println!("STOP: {:?}", stop);
+
         let c = self
             .completion(
                 prompt.clone(),
@@ -182,6 +184,8 @@ impl LLM for OpenAILLM {
                 stop,
             )
             .await?;
+
+        // println!("COMPLETION: {:?}", c);
 
         assert!(c.choices.len() > 0);
         assert!(c.choices[0].logprobs.is_some());
@@ -211,7 +215,6 @@ impl LLM for OpenAILLM {
                 token_offset += 1;
             }
         }
-
         Ok(Generation {
             provider: String::from("fOO"),
             model: self.id.clone(),
