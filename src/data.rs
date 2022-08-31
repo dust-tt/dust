@@ -23,6 +23,14 @@ impl Data {
         self.data.iter()
     }
 
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn hash(&self) -> &str {
+        &self.hash
+    }
+
     async fn data_path(id: &str) -> Result<PathBuf> {
         let root_path = utils::init_check().await?;
         Ok(root_path.join(".data").join(id))

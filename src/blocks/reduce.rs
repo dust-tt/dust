@@ -13,7 +13,7 @@ impl Reduce {
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
                 Rule::pair => {
-                    let (key, value) = parse_pair(pair)?;
+                    let (key, _) = parse_pair(pair)?;
                     match key.as_str() {
                         _ => Err(anyhow!("Unexpected `{}` in `reduce` block", key))?,
                     }
@@ -45,7 +45,7 @@ impl Block for Reduce {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, env: &Env) -> Result<Value> {
+    async fn execute(&self, _env: &Env) -> Result<Value> {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(Value::Null)

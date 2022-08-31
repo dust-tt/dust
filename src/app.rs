@@ -1,5 +1,4 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env};
-use crate::blocks::map;
 use crate::data::Data;
 use crate::providers::provider::ProviderID;
 use crate::utils;
@@ -11,20 +10,16 @@ use pest::Parser;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::hint::unreachable_unchecked;
 use std::str::FromStr;
-use std::sync::Arc;
+use uuid::Uuid;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
-/// - returned value from `should_run`
-/// - if `should_run` is true:
-///   - `output` of a successful execution
-///   - or `error` message returned
+/// - `output` of a successful execution
+/// - or `error` message returned
 #[derive(Serialize, PartialEq)]
 pub struct BlockExecution {
     pub env: Env,
-    pub should_run: bool,
     pub output: Option<Value>,
     pub error: Option<String>,
 }
@@ -33,17 +28,41 @@ pub struct BlockExecution {
 #[derive(Serialize, PartialEq)]
 pub struct ExecutionTrace {
     pub input: Value,
+    // 0 means no execution at all (if, post error)
+    // >1 means multiple executions (map)
     pub block_executions: Vec<(String, Vec<BlockExecution>)>,
 }
 
 /// Execution represents the full execution of an app on input data.
 #[derive(Serialize, PartialEq)]
-pub struct Execution {
-    hash: String,
+pub struct Run {
+    uuid: String,
+    app_hash: String,
     data_id: String,
     data_hash: String,
-    app_hash: String,
+    provider_id: ProviderID,
+    model_id: String,
     traces: Vec<ExecutionTrace>,
+}
+
+impl Run {
+    pub fn new(
+        app_hash: &str,
+        data_id: &str,
+        data_hash: &str,
+        provider_id: ProviderID,
+        model_id: &str,
+    ) -> Self {
+        Self {
+            uuid: format!("{}", Uuid::new_v4()),
+            app_hash: String::from(app_hash),
+            data_id: String::from(data_id),
+            data_hash: String::from(data_hash),
+            provider_id,
+            model_id: String::from(model_id),
+            traces: vec![],
+        }
+    }
 }
 
 /// An App is a collection of versioned Blocks.
@@ -188,6 +207,43 @@ impl App {
         })
     }
 
+    pub async fn register_version(&self) -> Result<()> {
+        let root_path = utils::init_check().await?;
+        let spec_path = root_path.join("index.dust");
+        let versions_dir = root_path.join(".versions");
+
+        assert!(versions_dir.is_dir().await);
+
+        let version_path = versions_dir.join(&self.hash);
+        if !version_path.exists().await {
+            utils::action(&format!(
+                "Copying latest app's index.dust to {}",
+                version_path.display()
+            ));
+            async_std::fs::copy(spec_path, version_path).await?;
+            utils::done(&format!(
+                "Registered new app version ({}) with {} blocks",
+                self.hash,
+                self.blocks.len()
+            ));
+        } else {
+            utils::done(&format!("App version ({}) already registered", self.hash));
+        }
+
+        Ok(())
+    }
+
+    pub async fn update_latest(&self) -> Result<()> {
+        let root_path = utils::init_check().await?;
+        let versions_dir = root_path.join(".versions");
+        let latest_path = versions_dir.join("latest");
+
+        utils::action(&format!("Updating {}", latest_path.display()));
+        async_std::fs::write(latest_path, self.hash.as_bytes()).await?;
+
+        Ok(())
+    }
+
     pub async fn run(
         &self,
         data: &Data,
@@ -195,6 +251,14 @@ impl App {
         model_id: &str,
         concurrency: usize,
     ) -> Result<()> {
+        let mut run = Run::new(
+            self.hash.as_str(),
+            data.id(),
+            data.hash(),
+            provider_id,
+            model_id,
+        );
+
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
         let mut envs = vec![vec![Env {
@@ -208,7 +272,7 @@ impl App {
         let mut current_map: Option<String> = None;
         let mut current_map_blocks: Vec<String> = vec![];
 
-        for (hash, name, block) in &self.blocks {
+        for (_, name, block) in &self.blocks {
             // Special pre-processing of the root blocks, injects data as input and build
             // input_envs.
             if block.block_type() == BlockType::Root {
@@ -368,6 +432,9 @@ pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> 
         )
         .as_str(),
     );
+
+    app.register_version().await?;
+    app.update_latest().await?;
 
     Ok(app.run(&d, provider_id, model_id, 8).await?)
 }

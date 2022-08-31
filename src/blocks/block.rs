@@ -4,7 +4,6 @@ use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::Value;
@@ -79,23 +78,6 @@ pub trait Block {
     fn inner_hash(&self) -> String;
 
     async fn execute(&self, env: &Env) -> Result<Value>;
-
-    fn should_run(&self, env: &Env) -> Result<bool> {
-        match self.run_if() {
-            None => Ok(true),
-            Some(source) => {
-                // TODO(spolu): performance impact of initializing the script?
-                let mut script = Script::from_string(source.as_str())?;
-                let result: Value = script.call("_fun", env)?;
-                match result.as_bool() {
-                    Some(b) => Ok(b),
-                    _ => Err(anyhow::anyhow!(
-                        "Expected boolean to be returned from the `run_if` condition"
-                    ))?,
-                }
-            }
-        }
-    }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
     fn as_any(&self) -> &dyn Any;

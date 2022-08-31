@@ -5,8 +5,7 @@ use anyhow::Result;
 ///
 /// - a placeholder `index.dust` file with the content of `index.dust` in this file's directory.
 /// - a `data` directory (versioned data files).
-/// - a `blocks` directory (versioned blocks definitions).
-/// - a `cache` directory (cached block execution traces).
+/// - a `versions` directory (all revisions).
 pub async fn cmd_init(target: &str) -> Result<()> {
     let target = &shellexpand::tilde(target).into_owned();
     let target = async_std::path::Path::new(target);
@@ -34,8 +33,7 @@ pub async fn cmd_init(target: &str) -> Result<()> {
 
     let dirs = vec![
         target.join(".data"),
-        target.join(".blocks"),
-        target.join(".cache"),
+        target.join(".versions"),
     ];
     for dir in dirs.clone() {
         if dir.exists().await {

@@ -1,98 +1,10 @@
 data MATHD {
   id: mathd_train
-  hash: a70e6899859844b9aaa11324db68065b84df502d2d348b24f31bf95bc04f2d79
-}
-
-code EXTRACT_ANSWER {
-  code:
-```
-function extract_solution(s) {
-  const regex = /\\boxed\{/g;
-  let matches = [...s.matchAll(regex)];
-  if (matches.length === 0) {
-    return null;
-  }
-
-  let m = matches[matches.length - 1];
-  let idx = m.index;
-  let num_braces = 0;
-  let chars = [];
-  let end = -1;
-
-  for (let i = idx; i < s.length; i++) {
-    let c = s[i];
-    chars.push(c);
-
-    if (c === '{') {
-      num_braces++;
-    } else if (c === '}') {
-      num_braces--;
-      if (num_braces == 0) {
-        end = i+1;
-        break;
-      }
-    }
-  }
-
-  if (end == -1) {
-    return null;
-  }
-
-  let ss = chars.join('');
-  ss = ss.replace(/\\left/g, "")
-    .replace(/\\right/g, "")
-    .replace(/\\%/g, "")
-    .replace(/tfrac/g, "frac")
-    .replace(/lfrac/g, "frac")
-    .replace(/mbox/g, "text")
-    .replace(/dfrac/g, "frac")
-    .replace(/\^\\circ/g, "");
-
-  let re = /\\frac(\d)(\d)/g;
-  matches = [...ss.matchAll(re)];
-  for (let match of matches) {
-    ss = ss.replace(
-      match[0],
-      `\\frac{${match[1]}}{${match[2]}}`
-    );
-  }
-
-  re = /\\sqrt(\d)/g;
-  matches = [...ss.matchAll(re)];
-  for (let match of matches) {
-    ss = ss.replace(
-      match[0],
-      `\\sqrt{${match[1]}}`
-    );
-  }
-
-  re = /\\text{([^{}]+)}/g;
-  matches = [...ss.matchAll(re)];
-  for (let match of matches) {
-    if (match[0][6] === ' ') {
-      ss = ss.replace(match[0], "");
-    } else {
-      ss = ss.replace(match[0], match[1]);
-    }
-  }
-
-  ss = ss.replace(/\s/g, ""); // remove all whitespace
-  return ss.slice(7, -1);
-}
-
-_fun = (env) => {
-  return env['state']['MATHD'].map((r) => {
-    r['solution'] = r['solution'].replace(/\n/g, ' ');
-    r['answer'] = extract_solution(r['solution']);
-    r['problem'] = r['problem'].replace(/\n/g, ' ');
-    return r;
-  });
-}
-```
+  hash: b71a4fbe7b2b7c28c33fb9bdc1293a0bd1a0c4eeb6a59a13170041c581408e3c
 }
 
 root ROOT {
-  expected: {problem, type, level}
+  expected: {problem, type, level, solution, answer}
 }
 
 code RETRIEVAL {
@@ -101,19 +13,19 @@ code RETRIEVAL {
 _fun = (env) => {
   let l = env['state']['ROOT']['level'];
   let t = env['state']['ROOT']['type'];
-  return env['state']['EXTRACT_ANSWER'].filter((r) => (
+  return env['state']['MATHD'].filter((r) => (
     r['type'] == t &&
     r['level'] == l &&
     r['problem'].length < 1024 &&
     r['solution'].length < 1024
-  )).slice(0, 4);
+  )).slice(0, 8);
 };
 ```
 }
 
 map LOOP {
   from: ROOT
-  repeat: 4
+  repeat: 8
 }
 
 llm MODEL {
@@ -176,7 +88,7 @@ _fun = (env) => {
       answer = a;
     }
   });
-  return { "answer": answer };
+  return { "answer": answer, "ground_truth": env['state']['ROOT']['answer'] };
 };
 ```
 }
