@@ -41,7 +41,7 @@ pub async fn init_check() -> Result<PathBuf> {
         ))?
     }
 
-    let dirs = vec![".data", ".versions"];
+    let dirs = vec![".data", ".versions", ".runs"];
     for d in dirs {
         if !current_dir.join(d).is_dir().await {
             Err(anyhow::anyhow!(

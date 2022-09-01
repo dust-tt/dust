@@ -34,6 +34,7 @@ pub async fn cmd_init(target: &str) -> Result<()> {
     let dirs = vec![
         target.join(".data"),
         target.join(".versions"),
+        target.join(".runs"),
     ];
     for dir in dirs.clone() {
         if dir.exists().await {

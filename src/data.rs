@@ -31,17 +31,17 @@ impl Data {
         &self.hash
     }
 
-    async fn data_path(id: &str) -> Result<PathBuf> {
+    async fn data_dir(id: &str) -> Result<PathBuf> {
         let root_path = utils::init_check().await?;
         Ok(root_path.join(".data").join(id))
     }
 
     async fn latest_path(id: &str) -> Result<PathBuf> {
-        Ok(Self::data_path(id).await?.join("latest"))
+        Ok(Self::data_dir(id).await?.join("latest"))
     }
 
     async fn jsonl_path(id: &str, hash: &str) -> Result<PathBuf> {
-        Ok(Self::data_path(id)
+        Ok(Self::data_dir(id)
             .await?
             .join(hash)
             .with_extension("jsonl"))
@@ -147,16 +147,16 @@ impl Data {
     }
 
     pub async fn register(&self) -> Result<()> {
-        let data_path = Self::data_path(&self.id).await?;
+        let data_dir = Self::data_dir(&self.id).await?;
 
-        if !data_path.exists().await {
-            utils::action(&format!("Creating directory {}", data_path.display()));
-            std::fs::create_dir_all(&data_path)?;
+        if !data_dir.exists().await {
+            utils::action(&format!("Creating directory {}", data_dir.display()));
+            async_std::fs::create_dir_all(&data_dir).await?;
         }
-        if !data_path.is_dir().await {
+        if !data_dir.is_dir().await {
             Err(anyhow::anyhow!(
                 "{} is not a directory",
-                data_path.display()
+                data_dir.display()
             ))?;
         }
 

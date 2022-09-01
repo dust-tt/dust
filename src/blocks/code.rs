@@ -66,9 +66,14 @@ impl Block for Code {
     async fn execute(&self, env: &Env) -> Result<Value> {
         // Assumes there is a _fun function defined in `source`.
 
-        // TODO(spolu): make it non-blocking with tokio::block_in_place?
-        let mut script = Script::from_string(self.code.as_str())?;
-        let result: Value = script.call("_fun", env)?;
+        // TODO(spolu): revisit, not sure this is optimal.
+        let code = self.code.clone();
+        let env = env.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            let mut script = Script::from_string(code.as_str())?;
+            script.call("_fun", &env)
+        })
+        .await??;
 
         Ok(result)
     }

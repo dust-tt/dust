@@ -18,11 +18,17 @@ pub struct MapState {
 }
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
+pub struct InputState {
+    pub value: Option<Value>,
+    pub index: usize,
+}
+
+#[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct Env {
     pub provider_id: ProviderID,
     pub model_id: String,
     pub state: HashMap<String, Value>,
-    pub input: Option<Value>,
+    pub input: InputState,
     pub map: Option<MapState>,
 }
 

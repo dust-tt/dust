@@ -1,9 +1,11 @@
-use crate::blocks::block::{parse_block, Block, BlockType, Env};
+use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::data::Data;
 use crate::providers::provider::ProviderID;
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
+use async_fs::File;
+use futures::prelude::*;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use pest::Parser;
@@ -15,34 +17,39 @@ use uuid::Uuid;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
-/// - `output` of a successful execution
-/// - or `error` message returned
+/// - `value` returned by successful execution
+/// - `error` message returned by a failed execution
 #[derive(Serialize, PartialEq)]
 pub struct BlockExecution {
-    pub env: Env,
-    pub output: Option<Value>,
+    // pub env: Env,
+    pub value: Option<Value>,
     pub error: Option<String>,
 }
 
-/// ExecutionTrace represents the execution trace of a full app on one input value.
 #[derive(Serialize, PartialEq)]
-pub struct ExecutionTrace {
-    pub input: Value,
-    // 0 means no execution at all (if, post error)
-    // >1 means multiple executions (map)
-    pub block_executions: Vec<(String, Vec<BlockExecution>)>,
-}
-
-/// Execution represents the full execution of an app on input data.
-#[derive(Serialize, PartialEq)]
-pub struct Run {
-    uuid: String,
+pub struct RunConfig {
     app_hash: String,
     data_id: String,
     data_hash: String,
     provider_id: ProviderID,
     model_id: String,
-    traces: Vec<ExecutionTrace>,
+}
+
+/// Execution represents the full execution of an app on input data.
+#[derive(PartialEq)]
+pub struct Run {
+    uuid: String,
+    config: RunConfig,
+    // List of blocks (in order with name) and their execution.
+    // The outer vector represents blocks
+    // The inner-outer vector represents inputs
+    // The inner-inner vector represents mapped outputs
+    // If execution was interrupted by errors, the non-executed block won't be present. If a block
+    // on a particular Env was not executed due to a conditional execution, its BlockExecution will
+    // be present but both output and error will be None.
+    // TODO(spolu): note that there is a lot of repetition here in particular through the env
+    // variables, will need to be revisited but that's a fair enough starting point.
+    traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)>,
 }
 
 impl Run {
@@ -55,13 +62,58 @@ impl Run {
     ) -> Self {
         Self {
             uuid: format!("{}", Uuid::new_v4()),
-            app_hash: String::from(app_hash),
-            data_id: String::from(data_id),
-            data_hash: String::from(data_hash),
-            provider_id,
-            model_id: String::from(model_id),
+            config: RunConfig {
+                app_hash: String::from(app_hash),
+                data_id: String::from(data_id),
+                data_hash: String::from(data_hash),
+                provider_id,
+                model_id: String::from(model_id),
+            },
             traces: vec![],
         }
+    }
+
+    pub async fn store(&self) -> Result<()> {
+        let root_path = utils::init_check().await?;
+        let runs_dir = root_path.join(".runs");
+
+        assert!(runs_dir.is_dir().await);
+        let run_dir = runs_dir.join(&self.uuid);
+        assert!(!run_dir.exists().await);
+
+        utils::action(&format!("Creating directory {}", run_dir.display()));
+        async_std::fs::create_dir_all(&run_dir).await?;
+
+        let config_path = run_dir.join("config.json");
+        utils::action(&format!("Writing run config in {}", config_path.display()));
+        {
+            let mut file = File::create(config_path).await?;
+            file.write_all(serde_json::to_string(&self.config)?.as_bytes())
+                .await?;
+            file.flush().await?;
+        }
+
+        for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
+            let block_dir =
+                run_dir.join(format!("{}-{}_{}", block_idx, block_type.to_string(), name));
+            utils::action(&format!("Creating directory {}", block_dir.display()));
+            async_std::fs::create_dir_all(&block_dir).await?;
+            for (input_idx, executions) in block_execution.iter().enumerate() {
+                let executions_path = block_dir.join(format!("{}.json", input_idx));
+                {
+                    let mut file = File::create(executions_path).await?;
+                    file.write_all(serde_json::to_string(executions)?.as_bytes())
+                        .await?;
+                    file.flush().await?;
+                }
+            }
+        }
+        utils::done(&format!(
+            "Run `{}` for app version `{}` stored",
+            self.uuid, self.config.app_hash
+        ));
+
+        Ok(())
     }
 }
 
@@ -222,12 +274,12 @@ impl App {
             ));
             async_std::fs::copy(spec_path, version_path).await?;
             utils::done(&format!(
-                "Registered new app version ({}) with {} blocks",
+                "Registered new app version `{}` with {} blocks",
                 self.hash,
-                self.blocks.len()
+                self.blocks.len(),
             ));
         } else {
-            utils::done(&format!("App version ({}) already registered", self.hash));
+            utils::done(&format!("App version `{}` already registered", self.hash));
         }
 
         Ok(())
@@ -265,7 +317,10 @@ impl App {
             provider_id,
             model_id: String::from(model_id),
             state: HashMap::new(),
-            input: None,
+            input: InputState {
+                value: None,
+                index: 0,
+            },
             map: None,
         }]];
 
@@ -279,9 +334,13 @@ impl App {
                 assert!(envs.len() == 1 && envs[0].len() == 1);
                 envs = data
                     .iter()
-                    .map(|d| {
+                    .enumerate()
+                    .map(|(i, d)| {
                         vec![Env {
-                            input: Some(d.clone()),
+                            input: InputState {
+                                value: Some(d.clone()),
+                                index: i,
+                            },
                             ..envs[0][0].clone()
                         }]
                     })
@@ -323,62 +382,138 @@ impl App {
                                     Ok(())
                                 })
                                 .collect::<Result<Vec<_>>>()?;
+                            env.map = None;
                             Ok(vec![env])
                         })
                         .collect::<Result<Vec<_>>>()?;
 
-                // No block execution for reduce, env coallescing only.
                 current_map = None;
                 current_map_blocks = vec![];
             }
 
-            // Generic block execution (except for reduce blocks).
-            if block.block_type() != BlockType::Reduce {
-                // We flatten the envs for concurrent and parrallel execution of the block which
-                // requires us to keep track of the potential input and map indices of each Env,
-                // depending on the state of ExecutionEnvs.
-                let e = futures::stream::iter(
-                    envs.iter()
-                        .cloned()
-                        .enumerate()
-                        .map(|(input_idx, map_envs)| {
-                            map_envs
-                                .into_iter()
-                                .enumerate()
-                                .map(move |(map_idx, env)| (input_idx, map_idx, env))
-                        })
-                        .flatten(),
-                )
-                .map(|(input_idx, map_idx, mut e)| {
-                    // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
-                    // that calls into the Block trait's `clone_box` implemented on each Block. This
-                    // allows cloning the Block (as a Trait) to use from parallel threads!
-                    let b = block.clone();
-                    let name = name.clone();
-                    tokio::spawn(async move {
-                        let v = b.execute(&e).await?;
-                        utils::info(format!("EXECUTION {}: {:?}", name, v).as_str());
-                        e.state.insert(name, v);
-                        Ok((input_idx, map_idx, e)) as Result<(usize, usize, Env), anyhow::Error>
+            // We flatten the envs for concurrent and parrallel execution of the block which
+            // requires us to keep track of the potential input and map indices of each Env,
+            // depending on the state of ExecutionEnvs.
+            let e = futures::stream::iter(
+                envs.iter()
+                    .cloned()
+                    .enumerate()
+                    .map(|(input_idx, map_envs)| {
+                        map_envs
+                            .into_iter()
+                            .enumerate()
+                            .map(move |(map_idx, env)| (input_idx, map_idx, env))
                     })
+                    .flatten(),
+            )
+            .map(|(input_idx, map_idx, e)| {
+                // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
+                // that calls into the Block trait's `clone_box` implemented on each Block. This
+                // allows cloning the Block (as a Trait) to use from parallel threads!
+                let b = block.clone();
+                tokio::spawn(async move {
+                    match b.execute(&e).await {
+                        Ok(v) => Ok((input_idx, map_idx, e, Ok(v)))
+                            as Result<
+                                (usize, usize, Env, Result<Value, anyhow::Error>),
+                                anyhow::Error,
+                            >,
+                        Err(err) => Ok((input_idx, map_idx, e, Err(err))),
+                    }
                 })
-                .buffer_unordered(concurrency)
-                .map(|r| match r {
-                    Err(e) => Err(anyhow!("Block execution spawn error: {}", e))?,
-                    Ok(r) => r,
-                })
-                .try_collect::<Vec<_>>()
-                .await?;
+            })
+            .buffer_unordered(concurrency)
+            .map(|r| match r {
+                Err(e) => Err(anyhow!("Block execution spawn error: {}", e))?,
+                Ok(r) => r,
+            })
+            .try_collect::<Vec<_>>()
+            .await?;
 
-                // There was no error so all envs have been updated and returned flattened, we can
-                // just update the original envs mutable object directly.
-                e.into_iter()
-                    .for_each(|(input_idx, map_idx, e)| envs[input_idx][map_idx] = e);
+            // Flatten the result and extract results (Env, Value) or error strings.
+            let mut flat: Vec<Vec<Option<(Env, Option<Value>, Option<String>)>>> =
+                vec![vec![None; envs[0].len()]; envs.len()];
+            let mut errors: Vec<String> = vec![];
+            let mut success = 0_usize;
+            e.into_iter().for_each(|(input_idx, map_idx, e, r)| {
+                match r {
+                    Ok(v) => {
+                        flat[input_idx][map_idx] = Some((e, Some(v), None));
+                        success += 1;
+                    }
+                    Err(err) => {
+                        errors.push(err.to_string());
+                        flat[input_idx][map_idx] = Some((e, None, Some(err.to_string())));
+                    }
+                };
+            });
 
-                // If we're currently in a map, stack the current block.
-                if current_map.is_some() {
-                    current_map_blocks.push(name.clone());
-                }
+            run.traces.push((
+                (block.block_type(), name.clone()),
+                flat.iter()
+                    .map(|m| {
+                        m.iter()
+                            .map(|o| match o {
+                                Some(r) => match r {
+                                    (_, Some(v), None) => BlockExecution {
+                                        value: Some(v.clone()),
+                                        error: None,
+                                    },
+                                    (_, None, Some(err)) => BlockExecution {
+                                        value: None,
+                                        error: Some(err.clone()),
+                                    },
+                                    _ => unreachable!(),
+                                },
+                                None => unreachable!(),
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            ));
+
+            utils::info(
+                format!(
+                    "Execution block `{} {}`: {} success {} error(s)",
+                    block.block_type().to_string(),
+                    name,
+                    success,
+                    errors.len()
+                )
+                .as_str(),
+            );
+
+            // If errors were encountered, interrupt execution.
+            if errors.len() > 0 {
+                errors.iter().for_each(|e| utils::error(e.as_str()));
+                run.store().await?;
+                Err(anyhow!(
+                    "Run interrupted due to block `{} {}` failed execution with {} error(s)",
+                    block.block_type().to_string(),
+                    name,
+                    errors.len(),
+                ))?;
+            }
+
+            // There was no error so all envs can be updated and written in the mutable `envs`.
+            flat.into_iter().enumerate().for_each(|(input_idx, m)| {
+                m.into_iter().enumerate().for_each(|(map_idx, r)| match r {
+                    Some(r) => match r {
+                        (mut e, Some(v), _) => {
+                            // Finally update the environment with the block execution result and
+                            // prepare the next loop `envs` object.
+                            e.state.insert(name.clone(), v);
+                            envs[input_idx][map_idx] = e;
+                        }
+                        _ => unreachable!(),
+                    },
+                    None => unreachable!(),
+                });
+            });
+
+            // If we're currently in a map, stack the current block.
+            if current_map.is_some() {
+                current_map_blocks.push(name.clone());
             }
 
             // Special post-processing for map blocks.
@@ -399,8 +534,13 @@ impl App {
                                 None => unreachable!(), // Checked at map block execution.
                                 Some(v) => v
                                     .iter()
-                                    .map(|v| {
+                                    .enumerate()
+                                    .map(|(i, v)| {
                                         let mut e = env.clone();
+                                        e.map = Some(MapState {
+                                            name: name.clone(),
+                                            iteration: i,
+                                        });
                                         e.state.insert(name.clone(), v.clone());
                                         e
                                     })
@@ -411,6 +551,8 @@ impl App {
                     .collect::<Vec<_>>();
             }
         }
+
+        run.store().await?;
 
         Ok(())
     }

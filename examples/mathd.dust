@@ -18,8 +18,17 @@ _fun = (env) => {
     r['level'] == l &&
     r['problem'].length < 1024 &&
     r['solution'].length < 1024
-  )).slice(0, 8);
+  )).slice(0, 16);
 };
+```
+}
+
+code MATHD {
+  code:
+```
+_fun = (env) => {
+  return null;
+}
 ```
 }
 
@@ -28,15 +37,36 @@ map LOOP {
   repeat: 8
 }
 
+code SHUFFLE {
+  code:
+```
+// Extremely trivial seeded number generator.
+mini_rand = (i, j) => {
+  return 19*i + 23*j;
+};
+
+_fun = (env) => {
+  let i = env["map"]["iteration"];
+  let chosen = [];
+  let data = env["state"]["RETRIEVAL"];
+  for (let j = 0; j < data.length; j++) {
+    let r = mini_rand(i, j) % data.length;
+    chosen.push(data.splice(r, 1)[0]);
+  }
+  return chosen;
+}
+```
+}
+
 llm MODEL {
   max_tokens: 1024
   temperature: 0.7
   few_shot_count: 5
   few_shot_prompt:
 ```
-PROBLEM: ${RETRIEVAL.problem}
-SOLUTION: ${RETRIEVAL.solution}
-ANSWER: ${RETRIEVAL.answer}
+PROBLEM: ${SHUFFLE.problem}
+SOLUTION: ${SHUFFLE.solution}
+ANSWER: ${SHUFFLE.answer}
 
 
 ```
@@ -57,11 +87,18 @@ code POSTPROCESS {
 _fun = (env) => {
   // console.log("POSTPROCESS");
   // console.log(JSON.stringify(env['state']['MODEL']['completion']['text']));
-  let completion = env['state']['MODEL']['completion'];
-  return {
-    "explanation": completion["text"].split("\nANSWER:")[0].trim(),
-    "answer": completion["text"].split("\nANSWER:")[1].trim(),
-  };
+  let split = env['state']['MODEL']['completion']['text'].split("\nANSWER:");
+  if (split.length > 1) {
+    return {
+      "solution": split[0].trim(),
+      "answer": split[1].trim(),
+    };
+  } else {
+    return {
+      "solution": split[0].trim(),
+      "answer": null,
+    };
+  }
 }
 ```
 }
@@ -74,10 +111,12 @@ code CONSENSUS {
 _fun = (env) => {
   let counts = {};
   env['state']['POSTPROCESS'].forEach(d => {
-    if (!(d['answer'] in counts)) {
-      counts[d['answer']] = 0
+    if (d['answer'] !== null) {
+      if (!(d['answer'] in counts)) {
+        counts[d['answer']] = 0
+      }
+      counts[d['answer']] += 1
     }
-    counts[d['answer']] += 1
   });
 
   let answer = env['state']['POSTPROCESS'][0]['answer'];

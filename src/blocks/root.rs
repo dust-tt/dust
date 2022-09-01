@@ -32,7 +32,7 @@ impl Block for Root {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        match env.input.as_ref() {
+        match env.input.value.as_ref() {
             Some(i) => Ok(i.clone()),
             None => unreachable!(),
         }

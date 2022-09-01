@@ -347,6 +347,7 @@ impl Block for LLM {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::blocks::block::InputState;
     use crate::providers::provider::ProviderID;
 
     #[test]
@@ -371,7 +372,10 @@ mod tests {
                 r#"{"RETRIEVE":[{"question":"What is your name?"},{"question":"What is your dob"}],"DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
-            input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
+            input: InputState{
+                value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
+                index: 0,
+            },
             map: None,
         };
         assert_eq!(
@@ -394,7 +398,10 @@ mod tests {
                 r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
-            input: serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap(),
+            input: InputState {
+                value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
+                index: 0,
+            },
             map: None,
         };
         assert_eq!(
