@@ -18,7 +18,7 @@ pub struct LLM {
     prompt: Option<String>,
     max_tokens: i32,
     temperature: f32,
-    stop: Option<Vec<String>>,
+    stop: Vec<String>,
     run_if: Option<String>,
 }
 
@@ -30,7 +30,7 @@ impl LLM {
         let mut prompt: Option<String> = None;
         let mut max_tokens: Option<i32> = None;
         let mut temperature: Option<f32> = None;
-        let mut stop: Option<Vec<String>> = None;
+        let mut stop: Vec<String> = vec![];
         let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
@@ -60,7 +60,7 @@ impl LLM {
                                 "Invalid `temperature` in `llm` block, expecting float"
                             ))?,
                         },
-                        "stop" => stop = Some(value.split("\n").map(|s| String::from(s)).collect()),
+                        "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
                         "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
                     }
@@ -301,10 +301,8 @@ impl Block for LLM {
         }
         hasher.update(self.max_tokens.to_string().as_bytes());
         hasher.update(self.temperature.to_string().as_bytes());
-        if let Some(stop) = &self.stop {
-            for s in stop {
-                hasher.update(s.as_bytes());
-            }
+        for s in self.stop.iter() {
+            hasher.update(s.as_bytes());
         }
         if let Some(run_if) = &self.run_if {
             hasher.update(run_if.as_bytes());
@@ -315,15 +313,15 @@ impl Block for LLM {
     async fn execute(&self, env: &Env) -> Result<Value> {
         let provider = provider::provider(env.provider_id);
         let mut model = provider.llm(env.model_id.clone());
-        model.initialize()?;
+        model.initialize().await?;
 
         let g = model
             .generate(
-                self.prompt(env)?,
+                self.prompt(env)?.as_str(),
                 Some(self.max_tokens),
                 self.temperature,
                 1,
-                self.stop.clone(),
+                &self.stop,
             )
             .await?;
 

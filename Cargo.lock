@@ -438,6 +438,7 @@ dependencies = [
  "itertools",
  "js-sandbox",
  "lazy_static",
+ "parking_lot",
  "pest",
  "pest_derive",
  "rand",

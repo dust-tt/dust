@@ -35,6 +35,7 @@ pub async fn cmd_init(target: &str) -> Result<()> {
         target.join(".data"),
         target.join(".versions"),
         target.join(".runs"),
+        target.join(".cache"),
     ];
     for dir in dirs.clone() {
         if dir.exists().await {
