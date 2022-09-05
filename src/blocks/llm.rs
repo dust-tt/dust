@@ -1,6 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
 use crate::providers::llm::{Tokens, LLMRequest};
-use crate::providers::provider;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
