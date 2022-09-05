@@ -208,7 +208,7 @@ impl LLM for OpenAILLM {
             }
         }
         Ok(LLMGeneration {
-            provider: String::from("fOO"),
+            provider: ProviderID::OpenAI.to_string(),
             model: self.id.clone(),
             completions: c
                 .choices
@@ -259,7 +259,6 @@ impl Provider for OpenAIProvider {
     }
 
     async fn test(&self) -> Result<()> {
-        // TODO(spolu): Move to a RequestScheduler call once it's implemented.
         if !utils::confirm(
             "You are about to make a request for 1 token to `text-ada-001` on the OpenAI API.",
         )? {
