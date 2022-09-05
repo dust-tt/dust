@@ -1,6 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
-use crate::providers::llm::Tokens;
-use crate::providers::provider;
+use crate::providers::llm::{Tokens, LLMRequest};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -18,7 +17,7 @@ pub struct LLM {
     prompt: Option<String>,
     max_tokens: i32,
     temperature: f32,
-    stop: Option<Vec<String>>,
+    stop: Vec<String>,
     run_if: Option<String>,
 }
 
@@ -30,7 +29,7 @@ impl LLM {
         let mut prompt: Option<String> = None;
         let mut max_tokens: Option<i32> = None;
         let mut temperature: Option<f32> = None;
-        let mut stop: Option<Vec<String>> = None;
+        let mut stop: Vec<String> = vec![];
         let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
@@ -60,7 +59,7 @@ impl LLM {
                                 "Invalid `temperature` in `llm` block, expecting float"
                             ))?,
                         },
-                        "stop" => stop = Some(value.split("\n").map(|s| String::from(s)).collect()),
+                        "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
                         "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
                     }
@@ -301,10 +300,8 @@ impl Block for LLM {
         }
         hasher.update(self.max_tokens.to_string().as_bytes());
         hasher.update(self.temperature.to_string().as_bytes());
-        if let Some(stop) = &self.stop {
-            for s in stop {
-                hasher.update(s.as_bytes());
-            }
+        for s in self.stop.iter() {
+            hasher.update(s.as_bytes());
         }
         if let Some(run_if) = &self.run_if {
             hasher.update(run_if.as_bytes());
@@ -313,20 +310,17 @@ impl Block for LLM {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        let provider = provider::provider(env.provider_id);
-        let mut model = provider.llm(env.model_id.clone());
-        model.initialize()?;
+        let request = LLMRequest::new(
+            env.provider_id,
+            &env.model_id,
+            self.prompt(env)?.as_str(),
+            Some(self.max_tokens),
+            self.temperature,
+            1,
+            &self.stop,
+        );
 
-        let g = model
-            .generate(
-                self.prompt(env)?,
-                Some(self.max_tokens),
-                self.temperature,
-                1,
-                self.stop.clone(),
-            )
-            .await?;
-
+        let g = request.execute_with_cache(env.llm_cache.clone()).await?;
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {
@@ -348,7 +342,10 @@ impl Block for LLM {
 mod tests {
     use super::*;
     use crate::blocks::block::InputState;
+    use crate::providers::llm::LLMCache;
     use crate::providers::provider::ProviderID;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
 
     #[test]
     fn find_variables() -> Result<()> {
@@ -377,6 +374,7 @@ mod tests {
                 index: 0,
             },
             map: None,
+            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
@@ -403,6 +401,7 @@ mod tests {
                 index: 0,
             },
             map: None,
+            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
         };
         assert_eq!(
             LLM::replace_prompt_variables(

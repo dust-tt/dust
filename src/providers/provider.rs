@@ -3,10 +3,10 @@ use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 pub enum ProviderID {
     OpenAI,
 }
@@ -44,7 +44,6 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
     }
 }
-
 
 pub async fn cmd_setup(t: ProviderID) -> Result<()> {
     provider(t).setup()

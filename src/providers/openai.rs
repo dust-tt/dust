@@ -1,6 +1,6 @@
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{Generation, LLM};
-use crate::providers::provider::{Provider,ProviderID};
+use crate::providers::llm::{LLMGeneration, LLM};
+use crate::providers::provider::{Provider, ProviderID};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -69,10 +69,7 @@ pub struct OpenAILLM {
 
 impl OpenAILLM {
     pub fn new(id: String) -> Self {
-        OpenAILLM {
-            id,
-            api_key: None,
-        }
+        OpenAILLM { id, api_key: None }
     }
 
     fn uri(&self) -> Result<Uri> {
@@ -81,13 +78,13 @@ impl OpenAILLM {
 
     async fn completion(
         &self,
-        prompt: String,
+        prompt: &str,
         max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
         logprobs: Option<usize>,
         echo: bool,
-        stop: Option<Vec<String>>,
+        stop: &Vec<String>,
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
@@ -106,7 +103,7 @@ impl OpenAILLM {
             .body(Body::from(
                 json!({
                     "model": self.id.clone(),
-                    "prompt": prompt.as_str(),
+                    "prompt": prompt,
                     "max_tokens": max_tokens,
                     "temperature": temperature,
                     "n": n,
@@ -146,13 +143,8 @@ impl LLM for OpenAILLM {
         self.id.clone()
     }
 
-    fn name(&self) -> String {
-        format!("llm.openai.{}", self.id)
-    }
-
-    // TODO(spolu): make async
-    fn initialize(&mut self) -> Result<()> {
-        match std::env::var("OPENAI_API_KEY") {
+    async fn initialize(&mut self) -> Result<()> {
+        match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
             Ok(key) => {
                 self.api_key = Some(key);
             }
@@ -163,12 +155,12 @@ impl LLM for OpenAILLM {
 
     async fn generate(
         &self,
-        prompt: String,
+        prompt: &str,
         max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
-        stop: Option<Vec<String>>,
-    ) -> Result<Generation> {
+        stop: &Vec<String>,
+    ) -> Result<LLMGeneration> {
         assert!(n > 0);
 
         // println!("STOP: {:?}", stop);
@@ -200,7 +192,7 @@ impl LLM for OpenAILLM {
         let mut token_offset: usize = 0;
 
         let mut prompt_tokens = Tokens {
-            text: prompt,
+            text: String::from(prompt),
             tokens: Some(vec![]),
             logprobs: Some(vec![]),
         };
@@ -215,7 +207,7 @@ impl LLM for OpenAILLM {
                 token_offset += 1;
             }
         }
-        Ok(Generation {
+        Ok(LLMGeneration {
             provider: String::from("fOO"),
             model: self.id.clone(),
             completions: c
@@ -275,10 +267,9 @@ impl Provider for OpenAIProvider {
         }
 
         let mut llm = self.llm(String::from("text-ada-001"));
-        llm.initialize()?;
+        llm.initialize().await?;
 
-        let prompt = String::from("Hello 😊");
-        let _ = llm.generate(prompt, Some(1), 0.7, 1, None).await?;
+        let _ = llm.generate("Hello 😊", Some(1), 0.7, 1, &vec![]).await?;
 
         utils::done("Test successfully completed! OpenAI is ready to use.");
 
