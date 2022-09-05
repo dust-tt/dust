@@ -109,7 +109,10 @@ impl OpenAILLM {
                     "n": n,
                     "logprobs": logprobs,
                     "echo": echo,
-                    "stop": stop,
+                    "stop": match stop.len() {
+                        0 => None,
+                        _ => Some(stop),
+                    },
                 })
                 .to_string(),
             ))?;

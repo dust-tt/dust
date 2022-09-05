@@ -563,7 +563,12 @@ impl App {
     }
 }
 
-pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> Result<()> {
+pub async fn cmd_run(
+    data_id: &str,
+    provider_id: ProviderID,
+    model_id: &str,
+    concurrency: usize,
+) -> Result<()> {
     let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
 
     let app = App::new().await?;
@@ -585,9 +590,18 @@ pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> 
     app.register_version().await?;
     app.update_latest().await?;
 
-    app.run(&d, provider_id, model_id, 8, llm_cache.clone())
-        .await?;
-    llm_cache.read().flush().await?;
+    match app
+        .run(&d, provider_id, model_id, concurrency, llm_cache.clone())
+        .await
+    {
+        Ok(()) => {
+            llm_cache.read().flush().await?;
+        }
+        Err(e) => {
+            llm_cache.read().flush().await?;
+            Err(e)?;
+        }
+    }
 
     Ok(())
 }

@@ -40,6 +40,10 @@ enum Commands {
         /// Model id
         #[clap(required = true)]
         model_id: String,
+
+        /// Concurrency
+        #[clap(short, long, default_value = "8")]
+        concurrency: usize,
     },
 }
 
@@ -99,7 +103,8 @@ fn main() -> Result<()> {
             data_id,
             provider_id,
             model_id,
-        } => rt.block_on(app::cmd_run(data_id, *provider_id, model_id)),
+            concurrency,
+        } => rt.block_on(app::cmd_run(data_id, *provider_id, model_id, *concurrency)),
     };
 
     match err {

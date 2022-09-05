@@ -1,0 +1,184 @@
+data ARC {
+  id: training
+  hash: 5977e5630cd52f0ec4870029e2a4b5c2b785643f515470248f01987411c256a7
+}
+
+code FORMAT_ARC {
+  code:
+```
+format = (data) => {
+  return "[[ " + data.map((item) => {
+    return item.join(" ");
+  }).join(" ] [ ") + " ]]";
+};
+
+_fun = (env) => {
+  return env['state']['ARC'].map((data) => {
+    let train = data['train'].map((item) => {
+      return [format(item["input"]), format(item["output"])];
+    });
+    let test = [format(data['test'][0]["input"]), format(data['test'][0]["output"])];
+
+    let prompt = "";
+    train.forEach((item) => {
+      prompt += "INPUT : " + item[0] + "\n";
+      prompt += "OUTPUT: " + item[1] + "\n";
+    });
+    prompt += "INPUT : " + test[0] + "\n";
+    prompt += "OUTPUT: " + test[1] + "\n";
+
+    // console.log(prompt);
+    // console.log(prompt.length);
+
+    return {
+      // "train": train
+      // "test": test,
+      "prompt": prompt,
+    };
+  }).filter((item) => {
+    return item['prompt'].length < 2048;
+  });
+};
+```
+}
+
+code ARC {
+  code:
+```
+_fun = (env) => {
+  return null;
+}
+```
+}
+
+root ROOT {
+  expected: {train, test}
+}
+
+code FORMAT_ROOT {
+  code:
+```
+format = (data) => {
+  return "[[ " + data.map((item) => {
+    return item.join(" ");
+  }).join(" ] [ ") + " ]]";
+};
+
+_fun = (env) => {
+  let data = env['state']['ROOT'];
+  let train = data['train'].map((item) => {
+    return [format(item["input"]), format(item["output"])];
+  });
+  let test = [format(data['test'][0]["input"]), format(data['test'][0]["output"])];
+
+  let prompt = "";
+  train.forEach((item) => {
+    prompt += "INPUT : " + item[0] + "\n";
+    prompt += "OUTPUT: " + item[1] + "\n";
+  });
+  prompt += "INPUT : " + test[0] + "\n";
+  prompt += "OUTPUT:";
+
+  // console.log(prompt.length);
+  return {
+    "train": prompt,
+    "test": test,
+    "prompt": prompt,
+  };
+};
+```
+}
+
+map LOOP {
+  from: FORMAT_ROOT
+  repeat: 8
+}
+
+code SHUFFLE {
+  code:
+```
+// Extremely trivial seeded number generator.
+mini_rand = (i, j) => {
+  return 19*i + 23*j;
+};
+
+_fun = (env) => {
+  let i = env["map"]["iteration"];
+  let chosen = [];
+  let data = env["state"]["FORMAT_ARC"];
+  for (let j = 0; j < data.length; j++) {
+    let r = mini_rand(i, j) % data.length;
+    chosen.push(data.splice(r, 1)[0]);
+  }
+  return chosen;
+}
+```
+}
+
+llm MODEL {
+  max_tokens: 1024
+  temperature: 0.7
+  few_shot_count: 3
+  few_shot_prompt:
+```
+# TASK
+${SHUFFLE.prompt}
+
+```
+  prompt:
+```
+# TASK
+${LOOP.prompt}
+```
+  stop:
+```
+INPUT
+# TASK
+```
+}
+
+code POSTPROCESS {
+  code:
+```
+_fun = (env) => {
+  console.log("POSTPROCESS");
+  let output = env['state']['MODEL']['completion']['text'].trim();
+  console.log(output);
+  return {
+    "output": output,
+  };
+}
+```
+}
+
+reduce LOOP { }
+
+code CONSENSUS {
+  code:
+```
+_fun = (env) => {
+  let counts = {};
+  env['state']['POSTPROCESS'].forEach(d => {
+    if (d['output'] !== null) {
+      if (!(d['output'] in counts)) {
+        counts[d['output']] = 0
+      }
+      counts[d['output']] += 1
+    }
+  });
+
+  let output = env['state']['POSTPROCESS'][0]['output'];
+  let max_count = 0;
+  Object.keys(counts).forEach(a => {
+    if (max_count < counts[a]) {
+      max_count = counts[a];
+      output = a;
+    }
+  });
+  let ground_truth = env['state']['FORMAT_ROOT']['test'][1];
+  console.log("OUTPUT      : " + output);
+  console.log("GROUND_TRUTH: " + ground_truth);
+  return { "output": output, "ground_truth": ground_truth};
+};
+```
+}

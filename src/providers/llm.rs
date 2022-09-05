@@ -90,6 +90,16 @@ impl LLMRequest {
     pub async fn execute(&self) -> Result<LLMGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize().await?;
+
+        utils::info(&format!(
+            "Querying `{}_{}`: prompt_length={} max_tokens={} temperature={}",
+            self.provider_id.to_string(),
+            self.model_id,
+            self.prompt.len(),
+            self.max_tokens.unwrap_or(0),
+            self.temperature
+        ));
+
         llm.generate(
             self.prompt.as_str(),
             self.max_tokens,
