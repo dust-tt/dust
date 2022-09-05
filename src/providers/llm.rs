@@ -1,18 +1,20 @@
 use crate::providers::provider::{provider, ProviderID};
 use crate::utils;
 use anyhow::Result;
+use async_fs::File;
 use async_trait::async_trait;
-use serde::Serialize;
-use std::sync::Arc;
+use futures::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
     pub text: String,
     pub tokens: Option<Vec<String>>,
     pub logprobs: Option<Vec<Option<f32>>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMGeneration {
     pub provider: String,
     pub model: String,
@@ -36,7 +38,7 @@ pub trait LLM {
     ) -> Result<LLMGeneration>;
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMRequest {
     hash: String,
     provider_id: ProviderID,
@@ -97,28 +99,92 @@ impl LLMRequest {
     }
 }
 
-pub struct LLMCache {
-    data: HashMap<String, (LLMRequest, LLMGeneration)>,
+#[derive(Serialize, PartialEq, Deserialize)]
+pub struct LLMCacheEntry {
+    pub request: LLMRequest,
+    pub generation: LLMGeneration,
 }
 
-impl struct LLMCache {
+pub struct LLMCache {
+    data: HashMap<String, (LLMRequest, Vec<LLMGeneration>)>,
+}
+
+impl LLMCache {
     pub async fn warm_up() -> Result<Self> {
         let root_path = utils::init_check().await?;
-        let cache_path = root_path.join(".cache").join("llm");
+        let cache_path = root_path.join(".cache").join("llm.jsonl");
 
+        let mut data: HashMap<String, (LLMRequest, Vec<LLMGeneration>)> = HashMap::new();
 
+        if cache_path.exists().await {
+            let file = File::open(cache_path).await?;
+            let reader = futures::io::BufReader::new(file);
 
-        Ok(LLMCache {
-            data: HashMap::new(),
-        })
+            let mut count = 0_usize;
+
+            reader
+                .lines()
+                .map(|line| {
+                    let line = line.unwrap();
+                    let entry: LLMCacheEntry = serde_json::from_str(&line)?;
+                    Ok(entry)
+                })
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .for_each(|entry| {
+                    count += 1;
+                    data.entry(entry.request.hash.clone())
+                        .or_insert((entry.request, Vec::new()))
+                        .1
+                        .push(entry.generation);
+                });
+
+            utils::info(format!("Retrieved {} cached LLM records.", count).as_str());
+        }
+
+        Ok(LLMCache { data })
     }
 
     pub async fn flush(self) -> Result<()> {
+        let root_path = utils::init_check().await?;
+        let cache_path = root_path.join(".cache").join("llm.jsonl");
+
+        let mut file = File::create(cache_path).await?;
+        let mut count = 0;
+        for (_, (request, generations)) in self.data {
+            for generation in generations {
+                count += 1;
+                let entry = LLMCacheEntry {
+                    request: request.clone(),
+                    generation,
+                };
+                let line = serde_json::to_string(&entry)?;
+                file.write_all(line.as_bytes()).await?;
+                file.write_all(b"\n").await?;
+            }
+        }
+
+        utils::action(format!("Flushed {} cached LLM records.", count).as_str());
+
+        Ok(())
     }
 
-    pub fn get(&self, request: &LLMRequest) -> Option<&LLMGeneration> {
+    pub fn get(&self, request: &LLMRequest) -> Option<&Vec<LLMGeneration>> {
+        match self.data.get(&request.hash) {
+            Some((_, generations)) => Some(generations),
+            None => None,
+        }
     }
 
-    pub fn store(self, request: &LLMRequest, generation: &LLMGeneration) -> Result<()> {
+    pub fn store(&mut self, request: &LLMRequest, generation: &LLMGeneration) -> Result<()> {
+        self.data
+            .entry(request.hash.clone())
+            .or_insert((request.clone(), Vec::new()))
+            .1
+            .push(generation.clone());
+        Ok(())
     }
 }
