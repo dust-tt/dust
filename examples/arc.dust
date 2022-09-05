@@ -91,7 +91,7 @@ _fun = (env) => {
 
 map LOOP {
   from: FORMAT_ROOT
-  repeat: 8
+  repeat: 4
 }
 
 code SHUFFLE {
@@ -141,9 +141,9 @@ code POSTPROCESS {
   code:
 ```
 _fun = (env) => {
-  console.log("POSTPROCESS");
   let output = env['state']['MODEL']['completion']['text'].trim();
-  console.log(output);
+  // console.log("POSTPROCESS");
+  // console.log(output);
   return {
     "output": output,
   };
@@ -176,9 +176,15 @@ _fun = (env) => {
     }
   });
   let ground_truth = env['state']['FORMAT_ROOT']['test'][1];
+  let match = output === ground_truth;
   console.log("OUTPUT      : " + output);
   console.log("GROUND_TRUTH: " + ground_truth);
-  return { "output": output, "ground_truth": ground_truth};
+  console.log("MATCH: " + match);
+  return {
+    "output": output,
+    "ground_truth": ground_truth,
+    "match": output === ground_truth
+  };
 };
 ```
 }

@@ -1,6 +1,6 @@
 use crate::providers::provider::{provider, ProviderID};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_fs::File;
 use async_trait::async_trait;
 use futures::prelude::*;
@@ -8,6 +8,34 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
+
+pub async fn with_back_off<F, O>(
+    mut f: impl FnMut() -> F,
+    sleep: Duration,
+    factor: u32,
+    retries: u32,
+) -> Result<O>
+where
+    F: Future<Output = Result<O, anyhow::Error>>,
+{
+    let mut counter = 0_u32;
+    let mut back_off = sleep;
+    let out = loop {
+        match f().await {
+            Err(err) => {
+                tokio::time::sleep(back_off).await;
+                back_off *= factor;
+                counter += 1;
+                if counter > retries {
+                    break Err(anyhow!("Too many retries ({}): {}", retries, err));
+                }
+            }
+            Ok(out) => break Ok(out),
+        }
+    };
+    out
+}
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
