@@ -80,7 +80,10 @@ impl Block for Map {
 
     async fn execute(&self, env: &Env) -> Result<Value> {
         match env.state.get(&self.from) {
-            None => Err(anyhow::anyhow!("Map `from` block `{}` output not found", self.from)),
+            None => Err(anyhow::anyhow!(
+                "Map `from` block `{}` output not found",
+                self.from
+            )),
             Some(v) => match self.repeat {
                 None => match v.as_array() {
                     None => Err(anyhow::anyhow!(

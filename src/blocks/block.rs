@@ -10,6 +10,9 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
+use crate::providers::llm::LLMCache;
+use parking_lot::RwLock;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -23,13 +26,15 @@ pub struct InputState {
     pub index: usize,
 }
 
-#[derive(Serialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Clone)]
 pub struct Env {
     pub provider_id: ProviderID,
     pub model_id: String,
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
+    #[serde(skip_serializing)]
+    pub llm_cache: Arc<RwLock<LLMCache>>,
 }
 
 // pub enum Expectations {

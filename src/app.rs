@@ -1,5 +1,6 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::data::Data;
+use crate::providers::llm::LLMCache;
 use crate::providers::provider::ProviderID;
 use crate::utils;
 use crate::{DustParser, Rule};
@@ -8,11 +9,13 @@ use async_fs::File;
 use futures::prelude::*;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use parking_lot::RwLock;
 use pest::Parser;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// BlockExecution represents the execution of a block:
@@ -302,6 +305,7 @@ impl App {
         provider_id: ProviderID,
         model_id: &str,
         concurrency: usize,
+        llm_cache: Arc<RwLock<LLMCache>>,
     ) -> Result<()> {
         let mut run = Run::new(
             self.hash.as_str(),
@@ -322,6 +326,7 @@ impl App {
                 index: 0,
             },
             map: None,
+            llm_cache: llm_cache.clone(),
         }]];
 
         let mut current_map: Option<String> = None;
@@ -408,7 +413,7 @@ impl App {
             )
             .map(|(input_idx, map_idx, e)| {
                 // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
-                // that calls into the Block trait's `clone_box` implemented on each Block. This
+                // that calls into the Block#[serde(skip_serializing)] trait's `clone_box` implemented on each Block. This
                 // allows cloning the Block (as a Trait) to use from parallel threads!
                 let b = block.clone();
                 tokio::spawn(async move {
@@ -559,6 +564,8 @@ impl App {
 }
 
 pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> Result<()> {
+    let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
+
     let app = App::new().await?;
     utils::info(format!("Parsed app specification, found {} blocks.", app.len()).as_str());
 
@@ -578,5 +585,9 @@ pub async fn cmd_run(data_id: &str, provider_id: ProviderID, model_id: &str) -> 
     app.register_version().await?;
     app.update_latest().await?;
 
-    Ok(app.run(&d, provider_id, model_id, 8).await?)
+    app.run(&d, provider_id, model_id, 8, llm_cache.clone())
+        .await?;
+    llm_cache.read().flush().await?;
+
+    Ok(())
 }

@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
-use crate::providers::llm::Tokens;
+use crate::providers::llm::{Tokens, LLMRequest};
 use crate::providers::provider;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -311,20 +311,17 @@ impl Block for LLM {
     }
 
     async fn execute(&self, env: &Env) -> Result<Value> {
-        let provider = provider::provider(env.provider_id);
-        let mut model = provider.llm(env.model_id.clone());
-        model.initialize().await?;
+        let request = LLMRequest::new(
+            env.provider_id,
+            &env.model_id,
+            self.prompt(env)?.as_str(),
+            Some(self.max_tokens),
+            self.temperature,
+            1,
+            &self.stop,
+        );
 
-        let g = model
-            .generate(
-                self.prompt(env)?.as_str(),
-                Some(self.max_tokens),
-                self.temperature,
-                1,
-                &self.stop,
-            )
-            .await?;
-
+        let g = request.execute_with_cache(env.llm_cache.clone()).await?;
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {
@@ -346,7 +343,10 @@ impl Block for LLM {
 mod tests {
     use super::*;
     use crate::blocks::block::InputState;
+    use crate::providers::llm::LLMCache;
     use crate::providers::provider::ProviderID;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
 
     #[test]
     fn find_variables() -> Result<()> {
@@ -375,6 +375,7 @@ mod tests {
                 index: 0,
             },
             map: None,
+            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
@@ -401,6 +402,7 @@ mod tests {
                 index: 0,
             },
             map: None,
+            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
         };
         assert_eq!(
             LLM::replace_prompt_variables(

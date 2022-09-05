@@ -4,8 +4,10 @@ use anyhow::Result;
 use async_fs::File;
 use async_trait::async_trait;
 use futures::prelude::*;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -97,6 +99,27 @@ impl LLMRequest {
         )
         .await
     }
+
+    pub async fn execute_with_cache(&self, cache: Arc<RwLock<LLMCache>>) -> Result<LLMGeneration> {
+        let generation = {
+            match cache.read().get(self) {
+                Some(generations) => {
+                    assert!(generations.len() > 0);
+                    Some(generations.last().unwrap().clone())
+                }
+                None => None,
+            }
+        };
+
+        match generation {
+            Some(generation) => Ok(generation),
+            None => {
+                let generation = self.execute().await?;
+                cache.write().store(self, &generation)?;
+                Ok(generation)
+            }
+        }
+    }
 }
 
 #[derive(Serialize, PartialEq, Deserialize)]
@@ -110,6 +133,12 @@ pub struct LLMCache {
 }
 
 impl LLMCache {
+    pub fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
     pub async fn warm_up() -> Result<Self> {
         let root_path = utils::init_check().await?;
         let cache_path = root_path.join(".cache").join("llm.jsonl");
@@ -148,18 +177,18 @@ impl LLMCache {
         Ok(LLMCache { data })
     }
 
-    pub async fn flush(self) -> Result<()> {
+    pub async fn flush(&self) -> Result<()> {
         let root_path = utils::init_check().await?;
         let cache_path = root_path.join(".cache").join("llm.jsonl");
 
         let mut file = File::create(cache_path).await?;
         let mut count = 0;
-        for (_, (request, generations)) in self.data {
+        for (_, (request, generations)) in self.data.iter() {
             for generation in generations {
                 count += 1;
                 let entry = LLMCacheEntry {
                     request: request.clone(),
-                    generation,
+                    generation: generation.clone(),
                 };
                 let line = serde_json::to_string(&entry)?;
                 file.write_all(line.as_bytes()).await?;
