@@ -7,6 +7,8 @@ use async_trait::async_trait;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -72,8 +74,40 @@ impl OpenAILLM {
         OpenAILLM { id, api_key: None }
     }
 
+    fn internal(&self) -> Option<(String, String, String)> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(
+                r"^internal:(?P<cluster>[a-z]+):(?P<user>[a-z0-9_\-]+):(?P<inst>[a-zA-Z0-9\-_]+)$"
+            )
+            .unwrap();
+        }
+
+        match RE.captures(self.id.as_str()) {
+            None => None,
+            Some(c) => {
+                let cluster = c.name("cluster").unwrap().as_str();
+                let user = c.name("user").unwrap().as_str();
+                let instance = c.name("inst").unwrap().as_str();
+                Some((cluster.to_string(), user.to_string(), instance.to_string()))
+            }
+        }
+    }
+
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+        match self.internal() {
+            None => Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?),
+            Some((cluster, user, instance)) => {
+                let host = format!(
+                    "{instance}.{user}.svc.{cluster}.sci.openai.org",
+                    cluster = cluster,
+                    user = user,
+                    instance = instance
+                );
+                let url = format!("http://{}:5001/v1/engines/dummy/completions", host);
+                println!("url: {}", url);
+                Ok(url.parse::<Uri>()?)
+            }
+        }
     }
 
     async fn completion(
@@ -95,14 +129,15 @@ impl OpenAILLM {
             .method(Method::POST)
             .uri(self.uri()?)
             .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.clone().unwrap()),
-            )
-            // .header("OpenAI-Organization", "openai")
+            // .header(
+            //     "Authorization",
+            //     format!("Bearer {}", self.api_key.clone().unwrap()),
+            // )
+            .header("Authorization", "Bearer dummy")
+            .header("OpenAI-Organization", "openai")
             .body(Body::from(
                 json!({
-                    "model": self.id.clone(),
+                    // "model": "dummy",
                     "prompt": prompt,
                     "max_tokens": max_tokens,
                     "temperature": temperature,
