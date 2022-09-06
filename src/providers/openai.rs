@@ -124,32 +124,55 @@ impl OpenAILLM {
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
-            .header("Content-Type", "application/json")
-            // .header(
-            //     "Authorization",
-            //     format!("Bearer {}", self.api_key.clone().unwrap()),
-            // )
-            .header("Authorization", "Bearer dummy")
-            .header("OpenAI-Organization", "openai")
-            .body(Body::from(
-                json!({
-                    // "model": "dummy",
-                    "prompt": prompt,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                    "n": n,
-                    "logprobs": logprobs,
-                    "echo": echo,
-                    "stop": match stop.len() {
-                        0 => None,
-                        _ => Some(stop),
-                    },
-                })
-                .to_string(),
-            ))?;
+        let req = match self.internal() {
+            Some(_) => Request::builder()
+                .method(Method::POST)
+                .uri(self.uri()?)
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer dummy")
+                .header("OpenAI-Organization", "openai")
+                .body(Body::from(
+                    json!({
+                        "prompt": prompt,
+                        "max_tokens": max_tokens,
+                        "temperature": temperature,
+                        "n": n,
+                        "logprobs": logprobs,
+                        "echo": echo,
+                        "stop": match stop.len() {
+                            0 => None,
+                            _ => Some(stop),
+                        },
+                    })
+                    .to_string(),
+                ))?,
+            None => Request::builder()
+                .method(Method::POST)
+                .uri(self.uri()?)
+                .header("Content-Type", "application/json")
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", self.api_key.clone().unwrap()),
+                )
+                // TODO(spolu): add support for custom organizations
+                // .header("OpenAI-Organization", "openai")
+                .body(Body::from(
+                    json!({
+                        "model": self.id.clone(),
+                        "prompt": prompt,
+                        "max_tokens": max_tokens,
+                        "temperature": temperature,
+                        "n": n,
+                        "logprobs": logprobs,
+                        "echo": echo,
+                        "stop": match stop.len() {
+                            0 => None,
+                            _ => Some(stop),
+                        },
+                    })
+                    .to_string(),
+                ))?,
+        };
 
         let res = cli.request(req).await?;
 
