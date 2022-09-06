@@ -27,6 +27,7 @@ impl std::error::Error for ParseError {
         self.0
     }
 }
+
 pub async fn init_check() -> Result<PathBuf> {
     let current_dir = tokio::task::spawn_blocking(|| match std::env::var("DUST_DIR") {
         Ok(dust_dir) => PathBuf::from(shellexpand::tilde(&dust_dir).into_owned()),

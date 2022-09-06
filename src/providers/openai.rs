@@ -1,6 +1,6 @@
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMGeneration, LLM};
-use crate::providers::provider::{Provider, ProviderID};
+use crate::providers::provider::{ModelError, Provider, ProviderID, ModelErrorRetryOptions};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::prelude::*;
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Logprobs {
@@ -185,11 +186,26 @@ impl OpenAILLM {
             Ok(c) => Ok(c),
             Err(_) => {
                 let error: Error = serde_json::from_slice(c)?;
-                Err(anyhow!(
-                    "OpenAIAPIError: [{}] {}",
-                    error.error._type,
-                    error.error.message
-                ))
+                match error.error._type.as_str() {
+                    "requests" => Err(ModelError {
+                        message: format!(
+                            "OpenAIAPIError: [{}] {}",
+                            error.error._type, error.error.message,
+                        ),
+                        retryable: Some(ModelErrorRetryOptions{
+                            sleep: Duration::from_millis(2000),
+                            factor: 2,
+                            retries: 8,
+                        })
+                    }),
+                    _ => Err(ModelError {
+                        message: format!(
+                            "OpenAIAPIError: [{}] {}",
+                            error.error._type, error.error.message,
+                        ),
+                        retryable: None,
+                    }),
+                }
             }
         }?;
 
