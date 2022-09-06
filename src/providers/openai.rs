@@ -104,7 +104,6 @@ impl OpenAILLM {
                     instance = instance
                 );
                 let url = format!("http://{}:5001/v1/engines/dummy/completions", host);
-                println!("url: {}", url);
                 Ok(url.parse::<Uri>()?)
             }
         }

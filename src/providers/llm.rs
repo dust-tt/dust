@@ -119,23 +119,45 @@ impl LLMRequest {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize().await?;
 
-        utils::info(&format!(
-            "Querying `{}_{}`: prompt_length={} max_tokens={} temperature={}",
-            self.provider_id.to_string(),
-            self.model_id,
-            self.prompt.len(),
-            self.max_tokens.unwrap_or(0),
-            self.temperature
-        ));
-
-        llm.generate(
-            self.prompt.as_str(),
-            self.max_tokens,
-            self.temperature,
-            self.n,
-            &self.stop,
-        )
-        .await
+        match llm
+            .generate(
+                self.prompt.as_str(),
+                self.max_tokens,
+                self.temperature,
+                self.n,
+                &self.stop,
+            )
+            .await
+        {
+            Ok(c) => {
+                utils::info(&format!(
+                    "Success querying `{}_{}`: \
+                     prompt_length={} max_tokens={} temperature={} \
+                     prompt_tokens={} completion_tokens={}",
+                    self.provider_id.to_string(),
+                    self.model_id,
+                    self.prompt.len(),
+                    self.max_tokens.unwrap_or(0),
+                    self.temperature,
+                    c.prompt.logprobs.as_ref().unwrap().len(),
+                    c.completions
+                        .iter()
+                        .map(|c| c.logprobs.as_ref().unwrap().len().to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ));
+                Ok(c)
+            }
+            Err(e) => {
+                utils::error(&format!(
+                    "Error querying `{}_{}`: error={}",
+                    self.provider_id.to_string(),
+                    self.model_id,
+                    e.to_string(),
+                ));
+                Err(e)
+            }
+        }
     }
 
     pub async fn execute_with_cache(&self, cache: Arc<RwLock<LLMCache>>) -> Result<LLMGeneration> {

@@ -490,7 +490,7 @@ impl App {
 
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
-                errors.iter().for_each(|e| utils::error(e.as_str()));
+                // errors.iter().for_each(|e| utils::error(e.as_str()));
                 run.store().await?;
                 Err(anyhow!(
                     "Run interrupted due to block `{} {}` failed execution with {} error(s)",
