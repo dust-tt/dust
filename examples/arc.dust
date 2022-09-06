@@ -91,7 +91,7 @@ _fun = (env) => {
 
 map LOOP {
   from: FORMAT_ROOT
-  repeat: 4
+  repeat: 8
 }
 
 code SHUFFLE {
@@ -117,7 +117,7 @@ _fun = (env) => {
 
 llm MODEL {
   max_tokens: 1024
-  temperature: 0.7
+  temperature: 0.1
   few_shot_count: 3
   few_shot_prompt:
 ```
