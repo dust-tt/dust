@@ -1,0 +1,21 @@
+# core
+
+- abstract all storage behind a Trait with sqlite in mind
+- move storage to sqlite
+- options block
+- if/end block
+- interrupt only affected inputs on error
+
+# cli
+
+- inspect data
+- split off cli code from core
+- serve (as an endpoint)
+
+# web
+
+
+# srv
+
+- minimal ability to serve app, get live update form execution, inspect data (depends on cli
+inspect)

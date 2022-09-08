@@ -327,7 +327,7 @@ impl Provider for OpenAIProvider {
         utils::info(
             "To use OpenAI's models, you must set the environment variable `OPENAI_API_KEY`.",
         );
-        utils::info("Your API key can be found at `https://openai.com/dashboard/settings/api`.");
+        utils::info("Your API key can be found at `https://beta.openai.com/account/api-keys`.");
         utils::info("");
         utils::info("Once ready you can check your setup with `dust provider test openai`");
 
