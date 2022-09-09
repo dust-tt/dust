@@ -9,21 +9,23 @@
 # cli
 
 - inspect data
-    dust app check?
-    dust app run dev config_path
+    dust runs list
+    dust runs inspect RUN_ID BLOCK_NAME
     dust app deploy
       --> let's make it another object
       --> probably want a config file to specify which app versions to run?
     dust deploys list
-    dust runs list
-    dust runs inspect RUN_ID BLOCK_NAME
 - split off cli code from core
 - serve (as an endpoint)
 
 # web
 
+- Suhail Tweet: https://twitter.com/Suhail/status/1568089743816273922 (see comments)
+- look into fly.io
 
 # srv
 
+- look into FaaS for serving apps?
+- fly.io link to firecracker
 - minimal ability to serve app, get live update form execution, inspect data (depends on cli
 inspect)

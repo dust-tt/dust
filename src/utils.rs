@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_std::path::PathBuf;
 use colored::Colorize;
 use std::io::Write;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct ParseError(&'static str);
@@ -55,6 +56,28 @@ pub async fn init_check() -> Result<PathBuf> {
     }
 
     Ok(current_dir)
+}
+
+pub fn new_id() -> String {
+    let s = Uuid::new_v4();
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(s.as_bytes());
+    format!("{}", hasher.finalize().to_hex())
+}
+
+pub fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+pub fn utc_date_from(millis: u64) -> String {
+    let date = chrono::DateTime::<chrono::Utc>::from_utc(
+        chrono::NaiveDateTime::from_timestamp((millis / 1000) as i64, 0),
+        chrono::Utc,
+    );
+    date.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 // TODO(spolu): maybe make async eventually

@@ -72,7 +72,7 @@ impl Block for Data {
     }
 
     async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
-        let d = data::Data::new_from_hash(self.id.as_str(), self.hash.as_str()).await?;
+        let d = data::Data::from_hash(self.id.as_str(), self.hash.as_str()).await?;
         Ok(d.data_as_value())
     }
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, data, init, providers::provider, utils};
+use dust::{app, data, init, providers::provider, run, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -31,6 +31,11 @@ enum Commands {
     App {
         #[clap(subcommand)]
         command: AppCommands,
+    },
+    /// Manage and introspect previous runs
+    Run {
+        #[clap(subcommand)]
+        command: RunCommands,
     },
 }
 
@@ -82,6 +87,22 @@ enum AppCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum RunCommands {
+    /// List all previous runs
+    List {},
+    /// Inspect data from a previous run
+    Inspect {
+        /// Run id to inspect
+        #[clap(required = true)]
+        run_id: String,
+
+        /// Block name to inspect
+        #[clap(required = true)]
+        block_name: String,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -110,6 +131,12 @@ fn main() -> Result<()> {
                 config_path,
                 concurrency,
             } => rt.block_on(app::cmd_run(data_id, config_path, *concurrency)),
+        },
+        Commands::Run { command } => match command {
+            RunCommands::List {} => rt.block_on(run::cmd_list()),
+            RunCommands::Inspect { run_id, block_name } => {
+                rt.block_on(run::cmd_inspect(run_id, block_name))
+            }
         },
     };
 

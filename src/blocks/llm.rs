@@ -397,6 +397,7 @@ mod tests {
     use crate::blocks::block::InputState;
     use crate::providers::llm::LLMCache;
     use crate::run::RunConfig;
+    use crate::utils;
     use parking_lot::RwLock;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -418,6 +419,7 @@ mod tests {
     fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
+                start_time: utils::now(),
                 app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },
@@ -451,6 +453,7 @@ mod tests {
     fn replace_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
+                start_time: utils::now(),
                 app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },

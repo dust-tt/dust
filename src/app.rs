@@ -472,6 +472,7 @@ pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Re
 
         match config_json {
             Value::Object(blocks) => RunConfig {
+                start_time: utils::now(),
                 app_hash: app.hash.clone(),
                 blocks: blocks.into_iter().collect::<HashMap<_, _>>(),
             },
@@ -488,7 +489,7 @@ pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Re
 
     let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
 
-    let d = Data::new_from_latest(data_id).await?;
+    let d = Data::from_latest(data_id).await?;
     if d.len() == 0 {
         Err(anyhow!("Retrieved 0 records from `{data_id}`"))?
     }

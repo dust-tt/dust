@@ -31,3 +31,4 @@ regex = "1.6"
 rand = "0.8"
 uuid = { version = "1.1", features = ["v4"] }
 parking_lot = "0.12"
+chrono = "0.4"

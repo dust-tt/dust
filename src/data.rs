@@ -41,13 +41,10 @@ impl Data {
     }
 
     async fn jsonl_path(id: &str, hash: &str) -> Result<PathBuf> {
-        Ok(Self::data_dir(id)
-            .await?
-            .join(hash)
-            .with_extension("jsonl"))
+        Ok(Self::data_dir(id).await?.join(hash).with_extension("jsonl"))
     }
 
-    pub async fn new_from_hash(id: &str, hash: &str) -> Result<Self> {
+    pub async fn from_hash(id: &str, hash: &str) -> Result<Self> {
         let jsonl_path = Self::jsonl_path(id, hash).await?;
 
         if !jsonl_path.exists().await {
@@ -67,7 +64,7 @@ impl Data {
         Ok(d)
     }
 
-    pub async fn new_from_latest(id: &str) -> Result<Self> {
+    pub async fn from_latest(id: &str) -> Result<Self> {
         let latest_path = Self::latest_path(id).await?;
 
         if !latest_path.exists().await {
@@ -83,7 +80,7 @@ impl Data {
         let mut hash = String::new();
         file.read_to_string(&mut hash).await?;
 
-        Self::new_from_hash(id, hash.as_str()).await
+        Self::from_hash(id, hash.as_str()).await
     }
 
     pub async fn new_from_jsonl(id: &str, jsonl_path: &str) -> Result<Self> {
@@ -154,10 +151,7 @@ impl Data {
             async_std::fs::create_dir_all(&data_dir).await?;
         }
         if !data_dir.is_dir().await {
-            Err(anyhow::anyhow!(
-                "{} is not a directory",
-                data_dir.display()
-            ))?;
+            Err(anyhow::anyhow!("{} is not a directory", data_dir.display()))?;
         }
 
         let jsonl_path = Self::jsonl_path(&self.id, &self.hash).await?;

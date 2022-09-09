@@ -1,16 +1,16 @@
 use crate::app::BlockExecution;
 use crate::blocks::block::BlockType;
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_fs::File;
 use futures::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use uuid::Uuid;
 
-#[derive(Serialize, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct RunConfig {
+    pub start_time: u64,
     pub app_hash: String,
     pub blocks: HashMap<String, Value>,
 }
@@ -19,12 +19,31 @@ impl RunConfig {
     pub fn config_for_block(&self, name: &str) -> Option<&Value> {
         self.blocks.get(name)
     }
+
+    pub async fn load(run_id: &str) -> Result<Self> {
+        let root_path = utils::init_check().await?;
+        let runs_dir = root_path.join(".runs");
+
+        assert!(runs_dir.is_dir().await);
+        let run_dir = runs_dir.join(run_id);
+
+        if !run_dir.exists().await {
+            Err(anyhow!("Run `{}` does not exist", run_id))?;
+        }
+
+        let config_path = run_dir.join("config.json");
+
+        let config_data = async_std::fs::read_to_string(config_path).await?;
+        let config: RunConfig = serde_json::from_str(&config_data)?;
+
+        Ok(config)
+    }
 }
 
 /// Execution represents the full execution of an app on input data.
 #[derive(PartialEq)]
 pub struct Run {
-    uuid: String,
+    run_id: String,
     config: RunConfig,
     // List of blocks (in order with name) and their execution.
     // The outer vector represents blocks
@@ -39,11 +58,9 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn new(
-        config: RunConfig,
-    ) -> Self {
+    pub fn new(config: RunConfig) -> Self {
         Self {
-            uuid: format!("{}", Uuid::new_v4()),
+            run_id: utils::new_id(),
             config,
             traces: vec![],
         }
@@ -58,7 +75,7 @@ impl Run {
         let runs_dir = root_path.join(".runs");
 
         assert!(runs_dir.is_dir().await);
-        let run_dir = runs_dir.join(&self.uuid);
+        let run_dir = runs_dir.join(&self.run_id);
         assert!(!run_dir.exists().await);
 
         utils::action(&format!("Creating directory {}", run_dir.display()));
@@ -90,9 +107,55 @@ impl Run {
         }
         utils::done(&format!(
             "Run `{}` for app version `{}` stored",
-            self.uuid, self.config.app_hash
+            self.run_id, self.config.app_hash
         ));
 
         Ok(())
     }
+
+    pub async fn load(run_id: &str) -> Result<Self> {
+        let config = RunConfig::load(run_id).await?;
+
+        Ok(Run {
+            run_id: run_id.to_string(),
+            config,
+            traces: vec![],
+        })
+    }
+}
+
+pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
+    let run = Run::load(run_id).await?;
+
+    Ok(())
+}
+
+pub async fn cmd_list() -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let runs_dir = root_path.join(".runs");
+
+    let mut entries = async_std::fs::read_dir(runs_dir).await?;
+
+    let mut runs: Vec<(String, RunConfig)> = vec![];
+    while let Some(entry) = entries.next().await {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir().await {
+            let run_id = path.file_name().unwrap().to_str().unwrap();
+            let config = RunConfig::load(run_id).await?;
+            runs.push((run_id.to_string(), config));
+        }
+    }
+
+    runs.sort_by(|a, b| b.1.start_time.cmp(&a.1.start_time));
+
+    runs.iter().for_each(|(run_id, config)| {
+        utils::info(&format!(
+            "Run: {} app_hash={} start_time={}",
+            run_id,
+            config.app_hash,
+            utils::utc_date_from(config.start_time),
+        ));
+    });
+    Ok(())
 }
