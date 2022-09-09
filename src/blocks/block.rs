@@ -1,5 +1,5 @@
 use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
-use crate::providers::provider::ProviderID;
+use crate::run::RunConfig;
 use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -28,8 +28,7 @@ pub struct InputState {
 
 #[derive(Serialize, Clone)]
 pub struct Env {
-    pub provider_id: ProviderID,
-    pub model_id: String,
+    pub config: RunConfig,
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
@@ -88,7 +87,7 @@ pub trait Block {
 
     fn inner_hash(&self) -> String;
 
-    async fn execute(&self, env: &Env) -> Result<Value>;
+    async fn execute(&self, name: &str, env: &Env) -> Result<Value>;
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
     fn as_any(&self) -> &dyn Any;

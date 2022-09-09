@@ -1,6 +1,6 @@
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_fs::File;
 use async_trait::async_trait;
 use futures::prelude::*;
@@ -101,13 +101,14 @@ impl LLMRequest {
                     &self.stop,
                 )
             },
-            |sleep, attempts| {
+            |err_msg, sleep, attempts| {
                 utils::info(&format!(
-                    "Retry querying `{}:{}`: attempts={} sleep={}ms",
+                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
                     self.provider_id.to_string(),
                     self.model_id,
                     attempts,
                     sleep.as_millis(),
+                    err_msg,
                 ));
             },
         )
@@ -132,15 +133,12 @@ impl LLMRequest {
                 ));
                 Ok(c)
             }
-            Err(e) => {
-                utils::error(&format!(
-                    "Error querying `{}:{}`: error={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    e.to_string(),
-                ));
-                Err(e)
-            }
+            Err(e) => Err(anyhow!(
+                "Error querying `{}:{}`: error={}",
+                self.provider_id.to_string(),
+                self.model_id,
+                e.to_string(),
+            )),
         }
     }
 

@@ -22,28 +22,15 @@ enum Commands {
         #[clap(subcommand)]
         command: DataCommands,
     },
-    /// Manage model provicers
+    /// Manage model providers
     Provider {
         #[clap(subcommand)]
         command: ProviderCommands,
     },
-    /// Runs an app on registered data using the specified model
-    Run {
-        /// Data id to run the app on
-        #[clap(required = true)]
-        data_id: String,
-
-        /// Provider id
-        #[clap(required = true)]
-        provider_id: provider::ProviderID,
-
-        /// Model id
-        #[clap(required = true)]
-        model_id: String,
-
-        /// Concurrency
-        #[clap(short, long, default_value = "8")]
-        concurrency: usize,
+    /// Run the app on a dataset
+    App {
+        #[clap(subcommand)]
+        command: AppCommands,
     },
 }
 
@@ -77,6 +64,24 @@ enum ProviderCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum AppCommands {
+    /// Runs an app on registered data using the specified model
+    Run {
+        /// Data id to run the app on
+        #[clap(required = true)]
+        data_id: String,
+
+        /// Run config path (JSON)
+        #[clap(required = true)]
+        config_path: String,
+
+        /// Concurrency
+        #[clap(short, long, default_value = "8")]
+        concurrency: usize,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -99,12 +104,13 @@ fn main() -> Result<()> {
             }
             ProviderCommands::Test { provider_id } => rt.block_on(provider::cmd_test(*provider_id)),
         },
-        Commands::Run {
-            data_id,
-            provider_id,
-            model_id,
-            concurrency,
-        } => rt.block_on(app::cmd_run(data_id, *provider_id, model_id, *concurrency)),
+        Commands::App { command } => match command {
+            AppCommands::Run {
+                data_id,
+                config_path,
+                concurrency,
+            } => rt.block_on(app::cmd_run(data_id, config_path, *concurrency)),
+        },
     };
 
     match err {

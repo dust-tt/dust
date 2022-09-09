@@ -31,7 +31,7 @@ impl Block for Root {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, env: &Env) -> Result<Value> {
+    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
         match env.input.value.as_ref() {
             Some(i) => Ok(i.clone()),
             None => unreachable!(),

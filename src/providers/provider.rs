@@ -26,7 +26,9 @@ impl FromStr for ProviderID {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "openai" => Ok(ProviderID::OpenAI),
-            _ => Err(ParseError::with_message("Unknown provider type"))?,
+            _ => Err(ParseError::with_message(
+                "Unknown provider ID (possible values: openai)",
+            ))?,
         }
     }
 }
@@ -57,16 +59,15 @@ impl std::fmt::Display for ModelError {
 
 impl std::error::Error for ModelError {}
 
-
 pub async fn with_retryable_back_off<F, O>(
     mut f: impl FnMut() -> F,
-    log_retry: impl Fn(&Duration, usize) -> (),
+    log_retry: impl Fn(&str, &Duration, usize) -> (),
 ) -> Result<O>
 where
     F: Future<Output = Result<O, anyhow::Error>>,
 {
     let mut attempts = 0_usize;
-    let mut sleep : Option<Duration> = None;
+    let mut sleep: Option<Duration> = None;
     let out = loop {
         match f().await {
             Err(e) => match e.downcast::<ModelError>() {
@@ -78,10 +79,14 @@ where
                                 None => Some(retry.sleep),
                                 Some(b) => Some(b * retry.factor),
                             };
-                            log_retry(sleep.as_ref().unwrap(), attempts);
+                            log_retry(&err.message, sleep.as_ref().unwrap(), attempts);
                             tokio::time::sleep(sleep.unwrap()).await;
                             if attempts > retry.retries {
-                                break Err(anyhow!("Too many retries ({}): {}", retry.retries, err));
+                                break Err(anyhow!(
+                                    "Too many retries ({}): {}",
+                                    retry.retries,
+                                    err
+                                ));
                             }
                         }
                         None => {

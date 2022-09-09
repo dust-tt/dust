@@ -1,12 +1,10 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::data::Data;
 use crate::providers::llm::LLMCache;
-use crate::providers::provider::ProviderID;
+use crate::run::{Run, RunConfig};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
-use async_fs::File;
-use futures::prelude::*;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use parking_lot::RwLock;
@@ -16,7 +14,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
-use uuid::Uuid;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
@@ -27,97 +24,6 @@ pub struct BlockExecution {
     // pub env: Env,
     pub value: Option<Value>,
     pub error: Option<String>,
-}
-
-#[derive(Serialize, PartialEq)]
-pub struct RunConfig {
-    app_hash: String,
-    data_id: String,
-    data_hash: String,
-    provider_id: ProviderID,
-    model_id: String,
-}
-
-/// Execution represents the full execution of an app on input data.
-#[derive(PartialEq)]
-pub struct Run {
-    uuid: String,
-    config: RunConfig,
-    // List of blocks (in order with name) and their execution.
-    // The outer vector represents blocks
-    // The inner-outer vector represents inputs
-    // The inner-inner vector represents mapped outputs
-    // If execution was interrupted by errors, the non-executed block won't be present. If a block
-    // on a particular Env was not executed due to a conditional execution, its BlockExecution will
-    // be present but both output and error will be None.
-    // TODO(spolu): note that there is a lot of repetition here in particular through the env
-    // variables, will need to be revisited but that's a fair enough starting point.
-    traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)>,
-}
-
-impl Run {
-    pub fn new(
-        app_hash: &str,
-        data_id: &str,
-        data_hash: &str,
-        provider_id: ProviderID,
-        model_id: &str,
-    ) -> Self {
-        Self {
-            uuid: format!("{}", Uuid::new_v4()),
-            config: RunConfig {
-                app_hash: String::from(app_hash),
-                data_id: String::from(data_id),
-                data_hash: String::from(data_hash),
-                provider_id,
-                model_id: String::from(model_id),
-            },
-            traces: vec![],
-        }
-    }
-
-    pub async fn store(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let runs_dir = root_path.join(".runs");
-
-        assert!(runs_dir.is_dir().await);
-        let run_dir = runs_dir.join(&self.uuid);
-        assert!(!run_dir.exists().await);
-
-        utils::action(&format!("Creating directory {}", run_dir.display()));
-        async_std::fs::create_dir_all(&run_dir).await?;
-
-        let config_path = run_dir.join("config.json");
-        utils::action(&format!("Writing run config in {}", config_path.display()));
-        {
-            let mut file = File::create(config_path).await?;
-            file.write_all(serde_json::to_string(&self.config)?.as_bytes())
-                .await?;
-            file.flush().await?;
-        }
-
-        for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
-            let block_dir =
-                run_dir.join(format!("{}-{}_{}", block_idx, block_type.to_string(), name));
-            utils::action(&format!("Creating directory {}", block_dir.display()));
-            async_std::fs::create_dir_all(&block_dir).await?;
-            for (input_idx, executions) in block_execution.iter().enumerate() {
-                let executions_path = block_dir.join(format!("{}.json", input_idx));
-                {
-                    let mut file = File::create(executions_path).await?;
-                    file.write_all(serde_json::to_string(executions)?.as_bytes())
-                        .await?;
-                    file.flush().await?;
-                }
-            }
-        }
-        utils::done(&format!(
-            "Run `{}` for app version `{}` stored",
-            self.uuid, self.config.app_hash
-        ));
-
-        Ok(())
-    }
 }
 
 /// An App is a collection of versioned Blocks.
@@ -134,14 +40,8 @@ impl App {
         self.blocks.len()
     }
 
-    pub async fn new() -> Result<Self> {
-        let root_path = utils::init_check().await?;
-        let spec_path = root_path.join("index.dust");
-
-        let unparsed_file = async_std::fs::read_to_string(spec_path).await?;
-        let parsed = DustParser::parse(Rule::dust, &unparsed_file)?
-            .next()
-            .unwrap();
+    pub async fn new(spec_data: &str) -> Result<Self> {
+        let parsed = DustParser::parse(Rule::dust, &spec_data)?.next().unwrap();
 
         // Block names and parsed instantiations.
         let mut blocks: Vec<(String, Box<dyn Block + Send + Sync>)> = Vec::new();
@@ -302,24 +202,16 @@ impl App {
     pub async fn run(
         &self,
         data: &Data,
-        provider_id: ProviderID,
-        model_id: &str,
+        run_config: &RunConfig,
         concurrency: usize,
         llm_cache: Arc<RwLock<LLMCache>>,
     ) -> Result<()> {
-        let mut run = Run::new(
-            self.hash.as_str(),
-            data.id(),
-            data.hash(),
-            provider_id,
-            model_id,
-        );
+        let mut run = Run::new(run_config.clone());
 
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
         let mut envs = vec![vec![Env {
-            provider_id,
-            model_id: String::from(model_id),
+            config: run_config.clone(),
             state: HashMap::new(),
             input: InputState {
                 value: None,
@@ -407,17 +299,17 @@ impl App {
                         map_envs
                             .into_iter()
                             .enumerate()
-                            .map(move |(map_idx, env)| (input_idx, map_idx, env))
+                            .map(move |(map_idx, env)| (input_idx, map_idx, name.clone(), env))
                     })
                     .flatten(),
             )
-            .map(|(input_idx, map_idx, e)| {
+            .map(|(input_idx, map_idx, name, e)| {
                 // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
                 // that calls into the Block#[serde(skip_serializing)] trait's `clone_box` implemented on each Block. This
                 // allows cloning the Block (as a Trait) to use from parallel threads!
                 let b = block.clone();
                 tokio::spawn(async move {
-                    match b.execute(&e).await {
+                    match b.execute(&name, &e).await {
                         Ok(v) => Ok((input_idx, map_idx, e, Ok(v)))
                             as Result<
                                 (usize, usize, Env, Result<Value, anyhow::Error>),
@@ -490,10 +382,10 @@ impl App {
 
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
-                // errors.iter().for_each(|e| utils::error(e.as_str()));
+                errors.iter().for_each(|e| utils::error(e.as_str()));
                 run.store().await?;
                 Err(anyhow!(
-                    "Run interrupted due to block `{} {}` failed execution with {} error(s)",
+                    "Run interrupted due to failed execution of block `{} {}` with {} error(s)",
                     block.block_type().to_string(),
                     name,
                     errors.len(),
@@ -563,16 +455,38 @@ impl App {
     }
 }
 
-pub async fn cmd_run(
-    data_id: &str,
-    provider_id: ProviderID,
-    model_id: &str,
-    concurrency: usize,
-) -> Result<()> {
-    let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
+pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let spec_path = root_path.join("index.dust");
+    let spec_data = async_std::fs::read_to_string(spec_path).await?;
 
-    let app = App::new().await?;
+    let app = App::new(&spec_data).await?;
+
     utils::info(format!("Parsed app specification, found {} blocks.", app.len()).as_str());
+
+    let run_config = {
+        let config_path = &shellexpand::tilde(config_path).into_owned();
+        let config_path = std::path::Path::new(config_path);
+        let config_data = async_std::fs::read_to_string(config_path).await?;
+        let config_json: Value = serde_json::from_str(&config_data)?;
+
+        match config_json {
+            Value::Object(blocks) => RunConfig {
+                app_hash: app.hash.clone(),
+                blocks: blocks.into_iter().collect::<HashMap<_, _>>(),
+            },
+            _ => Err(anyhow!(
+                "Invalid config, expecting a JSON object with block names as keys: {}",
+                app.blocks
+                    .iter()
+                    .map(|(_, name, _)| name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))?,
+        }
+    };
+
+    let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
 
     let d = Data::new_from_latest(data_id).await?;
     if d.len() == 0 {
@@ -591,7 +505,7 @@ pub async fn cmd_run(
     app.update_latest().await?;
 
     match app
-        .run(&d, provider_id, model_id, concurrency, llm_cache.clone())
+        .run(&d, &run_config, concurrency, llm_cache.clone())
         .await
     {
         Ok(()) => {

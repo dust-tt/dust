@@ -9,6 +9,14 @@
 # cli
 
 - inspect data
+    dust app check?
+    dust app run dev config_path
+    dust app deploy
+      --> let's make it another object
+      --> probably want a config file to specify which app versions to run?
+    dust deploys list
+    dust runs list
+    dust runs inspect RUN_ID BLOCK_NAME
 - split off cli code from core
 - serve (as an endpoint)
 

@@ -45,7 +45,7 @@ impl Block for Reduce {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _env: &Env) -> Result<Value> {
+    async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(Value::Null)

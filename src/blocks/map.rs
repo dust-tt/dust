@@ -78,7 +78,7 @@ impl Block for Map {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, env: &Env) -> Result<Value> {
+    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
         match env.state.get(&self.from) {
             None => Err(anyhow::anyhow!(
                 "Map `from` block `{}` output not found",

@@ -1,5 +1,6 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
-use crate::providers::llm::{Tokens, LLMRequest};
+use crate::providers::llm::{LLMRequest, Tokens};
+use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -8,6 +9,7 @@ use pest::iterators::Pair;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct LLM {
@@ -309,10 +311,61 @@ impl Block for LLM {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, env: &Env) -> Result<Value> {
+    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+        let config = env.config.config_for_block(name);
+
+        let (provider_id, model_id) = match config {
+            Some(v) => {
+                let provider_id = match v.get("provider_id") {
+                    Some(v) => match v {
+                        Value::String(s) => match ProviderID::from_str(s) {
+                            Ok(p) => p,
+                            Err(e) => Err(anyhow!(
+                                "Invalid `provider_id` `{}` in configuration \
+                                 for llm block `{}`: {}",
+                                s,
+                                name,
+                                e
+                            ))?,
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `provider_id` in configuration for llm block `{}`: \
+                             string expected",
+                            name
+                        ))?,
+                    },
+                    _ => Err(anyhow!(
+                        "Missing `provider_id` in configuration for llm block `{}`",
+                        name
+                    ))?,
+                };
+
+                let model_id = match v.get("model_id") {
+                    Some(v) => match v {
+                        Value::String(s) => s.clone(),
+                        _ => Err(anyhow!(
+                            "Invalid `model_id` in configuration for llm block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => Err(anyhow!(
+                        "Missing `model_id` in configuration for llm block `{}`",
+                        name
+                    ))?,
+                };
+
+                (provider_id, model_id)
+            }
+            _ => Err(anyhow!(
+                "Missing configuration for llm block `{}`, \
+                 expecting `{{ \"provider_id\": ..., \"model_id\": ... }}`",
+                name
+            ))?,
+        };
+
         let request = LLMRequest::new(
-            env.provider_id,
-            &env.model_id,
+            provider_id,
+            &model_id,
             self.prompt(env)?.as_str(),
             Some(self.max_tokens),
             self.temperature,
@@ -343,8 +396,9 @@ mod tests {
     use super::*;
     use crate::blocks::block::InputState;
     use crate::providers::llm::LLMCache;
-    use crate::providers::provider::ProviderID;
+    use crate::run::RunConfig;
     use parking_lot::RwLock;
+    use std::collections::HashMap;
     use std::sync::Arc;
 
     #[test]
@@ -363,13 +417,19 @@ mod tests {
     #[test]
     fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
-            provider_id: ProviderID::OpenAI,
-            model_id: "foo".to_string(),
+            config: RunConfig {
+                app_hash: "foo".to_string(),
+                blocks: HashMap::new(),
+            },
             state: serde_json::from_str(
-                r#"{"RETRIEVE":[{"question":"What is your name?"},{"question":"What is your dob"}],"DATA":{"answer":"John"}}"#,
+                r#"{"RETRIEVE":[
+                    {"question":"What is your name?"},
+                    {"question":"What is your dob"}
+                    ],
+                    "DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
-            input: InputState{
+            input: InputState {
                 value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
                 index: 0,
             },
@@ -390,8 +450,10 @@ mod tests {
     #[test]
     fn replace_prompt_variables() -> Result<()> {
         let env = Env {
-            provider_id: ProviderID::OpenAI,
-            model_id: "foo".to_string(),
+            config: RunConfig {
+                app_hash: "foo".to_string(),
+                blocks: HashMap::new(),
+            },
             state: serde_json::from_str(
                 r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
             )

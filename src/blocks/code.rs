@@ -63,7 +63,7 @@ impl Block for Code {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, env: &Env) -> Result<Value> {
+    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
         // Assumes there is a _fun function defined in `source`.
 
         // TODO(spolu): revisit, not sure this is optimal.
