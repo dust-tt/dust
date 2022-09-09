@@ -116,6 +116,28 @@ impl Run {
     pub async fn load(run_id: &str) -> Result<Self> {
         let config = RunConfig::load(run_id).await?;
 
+        let root_path = utils::init_check().await?;
+        let runs_dir = root_path.join(".runs");
+
+        assert!(runs_dir.is_dir().await);
+        let run_dir = runs_dir.join(run_id);
+
+        if !run_dir.exists().await {
+            Err(anyhow!("Run `{}` does not exist", run_id))?;
+        }
+
+        let mut entries = async_std::fs::read_dir(run_dir).await?;
+        let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
+        // while let Some(entry) = entries.next().await {
+        //     let entry = entry?;
+        //     let path = entry.path();
+        //     if path.is_dir().await {
+        //         let run_id = path.file_name().unwrap().to_str().unwrap();
+        //         let config = RunConfig::load(run_id).await?;
+        //         runs.push((run_id.to_string(), config));
+        //     }
+        // }
+
         Ok(Run {
             run_id: run_id.to_string(),
             config,
@@ -135,7 +157,6 @@ pub async fn cmd_list() -> Result<()> {
     let runs_dir = root_path.join(".runs");
 
     let mut entries = async_std::fs::read_dir(runs_dir).await?;
-
     let mut runs: Vec<(String, RunConfig)> = vec![];
     while let Some(entry) = entries.next().await {
         let entry = entry?;
