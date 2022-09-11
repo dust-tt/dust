@@ -4,6 +4,8 @@ use crate::utils;
 use anyhow::{anyhow, Result};
 use async_fs::File;
 use futures::prelude::*;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -92,7 +94,7 @@ impl Run {
 
         for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
             let block_dir =
-                run_dir.join(format!("{}-{}_{}", block_idx, block_type.to_string(), name));
+                run_dir.join(format!("{}:{}:{}", block_idx, block_type.to_string(), name));
             utils::action(&format!("Creating directory {}", block_dir.display()));
             async_std::fs::create_dir_all(&block_dir).await?;
             for (input_idx, executions) in block_execution.iter().enumerate() {
@@ -127,16 +129,30 @@ impl Run {
         }
 
         let mut entries = async_std::fs::read_dir(run_dir).await?;
+        let mut blocks: Vec<(usize, BlockType, String)> = vec![];
+        while let Some(entry) = entries.next().await {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir().await {
+                lazy_static! {
+                    static ref RE: Regex =
+                        Regex::new(r"(\d+):([a-z0-9\._]+):([A-Z0-9_]+)").unwrap();
+                }
+                let captures = RE
+                    .captures(path.file_name().unwrap().to_str().unwrap())
+                    .unwrap();
+                blocks.push((
+                    captures.get(1).unwrap().as_str().parse::<usize>()?,
+                    captures.get(2).unwrap().as_str().parse::<BlockType>()?,
+                    captures.get(3).unwrap().as_str().to_string(),
+                ));
+            }
+        }
+        blocks.sort_by(|a, b| a.0.cmp(&b.0));
+
+        println!("BLOCKS: {:?}", blocks);
+
         let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
-        // while let Some(entry) = entries.next().await {
-        //     let entry = entry?;
-        //     let path = entry.path();
-        //     if path.is_dir().await {
-        //         let run_id = path.file_name().unwrap().to_str().unwrap();
-        //         let config = RunConfig::load(run_id).await?;
-        //         runs.push((run_id.to_string(), config));
-        //     }
-        // }
 
         Ok(Run {
             run_id: run_id.to_string(),

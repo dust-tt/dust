@@ -41,7 +41,7 @@ pub struct Env {
 //   Array(Box<Expectations>),
 // }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BlockType {
     Root,
     Data,
