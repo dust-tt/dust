@@ -1,4 +1,3 @@
-use crate::app::BlockExecution;
 use crate::blocks::block::BlockType;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -7,10 +6,21 @@ use futures::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{to_string_pretty, Value};
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, PartialEq, Clone)]
+/// BlockExecution represents the execution of a block:
+/// - `env` used
+/// - `value` returned by successful execution
+/// - `error` message returned by a failed execution
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct BlockExecution {
+    // pub env: Env,
+    pub value: Option<Value>,
+    pub error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {
     pub start_time: u64,
     pub app_hash: String,
@@ -43,7 +53,7 @@ impl RunConfig {
 }
 
 /// Execution represents the full execution of an app on input data.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct Run {
     run_id: String,
     config: RunConfig,
@@ -128,7 +138,7 @@ impl Run {
             Err(anyhow!("Run `{}` does not exist", run_id))?;
         }
 
-        let mut entries = async_std::fs::read_dir(run_dir).await?;
+        let mut entries = async_std::fs::read_dir(run_dir.clone()).await?;
         let mut blocks: Vec<(usize, BlockType, String)> = vec![];
         while let Some(entry) = entries.next().await {
             let entry = entry?;
@@ -154,16 +164,70 @@ impl Run {
 
         let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
 
+        for (index, block_type, name) in blocks.iter() {
+            let block_dir = run_dir.join(format!("{}:{}:{}", index, block_type.to_string(), name));
+            let mut entries = async_std::fs::read_dir(block_dir).await?;
+            let mut executions: Vec<(usize, Vec<BlockExecution>)> = vec![];
+            while let Some(entry) = entries.next().await {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file().await {
+                    lazy_static! {
+                        static ref RE: Regex = Regex::new(r"(\d+).json").unwrap();
+                    }
+                    match RE.captures(path.file_name().unwrap().to_str().unwrap()) {
+                        Some(captures) => {
+                            let input_idx = captures.get(1).unwrap().as_str().parse::<usize>()?;
+                            let data = async_std::fs::read_to_string(path).await?;
+                            executions.push((input_idx, serde_json::from_str(&data)?));
+                        }
+                        None => {}
+                    }
+                }
+            }
+            executions.sort_by(|a, b| a.0.cmp(&b.0));
+
+            traces.push((
+                (block_type.clone(), name.clone()),
+                executions.into_iter().map(|(_, v)| v).collect(),
+            ));
+        }
+
         Ok(Run {
             run_id: run_id.to_string(),
             config,
-            traces: vec![],
+            traces,
         })
     }
 }
 
 pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     let run = Run::load(run_id).await?;
+    run.traces
+        .iter()
+        .for_each(|((_, name), executions)| {
+            if name == block {
+                executions
+                    .iter()
+                    .enumerate()
+                    .for_each(|(input_idx, executions)| {
+                        executions
+                            .iter()
+                            .enumerate()
+                            .for_each(|(map_idx, execution)| {
+                                utils::info(&format!("EXECUTION {} {}:", input_idx, map_idx));
+                                match execution.value.as_ref() {
+                                    Some(v) => println!("{}", to_string_pretty(v).unwrap()),
+                                    None => {}
+                                }
+                                match execution.error.as_ref() {
+                                    Some(e) => utils::error(&format!("Error: {}", e)),
+                                    None => {}
+                                }
+                            });
+                    });
+            }
+        });
 
     Ok(())
 }

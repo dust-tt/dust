@@ -1,7 +1,7 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::data::Data;
 use crate::providers::llm::LLMCache;
-use crate::run::{Run, RunConfig};
+use crate::run::{Run, RunConfig, BlockExecution};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
@@ -9,22 +9,10 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use parking_lot::RwLock;
 use pest::Parser;
-use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
-
-/// BlockExecution represents the execution of a block:
-/// - `env` used
-/// - `value` returned by successful execution
-/// - `error` message returned by a failed execution
-#[derive(Serialize, PartialEq)]
-pub struct BlockExecution {
-    // pub env: Env,
-    pub value: Option<Value>,
-    pub error: Option<String>,
-}
 
 /// An App is a collection of versioned Blocks.
 ///
