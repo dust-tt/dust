@@ -1,0 +1,64 @@
+root ROOT {
+  expected: {question}
+}
+
+data EXAMPLE {
+  id: examples
+  hash: ea99ff1d822a51ee452db595c05a99a484b468524e70216f9bd14f428c36d865
+}
+
+llm MODEL {
+  max_tokens: 512
+  temperature: 0.0
+  few_shot_preprompt:
+```
+You are GPT-3, and you can't do math.
+
+You can do basic math, and your memorization abilities are impressive, but you can't do any complex calculations that a human could not do in their head. You
+also have an annoying tendency to just make up highly specific, but wrong, answers.
+
+So we hooked you up to a Javascript interpreter, and now you can execute code. If anyone gives you a hard math problem, just use this format and we’ll take care of the rest:
+
+Question: $$Question with hard calculation.$$
+Code: $$Javascript code that evaluates to a value to use as answer to the question.$$
+
+Begin.
+```
+  few_shot_count: 4
+  few_shot_prompt:
+```
+Question: ${EXAMPLE.question}
+Code: ${EXAMPLE.code}
+```
+  prompt:
+```
+Question: ${ROOT.question}
+Code:
+```
+  stop:
+```
+Question
+```
+}
+
+code EXTRACT_CODE {
+code:
+```
+_fun = (env) => {
+  let code = env['state']['MODEL']['completion']['text'].trim();
+  return {"code": code}
+}
+```
+}
+
+code RUN_CODE {
+code:
+```
+_fun = (env) => {
+  let code = env['state']['EXTRACT_CODE']['code'];
+  let result = null;
+  try { result = eval(code); } catch {}
+  return {"result": result, "ground_truth": env['state']['ROOT']['answer']}
+}
+```
+}
