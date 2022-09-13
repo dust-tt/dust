@@ -29,3 +29,21 @@
 - fly.io link to firecracker
 - minimal ability to serve app, get live update form execution, inspect data (depends on cli
 inspect)
+
+# demo script
+
+- I've been coding for the past couple days to have something to demo. Let me show you
+what I've got.
+- start a new project
+- code up riley with interpreter in JS
+- introspection of data
+- eval on a small GSM
+- implement consensus
+- eval on a small GSM / codex vs davinci
+-> value
+  - caching model outputs
+  - retryable errors, top-notch integration to every provider out there
+  - block structure allow agressive parallelization which generally require refactor and
+    introspection
+  - specification is focused on LLM app logic much clearer to reason about and iterate
+    -> compare to repl.it example

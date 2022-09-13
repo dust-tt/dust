@@ -160,7 +160,7 @@ impl Run {
         }
         blocks.sort_by(|a, b| a.0.cmp(&b.0));
 
-        println!("BLOCKS: {:?}", blocks);
+        // println!("BLOCKS: {:?}", blocks);
 
         let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
 
@@ -201,38 +201,7 @@ impl Run {
     }
 }
 
-pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
-    let run = Run::load(run_id).await?;
-    run.traces
-        .iter()
-        .for_each(|((_, name), executions)| {
-            if name == block {
-                executions
-                    .iter()
-                    .enumerate()
-                    .for_each(|(input_idx, executions)| {
-                        executions
-                            .iter()
-                            .enumerate()
-                            .for_each(|(map_idx, execution)| {
-                                utils::info(&format!("EXECUTION {} {}:", input_idx, map_idx));
-                                match execution.value.as_ref() {
-                                    Some(v) => println!("{}", to_string_pretty(v).unwrap()),
-                                    None => {}
-                                }
-                                match execution.error.as_ref() {
-                                    Some(e) => utils::error(&format!("Error: {}", e)),
-                                    None => {}
-                                }
-                            });
-                    });
-            }
-        });
-
-    Ok(())
-}
-
-pub async fn cmd_list() -> Result<()> {
+pub async fn all_runs() -> Result<Vec<(String, RunConfig)>> {
     let root_path = utils::init_check().await?;
     let runs_dir = root_path.join(".runs");
 
@@ -249,6 +218,64 @@ pub async fn cmd_list() -> Result<()> {
     }
 
     runs.sort_by(|a, b| b.1.start_time.cmp(&a.1.start_time));
+
+    Ok(runs)
+}
+
+pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
+    let mut run_id = run_id.to_string();
+
+    if run_id == "latest" {
+        let runs = all_runs().await?;
+        if runs.len() == 0 {
+            Err(anyhow!("No run found"))?;
+        }
+        run_id = runs[0].0.clone();
+        utils::info(&format!("Latest run is `{}`", run_id));
+    }
+
+    let run = Run::load(run_id.as_str()).await?;
+    let mut found = false;
+    run.traces.iter().for_each(|((_, name), input_executions)| {
+        if name == block {
+            input_executions
+                .iter()
+                .enumerate()
+                .for_each(|(input_idx, map_executions)| {
+                    map_executions
+                        .iter()
+                        .enumerate()
+                        .for_each(|(map_idx, execution)| {
+                            found = true;
+                            utils::info(&format!(
+                                "Execution: input_idx={}/{} map_idx={}/{}",
+                                input_idx,
+                                input_executions.len(),
+                                map_idx,
+                                map_executions.len()
+                            ));
+                            match execution.value.as_ref() {
+                                Some(v) => println!("{}", to_string_pretty(v).unwrap()),
+                                None => {}
+                            }
+                            match execution.error.as_ref() {
+                                Some(e) => utils::error(&format!("Error: {}", e)),
+                                None => {}
+                            }
+                        });
+                });
+        }
+    });
+
+    if !found {
+        Err(anyhow!("Block `{}` not found in run `{}`", block, run_id))?;
+    }
+
+    Ok(())
+}
+
+pub async fn cmd_list() -> Result<()> {
+    let runs = all_runs().await?;
 
     runs.iter().for_each(|(run_id, config)| {
         utils::info(&format!(
