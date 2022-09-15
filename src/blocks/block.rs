@@ -83,8 +83,6 @@ impl FromStr for BlockType {
 pub trait Block {
     fn block_type(&self) -> BlockType;
 
-    fn run_if(&self) -> Option<String>;
-
     fn inner_hash(&self) -> String;
 
     async fn execute(&self, name: &str, env: &Env) -> Result<Value>;

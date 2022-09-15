@@ -10,7 +10,7 @@ pub struct DustParser;
 pub mod store;
 pub mod app;
 pub mod run;
-pub mod data;
+pub mod dataset;
 pub mod init;
 pub mod utils;
 pub mod providers {

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, data, init, providers::provider, run, utils};
+use dust::{app, dataset, init, providers::provider, run, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -17,10 +17,10 @@ enum Commands {
         #[clap(default_value = ".")]
         path: String,
     },
-    /// Manage versioned JSONL data files
-    Data {
+    /// Manage versioned JSONL dataset files
+    Dataset {
         #[clap(subcommand)]
-        command: DataCommands,
+        command: DatasetCommands,
     },
     /// Manage model providers
     Provider {
@@ -40,14 +40,14 @@ enum Commands {
 }
 
 #[derive(Subcommand)]
-enum DataCommands {
-    /// Registers or udpates a new data JSONL version under the provided id. The JSONL data will be
-    /// checked and stored in the Dust directory under `.data/<id>/<hash>`.
+enum DatasetCommands {
+    /// Registers or udpates a new dataset JSONL version under the provided id. The JSONL data will
+    /// be checked and stored in the Dust project store.
     Register {
-        /// Data id to register or update
+        /// Dataset id to register or update
         #[clap(required = true)]
-        data_id: String,
-        /// Path to the JSONL data file
+        dataset_id: String,
+        /// Path to the JSONL dataset file
         #[clap(required = true)]
         jsonl_path: String,
     },
@@ -73,9 +73,9 @@ enum ProviderCommands {
 enum AppCommands {
     /// Runs an app on registered data using the specified model
     Run {
-        /// Data id to run the app on
+        /// Dataset id to run the app on
         #[clap(required = true)]
-        data_id: String,
+        dataset_id: String,
 
         /// Run config path (JSON)
         #[clap(required = true)]
@@ -113,11 +113,11 @@ fn main() -> Result<()> {
 
     let err = match &cli.command {
         Commands::Init { path } => rt.block_on(init::cmd_init(path)),
-        Commands::Data { command } => match command {
-            DataCommands::Register {
-                data_id,
+        Commands::Dataset { command } => match command {
+            DatasetCommands::Register {
+                dataset_id,
                 jsonl_path,
-            } => rt.block_on(data::cmd_register(data_id, jsonl_path)),
+            } => rt.block_on(dataset::cmd_register(dataset_id, jsonl_path)),
         },
         Commands::Provider { command } => match command {
             ProviderCommands::Setup { provider_id } => {
@@ -127,10 +127,10 @@ fn main() -> Result<()> {
         },
         Commands::App { command } => match command {
             AppCommands::Run {
-                data_id,
+                dataset_id,
                 config_path,
                 concurrency,
-            } => rt.block_on(app::cmd_run(data_id, config_path, *concurrency)),
+            } => rt.block_on(app::cmd_run(dataset_id, config_path, *concurrency)),
         },
         Commands::Run { command } => match command {
             RunCommands::List {} => rt.block_on(run::cmd_list()),

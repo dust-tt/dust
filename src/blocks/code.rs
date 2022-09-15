@@ -9,13 +9,11 @@ use serde_json::Value;
 #[derive(Clone)]
 pub struct Code {
     code: String,
-    run_if: Option<String>,
 }
 
 impl Code {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut code: Option<String> = None;
-        let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -23,7 +21,6 @@ impl Code {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
                         "code" => code = Some(value),
-                        "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `code` block", key))?,
                     }
                 }
@@ -38,7 +35,6 @@ impl Code {
 
         Ok(Code {
             code: code.unwrap(),
-            run_if,
         })
     }
 }
@@ -49,17 +45,10 @@ impl Block for Code {
         BlockType::Code
     }
 
-    fn run_if(&self) -> Option<String> {
-        self.run_if.clone()
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("code".as_bytes());
         hasher.update(self.code.as_bytes());
-        if let Some(run_if) = &self.run_if {
-            hasher.update(run_if.as_bytes());
-        }
         format!("{}", hasher.finalize().to_hex())
     }
 

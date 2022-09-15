@@ -1,5 +1,6 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
-use crate::data::Data;
+use crate::store::Store;
+use crate::dataset::Dataset;
 use crate::providers::llm::LLMCache;
 use crate::run::{Run, RunConfig, BlockExecution};
 use crate::utils;
@@ -189,7 +190,7 @@ impl App {
 
     pub async fn run(
         &self,
-        data: &Data,
+        data: &Dataset,
         run_config: &RunConfig,
         concurrency: usize,
         llm_cache: Arc<RwLock<LLMCache>>,
@@ -443,7 +444,7 @@ impl App {
     }
 }
 
-pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
+pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
     let root_path = utils::init_check().await?;
     let spec_path = root_path.join("index.dust");
     let spec_data = async_std::fs::read_to_string(spec_path).await?;
@@ -477,15 +478,15 @@ pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Re
 
     let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
 
-    let d = Data::from_latest(data_id).await?;
+    let d = Dataset::from_latest(dataset_id).await?;
     if d.len() == 0 {
-        Err(anyhow!("Retrieved 0 records from `{data_id}`"))?
+        Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
     }
     utils::info(
         format!(
             "Retrieved {} records from latest data version for `{}`.",
             d.len(),
-            data_id
+            dataset_id
         )
         .as_str(),
     );

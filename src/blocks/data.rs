@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
-use crate::data;
+use crate::dataset;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -8,25 +8,22 @@ use serde_json::Value;
 
 #[derive(Clone)]
 pub struct Data {
-    id: String,
+    dataset_id: String,
     hash: String,
-    run_if: Option<String>,
 }
 
 impl Data {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
-        let mut id: Option<String> = None;
+        let mut dataset_id: Option<String> = None;
         let mut hash: Option<String> = None;
-        let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
                 Rule::pair => {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
-                        "id" => id = Some(value),
+                        "dataset_id" => dataset_id = Some(value),
                         "hash" => hash = Some(value),
-                        "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `data` block", key))?,
                     }
                 }
@@ -35,7 +32,7 @@ impl Data {
             }
         }
 
-        if !id.is_some() {
+        if !dataset_id.is_some() {
             Err(anyhow!("Missing required `id` in `data` block"))?;
         }
         if !hash.is_some() {
@@ -43,9 +40,8 @@ impl Data {
         }
 
         Ok(Data {
-            id: id.unwrap(),
+            dataset_id: dataset_id.unwrap(),
             hash: hash.unwrap(),
-            run_if,
         })
     }
 }
@@ -56,23 +52,16 @@ impl Block for Data {
         BlockType::Data
     }
 
-    fn run_if(&self) -> Option<String> {
-        self.run_if.clone()
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("data".as_bytes());
-        hasher.update(self.id.as_bytes());
+        hasher.update(self.dataset_id.as_bytes());
         hasher.update(self.hash.as_bytes());
-        if let Some(run_if) = &self.run_if {
-            hasher.update(run_if.as_bytes());
-        }
         format!("{}", hasher.finalize().to_hex())
     }
 
     async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
-        let d = data::Data::from_hash(self.id.as_str(), self.hash.as_str()).await?;
+        let d = dataset::Dataset::from_hash(self.id.as_str(), self.hash.as_str()).await?;
         Ok(d.data_as_value())
     }
 

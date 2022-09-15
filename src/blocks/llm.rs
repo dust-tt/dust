@@ -20,7 +20,6 @@ pub struct LLM {
     max_tokens: i32,
     temperature: f32,
     stop: Vec<String>,
-    run_if: Option<String>,
 }
 
 impl LLM {
@@ -32,7 +31,6 @@ impl LLM {
         let mut max_tokens: Option<i32> = None;
         let mut temperature: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
-        let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -62,7 +60,6 @@ impl LLM {
                             ))?,
                         },
                         "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
-                        "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
                     }
                 }
@@ -86,7 +83,6 @@ impl LLM {
             max_tokens: max_tokens.unwrap(),
             temperature: temperature.unwrap(),
             stop,
-            run_if,
         })
     }
 
@@ -281,10 +277,6 @@ impl Block for LLM {
         BlockType::LLM
     }
 
-    fn run_if(&self) -> Option<String> {
-        self.run_if.clone()
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("llm".as_bytes());
@@ -304,9 +296,6 @@ impl Block for LLM {
         hasher.update(self.temperature.to_string().as_bytes());
         for s in self.stop.iter() {
             hasher.update(s.as_bytes());
-        }
-        if let Some(run_if) = &self.run_if {
-            hasher.update(run_if.as_bytes());
         }
         format!("{}", hasher.finalize().to_hex())
     }

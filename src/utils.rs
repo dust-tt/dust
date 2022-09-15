@@ -44,15 +44,12 @@ pub async fn init_check() -> Result<PathBuf> {
         ))?
     }
 
-    let dirs = vec![".data", ".versions", ".runs", ".cache"];
-    for d in dirs {
-        if !current_dir.join(d).is_dir().await {
-            Err(anyhow::anyhow!(
-                "Not a Dust directory ({} not found in {})",
-                d,
-                current_dir.display()
-            ))?
-        }
+    let store_path = current_dir.join("store.sqlite");
+    if !store_path.exists().await {
+        Err(anyhow::anyhow!(
+            "Not a Dust directory (store.sqlite not found in {})",
+            current_dir.display()
+        ))?
     }
 
     Ok(current_dir)
