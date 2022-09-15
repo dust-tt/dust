@@ -1,5 +1,7 @@
 use crate::blocks::block::BlockType;
+use crate::store::SQLiteStore;
 use crate::utils;
+use crate::store;
 use anyhow::{anyhow, Result};
 use async_fs::File;
 use futures::prelude::*;
@@ -275,6 +277,10 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
 }
 
 pub async fn cmd_list() -> Result<()> {
+    let s = SQLiteStore::new_in_memory()?;
+    s.init().await?;
+    println!("INIT DONE");
+
     let runs = all_runs().await?;
 
     runs.iter().for_each(|(run_id, config)| {

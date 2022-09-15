@@ -1,19 +1,18 @@
 # core
 
 - abstract all storage behind a Trait with sqlite in mind
-- move storage to sqlite
+- move storage to sqlite for cli / spanner for remote
+- build promptchainer music app
+- build run service API
+- move utils::* to an event system
 - options block
 - if/end block
 - interrupt only affected inputs on error
 
 # cli
 
-- inspect data
-    dust runs list
-    dust runs inspect RUN_ID BLOCK_NAME
-    dust app deploy
-      --> let's make it another object
-      --> probably want a config file to specify which app versions to run?
+- dust app deploy
+    - what is the underlying data store? run-like?
     dust deploys list
 - split off cli code from core
 - serve (as an endpoint)
@@ -25,25 +24,6 @@
 
 # srv
 
-- look into FaaS for serving apps?
-- fly.io link to firecracker
-- minimal ability to serve app, get live update form execution, inspect data (depends on cli
-inspect)
-
-# demo script
-
-- I've been coding for the past couple days to have something to demo. Let me show you
-what I've got.
-- start a new project
-- code up riley with interpreter in JS
-- introspection of data
-- eval on a small GSM
-- implement consensus
-- eval on a small GSM / codex vs davinci
--> value
-  - caching model outputs
-  - retryable errors, top-notch integration to every provider out there
-  - block structure allow agressive parallelization which generally require refactor and
-    introspection
-  - specification is focused on LLM app logic much clearer to reason about and iterate
-    -> compare to repl.it example
+- sqlite locally behind Trait
+- spanner online
+- cloud run for run services and front-end
