@@ -143,6 +143,8 @@ impl SQLiteStore {
 #[async_trait]
 impl Store for SQLiteStore {
     async fn latest_dataset_hash(&self, dataset_id: &str) -> Result<Option<String>> {
+        let dataset_id = dataset_id.to_string();
+
         let c = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<String>> {
             let c = c.lock();
@@ -162,6 +164,12 @@ impl Store for SQLiteStore {
     }
 
     async fn register_dataset(&self, d: &Dataset) -> Result<()> {
+        let dataset_created = d.created();
+        let dataset_id = d.dataset_id().to_string();
+        let dataset_hash = d.hash().to_string();
+        // TODO(spolu): kind of ugly but we have to clone here.
+        let data = d.iter().map(|v| v.clone()).collect::<Vec<_>>();
+
         let c = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
             let c = c.lock();
@@ -169,7 +177,7 @@ impl Store for SQLiteStore {
             let mut stmt = c.prepare_cached(
                 "INSERT OR REPLACE INTO datasets_points (hash, json) VALUES (?, ?)",
             )?;
-            let points_row_ids = d
+            let points_row_ids = data
                 .iter()
                 .map(|v| {
                     let mut hasher = blake3::Hasher::new();
@@ -184,7 +192,7 @@ impl Store for SQLiteStore {
             let mut stmt = c.prepare_cached(
                 "INSERT INTO datasets (created, dataset_id, hash) VALUES (?, ?, ?)",
             )?;
-            let row_id = stmt.insert(params![d.created(), d.dataset_id(), d.hash()])?;
+            let row_id = stmt.insert(params![dataset_created, dataset_id, dataset_hash])?;
 
             // Finally fill in the join values.
             let mut stmt = c.prepare_cached(
@@ -205,6 +213,9 @@ impl Store for SQLiteStore {
     }
 
     async fn load_dataset(&self, dataset_id: &str, hash: &str) -> Result<Option<Dataset>> {
+        let dataset_id = dataset_id.to_string();
+        let hash = hash.to_string();
+
         let c = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<Dataset>> {
             let c = c.lock();
@@ -244,8 +255,8 @@ impl Store for SQLiteStore {
 
             Ok(Some(Dataset::new_from_store(
                 created,
-                dataset_id,
-                hash,
+                &dataset_id,
+                &hash,
                 data.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
             )?))
         })
@@ -276,6 +287,10 @@ impl Store for SQLiteStore {
         if latest.is_some() && latest.unwrap() == hash {
             return Ok(());
         }
+
+        let hash = hash.to_string();
+        let spec = spec.to_string();
+
         let c = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
             let c = c.lock();

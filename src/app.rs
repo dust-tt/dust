@@ -151,25 +151,15 @@ impl App {
         })
     }
 
-    // TODO(spolu): move to cmd
-    pub async fn register_version(&self, store: &dyn Store) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let spec_path = root_path.join("index.dust");
-        let spec_data = async_std::fs::read_to_string(spec_path).await?;
-
-        store.register_specification(&self.hash, &spec_data).await?;
-
-        Ok(())
-    }
-
     pub async fn run(
         &self,
         data: &Dataset,
         run_config: &RunConfig,
         concurrency: usize,
         llm_cache: Arc<RwLock<LLMCache>>,
+        store: &dyn Store,
     ) -> Result<()> {
-        let mut run = Run::new(run_config.clone());
+        let mut run = Run::new(&self.hash, run_config.clone());
 
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
@@ -346,7 +336,7 @@ impl App {
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                run.store().await?;
+                run.store(store).await?;
                 Err(anyhow!(
                     "Run interrupted due to failed execution of block `{} {}` with {} error(s)",
                     block.block_type().to_string(),
@@ -412,7 +402,7 @@ impl App {
             }
         }
 
-        run.store().await?;
+        run.store(store).await?;
 
         Ok(())
     }
@@ -453,7 +443,11 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
 
-    let d = Dataset::from_latest(&store, dataset_id).await?;
+    let d = match store.latest_dataset_hash(dataset_id).await? {
+        Some(latest) => store.load_dataset(dataset_id, &latest).await?.unwrap(),
+        None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
+    };
+
     if d.len() == 0 {
         Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
     }
@@ -466,10 +460,10 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
         .as_str(),
     );
 
-    app.register_version().await?;
+    store.register_specification(&app.hash, &spec_data).await?;
 
     match app
-        .run(&d, &run_config, concurrency, llm_cache.clone())
+        .run(&d, &run_config, concurrency, llm_cache.clone(), &store)
         .await
     {
         Ok(()) => {

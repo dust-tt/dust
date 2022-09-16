@@ -220,28 +220,6 @@ impl Run {
     }
 }
 
-pub async fn all_runs(store: &dyn Store) -> Result<Vec<(String, u64, String, RunConfig)>> {
-    store.all_runs().await
-    // let root_path = utils::init_check().await?;
-    // let runs_dir = root_path.join(".runs");
-
-    // let mut entries = async_std::fs::read_dir(runs_dir).await?;
-    // let mut runs: Vec<(String, RunConfig)> = vec![];
-    // while let Some(entry) = entries.next().await {
-    //     let entry = entry?;
-    //     let path = entry.path();
-    //     if path.is_dir().await {
-    //         let run_id = path.file_name().unwrap().to_str().unwrap();
-    //         let config = RunConfig::load(run_id).await?;
-    //         runs.push((run_id.to_string(), config));
-    //     }
-    // }
-
-    // runs.sort_by(|a, b| b.1.created.cmp(&a.1.created));
-
-    // Ok(runs)
-}
-
 pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
