@@ -61,7 +61,7 @@ impl Block for Data {
     }
 
     async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
-        let d = dataset::Dataset::from_hash(self.id.as_str(), self.hash.as_str()).await?;
+        let d = dataset::Dataset::from_hash(self.dataset_id.as_str(), self.hash.as_str()).await?;
         Ok(d.data_as_value())
     }
 

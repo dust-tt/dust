@@ -1,7 +1,7 @@
 use crate::blocks::block::BlockType;
 use crate::store::SQLiteStore;
+use crate::store::Store;
 use crate::utils;
-use crate::store;
 use anyhow::{anyhow, Result};
 use async_fs::File;
 use futures::prelude::*;
@@ -24,8 +24,6 @@ pub struct BlockExecution {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {
-    pub start_time: u64,
-    pub app_hash: String,
     pub blocks: HashMap<String, Value>,
 }
 
@@ -58,6 +56,8 @@ impl RunConfig {
 #[derive(PartialEq, Debug)]
 pub struct Run {
     run_id: String,
+    created: u64,
+    app_hash: String,
     config: RunConfig,
     // List of blocks (in order with name) and their execution.
     // The outer vector represents blocks
@@ -72,11 +72,30 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn new(config: RunConfig) -> Self {
-        Self {
+    pub fn new(app_hash: &str, config: RunConfig) -> Self {
+        Run {
             run_id: utils::new_id(),
+            created: utils::now(),
+            app_hash: app_hash.to_string(),
             config,
             traces: vec![],
+        }
+    }
+
+    /// Creates a new Run object in memory from raw data (used by Store implementations)
+    pub fn new_from_store(
+        run_id: &str,
+        created: u64,
+        app_hash: &str,
+        config: &RunConfig,
+        traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)>,
+    ) -> Self {
+        Run {
+            run_id: run_id.to_string(),
+            created,
+            app_hash: app_hash.to_string(),
+            config: config.clone(),
+            traces,
         }
     }
 
@@ -84,144 +103,147 @@ impl Run {
         &self.config
     }
 
-    pub async fn store(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let runs_dir = root_path.join(".runs");
+    pub async fn store(&self, store: &dyn Store) -> Result<()> {
+        store.store_run(self).await
+        // let root_path = utils::init_check().await?;
+        // let runs_dir = root_path.join(".runs");
 
-        assert!(runs_dir.is_dir().await);
-        let run_dir = runs_dir.join(&self.run_id);
-        assert!(!run_dir.exists().await);
+        // assert!(runs_dir.is_dir().await);
+        // let run_dir = runs_dir.join(&self.run_id);
+        // assert!(!run_dir.exists().await);
 
-        utils::action(&format!("Creating directory {}", run_dir.display()));
-        async_std::fs::create_dir_all(&run_dir).await?;
+        // utils::action(&format!("Creating directory {}", run_dir.display()));
+        // async_std::fs::create_dir_all(&run_dir).await?;
 
-        let config_path = run_dir.join("config.json");
-        utils::action(&format!("Writing run config in {}", config_path.display()));
-        {
-            let mut file = File::create(config_path).await?;
-            file.write_all(serde_json::to_string(&self.config)?.as_bytes())
-                .await?;
-            file.flush().await?;
-        }
+        // let config_path = run_dir.join("config.json");
+        // utils::action(&format!("Writing run config in {}", config_path.display()));
+        // {
+        //     let mut file = File::create(config_path).await?;
+        //     file.write_all(serde_json::to_string(&self.config)?.as_bytes())
+        //         .await?;
+        //     file.flush().await?;
+        // }
 
-        for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
-            let block_dir =
-                run_dir.join(format!("{}:{}:{}", block_idx, block_type.to_string(), name));
-            utils::action(&format!("Creating directory {}", block_dir.display()));
-            async_std::fs::create_dir_all(&block_dir).await?;
-            for (input_idx, executions) in block_execution.iter().enumerate() {
-                let executions_path = block_dir.join(format!("{}.json", input_idx));
-                {
-                    let mut file = File::create(executions_path).await?;
-                    file.write_all(serde_json::to_string(executions)?.as_bytes())
-                        .await?;
-                    file.flush().await?;
-                }
-            }
-        }
-        utils::done(&format!(
-            "Run `{}` for app version `{}` stored",
-            self.run_id, self.config.app_hash
-        ));
+        // for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
+        //     let block_dir =
+        //         run_dir.join(format!("{}:{}:{}", block_idx, block_type.to_string(), name));
+        //     utils::action(&format!("Creating directory {}", block_dir.display()));
+        //     async_std::fs::create_dir_all(&block_dir).await?;
+        //     for (input_idx, executions) in block_execution.iter().enumerate() {
+        //         let executions_path = block_dir.join(format!("{}.json", input_idx));
+        //         {
+        //             let mut file = File::create(executions_path).await?;
+        //             file.write_all(serde_json::to_string(executions)?.as_bytes())
+        //                 .await?;
+        //             file.flush().await?;
+        //         }
+        //     }
+        // }
+        // utils::done(&format!(
+        //     "Run `{}` for app version `{}` stored",
+        //     self.run_id, self.app_hash
+        // ));
 
-        Ok(())
+        // Ok(())
     }
 
-    pub async fn load(run_id: &str) -> Result<Self> {
-        let config = RunConfig::load(run_id).await?;
+    pub async fn load(run_id: &str, store: &dyn Store) -> Result<Self> {
+        store.load_run(run_id).await
+        // let config = RunConfig::load(run_id).await?;
 
-        let root_path = utils::init_check().await?;
-        let runs_dir = root_path.join(".runs");
+        // let root_path = utils::init_check().await?;
+        // let runs_dir = root_path.join(".runs");
 
-        assert!(runs_dir.is_dir().await);
-        let run_dir = runs_dir.join(run_id);
+        // assert!(runs_dir.is_dir().await);
+        // let run_dir = runs_dir.join(run_id);
 
-        if !run_dir.exists().await {
-            Err(anyhow!("Run `{}` does not exist", run_id))?;
-        }
+        // if !run_dir.exists().await {
+        //     Err(anyhow!("Run `{}` does not exist", run_id))?;
+        // }
 
-        let mut entries = async_std::fs::read_dir(run_dir.clone()).await?;
-        let mut blocks: Vec<(usize, BlockType, String)> = vec![];
-        while let Some(entry) = entries.next().await {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir().await {
-                lazy_static! {
-                    static ref RE: Regex =
-                        Regex::new(r"(\d+):([a-z0-9\._]+):([A-Z0-9_]+)").unwrap();
-                }
-                let captures = RE
-                    .captures(path.file_name().unwrap().to_str().unwrap())
-                    .unwrap();
-                blocks.push((
-                    captures.get(1).unwrap().as_str().parse::<usize>()?,
-                    captures.get(2).unwrap().as_str().parse::<BlockType>()?,
-                    captures.get(3).unwrap().as_str().to_string(),
-                ));
-            }
-        }
-        blocks.sort_by(|a, b| a.0.cmp(&b.0));
+        // let mut entries = async_std::fs::read_dir(run_dir.clone()).await?;
+        // let mut blocks: Vec<(usize, BlockType, String)> = vec![];
+        // while let Some(entry) = entries.next().await {
+        //     let entry = entry?;
+        //     let path = entry.path();
+        //     if path.is_dir().await {
+        //         lazy_static! {
+        //             static ref RE: Regex =
+        //                 Regex::new(r"(\d+):([a-z0-9\._]+):([A-Z0-9_]+)").unwrap();
+        //         }
+        //         let captures = RE
+        //             .captures(path.file_name().unwrap().to_str().unwrap())
+        //             .unwrap();
+        //         blocks.push((
+        //             captures.get(1).unwrap().as_str().parse::<usize>()?,
+        //             captures.get(2).unwrap().as_str().parse::<BlockType>()?,
+        //             captures.get(3).unwrap().as_str().to_string(),
+        //         ));
+        //     }
+        // }
+        // blocks.sort_by(|a, b| a.0.cmp(&b.0));
 
-        // println!("BLOCKS: {:?}", blocks);
+        // // println!("BLOCKS: {:?}", blocks);
 
-        let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
+        // let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
 
-        for (index, block_type, name) in blocks.iter() {
-            let block_dir = run_dir.join(format!("{}:{}:{}", index, block_type.to_string(), name));
-            let mut entries = async_std::fs::read_dir(block_dir).await?;
-            let mut executions: Vec<(usize, Vec<BlockExecution>)> = vec![];
-            while let Some(entry) = entries.next().await {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_file().await {
-                    lazy_static! {
-                        static ref RE: Regex = Regex::new(r"(\d+).json").unwrap();
-                    }
-                    match RE.captures(path.file_name().unwrap().to_str().unwrap()) {
-                        Some(captures) => {
-                            let input_idx = captures.get(1).unwrap().as_str().parse::<usize>()?;
-                            let data = async_std::fs::read_to_string(path).await?;
-                            executions.push((input_idx, serde_json::from_str(&data)?));
-                        }
-                        None => {}
-                    }
-                }
-            }
-            executions.sort_by(|a, b| a.0.cmp(&b.0));
+        // for (index, block_type, name) in blocks.iter() {
+        //     let block_dir = run_dir.join(format!("{}:{}:{}", index, block_type.to_string(), name));
+        //     let mut entries = async_std::fs::read_dir(block_dir).await?;
+        //     let mut executions: Vec<(usize, Vec<BlockExecution>)> = vec![];
+        //     while let Some(entry) = entries.next().await {
+        //         let entry = entry?;
+        //         let path = entry.path();
+        //         if path.is_file().await {
+        //             lazy_static! {
+        //                 static ref RE: Regex = Regex::new(r"(\d+).json").unwrap();
+        //             }
+        //             match RE.captures(path.file_name().unwrap().to_str().unwrap()) {
+        //                 Some(captures) => {
+        //                     let input_idx = captures.get(1).unwrap().as_str().parse::<usize>()?;
+        //                     let data = async_std::fs::read_to_string(path).await?;
+        //                     executions.push((input_idx, serde_json::from_str(&data)?));
+        //                 }
+        //                 None => {}
+        //             }
+        //         }
+        //     }
+        //     executions.sort_by(|a, b| a.0.cmp(&b.0));
 
-            traces.push((
-                (block_type.clone(), name.clone()),
-                executions.into_iter().map(|(_, v)| v).collect(),
-            ));
-        }
+        //     traces.push((
+        //         (block_type.clone(), name.clone()),
+        //         executions.into_iter().map(|(_, v)| v).collect(),
+        //     ));
+        // }
 
-        Ok(Run {
-            run_id: run_id.to_string(),
-            config,
-            traces,
-        })
+        // Ok(Run {
+        //     run_id: run_id.to_string(),
+        //     config,
+        //     traces,
+        // })
     }
 }
 
-pub async fn all_runs() -> Result<Vec<(String, RunConfig)>> {
-    let root_path = utils::init_check().await?;
-    let runs_dir = root_path.join(".runs");
+pub async fn all_runs(store: &dyn Store) -> Result<Vec<(String, u64, String, RunConfig)>> {
+    store.all_runs().await
+    // let root_path = utils::init_check().await?;
+    // let runs_dir = root_path.join(".runs");
 
-    let mut entries = async_std::fs::read_dir(runs_dir).await?;
-    let mut runs: Vec<(String, RunConfig)> = vec![];
-    while let Some(entry) = entries.next().await {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir().await {
-            let run_id = path.file_name().unwrap().to_str().unwrap();
-            let config = RunConfig::load(run_id).await?;
-            runs.push((run_id.to_string(), config));
-        }
-    }
+    // let mut entries = async_std::fs::read_dir(runs_dir).await?;
+    // let mut runs: Vec<(String, RunConfig)> = vec![];
+    // while let Some(entry) = entries.next().await {
+    //     let entry = entry?;
+    //     let path = entry.path();
+    //     if path.is_dir().await {
+    //         let run_id = path.file_name().unwrap().to_str().unwrap();
+    //         let config = RunConfig::load(run_id).await?;
+    //         runs.push((run_id.to_string(), config));
+    //     }
+    // }
 
-    runs.sort_by(|a, b| b.1.start_time.cmp(&a.1.start_time));
+    // runs.sort_by(|a, b| b.1.created.cmp(&a.1.created));
 
-    Ok(runs)
+    // Ok(runs)
 }
 
 pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
@@ -285,10 +307,10 @@ pub async fn cmd_list() -> Result<()> {
 
     runs.iter().for_each(|(run_id, config)| {
         utils::info(&format!(
-            "Run: {} app_hash={} start_time={}",
+            "Run: {} app_hash={} created={}",
             run_id,
             config.app_hash,
-            utils::utc_date_from(config.start_time),
+            utils::utc_date_from(config.created),
         ));
     });
     Ok(())

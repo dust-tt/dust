@@ -408,8 +408,6 @@ mod tests {
     fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
-                start_time: utils::now(),
-                app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(
@@ -442,8 +440,6 @@ mod tests {
     fn replace_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
-                start_time: utils::now(),
-                app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(

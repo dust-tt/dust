@@ -17,37 +17,40 @@ pub struct Dataset {
 impl Dataset {
     /// Creates a new Dataset object in memory from raw data (used by Store implementations when
     /// loading datasets).
-    pub fn new(dataset_id: &str, hash: &str, data: Vec<Value>) -> Self {
+    pub fn new_from_store(dataset_id: &str, hash: &str, data: Vec<Value>) -> Result<Self> {
         let mut keys: Option<HashSet<String>> = None;
         let mut hasher = blake3::Hasher::new();
 
-        data.iter().for_each(|d| {
-            match d.as_object() {
-                Some(obj) => {
-                    let record_keys: HashSet<String> = obj.keys().cloned().collect();
-                    if let Some(keys) = &keys {
-                        assert!(*keys != record_keys);
-                    } else {
-                        keys = Some(record_keys);
+        data.iter()
+            .map(|d| {
+                match d.as_object() {
+                    Some(obj) => {
+                        let record_keys: HashSet<String> = obj.keys().cloned().collect();
+                        if let Some(keys) = &keys {
+                            assert!(*keys != record_keys);
+                        } else {
+                            keys = Some(record_keys);
+                        }
                     }
-                }
-                None => unreachable!(),
-            };
+                    None => unreachable!(),
+                };
 
-            // Reserialize json to hash it.
-            hasher.update(serde_json::to_string(&d)?.as_bytes());
-        });
+                // Reserialize json to hash it.
+                hasher.update(serde_json::to_string(&d)?.as_bytes());
+                Ok(())
+            })
+            .collect::<Result<_>>()?;
+
         let recomputed_hash = format!("{}", hasher.finalize().to_hex());
-
         assert!(recomputed_hash == hash);
         assert!(keys.is_some());
 
-        Dataset {
+        Ok(Dataset {
             dataset_id: dataset_id.to_string(),
             hash: hash.to_string(),
             keys: keys.unwrap(),
             data,
-        }
+        })
     }
 
     pub fn len(&self) -> usize {

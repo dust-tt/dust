@@ -151,42 +151,17 @@ impl App {
         })
     }
 
-    pub async fn register_version(&self) -> Result<()> {
+    // TODO(spolu): move to cmd
+    pub async fn register_version(&self, store: &dyn Store) -> Result<()> {
         let root_path = utils::init_check().await?;
         let spec_path = root_path.join("index.dust");
-        let versions_dir = root_path.join(".versions");
+        let spec_data = async_std::fs::read_to_string(spec_path).await?;
 
-        assert!(versions_dir.is_dir().await);
-
-        let version_path = versions_dir.join(&self.hash);
-        if !version_path.exists().await {
-            utils::action(&format!(
-                "Copying latest app's index.dust to {}",
-                version_path.display()
-            ));
-            async_std::fs::copy(spec_path, version_path).await?;
-            utils::done(&format!(
-                "Registered new app version `{}` with {} blocks",
-                self.hash,
-                self.blocks.len(),
-            ));
-        } else {
-            utils::done(&format!("App version `{}` already registered", self.hash));
-        }
+        store.register_specification(&self.hash, &spec_data).await?;
 
         Ok(())
     }
 
-    pub async fn update_latest(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let versions_dir = root_path.join(".versions");
-        let latest_path = versions_dir.join("latest");
-
-        utils::action(&format!("Updating {}", latest_path.display()));
-        async_std::fs::write(latest_path, self.hash.as_bytes()).await?;
-
-        Ok(())
-    }
 
     pub async fn run(
         &self,
@@ -492,7 +467,6 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
     );
 
     app.register_version().await?;
-    app.update_latest().await?;
 
     match app
         .run(&d, &run_config, concurrency, llm_cache.clone())

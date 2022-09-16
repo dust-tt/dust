@@ -1,23 +1,27 @@
 use crate::dataset::Dataset;
+use crate::run::{Run, RunConfig};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use parking_lot::Mutex;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
+use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
 
 #[async_trait]
 pub trait Store {
+    async fn latest_dataset_hash(&self, dataset_id: &str) -> Result<Option<String>>;
     async fn register_dataset(&self, d: &Dataset) -> Result<()>;
-    async fn latest_dataset_hash(&self, dataset_id: &str) -> Result<String>;
     async fn load_dataset(&self, dataset_id: &str, hash: &str) -> Result<Dataset>;
 
-    async fn latest_specification_hash(&self) -> Result<String>;
-    async fn specification_exists(&self, hash: &str) -> Result<bool>;
-    async fn update_latest_specification(&self, hash: &str) -> Result<()>;
+    async fn latest_specification_hash(&self) -> Result<Option<String>>;
     async fn register_specification(&self, hash: &str, spec: &str) -> Result<()>;
 
-    async fn latest_run(&self) -> Result<String>;
+    async fn latest_run_id(&self) -> Result<Option<String>>;
+    /// Returns (run_id, created, app_hash, run_config)
+    async fn all_runs(&self) -> Result<Vec<(String, u64, String, RunConfig)>>;
+    async fn store_run(&self, run: &Run) -> Result<()>;
+    async fn load_run(&self, run_id: &str) -> Result<Run>;
 }
 
 pub struct SQLiteStore {
@@ -30,14 +34,6 @@ impl SQLiteStore {
         tokio::task::spawn_blocking(move || {
             let c = c.lock();
             let tables = vec![
-                "-- datasets: { $dataset_id : { $latest } }
-                 -- specifications: { $latest }
-                 -- runs: { $latest }
-                 CREATE TABLE IF NOT EXISTS globals (
-                    id   INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    json BLOB NOT NULL
-                 );",
                 "-- app specifications
                  CREATE TABLE IF NOT EXISTS specifications (
                     id            INTEGER PRIMARY KEY,
@@ -71,6 +67,7 @@ impl SQLiteStore {
                     id          INTEGER PRIMARY KEY,
                     created     INTEGER NOT NULL,
                     run_id      TEXT NOT NULL,
+                    app_hash    TEXT NOT NULL,
                     config_json BLOB NOT NULL
                  );",
                 "-- block executions
@@ -94,18 +91,20 @@ impl SQLiteStore {
             ];
             for t in tables {
                 match c.execute(t, ()) {
-                    Err(e) => Err(anyhow!("SQLite error: {}", e))?,
+                    Err(e) => Err(anyhow!("SQLiteStore error: {}", e))?,
                     Ok(_) => {}
                 }
             }
 
             let indices = vec![
                 "CREATE UNIQUE INDEX IF NOT EXISTS
-                 idx_specifications_hash ON specifications (hash);",
+                 idx_specifications_created ON specifications (created);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
-                 idx_datasets_hash ON datasets (hash);",
+                 idx_datasets_dataset_id_created ON datasets (dataset_id, created);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
                  idx_runs_id ON runs (run_id);",
+                "CREATE UNIQUE INDEX IF NOT EXISTS
+                 idx_runs_created ON runs (created);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
                  idx_block_executions_hash ON block_executions (hash);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
@@ -117,7 +116,7 @@ impl SQLiteStore {
             ];
             for i in indices {
                 match c.execute(i, ()) {
-                    Err(e) => Err(anyhow!("SQLite error: {}", e))?,
+                    Err(e) => Err(anyhow!("SQLiteStore error: {}", e))?,
                     Ok(_) => {}
                 }
             }
@@ -137,5 +136,102 @@ impl SQLiteStore {
         Ok(SQLiteStore {
             conn: Arc::new(Mutex::new(Connection::open(sqlite_path)?)),
         })
+    }
+}
+
+#[async_trait]
+impl Store for SQLiteStore {
+    async fn latest_dataset_hash(&self, dataset_id: &str) -> Result<Option<String>> {
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let c = c.lock();
+            match c.query_row(
+                "SELECT hash FROM datasets WHERE dataset_id = ?1 ORDER BY created DESC LIMIT 1",
+                params![dataset_id],
+                |row| row.get(0),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                    _ => Err(anyhow!("SQLiteStore error: {}", e))?,
+                },
+                Ok(hash) => Ok(Some(hash)),
+            }
+        })
+        .await?
+    }
+    // async fn register_dataset(&self, d: &Dataset) -> Result<()>;
+    // async fn load_dataset(&self, dataset_id: &str, hash: &str) -> Result<Dataset>;
+
+    async fn latest_specification_hash(&self) -> Result<Option<String>> {
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let c = c.lock();
+            match c.query_row(
+                "SELECT hash FROM specifications ORDER BY created DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                    _ => Err(anyhow!("SQLiteStore error: {}", e))?,
+                },
+                Ok(hash) => Ok(Some(hash)),
+            }
+        })
+        .await?
+    }
+    // async fn register_specification(&self, hash: &str, spec: &str) -> Result<()>;
+
+    async fn latest_run_id(&self) -> Result<Option<String>> {
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let c = c.lock();
+            match c.query_row(
+                "SELECT run_id FROM runs ORDER BY created DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                    _ => Err(anyhow!("SQLiteStore error: {}", e))?,
+                },
+                Ok(run_id) => Ok(Some(run_id)),
+            }
+        })
+        .await?
+
+    }
+    // /// Returns (run_id, created, app_hash, run_config)
+    // async fn all_runs(&self) -> Result<Vec<(String, u64, String, RunConfig)>>;
+    // async fn store_run(&self, run: &Run) -> Result<()>;
+    // async fn load_run(&self, run_id: &str) -> Result<Run>;
+}
+
+
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn sqlite_store_latest_dataset_hash() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        let r = store.latest_dataset_hash("foo").await?;
+        assert!(r.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn sqlite_store_latest_specification_hash() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        let r = store.latest_specification_hash().await?;
+        assert!(r.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn sqlite_store_latest_run_id() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        let r = store.latest_run_id().await?;
+        assert!(r.is_none());
+        Ok(())
     }
 }
