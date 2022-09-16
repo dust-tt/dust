@@ -1,8 +1,8 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
-use crate::store::Store;
 use crate::dataset::Dataset;
 use crate::providers::llm::LLMCache;
-use crate::run::{Run, RunConfig, BlockExecution};
+use crate::run::{BlockExecution, Run, RunConfig};
+use crate::store::{SQLiteStore, Store};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
@@ -161,7 +161,6 @@ impl App {
 
         Ok(())
     }
-
 
     pub async fn run(
         &self,
@@ -436,8 +435,6 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
         match config_json {
             Value::Object(blocks) => RunConfig {
-                start_time: utils::now(),
-                app_hash: app.hash.clone(),
                 blocks: blocks.into_iter().collect::<HashMap<_, _>>(),
             },
             _ => Err(anyhow!(
@@ -453,7 +450,10 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
     let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
 
-    let d = Dataset::from_latest(dataset_id).await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+
+    let d = Dataset::from_latest(&store, dataset_id).await?;
     if d.len() == 0 {
         Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
     }

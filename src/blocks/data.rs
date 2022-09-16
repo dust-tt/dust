@@ -61,8 +61,9 @@ impl Block for Data {
     }
 
     async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
-        let d = dataset::Dataset::from_hash(self.dataset_id.as_str(), self.hash.as_str()).await?;
-        Ok(d.data_as_value())
+        unimplemented!()
+        // let d = dataset::Dataset::from_hash(self.dataset_id.as_str(), self.hash.as_str()).await?;
+        // Ok(d.data_as_value())
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

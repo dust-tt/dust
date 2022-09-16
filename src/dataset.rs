@@ -1,4 +1,4 @@
-use crate::store::Store;
+use crate::store::{SQLiteStore, Store};
 use crate::utils;
 use anyhow::Result;
 use async_fs::File;
@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::{collections::HashSet, slice::Iter};
 
 pub struct Dataset {
+    created: u64,
     dataset_id: String,
     hash: String,
     keys: HashSet<String>,
@@ -17,7 +18,12 @@ pub struct Dataset {
 impl Dataset {
     /// Creates a new Dataset object in memory from raw data (used by Store implementations when
     /// loading datasets).
-    pub fn new_from_store(dataset_id: &str, hash: &str, data: Vec<Value>) -> Result<Self> {
+    pub fn new_from_store(
+        created: u64,
+        dataset_id: &str,
+        hash: &str,
+        data: Vec<Value>,
+    ) -> Result<Self> {
         let mut keys: Option<HashSet<String>> = None;
         let mut hasher = blake3::Hasher::new();
 
@@ -46,6 +52,7 @@ impl Dataset {
         assert!(keys.is_some());
 
         Ok(Dataset {
+            created,
             dataset_id: dataset_id.to_string(),
             hash: hash.to_string(),
             keys: keys.unwrap(),
@@ -53,15 +60,11 @@ impl Dataset {
         })
     }
 
-    pub fn len(&self) -> usize {
-        self.data.len()
+    pub fn created(&self) -> u64 {
+        self.created
     }
 
-    pub fn iter(&self) -> Iter<Value> {
-        self.data.iter()
-    }
-
-    pub fn id(&self) -> &str {
+    pub fn dataset_id(&self) -> &str {
         &self.dataset_id
     }
 
@@ -69,13 +72,31 @@ impl Dataset {
         &self.hash
     }
 
-    pub async fn from_hash(store: &dyn Store, id: &str, hash: &str) -> Result<Self> {
-        store.load_dataset(id, hash).await
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 
-    pub async fn from_latest(store: &dyn Store, id: &str) -> Result<Self> {
-        let latest = store.latest_dataset_hash(id).await?;
-        store.load_dataset(id, &latest).await
+    pub fn keys(&self) -> Vec<String> {
+        self.keys.iter().map(|k| k.clone()).collect::<Vec<_>>()
+    }
+
+    pub fn iter(&self) -> Iter<Value> {
+        self.data.iter()
+    }
+
+    pub async fn from_hash(
+        store: &dyn Store,
+        dataset_id: &str,
+        hash: &str,
+    ) -> Result<Option<Self>> {
+        store.load_dataset(dataset_id, hash).await
+    }
+
+    pub async fn from_latest(store: &dyn Store, dataset_id: &str) -> Result<Option<Self>> {
+        match store.latest_dataset_hash(dataset_id).await? {
+            Some(latest) => Ok(store.load_dataset(dataset_id, &latest).await?),
+            None => Ok(None),
+        }
     }
 
     pub async fn new_from_jsonl(id: &str, jsonl_path: &str) -> Result<Self> {
@@ -131,25 +152,12 @@ impl Dataset {
         let hash = format!("{}", hasher.finalize().to_hex());
 
         Ok(Dataset {
+            created: utils::now(),
             dataset_id: String::from(id),
             hash,
             keys: keys.unwrap(),
             data,
         })
-    }
-
-    pub async fn register(&self, store: &dyn Store) -> Result<()> {
-        store.register_dataset(self);
-
-        utils::done(&format!(
-            "Registered dataset `{}` version ({}) with {} records (record keys: {:?})",
-            self.dataset_id,
-            self.hash,
-            self.data.len(),
-            self.keys.iter().collect::<Vec<_>>(),
-        ));
-
-        Ok(())
     }
 
     pub fn data_as_value(&self) -> Value {
@@ -162,6 +170,20 @@ impl Dataset {
 }
 
 pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+
     let d = Dataset::new_from_jsonl(dataset_id, jsonl_path).await?;
-    d.register().await
+    store.register_dataset(&d).await?;
+
+    utils::done(&format!(
+        "Registered dataset `{}` version ({}) with {} records (record keys: {:?})",
+        d.dataset_id(),
+        d.hash(),
+        d.len(),
+        d.keys(),
+    ));
+
+    Ok(())
 }

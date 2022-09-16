@@ -3,10 +3,6 @@ use crate::store::SQLiteStore;
 use crate::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
-use async_fs::File;
-use futures::prelude::*;
-use lazy_static::lazy_static;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty, Value};
 use std::collections::HashMap;
@@ -247,18 +243,22 @@ pub async fn all_runs(store: &dyn Store) -> Result<Vec<(String, u64, String, Run
 }
 
 pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+
     let mut run_id = run_id.to_string();
 
     if run_id == "latest" {
-        let runs = all_runs().await?;
-        if runs.len() == 0 {
-            Err(anyhow!("No run found"))?;
-        }
-        run_id = runs[0].0.clone();
+        run_id = match store.latest_run_id().await? {
+            Some(run_id) => run_id,
+            None => Err(anyhow!("No run found"))?,
+        };
         utils::info(&format!("Latest run is `{}`", run_id));
     }
 
-    let run = Run::load(run_id.as_str()).await?;
+    let run = store.load_run(&run_id).await?;
+
     let mut found = false;
     run.traces.iter().for_each(|((_, name), input_executions)| {
         if name == block {
@@ -299,19 +299,22 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
 }
 
 pub async fn cmd_list() -> Result<()> {
-    let s = SQLiteStore::new_in_memory()?;
-    s.init().await?;
-    println!("INIT DONE");
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
 
-    let runs = all_runs().await?;
+    store
+        .all_runs()
+        .await?
+        .iter()
+        .for_each(|(run_id, created, app_hash, config)| {
+            utils::info(&format!(
+                "Run: {} app_hash={} created={}",
+                run_id,
+                app_hash,
+                utils::utc_date_from(*created),
+            ));
+        });
 
-    runs.iter().for_each(|(run_id, config)| {
-        utils::info(&format!(
-            "Run: {} app_hash={} created={}",
-            run_id,
-            config.app_hash,
-            utils::utc_date_from(config.created),
-        ));
-    });
     Ok(())
 }
