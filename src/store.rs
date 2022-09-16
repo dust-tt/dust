@@ -60,7 +60,7 @@ impl SQLiteStore {
                     id                   INTEGER PRIMARY KEY,
                     dataset              INTEGER NOT NULL,
                     point                INTEGER NOT NULL,
-                    index                INTEGER NOT NULL,
+                    point_index          INTEGER NOT NULL,
                     FOREIGN KEY(dataset) REFERENCES datasets(id),
                     FOREIGN KEY(point)   REFERENCES datasets_points(id)
                  );",
@@ -76,7 +76,7 @@ impl SQLiteStore {
                  CREATE TABLE IF NOT EXISTS block_executions (
                     id        INTEGER PRIMARY KEY,
                     hash      TEXT NOT NULL,
-                    execution TEXT NOT NULL,
+                    execution TEXT NOT NULL
                  );",
                 "-- runs to block_executions association (avoid duplicaiton)
                  CREATE TABLE IF NOT EXISTS runs_joins (
@@ -196,7 +196,7 @@ impl Store for SQLiteStore {
 
             // Finally fill in the join values.
             let mut stmt = c.prepare_cached(
-                "INSERT INTO datasets_joins (dataset, point, index) VALUES (?, ?, ?)",
+                "INSERT INTO datasets_joins (dataset, point, point_index) VALUES (?, ?, ?)",
             )?;
             points_row_ids
                 .iter()
@@ -238,7 +238,7 @@ impl Store for SQLiteStore {
 
             // Retrieve data points through datasets_joins
             let mut stmt = c.prepare_cached(
-                "SELECT datasets_joins.index, datasets_points.json \
+                "SELECT datasets_joins.point_index, datasets_points.json \
                    FROM datasets_points \
                    INNER JOIN datasets_joins \
                    ON datasets_points.id = datasets_joins.point \
