@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// - `env` used
 /// - `value` returned by successful execution
 /// - `error` message returned by a failed execution
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockExecution {
     // pub env: Env,
     pub value: Option<Value>,
@@ -93,6 +93,18 @@ impl Run {
             config: config.clone(),
             traces,
         }
+    }
+
+    pub fn run_id(&self) -> &str {
+        &self.run_id
+    }
+
+    pub fn created(&self) -> u64 {
+        self.created
+    }
+
+    pub fn app_hash(&self) -> &str {
+        &&self.app_hash
     }
 
     pub fn config(&self) -> &RunConfig {

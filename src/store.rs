@@ -1,3 +1,4 @@
+use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::run::{Run, RunConfig};
 use crate::utils;
@@ -367,11 +368,141 @@ impl Store for SQLiteStore {
     }
 
     async fn all_runs(&self) -> Result<Vec<(String, u64, String, RunConfig)>> {
-        // Returns (run_id, created, app_hash, run_config)
-        unimplemented!()
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<Vec<(String, u64, String, RunConfig)>> {
+            let c = c.lock();
+            // Retrieve runs.
+            let mut stmt =
+                c.prepare_cached("SELECT run_id, created. app_hash, config_json FROM runs")?;
+            let mut rows = stmt.query([])?;
+            let mut runs: Vec<(String, u64, String, RunConfig)> = vec![];
+            while let Some(row) = rows.next()? {
+                let run_id: String = row.get(0)?;
+                let created: u64 = row.get(1)?;
+                let app_hash: String = row.get(2)?;
+                let config_data: String = row.get(3)?;
+                let config: RunConfig = serde_json::from_str(&config_data)?;
+
+                runs.push((run_id, created, app_hash, config));
+            }
+            runs.sort_by(|a, b| b.1.cmp(&a.1));
+
+            Ok(runs)
+        })
+        .await?
     }
+
     async fn store_run(&self, run: &Run) -> Result<()> {
-        unimplemented!()
+        // TODO(spolu): kind of ugly but we have to clone here.
+        let traces = run.traces.clone();
+
+        let c = self.conn.clone();
+        let ex_row_ids = tokio::task::spawn_blocking(
+            move || -> Result<Vec<(BlockType, String, usize, usize, i64)>> {
+                let mut c = c.lock();
+                let tx = c.transaction()?;
+                // Start by inserting block executions if we don't already have them.
+                let ex_row_ids = {
+                    let mut stmt = tx.prepare_cached(
+                        "INSERT INTO block_executions (hash, execution) VALUES (?, ?)",
+                    )?;
+                    traces
+                        .iter()
+                        .map(|((block_type, name), input_executions)| {
+                            Ok(input_executions
+                                .iter()
+                                .enumerate()
+                                .map(|(input_idx, map_executions)| {
+                                    map_executions
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(map_idx, execution)| {
+                                            let execution_json = serde_json::to_string(&execution)?;
+                                            let mut hasher = blake3::Hasher::new();
+                                            hasher.update(execution_json.as_bytes());
+                                            let hash = format!("{}", hasher.finalize().to_hex());
+                                            let row_id: Option<i64> = match tx.query_row(
+                                                "SELECT id FROM block_executions WHERE hash = ?1",
+                                                params![hash],
+                                                |row| Ok(row.get(0).unwrap()),
+                                            ) {
+                                                Err(e) => match e {
+                                                    rusqlite::Error::QueryReturnedNoRows => None,
+                                                    _ => Err(e)?,
+                                                },
+                                                Ok(row_id) => Some(row_id),
+                                            };
+                                            let row_id = match row_id {
+                                                Some(row_id) => row_id,
+                                                None => {
+                                                    stmt.insert(params![hash, execution_json])?
+                                                }
+                                            };
+                                            Ok((
+                                                block_type.clone(),
+                                                name.clone(),
+                                                input_idx,
+                                                map_idx,
+                                                row_id,
+                                            ))
+                                        })
+                                        .collect::<Result<Vec<_>>>()
+                                })
+                                .collect::<Result<Vec<_>>>()?
+                                .into_iter()
+                                .flatten()
+                                .collect::<Vec<_>>())
+                        })
+                        .collect::<Result<Vec<_>>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
+                };
+                tx.commit()?;
+                Ok(ex_row_ids)
+            },
+        )
+        .await??;
+
+        let run_id = run.run_id().to_string();
+        let created = run.created();
+        let app_hash = run.app_hash().to_string();
+        let run_config = run.config().clone();
+        let c = self.conn.clone();
+        let row_id = tokio::task::spawn_blocking(move || -> Result<(i64)> {
+            let c = c.lock();
+            // Create run.
+            let config_data = serde_json::to_string(&run_config)?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO runs (created, run_id, app_hash, config_data) VALUES (?, ?, ?)",
+            )?;
+            let row_id = stmt.insert(params![created, run_id, app_hash, config_data])?;
+            Ok(row_id)
+        })
+        .await??;
+
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut c = c.lock();
+            // Finally fill in the join values.
+            let tx = c.transaction()?;
+            {
+                let mut stmt = tx.prepare_cached(
+                    "INSERT INTO runs_joins (run, block, input_idx, map_idx, block_execution) \
+                     VALUES (?, ?, ?)",
+                )?;
+                ex_row_ids
+                    .iter()
+                    .map(|(_, block, input_idx, map_idx, ex_row_id)| {
+                        stmt.execute(params![row_id, block, input_idx, map_idx, ex_row_id])?;
+                        Ok(())
+                    })
+                    .collect::<Result<_>>()?;
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
     }
     async fn load_run(&self, run_id: &str) -> Result<Run> {
         unimplemented!()
