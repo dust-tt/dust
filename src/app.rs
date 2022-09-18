@@ -258,8 +258,9 @@ impl App {
             )
             .map(|(input_idx, map_idx, name, e)| {
                 // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
-                // that calls into the Block#[serde(skip_serializing)] trait's `clone_box` implemented on each Block. This
-                // allows cloning the Block (as a Trait) to use from parallel threads!
+                // that calls into the Block#[serde(skip_serializing)] trait's `clone_box`
+                // implemented on each Block. This allows cloning the Block (as a Trait) to use from
+                // parallel threads!
                 let b = block.clone();
                 tokio::spawn(async move {
                     match b.execute(&name, &e).await {

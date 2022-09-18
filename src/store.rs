@@ -23,8 +23,17 @@ pub trait Store {
     async fn all_runs(&self) -> Result<Vec<(String, u64, String, RunConfig)>>;
     async fn store_run(&self, run: &Run) -> Result<()>;
     async fn load_run(&self, run_id: &str) -> Result<Run>;
+
+    fn clone_box(&self) -> Box<dyn Store + Sync + Send>;
 }
 
+impl Clone for Box<dyn Store + Sync + Send> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone)]
 pub struct SQLiteStore {
     conn: Arc<Mutex<Connection>>,
 }
@@ -171,42 +180,75 @@ impl Store for SQLiteStore {
         let data = d.iter().map(|v| v.clone()).collect::<Vec<_>>();
 
         let c = self.conn.clone();
-        tokio::task::spawn_blocking(move || -> Result<()> {
-            let c = c.lock();
+        let pt_row_ids = tokio::task::spawn_blocking(move || -> Result<Vec<i64>> {
+            let mut c = c.lock();
+            let tx = c.transaction()?;
             // Start by inserting values if we don't already have them.
-            let mut stmt = c.prepare_cached(
-                "INSERT OR REPLACE INTO datasets_points (hash, json) VALUES (?, ?)",
-            )?;
-            let points_row_ids = data
-                .iter()
-                .map(|v| {
-                    let mut hasher = blake3::Hasher::new();
-                    hasher.update(serde_json::to_string(&v)?.as_bytes());
-                    let hash = format!("{}", hasher.finalize().to_hex());
-                    let row_id = stmt.insert(params![hash, v])?;
-                    Ok(row_id)
-                })
-                .collect::<Result<Vec<_>>>()?;
+            let pt_row_ids = {
+                let mut stmt =
+                    tx.prepare_cached("INSERT INTO datasets_points (hash, json) VALUES (?, ?)")?;
+                data.iter()
+                    .map(|v| {
+                        let mut hasher = blake3::Hasher::new();
+                        hasher.update(serde_json::to_string(&v)?.as_bytes());
+                        let hash = format!("{}", hasher.finalize().to_hex());
+                        let row_id: Option<i64> = match tx.query_row(
+                            "SELECT id FROM datasets_points WHERE hash = ?1",
+                            params![hash],
+                            |row| Ok(row.get(0).unwrap()),
+                        ) {
+                            Err(e) => match e {
+                                rusqlite::Error::QueryReturnedNoRows => None,
+                                _ => Err(e)?,
+                            },
+                            Ok(row_id) => Some(row_id),
+                        };
+                        match row_id {
+                            Some(row_id) => Ok(row_id),
+                            None => {
+                                let row_id = stmt.insert(params![hash, v])?;
+                                Ok(row_id)
+                            }
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>()?
+            };
+            tx.commit()?;
+            Ok(pt_row_ids)
+        })
+        .await??;
 
+        let c = self.conn.clone();
+        let row_id = tokio::task::spawn_blocking(move || -> Result<(i64)> {
+            let c = c.lock();
             // Create dataset.
             let mut stmt = c.prepare_cached(
                 "INSERT INTO datasets (created, dataset_id, hash) VALUES (?, ?, ?)",
             )?;
             let row_id = stmt.insert(params![dataset_created, dataset_id, dataset_hash])?;
+            Ok(row_id)
+        })
+        .await??;
 
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut c = c.lock();
             // Finally fill in the join values.
-            let mut stmt = c.prepare_cached(
-                "INSERT INTO datasets_joins (dataset, point, point_index) VALUES (?, ?, ?)",
-            )?;
-            points_row_ids
-                .iter()
-                .enumerate()
-                .map(|(idx, pt_row_id)| {
-                    stmt.execute(params![row_id, pt_row_id, idx])?;
-                    Ok(())
-                })
-                .collect::<Result<_>>()?;
-
+            let tx = c.transaction()?;
+            {
+                let mut stmt = tx.prepare_cached(
+                    "INSERT INTO datasets_joins (dataset, point, point_index) VALUES (?, ?, ?)",
+                )?;
+                pt_row_ids
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, pt_row_id)| {
+                        stmt.execute(params![row_id, pt_row_id, idx])?;
+                        Ok(())
+                    })
+                    .collect::<Result<_>>()?;
+            }
+            tx.commit()?;
             Ok(())
         })
         .await?
@@ -333,6 +375,10 @@ impl Store for SQLiteStore {
     }
     async fn load_run(&self, run_id: &str) -> Result<Run> {
         unimplemented!()
+    }
+
+    fn clone_box(&self) -> Box<dyn Store + Sync + Send> {
+        Box::new(self.clone())
     }
 }
 
