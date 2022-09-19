@@ -11,6 +11,8 @@ Generative Models App Specification
 
 See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 
-## Questions?
+## Questions / Help
+
+Dust is still full of dragons. Please don't hestiate to ping me when you see errors!
 
 https://discord.gg/8NJR3zQU5X
