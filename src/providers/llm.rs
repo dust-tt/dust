@@ -1,13 +1,9 @@
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
-use async_fs::File;
 use async_trait::async_trait;
-use futures::prelude::*;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -18,6 +14,7 @@ pub struct Tokens {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMGeneration {
+    pub created: u64,
     pub provider: String,
     pub model: String,
     pub completions: Vec<Tokens>,
@@ -87,6 +84,10 @@ impl LLMRequest {
         }
     }
 
+    pub fn hash(&self) -> &str {
+        &self.hash
+    }
+
     pub async fn execute(&self) -> Result<LLMGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize().await?;
@@ -142,14 +143,15 @@ impl LLMRequest {
         }
     }
 
-    pub async fn execute_with_cache(&self, cache: Arc<RwLock<LLMCache>>) -> Result<LLMGeneration> {
+    pub async fn execute_with_cache(
+        &self,
+        store: Box<dyn Store + Send + Sync>,
+    ) -> Result<LLMGeneration> {
         let generation = {
-            match cache.read().get(self) {
-                Some(generations) => {
-                    assert!(generations.len() > 0);
-                    Some(generations.last().unwrap().clone())
-                }
-                None => None,
+            let mut generations = store.llm_cache_get(self).await?;
+            match generations.len() {
+                0 => None,
+                _ => Some(generations.remove(0)),
             }
         };
 
@@ -157,105 +159,9 @@ impl LLMRequest {
             Some(generation) => Ok(generation),
             None => {
                 let generation = self.execute().await?;
-                cache.write().store(self, &generation)?;
+                store.llm_cache_store(self, &generation).await?;
                 Ok(generation)
             }
         }
-    }
-}
-
-#[derive(Serialize, PartialEq, Deserialize)]
-pub struct LLMCacheEntry {
-    pub request: LLMRequest,
-    pub generation: LLMGeneration,
-}
-
-pub struct LLMCache {
-    data: HashMap<String, (LLMRequest, Vec<LLMGeneration>)>,
-}
-
-impl LLMCache {
-    pub fn new() -> Self {
-        Self {
-            data: HashMap::new(),
-        }
-    }
-
-    pub async fn warm_up() -> Result<Self> {
-        let root_path = utils::init_check().await?;
-        let cache_path = root_path.join(".cache").join("llm.jsonl");
-
-        let mut data: HashMap<String, (LLMRequest, Vec<LLMGeneration>)> = HashMap::new();
-
-        if cache_path.exists().await {
-            let file = File::open(cache_path).await?;
-            let reader = futures::io::BufReader::new(file);
-
-            let mut count = 0_usize;
-
-            reader
-                .lines()
-                .map(|line| {
-                    let line = line.unwrap();
-                    let entry: LLMCacheEntry = serde_json::from_str(&line)?;
-                    Ok(entry)
-                })
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .for_each(|entry| {
-                    count += 1;
-                    data.entry(entry.request.hash.clone())
-                        .or_insert((entry.request, Vec::new()))
-                        .1
-                        .push(entry.generation);
-                });
-
-            utils::info(format!("Retrieved {} cached LLM records.", count).as_str());
-        }
-
-        Ok(LLMCache { data })
-    }
-
-    pub async fn flush(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let cache_path = root_path.join(".cache").join("llm.jsonl");
-
-        let mut file = File::create(cache_path).await?;
-        let mut count = 0;
-        for (_, (request, generations)) in self.data.iter() {
-            for generation in generations {
-                count += 1;
-                let entry = LLMCacheEntry {
-                    request: request.clone(),
-                    generation: generation.clone(),
-                };
-                let line = serde_json::to_string(&entry)?;
-                file.write_all(line.as_bytes()).await?;
-                file.write_all(b"\n").await?;
-            }
-        }
-
-        utils::action(format!("Flushed {} cached LLM records.", count).as_str());
-
-        Ok(())
-    }
-
-    pub fn get(&self, request: &LLMRequest) -> Option<&Vec<LLMGeneration>> {
-        match self.data.get(&request.hash) {
-            Some((_, generations)) => Some(generations),
-            None => None,
-        }
-    }
-
-    pub fn store(&mut self, request: &LLMRequest, generation: &LLMGeneration) -> Result<()> {
-        self.data
-            .entry(request.hash.clone())
-            .or_insert((request.clone(), Vec::new()))
-            .1
-            .push(generation.clone());
-        Ok(())
     }
 }

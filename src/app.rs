@@ -1,18 +1,16 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
-use crate::data::Data;
-use crate::providers::llm::LLMCache;
-use crate::run::{Run, RunConfig, BlockExecution};
+use crate::dataset::Dataset;
+use crate::run::{BlockExecution, Run, RunConfig};
+use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
-use parking_lot::RwLock;
 use pest::Parser;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -150,51 +148,14 @@ impl App {
         })
     }
 
-    pub async fn register_version(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let spec_path = root_path.join("index.dust");
-        let versions_dir = root_path.join(".versions");
-
-        assert!(versions_dir.is_dir().await);
-
-        let version_path = versions_dir.join(&self.hash);
-        if !version_path.exists().await {
-            utils::action(&format!(
-                "Copying latest app's index.dust to {}",
-                version_path.display()
-            ));
-            async_std::fs::copy(spec_path, version_path).await?;
-            utils::done(&format!(
-                "Registered new app version `{}` with {} blocks",
-                self.hash,
-                self.blocks.len(),
-            ));
-        } else {
-            utils::done(&format!("App version `{}` already registered", self.hash));
-        }
-
-        Ok(())
-    }
-
-    pub async fn update_latest(&self) -> Result<()> {
-        let root_path = utils::init_check().await?;
-        let versions_dir = root_path.join(".versions");
-        let latest_path = versions_dir.join("latest");
-
-        utils::action(&format!("Updating {}", latest_path.display()));
-        async_std::fs::write(latest_path, self.hash.as_bytes()).await?;
-
-        Ok(())
-    }
-
     pub async fn run(
         &self,
-        data: &Data,
+        data: &Dataset,
         run_config: &RunConfig,
         concurrency: usize,
-        llm_cache: Arc<RwLock<LLMCache>>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
-        let mut run = Run::new(run_config.clone());
+        let mut run = Run::new(&self.hash, run_config.clone());
 
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
@@ -206,7 +167,7 @@ impl App {
                 index: 0,
             },
             map: None,
-            llm_cache: llm_cache.clone(),
+            store: store.clone(),
         }]];
 
         let mut current_map: Option<String> = None;
@@ -293,8 +254,9 @@ impl App {
             )
             .map(|(input_idx, map_idx, name, e)| {
                 // `block.clone()` calls the implementation of Clone on Box<dyn Block + ...>
-                // that calls into the Block#[serde(skip_serializing)] trait's `clone_box` implemented on each Block. This
-                // allows cloning the Block (as a Trait) to use from parallel threads!
+                // that calls into the Block#[serde(skip_serializing)] trait's `clone_box`
+                // implemented on each Block. This allows cloning the Block (as a Trait) to use from
+                // parallel threads!
                 let b = block.clone();
                 tokio::spawn(async move {
                     match b.execute(&name, &e).await {
@@ -371,7 +333,13 @@ impl App {
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                run.store().await?;
+                store.as_ref().store_run(&run).await?;
+                utils::done(&format!(
+                    "Run `{}` for app version `{}` stored",
+                    run.run_id(),
+                    run.app_hash(),
+                ));
+
                 Err(anyhow!(
                     "Run interrupted due to failed execution of block `{} {}` with {} error(s)",
                     block.block_type().to_string(),
@@ -437,13 +405,18 @@ impl App {
             }
         }
 
-        run.store().await?;
+        store.as_ref().store_run(&run).await?;
+        utils::done(&format!(
+            "Run `{}` for app version `{}` stored",
+            run.run_id(),
+            run.app_hash(),
+        ));
 
         Ok(())
     }
 }
 
-pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
+pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
     let root_path = utils::init_check().await?;
     let spec_path = root_path.join("index.dust");
     let spec_data = async_std::fs::read_to_string(spec_path).await?;
@@ -460,8 +433,6 @@ pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Re
 
         match config_json {
             Value::Object(blocks) => RunConfig {
-                start_time: utils::now(),
-                app_hash: app.hash.clone(),
                 blocks: blocks.into_iter().collect::<HashMap<_, _>>(),
             },
             _ => Err(anyhow!(
@@ -475,36 +446,27 @@ pub async fn cmd_run(data_id: &str, config_path: &str, concurrency: usize) -> Re
         }
     };
 
-    let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
 
-    let d = Data::from_latest(data_id).await?;
+    let d = match store.latest_dataset_hash(dataset_id).await? {
+        Some(latest) => store.load_dataset(dataset_id, &latest).await?.unwrap(),
+        None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
+    };
+
     if d.len() == 0 {
-        Err(anyhow!("Retrieved 0 records from `{data_id}`"))?
+        Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
     }
     utils::info(
         format!(
             "Retrieved {} records from latest data version for `{}`.",
             d.len(),
-            data_id
+            dataset_id
         )
         .as_str(),
     );
 
-    app.register_version().await?;
-    app.update_latest().await?;
+    store.register_specification(&app.hash, &spec_data).await?;
 
-    match app
-        .run(&d, &run_config, concurrency, llm_cache.clone())
-        .await
-    {
-        Ok(()) => {
-            llm_cache.read().flush().await?;
-        }
-        Err(e) => {
-            llm_cache.read().flush().await?;
-            Err(e)?;
-        }
-    }
-
-    Ok(())
+    app.run(&d, &run_config, concurrency, Box::new(store)).await
 }

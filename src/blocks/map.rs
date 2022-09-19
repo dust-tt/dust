@@ -9,7 +9,6 @@ use serde_json::Value;
 pub struct Map {
     from: String,
     repeat: Option<usize>,
-    run_if: Option<String>,
 }
 
 impl Map {
@@ -20,7 +19,6 @@ impl Map {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut from: Option<String> = None;
         let mut repeat: Option<usize> = None;
-        let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -34,7 +32,6 @@ impl Map {
                                 "Invalid `repeat` in `map` block, expecting unsigned integer"
                             ))?,
                         },
-                        "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `map` block", key))?,
                     }
                 }
@@ -50,7 +47,6 @@ impl Map {
         Ok(Map {
             from: from.unwrap(),
             repeat,
-            run_if,
         })
     }
 }
@@ -61,19 +57,12 @@ impl Block for Map {
         BlockType::Map
     }
 
-    fn run_if(&self) -> Option<String> {
-        self.run_if.clone()
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("map".as_bytes());
         hasher.update(self.from.as_bytes());
         if let Some(repeat) = &self.repeat {
             hasher.update(repeat.to_string().as_bytes());
-        }
-        if let Some(run_if) = &self.run_if {
-            hasher.update(run_if.as_bytes());
         }
         format!("{}", hasher.finalize().to_hex())
     }

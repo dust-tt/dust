@@ -1,5 +1,5 @@
 data MATHD {
-  id: mathd_train
+  dataset_id: mathd_train
   hash: b71a4fbe7b2b7c28c33fb9bdc1293a0bd1a0c4eeb6a59a13170041c581408e3c
 }
 
@@ -34,7 +34,7 @@ _fun = (env) => {
 
 map LOOP {
   from: ROOT
-  repeat: 8
+  repeat: 4
 }
 
 code SHUFFLE {

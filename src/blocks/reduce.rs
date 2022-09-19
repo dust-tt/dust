@@ -35,10 +35,6 @@ impl Block for Reduce {
         BlockType::Reduce
     }
 
-    fn run_if(&self) -> Option<String> {
-        None
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("reduce".as_bytes());

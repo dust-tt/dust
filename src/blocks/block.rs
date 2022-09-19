@@ -1,4 +1,5 @@
 use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
+use crate::stores::store::Store;
 use crate::run::RunConfig;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -10,9 +11,6 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
-use crate::providers::llm::LLMCache;
-use parking_lot::RwLock;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -33,7 +31,7 @@ pub struct Env {
     pub input: InputState,
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
-    pub llm_cache: Arc<RwLock<LLMCache>>,
+    pub store: Box<dyn Store + Sync + Send>,
 }
 
 // pub enum Expectations {
@@ -82,8 +80,6 @@ impl FromStr for BlockType {
 #[async_trait]
 pub trait Block {
     fn block_type(&self) -> BlockType;
-
-    fn run_if(&self) -> Option<String>;
 
     fn inner_hash(&self) -> String;
 

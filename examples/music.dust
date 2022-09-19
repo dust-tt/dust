@@ -3,7 +3,7 @@ root ROOT {
 }
 
 data MUSIC_CLASSIFICATION_FEW_SHOT {
-  id: music_classification_few_shot
+  dataset_id: music_classification_few_shot
   hash: e2h23b
 }
 

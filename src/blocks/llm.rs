@@ -20,7 +20,6 @@ pub struct LLM {
     max_tokens: i32,
     temperature: f32,
     stop: Vec<String>,
-    run_if: Option<String>,
 }
 
 impl LLM {
@@ -32,7 +31,6 @@ impl LLM {
         let mut max_tokens: Option<i32> = None;
         let mut temperature: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
-        let mut run_if: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -62,7 +60,6 @@ impl LLM {
                             ))?,
                         },
                         "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
-                        "run_if" => run_if = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
                     }
                 }
@@ -86,7 +83,6 @@ impl LLM {
             max_tokens: max_tokens.unwrap(),
             temperature: temperature.unwrap(),
             stop,
-            run_if,
         })
     }
 
@@ -281,10 +277,6 @@ impl Block for LLM {
         BlockType::LLM
     }
 
-    fn run_if(&self) -> Option<String> {
-        self.run_if.clone()
-    }
-
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
         hasher.update("llm".as_bytes());
@@ -304,9 +296,6 @@ impl Block for LLM {
         hasher.update(self.temperature.to_string().as_bytes());
         for s in self.stop.iter() {
             hasher.update(s.as_bytes());
-        }
-        if let Some(run_if) = &self.run_if {
-            hasher.update(run_if.as_bytes());
         }
         format!("{}", hasher.finalize().to_hex())
     }
@@ -373,7 +362,7 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = request.execute_with_cache(env.llm_cache.clone()).await?;
+        let g = request.execute_with_cache(env.store.clone()).await?;
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {
@@ -395,12 +384,9 @@ impl Block for LLM {
 mod tests {
     use super::*;
     use crate::blocks::block::InputState;
-    use crate::providers::llm::LLMCache;
     use crate::run::RunConfig;
-    use crate::utils;
-    use parking_lot::RwLock;
+    use crate::stores::sqlite::SQLiteStore;
     use std::collections::HashMap;
-    use std::sync::Arc;
 
     #[test]
     fn find_variables() -> Result<()> {
@@ -419,8 +405,6 @@ mod tests {
     fn replace_few_shot_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
-                start_time: utils::now(),
-                app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(
@@ -436,7 +420,7 @@ mod tests {
                 index: 0,
             },
             map: None,
-            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
+            store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
@@ -453,8 +437,6 @@ mod tests {
     fn replace_prompt_variables() -> Result<()> {
         let env = Env {
             config: RunConfig {
-                start_time: utils::now(),
-                app_hash: "foo".to_string(),
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(
@@ -466,7 +448,7 @@ mod tests {
                 index: 0,
             },
             map: None,
-            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
+            store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
             LLM::replace_prompt_variables(

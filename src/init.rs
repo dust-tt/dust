@@ -1,11 +1,9 @@
-use crate::utils;
+use crate::{stores::sqlite::SQLiteStore, utils};
 use anyhow::Result;
 
-/// Initializing a Dust project consists in creating:
-///
-/// - a placeholder `index.dust` file with the content of `index.dust` in this file's directory.
-/// - a `data` directory (versioned data files).
-/// - a `versions` directory (all revisions).
+/// Initializing a Dust project. Consists in creating:
+/// - a placeholder `index.dust` file
+/// - a sqlite store `store.sqlite` file
 pub async fn cmd_init(target: &str) -> Result<()> {
     let target = &shellexpand::tilde(target).into_owned();
     let target = async_std::path::Path::new(target);
@@ -31,33 +29,20 @@ pub async fn cmd_init(target: &str) -> Result<()> {
         ))?;
     }
 
-    let dirs = vec![
-        target.join(".data"),
-        target.join(".versions"),
-        target.join(".runs"),
-        target.join(".cache"),
-    ];
-    for dir in dirs.clone() {
-        if dir.exists().await {
-            Err(anyhow::anyhow!("{} already exists", dir.display()))?;
-        }
-    }
+    let index_path = target.join("index.dust");
+    utils::action(&format!("Creating {}", index_path.display()));
+    async_std::fs::write(
+        &index_path,
+        "root ROOT {\
+           expected: {foo, bar}\
+         }",
+    )
+    .await?;
 
-    // TODO(spolu): probably won't work once packaged?
-    let index_path = async_std::path::Path::new(std::env!("CARGO_MANIFEST_DIR"))
-        .join(file!())
-        .parent()
-        .unwrap()
-        .join("index.dust");
-    let index_content = async_std::fs::read_to_string(&index_path).await?;
-
-    utils::action(&format!("Creating {}", target.join("index.dust").display()));
-    async_std::fs::write(target.join("index.dust"), index_content).await?;
-
-    for dir in dirs {
-        utils::action(&format!("Creating {}", dir.display()));
-        async_std::fs::create_dir(dir).await?;
-    }
+    let store_path = target.join("store.sqlite");
+    utils::action(&format!("Creating {}", store_path.display()));
+    let store = SQLiteStore::new(&store_path)?;
+    store.init().await?;
 
     utils::done(&format!("Initialized Dust project in {}", target.display()));
 

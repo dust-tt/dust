@@ -284,6 +284,7 @@ impl LLM for OpenAILLM {
             }
         }
         Ok(LLMGeneration {
+            created: utils::now(),
             provider: ProviderID::OpenAI.to_string(),
             model: self.id.clone(),
             completions: c
