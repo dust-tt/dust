@@ -11,9 +11,6 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
-use crate::providers::llm::LLMCache;
-use parking_lot::RwLock;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -33,8 +30,6 @@ pub struct Env {
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
-    #[serde(skip_serializing)]
-    pub llm_cache: Arc<RwLock<LLMCache>>,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
 }

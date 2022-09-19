@@ -1,6 +1,5 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
-use crate::providers::llm::LLMCache;
 use crate::run::{BlockExecution, Run, RunConfig};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
@@ -8,12 +7,10 @@ use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
-use parking_lot::RwLock;
 use pest::Parser;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -156,7 +153,6 @@ impl App {
         data: &Dataset,
         run_config: &RunConfig,
         concurrency: usize,
-        llm_cache: Arc<RwLock<LLMCache>>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
         let mut run = Run::new(&self.hash, run_config.clone());
@@ -171,7 +167,6 @@ impl App {
                 index: 0,
             },
             map: None,
-            llm_cache: llm_cache.clone(),
             store: store.clone(),
         }]];
 
@@ -451,8 +446,6 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
         }
     };
 
-    let llm_cache = Arc::new(RwLock::new(LLMCache::warm_up().await?));
-
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
 
@@ -475,25 +468,5 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
     store.register_specification(&app.hash, &spec_data).await?;
 
-    match app
-        .run(
-            &d,
-            &run_config,
-            concurrency,
-            llm_cache.clone(),
-            Box::new(store),
-        )
-        .await
-    {
-        Ok(()) => {
-            llm_cache.read().flush().await?;
-        }
-        Err(e) => {
-            // TODO(spolu): reactivate
-            // llm_cache.read().flush().await?;
-            Err(e)?;
-        }
-    }
-
-    Ok(())
+    app.run(&d, &run_config, concurrency, Box::new(store)).await
 }

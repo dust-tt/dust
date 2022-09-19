@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig};
 use crate::stores::store::Store;
 use crate::utils;
@@ -66,7 +67,7 @@ impl SQLiteStore {
                     hash      TEXT NOT NULL,
                     execution TEXT NOT NULL
                  );",
-                "-- runs to block_executions association (avoid duplicaiton)
+                "-- runs to block_executions association (avoid duplication)
                  CREATE TABLE IF NOT EXISTS runs_joins (
                     id                           INTEGER PRIMARY KEY,
                     run                          INTEGER NOT NULL,
@@ -78,6 +79,14 @@ impl SQLiteStore {
                     block_execution              INTEGER NOT NULL,
                     FOREIGN KEY(run)             REFERENCES runs(id),
                     FOREIGN KEY(block_execution) REFERENCES block_executions(id)
+                 );",
+                "-- LLM Cache (non unique hash index)
+                 CREATE TABLE IF NOT EXISTS llm_cache (
+                    id         INTEGER PRIMARY KEY,
+                    created    INTEGER NOT NULL,
+                    hash       TEXT NOT NULL,
+                    request    TEXT NOT NULL,
+                    generation TEXT NOT NULL
                  );",
             ];
             for t in tables {
@@ -104,6 +113,8 @@ impl SQLiteStore {
                  idx_datasets_joins ON datasets_joins (dataset, point);",
                 "CREATE INDEX IF NOT EXISTS
                  idx_runs_joins ON runs_joins (run, block_execution);",
+                "CREATE INDEX IF NOT EXISTS
+                 idx_llm_cache_hash ON llm_cache (hash);",
             ];
             for i in indices {
                 match c.execute(i, ()) {
@@ -187,7 +198,8 @@ impl Store for SQLiteStore {
                         match row_id {
                             Some(row_id) => Ok(row_id),
                             None => {
-                                let row_id = stmt.insert(params![hash, v])?;
+                                let value_json = serde_json::to_string(v)?;
+                                let row_id = stmt.insert(params![hash, value_json])?;
                                 Ok(row_id)
                             }
                         }
@@ -271,7 +283,8 @@ impl Store for SQLiteStore {
             let mut data: Vec<(usize, Value)> = vec![];
             while let Some(row) = rows.next()? {
                 let index: usize = row.get(0)?;
-                let value: Value = row.get(1)?;
+                let value_data: String = row.get(1)?;
+                let value: Value = serde_json::from_str(&value_data)?;
                 data.push((index, value));
             }
             data.sort_by(|a, b| a.0.cmp(&b.0));
@@ -642,6 +655,60 @@ impl Store for SQLiteStore {
                 &run_config,
                 traces,
             )))
+        })
+        .await?
+    }
+
+    async fn llm_cache_get(&self, request: &LLMRequest) -> Result<Vec<LLMGeneration>> {
+        let hash = request.hash().to_string();
+
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<Vec<LLMGeneration>> {
+            let c = c.lock();
+            // Retrieve generations.
+            let mut stmt =
+                c.prepare_cached("SELECT created, generation FROM llm_cache WHERE hash = ?1")?;
+            let mut rows = stmt.query(params![hash])?;
+            let mut generations: Vec<(u64, LLMGeneration)> = vec![];
+            while let Some(row) = rows.next()? {
+                let created: u64 = row.get(0)?;
+                let generation_data: String = row.get(1)?;
+                let generation: LLMGeneration = serde_json::from_str(&generation_data)?;
+                generations.push((created, generation));
+            }
+            // Latest first.
+            generations.sort_by(|a, b| b.0.cmp(&a.0));
+
+            Ok(generations.into_iter().map(|(_, g)| g).collect::<Vec<_>>())
+        })
+        .await?
+    }
+
+    async fn llm_cache_store(
+        &self,
+        request: &LLMRequest,
+        generation: &LLMGeneration,
+    ) -> Result<()> {
+        let request = request.clone();
+        let generation = generation.clone();
+
+        let c = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = c.lock();
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO llm_cache (created, hash, request, generation) VALUES (?, ?, ?, ?)",
+            )?;
+            let created = generation.created;
+            let request_data = serde_json::to_string(&request)?;
+            let generation_data = serde_json::to_string(&generation)?;
+            let _ = stmt.insert(params![
+                created,
+                request.hash().to_string(),
+                request_data,
+                generation_data
+            ])?;
+
+            Ok(())
         })
         .await?
     }

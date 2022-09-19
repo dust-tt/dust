@@ -362,7 +362,7 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = request.execute_with_cache(env.llm_cache.clone()).await?;
+        let g = request.execute_with_cache(env.store.clone()).await?;
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {
@@ -384,12 +384,9 @@ impl Block for LLM {
 mod tests {
     use super::*;
     use crate::blocks::block::InputState;
-    use crate::providers::llm::LLMCache;
     use crate::run::RunConfig;
     use crate::stores::sqlite::SQLiteStore;
-    use parking_lot::RwLock;
     use std::collections::HashMap;
-    use std::sync::Arc;
 
     #[test]
     fn find_variables() -> Result<()> {
@@ -423,7 +420,6 @@ mod tests {
                 index: 0,
             },
             map: None,
-            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
             store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
@@ -452,7 +448,6 @@ mod tests {
                 index: 0,
             },
             map: None,
-            llm_cache: Arc::new(RwLock::new(LLMCache::new())),
             store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
