@@ -2,7 +2,7 @@ use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapSt
 use crate::dataset::Dataset;
 use crate::providers::llm::LLMCache;
 use crate::run::{BlockExecution, Run, RunConfig};
-use crate::store::{SQLiteStore, Store};
+use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
@@ -157,7 +157,7 @@ impl App {
         run_config: &RunConfig,
         concurrency: usize,
         llm_cache: Arc<RwLock<LLMCache>>,
-        store: &dyn Store,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
         let mut run = Run::new(&self.hash, run_config.clone());
 
@@ -172,6 +172,7 @@ impl App {
             },
             map: None,
             llm_cache: llm_cache.clone(),
+            store: store.clone(),
         }]];
 
         let mut current_map: Option<String> = None;
@@ -337,7 +338,13 @@ impl App {
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                run.store(store).await?;
+                store.as_ref().store_run(&run).await?;
+                utils::done(&format!(
+                    "Run `{}` for app version `{}` stored",
+                    run.run_id(),
+                    run.app_hash(),
+                ));
+
                 Err(anyhow!(
                     "Run interrupted due to failed execution of block `{} {}` with {} error(s)",
                     block.block_type().to_string(),
@@ -403,7 +410,12 @@ impl App {
             }
         }
 
-        run.store(store).await?;
+        store.as_ref().store_run(&run).await?;
+        utils::done(&format!(
+            "Run `{}` for app version `{}` stored",
+            run.run_id(),
+            run.app_hash(),
+        ));
 
         Ok(())
     }
@@ -464,14 +476,21 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
     store.register_specification(&app.hash, &spec_data).await?;
 
     match app
-        .run(&d, &run_config, concurrency, llm_cache.clone(), &store)
+        .run(
+            &d,
+            &run_config,
+            concurrency,
+            llm_cache.clone(),
+            Box::new(store),
+        )
         .await
     {
         Ok(()) => {
             llm_cache.read().flush().await?;
         }
         Err(e) => {
-            llm_cache.read().flush().await?;
+            // TODO(spolu): reactivate
+            // llm_cache.read().flush().await?;
             Err(e)?;
         }
     }

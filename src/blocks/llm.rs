@@ -386,7 +386,7 @@ mod tests {
     use crate::blocks::block::InputState;
     use crate::providers::llm::LLMCache;
     use crate::run::RunConfig;
-    use crate::utils;
+    use crate::stores::sqlite::SQLiteStore;
     use parking_lot::RwLock;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -424,6 +424,7 @@ mod tests {
             },
             map: None,
             llm_cache: Arc::new(RwLock::new(LLMCache::new())),
+            store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
@@ -452,6 +453,7 @@ mod tests {
             },
             map: None,
             llm_cache: Arc::new(RwLock::new(LLMCache::new())),
+            store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
             LLM::replace_prompt_variables(

@@ -1,4 +1,4 @@
-use crate::{store::SQLiteStore, utils};
+use crate::{stores::sqlite::SQLiteStore, utils};
 use anyhow::Result;
 
 /// Initializing a Dust project. Consists in creating:

@@ -1,5 +1,5 @@
 data ARC {
-  id: training
+  dataset_id: training
   hash: 5977e5630cd52f0ec4870029e2a4b5c2b785643f515470248f01987411c256a7
 }
 

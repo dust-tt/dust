@@ -1,5 +1,4 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
-use crate::dataset;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -60,10 +59,15 @@ impl Block for Data {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
-        unimplemented!()
-        // let d = dataset::Dataset::from_hash(self.dataset_id.as_str(), self.hash.as_str()).await?;
-        // Ok(d.data_as_value())
+    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+        match env.store.load_dataset(&self.dataset_id, &self.hash).await? {
+            Some(d) => Ok(d.data_as_value()),
+            None => Err(anyhow!(
+                "Version `{}` not found for dataset `{}`",
+                self.hash,
+                self.dataset_id,
+            ))?,
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

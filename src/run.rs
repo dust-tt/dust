@@ -1,6 +1,5 @@
 use crate::blocks::block::BlockType;
-use crate::store::SQLiteStore;
-use crate::store::Store;
+use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -110,126 +109,6 @@ impl Run {
     pub fn config(&self) -> &RunConfig {
         &self.config
     }
-
-    pub async fn store(&self, store: &dyn Store) -> Result<()> {
-        store.store_run(self).await
-        // let root_path = utils::init_check().await?;
-        // let runs_dir = root_path.join(".runs");
-
-        // assert!(runs_dir.is_dir().await);
-        // let run_dir = runs_dir.join(&self.run_id);
-        // assert!(!run_dir.exists().await);
-
-        // utils::action(&format!("Creating directory {}", run_dir.display()));
-        // async_std::fs::create_dir_all(&run_dir).await?;
-
-        // let config_path = run_dir.join("config.json");
-        // utils::action(&format!("Writing run config in {}", config_path.display()));
-        // {
-        //     let mut file = File::create(config_path).await?;
-        //     file.write_all(serde_json::to_string(&self.config)?.as_bytes())
-        //         .await?;
-        //     file.flush().await?;
-        // }
-
-        // for (block_idx, ((block_type, name), block_execution)) in self.traces.iter().enumerate() {
-        //     let block_dir =
-        //         run_dir.join(format!("{}:{}:{}", block_idx, block_type.to_string(), name));
-        //     utils::action(&format!("Creating directory {}", block_dir.display()));
-        //     async_std::fs::create_dir_all(&block_dir).await?;
-        //     for (input_idx, executions) in block_execution.iter().enumerate() {
-        //         let executions_path = block_dir.join(format!("{}.json", input_idx));
-        //         {
-        //             let mut file = File::create(executions_path).await?;
-        //             file.write_all(serde_json::to_string(executions)?.as_bytes())
-        //                 .await?;
-        //             file.flush().await?;
-        //         }
-        //     }
-        // }
-        // utils::done(&format!(
-        //     "Run `{}` for app version `{}` stored",
-        //     self.run_id, self.app_hash
-        // ));
-
-        // Ok(())
-    }
-
-    pub async fn load(run_id: &str, store: &dyn Store) -> Result<Self> {
-        store.load_run(run_id).await
-        // let config = RunConfig::load(run_id).await?;
-
-        // let root_path = utils::init_check().await?;
-        // let runs_dir = root_path.join(".runs");
-
-        // assert!(runs_dir.is_dir().await);
-        // let run_dir = runs_dir.join(run_id);
-
-        // if !run_dir.exists().await {
-        //     Err(anyhow!("Run `{}` does not exist", run_id))?;
-        // }
-
-        // let mut entries = async_std::fs::read_dir(run_dir.clone()).await?;
-        // let mut blocks: Vec<(usize, BlockType, String)> = vec![];
-        // while let Some(entry) = entries.next().await {
-        //     let entry = entry?;
-        //     let path = entry.path();
-        //     if path.is_dir().await {
-        //         lazy_static! {
-        //             static ref RE: Regex =
-        //                 Regex::new(r"(\d+):([a-z0-9\._]+):([A-Z0-9_]+)").unwrap();
-        //         }
-        //         let captures = RE
-        //             .captures(path.file_name().unwrap().to_str().unwrap())
-        //             .unwrap();
-        //         blocks.push((
-        //             captures.get(1).unwrap().as_str().parse::<usize>()?,
-        //             captures.get(2).unwrap().as_str().parse::<BlockType>()?,
-        //             captures.get(3).unwrap().as_str().to_string(),
-        //         ));
-        //     }
-        // }
-        // blocks.sort_by(|a, b| a.0.cmp(&b.0));
-
-        // // println!("BLOCKS: {:?}", blocks);
-
-        // let mut traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)> = vec![];
-
-        // for (index, block_type, name) in blocks.iter() {
-        //     let block_dir = run_dir.join(format!("{}:{}:{}", index, block_type.to_string(), name));
-        //     let mut entries = async_std::fs::read_dir(block_dir).await?;
-        //     let mut executions: Vec<(usize, Vec<BlockExecution>)> = vec![];
-        //     while let Some(entry) = entries.next().await {
-        //         let entry = entry?;
-        //         let path = entry.path();
-        //         if path.is_file().await {
-        //             lazy_static! {
-        //                 static ref RE: Regex = Regex::new(r"(\d+).json").unwrap();
-        //             }
-        //             match RE.captures(path.file_name().unwrap().to_str().unwrap()) {
-        //                 Some(captures) => {
-        //                     let input_idx = captures.get(1).unwrap().as_str().parse::<usize>()?;
-        //                     let data = async_std::fs::read_to_string(path).await?;
-        //                     executions.push((input_idx, serde_json::from_str(&data)?));
-        //                 }
-        //                 None => {}
-        //             }
-        //         }
-        //     }
-        //     executions.sort_by(|a, b| a.0.cmp(&b.0));
-
-        //     traces.push((
-        //         (block_type.clone(), name.clone()),
-        //         executions.into_iter().map(|(_, v)| v).collect(),
-        //     ));
-        // }
-
-        // Ok(Run {
-        //     run_id: run_id.to_string(),
-        //     config,
-        //     traces,
-        // })
-    }
 }
 
 pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
@@ -242,12 +121,15 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     if run_id == "latest" {
         run_id = match store.latest_run_id().await? {
             Some(run_id) => run_id,
-            None => Err(anyhow!("No run found"))?,
+            None => Err(anyhow!("No run found, the app was never executed"))?,
         };
         utils::info(&format!("Latest run is `{}`", run_id));
     }
 
-    let run = store.load_run(&run_id).await?;
+    let run = match store.load_run(&run_id).await? {
+        Some(r) => r,
+        None => Err(anyhow!("Run with id {} not found", run_id))?,
+    };
 
     let mut found = false;
     run.traces.iter().for_each(|((_, name), input_executions)| {
@@ -297,7 +179,7 @@ pub async fn cmd_list() -> Result<()> {
         .all_runs()
         .await?
         .iter()
-        .for_each(|(run_id, created, app_hash, config)| {
+        .for_each(|(run_id, created, app_hash, _config)| {
             utils::info(&format!(
                 "Run: {} app_hash={} created={}",
                 run_id,

@@ -1,4 +1,4 @@
-use crate::store::{SQLiteStore, Store};
+use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::Result;
 use async_fs::File;
@@ -33,7 +33,7 @@ impl Dataset {
                     Some(obj) => {
                         let record_keys: HashSet<String> = obj.keys().cloned().collect();
                         if let Some(keys) = &keys {
-                            assert!(*keys != record_keys);
+                            assert!(*keys == record_keys);
                         } else {
                             keys = Some(record_keys);
                         }
@@ -90,13 +90,6 @@ impl Dataset {
         hash: &str,
     ) -> Result<Option<Self>> {
         store.load_dataset(dataset_id, hash).await
-    }
-
-    pub async fn from_latest(store: &dyn Store, dataset_id: &str) -> Result<Option<Self>> {
-        match store.latest_dataset_hash(dataset_id).await? {
-            Some(latest) => Ok(store.load_dataset(dataset_id, &latest).await?),
-            None => Ok(None),
-        }
     }
 
     pub async fn new_from_jsonl(id: &str, jsonl_path: &str) -> Result<Self> {

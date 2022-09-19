@@ -1,4 +1,5 @@
 use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
+use crate::stores::store::Store;
 use crate::run::RunConfig;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -34,6 +35,8 @@ pub struct Env {
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
     pub llm_cache: Arc<RwLock<LLMCache>>,
+    #[serde(skip_serializing)]
+    pub store: Box<dyn Store + Sync + Send>,
 }
 
 // pub enum Expectations {

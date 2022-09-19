@@ -7,7 +7,10 @@ extern crate pest_derive;
 #[grammar = "dust.pest"]
 pub struct DustParser;
 
-pub mod store;
+pub mod stores {
+    pub mod store;
+    pub mod sqlite;
+}
 pub mod app;
 pub mod run;
 pub mod dataset;
