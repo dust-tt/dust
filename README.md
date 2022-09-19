@@ -1,6 +1,6 @@
 # Dust
 
-Generative Models App Specification
+Generative Models App Specification and Execution Engine.
 
 ## Quick Start
 
