@@ -2,8 +2,6 @@
 
 - [x] abstract all storage behind a Trait with sqlite in mind
 - [x] move storage to sqlite for cli
-- [ ] add storage on top of spanner for remote
-- [ ] build run service API
 - [ ] move utils::* to an event system
 - [ ] options block
 - [ ] if/end block
@@ -26,5 +24,6 @@
 # srv
 
 - [x] sqlite locally behind Trait
-- [ ] spanner online
+- [ ] SpannerStore implementation
+- [ ] API implementation
 - [ ] cloud run for run services and front-end
