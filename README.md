@@ -1,6 +1,6 @@
 # Dust
 
-Generative Model App Specification
+Generative Models App Specification
 
 ## Questions?
 
