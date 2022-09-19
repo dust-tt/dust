@@ -2,7 +2,7 @@
 
 Generative Models App Specification
 
-## Quick start
+## Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
 - `cd /path/to/dust`
