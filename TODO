@@ -1,21 +1,22 @@
 # core
 
-- abstract all storage behind a Trait with sqlite in mind
-- move storage to sqlite for cli / spanner for remote
-- build promptchainer music app
-- build run service API
-- move utils::* to an event system
-- options block
-- if/end block
-- interrupt only affected inputs on error
+- [x] abstract all storage behind a Trait with sqlite in mind
+- [x] move storage to sqlite for cli
+- [ ] add storage on top of spanner for remote
+- [ ] build run service API
+- [ ] move utils::* to an event system
+- [ ] options block
+- [ ] if/end block
+- [ ] interrupt only affected inputs on error
+- [ ] build promptchainer music app
 
 # cli
 
-- dust app deploy
+- [ ] dust app deploy
     - what is the underlying data store? run-like?
-    dust deploys list
-- split off cli code from core
-- serve (as an endpoint)
+    - dust deploys list
+- [ ] split off cli code from core
+- [ ] serve (as an endpoint)
 
 # web
 
@@ -24,6 +25,6 @@
 
 # srv
 
-- sqlite locally behind Trait
-- spanner online
-- cloud run for run services and front-end
+- [x] sqlite locally behind Trait
+- [ ] spanner online
+- [ ] cloud run for run services and front-end
