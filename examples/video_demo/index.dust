@@ -3,7 +3,7 @@ root ROOT {
 }
 
 data EXAMPLE {
-  id: examples
+  dataset_id: examples
   hash: ea99ff1d822a51ee452db595c05a99a484b468524e70216f9bd14f428c36d865
 }
 
