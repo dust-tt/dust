@@ -116,7 +116,7 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
-    let project = Project::new_from_id(0);
+    let project = Project::new_from_id(1);
 
     let mut run_id = run_id.to_string();
 
@@ -176,7 +176,7 @@ pub async fn cmd_list() -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
-    let project = Project::new_from_id(0);
+    let project = Project::new_from_id(1);
 
     store
         .all_runs(&project)

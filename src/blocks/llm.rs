@@ -421,7 +421,7 @@ mod tests {
                 index: 0,
             },
             map: None,
-            project: Project::new_from_id(0),
+            project: Project::new_from_id(1),
             store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(
@@ -450,7 +450,7 @@ mod tests {
                 index: 0,
             },
             map: None,
-            project: Project::new_from_id(0),
+            project: Project::new_from_id(1),
             store: Box::new(SQLiteStore::new_in_memory()?),
         };
         assert_eq!(

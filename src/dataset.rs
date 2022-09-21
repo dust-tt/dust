@@ -160,7 +160,7 @@ pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
-    let project = Project::new_from_id(0);
+    let project = Project::new_from_id(1);
 
     let jsonl_path = &shellexpand::tilde(jsonl_path).into_owned();
     let jsonl_path = std::path::Path::new(jsonl_path);

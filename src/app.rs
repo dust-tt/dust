@@ -462,7 +462,7 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
-    let project = Project::new_from_id(0);
+    let project = Project::new_from_id(1);
 
     let d = match store.latest_dataset_hash(&project, dataset_id).await? {
         Some(latest) => store.load_dataset(&project, dataset_id, &latest).await?.unwrap(),

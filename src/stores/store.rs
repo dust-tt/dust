@@ -4,6 +4,7 @@ use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{Run, RunConfig};
 use anyhow::Result;
 use async_trait::async_trait;
+use std::collections::HashMap;
 
 #[async_trait]
 pub trait Store {
@@ -23,7 +24,8 @@ pub trait Store {
         dataset_id: &str,
         hash: &str,
     ) -> Result<Option<Dataset>>;
-    async fn list_datasets(&self, project: &Project) -> Result<Vec<(String, usize, u64)>>;
+    async fn list_datasets(&self, project: &Project)
+        -> Result<HashMap<String, Vec<(String, u64)>>>;
 
     // Specifications
     async fn latest_specification_hash(&self, project: &Project) -> Result<Option<String>>;

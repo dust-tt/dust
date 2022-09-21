@@ -45,7 +45,7 @@ pub async fn cmd_init(target: &str) -> Result<()> {
     store.init().await?;
 
     let project = store.create_project().await?;
-    assert!(project.project_id() == 0);
+    assert!(project.project_id() == 1);
 
 
     utils::done(&format!("Initialized Dust project in {}", target.display()));
