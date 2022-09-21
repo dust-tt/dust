@@ -1,5 +1,6 @@
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
+use crate::project::Project;
 use anyhow::Result;
 use async_fs::File;
 use futures::prelude::*;
@@ -86,29 +87,21 @@ impl Dataset {
 
     pub async fn from_hash(
         store: &dyn Store,
+        project: &Project,
         dataset_id: &str,
         hash: &str,
     ) -> Result<Option<Self>> {
-        store.load_dataset(dataset_id, hash).await
+        store.load_dataset(project, dataset_id, hash).await
     }
 
-    pub async fn new_from_jsonl(id: &str, jsonl_path: &str) -> Result<Self> {
-        let jsonl_path = &shellexpand::tilde(jsonl_path).into_owned();
-        let jsonl_path = std::path::Path::new(jsonl_path);
-
-        let file = File::open(jsonl_path).await?;
-        let reader = futures::io::BufReader::new(file);
-
+    pub async fn new_from_jsonl(id: &str, data: Vec<Value>) -> Result<Self> {
         let mut keys: Option<HashSet<String>> = None;
         let mut hasher = blake3::Hasher::new();
 
-        let data: Vec<Value> = reader
-            .lines()
+        let data = data
+            .into_iter()
             .enumerate()
-            .map(|(line_number, line)| {
-                let line = line.unwrap();
-                let json: Value = serde_json::from_str(&line)?;
-
+            .map(|(i, json)| {
                 // Check that json is an Object and its keys match `all_keys`, error otherwise.
                 match json.as_object() {
                     Some(obj) => {
@@ -116,8 +109,8 @@ impl Dataset {
                         if let Some(keys) = &keys {
                             if *keys != record_keys {
                                 Err(anyhow::anyhow!(
-                                    "Line {}: JSON Object has different keys from previous lines.",
-                                    line_number
+                                    "Dataset element {} has different keys from previous elements.",
+                                    i,
                                 ))?;
                             }
                         } else {
@@ -126,29 +119,30 @@ impl Dataset {
                         }
                     }
                     None => Err(anyhow::anyhow!(
-                        "Line {}: Not a JSON object. Only JSON Objects are expected \
-                         at each line of the JSONL file.",
-                        line_number
+                        "Dataset element {} is not a JSON object. Only JSON objects are expected \
+                         as elements of a dataset",
+                        i,
                     ))?,
                 };
 
                 // Reserialize json to hash it.
                 hasher.update(serde_json::to_string(&json)?.as_bytes());
 
-                Ok(json.to_owned())
+                Ok(json)
             })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
             .collect::<Result<Vec<_>>>()?;
 
         let hash = format!("{}", hasher.finalize().to_hex());
+        let keys = match keys {
+            Some(keys) => keys,
+            None => HashSet::new(),
+        };
 
         Ok(Dataset {
             created: utils::now(),
             dataset_id: String::from(id),
             hash,
-            keys: keys.unwrap(),
+            keys: keys,
             data,
         })
     }
@@ -166,9 +160,28 @@ pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
+    let project = Project::new_from_id(0);
 
-    let d = Dataset::new_from_jsonl(dataset_id, jsonl_path).await?;
-    store.register_dataset(&d).await?;
+    let jsonl_path = &shellexpand::tilde(jsonl_path).into_owned();
+    let jsonl_path = std::path::Path::new(jsonl_path);
+
+    let file = File::open(jsonl_path).await?;
+    let reader = futures::io::BufReader::new(file);
+
+    let data: Vec<Value> = reader
+        .lines()
+        .map(|line| {
+            let line = line.unwrap();
+            let json: Value = serde_json::from_str(&line)?;
+            Ok(json)
+        })
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>>>()?;
+
+    let d = Dataset::new_from_jsonl(dataset_id, data).await?;
+    store.register_dataset(&project, &d).await?;
 
     utils::done(&format!(
         "Registered dataset `{}` version ({}) with {} records (record keys: {:?})",

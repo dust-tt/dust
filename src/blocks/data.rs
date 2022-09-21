@@ -60,7 +60,7 @@ impl Block for Data {
     }
 
     async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
-        match env.store.load_dataset(&self.dataset_id, &self.hash).await? {
+        match env.store.load_dataset(&env.project, &self.dataset_id, &self.hash).await? {
             Some(d) => Ok(d.data_as_value()),
             None => Err(anyhow!(
                 "Version `{}` not found for dataset `{}`",

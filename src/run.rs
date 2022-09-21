@@ -1,4 +1,5 @@
 use crate::blocks::block::BlockType;
+use crate::project::Project;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -115,18 +116,19 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
+    let project = Project::new_from_id(0);
 
     let mut run_id = run_id.to_string();
 
     if run_id == "latest" {
-        run_id = match store.latest_run_id().await? {
+        run_id = match store.latest_run_id(&project).await? {
             Some(run_id) => run_id,
             None => Err(anyhow!("No run found, the app was never executed"))?,
         };
         utils::info(&format!("Latest run is `{}`", run_id));
     }
 
-    let run = match store.load_run(&run_id).await? {
+    let run = match store.load_run(&project, &run_id).await? {
         Some(r) => r,
         None => Err(anyhow!("Run with id {} not found", run_id))?,
     };
@@ -174,9 +176,10 @@ pub async fn cmd_list() -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
+    let project = Project::new_from_id(0);
 
     store
-        .all_runs()
+        .all_runs(&project)
         .await?
         .iter()
         .for_each(|(run_id, created, app_hash, _config)| {

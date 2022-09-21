@@ -1,4 +1,4 @@
-use crate::{stores::sqlite::SQLiteStore, utils};
+use crate::{stores::{sqlite::SQLiteStore, store::Store}, utils};
 use anyhow::Result;
 
 /// Initializing a Dust project. Consists in creating:
@@ -43,6 +43,10 @@ pub async fn cmd_init(target: &str) -> Result<()> {
     utils::action(&format!("Creating {}", store_path.display()));
     let store = SQLiteStore::new(&store_path)?;
     store.init().await?;
+
+    let project = store.create_project().await?;
+    assert!(project.project_id() == 0);
+
 
     utils::done(&format!("Initialized Dust project in {}", target.display()));
 

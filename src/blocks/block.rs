@@ -1,12 +1,13 @@
 use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
-use crate::stores::store::Store;
 use crate::run::RunConfig;
+use crate::project::Project;
+use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
@@ -32,6 +33,8 @@ pub struct Env {
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
+    #[serde(skip_serializing)]
+    pub project: Project,
 }
 
 // pub enum Expectations {
@@ -47,6 +50,15 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
+}
+
+impl Serialize for BlockType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
 }
 
 impl ToString for BlockType {

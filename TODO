@@ -24,6 +24,7 @@
 # srv
 
 - [x] sqlite locally behind Trait
+- [ ] API implementation
 - [ ] SpannerStore implementation
 - [ ] API implementation
 - [ ] cloud run for run services and front-end

@@ -11,6 +11,7 @@ pub mod stores {
     pub mod store;
     pub mod sqlite;
 }
+pub mod project;
 pub mod app;
 pub mod run;
 pub mod dataset;

@@ -1,5 +1,6 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
+use crate::project::Project;
 use crate::run::{BlockExecution, Run, RunConfig};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
@@ -24,6 +25,17 @@ pub struct App {
 impl App {
     pub fn len(&self) -> usize {
         self.blocks.len()
+    }
+
+    pub fn hash(&self) -> &str {
+        &self.hash
+    }
+
+    pub fn blocks(&self) -> Vec<(BlockType, String)> {
+        self.blocks
+            .iter()
+            .map(|(_, name, block)| (block.block_type(), name.clone()))
+            .collect()
     }
 
     pub async fn new(spec_data: &str) -> Result<Self> {
@@ -153,6 +165,7 @@ impl App {
         data: &Dataset,
         run_config: &RunConfig,
         concurrency: usize,
+        project: Project,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
         let mut run = Run::new(&self.hash, run_config.clone());
@@ -167,6 +180,7 @@ impl App {
                 index: 0,
             },
             map: None,
+            project: project.clone(),
             store: store.clone(),
         }]];
 
@@ -333,7 +347,7 @@ impl App {
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                store.as_ref().store_run(&run).await?;
+                store.as_ref().store_run(&project, &run).await?;
                 utils::done(&format!(
                     "Run `{}` for app version `{}` stored",
                     run.run_id(),
@@ -405,7 +419,7 @@ impl App {
             }
         }
 
-        store.as_ref().store_run(&run).await?;
+        store.as_ref().store_run(&project, &run).await?;
         utils::done(&format!(
             "Run `{}` for app version `{}` stored",
             run.run_id(),
@@ -448,9 +462,10 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
+    let project = Project::new_from_id(0);
 
-    let d = match store.latest_dataset_hash(dataset_id).await? {
-        Some(latest) => store.load_dataset(dataset_id, &latest).await?.unwrap(),
+    let d = match store.latest_dataset_hash(&project, dataset_id).await? {
+        Some(latest) => store.load_dataset(&project, dataset_id, &latest).await?.unwrap(),
         None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
     };
 
@@ -466,7 +481,7 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
         .as_str(),
     );
 
-    store.register_specification(&app.hash, &spec_data).await?;
+    store.register_specification(&project, &app.hash, &spec_data).await?;
 
-    app.run(&d, &run_config, concurrency, Box::new(store)).await
+    app.run(&d, &run_config, concurrency, project, Box::new(store)).await
 }
