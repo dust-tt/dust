@@ -1,17 +1,19 @@
+use crate::project::Project;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
-use crate::project::Project;
 use anyhow::Result;
 use async_fs::File;
 use futures::prelude::*;
+use serde::Serialize;
 use serde_json::Value;
-use std::{collections::HashSet, slice::Iter};
+use std::slice::Iter;
 
+#[derive(Debug, Serialize)]
 pub struct Dataset {
     created: u64,
     dataset_id: String,
     hash: String,
-    keys: HashSet<String>,
+    keys: Vec<String>,
     // Guaranteed to be objects with keys.
     data: Vec<Value>,
 }
@@ -25,14 +27,14 @@ impl Dataset {
         hash: &str,
         data: Vec<Value>,
     ) -> Result<Self> {
-        let mut keys: Option<HashSet<String>> = None;
+        let mut keys: Option<Vec<String>> = None;
         let mut hasher = blake3::Hasher::new();
 
         data.iter()
             .map(|d| {
                 match d.as_object() {
                     Some(obj) => {
-                        let record_keys: HashSet<String> = obj.keys().cloned().collect();
+                        let record_keys: Vec<String> = obj.keys().cloned().collect();
                         if let Some(keys) = &keys {
                             assert!(*keys == record_keys);
                         } else {
@@ -78,7 +80,7 @@ impl Dataset {
     }
 
     pub fn keys(&self) -> Vec<String> {
-        self.keys.iter().map(|k| k.clone()).collect::<Vec<_>>()
+        self.keys.clone()
     }
 
     pub fn iter(&self) -> Iter<Value> {
@@ -95,7 +97,7 @@ impl Dataset {
     }
 
     pub async fn new_from_jsonl(id: &str, data: Vec<Value>) -> Result<Self> {
-        let mut keys: Option<HashSet<String>> = None;
+        let mut keys: Option<Vec<String>> = None;
         let mut hasher = blake3::Hasher::new();
 
         let data = data
@@ -105,7 +107,7 @@ impl Dataset {
                 // Check that json is an Object and its keys match `all_keys`, error otherwise.
                 match json.as_object() {
                     Some(obj) => {
-                        let record_keys: HashSet<String> = obj.keys().cloned().collect();
+                        let record_keys: Vec<String> = obj.keys().cloned().collect();
                         if let Some(keys) = &keys {
                             if *keys != record_keys {
                                 Err(anyhow::anyhow!(
@@ -135,7 +137,7 @@ impl Dataset {
         let hash = format!("{}", hasher.finalize().to_hex());
         let keys = match keys {
             Some(keys) => keys,
-            None => HashSet::new(),
+            None => vec![],
         };
 
         Ok(Dataset {

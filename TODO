@@ -2,7 +2,7 @@
 
 - [x] abstract all storage behind a Trait with sqlite in mind
 - [x] move storage to sqlite for cli
-- [ ] move utils::* to an event system
+- [x] move utils::* to an event system
 - [ ] options block
 - [ ] if/end block
 - [ ] interrupt only affected inputs on error
@@ -10,21 +10,27 @@
 
 # cli
 
-- [ ] dust app deploy
+- [x] split off cli code from core
+      not fully splitted but well abstacted now (no filesystem in core code)
+- [ ] dust deploy (serve as an endpoint and log)
     - what is the underlying data store? run-like?
     - dust deploys list
-- [ ] split off cli code from core
-- [ ] serve (as an endpoint)
 
 # web
 
 - Suhail Tweet: https://twitter.com/Suhail/status/1568089743816273922 (see comments)
 - look into fly.io
+- [ ] Landing
+- [ ] Github Login
+- [ ] Design + Run
+- [ ] Deploy
 
 # srv
 
 - [x] sqlite locally behind Trait
 - [ ] API implementation
-- [ ] SpannerStore implementation
-- [ ] API implementation
-- [ ] cloud run for run services and front-end
+  - [ ] run create (run object is written to DB at creation)
+  - [ ] run status (updated in DB as we make progress)
+  - [ ] APIState pointers to runs in progress
+- [ ] Postgres Store
+- [ ] Cloud run deploy of dust-api

@@ -333,6 +333,8 @@ impl App {
                     .collect::<Vec<_>>(),
             ));
 
+            // Update block executions only?
+
             utils::info(
                 format!(
                     "Execution block `{} {}`: {} success {} error(s)",

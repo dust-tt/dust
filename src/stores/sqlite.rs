@@ -21,6 +21,18 @@ pub struct SQLiteStore {
 }
 
 impl SQLiteStore {
+    pub fn new_in_memory() -> Result<Self> {
+        let manager = SqliteConnectionManager::memory();
+        let pool = r2d2::Pool::new(manager)?;
+        Ok(SQLiteStore { pool })
+    }
+
+    pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
+        let manager = SqliteConnectionManager::file(sqlite_path);
+        let pool = r2d2::Pool::new(manager)?;
+        Ok(SQLiteStore { pool })
+    }
+
     pub async fn init(&self) -> Result<()> {
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || {
@@ -143,18 +155,6 @@ impl SQLiteStore {
             Ok(())
         })
         .await?
-    }
-
-    pub fn new_in_memory() -> Result<Self> {
-        let manager = SqliteConnectionManager::memory();
-        let pool = r2d2::Pool::new(manager)?;
-        Ok(SQLiteStore { pool })
-    }
-
-    pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
-        let manager = SqliteConnectionManager::file(sqlite_path);
-        let pool = r2d2::Pool::new(manager)?;
-        Ok(SQLiteStore { pool })
     }
 }
 
@@ -828,23 +828,63 @@ impl Store for SQLiteStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[tokio::test]
-    async fn sqlite_store_latest_dataset_hash() -> Result<()> {
+    async fn sqlite_datasets() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store
-            .latest_dataset_hash(&Project::new_from_id(1), "foo")
-            .await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_dataset_hash(&project, "test").await?;
         assert!(r.is_none());
+
+        let d = Dataset::new_from_jsonl(
+            "test",
+            vec![
+                json!({"foo": "1", "bar": "1"}),
+                json!({"foo": "2", "bar": "2"}),
+            ],
+        )
+        .await?;
+
+        store.register_dataset(&project, &d).await?;
+
+        let r = store.latest_dataset_hash(&project, "test").await?.unwrap();
+        assert!(r == "e3807c2c15d5b562dbeb2d92f5758d8793368cb19c373e5f25c1ec873771e330");
+
+        let d = store.load_dataset(&project, "test", &r).await?.unwrap();
+        assert!(d.len() == 2);
+        assert!(d.hash() == r);
+        assert!(d.keys() == vec!["foo", "bar"]);
+
+        let d = Dataset::new_from_jsonl(
+            "test",
+            vec![
+                json!({"foo": "1", "bar": "1"}),
+                json!({"foo": "2", "bar": "2"}),
+                json!({"foo": "3", "bar": "3"}),
+            ],
+        )
+        .await?;
+
+        store.register_dataset(&project, &d).await?;
+        let l = store.list_datasets(&project).await?;
+
+        assert!(l.len() == 1);
+        assert!(l["test"].len() == 2);
+        assert!(l["test"][1].0 == r);
+
         Ok(())
     }
 
     #[tokio::test]
     async fn sqlite_store_latest_specification_hash() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store
-            .latest_specification_hash(&Project::new_from_id(1))
-            .await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_specification_hash(&project).await?;
         assert!(r.is_none());
         Ok(())
     }
@@ -852,7 +892,10 @@ mod tests {
     #[tokio::test]
     async fn sqlite_store_latest_run_id() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store.latest_run_id(&Project::new_from_id(1)).await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_run_id(&project).await?;
         assert!(r.is_none());
         Ok(())
     }

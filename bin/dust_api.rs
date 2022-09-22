@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dust::{app, dataset, project, stores::sqlite, stores::store};
+use dust::{app, dataset, project, stores::sqlite, stores::store, run};
 use hyper::http::StatusCode;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -106,14 +106,14 @@ async fn specifications_check(
 /// Register a new dataset
 
 #[derive(serde::Deserialize)]
-struct DatasetsCreatePayload {
+struct DatasetsRegisterPayload {
     dataset_id: String,
     data: Vec<Value>,
 }
 
-async fn datasets_create(
+async fn datasets_register(
     extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<DatasetsCreatePayload>,
+    extract::Json(payload): extract::Json<DatasetsRegisterPayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
@@ -157,7 +157,7 @@ async fn datasets_create(
     }
 }
 
-async fn datasets_get(
+async fn datasets_list(
     extract::Path(project_id): extract::Path<i64>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -168,7 +168,7 @@ async fn datasets_get(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve datasets: {}", e),
+                    message: format!("Failed to list datasets: {}", e),
                 }),
                 response: None,
             }),
@@ -203,22 +203,96 @@ async fn datasets_get(
     }
 }
 
+async fn datasets_retrieve(
+    extract::Path((project_id, dataset_id, hash)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_dataset(&project, &dataset_id, &hash).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve dataset: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(dataset) => match dataset {
+            None => (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("dataset_not_found"),
+                        message: format!(
+                            "No dataset found for id `{}` and hash `{}`",
+                            dataset_id, hash
+                        ),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(d) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "dataset": d,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct RunsCreatePayload {
+    specification_id: String,
+    dataset_id: String,
+    config: run::RunConfig,
+}
+
+async fn runs_create(
+    extract::Path((project_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DatasetsRegisterPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let app = App::new(&spec_data).await?;
+}
+
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
     store.init().await?;
 
-    let state = Arc::new(APIState { store: Box::new() });
+    let state = Arc::new(APIState {
+        store: Box::new(store),
+    });
 
     let app = Router::new()
+        // Index
         .route("/", get(index))
+        // Projects
         .route("/v1/projects", post(projects_create))
+        // Specifications
         .route(
             "/v1/projects/:project_id/specifications/check",
             post(specifications_check),
         )
-        .route("/v1/projects/:project_id/datasets", post(datasets_create))
-        .route("/v1/projects/:project_id/datasets", get(datasets_get))
+        // Datasets
+        .route("/v1/projects/:project_id/datasets", post(datasets_register))
+        .route("/v1/projects/:project_id/datasets", get(datasets_list))
+        .route(
+            "/v1/projects/:project_id/datasets/:dataset_id/:hash",
+            get(datasets_retrieve),
+        )
+        // Runs
+        .route("/v1/projects/:project_id/runs", post(runs_create))
+        .route("/v1/projects/:project_id/runs/:run_id", get(runs_get))
+        // Extensions
         .layer(extract::Extension(state));
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
