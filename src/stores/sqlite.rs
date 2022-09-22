@@ -2,7 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
 use crate::stores::store::Store;
 use crate::utils;
 use anyhow::Result;
@@ -83,6 +83,7 @@ impl SQLiteStore {
                     run_id               TEXT NOT NULL,
                     app_hash             TEXT NOT NULL,
                     config_json          TEXT NOT NULL,
+                    status_json          TEXT NOT NULL,
                     FOREIGN KEY(project) REFERENCES projects(id)
                  );",
                 "-- block executions
@@ -559,18 +560,26 @@ impl Store for SQLiteStore {
         let created = run.created();
         let app_hash = run.app_hash().to_string();
         let run_config = run.config().clone();
+        let run_status = run.status().clone();
 
         let pool = self.pool.clone();
         let row_id = tokio::task::spawn_blocking(move || -> Result<i64> {
             let c = pool.get()?;
             // Create run.
             let config_data = serde_json::to_string(&run_config)?;
+            let status_data = serde_json::to_string(&run_status)?;
             let mut stmt = c.prepare_cached(
-                "INSERT INTO runs (project, created, run_id, app_hash, config_json)
-                   VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO runs (project, created, run_id, app_hash, config_json, status_json)
+                   VALUES (?, ?, ?, ?, ?, ?)",
             )?;
-            let row_id =
-                stmt.insert(params![project_id, created, run_id, app_hash, config_data])?;
+            let row_id = stmt.insert(params![
+                project_id,
+                created,
+                run_id,
+                app_hash,
+                config_data,
+                status_data
+            ])?;
             Ok(row_id)
         })
         .await??;
@@ -620,8 +629,8 @@ impl Store for SQLiteStore {
         tokio::task::spawn_blocking(move || -> Result<Option<Run>> {
             let c = pool.get()?;
             // Check that the run_id exists
-            let d: Option<(u64, u64, String, String)> = match c.query_row(
-                "SELECT id, created, app_hash, config_json FROM runs
+            let d: Option<(u64, u64, String, String, String)> = match c.query_row(
+                "SELECT id, created, app_hash, config_json, status_json FROM runs
                    WHERE project = ?1 AND run_id = ?2",
                 params![project_id, run_id],
                 |row| {
@@ -630,6 +639,7 @@ impl Store for SQLiteStore {
                         row.get(1).unwrap(),
                         row.get(2).unwrap(),
                         row.get(3).unwrap(),
+                        row.get(4).unwrap(),
                     ))
                 },
             ) {
@@ -637,15 +647,16 @@ impl Store for SQLiteStore {
                     rusqlite::Error::QueryReturnedNoRows => None,
                     _ => Err(e)?,
                 },
-                Ok((row_id, created, app_hash, config_data)) => {
-                    Some((row_id, created, app_hash, config_data))
+                Ok((row_id, created, app_hash, config_data, status_data)) => {
+                    Some((row_id, created, app_hash, config_data, status_data))
                 }
             };
             if d.is_none() {
                 return Ok(None);
             }
-            let (row_id, created, app_hash, config_data) = d.unwrap();
+            let (row_id, created, app_hash, config_data, status_data) = d.unwrap();
             let run_config: RunConfig = serde_json::from_str(&config_data)?;
+            let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
             // Retrieve data points through datasets_joins
             let mut stmt = c.prepare_cached(
@@ -750,6 +761,7 @@ impl Store for SQLiteStore {
                 created,
                 &app_hash,
                 &run_config,
+                &run_status,
                 traces,
             )))
         })

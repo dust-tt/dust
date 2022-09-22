@@ -80,10 +80,6 @@ enum AppCommands {
         /// Run config path (JSON)
         #[clap(required = true)]
         config_path: String,
-
-        /// Concurrency
-        #[clap(short, long, default_value = "8")]
-        concurrency: usize,
     },
 }
 
@@ -129,8 +125,7 @@ fn main() -> Result<()> {
             AppCommands::Run {
                 dataset_id,
                 config_path,
-                concurrency,
-            } => rt.block_on(app::cmd_run(dataset_id, config_path, *concurrency)),
+            } => rt.block_on(app::cmd_run(dataset_id, config_path)),
         },
         Commands::Run { command } => match command {
             RunCommands::List {} => rt.block_on(run::cmd_list()),

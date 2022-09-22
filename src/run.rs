@@ -3,9 +3,10 @@ use crate::project::Project;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{to_string_pretty, Value};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
@@ -46,6 +47,90 @@ impl RunConfig {
 
         Ok(config)
     }
+
+    pub fn concurrency_for_block(&self, block_type: BlockType, name: &str) -> usize {
+        let block_config = self.config_for_block(name);
+
+        if let Some(block_config) = block_config {
+            if let Some(concurrency) = block_config.get("concurrency") {
+                if let Some(concurrency) = concurrency.as_u64() {
+                    return concurrency as usize;
+                }
+            }
+        }
+
+        // Default concurrency parameters
+        match block_type {
+            BlockType::Root => 64,
+            BlockType::Data => 64,
+            BlockType::Code => 64,
+            BlockType::LLM => 8,
+            BlockType::Map => 64,
+            BlockType::Reduce => 64,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Status {
+    Running,
+    Succeeded,
+    Errored,
+}
+
+impl ToString for Status {
+    fn to_string(&self) -> String {
+        match self {
+            Status::Running => "running".to_string(),
+            Status::Succeeded => "succeeded".to_string(),
+            Status::Errored => "errored".to_string(),
+        }
+    }
+}
+
+impl FromStr for Status {
+    type Err = utils::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "running" => Ok(Status::Running),
+            "succeeded" => Ok(Status::Succeeded),
+            "errored" => Ok(Status::Errored),
+            _ => Err(utils::ParseError::with_message("Unknown Status"))?,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BlockStatus {
+    pub block_type: BlockType,
+    pub name: String,
+    pub status: Status,
+    pub success_count: usize,
+    pub errror_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct RunStatus {
+    run: Status,
+    blocks: Vec<BlockStatus>,
+}
+
+impl RunStatus {
+    pub fn set_block_status(&mut self, status: BlockStatus) {
+        match self
+            .blocks
+            .iter()
+            .position(|s| (s.block_type == status.block_type && s.name == status.name))
+        {
+            Some(i) => {
+                let _ = std::mem::replace(&mut self.blocks[i], status);
+            }
+            None => {
+                self.blocks.push(status);
+            }
+        }
+    }
 }
 
 /// Execution represents the full execution of an app on input data.
@@ -55,6 +140,7 @@ pub struct Run {
     created: u64,
     app_hash: String,
     config: RunConfig,
+    status: RunStatus,
     // List of blocks (in order with name) and their execution.
     // The outer vector represents blocks
     // The inner-outer vector represents inputs
@@ -74,6 +160,10 @@ impl Run {
             created: utils::now(),
             app_hash: app_hash.to_string(),
             config,
+            status: RunStatus {
+                run: Status::Running,
+                blocks: vec![],
+            },
             traces: vec![],
         }
     }
@@ -84,6 +174,7 @@ impl Run {
         created: u64,
         app_hash: &str,
         config: &RunConfig,
+        status: &RunStatus,
         traces: Vec<((BlockType, String), Vec<Vec<BlockExecution>>)>,
     ) -> Self {
         Run {
@@ -91,6 +182,7 @@ impl Run {
             created,
             app_hash: app_hash.to_string(),
             config: config.clone(),
+            status: status.clone(),
             traces,
         }
     }
@@ -109,6 +201,18 @@ impl Run {
 
     pub fn config(&self) -> &RunConfig {
         &self.config
+    }
+
+    pub fn status(&self) -> &RunStatus {
+        &self.status
+    }
+
+    pub fn set_run_status(&mut self, status: Status) {
+        self.status.run = status;
+    }
+
+    pub fn set_block_status(&mut self, status: BlockStatus) {
+        self.status.set_block_status(status);
     }
 }
 

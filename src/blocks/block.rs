@@ -7,7 +7,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde::{Serialize, Serializer};
+use serde::{Serialize, Serializer, Deserialize};
 use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
@@ -42,7 +42,8 @@ pub struct Env {
 //   Array(Box<Expectations>),
 // }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum BlockType {
     Root,
     Data,
@@ -50,15 +51,6 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
-}
-
-impl Serialize for BlockType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
 }
 
 impl ToString for BlockType {

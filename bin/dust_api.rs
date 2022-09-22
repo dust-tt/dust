@@ -5,8 +5,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dust::{app, dataset, project, stores::sqlite, stores::store, run};
+use dust::{app, dataset, project, run, stores::sqlite, stores::store, utils};
+use futures::Future;
 use hyper::http::StatusCode;
+use parking_lot::Mutex;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -26,9 +28,65 @@ struct APIResponse {
 
 /// API State
 
+struct RunManager {
+    pending_apps: Vec<app::App>,
+    pending_runs: Vec<String>,
+}
+
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
-    // TODO(spolu): add running promises?
+    run_manager: Arc<Mutex<RunManager>>,
+}
+
+impl APIState {
+    fn new(store: Box<dyn store::Store + Sync + Send>) -> Self {
+        APIState {
+            store,
+            run_manager: Arc::new(Mutex::new(RunManager {
+                pending_apps: vec![],
+                pending_runs: vec![],
+            })),
+        }
+    }
+
+    async fn run_loop(&self) -> Result<()> {
+        loop {
+            let mut apps: Vec<app::App> = vec![];
+            {
+                let mut manager = self.run_manager.lock();
+                apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
+                apps.iter().for_each(|app| {
+                    manager.pending_runs.push(app.run_id().unwrap().to_string());
+                });
+            }
+            apps.into_iter().for_each(|mut app| {
+                let store = self.store.clone();
+                let manager = self.run_manager.clone();
+                // Start a task that will run the app
+                tokio::task::spawn(async move {
+                    match app.run(store).await {
+                        Ok(()) => {
+                            utils::done(&format!(
+                                "Run `{}` for app version `{}` finished",
+                                app.run_id().unwrap(),
+                                app.hash(),
+                            ));
+                        }
+                        Err(e) => {
+                            utils::error(&format!("Run error: {}", e));
+                        }
+                    }
+                    {
+                        let mut manager = manager.lock();
+                        manager
+                            .pending_runs
+                            .retain(|run_id| run_id != app.run_id().unwrap());
+                    }
+                });
+            });
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 }
 
 /// Index
@@ -248,29 +306,75 @@ async fn datasets_retrieve(
 
 #[derive(serde::Deserialize)]
 struct RunsCreatePayload {
-    specification_id: String,
+    specification: String,
     dataset_id: String,
     config: run::RunConfig,
 }
 
 async fn runs_create(
-    extract::Path((project_id)): extract::Path<(i64, String, String)>,
-    extract::Json(payload): extract::Json<DatasetsRegisterPayload>,
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Json(payload): extract::Json<RunsCreatePayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let app = App::new(&spec_data).await?;
-}
 
+    let app: Box<dyn Future<Output = Result<app::App, anyhow::Error>>> =
+        Box::new(app::App::new(&payload.specification));
+
+    // let d = match store.latest_dataset_hash(&project, dataset_id).await? {
+    //     Some(latest) => store
+    //         .load_dataset(&project, dataset_id, &latest)
+    //         .await?
+    //         .unwrap(),
+    //     None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
+    // };
+
+    // if d.len() == 0 {
+    //     Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
+    // }
+    // utils::info(
+    //     format!(
+    //         "Retrieved {} records from latest data version for `{}`.",
+    //         d.len(),
+    //         dataset_id
+    //     )
+    //     .as_str(),
+    // );
+
+    // store
+    //     .register_specification(&project, &app.hash, &spec_data)
+    //     .await?;
+
+    // app.create_run(&run_config, project.clone(), Box::new(store.clone()))
+    //     .await?;
+
+    // app.run(
+    //     &d,
+    //     &run_config,
+    //     concurrency,
+    //     project.clone(),
+    //     Box::new(store),
+    // )
+    // .await
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: None,
+        }),
+    )
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
     store.init().await?;
 
-    let state = Arc::new(APIState {
-        store: Box::new(store),
-    });
+    let state = Arc::new(APIState::new(Box::new(store)));
+
+    // Start the APIState run loop.
+    tokio::task::spawn(state.run_loop());
 
     let app = Router::new()
         // Index
@@ -291,6 +395,10 @@ async fn main() -> Result<()> {
         )
         // Runs
         .route("/v1/projects/:project_id/runs", post(runs_create))
+        .route(
+            "/v1/projects/:project_id/runs/:run_id/status",
+            get(runs_status),
+        )
         .route("/v1/projects/:project_id/runs/:run_id", get(runs_get))
         // Extensions
         .layer(extract::Extension(state));
