@@ -6,7 +6,6 @@ use axum::{
     Router,
 };
 use dust::{app, dataset, project, run, stores::sqlite, stores::store, utils};
-use futures::Future;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -49,26 +48,35 @@ impl APIState {
         }
     }
 
+    fn run_app(&self, app: app::App) {
+        let mut run_manager = self.run_manager.lock();
+        run_manager.pending_apps.push(app);
+    }
+
     async fn run_loop(&self) -> Result<()> {
+        let mut loop_count = 0;
         loop {
             let mut apps: Vec<app::App> = vec![];
             {
                 let mut manager = self.run_manager.lock();
                 apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
-                    manager.pending_runs.push(app.run_id().unwrap().to_string());
+                    manager
+                        .pending_runs
+                        .push(app.run_ref().unwrap().run_id().to_string());
                 });
             }
             apps.into_iter().for_each(|mut app| {
                 let store = self.store.clone();
                 let manager = self.run_manager.clone();
-                // Start a task that will run the app
+
+                // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     match app.run(store).await {
                         Ok(()) => {
                             utils::done(&format!(
                                 "Run `{}` for app version `{}` finished",
-                                app.run_id().unwrap(),
+                                app.run_ref().unwrap().run_id(),
                                 app.hash(),
                             ));
                         }
@@ -80,11 +88,16 @@ impl APIState {
                         let mut manager = manager.lock();
                         manager
                             .pending_runs
-                            .retain(|run_id| run_id != app.run_id().unwrap());
+                            .retain(|run_id| run_id != app.run_ref().unwrap().run_id());
                     }
                 });
             });
+            loop_count += 1;
             std::thread::sleep(std::time::Duration::from_millis(100));
+            if loop_count % (10 * 10) == 0 {
+                let manager = self.run_manager.lock();
+                utils::info(&format!("{} pending runs", manager.pending_runs.len()));
+            }
         }
     }
 }
@@ -282,7 +295,7 @@ async fn datasets_retrieve(
                 StatusCode::BAD_REQUEST,
                 Json(APIResponse {
                     error: Some(APIError {
-                        code: String::from("dataset_not_found"),
+                        code: String::from("dataset_not_found_error"),
                         message: format!(
                             "No dataset found for id `{}` and hash `{}`",
                             dataset_id, hash
@@ -318,52 +331,190 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let app: Box<dyn Future<Output = Result<app::App, anyhow::Error>>> =
-        Box::new(app::App::new(&payload.specification));
+    let mut app = match app::App::new(&payload.specification).await {
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("invalid_specification_error"),
+                        message: e.to_string(),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(app) => app,
+    };
 
-    // let d = match store.latest_dataset_hash(&project, dataset_id).await? {
-    //     Some(latest) => store
-    //         .load_dataset(&project, dataset_id, &latest)
-    //         .await?
-    //         .unwrap(),
-    //     None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
-    // };
+    let d = match state
+        .store
+        .latest_dataset_hash(&project, &payload.dataset_id)
+        .await
+    {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to retrieve dataset: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("dataset_not_found_error"),
+                        message: format!("No dataset found for id `{}`", payload.dataset_id),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(Some(latest)) => match state
+            .store
+            .load_dataset(&project, &payload.dataset_id, &latest)
+            .await
+        {
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to retrieve dataset: {}", e),
+                        }),
+                        response: None,
+                    }),
+                )
+            }
+            Ok(d) => match d {
+                None => unreachable!(),
+                Some(d) => d,
+            },
+        },
+    };
 
-    // if d.len() == 0 {
-    //     Err(anyhow!("Retrieved 0 records from `{dataset_id}`"))?
-    // }
-    // utils::info(
-    //     format!(
-    //         "Retrieved {} records from latest data version for `{}`.",
-    //         d.len(),
-    //         dataset_id
-    //     )
-    //     .as_str(),
-    // );
+    if d.len() == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("dataset_empty_error"),
+                    message: format!("Dataset `{}` has 0 record", payload.dataset_id),
+                }),
+                response: None,
+            }),
+        );
+    }
 
-    // store
-    //     .register_specification(&project, &app.hash, &spec_data)
-    //     .await?;
+    utils::info(
+        format!(
+            "Retrieved {} records from latest data version for `{}`.",
+            d.len(),
+            payload.dataset_id
+        )
+        .as_str(),
+    );
 
-    // app.create_run(&run_config, project.clone(), Box::new(store.clone()))
-    //     .await?;
+    match state
+        .store
+        .register_specification(&project, &app.hash(), &payload.specification)
+        .await
+    {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to register specification: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(_) => (),
+    }
 
-    // app.run(
-    //     &d,
-    //     &run_config,
-    //     concurrency,
-    //     project.clone(),
-    //     Box::new(store),
-    // )
-    // .await
+    match app
+        .prepare_run(payload.config, project.clone(), d, state.store.clone())
+        .await
+    {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed prepare run: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(()) => (),
+    }
+
+    // The run is empty for now, we can clone it for the response.
+    let run = app.run_ref().unwrap().clone();
+
+    state.run_app(app);
 
     (
         StatusCode::OK,
         Json(APIResponse {
             error: None,
-            response: None,
+            response: Some(json!({
+                "run": run,
+            })),
         }),
     )
+}
+
+async fn runs_retrieve(
+    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_run(&project, &run_id, None).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve run: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(run) => match run {
+            None => (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("run_not_found_error"),
+                        message: format!("No run found for id `{}`", run_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(run) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "run": run,
+                    })),
+                }),
+            ),
+        },
+    }
 }
 
 #[tokio::main]
@@ -399,7 +550,7 @@ async fn main() -> Result<()> {
             "/v1/projects/:project_id/runs/:run_id/status",
             get(runs_status),
         )
-        .route("/v1/projects/:project_id/runs/:run_id", get(runs_get))
+        .route("/v1/projects/:project_id/runs/:run_id", get(runs_retrieve))
         // Extensions
         .layer(extract::Extension(state));
 

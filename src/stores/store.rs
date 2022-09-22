@@ -1,7 +1,8 @@
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{Run, RunConfig};
+use crate::blocks::block::{BlockType};
+use crate::run::{Run, RunConfig, RunStatus};
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -36,7 +37,13 @@ pub trait Store {
     async fn latest_run_id(&self, project: &Project) -> Result<Option<String>>;
     async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>>;
     async fn store_run(&self, project: &Project, run: &Run) -> Result<()>;
-    async fn load_run(&self, project: &Project, run_id: &str) -> Result<Option<Run>>;
+    async fn load_run(
+        &self,
+        project: &Project,
+        run_id: &str,
+        // Only returns these blocks, all of them if None, none if empty.
+        blocks: Option<Vec<(BlockType, String)>>,
+    ) -> Result<Option<Run>>;
 
     // LLM Cache
     async fn llm_cache_get(

@@ -134,7 +134,7 @@ impl RunStatus {
 }
 
 /// Execution represents the full execution of an app on input data.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Clone)]
 pub struct Run {
     run_id: String,
     created: u64,
@@ -216,7 +216,7 @@ impl Run {
     }
 }
 
-pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
+pub async fn cmd_inspect(run_id: &str, block_type: BlockType, block_name: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
@@ -232,14 +232,21 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
         utils::info(&format!("Latest run is `{}`", run_id));
     }
 
-    let run = match store.load_run(&project, &run_id).await? {
+    let run = match store
+        .load_run(
+            &project,
+            &run_id,
+            Some(vec![(block_type, block_name.to_string())]),
+        )
+        .await?
+    {
         Some(r) => r,
         None => Err(anyhow!("Run with id {} not found", run_id))?,
     };
 
     let mut found = false;
-    run.traces.iter().for_each(|((_, name), input_executions)| {
-        if name == block {
+    run.traces.iter().for_each(|((t, n), input_executions)| {
+        if n == block_name && *t == block_type {
             input_executions
                 .iter()
                 .enumerate()
@@ -270,7 +277,12 @@ pub async fn cmd_inspect(run_id: &str, block: &str) -> Result<()> {
     });
 
     if !found {
-        Err(anyhow!("Block `{}` not found in run `{}`", block, run_id))?;
+        Err(anyhow!(
+            "Block `{} {}` not found in run `{}`",
+            block_type.to_string(),
+            block_name,
+            run_id
+        ))?;
     }
 
     Ok(())

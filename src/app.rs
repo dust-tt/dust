@@ -37,8 +37,8 @@ impl App {
         &self.hash
     }
 
-    pub fn run_id(&self) -> Option<&str> {
-        self.run.as_ref().map(|r| r.run_id())
+    pub fn run_ref(&self) -> Option<&Run> {
+        self.run.as_ref()
     }
 
     pub fn blocks(&self) -> Vec<(BlockType, String)> {

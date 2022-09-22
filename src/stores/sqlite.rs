@@ -621,9 +621,15 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn load_run(&self, project: &Project, run_id: &str) -> Result<Option<Run>> {
+    async fn load_run(
+        &self,
+        project: &Project,
+        run_id: &str,
+        blocks: Option<Vec<(BlockType, String)>>,
+    ) -> Result<Option<Run>> {
         let project_id = project.project_id();
         let run_id = run_id.to_string();
+        let blocks = blocks.clone();
 
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<Run>> {

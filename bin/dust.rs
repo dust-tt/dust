@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, dataset, init, providers::provider, run, utils};
+use dust::{app, dataset, init, providers::provider, run, utils, blocks::block::BlockType};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -93,6 +93,10 @@ enum RunCommands {
         #[clap(required = true)]
         run_id: String,
 
+        /// Block type to inspect
+        #[clap(required = true)]
+        block_type: BlockType,
+
         /// Block name to inspect
         #[clap(required = true)]
         block_name: String,
@@ -129,8 +133,8 @@ fn main() -> Result<()> {
         },
         Commands::Run { command } => match command {
             RunCommands::List {} => rt.block_on(run::cmd_list()),
-            RunCommands::Inspect { run_id, block_name } => {
-                rt.block_on(run::cmd_inspect(run_id, block_name))
+            RunCommands::Inspect { run_id, block_type, block_name } => {
+                rt.block_on(run::cmd_inspect(run_id, *block_type, block_name))
             }
         },
     };

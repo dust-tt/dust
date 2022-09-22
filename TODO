@@ -2,7 +2,7 @@
 
 - [x] abstract all storage behind a Trait with sqlite in mind
 - [x] move storage to sqlite for cli
-- [x] move utils::* to an event system
+- [ ] ensure there is no (type, name) duplicate
 - [ ] options block
 - [ ] if/end block
 - [ ] interrupt only affected inputs on error
@@ -12,6 +12,7 @@
 
 - [x] split off cli code from core
       not fully splitted but well abstacted now (no filesystem in core code)
+- [x] take type on top of name for inspect
 - [ ] dust deploy (serve as an endpoint and log)
     - what is the underlying data store? run-like?
     - dust deploys list
@@ -29,8 +30,8 @@
 
 - [x] sqlite locally behind Trait
 - [ ] API implementation
-  - [ ] run create (run object is written to DB at creation)
+  - [x] run create (run object is written to DB at creation)
   - [ ] run status (updated in DB as we make progress)
-  - [ ] APIState pointers to runs in progress
+  - [x] APIState pointers to runs in progress
 - [ ] Postgres Store
 - [ ] Cloud run deploy of dust-api
