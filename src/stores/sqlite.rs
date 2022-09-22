@@ -357,7 +357,8 @@ impl Store for SQLiteStore {
         tokio::task::spawn_blocking(move || -> Result<HashMap<String, Vec<(String, u64)>>> {
             let c = pool.get()?;
             let mut stmt = c.prepare_cached(
-                "SELECT dataset_id, hash, created FROM datasets WHERE project = ?1",
+                "SELECT dataset_id, hash, created FROM datasets WHERE project = ?1
+                   ORDER BY created DESC",
             )?;
             let mut rows = stmt.query(params![project_id])?;
             let mut datasets: HashMap<String, Vec<(String, u64)>> = HashMap::new();

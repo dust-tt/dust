@@ -1,6 +1,5 @@
 use anyhow::Result;
 use axum::{
-    body::Body,
     extract,
     response::Json,
     routing::{get, post},
@@ -10,6 +9,7 @@ use dust::{app, dataset, project, stores::sqlite, stores::store};
 use hyper::http::StatusCode;
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Serialize)]
@@ -159,16 +159,56 @@ async fn datasets_create(
 
 async fn datasets_get(
     extract::Path(project_id): extract::Path<i64>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let _project = project::Project::new_from_id(project_id);
-    unimplemented!()
+    let project = project::Project::new_from_id(project_id);
+    match state.store.list_datasets(&project).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve datasets: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(datasets) => {
+            let datasets = datasets
+                .into_iter()
+                .map(|(d, v)| {
+                    (
+                        d,
+                        v.into_iter()
+                            .map(|(h, c)| {
+                                json!({
+                                    "hash": h,
+                                    "created": c,
+                                })
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect::<HashMap<_, _>>();
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "datasets": datasets,
+                    })),
+                }),
+            )
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let state = Arc::new(APIState {
-        store: Box::new(sqlite::SQLiteStore::new("api.db")?),
-    });
+    let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
+    store.init().await?;
+
+    let state = Arc::new(APIState { store: Box::new() });
 
     let app = Router::new()
         .route("/", get(index))
