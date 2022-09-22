@@ -7,7 +7,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde::{Serialize, Serializer, Deserialize};
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;

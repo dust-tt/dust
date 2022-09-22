@@ -1,8 +1,8 @@
+use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::blocks::block::{BlockType};
-use crate::run::{Run, RunConfig, RunStatus};
+use crate::run::{Run, RunConfig};
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -41,8 +41,8 @@ pub trait Store {
         &self,
         project: &Project,
         run_id: &str,
-        // Only returns these blocks, all of them if None, none if empty.
-        blocks: Option<Vec<(BlockType, String)>>,
+        // None return all, Some(None), return none, Some(Some(_)) return that block.
+        block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>>;
 
     // LLM Cache

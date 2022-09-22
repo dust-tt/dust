@@ -625,11 +625,11 @@ impl Store for SQLiteStore {
         &self,
         project: &Project,
         run_id: &str,
-        blocks: Option<Vec<(BlockType, String)>>,
+        block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>> {
         let project_id = project.project_id();
         let run_id = run_id.to_string();
-        let blocks = blocks.clone();
+        let block = block.clone();
 
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<Run>> {
@@ -664,33 +664,75 @@ impl Store for SQLiteStore {
             let run_config: RunConfig = serde_json::from_str(&config_data)?;
             let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
-            // Retrieve data points through datasets_joins
-            let mut stmt = c.prepare_cached(
-                "SELECT \
-                   runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
-                   runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
-                   FROM block_executions \
-                   INNER JOIN runs_joins \
-                   ON block_executions.id = runs_joins.block_execution \
-                   WHERE runs_joins.run = ?",
-            )?;
-            let mut rows = stmt.query([row_id])?;
             let mut data: Vec<(usize, BlockType, String, usize, usize, BlockExecution)> = vec![];
             let mut block_count = 0;
-            while let Some(row) = rows.next()? {
-                let block_idx: usize = row.get(0)?;
-                let b: String = row.get(1)?;
-                let block_type: BlockType = BlockType::from_str(&b)?;
-                let block_name: String = row.get(2)?;
-                let input_idx = row.get(3)?;
-                let map_idx = row.get(4)?;
-                let execution_data: String = row.get(5)?;
-                let execution: BlockExecution = serde_json::from_str(&execution_data)?;
-                data.push((
-                    block_idx, block_type, block_name, input_idx, map_idx, execution,
-                ));
-                if (block_idx + 1) > block_count {
-                    block_count = block_idx + 1;
+
+            match block {
+                None => {
+                    // Retrieve data points through datasets_joins
+                    let mut stmt = c.prepare_cached(
+                        "SELECT \
+                           runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
+                           runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
+                           FROM block_executions \
+                           INNER JOIN runs_joins \
+                           ON block_executions.id = runs_joins.block_execution \
+                           WHERE runs_joins.run = ?",
+                    )?;
+                    let mut rows = stmt.query([row_id])?;
+                    while let Some(row) = rows.next()? {
+                        let block_idx: usize = row.get(0)?;
+                        let b: String = row.get(1)?;
+                        let block_type: BlockType = BlockType::from_str(&b)?;
+                        let block_name: String = row.get(2)?;
+                        let input_idx = row.get(3)?;
+                        let map_idx = row.get(4)?;
+                        let execution_data: String = row.get(5)?;
+                        let execution: BlockExecution = serde_json::from_str(&execution_data)?;
+                        data.push((
+                            block_idx, block_type, block_name, input_idx, map_idx, execution,
+                        ));
+                        if (block_idx + 1) > block_count {
+                            block_count = block_idx + 1;
+                        }
+                    }
+                }
+                Some(block) => {
+                    match block {
+                        None => (),
+                        Some((block_type, block_name)) => {
+                            // Retrieve data points through datasets_joins for one block
+                            let mut stmt = c.prepare_cached(
+                                "SELECT \
+                            runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
+                            runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
+                            FROM block_executions \
+                            INNER JOIN runs_joins \
+                            ON block_executions.id = runs_joins.block_execution \
+                            WHERE runs_joins.run = ? AND block_type = ? AND block_name = ?",
+                            )?;
+                            let mut rows =
+                                stmt.query(params![row_id, block_type.to_string(), block_name])?;
+                            while let Some(row) = rows.next()? {
+                                let block_idx: usize = row.get(0)?;
+                                let b: String = row.get(1)?;
+                                let block_type: BlockType = BlockType::from_str(&b)?;
+                                let block_name: String = row.get(2)?;
+                                let input_idx = row.get(3)?;
+                                let map_idx = row.get(4)?;
+                                let execution_data: String = row.get(5)?;
+                                let execution: BlockExecution =
+                                    serde_json::from_str(&execution_data)?;
+                                data.push((
+                                    block_idx, block_type, block_name, input_idx, map_idx,
+                                    execution,
+                                ));
+                                if (block_idx + 1) > block_count {
+                                    block_count = block_idx + 1;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

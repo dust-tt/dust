@@ -3,7 +3,7 @@ use crate::project::Project;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty, Value};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -236,7 +236,7 @@ pub async fn cmd_inspect(run_id: &str, block_type: BlockType, block_name: &str) 
         .load_run(
             &project,
             &run_id,
-            Some(vec![(block_type, block_name.to_string())]),
+            Some(Some((block_type, block_name.to_string()))),
         )
         .await?
     {

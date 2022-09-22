@@ -5,7 +5,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dust::{app, dataset, project, run, stores::sqlite, stores::store, utils};
+use dust::{
+    app, blocks::block::BlockType, dataset, project, run, stores::sqlite, stores::store, utils,
+};
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -56,16 +58,16 @@ impl APIState {
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
         loop {
-            let mut apps: Vec<app::App> = vec![];
-            {
+            let apps: Vec<app::App> = {
                 let mut manager = self.run_manager.lock();
-                apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
+                let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
                     manager
                         .pending_runs
                         .push(app.run_ref().unwrap().run_id().to_string());
                 });
-            }
+                apps
+            };
             apps.into_iter().for_each(|mut app| {
                 let store = self.store.clone();
                 let manager = self.run_manager.clone();
@@ -517,15 +519,101 @@ async fn runs_retrieve(
     }
 }
 
+async fn runs_retrieve_block(
+    extract::Path((project_id, run_id, block_type, block_name)): extract::Path<(
+        i64,
+        String,
+        BlockType,
+        String,
+    )>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_run(&project, &run_id, Some(Some((block_type, block_name))))
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve run: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(run) => match run {
+            None => (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("run_not_found_error"),
+                        message: format!("No run found for id `{}`", run_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(run) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "run": run,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+async fn runs_retrieve_status(
+    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_run(&project, &run_id, Some(None)).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve run: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(run) => match run {
+            None => (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("run_not_found_error"),
+                        message: format!("No run found for id `{}`", run_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(run) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "run": run,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
     store.init().await?;
 
     let state = Arc::new(APIState::new(Box::new(store)));
-
-    // Start the APIState run loop.
-    tokio::task::spawn(state.run_loop());
 
     let app = Router::new()
         // Index
@@ -546,13 +634,21 @@ async fn main() -> Result<()> {
         )
         // Runs
         .route("/v1/projects/:project_id/runs", post(runs_create))
+        .route("/v1/projects/:project_id/runs/:run_id", get(runs_retrieve))
+        .route(
+            "/v1/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
+            get(runs_retrieve_block),
+        )
         .route(
             "/v1/projects/:project_id/runs/:run_id/status",
-            get(runs_status),
+            get(runs_retrieve_status),
         )
-        .route("/v1/projects/:project_id/runs/:run_id", get(runs_retrieve))
         // Extensions
-        .layer(extract::Extension(state));
+        .layer(extract::Extension(state.clone()));
+
+    // Start the APIState run loop.
+    let state = state.clone();
+    tokio::task::spawn(async move { state.run_loop().await });
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
