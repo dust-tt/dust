@@ -2,7 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{Run, RunConfig};
+use crate::run::{Run, RunConfig, RunStatus};
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -36,7 +36,22 @@ pub trait Store {
     // Runs
     async fn latest_run_id(&self, project: &Project) -> Result<Option<String>>;
     async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>>;
-    async fn store_run(&self, project: &Project, run: &Run) -> Result<()>;
+
+    async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()>;
+    async fn update_run_status(
+        &self,
+        project: &Project,
+        run_id: &str,
+        run_status: &RunStatus,
+    ) -> Result<()>;
+    async fn append_run_block(
+        &self,
+        project: &Project,
+        run: &Run,
+        block_type: &BlockType,
+        block_name: &String,
+    ) -> Result<()>;
+
     async fn load_run(
         &self,
         project: &Project,

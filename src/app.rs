@@ -1,17 +1,19 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
 use crate::project::Project;
-use crate::run::{BlockExecution, Run, RunConfig};
+use crate::run::{BlockExecution, BlockStatus, Run, RunConfig, Status};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
+use parking_lot::Mutex;
 use pest::Parser;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use std::sync::Arc;
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -92,6 +94,7 @@ impl App {
         //   TODO(spolu): probably waivable in the future
         let mut current_map: Option<String> = None;
         let mut root_found = false;
+        let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
         for (name, block) in &blocks {
             if block.block_type() == BlockType::Root {
                 if root_found {
@@ -140,6 +143,17 @@ impl App {
                             current_map = None;
                         }
                     }
+                }
+            }
+            let block_type_name = (block.block_type(), name.clone());
+            match block_type_names.contains(&block_type_name) {
+                true => Err(anyhow!(
+                    "Repeated block `{} {}`",
+                    block_type_name.0.to_string(),
+                    block_type_name.1
+                ))?,
+                false => {
+                    block_type_names.insert(block_type_name);
                 }
             }
         }
@@ -195,7 +209,7 @@ impl App {
 
         store
             .as_ref()
-            .store_run(self.project.as_ref().unwrap(), self.run.as_ref().unwrap())
+            .create_run_empty(self.project.as_ref().unwrap(), self.run.as_ref().unwrap())
             .await?;
 
         Ok(())
@@ -207,6 +221,9 @@ impl App {
         assert!(self.dataset.is_some());
         assert!(self.project.is_some());
 
+        let project = self.project.as_ref().unwrap().clone();
+        let run_id = self.run.as_ref().unwrap().run_id().to_string();
+
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
         let mut envs = vec![vec![Env {
@@ -217,7 +234,7 @@ impl App {
                 index: 0,
             },
             map: None,
-            project: self.project.as_ref().unwrap().clone(),
+            project: project.clone(),
             store: store.clone(),
         }]];
 
@@ -291,6 +308,28 @@ impl App {
                 current_map_blocks = vec![];
             }
 
+            // Create a protected clone of the status during execution of the block to update the
+            // block status as execution takes place and push it to DB.
+            let run_status = Arc::new(Mutex::new(self.run.as_ref().unwrap().status().clone()));
+
+            // Create a new block status, add it to the current run status and update the DB then
+            // project the block_status for update each time a worker finishes.
+            let block_status = BlockStatus {
+                block_type: block.block_type(),
+                name: name.to_string(),
+                status: Status::Running,
+                success_count: 0,
+                error_count: 0,
+            };
+            self.run
+                .as_mut()
+                .unwrap()
+                .set_block_status(block_status.clone());
+            store
+                .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
+                .await?;
+            let block_status = Arc::new(Mutex::new(block_status));
+
             // We flatten the envs for concurrent and parrallel execution of the block which
             // requires us to keep track of the potential input and map indices of each Env,
             // depending on the state of ExecutionEnvs.
@@ -312,14 +351,49 @@ impl App {
                 // implemented on each Block. This allows cloning the Block (as a Trait) to use from
                 // parallel threads!
                 let b = block.clone();
+                let run_status = run_status.clone();
+                let block_status = block_status.clone();
+                let store = store.clone();
+                let project = project.clone();
+                let run_id = run_id.clone();
                 tokio::spawn(async move {
                     match b.execute(&name, &e).await {
-                        Ok(v) => Ok((input_idx, map_idx, e, Ok(v)))
-                            as Result<
-                                (usize, usize, Env, Result<Value, anyhow::Error>),
-                                anyhow::Error,
-                            >,
-                        Err(err) => Ok((input_idx, map_idx, e, Err(err))),
+                        Ok(v) => {
+                            let block_status = {
+                                let mut block_status = block_status.lock();
+                                block_status.success_count += 1;
+                                block_status.clone()
+                            };
+                            let run_status = {
+                                let mut run_status = run_status.lock();
+                                run_status.set_block_status(block_status);
+                                run_status.clone()
+                            };
+                            store
+                                .update_run_status(&project, &run_id, &run_status)
+                                .await?;
+                            Ok((input_idx, map_idx, e, Ok(v)))
+                                as Result<
+                                    (usize, usize, Env, Result<Value, anyhow::Error>),
+                                    anyhow::Error,
+                                >
+                        }
+                        Err(err) => {
+                            let block_status = {
+                                let mut block_status = block_status.lock();
+                                block_status.error_count += 1;
+                                block_status.clone()
+                            };
+                            let run_status = {
+                                let mut run_status = run_status.lock();
+                                run_status.set_block_status(block_status);
+                                run_status.clone()
+                            };
+                            store
+                                .update_run_status(&project, &run_id, &run_status)
+                                .await?;
+                            Ok((input_idx, map_idx, e, Err(err)))
+                        }
                     }
                 })
             })
@@ -378,7 +452,16 @@ impl App {
                     .collect::<Vec<_>>(),
             ));
 
-            // Update block executions only?
+            // Update block run executions incrementally
+            store
+                .as_ref()
+                .append_run_block(
+                    &project,
+                    self.run.as_ref().unwrap(),
+                    &block.block_type(),
+                    name,
+                )
+                .await?;
 
             utils::info(
                 format!(
@@ -391,23 +474,42 @@ impl App {
                 .as_str(),
             );
 
+            // Update the run_status for next iteration, finalize block_status, write to DB
+            let block_status = {
+                let mut block_status = block_status.lock();
+                block_status.status = match errors.len() {
+                    0 => Status::Succeeded,
+                    _ => Status::Errored,
+                };
+                block_status.clone()
+            };
+            let run_status = {
+                let mut run_status = run_status.lock();
+                run_status.set_block_status(block_status);
+                if errors.len() > 0 {
+                    run_status.set_run_status(Status::Errored);
+                }
+                run_status.clone()
+            };
+            self.run.as_mut().unwrap().set_status(run_status);
+            store
+                .as_ref()
+                .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
+                .await?;
+
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                store
-                    .as_ref()
-                    .store_run(self.project.as_ref().unwrap(), self.run.as_ref().unwrap())
-                    .await?;
                 utils::done(&format!(
                     "Run `{}` for app version `{}` stored",
-                    self.run.as_ref().unwrap().run_id(),
+                    &run_id,
                     self.run.as_ref().unwrap().app_hash(),
                 ));
 
                 Err(anyhow!(
                     "Run `{}` for app version `{}` interrupted due to \
                      failed execution of block `{} {}` with {} error(s)",
-                    self.run.as_ref().unwrap().run_id(),
+                    &run_id,
                     self.run.as_ref().unwrap().app_hash(),
                     block.block_type().to_string(),
                     name,
@@ -472,14 +574,15 @@ impl App {
             }
         }
 
+        self.run.as_mut().unwrap().set_run_status(Status::Succeeded);
         store
             .as_ref()
-            .store_run(self.project.as_ref().unwrap(), self.run.as_ref().unwrap())
+            .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
             .await?;
         utils::done(&format!(
             "Run `{}` for app version `{}` stored",
-            self.run.as_ref().unwrap().run_id(),
-            self.run.as_ref().unwrap().app_hash(),
+            &run_id,
+            self.hash(),
         ));
 
         Ok(())

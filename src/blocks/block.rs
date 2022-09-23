@@ -42,7 +42,7 @@ pub struct Env {
 //   Array(Box<Expectations>),
 // }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum BlockType {
     Root,

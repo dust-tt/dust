@@ -2,11 +2,12 @@
 
 - [x] abstract all storage behind a Trait with sqlite in mind
 - [x] move storage to sqlite for cli
-- [ ] ensure there is no (type, name) duplicate
+- [x] ensure there is no (type, name) duplicate
 - [ ] options block
 - [ ] if/end block
 - [ ] interrupt only affected inputs on error
 - [ ] build promptchainer music app
+- [ ] eval block
 
 # cli
 
@@ -29,9 +30,10 @@
 # srv
 
 - [x] sqlite locally behind Trait
-- [ ] API implementation
+- [x] API implementation
   - [x] run create (run object is written to DB at creation)
-  - [ ] run status (updated in DB as we make progress)
+  - [x] run status (updated in DB as we make progress)
+  - [x] incremental run ceation in DB
   - [x] APIState pointers to runs in progress
 - [ ] Postgres Store
 - [ ] Cloud run deploy of dust-api

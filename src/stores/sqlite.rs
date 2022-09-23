@@ -477,9 +477,82 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn store_run(&self, project: &Project, run: &Run) -> Result<()> {
-        // TODO(spolu): kind of ugly but we have to clone here.
-        let traces = run.traces.clone();
+    async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()> {
+        let project_id = project.project_id();
+        let run_id = run.run_id().to_string();
+        let created = run.created();
+        let app_hash = run.app_hash().to_string();
+        let run_config = run.config().clone();
+        let run_status = run.status().clone();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            // Create run.
+            let config_data = serde_json::to_string(&run_config)?;
+            let status_data = serde_json::to_string(&run_status)?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO runs (project, created, run_id, app_hash, config_json, status_json)
+                   VALUES (?, ?, ?, ?, ?, ?)",
+            )?;
+            let _ = stmt.insert(params![
+                project_id,
+                created,
+                run_id,
+                app_hash,
+                config_data,
+                status_data
+            ])?;
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn update_run_status(
+        &self,
+        project: &Project,
+        run_id: &str,
+        run_status: &RunStatus,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let run_id = run_id.to_string();
+        let run_status = run_status.clone();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            // Create run.
+            let status_data = serde_json::to_string(&run_status)?;
+            let mut stmt = c.prepare_cached(
+                "UPDATE runs SET status_json = ? WHERE project = ? AND run_id = ?",
+            )?;
+            let _ = stmt.insert(params![
+                status_data,
+                project_id,
+                run_id,
+            ])?;
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn append_run_block(
+        &self,
+        project: &Project,
+        run: &Run,
+        block_type: &BlockType,
+        block_name: &String,
+    ) -> Result<()> {
+        let traces = run
+            .traces
+            .iter()
+            .filter(|t| t.0 .0 == *block_type && &t.0 .1 == block_name)
+            .map(|t| t.clone())
+            .collect::<Vec<_>>();
 
         let pool = self.pool.clone();
         let ex_row_ids = tokio::task::spawn_blocking(
@@ -557,29 +630,15 @@ impl Store for SQLiteStore {
 
         let project_id = project.project_id();
         let run_id = run.run_id().to_string();
-        let created = run.created();
-        let app_hash = run.app_hash().to_string();
-        let run_config = run.config().clone();
-        let run_status = run.status().clone();
 
         let pool = self.pool.clone();
         let row_id = tokio::task::spawn_blocking(move || -> Result<i64> {
             let c = pool.get()?;
-            // Create run.
-            let config_data = serde_json::to_string(&run_config)?;
-            let status_data = serde_json::to_string(&run_status)?;
-            let mut stmt = c.prepare_cached(
-                "INSERT INTO runs (project, created, run_id, app_hash, config_json, status_json)
-                   VALUES (?, ?, ?, ?, ?, ?)",
+            let row_id = c.query_row(
+                "SELECT id FROM runs WHERE project = ?1 AND run_id = ?2",
+                params![project_id, run_id],
+                |row| row.get(0),
             )?;
-            let row_id = stmt.insert(params![
-                project_id,
-                created,
-                run_id,
-                app_hash,
-                config_data,
-                status_data
-            ])?;
             Ok(row_id)
         })
         .await??;

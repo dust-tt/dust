@@ -107,7 +107,7 @@ pub struct BlockStatus {
     pub name: String,
     pub status: Status,
     pub success_count: usize,
-    pub errror_count: usize,
+    pub error_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -130,6 +130,10 @@ impl RunStatus {
                 self.blocks.push(status);
             }
         }
+    }
+
+    pub fn set_run_status(&mut self, status: Status) {
+        self.run = status;
     }
 }
 
@@ -196,7 +200,7 @@ impl Run {
     }
 
     pub fn app_hash(&self) -> &str {
-        &&self.app_hash
+        &self.app_hash
     }
 
     pub fn config(&self) -> &RunConfig {
@@ -205,6 +209,10 @@ impl Run {
 
     pub fn status(&self) -> &RunStatus {
         &self.status
+    }
+
+    pub fn set_status(&mut self, status: RunStatus) {
+        self.status = status;
     }
 
     pub fn set_run_status(&mut self, status: Status) {
