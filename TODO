@@ -3,6 +3,7 @@
 - [x] abstract all storage behind a Trait with sqlite in mind
 - [x] move storage to sqlite for cli
 - [x] ensure there is no (type, name) duplicate
+- [ ] extend sqlite functional tests
 - [ ] options block
 - [ ] if/end block
 - [ ] interrupt only affected inputs on error
@@ -36,4 +37,3 @@
   - [x] incremental run ceation in DB
   - [x] APIState pointers to runs in progress
 - [ ] Postgres Store
-- [ ] Cloud run deploy of dust-api

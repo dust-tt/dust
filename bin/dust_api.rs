@@ -72,8 +72,10 @@ impl APIState {
                 let store = self.store.clone();
                 let manager = self.run_manager.clone();
 
+                println!("STARTING RUN");
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
+                    println!("IN SPAWN STARTING RUN");
                     match app.run(store).await {
                         Ok(()) => {
                             utils::done(&format!(
@@ -95,7 +97,7 @@ impl APIState {
                 });
             });
             loop_count += 1;
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             if loop_count % (10 * 10) == 0 {
                 let manager = self.run_manager.lock();
                 utils::info(&format!("{} pending runs", manager.pending_runs.len()));
