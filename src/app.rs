@@ -1,29 +1,53 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
-use crate::run::{BlockExecution, Run, RunConfig};
+use crate::project::Project;
+use crate::run::{BlockExecution, BlockStatus, Run, RunConfig, Status};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
+use parking_lot::Mutex;
 use pest::Parser;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use std::sync::Arc;
 
 /// An App is a collection of versioned Blocks.
 ///
 /// Blocks are versioned by their hash (inner_hash) and the hash of their predecessor in the App
 /// specification. The App hash is computed from its constituting blocks hashes.
 pub struct App {
+    // Specification state.
     hash: String,
     blocks: Vec<(String, String, Box<dyn Block + Send + Sync>)>, // (hash, name, Block)
+    // Run state.
+    run: Option<Run>,
+    project: Option<Project>,
+    run_config: Option<RunConfig>,
+    dataset: Option<Dataset>,
 }
 
 impl App {
     pub fn len(&self) -> usize {
         self.blocks.len()
+    }
+
+    pub fn hash(&self) -> &str {
+        &self.hash
+    }
+
+    pub fn run_ref(&self) -> Option<&Run> {
+        self.run.as_ref()
+    }
+
+    pub fn blocks(&self) -> Vec<(BlockType, String)> {
+        self.blocks
+            .iter()
+            .map(|(_, name, block)| (block.block_type(), name.clone()))
+            .collect()
     }
 
     pub async fn new(spec_data: &str) -> Result<Self> {
@@ -70,6 +94,7 @@ impl App {
         //   TODO(spolu): probably waivable in the future
         let mut current_map: Option<String> = None;
         let mut root_found = false;
+        let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
         for (name, block) in &blocks {
             if block.block_type() == BlockType::Root {
                 if root_found {
@@ -120,6 +145,17 @@ impl App {
                     }
                 }
             }
+            let block_type_name = (block.block_type(), name.clone());
+            match block_type_names.contains(&block_type_name) {
+                true => Err(anyhow!(
+                    "Repeated block `{} {}`",
+                    block_type_name.0.to_string(),
+                    block_type_name.1
+                ))?,
+                false => {
+                    block_type_names.insert(block_type_name);
+                }
+            }
         }
         if !root_found {
             Err(anyhow!("No root block found"))?;
@@ -145,28 +181,60 @@ impl App {
                 .zip(hashes.into_iter())
                 .map(|((name, block), hash)| (hash, name, block))
                 .collect(),
+            run: None,
+            project: None,
+            run_config: None,
+            dataset: None,
         })
     }
 
-    pub async fn run(
-        &self,
-        data: &Dataset,
-        run_config: &RunConfig,
-        concurrency: usize,
+    pub async fn prepare_run(
+        &mut self,
+        run_config: RunConfig,
+        project: Project,
+        dataset: Dataset,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
-        let mut run = Run::new(&self.hash, run_config.clone());
+        assert!(self.run.is_none());
+
+        self.project = Some(project);
+        self.run_config = Some(run_config);
+        self.dataset = Some(dataset);
+
+        let store = store.clone();
+        self.run = Some(Run::new(
+            &self.hash,
+            self.run_config.as_ref().unwrap().clone(),
+        ));
+
+        store
+            .as_ref()
+            .create_run_empty(self.project.as_ref().unwrap(), self.run.as_ref().unwrap())
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn run(&mut self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        assert!(self.run.is_some());
+        assert!(self.run_config.is_some());
+        assert!(self.dataset.is_some());
+        assert!(self.project.is_some());
+
+        let project = self.project.as_ref().unwrap().clone();
+        let run_id = self.run.as_ref().unwrap().run_id().to_string();
 
         // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
         // are executed only once instead of once per input data.
         let mut envs = vec![vec![Env {
-            config: run_config.clone(),
+            config: self.run_config.as_ref().unwrap().clone(),
             state: HashMap::new(),
             input: InputState {
                 value: None,
                 index: 0,
             },
             map: None,
+            project: project.clone(),
             store: store.clone(),
         }]];
 
@@ -178,7 +246,10 @@ impl App {
             // input_envs.
             if block.block_type() == BlockType::Root {
                 assert!(envs.len() == 1 && envs[0].len() == 1);
-                envs = data
+                envs = self
+                    .dataset
+                    .as_ref()
+                    .unwrap()
                     .iter()
                     .enumerate()
                     .map(|(i, d)| {
@@ -237,6 +308,28 @@ impl App {
                 current_map_blocks = vec![];
             }
 
+            // Create a protected clone of the status during execution of the block to update the
+            // block status as execution takes place and push it to DB.
+            let run_status = Arc::new(Mutex::new(self.run.as_ref().unwrap().status().clone()));
+
+            // Create a new block status, add it to the current run status and update the DB then
+            // project the block_status for update each time a worker finishes.
+            let block_status = BlockStatus {
+                block_type: block.block_type(),
+                name: name.to_string(),
+                status: Status::Running,
+                success_count: 0,
+                error_count: 0,
+            };
+            self.run
+                .as_mut()
+                .unwrap()
+                .set_block_status(block_status.clone());
+            store
+                .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
+                .await?;
+            let block_status = Arc::new(Mutex::new(block_status));
+
             // We flatten the envs for concurrent and parrallel execution of the block which
             // requires us to keep track of the potential input and map indices of each Env,
             // depending on the state of ExecutionEnvs.
@@ -258,18 +351,58 @@ impl App {
                 // implemented on each Block. This allows cloning the Block (as a Trait) to use from
                 // parallel threads!
                 let b = block.clone();
+                let run_status = run_status.clone();
+                let block_status = block_status.clone();
+                let store = store.clone();
+                let project = project.clone();
+                let run_id = run_id.clone();
                 tokio::spawn(async move {
                     match b.execute(&name, &e).await {
-                        Ok(v) => Ok((input_idx, map_idx, e, Ok(v)))
-                            as Result<
-                                (usize, usize, Env, Result<Value, anyhow::Error>),
-                                anyhow::Error,
-                            >,
-                        Err(err) => Ok((input_idx, map_idx, e, Err(err))),
+                        Ok(v) => {
+                            let block_status = {
+                                let mut block_status = block_status.lock();
+                                block_status.success_count += 1;
+                                block_status.clone()
+                            };
+                            let run_status = {
+                                let mut run_status = run_status.lock();
+                                run_status.set_block_status(block_status);
+                                run_status.clone()
+                            };
+                            store
+                                .update_run_status(&project, &run_id, &run_status)
+                                .await?;
+                            Ok((input_idx, map_idx, e, Ok(v)))
+                                as Result<
+                                    (usize, usize, Env, Result<Value, anyhow::Error>),
+                                    anyhow::Error,
+                                >
+                        }
+                        Err(err) => {
+                            let block_status = {
+                                let mut block_status = block_status.lock();
+                                block_status.error_count += 1;
+                                block_status.clone()
+                            };
+                            let run_status = {
+                                let mut run_status = run_status.lock();
+                                run_status.set_block_status(block_status);
+                                run_status.clone()
+                            };
+                            store
+                                .update_run_status(&project, &run_id, &run_status)
+                                .await?;
+                            Ok((input_idx, map_idx, e, Err(err)))
+                        }
                     }
                 })
             })
-            .buffer_unordered(concurrency)
+            .buffer_unordered(
+                self.run_config
+                    .as_ref()
+                    .unwrap()
+                    .concurrency_for_block(block.block_type(), name),
+            )
             .map(|r| match r {
                 Err(e) => Err(anyhow!("Block execution spawn error: {}", e))?,
                 Ok(r) => r,
@@ -295,7 +428,7 @@ impl App {
                 };
             });
 
-            run.traces.push((
+            self.run.as_mut().unwrap().traces.push((
                 (block.block_type(), name.clone()),
                 flat.iter()
                     .map(|m| {
@@ -319,9 +452,20 @@ impl App {
                     .collect::<Vec<_>>(),
             ));
 
+            // Update block run executions incrementally
+            store
+                .as_ref()
+                .append_run_block(
+                    &project,
+                    self.run.as_ref().unwrap(),
+                    &block.block_type(),
+                    name,
+                )
+                .await?;
+
             utils::info(
                 format!(
-                    "Execution block `{} {}`: {} success {} error(s)",
+                    "Execution block `{} {}`: {} success(es) {} error(s)",
                     block.block_type().to_string(),
                     name,
                     success,
@@ -330,18 +474,43 @@ impl App {
                 .as_str(),
             );
 
+            // Update the run_status for next iteration, finalize block_status, write to DB
+            let block_status = {
+                let mut block_status = block_status.lock();
+                block_status.status = match errors.len() {
+                    0 => Status::Succeeded,
+                    _ => Status::Errored,
+                };
+                block_status.clone()
+            };
+            let run_status = {
+                let mut run_status = run_status.lock();
+                run_status.set_block_status(block_status);
+                if errors.len() > 0 {
+                    run_status.set_run_status(Status::Errored);
+                }
+                run_status.clone()
+            };
+            self.run.as_mut().unwrap().set_status(run_status);
+            store
+                .as_ref()
+                .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
+                .await?;
+
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
-                store.as_ref().store_run(&run).await?;
                 utils::done(&format!(
                     "Run `{}` for app version `{}` stored",
-                    run.run_id(),
-                    run.app_hash(),
+                    &run_id,
+                    self.run.as_ref().unwrap().app_hash(),
                 ));
 
                 Err(anyhow!(
-                    "Run interrupted due to failed execution of block `{} {}` with {} error(s)",
+                    "Run `{}` for app version `{}` interrupted due to \
+                     failed execution of block `{} {}` with {} error(s)",
+                    &run_id,
+                    self.run.as_ref().unwrap().app_hash(),
                     block.block_type().to_string(),
                     name,
                     errors.len(),
@@ -405,23 +574,27 @@ impl App {
             }
         }
 
-        store.as_ref().store_run(&run).await?;
+        self.run.as_mut().unwrap().set_run_status(Status::Succeeded);
+        store
+            .as_ref()
+            .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
+            .await?;
         utils::done(&format!(
             "Run `{}` for app version `{}` stored",
-            run.run_id(),
-            run.app_hash(),
+            &run_id,
+            self.hash(),
         ));
 
         Ok(())
     }
 }
 
-pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) -> Result<()> {
+pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let spec_path = root_path.join("index.dust");
     let spec_data = async_std::fs::read_to_string(spec_path).await?;
 
-    let app = App::new(&spec_data).await?;
+    let mut app = App::new(&spec_data).await?;
 
     utils::info(format!("Parsed app specification, found {} blocks.", app.len()).as_str());
 
@@ -448,9 +621,13 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
 
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
     store.init().await?;
+    let project = Project::new_from_id(1);
 
-    let d = match store.latest_dataset_hash(dataset_id).await? {
-        Some(latest) => store.load_dataset(dataset_id, &latest).await?.unwrap(),
+    let d = match store.latest_dataset_hash(&project, dataset_id).await? {
+        Some(latest) => store
+            .load_dataset(&project, dataset_id, &latest)
+            .await?
+            .unwrap(),
         None => Err(anyhow!("No dataset found for id `{}`", dataset_id))?,
     };
 
@@ -466,7 +643,12 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str, concurrency: usize) ->
         .as_str(),
     );
 
-    store.register_specification(&app.hash, &spec_data).await?;
+    store
+        .register_specification(&project, &app.hash, &spec_data)
+        .await?;
 
-    app.run(&d, &run_config, concurrency, Box::new(store)).await
+    app.prepare_run(run_config, project.clone(), d, Box::new(store.clone()))
+        .await?;
+
+    app.run(Box::new(store)).await
 }

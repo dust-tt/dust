@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, dataset, init, providers::provider, run, utils};
+use dust::{app, dataset, init, providers::provider, run, utils, blocks::block::BlockType};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -80,10 +80,6 @@ enum AppCommands {
         /// Run config path (JSON)
         #[clap(required = true)]
         config_path: String,
-
-        /// Concurrency
-        #[clap(short, long, default_value = "8")]
-        concurrency: usize,
     },
 }
 
@@ -96,6 +92,10 @@ enum RunCommands {
         /// Run id to inspect
         #[clap(required = true)]
         run_id: String,
+
+        /// Block type to inspect
+        #[clap(required = true)]
+        block_type: BlockType,
 
         /// Block name to inspect
         #[clap(required = true)]
@@ -129,13 +129,12 @@ fn main() -> Result<()> {
             AppCommands::Run {
                 dataset_id,
                 config_path,
-                concurrency,
-            } => rt.block_on(app::cmd_run(dataset_id, config_path, *concurrency)),
+            } => rt.block_on(app::cmd_run(dataset_id, config_path)),
         },
         Commands::Run { command } => match command {
             RunCommands::List {} => rt.block_on(run::cmd_list()),
-            RunCommands::Inspect { run_id, block_name } => {
-                rt.block_on(run::cmd_inspect(run_id, block_name))
+            RunCommands::Inspect { run_id, block_type, block_name } => {
+                rt.block_on(run::cmd_inspect(run_id, *block_type, block_name))
             }
         },
     };

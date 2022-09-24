@@ -1,1 +1,3 @@
 /target
+api_store.sqlite
+Cargo.lock

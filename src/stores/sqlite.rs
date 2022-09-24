@@ -1,42 +1,64 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
 use crate::stores::store::Store;
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
-use parking_lot::Mutex;
-use rusqlite::{params, Connection};
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SQLiteStore {
-    conn: Arc<Mutex<Connection>>,
+    pool: Pool<SqliteConnectionManager>,
 }
 
 impl SQLiteStore {
+    pub fn new_in_memory() -> Result<Self> {
+        let manager = SqliteConnectionManager::memory();
+        let pool = r2d2::Pool::new(manager)?;
+        Ok(SQLiteStore { pool })
+    }
+
+    pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
+        let manager = SqliteConnectionManager::file(sqlite_path);
+        let pool = r2d2::Pool::new(manager)?;
+        Ok(SQLiteStore { pool })
+    }
+
     pub async fn init(&self) -> Result<()> {
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || {
-            let c = c.lock();
+            let c = pool.get()?;
             let tables = vec![
+                "-- projects
+                 CREATE TABLE IF NOT EXISTS projects (
+                    id INTEGER PRIMARY KEY
+                );",
                 "-- app specifications
                  CREATE TABLE IF NOT EXISTS specifications (
-                    id            INTEGER PRIMARY KEY,
-                    created       INTEGER NOT NULL,
-                    hash          TEXT NOT NULL,
-                    specification TEXT NOT NULL
+                    id                   INTEGER PRIMARY KEY,
+                    project              INTEGER NOT NULL,
+                    created              INTEGER NOT NULL,
+                    hash                 TEXT NOT NULL,
+                    specification        TEXT NOT NULL,
+                    FOREIGN KEY(project) REFERENCES projects(id)
                  );",
                 "-- datasets
                  CREATE TABLE IF NOT EXISTS datasets (
-                    id         INTEGER PRIMARY KEY,
-                    created    INTEGER NOT NULL,
-                    dataset_id TEXT NOT NULL,
-                    hash       TEXT NOT NULL
+                    id                   INTEGER PRIMARY KEY,
+                    project              INTEGER NOT NULL,
+                    created              INTEGER NOT NULL,
+                    dataset_id           TEXT NOT NULL,
+                    hash                 TEXT NOT NULL,
+                    FOREIGN KEY(project) REFERENCES projects(id)
                  );",
                 "-- datasets raw hashed data points
                  CREATE TABLE IF NOT EXISTS datasets_points (
@@ -55,11 +77,14 @@ impl SQLiteStore {
                  );",
                 "-- runs
                  CREATE TABLE IF NOT EXISTS runs (
-                    id          INTEGER PRIMARY KEY,
-                    created     INTEGER NOT NULL,
-                    run_id      TEXT NOT NULL,
-                    app_hash    TEXT NOT NULL,
-                    config_json TEXT NOT NULL
+                    id                   INTEGER PRIMARY KEY,
+                    project              INTEGER NOT NULL,
+                    created              INTEGER NOT NULL,
+                    run_id               TEXT NOT NULL,
+                    app_hash             TEXT NOT NULL,
+                    config_json          TEXT NOT NULL,
+                    status_json          TEXT NOT NULL,
+                    FOREIGN KEY(project) REFERENCES projects(id)
                  );",
                 "-- block executions
                  CREATE TABLE IF NOT EXISTS block_executions (
@@ -82,11 +107,13 @@ impl SQLiteStore {
                  );",
                 "-- LLM Cache (non unique hash index)
                  CREATE TABLE IF NOT EXISTS llm_cache (
-                    id         INTEGER PRIMARY KEY,
-                    created    INTEGER NOT NULL,
-                    hash       TEXT NOT NULL,
-                    request    TEXT NOT NULL,
-                    generation TEXT NOT NULL
+                    id                   INTEGER PRIMARY KEY,
+                    project              INTEGER NOT NULL,
+                    created              INTEGER NOT NULL,
+                    hash                 TEXT NOT NULL,
+                    request              TEXT NOT NULL,
+                    generation           TEXT NOT NULL,
+                    FOREIGN KEY(project) REFERENCES projects(id)
                  );",
             ];
             for t in tables {
@@ -98,23 +125,26 @@ impl SQLiteStore {
 
             let indices = vec![
                 "CREATE INDEX IF NOT EXISTS
-                 idx_specifications_created ON specifications (created);",
+                   idx_specifications_project_created ON specifications (project, created);",
                 "CREATE INDEX IF NOT EXISTS
-                 idx_datasets_dataset_id_created ON datasets (dataset_id, created);",
+                   idx_datasets_project_dataset_id_created
+                   ON datasets (project, dataset_id, created);",
                 "CREATE INDEX IF NOT EXISTS
-                 idx_runs_created ON runs (created);",
+                   idx_runs_project_created ON runs (project, created);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
-                 idx_runs_id ON runs (run_id);",
+                   idx_runs_id ON runs (run_id);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
-                 idx_block_executions_hash ON block_executions (hash);",
+                   idx_block_executions_hash ON block_executions (hash);",
                 "CREATE UNIQUE INDEX IF NOT EXISTS
-                 idx_datasets_points_hash ON datasets_points (hash);",
+                   idx_datasets_points_hash ON datasets_points (hash);",
                 "CREATE INDEX IF NOT EXISTS
-                 idx_datasets_joins ON datasets_joins (dataset, point);",
+                   idx_datasets_joins ON datasets_joins (dataset, point);",
                 "CREATE INDEX IF NOT EXISTS
-                 idx_runs_joins ON runs_joins (run, block_execution);",
+                   idx_runs_joins ON runs_joins (run, block_execution);",
+                "CREATE UNIQUE INDEX IF NOT EXISTS
+                   idx_llm_cache_hash ON llm_cache (hash);",
                 "CREATE INDEX IF NOT EXISTS
-                 idx_llm_cache_hash ON llm_cache (hash);",
+                   idx_llm_cache_project_hash ON llm_cache (project, hash);",
             ];
             for i in indices {
                 match c.execute(i, ()) {
@@ -127,31 +157,37 @@ impl SQLiteStore {
         })
         .await?
     }
-
-    pub fn new_in_memory() -> Result<Self> {
-        Ok(SQLiteStore {
-            conn: Arc::new(Mutex::new(Connection::open_in_memory()?)),
-        })
-    }
-
-    pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
-        Ok(SQLiteStore {
-            conn: Arc::new(Mutex::new(Connection::open(sqlite_path)?)),
-        })
-    }
 }
 
 #[async_trait]
 impl Store for SQLiteStore {
-    async fn latest_dataset_hash(&self, dataset_id: &str) -> Result<Option<String>> {
+    async fn create_project(&self) -> Result<Project> {
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Project> {
+            let c = pool.get()?;
+            // Create dataset.
+            let mut stmt = c.prepare_cached("INSERT INTO projects DEFAULT VALUES")?;
+            let row_id = stmt.insert(params![])?;
+            Ok(Project::new_from_id(row_id))
+        })
+        .await?
+    }
+
+    async fn latest_dataset_hash(
+        &self,
+        project: &Project,
+        dataset_id: &str,
+    ) -> Result<Option<String>> {
+        let project_id = project.project_id();
         let dataset_id = dataset_id.to_string();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let c = c.lock();
+            let c = pool.get()?;
             match c.query_row(
-                "SELECT hash FROM datasets WHERE dataset_id = ?1 ORDER BY created DESC LIMIT 1",
-                params![dataset_id],
+                "SELECT hash FROM datasets
+                   WHERE project = ?1 AND dataset_id = ?2 ORDER BY created DESC LIMIT 1",
+                params![project_id, dataset_id],
                 |row| row.get(0),
             ) {
                 Err(e) => match e {
@@ -164,16 +200,17 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn register_dataset(&self, d: &Dataset) -> Result<()> {
+    async fn register_dataset(&self, project: &Project, d: &Dataset) -> Result<()> {
+        let project_id = project.project_id();
         let dataset_created = d.created();
         let dataset_id = d.dataset_id().to_string();
         let dataset_hash = d.hash().to_string();
         // TODO(spolu): kind of ugly but we have to clone here.
         let data = d.iter().map(|v| v.clone()).collect::<Vec<_>>();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         let pt_row_ids = tokio::task::spawn_blocking(move || -> Result<Vec<i64>> {
-            let mut c = c.lock();
+            let mut c = pool.get()?;
             let tx = c.transaction()?;
             // Start by inserting values if we don't already have them.
             let pt_row_ids = {
@@ -211,21 +248,26 @@ impl Store for SQLiteStore {
         })
         .await??;
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         let row_id = tokio::task::spawn_blocking(move || -> Result<i64> {
-            let c = c.lock();
+            let c = pool.get()?;
             // Create dataset.
             let mut stmt = c.prepare_cached(
-                "INSERT INTO datasets (created, dataset_id, hash) VALUES (?, ?, ?)",
+                "INSERT INTO datasets (project, created, dataset_id, hash) VALUES (?, ?, ?, ?)",
             )?;
-            let row_id = stmt.insert(params![dataset_created, dataset_id, dataset_hash])?;
+            let row_id = stmt.insert(params![
+                project_id,
+                dataset_created,
+                dataset_id,
+                dataset_hash
+            ])?;
             Ok(row_id)
         })
         .await??;
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let mut c = c.lock();
+            let mut c = pool.get()?;
             // Finally fill in the join values.
             let tx = c.transaction()?;
             {
@@ -247,17 +289,24 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn load_dataset(&self, dataset_id: &str, hash: &str) -> Result<Option<Dataset>> {
+    async fn load_dataset(
+        &self,
+        project: &Project,
+        dataset_id: &str,
+        hash: &str,
+    ) -> Result<Option<Dataset>> {
+        let project_id = project.project_id();
         let dataset_id = dataset_id.to_string();
         let hash = hash.to_string();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<Dataset>> {
-            let c = c.lock();
+            let c = pool.get()?;
             // Check that the dataset_id and hash exist
             let d: Option<(u64, u64)> = match c.query_row(
-                "SELECT id, created FROM datasets WHERE dataset_id = ?1 AND hash = ?2",
-                params![dataset_id, hash],
+                "SELECT id, created FROM datasets
+                   WHERE project = ?1 AND dataset_id = ?2 AND hash = ?3",
+                params![project_id, dataset_id, hash],
                 |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())),
             ) {
                 Err(e) => match e {
@@ -299,13 +348,44 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn latest_specification_hash(&self) -> Result<Option<String>> {
-        let c = self.conn.clone();
+    async fn list_datasets(
+        &self,
+        project: &Project,
+    ) -> Result<HashMap<String, Vec<(String, u64)>>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<HashMap<String, Vec<(String, u64)>>> {
+            let c = pool.get()?;
+            let mut stmt = c.prepare_cached(
+                "SELECT dataset_id, hash, created FROM datasets WHERE project = ?1
+                   ORDER BY created DESC",
+            )?;
+            let mut rows = stmt.query(params![project_id])?;
+            let mut datasets: HashMap<String, Vec<(String, u64)>> = HashMap::new();
+            while let Some(row) = rows.next()? {
+                let dataset_id: String = row.get(0)?;
+                let hash: String = row.get(1)?;
+                let created: u64 = row.get(2)?;
+                datasets
+                    .entry(dataset_id)
+                    .or_default()
+                    .push((hash, created));
+            }
+            Ok(datasets)
+        })
+        .await?
+    }
+
+    async fn latest_specification_hash(&self, project: &Project) -> Result<Option<String>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let c = c.lock();
+            let c = pool.get()?;
             match c.query_row(
-                "SELECT hash FROM specifications ORDER BY created DESC LIMIT 1",
-                [],
+                "SELECT hash FROM specifications WHERE project = ?1 ORDER BY created DESC LIMIT 1",
+                params![project_id],
                 |row| row.get(0),
             ) {
                 Err(e) => match e {
@@ -318,36 +398,45 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn register_specification(&self, hash: &str, spec: &str) -> Result<()> {
-        let latest = self.latest_specification_hash().await?;
+    async fn register_specification(
+        &self,
+        project: &Project,
+        hash: &str,
+        spec: &str,
+    ) -> Result<()> {
+        let latest = self.latest_specification_hash(project).await?;
         if latest.is_some() && latest.unwrap() == hash {
             return Ok(());
         }
 
+        let project_id = project.project_id();
         let hash = hash.to_string();
         let spec = spec.to_string();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let c = c.lock();
+            let c = pool.get()?;
             let created = utils::now();
             // Insert new specification.
             let mut stmt = c.prepare_cached(
-                "INSERT INTO specifications (created, hash, specification) VALUES (?, ?, ?)",
+                "INSERT INTO specifications (project, created, hash, specification)
+                   VALUES (?, ?, ?, ?)",
             )?;
-            stmt.insert(params![created, hash, spec])?;
+            stmt.insert(params![project_id, created, hash, spec])?;
             Ok(())
         })
         .await?
     }
 
-    async fn latest_run_id(&self) -> Result<Option<String>> {
-        let c = self.conn.clone();
+    async fn latest_run_id(&self, project: &Project) -> Result<Option<String>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let c = c.lock();
+            let c = pool.get()?;
             match c.query_row(
-                "SELECT run_id FROM runs ORDER BY created DESC LIMIT 1",
-                [],
+                "SELECT run_id FROM runs WHERE project = ?1 ORDER BY created DESC LIMIT 1",
+                params![project_id],
                 |row| row.get(0),
             ) {
                 Err(e) => match e {
@@ -360,14 +449,17 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn all_runs(&self) -> Result<Vec<(String, u64, String, RunConfig)>> {
-        let c = self.conn.clone();
+    async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Vec<(String, u64, String, RunConfig)>> {
-            let c = c.lock();
+            let c = pool.get()?;
             // Retrieve runs.
-            let mut stmt =
-                c.prepare_cached("SELECT run_id, created, app_hash, config_json FROM runs")?;
-            let mut rows = stmt.query([])?;
+            let mut stmt = c.prepare_cached(
+                "SELECT run_id, created, app_hash, config_json FROM runs WHERE project = ?1",
+            )?;
+            let mut rows = stmt.query(params![project_id])?;
             let mut runs: Vec<(String, u64, String, RunConfig)> = vec![];
             while let Some(row) = rows.next()? {
                 let run_id: String = row.get(0)?;
@@ -385,14 +477,87 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn store_run(&self, run: &Run) -> Result<()> {
-        // TODO(spolu): kind of ugly but we have to clone here.
-        let traces = run.traces.clone();
+    async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()> {
+        let project_id = project.project_id();
+        let run_id = run.run_id().to_string();
+        let created = run.created();
+        let app_hash = run.app_hash().to_string();
+        let run_config = run.config().clone();
+        let run_status = run.status().clone();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            // Create run.
+            let config_data = serde_json::to_string(&run_config)?;
+            let status_data = serde_json::to_string(&run_status)?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO runs (project, created, run_id, app_hash, config_json, status_json)
+                   VALUES (?, ?, ?, ?, ?, ?)",
+            )?;
+            let _ = stmt.insert(params![
+                project_id,
+                created,
+                run_id,
+                app_hash,
+                config_data,
+                status_data
+            ])?;
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn update_run_status(
+        &self,
+        project: &Project,
+        run_id: &str,
+        run_status: &RunStatus,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let run_id = run_id.to_string();
+        let run_status = run_status.clone();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            // Create run.
+            let status_data = serde_json::to_string(&run_status)?;
+            let mut stmt = c.prepare_cached(
+                "UPDATE runs SET status_json = ? WHERE project = ? AND run_id = ?",
+            )?;
+            let _ = stmt.insert(params![
+                status_data,
+                project_id,
+                run_id,
+            ])?;
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn append_run_block(
+        &self,
+        project: &Project,
+        run: &Run,
+        block_type: &BlockType,
+        block_name: &String,
+    ) -> Result<()> {
+        let traces = run
+            .traces
+            .iter()
+            .filter(|t| t.0 .0 == *block_type && &t.0 .1 == block_name)
+            .map(|t| t.clone())
+            .collect::<Vec<_>>();
+
+        let pool = self.pool.clone();
         let ex_row_ids = tokio::task::spawn_blocking(
             move || -> Result<Vec<(usize, BlockType, String, usize, usize, i64)>> {
-                let mut c = c.lock();
+                let mut c = pool.get()?;
                 let tx = c.transaction()?;
                 // Start by inserting block executions if we don't already have them.
                 let ex_row_ids = {
@@ -463,26 +628,24 @@ impl Store for SQLiteStore {
         )
         .await??;
 
+        let project_id = project.project_id();
         let run_id = run.run_id().to_string();
-        let created = run.created();
-        let app_hash = run.app_hash().to_string();
-        let run_config = run.config().clone();
-        let c = self.conn.clone();
+
+        let pool = self.pool.clone();
         let row_id = tokio::task::spawn_blocking(move || -> Result<i64> {
-            let c = c.lock();
-            // Create run.
-            let config_data = serde_json::to_string(&run_config)?;
-            let mut stmt = c.prepare_cached(
-                "INSERT INTO runs (created, run_id, app_hash, config_json) VALUES (?, ?, ?, ?)",
+            let c = pool.get()?;
+            let row_id = c.query_row(
+                "SELECT id FROM runs WHERE project = ?1 AND run_id = ?2",
+                params![project_id, run_id],
+                |row| row.get(0),
             )?;
-            let row_id = stmt.insert(params![created, run_id, app_hash, config_data])?;
             Ok(row_id)
         })
         .await??;
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let mut c = c.lock();
+            let mut c = pool.get()?;
             // Finally fill in the join values.
             let tx = c.transaction()?;
             {
@@ -517,22 +680,31 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn load_run(&self, run_id: &str) -> Result<Option<Run>> {
+    async fn load_run(
+        &self,
+        project: &Project,
+        run_id: &str,
+        block: Option<Option<(BlockType, String)>>,
+    ) -> Result<Option<Run>> {
+        let project_id = project.project_id();
         let run_id = run_id.to_string();
+        let block = block.clone();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<Run>> {
-            let c = c.lock();
+            let c = pool.get()?;
             // Check that the run_id exists
-            let d: Option<(u64, u64, String, String)> = match c.query_row(
-                "SELECT id, created, app_hash, config_json FROM runs WHERE run_id = ?1",
-                params![run_id],
+            let d: Option<(u64, u64, String, String, String)> = match c.query_row(
+                "SELECT id, created, app_hash, config_json, status_json FROM runs
+                   WHERE project = ?1 AND run_id = ?2",
+                params![project_id, run_id],
                 |row| {
                     Ok((
                         row.get(0).unwrap(),
                         row.get(1).unwrap(),
                         row.get(2).unwrap(),
                         row.get(3).unwrap(),
+                        row.get(4).unwrap(),
                     ))
                 },
             ) {
@@ -540,43 +712,86 @@ impl Store for SQLiteStore {
                     rusqlite::Error::QueryReturnedNoRows => None,
                     _ => Err(e)?,
                 },
-                Ok((row_id, created, app_hash, config_data)) => {
-                    Some((row_id, created, app_hash, config_data))
+                Ok((row_id, created, app_hash, config_data, status_data)) => {
+                    Some((row_id, created, app_hash, config_data, status_data))
                 }
             };
             if d.is_none() {
                 return Ok(None);
             }
-            let (row_id, created, app_hash, config_data) = d.unwrap();
+            let (row_id, created, app_hash, config_data, status_data) = d.unwrap();
             let run_config: RunConfig = serde_json::from_str(&config_data)?;
+            let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
-            // Retrieve data points through datasets_joins
-            let mut stmt = c.prepare_cached(
-                "SELECT \
-                   runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
-                   runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
-                   FROM block_executions \
-                   INNER JOIN runs_joins \
-                   ON block_executions.id = runs_joins.block_execution \
-                   WHERE runs_joins.run = ?",
-            )?;
-            let mut rows = stmt.query([row_id])?;
             let mut data: Vec<(usize, BlockType, String, usize, usize, BlockExecution)> = vec![];
             let mut block_count = 0;
-            while let Some(row) = rows.next()? {
-                let block_idx: usize = row.get(0)?;
-                let b: String = row.get(1)?;
-                let block_type: BlockType = BlockType::from_str(&b)?;
-                let block_name: String = row.get(2)?;
-                let input_idx = row.get(3)?;
-                let map_idx = row.get(4)?;
-                let execution_data: String = row.get(5)?;
-                let execution: BlockExecution = serde_json::from_str(&execution_data)?;
-                data.push((
-                    block_idx, block_type, block_name, input_idx, map_idx, execution,
-                ));
-                if (block_idx + 1) > block_count {
-                    block_count = block_idx + 1;
+
+            match block {
+                None => {
+                    // Retrieve data points through datasets_joins
+                    let mut stmt = c.prepare_cached(
+                        "SELECT \
+                           runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
+                           runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
+                           FROM block_executions \
+                           INNER JOIN runs_joins \
+                           ON block_executions.id = runs_joins.block_execution \
+                           WHERE runs_joins.run = ?",
+                    )?;
+                    let mut rows = stmt.query([row_id])?;
+                    while let Some(row) = rows.next()? {
+                        let block_idx: usize = row.get(0)?;
+                        let b: String = row.get(1)?;
+                        let block_type: BlockType = BlockType::from_str(&b)?;
+                        let block_name: String = row.get(2)?;
+                        let input_idx = row.get(3)?;
+                        let map_idx = row.get(4)?;
+                        let execution_data: String = row.get(5)?;
+                        let execution: BlockExecution = serde_json::from_str(&execution_data)?;
+                        data.push((
+                            block_idx, block_type, block_name, input_idx, map_idx, execution,
+                        ));
+                        if (block_idx + 1) > block_count {
+                            block_count = block_idx + 1;
+                        }
+                    }
+                }
+                Some(block) => {
+                    match block {
+                        None => (),
+                        Some((block_type, block_name)) => {
+                            // Retrieve data points through datasets_joins for one block
+                            let mut stmt = c.prepare_cached(
+                                "SELECT \
+                            runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
+                            runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
+                            FROM block_executions \
+                            INNER JOIN runs_joins \
+                            ON block_executions.id = runs_joins.block_execution \
+                            WHERE runs_joins.run = ? AND block_type = ? AND block_name = ?",
+                            )?;
+                            let mut rows =
+                                stmt.query(params![row_id, block_type.to_string(), block_name])?;
+                            while let Some(row) = rows.next()? {
+                                let block_idx: usize = row.get(0)?;
+                                let b: String = row.get(1)?;
+                                let block_type: BlockType = BlockType::from_str(&b)?;
+                                let block_name: String = row.get(2)?;
+                                let input_idx = row.get(3)?;
+                                let map_idx = row.get(4)?;
+                                let execution_data: String = row.get(5)?;
+                                let execution: BlockExecution =
+                                    serde_json::from_str(&execution_data)?;
+                                data.push((
+                                    block_idx, block_type, block_name, input_idx, map_idx,
+                                    execution,
+                                ));
+                                if (block_idx + 1) > block_count {
+                                    block_count = block_idx + 1;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -653,22 +868,29 @@ impl Store for SQLiteStore {
                 created,
                 &app_hash,
                 &run_config,
+                &run_status,
                 traces,
             )))
         })
         .await?
     }
 
-    async fn llm_cache_get(&self, request: &LLMRequest) -> Result<Vec<LLMGeneration>> {
+    async fn llm_cache_get(
+        &self,
+        project: &Project,
+        request: &LLMRequest,
+    ) -> Result<Vec<LLMGeneration>> {
+        let project_id = project.project_id();
         let hash = request.hash().to_string();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Vec<LLMGeneration>> {
-            let c = c.lock();
+            let c = pool.get()?;
             // Retrieve generations.
-            let mut stmt =
-                c.prepare_cached("SELECT created, generation FROM llm_cache WHERE hash = ?1")?;
-            let mut rows = stmt.query(params![hash])?;
+            let mut stmt = c.prepare_cached(
+                "SELECT created, generation FROM llm_cache WHERE project = ?1 AND hash = ?2",
+            )?;
+            let mut rows = stmt.query(params![project_id, hash])?;
             let mut generations: Vec<(u64, LLMGeneration)> = vec![];
             while let Some(row) = rows.next()? {
                 let created: u64 = row.get(0)?;
@@ -686,22 +908,26 @@ impl Store for SQLiteStore {
 
     async fn llm_cache_store(
         &self,
+        project: &Project,
         request: &LLMRequest,
         generation: &LLMGeneration,
     ) -> Result<()> {
+        let project_id = project.project_id();
         let request = request.clone();
         let generation = generation.clone();
 
-        let c = self.conn.clone();
+        let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let c = c.lock();
+            let c = pool.get()?;
             let mut stmt = c.prepare_cached(
-                "INSERT INTO llm_cache (created, hash, request, generation) VALUES (?, ?, ?, ?)",
+                "INSERT INTO llm_cache (project, created, hash, request, generation)
+                   VALUES (?, ?, ?, ?, ?)",
             )?;
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
             let _ = stmt.insert(params![
+                project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
@@ -721,19 +947,63 @@ impl Store for SQLiteStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[tokio::test]
-    async fn sqlite_store_latest_dataset_hash() -> Result<()> {
+    async fn sqlite_datasets() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store.latest_dataset_hash("foo").await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_dataset_hash(&project, "test").await?;
         assert!(r.is_none());
+
+        let d = Dataset::new_from_jsonl(
+            "test",
+            vec![
+                json!({"foo": "1", "bar": "1"}),
+                json!({"foo": "2", "bar": "2"}),
+            ],
+        )
+        .await?;
+
+        store.register_dataset(&project, &d).await?;
+
+        let r = store.latest_dataset_hash(&project, "test").await?.unwrap();
+        assert!(r == "e3807c2c15d5b562dbeb2d92f5758d8793368cb19c373e5f25c1ec873771e330");
+
+        let d = store.load_dataset(&project, "test", &r).await?.unwrap();
+        assert!(d.len() == 2);
+        assert!(d.hash() == r);
+        assert!(d.keys() == vec!["foo", "bar"]);
+
+        let d = Dataset::new_from_jsonl(
+            "test",
+            vec![
+                json!({"foo": "1", "bar": "1"}),
+                json!({"foo": "2", "bar": "2"}),
+                json!({"foo": "3", "bar": "3"}),
+            ],
+        )
+        .await?;
+
+        store.register_dataset(&project, &d).await?;
+        let l = store.list_datasets(&project).await?;
+
+        assert!(l.len() == 1);
+        assert!(l["test"].len() == 2);
+        assert!(l["test"][1].0 == r);
+
         Ok(())
     }
 
     #[tokio::test]
     async fn sqlite_store_latest_specification_hash() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store.latest_specification_hash().await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_specification_hash(&project).await?;
         assert!(r.is_none());
         Ok(())
     }
@@ -741,7 +1011,10 @@ mod tests {
     #[tokio::test]
     async fn sqlite_store_latest_run_id() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
-        let r = store.latest_run_id().await?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let r = store.latest_run_id(&project).await?;
         assert!(r.is_none());
         Ok(())
     }

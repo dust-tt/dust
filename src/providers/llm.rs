@@ -1,5 +1,6 @@
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::stores::store::Store;
+use crate::project::Project;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -145,10 +146,11 @@ impl LLMRequest {
 
     pub async fn execute_with_cache(
         &self,
+        project: Project,
         store: Box<dyn Store + Send + Sync>,
     ) -> Result<LLMGeneration> {
         let generation = {
-            let mut generations = store.llm_cache_get(self).await?;
+            let mut generations = store.llm_cache_get(&project, self).await?;
             match generations.len() {
                 0 => None,
                 _ => Some(generations.remove(0)),
@@ -159,7 +161,7 @@ impl LLMRequest {
             Some(generation) => Ok(generation),
             None => {
                 let generation = self.execute().await?;
-                store.llm_cache_store(self, &generation).await?;
+                store.llm_cache_store(&project, self, &generation).await?;
                 Ok(generation)
             }
         }
