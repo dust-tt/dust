@@ -48,6 +48,7 @@ pub trait Store {
         &self,
         project: &Project,
         run: &Run,
+        block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
     ) -> Result<()>;

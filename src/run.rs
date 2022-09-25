@@ -135,6 +135,10 @@ impl RunStatus {
     pub fn set_run_status(&mut self, status: Status) {
         self.run = status;
     }
+
+    pub fn run_status(&self) -> Status {
+        self.run.clone()
+    }
 }
 
 /// Execution represents the full execution of an app on input data.

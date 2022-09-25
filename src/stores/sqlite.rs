@@ -23,13 +23,13 @@ pub struct SQLiteStore {
 impl SQLiteStore {
     pub fn new_in_memory() -> Result<Self> {
         let manager = SqliteConnectionManager::memory();
-        let pool = r2d2::Pool::new(manager)?;
+        let pool = Pool::builder().max_size(1).build(manager).unwrap();
         Ok(SQLiteStore { pool })
     }
 
     pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
         let manager = SqliteConnectionManager::file(sqlite_path);
-        let pool = r2d2::Pool::new(manager)?;
+        let pool = Pool::new(manager)?;
         Ok(SQLiteStore { pool })
     }
 
@@ -528,11 +528,7 @@ impl Store for SQLiteStore {
             let mut stmt = c.prepare_cached(
                 "UPDATE runs SET status_json = ? WHERE project = ? AND run_id = ?",
             )?;
-            let _ = stmt.insert(params![
-                status_data,
-                project_id,
-                run_id,
-            ])?;
+            let _ = stmt.insert(params![status_data, project_id, run_id,])?;
             Ok(())
         })
         .await??;
@@ -544,6 +540,7 @@ impl Store for SQLiteStore {
         &self,
         project: &Project,
         run: &Run,
+        block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
     ) -> Result<()> {
@@ -566,24 +563,20 @@ impl Store for SQLiteStore {
                     )?;
                     traces
                         .iter()
-                        .enumerate()
-                        .map(
-                            |(block_idx, ((block_type, block_name), input_executions))| {
-                                Ok(input_executions
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(input_idx, map_executions)| {
-                                        map_executions
-                                            .iter()
-                                            .enumerate()
-                                            .map(|(map_idx, execution)| {
-                                                let execution_json =
-                                                    serde_json::to_string(&execution)?;
-                                                let mut hasher = blake3::Hasher::new();
-                                                hasher.update(execution_json.as_bytes());
-                                                let hash =
-                                                    format!("{}", hasher.finalize().to_hex());
-                                                let row_id: Option<i64> = match tx.query_row(
+                        .map(|((block_type, block_name), input_executions)| {
+                            Ok(input_executions
+                                .iter()
+                                .enumerate()
+                                .map(|(input_idx, map_executions)| {
+                                    map_executions
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(map_idx, execution)| {
+                                            let execution_json = serde_json::to_string(&execution)?;
+                                            let mut hasher = blake3::Hasher::new();
+                                            hasher.update(execution_json.as_bytes());
+                                            let hash = format!("{}", hasher.finalize().to_hex());
+                                            let row_id: Option<i64> = match tx.query_row(
                                                 "SELECT id FROM block_executions WHERE hash = ?1",
                                                 params![hash],
                                                 |row| Ok(row.get(0).unwrap()),
@@ -594,29 +587,28 @@ impl Store for SQLiteStore {
                                                 },
                                                 Ok(row_id) => Some(row_id),
                                             };
-                                                let row_id = match row_id {
-                                                    Some(row_id) => row_id,
-                                                    None => {
-                                                        stmt.insert(params![hash, execution_json])?
-                                                    }
-                                                };
-                                                Ok((
-                                                    block_idx,
-                                                    block_type.clone(),
-                                                    block_name.clone(),
-                                                    input_idx,
-                                                    map_idx,
-                                                    row_id,
-                                                ))
-                                            })
-                                            .collect::<Result<Vec<_>>>()
-                                    })
-                                    .collect::<Result<Vec<_>>>()?
-                                    .into_iter()
-                                    .flatten()
-                                    .collect::<Vec<_>>())
-                            },
-                        )
+                                            let row_id = match row_id {
+                                                Some(row_id) => row_id,
+                                                None => {
+                                                    stmt.insert(params![hash, execution_json])?
+                                                }
+                                            };
+                                            Ok((
+                                                block_idx,
+                                                block_type.clone(),
+                                                block_name.clone(),
+                                                input_idx,
+                                                map_idx,
+                                                row_id,
+                                            ))
+                                        })
+                                        .collect::<Result<Vec<_>>>()
+                                })
+                                .collect::<Result<Vec<_>>>()?
+                                .into_iter()
+                                .flatten()
+                                .collect::<Vec<_>>())
+                        })
                         .collect::<Result<Vec<_>>>()?
                         .into_iter()
                         .flatten()
@@ -748,6 +740,14 @@ impl Store for SQLiteStore {
                         let map_idx = row.get(4)?;
                         let execution_data: String = row.get(5)?;
                         let execution: BlockExecution = serde_json::from_str(&execution_data)?;
+                        // println!(
+                        //     "{} {} {} {} {}",
+                        //     block_idx,
+                        //     block_type.to_string(),
+                        //     block_name,
+                        //     input_idx,
+                        //     map_idx
+                        // );
                         data.push((
                             block_idx, block_type, block_name, input_idx, map_idx, execution,
                         ));
@@ -846,6 +846,7 @@ impl Store for SQLiteStore {
 
             let traces = traces
                 .into_iter()
+                .filter(|o| o.is_some())
                 .map(|o| {
                     let (block_type, block_name, executions) = o.unwrap();
                     (
@@ -947,6 +948,8 @@ impl Store for SQLiteStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::App;
+    use crate::run::{RunConfig, Status};
     use serde_json::json;
 
     #[tokio::test]
@@ -977,6 +980,9 @@ mod tests {
         assert!(d.hash() == r);
         assert!(d.keys() == vec!["foo", "bar"]);
 
+        // sleep 2 ms to make sure created is different for the new dataset.
+        tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+
         let d = Dataset::new_from_jsonl(
             "test",
             vec![
@@ -1005,6 +1011,7 @@ mod tests {
 
         let r = store.latest_specification_hash(&project).await?;
         assert!(r.is_none());
+
         Ok(())
     }
 
@@ -1016,6 +1023,94 @@ mod tests {
 
         let r = store.latest_run_id(&project).await?;
         assert!(r.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn sqlite_end_to_end() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let d = Dataset::new_from_jsonl(
+            "env",
+            vec![
+                json!({"foo": "1", "bar": "1"}),
+                json!({"foo": "2", "bar": "2"}),
+            ],
+        )
+        .await?;
+        store.register_dataset(&project, &d).await?;
+
+        let spec_data = "root ROOT {}
+code CODE1 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env['state']['ROOT']['foo']};
+}
+```
+}
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env['state']['CODE1']['res'] + env['state']['ROOT']['bar']};
+}
+```
+}";
+
+        let mut app = App::new(&spec_data).await?;
+
+        store
+            .register_specification(&project, &app.hash(), &spec_data)
+            .await?;
+
+        let r = store.latest_specification_hash(&project).await?;
+        assert!(r.unwrap() == app.hash());
+
+        app.prepare_run(
+            RunConfig {
+                blocks: HashMap::new(),
+            },
+            project.clone(),
+            d,
+            Box::new(store.clone()),
+        )
+        .await?;
+
+        app.run(Box::new(store.clone())).await?;
+
+        let r = store
+            .load_run(&project, app.run_ref().unwrap().run_id(), None)
+            .await?
+            .unwrap();
+
+        assert!(r.run_id() == app.run_ref().unwrap().run_id());
+        assert!(r.app_hash() == app.hash());
+        assert!(r.status().run_status() == Status::Succeeded);
+        assert!(r.traces.len() == 3);
+        assert!(r.traces[1].1[0][0].value.as_ref().unwrap()["res"] == "1");
+
+        let r = store
+            .load_run(&project, app.run_ref().unwrap().run_id(), Some(None))
+            .await?
+            .unwrap();
+        assert!(r.traces.len() == 0);
+
+        let r = store
+            .load_run(
+                &project,
+                app.run_ref().unwrap().run_id(),
+                Some(Some((BlockType::Code, "CODE2".to_string()))),
+            )
+            .await?
+            .unwrap();
+        assert!(r.traces.len() == 1);
+        assert!(r.traces[0].1.len() == 2);
+        assert!(r.traces[0].1[0].len() == 1);
+        assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
+
         Ok(())
     }
 }

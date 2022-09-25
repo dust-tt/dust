@@ -241,6 +241,7 @@ impl App {
         let mut current_map: Option<String> = None;
         let mut current_map_blocks: Vec<String> = vec![];
 
+        let mut block_idx = 0;
         for (_, name, block) in &self.blocks {
             // Special pre-processing of the root blocks, injects data as input and build
             // input_envs.
@@ -458,6 +459,7 @@ impl App {
                 .append_run_block(
                     &project,
                     self.run.as_ref().unwrap(),
+                    block_idx,
                     &block.block_type(),
                     name,
                 )
@@ -572,6 +574,8 @@ impl App {
                     })
                     .collect::<Vec<_>>();
             }
+
+            block_idx += 1;
         }
 
         self.run.as_mut().unwrap().set_run_status(Status::Succeeded);
