@@ -31,6 +31,10 @@ export const User = sequelize.define(
 export const Apps = sequelize.define(
   "app",
   {
+    uid: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -42,7 +46,7 @@ export const Apps = sequelize.define(
     description: {
       type: DataTypes.STRING,
     },
-    dust_project: {
+    internal_project: {
       type: DataTypes.TEXT,
     },
   },
