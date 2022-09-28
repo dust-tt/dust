@@ -2,6 +2,7 @@ import AppLayout from "../../components/app/AppLayout";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
+
 const { URL } = process.env;
 
 export default function Home({ apps }) {
@@ -50,6 +51,15 @@ export async function getServerSideProps(context) {
   );
 
   if (!session) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
+
+  if (context.query.user != session.user.username) {
     return {
       redirect: {
         destination: `/`,

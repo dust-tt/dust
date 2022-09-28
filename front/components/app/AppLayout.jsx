@@ -30,7 +30,7 @@ export default function AppLayout({ children }) {
                     </div>
                     <div className="bg-white w-[4px] h-2"></div>
                     <div className="text-gray-800 font-black text-base tracking-tight select-none">
-                      <Link href={`/${session.github.login}`}>DUST</Link>
+                      <Link href={session ? `/${session.user.username}` : `/`}>DUST</Link>
                     </div>
                   </div>
                 </div>

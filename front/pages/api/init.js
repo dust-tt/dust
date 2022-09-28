@@ -1,4 +1,4 @@
-import { DustUser } from "../../lib/models/user";
+import { DustUser } from "../../lib/models";
 
 export default async function handler(req, res) {
   switch (req.method) {

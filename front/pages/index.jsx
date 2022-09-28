@@ -36,7 +36,7 @@ export default function Home() {
           <div className="mx-auto mt-5 max-w-md sm:justify-center md:mt-8">
             <button
               className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              onClick={() => signIn("github")}
+              onClick={() => signIn("github", { callbackUrl: '/api/login' })}
             >
               <ComputerDesktopIcon
                 className="-ml-1 mr-3 h-5 w-5"
@@ -57,15 +57,6 @@ export async function getServerSideProps(context) {
     context.res,
     authOptions
   );
-
-  if (session && session.user) {
-    return {
-      redirect: {
-        destination: `/${session.github.login}`,
-        permanent: false,
-      },
-    };
-  }
 
   return {
     props: { session },

@@ -1,15 +1,5 @@
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
-import SequelizeAdapter from "@next-auth/sequelize-adapter";
-import Sequelize from "sequelize";
-
-const sequelize = new Sequelize({
-  dialect: "sqlite",
-  storage: "front_store.sqlite",
-});
-
-// Calling sync() is not recommended in production
-sequelize.sync();
 
 export const authOptions = {
   providers: [
@@ -18,22 +8,27 @@ export const authOptions = {
       clientSecret: process.env.GITHUB_SECRET,
     }),
   ],
-  theme: {
-    colorScheme: "light",
-  },
-  adapter: SequelizeAdapter(sequelize),
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    session: async ({ session, user }) => {
-      if (session.user && user) {
-        session.user.id = user.id;
-        const userId =
-          /https:\/\/avatars.githubusercontent.com\/u\/(\d+)\?/g.exec(
-            session.user.image
-          )[1];
-        const res = await fetch(`https://api.github.com/user/${userId}`);
-        session.github = await res.json();
-      }
+    session: async ({ session, token, user }) => {
+      // session.token = token;
+      session.github = token.github;
+      session.user.username = token.github.login;
+      // console.log("SESSION");
+      // console.log(session);
       return session;
+    },
+    async jwt({ token, user, account, profile, isNewUser }) {
+      if (profile && account) {
+        token.github = {
+          login: profile.login,
+          id: profile.id,
+          access_token: account.access_token,
+        };
+      }
+      // console.log("JTW");
+      // console.log(token);
+      return token;
     },
   },
 };
