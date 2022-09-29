@@ -8,7 +8,7 @@ const sequelize = new Sequelize({
 export const User = sequelize.define(
   "user",
   {
-    github_id: {
+    githubId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -28,10 +28,14 @@ export const User = sequelize.define(
   {}
 );
 
-export const Apps = sequelize.define(
+export const App = sequelize.define(
   "app",
   {
-    uid: {
+    uId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -39,22 +43,26 @@ export const Apps = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    description: {
+      type: DataTypes.STRING,
+    },
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.STRING,
-    },
-    internal_project: {
+    savedSpecification: {
       type: DataTypes.TEXT,
+    },
+    dustAPIProjectId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {}
 );
-User.hasMany(Apps);
+User.hasMany(App);
 
-export const Providers = sequelize.define(
+export const Provider = sequelize.define(
   "provider",
   {
     name: {
@@ -68,4 +76,4 @@ export const Providers = sequelize.define(
   },
   {}
 );
-User.hasMany(Providers);
+User.hasMany(Provider);

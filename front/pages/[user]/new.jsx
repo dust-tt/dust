@@ -1,7 +1,6 @@
 import AppLayout from "../../components/app/AppLayout";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
-import { PlusIcon } from "@heroicons/react/20/solid";
 import Button from "../../components/Button";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
@@ -38,15 +37,6 @@ export default function Home({ apps }) {
   useEffect(() => {
     setDisabled(!formValidation());
   }, [appName]);
-
-  const handleSubmit = () => {
-    setDisabled(true);
-    console.log({
-      name: appName,
-      description: appDescription,
-      visibility: appVisibility,
-    });
-  };
 
   return (
     <AppLayout>
@@ -89,7 +79,7 @@ export default function Home({ apps }) {
                         "block w-full min-w-0 flex-1 rounded-none rounded-r-md sm:text-sm",
                         appNameError
                           ? "border-gray-300 focus:border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                          : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                       )}
                       value={appName}
                       onChange={(e) => setAppName(e.target.value)}
@@ -115,7 +105,7 @@ export default function Home({ apps }) {
                       type="text"
                       name="description"
                       id="appDescription"
-                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                       value={appDescription}
                       onChange={(e) => setAppDescription(e.target.value)}
                     />
@@ -136,7 +126,7 @@ export default function Home({ apps }) {
                           id="appVisibilityPublic"
                           name="visibility"
                           type="radio"
-                          className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500"
                           value="public"
                           checked={appVisibility == "public"}
                           onChange={(e) => {
@@ -162,7 +152,7 @@ export default function Home({ apps }) {
                           name="visibility"
                           type="radio"
                           value="private"
-                          className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500"
                           checked={appVisibility == "private"}
                           onChange={(e) => {
                             if (e.target.value != appVisibility) {
@@ -237,7 +227,6 @@ export async function getServerSideProps(context) {
     },
   });
   const data = await res.json();
-  console.log("APPS :", data.apps);
 
   return {
     props: { session, apps: data.apps },

@@ -621,28 +621,28 @@ async fn main() -> Result<()> {
         // Index
         .route("/", get(index))
         // Projects
-        .route("/v1/projects", post(projects_create))
+        .route("/projects", post(projects_create))
         // Specifications
         .route(
-            "/v1/projects/:project_id/specifications/check",
+            "/projects/:project_id/specifications/check",
             post(specifications_check),
         )
         // Datasets
-        .route("/v1/projects/:project_id/datasets", post(datasets_register))
-        .route("/v1/projects/:project_id/datasets", get(datasets_list))
+        .route("/projects/:project_id/datasets", post(datasets_register))
+        .route("/projects/:project_id/datasets", get(datasets_list))
         .route(
-            "/v1/projects/:project_id/datasets/:dataset_id/:hash",
+            "/projects/:project_id/datasets/:dataset_id/:hash",
             get(datasets_retrieve),
         )
         // Runs
-        .route("/v1/projects/:project_id/runs", post(runs_create))
-        .route("/v1/projects/:project_id/runs/:run_id", get(runs_retrieve))
+        .route("/projects/:project_id/runs", post(runs_create))
+        .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
         .route(
-            "/v1/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
+            "/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
             get(runs_retrieve_block),
         )
         .route(
-            "/v1/projects/:project_id/runs/:run_id/status",
+            "/projects/:project_id/runs/:run_id/status",
             get(runs_retrieve_status),
         )
         // Extensions
@@ -652,7 +652,7 @@ async fn main() -> Result<()> {
     let state = state.clone();
     tokio::task::spawn(async move { state.run_loop().await });
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:3001".parse().unwrap())
         .serve(app.into_make_service())
         .await?;
 
