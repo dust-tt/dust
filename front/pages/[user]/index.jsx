@@ -1,14 +1,19 @@
 import AppLayout from "../../components/app/AppLayout";
+import Button from "../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 const { URL } = process.env;
 
 export default function Home({ apps }) {
+  const { data: session } = useSession();
+
   return (
     <AppLayout>
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 divide-y divide-gray-200 mt-8">
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">Apps</h1>
@@ -17,18 +22,19 @@ export default function Home({ apps }) {
             </p>
           </div>
           <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-              New App
-            </button>
+            <Link href={`/${session.user.username}/new`}>
+              <a>
+                <Button>
+                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                  New App
+                </Button>
+              </a>
+            </Link>
           </div>
         </div>
 
         <div className="sm:flex sm:items-center mt-12">
-          <div className="sm:flex-auto">
+          <div className="sm:flex-auto mt-8">
             <h1 className="text-base font-medium text-gray-900">
               Model Providers
             </h1>

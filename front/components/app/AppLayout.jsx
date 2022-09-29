@@ -3,10 +3,7 @@ import Link from "next/link";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+import { classNames } from "../../lib/utils";
 
 export default function AppLayout({ children }) {
   const { data: session } = useSession();
@@ -21,6 +18,8 @@ export default function AppLayout({ children }) {
           <>
             <div className="mx-auto px-4">
               <div className="relative flex h-12 items-center justify-between">
+
+
                 <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
                   <div className="flex flex-shrink-0 items-center px-2 py-1">
                     <div className="flex rotate-[30deg]">
@@ -34,6 +33,8 @@ export default function AppLayout({ children }) {
                     </div>
                   </div>
                 </div>
+
+
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
                   <Menu as="div" className="relative ml-3">
                     <div>

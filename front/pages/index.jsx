@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
+import Button from "../components/Button";
 
 export default function Home() {
   return (
@@ -14,7 +15,6 @@ export default function Home() {
       </Head>
 
       <main className="mx-auto mt-16 max-w-5xl px-4 mt-12">
-
         <div className="mb-12 flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
           <div className="flex flex-shrink-0 items-center px-2 py-1 block scale-150">
             <div className="flex rotate-[30deg]">
@@ -37,17 +37,13 @@ export default function Home() {
             <span className="block text-indigo-600 xl:inline">LLM Apps</span>
           </h1>
 
-          <div className="mx-auto mt-5 max-w-md sm:justify-center mt-12">
-            <button
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              onClick={() => signIn("github", { callbackUrl: '/api/login' })}
+          <div className="mx-auto mt-5 max-w-md sm:justify-center mt-14">
+            <Button
+              onClick={() => signIn("github", { callbackUrl: "/api/login" })}
             >
-              <ComputerDesktopIcon
-                className="-ml-1 mr-3 h-5 w-5"
-                aria-hidden="true"
-              />
+              <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5" />
               Sign in with Github
-            </button>
+            </Button>
           </div>
         </div>
       </main>
