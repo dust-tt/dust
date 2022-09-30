@@ -12,6 +12,7 @@ export default function Home() {
     <>
       <Head>
         <title>Dust - LLM Apps Platform</title>
+        <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
       <main className="mx-auto mt-16 max-w-5xl px-4 mt-12">

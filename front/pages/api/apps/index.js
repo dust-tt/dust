@@ -1,8 +1,8 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
-import { User } from "../../lib/models";
-import { new_id } from "../../lib/utils";
-import { App } from "../../lib/models";
+import { authOptions } from "../auth/[...nextauth]";
+import { User } from "../../../lib/models";
+import { new_id } from "../../../lib/utils";
+import { App } from "../../../lib/models";
 
 const { DUST_API } = process.env;
 

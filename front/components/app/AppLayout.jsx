@@ -1,11 +1,13 @@
 import { Fragment } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
 import { classNames } from "../../lib/utils";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ app, children }) {
   const { data: session } = useSession();
 
   const router = useRouter();
@@ -13,15 +15,17 @@ export default function AppLayout({ children }) {
 
   return (
     <main>
+      <Head>
+        <title>Dust</title>
+        <link rel="shortcut icon" href="/static/favicon.png" />
+      </Head>
       <Disclosure as="nav" className="bg-white">
         {({ open }) => (
           <>
             <div className="mx-auto px-4">
-              <div className="relative flex h-12 items-center justify-between">
-
-
-                <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                  <div className="flex flex-shrink-0 items-center px-2 py-1">
+              <div className="relative flex h-12 items-center">
+                <div className="flex flex-initial items-center justify-center sm:items-stretch sm:justify-start">
+                  <div className="flex flex-shrink-0 items-center pl-2 py-1">
                     <div className="flex rotate-[30deg]">
                       <div className="bg-gray-400 w-[4px] h-2 rounded-md"></div>
                       <div className="bg-white w-[1px] h-2"></div>
@@ -29,13 +33,56 @@ export default function AppLayout({ children }) {
                     </div>
                     <div className="bg-white w-[4px] h-2"></div>
                     <div className="text-gray-800 font-black text-base tracking-tight select-none">
-                      <Link href={session ? `/${session.user.username}` : `/`}>DUST</Link>
+                      <Link href={session ? `/${session.user.username}` : `/`}>
+                        DUST
+                      </Link>
                     </div>
                   </div>
                 </div>
 
+                <nav className="flex flex-1 ml-1 h-12">
+                  <ol role="list" className="flex items-center space-x-2">
+                    <li>
+                      <div className="flex items-center">
+                        <ChevronRightIcon
+                          className="h-5 w-5 flex-shrink-0 text-gray-400 mr-1 pt-0.5"
+                          aria-hidden="true"
+                        />
+                        <Link href={`/${route_user}`}>
+                          <a
+                            href="#"
+                            className="text-base font-bold text-gray-800"
+                          >
+                            {route_user}
+                          </a>
+                        </Link>
+                      </div>
+                    </li>
 
-                <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+                    {app ? (
+                      <li>
+                        <div className="flex items-center">
+                          <ChevronRightIcon
+                            className="h-5 w-5 flex-shrink-0 text-gray-400 mr-1 pt-0.5"
+                            aria-hidden="true"
+                          />
+                          <Link href={`/${route_user}/a/${app.sId}`}>
+                            <a
+                              href="#"
+                              className="text-base font-bold w-48 sm:w-auto truncate text-violet-600"
+                            >
+                              {app.name}
+                            </a>
+                          </Link>
+                        </div>
+                      </li>
+                    ) : (
+                      <></>
+                    )}
+                  </ol>
+                </nav>
+
+                <div className="absolute inset-y-0 right-0 flex flex-initial items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
                   <Menu as="div" className="relative ml-3">
                     <div>
                       <Menu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-nonek">
@@ -54,7 +101,7 @@ export default function AppLayout({ children }) {
                       enterTo="transform opacity-100 scale-100"
                       leave="transition ease-in duration-75"
                       leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
+                      leaveTo="transform opacitydivide-0 scale-95"
                     >
                       <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                         <Menu.Item>
@@ -81,9 +128,9 @@ export default function AppLayout({ children }) {
         )}
       </Disclosure>
       <div className="inset-0 flex items-center" aria-hidden="true">
-        <div className="w-full border-t border-gray-200" />
+        <div className="w-full" />
       </div>
-      <div className="mx-auto px-2 mt-4 sm:px-6 lg:px-8">{children}</div>
+      <div className="mx-auto mt-0">{children}</div>
     </main>
   );
 }

@@ -5,10 +5,11 @@ import Button from "../../components/Button";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../lib/utils";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
 const { URL } = process.env;
 
-export default function Home({ apps }) {
+export default function New({ apps }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
@@ -48,7 +49,7 @@ export default function Home({ apps }) {
         >
           <div className="space-y-8 divide-y divide-gray-200">
             <div>
-              <h3 className="text-lg font-medium leading-6 text-gray-900">
+              <h3 className="text-base font-medium leading-6 text-gray-900">
                 Create a new App
               </h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -68,8 +69,12 @@ export default function Home({ apps }) {
                     App name
                   </label>
                   <div className="mt-1 flex rounded-md shadow-sm">
-                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
-                      {session.user.username} /
+                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 sm:text-sm">
+                      {session.user.username}
+                        <ChevronRightIcon
+                          className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
+                          aria-hidden="true"
+                        />
                     </span>
                     <input
                       type="text"
@@ -86,20 +91,20 @@ export default function Home({ apps }) {
                     />
                   </div>
                   <p className="mt-2 text-sm text-gray-500">
-                    Think GitHub repository names. Short and memorable.
+                    Think GitHub repository names, short and memorable.
                   </p>
                 </div>
 
                 <div className="sm:col-span-6">
-                  <label
-                    htmlFor="appDescription"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Description{" "}
-                    <span className="font-normal text-gray-500">
-                      (optional)
-                    </span>
-                  </label>
+                  <div className="flex justify-between">
+                    <label
+                      htmlFor="appDescription"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Description
+                    </label>
+                    <div className="font-normal text-gray-400 text-sm">optional</div>
+                  </div>
                   <div className="mt-1 flex rounded-md shadow-sm">
                     <input
                       type="text"
@@ -110,16 +115,16 @@ export default function Home({ apps }) {
                       onChange={(e) => setAppDescription(e.target.value)}
                     />
                   </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    A good description will help others discover and understand the purpose of your app.
+                  </p>
                 </div>
 
                 <div className="sm:col-span-6">
                   <fieldset className="mt-2">
-                    <legend className="contents text-base font-medium text-gray-900">
+                    <legend className="contents text-sm font-medium text-gray-700">
                       Visibility
                     </legend>
-                    <p className="text-sm text-gray-500">
-                      These are delivered via SMS to your mobile phone.
-                    </p>
                     <div className="mt-4 space-y-4">
                       <div className="flex items-center">
                         <input

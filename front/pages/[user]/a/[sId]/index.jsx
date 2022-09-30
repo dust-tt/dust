@@ -1,4 +1,5 @@
 import AppLayout from "../../../../components/app/AppLayout";
+import MainTab from "../../../../components/app/MainTab";
 import Button from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
@@ -6,13 +7,27 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { classNames } from "../../../../lib/utils";
+import { Tab } from "@headlessui/react";
 
 const { URL } = process.env;
 
-export default function Home({ apps }) {
+export default function App({ app }) {
   const { data: session } = useSession();
 
-  return <AppLayout></AppLayout>;
+  return (
+    <AppLayout app={{ sId: app.sId, name: app.name }}>
+      <div className="flex flex-col">
+        <div className="flex flex-initial mt-2">
+          <MainTab
+            app={{ sId: app.sId, name: app.name }}
+            current_tab="Specification"
+          />
+        </div>
+        <div className="flex flex-1">
+        </div>
+      </div>
+    </AppLayout>
+  );
 }
 
 export async function getServerSideProps(context) {
@@ -42,7 +57,16 @@ export async function getServerSideProps(context) {
     };
   }
 
+  const res = await fetch(`${URL}/api/apps/${context.query.sId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: context.req.headers.cookie,
+    },
+  });
+  const data = await res.json();
+
   return {
-    props: { session },
+    props: { session, app: data.app },
   };
 }

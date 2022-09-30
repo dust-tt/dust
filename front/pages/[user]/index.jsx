@@ -19,7 +19,7 @@ export default function Home({ apps }) {
           <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">Apps</h1>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-500">
                 All your apps live here. Create a new app to get started.
               </p>
             </div>
@@ -63,7 +63,7 @@ export default function Home({ apps }) {
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
+                        <p className="flex items-center text-sm text-gray-700">
                           {app.description}
                         </p>
                       </div>
@@ -83,7 +83,7 @@ export default function Home({ apps }) {
             <h1 className="text-base font-medium text-gray-900">
               Model Providers
             </h1>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-500">
               Model providers available to your apps. Activate at least one to
               be able to run your apps against models.
             </p>
@@ -127,7 +127,6 @@ export async function getServerSideProps(context) {
     },
   });
   const data = await res.json();
-  console.log("APPS :", data.apps);
 
   return {
     props: { session, apps: data.apps },
