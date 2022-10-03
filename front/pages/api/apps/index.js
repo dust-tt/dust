@@ -53,7 +53,6 @@ export default async function handler(req, res) {
         break;
       }
 
-      // TODO(spolu): create dust API project
       const r = await fetch(`${DUST_API}/projects`, {
         method: "POST",
       });

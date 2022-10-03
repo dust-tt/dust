@@ -24,7 +24,7 @@ export default function App({ app }) {
           />
         </div>
         <div className="flex flex-1">
-          <div className="flex flex-col mx-4 my-3">
+          <div className="flex flex-col mx-4 my-4">
             <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
               <a>
                 <ActionButton disabled={false}>

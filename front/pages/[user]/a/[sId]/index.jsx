@@ -24,7 +24,7 @@ export default function App({ app }) {
           />
         </div>
         <div className="flex flex-1">
-          <div className="flex flex-row mx-4 my-3 space-x-2">
+          <div className="flex flex-row mx-4 my-4 space-x-2">
             <div className="flex">
               <ActionButton disabled={false}>
                 <PlusIcon className="-ml-1 mr-1 h-5 w-5" />

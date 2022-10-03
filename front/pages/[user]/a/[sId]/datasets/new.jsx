@@ -1,24 +1,19 @@
 import AppLayout from "../../../../../components/app/AppLayout";
 import MainTab from "../../../../../components/app/MainTab";
-import { ActionButton, Button } from "../../../../../components/Button";
+import { Button } from "../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../api/auth/[...nextauth]";
-import { PlusIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { classNames } from "../../../../../lib/utils";
-import { Tab } from "@headlessui/react";
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
+import { checkDatasetData } from "../../../../../lib/datasets";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
 );
-
-const eqSet = (xs, ys) =>
-  xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
 const { URL } = process.env;
 
@@ -54,45 +49,16 @@ export default function App({ app }) {
       setDatasetNameError(null);
     }
 
-    let parsed = null;
+    let keys = [];
     try {
-      parsed = JSON.parse(datasetData);
+      keys = checkDatasetData(datasetData);
+      setDatasetDataKeys(keys);
+      setDatasetDataError(null);
     } catch (e) {
-      setDatasetDataError("Invalid JSON");
+      setDatasetDataError(e.message);
       valid = false;
     }
-
-    if (parsed) {
-      if (!Array.isArray(parsed)) {
-        setDatasetDataError("Data does not parse as a JSON array");
-        valid = false;
-      } else if (parsed.length == 0) {
-        setDatasetDataError("Data must be a non empty array");
-        valid = false;
-      } else {
-        let keys = new Set(Object.keys(parsed[0]));
-        console.log(keys);
-        let valid_keys = true;
-        for (var i in parsed) {
-          let k = new Set(Object.keys(parsed[i]));
-          if (!eqSet(k, keys)) {
-            setDatasetDataError(
-              "Keys mismatch between data entries: " +
-                Object.keys(parsed[0]) +
-                " != " +
-                Object.keys(parsed[i])
-            );
-            valid_keys = false;
-            valid = false;
-            break;
-          }
-        }
-        if (valid_keys) {
-          setDatasetDataKeys(Object.keys(parsed[0]));
-          setDatasetDataError(null);
-        }
-      }
-    }
+    console.log(keys);
 
     return valid;
   };
@@ -113,7 +79,7 @@ export default function App({ app }) {
         <div className="flex flex-1">
           <div className="w-full px-4 sm:px-6">
             <form
-              action="/api/datasets"
+              action={`/api/apps/${app.sId}/datasets`}
               method="POST"
               className="space-y-6 divide-y divide-gray-200 mt-4"
             >
@@ -211,7 +177,9 @@ export default function App({ app }) {
                         >
                           {datasetDataError
                             ? datasetDataError
-                            : "Data is valid with entries keys: [" + datasetDataKeys + "]"}
+                            : "Data is valid with entries keys: [" +
+                              datasetDataKeys +
+                              "]"}
                         </p>
                       </div>
                     </div>

@@ -77,3 +77,19 @@ export const Provider = sequelize.define(
   {}
 );
 User.hasMany(Provider);
+
+export const Dataset = sequelize.define(
+  "dataset",
+  {
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+    },
+  },
+  {}
+);
+User.hasMany(Dataset);
+App.hasMany(Dataset);
