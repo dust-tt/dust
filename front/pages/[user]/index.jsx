@@ -1,5 +1,5 @@
 import AppLayout from "../../components/app/AppLayout";
-import Button from "../../components/Button";
+import { Button } from "../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";

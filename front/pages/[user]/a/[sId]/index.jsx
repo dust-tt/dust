@@ -1,9 +1,9 @@
 import AppLayout from "../../../../components/app/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
-import Button from "../../../../components/Button";
+import { ActionButton } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
-import { PlusIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, PlayCircleIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { classNames } from "../../../../lib/utils";
@@ -24,6 +24,20 @@ export default function App({ app }) {
           />
         </div>
         <div className="flex flex-1">
+          <div className="flex flex-row mx-4 my-3 space-x-2">
+            <div className="flex">
+              <ActionButton disabled={false}>
+                <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                New Block
+              </ActionButton>
+            </div>
+            <div className="flex">
+              <ActionButton disabled={false}>
+                <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5" />
+                Run
+              </ActionButton>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>

@@ -5,7 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import Button from "../components/Button";
+import { Button } from "../components/Button";
 
 export default function Home() {
   return (

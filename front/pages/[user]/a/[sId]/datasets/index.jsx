@@ -1,12 +1,12 @@
-import AppLayout from "../../../../components/app/AppLayout";
-import MainTab from "../../../../components/app/MainTab";
-import Button from "../../../../components/Button";
+import AppLayout from "../../../../../components/app/AppLayout";
+import MainTab from "../../../../../components/app/MainTab";
+import { ActionButton } from "../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../api/auth/[...nextauth]";
+import { authOptions } from "../../../../api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { classNames } from "../../../../lib/utils";
+import { classNames } from "../../../../../lib/utils";
 import { Tab } from "@headlessui/react";
 
 const { URL } = process.env;
@@ -24,6 +24,17 @@ export default function App({ app }) {
           />
         </div>
         <div className="flex flex-1">
+          <div className="flex flex-col mx-4 my-3">
+            <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
+              <a>
+                <ActionButton disabled={false}>
+                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                  New Dataset
+                </ActionButton>
+              </a>
+            </Link>
+          </div>
+          {/* Start by a simple list of datasets and a new button */}
         </div>
       </div>
     </AppLayout>

@@ -36,7 +36,7 @@ export default function MainTab({ app, current_tab }) {
         <div className="border-b border-gray-200 px-4">
           <nav className="-mb-px flex" aria-label="Tabs">
             {tabs.map((tab) => (
-              <div className="flex flex-initial">
+              <div key={tab.name} className="flex flex-initial">
                 <Link href={tab.href} key={tab.name}>
                   <a
                     key={tab.name}

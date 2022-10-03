@@ -1,7 +1,7 @@
 import AppLayout from "../../components/app/AppLayout";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
-import Button from "../../components/Button";
+import { Button } from "../../components/Button";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../lib/utils";
@@ -26,7 +26,7 @@ export default function New({ apps }) {
       return false;
     } else if (!appName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setAppNameError(
-        "App name must only contain letters, numbers, and the characters . _ -"
+        "App name must only contain letters, numbers, and the characters `._-`"
       );
       return false;
     } else {
@@ -83,7 +83,7 @@ export default function New({ apps }) {
                       className={classNames(
                         "block w-full min-w-0 flex-1 rounded-none rounded-r-md sm:text-sm",
                         appNameError
-                          ? "border-gray-300 focus:border-red-500 focus:ring-red-500"
+                          ? "border-gray-300 focus:border-red-500 border-red-500 focus:ring-red-500"
                           : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                       )}
                       value={appName}
