@@ -27,13 +27,13 @@ export default function App({ app }) {
           <div className="flex flex-row mx-4 my-4 space-x-2">
             <div className="flex">
               <ActionButton disabled={false}>
-                <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                <PlusIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
                 New Block
               </ActionButton>
             </div>
             <div className="flex">
               <ActionButton disabled={false}>
-                <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5" />
+                <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
                 Run
               </ActionButton>
             </div>

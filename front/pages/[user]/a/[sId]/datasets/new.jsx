@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
 import { checkDatasetData } from "../../../../../lib/datasets";
+import Router from "next/router";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -17,10 +18,11 @@ const CodeEditor = dynamic(
 
 const { URL } = process.env;
 
-export default function App({ app }) {
+export default function App({ app, datasets }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [datasetName, setAppName] = useState("");
   const [datasetNameError, setDatasetNameError] = useState(null);
@@ -37,7 +39,18 @@ export default function App({ app }) {
   const datasetValidation = () => {
     let valid = true;
 
-    if (datasetName.length == 0) {
+    let exists = false;
+    datasets.forEach((d) => {
+      if (d.name == datasetName) {
+        exists = true;
+      }
+    });
+    if (exists) {
+      setDatasetNameError(
+        "Dataset name must only contain letters, numbers, and the characters `._-`"
+      );
+      valid = false;
+    } else if (datasetName.length == 0) {
       setDatasetNameError(null);
       valid = false;
     } else if (!datasetName.match(/^[a-zA-Z0-9\._\-]+$/)) {
@@ -58,7 +71,6 @@ export default function App({ app }) {
       setDatasetDataError(e.message);
       valid = false;
     }
-    console.log(keys);
 
     return valid;
   };
@@ -66,6 +78,24 @@ export default function App({ app }) {
   useEffect(() => {
     setDisabled(!datasetValidation());
   }, [datasetName, datasetData]);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    let body = {
+      name: datasetName,
+      description: datasetDescription,
+      data: datasetData,
+    };
+    const res = await fetch(`/api/apps/${app.sId}/datasets`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+  };
 
   return (
     <AppLayout app={{ sId: app.sId, name: app.name }}>
@@ -78,11 +108,7 @@ export default function App({ app }) {
         </div>
         <div className="flex flex-1">
           <div className="w-full px-4 sm:px-6">
-            <form
-              action={`/api/apps/${app.sId}/datasets`}
-              method="POST"
-              className="space-y-6 divide-y divide-gray-200 mt-4"
-            >
+            <form className="space-y-6 divide-y divide-gray-200 mt-4">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   <div className="mt-2 grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
@@ -148,11 +174,14 @@ export default function App({ app }) {
                       <div className="mt-1 w-full">
                         <div
                           className={classNames(
-                            "border",
+                            "border bg-gray-100",
                             datasetDataError
                               ? "border-red-500"
                               : "border-gray-300"
                           )}
+                          style={{
+                            minHeight: "302px",
+                          }}
                         >
                           <CodeEditor
                             value={datasetData}
@@ -190,9 +219,8 @@ export default function App({ app }) {
               <div className="pt-6">
                 <div className="flex">
                   <Button
-                    disabled={disable}
-                    type="submit"
-                    // onClick={() => handleSubmit()}
+                    disabled={disable || loading}
+                    onClick={() => handleSubmit()}
                   >
                     Create
                   </Button>
@@ -233,16 +261,28 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const res = await fetch(`${URL}/api/apps/${context.query.sId}`, {
+  const app_res = await fetch(`${URL}/api/apps/${context.query.sId}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
       Cookie: context.req.headers.cookie,
     },
   });
-  const data = await res.json();
+  const app_data = await app_res.json();
+
+  const datasets_res = await fetch(
+    `${URL}/api/apps/${context.query.sId}/datasets`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }
+  );
+  const datasets_data = await datasets_res.json();
 
   return {
-    props: { session, app: data.app },
+    props: { session, app: app_data.app, datasets: datasets_data.datasets },
   };
 }
