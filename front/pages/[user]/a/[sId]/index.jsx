@@ -71,16 +71,19 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const res = await fetch(`${URL}/api/apps/${context.query.sId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: context.req.headers.cookie,
-    },
-  });
-  const data = await res.json();
+  const [appRes] = await Promise.all([
+    fetch(`${URL}/api/apps/${context.query.sId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }),
+  ]);
+
+  const [app] = await Promise.all([appRes.json()]);
 
   return {
-    props: { session, app: data.app },
+    props: { session, app: app.app },
   };
 }

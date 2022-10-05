@@ -71,10 +71,10 @@ export default function New({ apps }) {
                   <div className="mt-1 flex rounded-md shadow-sm">
                     <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 sm:text-sm">
                       {session.user.username}
-                        <ChevronRightIcon
-                          className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
-                          aria-hidden="true"
-                        />
+                      <ChevronRightIcon
+                        className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
+                        aria-hidden="true"
+                      />
                     </span>
                     <input
                       type="text"
@@ -103,7 +103,9 @@ export default function New({ apps }) {
                     >
                       Description
                     </label>
-                    <div className="font-normal text-gray-400 text-sm">optional</div>
+                    <div className="font-normal text-gray-400 text-sm">
+                      optional
+                    </div>
                   </div>
                   <div className="mt-1 flex rounded-md shadow-sm">
                     <input
@@ -116,7 +118,8 @@ export default function New({ apps }) {
                     />
                   </div>
                   <p className="mt-2 text-sm text-gray-500">
-                    A good description will help others discover and understand the purpose of your app.
+                    A good description will help others discover and understand
+                    the purpose of your app.
                   </p>
                 </div>
 
@@ -224,16 +227,19 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const res = await fetch(`${URL}/api/apps`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: context.req.headers.cookie,
-    },
-  });
-  const data = await res.json();
+  const [appsRes] = await Promise.all([
+    fetch(`${URL}/api/apps`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }),
+  ]);
+
+  const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: data.apps },
+    props: { session, apps: apps.apps },
   };
 }

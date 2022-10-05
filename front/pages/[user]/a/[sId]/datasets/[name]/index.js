@@ -1,38 +1,39 @@
-import AppLayout from "../../../../../components/app/AppLayout";
-import MainTab from "../../../../../components/app/MainTab";
-import { Button } from "../../../../../components/Button";
+import AppLayout from "../../../../../../components/app/AppLayout";
+import MainTab from "../../../../../../components/app/MainTab";
+import { Button } from "../../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../api/auth/[...nextauth]";
+import { authOptions } from "../../../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
-import DatasetView from "../../../../../components/app/DatasetView";
+import DatasetView from "../../../../../../components/app/DatasetView";
 
 const { URL } = process.env;
 
-export default function NewDatasetView({ app, datasets }) {
+export default function ViewDatasetView({ app, datasets, dataset }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [dataset, setDataset] = useState(null);
+  const [updatedDataset, setUpdatedDataset] = useState(dataset);
 
   const onUpdate = (valid, dataset) => {
     setDisabled(!valid);
     if (valid) {
-      setDataset(dataset);
+      setUpdatedDataset(dataset);
     }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(`/api/apps/${app.sId}/datasets`, {
+    console.log(updatedDataset);
+    const res = await fetch(`/api/apps/${app.sId}/datasets/${dataset.name}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(dataset),
+      body: JSON.stringify(updatedDataset),
     });
     const data = await res.json();
     Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
@@ -54,6 +55,7 @@ export default function NewDatasetView({ app, datasets }) {
                 datasets={datasets}
                 dataset={dataset}
                 onUpdate={onUpdate}
+                nameDisabled={true}
               />
 
               <div className="pt-6">
@@ -62,7 +64,7 @@ export default function NewDatasetView({ app, datasets }) {
                     disabled={disable || loading}
                     onClick={() => handleSubmit()}
                   >
-                    Create
+                    Update
                   </Button>
                 </div>
               </div>
@@ -101,7 +103,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const [appRes, datasetsRes] = await Promise.all([
+  const [appRes, datasetsRes, datasetRes] = await Promise.all([
     fetch(`${URL}/api/apps/${context.query.sId}`, {
       method: "GET",
       headers: {
@@ -116,11 +118,22 @@ export async function getServerSideProps(context) {
         Cookie: context.req.headers.cookie,
       },
     }),
+    fetch(
+      `${URL}/api/apps/${context.query.sId}/datasets/${context.query.name}/latest`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    ),
   ]);
 
-  const [app, datasets] = await Promise.all([
+  const [app, datasets, dataset] = await Promise.all([
     appRes.json(),
     datasetsRes.json(),
+    datasetRes.json(),
   ]);
 
   return {
@@ -128,6 +141,7 @@ export async function getServerSideProps(context) {
       session,
       app: app.app,
       datasets: datasets.datasets,
+      dataset: dataset.dataset,
     },
   };
 }

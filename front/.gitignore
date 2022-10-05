@@ -1,5 +1,4 @@
 node_modules
 package-lock.json
 .env.local
-front_store.sqlite
 .next

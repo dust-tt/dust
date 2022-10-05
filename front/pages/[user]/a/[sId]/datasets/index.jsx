@@ -11,7 +11,7 @@ import Router from "next/router";
 
 const { URL } = process.env;
 
-export default function App({ app, datasets }) {
+export default function DatasetsView({ app, datasets }) {
   const { data: session } = useSession();
 
   const handleDelete = async (datasetName) => {
@@ -143,28 +143,33 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const app_res = await fetch(`${URL}/api/apps/${context.query.sId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: context.req.headers.cookie,
-    },
-  });
-  const app_data = await app_res.json();
-
-  const datasets_res = await fetch(
-    `${URL}/api/apps/${context.query.sId}/datasets`,
-    {
+  const [appRes, datasetsRes] = await Promise.all([
+    fetch(`${URL}/api/apps/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Cookie: context.req.headers.cookie,
       },
-    }
-  );
-  const datasets_data = await datasets_res.json();
+    }),
+    fetch(`${URL}/api/apps/${context.query.sId}/datasets`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }),
+  ]);
+
+  const [app, datasets] = await Promise.all([
+    appRes.json(),
+    datasetsRes.json(),
+  ]);
 
   return {
-    props: { session, app: app_data.app, datasets: datasets_data.datasets },
+    props: {
+      session,
+      app: app.app,
+      datasets: datasets.datasets,
+    },
   };
 }

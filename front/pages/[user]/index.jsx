@@ -119,16 +119,19 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const res = await fetch(`${URL}/api/apps`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: context.req.headers.cookie,
-    },
-  });
-  const data = await res.json();
+  const [appsRes] = await Promise.all([
+    fetch(`${URL}/api/apps`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }),
+  ]);
+
+  const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: data.apps },
+    props: { session, apps: apps.apps },
   };
 }
