@@ -33,7 +33,7 @@ export default function AppLayout({ app, children }) {
                     </div>
                     <div className="bg-white w-[4px] h-2"></div>
                     <div className="text-gray-800 font-black text-base tracking-tight select-none">
-                      <Link href={session ? `/${session.user.username}` : `/`}>
+                      <Link href={session ? `/${session.user.username}/apps` : `/`}>
                         DUST
                       </Link>
                     </div>
@@ -48,7 +48,7 @@ export default function AppLayout({ app, children }) {
                           className="h-5 w-5 flex-shrink-0 text-gray-400 mr-1 pt-0.5"
                           aria-hidden="true"
                         />
-                        <Link href={`/${route_user}`}>
+                        <Link href={`/${route_user}/apps`}>
                           <a
                             href="#"
                             className="text-base font-bold text-gray-800"

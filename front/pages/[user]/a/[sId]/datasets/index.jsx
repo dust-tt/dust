@@ -15,7 +15,6 @@ export default function DatasetsView({ app, datasets }) {
   const { data: session } = useSession();
 
   const handleDelete = async (datasetName) => {
-    console.log("DELETE");
     const res = await fetch(`/api/apps/${app.sId}/datasets/${datasetName}`, {
       method: "DELETE",
       headers: {
@@ -47,7 +46,7 @@ export default function DatasetsView({ app, datasets }) {
             </Link>
 
             <div className="mt-4">
-              <ul role="list" className="max-w-4xl space-y-4 flex-1">
+              <ul role="list" className="space-y-4 flex-1">
                 {datasets.map((d) => {
                   return (
                     <Link

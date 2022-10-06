@@ -119,7 +119,6 @@ export default async function handler(req, res) {
         name: req.body.name,
         description,
       });
-      console.log("UPDATING");
 
       res.status(200).json({
         dataset: {

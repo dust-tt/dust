@@ -9,33 +9,41 @@ export default async function handler(req, res) {
     res.status(401).end();
     return;
   }
-  let user = await User.findOne({
-    where: {
-      githubId: session.github.id,
-    },
-  });
+
+  let [user] = await Promise.all([
+    User.findOne({
+      where: {
+        githubId: session.github.id,
+      },
+    }),
+  ]);
   if (!user) {
     res.status(401).end();
     return;
   }
 
+  let [app] = await Promise.all([
+    App.findOne({
+      where: {
+        userId: user.id,
+        sId: req.query.sId,
+      },
+    }),
+  ]);
+  if (!app) {
+    res.status(400).end();
+    return;
+  }
+
   switch (req.method) {
-    case "GET":
-      let app = await App.findOne({
-        where: {
-          userId: user.id,
-          sId: req.query.sId,
-        },
-        attributes: [
-          "id",
-          "uId",
-          "sId",
-          "name",
-          "description",
-          "visibility",
-          "savedSpecification",
-          "updatedAt",
-        ],
+    case "POST":
+      if (!req.body || !(typeof req.body.specification == "string")) {
+        res.status(400).end();
+        break;
+      }
+
+      await app.update({
+        savedSpecification: req.body.specification,
       });
 
       res.status(200).json({ app });

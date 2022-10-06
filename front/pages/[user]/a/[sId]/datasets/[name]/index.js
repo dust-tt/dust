@@ -27,7 +27,6 @@ export default function ViewDatasetView({ app, datasets, dataset }) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    console.log(updatedDataset);
     const res = await fetch(`/api/apps/${app.sId}/datasets/${dataset.name}`, {
       method: "POST",
       headers: {

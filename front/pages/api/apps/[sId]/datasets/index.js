@@ -11,11 +11,14 @@ export default async function handler(req, res) {
     res.status(401).end();
     return;
   }
-  let user = await User.findOne({
-    where: {
-      githubId: session.github.id,
-    },
-  });
+
+  let [user] = await Promise.all([
+    User.findOne({
+      where: {
+        githubId: session.github.id,
+      },
+    }),
+  ]);
   if (!user) {
     res.status(401).end();
     return;
@@ -40,6 +43,10 @@ export default async function handler(req, res) {
       ],
     }),
   ]);
+  if (!app) {
+    res.status(400).end();
+    return;
+  }
 
   switch (req.method) {
     case "GET":
