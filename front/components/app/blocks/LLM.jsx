@@ -217,7 +217,7 @@ export default function LLM({
               </div>
 
               <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial">few_shot count:</div>
+                <div className="flex flex-initial">count:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
@@ -237,7 +237,7 @@ export default function LLM({
 
               <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
                 <div className="flex flex-initial items-center">
-                  few-shot prompt :
+                  prompt :
                 </div>
                 <div className="flex w-full font-normal">
                   <TextareaAutosize

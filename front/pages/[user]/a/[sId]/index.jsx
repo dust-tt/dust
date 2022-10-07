@@ -16,6 +16,7 @@ import { useState } from "react";
 import Root from "../../../../components/app/blocks/Root";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
+import Code from "../../../../components/app/blocks/Code";
 import TextareaAutosize from "react-textarea-autosize";
 
 const { URL } = process.env;
@@ -147,6 +148,21 @@ export default function App({ app }) {
                   case "llm":
                     return (
                       <LLM
+                        key={idx}
+                        block={block}
+                        app={app}
+                        readOnly={false}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
+                    break;
+
+                  case "code":
+                    return (
+                      <Code
                         key={idx}
                         block={block}
                         app={app}
