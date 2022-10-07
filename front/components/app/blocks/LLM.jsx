@@ -1,14 +1,8 @@
 import Block from "./Block";
-import { classNames } from "../../../lib/utils";
+import { classNames, shallowBlockClone } from "../../../lib/utils";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-
-const shallowBlockClone = (block) => {
-  let b = Object.assign({}, block);
-  b.spec = Object.assign({}, block.spec);
-  return b;
-};
 
 export default function LLM({
   block,
@@ -236,9 +230,7 @@ export default function LLM({
               </div>
 
               <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial items-center">
-                  prompt :
-                </div>
+                <div className="flex flex-initial items-center">prompt :</div>
                 <div className="flex w-full font-normal">
                   <TextareaAutosize
                     minRows={1}

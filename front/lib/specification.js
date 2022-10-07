@@ -42,6 +42,15 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
+    case "code":
+      s.push({
+        type: "code",
+        name: "",
+        spec: {
+          code: "_fun = (env) => {\n  // env['state'][BLOCK_NAME] constains BLOCK_NAME output.\n}"
+        },
+      });
+      break;
     default:
       s.push({
         type: blockType,

@@ -153,7 +153,7 @@ export default function DatasetView({
               Data
             </label>
           </div>
-          <div className="mt-1 w-full">
+          <div className="mt-1 w-full leading-4">
             <div
               className={classNames(
                 "border bg-gray-100",
@@ -167,7 +167,7 @@ export default function DatasetView({
                 value={datasetData}
                 language="json"
                 placeholder=""
-                onChange={(evn) => setDatasetData(evn.target.value)}
+                onChange={(e) => setDatasetData(e.target.value)}
                 padding={15}
                 minHeight={300}
                 style={{

@@ -10,3 +10,9 @@ export function new_id() {
   let b = blake3(u);
   return Buffer.from(b).toString("hex");
 }
+
+export const shallowBlockClone = (block) => {
+  let b = Object.assign({}, block);
+  b.spec = Object.assign({}, block.spec);
+  return b;
+};
