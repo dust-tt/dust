@@ -13,11 +13,14 @@ import {
   moveBlockUp,
 } from "../../../../lib/specification";
 import { useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import Root from "../../../../components/app/blocks/Root";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
-import TextareaAutosize from "react-textarea-autosize";
+import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
+import { updateConfig } from "../../../../lib/config";
+import Config from "../../../../components/app/Config";
 
 const { URL } = process.env;
 let saveTimeout = null;
@@ -26,8 +29,11 @@ export default function App({ app }) {
   const { data: session } = useSession();
 
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
+  const [config, setConfig] = useState(
+    updateConfig(JSON.parse(app.savedConfig || `{}`), spec)
+  );
 
-  const saveSpecification = async (spec) => {
+  const saveState = async (spec, config) => {
     if (saveTimeout) {
       clearTimeout(saveTimeout);
       saveTimeout = null;
@@ -35,48 +41,86 @@ export default function App({ app }) {
 
     saveTimeout = setTimeout(async () => {
       const [specRes] = await Promise.all([
-        fetch(`/api/apps/${app.sId}/specification`, {
+        fetch(`/api/apps/${app.sId}/state`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ specification: JSON.stringify(spec) }),
+          body: JSON.stringify({
+            specification: JSON.stringify(spec),
+            config: JSON.stringify(config),
+          }),
         }),
       ]);
-      console.log("SPEC SAVED");
+      console.log("STATE SAVED", spec, config);
     }, 1000);
   };
 
   const handleNewBlock = (blockType) => {
     let s = addBlock(spec, blockType);
+    let c = updateConfig(config, s);
     setSpec(s);
-    saveSpecification(s);
+    setConfig(c);
+    saveState(s, c);
   };
 
   const handleDeleteBlock = (idx) => {
     let s = deleteBlock(spec, idx);
+    let c = updateConfig(config, s);
     setSpec(s);
-    saveSpecification(s);
+    setConfig(c);
+    saveState(s, c);
   };
 
   const handleMoveBlockUp = (idx) => {
     let s = moveBlockUp(spec, idx);
+    let c = updateConfig(config, s);
     setSpec(s);
-    saveSpecification(s);
+    setConfig(c);
+    saveState(s, c);
   };
 
   const handleMoveBlockDown = (idx) => {
     let s = moveBlockDown(spec, idx);
+    let c = updateConfig(config, s);
     setSpec(s);
-    saveSpecification(s);
+    setConfig(c);
+    saveState(s, c);
   };
 
   const handleSetBlock = (idx, block) => {
     let s = spec.map((b) => b);
+
+    // Sync map/reduce names
+    if (block.type == "map" && block.name != s[idx].name) {
+      for (var i = idx; i < s.length; i++) {
+        if (s[i].type == "reduce" && s[i].name == s[idx].name) {
+          s[i].name = block.name;
+          break;
+        }
+      }
+    }
+    if (block.type == "reduce" && block.name != s[idx].name) {
+      for (var i = idx; i >= 0; i--) {
+        if (s[i].type == "map" && s[i].name == s[idx].name) {
+          s[i].name = block.name;
+          break;
+        }
+      }
+    }
+
     s[idx] = block;
+
+    let c = updateConfig(config, s);
+
     setSpec(s);
-    console.log("SPEC UPDATED", s);
-    saveSpecification(s);
+    setConfig(c);
+    saveState(s, c);
+  };
+
+  const handleSetConfig = (c) => {
+    setConfig(c);
+    saveState(spec, c);
   };
 
   return (
@@ -110,9 +154,15 @@ export default function App({ app }) {
                 Otherwise the autoresize does not work on init?
                 TODO(spolu): investigate
             */}
-            <TextareaAutosize className="hidden" />
+            <TextareaAutosize className="hidden" value="foo" />
 
             <div className="flex flex-col space-y-2">
+              <Config
+                app={app}
+                config={config}
+                onConfigUpdate={handleSetConfig}
+              />
+
               {spec.map((block, idx) => {
                 switch (block.type) {
                   case "root":
@@ -163,6 +213,36 @@ export default function App({ app }) {
                   case "code":
                     return (
                       <Code
+                        key={idx}
+                        block={block}
+                        app={app}
+                        readOnly={false}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
+                    break;
+
+                  case "map":
+                    return (
+                      <Map
+                        key={idx}
+                        block={block}
+                        app={app}
+                        readOnly={false}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
+                    break;
+
+                  case "reduce":
+                    return (
+                      <Reduce
                         key={idx}
                         block={block}
                         app={app}

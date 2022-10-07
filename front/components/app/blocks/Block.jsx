@@ -22,10 +22,15 @@ export default function Block({
 
   return (
     <div>
-      <div className="flex flex-col group rounded-md border border-gray-200 px-4 py-2">
+      <div
+        className={classNames(
+          block.indent == 1 ? "ml-8" : "ml-0",
+          "flex flex-col group rounded-md border border-gray-200 px-4 py-2"
+        )}
+      >
         <div className="flex flex-row items-center w-full">
           <div className="flex-initial mr-2">
-            <div className="w-10">
+            <div className="">
               <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
                 {block.type}
               </span>

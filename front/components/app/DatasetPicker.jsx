@@ -24,7 +24,7 @@ export default function DatasetPicker({
     datasets.filter((d) => d.name == dataset).length == 0
   ) {
     setTimeout(() => {
-      onDatasetUpdate(null);
+      onDatasetUpdate("");
     });
   }
 
@@ -35,7 +35,7 @@ export default function DatasetPicker({
           href={`/${session.user.username}/a/${app.sId}/datasets/${dataset}`}
         >
           <a>
-            <div className="font-bold text-violet-600">{dataset}</div>
+            <div className="font-bold text-violet-600 text-sm">{dataset}</div>
           </a>
         </Link>
       ) : (
@@ -47,11 +47,11 @@ export default function DatasetPicker({
             <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
               <a
                 className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-medium",
+                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
                   dataset ? "px-1" : "border px-3",
                   readOnly
-                    ? "bg-white text-gray-300 border-white"
-                    : "bg-white text-gray-700 border-gray-200",
+                    ? "text-gray-300 border-white"
+                    : "text-gray-700 border-gray-200",
                   "focus:outline-none focus:ring-0"
                 )}
               >
@@ -61,11 +61,11 @@ export default function DatasetPicker({
           ) : (
             <Menu.Button
               className={classNames(
-                "inline-flex items-center rounded-md py-1 text-sm font-medium",
+                "inline-flex items-center rounded-md py-1 text-sm font-normal",
                 dataset ? "px-0" : "border px-3",
                 readOnly
-                  ? "bg-white text-gray-300 border-white"
-                  : "bg-white text-gray-700 border-gray-200",
+                  ? "text-gray-300 border-white"
+                  : "text-gray-700 border-gray-200",
                 "focus:outline-none focus:ring-0"
               )}
               readOnly={readOnly}
