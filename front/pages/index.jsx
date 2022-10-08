@@ -15,23 +15,22 @@ export default function Home() {
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <main className="mx-auto mt-16 max-w-5xl px-4 mt-12">
-        <div className="mb-12 flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-          <div className="flex flex-shrink-0 items-center px-2 py-1 block scale-150">
+      <main className="mx-12">
+        <div className="mx-auto max-w-4xl">
+
+          <div className="flex items-center mt-8">
             <div className="flex rotate-[30deg]">
-              <div className="bg-gray-400 w-[4px] h-2 rounded-md"></div>
-              <div className="bg-white w-[1px] h-2"></div>
-              <div className="bg-gray-400 w-[4px] h-3 rounded-md"></div>
+              <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
+              <div className="bg-white w-[2px] h-4"></div>
+              <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
             </div>
-            <div className="bg-white w-[4px] h-2"></div>
-            <div className="text-gray-800 font-black text-base tracking-tight select-none">
+            <div className="bg-white w-[8px] h-4"></div>
+            <div className="text-gray-800 font-black text-2xl tracking-tight select-none">
               DUST
             </div>
           </div>
-        </div>
 
-        <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mt-10">
             <span className="block xl:inline">
               Specification language and design platform for
             </span>{" "}

@@ -187,7 +187,7 @@ export default function LLM({
             </div>
           )}
           {fewShotExpanded ? (
-            <div className="ml-2 flex flex-col">
+            <div className="ml-6 flex flex-col">
               <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
                 <div className="flex flex-initial items-center">
                   pre prompt :
@@ -196,7 +196,7 @@ export default function LLM({
                   <TextareaAutosize
                     minRows={1}
                     className={classNames(
-                      "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                      "block w-full resize-none px-1 font-normal text-sm py-1 font-mono bg-slate-100",
                       readOnly
                         ? "border-white ring-0 focus:ring-0 focus:border-white"
                         : "border-white focus:border-gray-300 focus:ring-0"
@@ -216,7 +216,7 @@ export default function LLM({
                   <input
                     type="text"
                     className={classNames(
-                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      "block flex-1 px-1 font-normal text-sm py-1 w-8",
                       readOnly
                         ? "border-white ring-0 focus:ring-0 focus:border-white"
                         : "border-white focus:border-gray-300 focus:ring-0"
@@ -235,7 +235,7 @@ export default function LLM({
                   <TextareaAutosize
                     minRows={1}
                     className={classNames(
-                      "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                      "block w-full resize-none px-1 font-normal text-sm py-1 font-mono bg-slate-100",
                       readOnly
                         ? "border-white ring-0 focus:ring-0 focus:border-white"
                         : "border-white focus:border-gray-300 focus:ring-0"

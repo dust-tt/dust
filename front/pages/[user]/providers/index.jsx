@@ -64,7 +64,7 @@ export default function ProfileProviders() {
                 <li key={provider.providerId} className="px-2 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <p className="truncate text-base font-bold text-violet-600">
+                      <p className="truncate text-base font-bold text-slate-400">
                         {provider.name}
                       </p>
                       <div className="ml-2 flex flex-shrink-0 mt-0.5">
@@ -115,7 +115,7 @@ export default function ProfileProviders() {
                 <li key={provider.providerId} className="px-2 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <p className="truncate text-base font-bold text-violet-600">
+                      <p className="truncate text-base font-bold text-slate-400">
                         {provider.name}
                       </p>
                       <div className="ml-2 flex flex-shrink-0 mt-0.5">

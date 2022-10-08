@@ -38,8 +38,8 @@ export default function Code({
             <div className="w-full leading-4">
               <div
                 className={classNames(
-                  "border bg-gray-100",
-                  false ? "border-red-500" : "border-gray-300"
+                  "border bg-slate-100",
+                  false ? "border-red-500" : "border-slate-100"
                 )}
                 style={{
                   minHeight: "80px",
@@ -52,9 +52,9 @@ export default function Code({
                   onChange={(e) => handleCodeChange(e.target.value)}
                   padding={15}
                   minHeight={78}
+                  className="bg-slate-100"
                   style={{
                     fontSize: 12,
-                    backgroundColor: "#f5f5f5",
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                   }}
