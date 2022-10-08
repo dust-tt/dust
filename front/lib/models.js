@@ -68,7 +68,7 @@ User.hasMany(App);
 export const Provider = sequelize.define(
   "provider",
   {
-    name: {
+    providerId: {
       type: DataTypes.STRING,
       allowNull: false,
     },

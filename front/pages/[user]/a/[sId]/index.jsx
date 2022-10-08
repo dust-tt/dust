@@ -156,7 +156,7 @@ export default function App({ app }) {
             */}
             <TextareaAutosize className="hidden" value="foo" />
 
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-2 mb-12">
               <Config
                 app={app}
                 config={config}

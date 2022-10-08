@@ -1,4 +1,4 @@
-import { User, App, Dataset } from "../../lib/models";
+import { User, App, Dataset, Provider } from "../../lib/models";
 
 export default async function handler(req, res) {
   switch (req.method) {
@@ -6,6 +6,7 @@ export default async function handler(req, res) {
       User.sync({ alter: true });
       App.sync({ alter: true });
       Dataset.sync({ alter: true });
+      Provider.sync({ alter: true });
       console.log("OK");
       res.status(200).json({ ok: true });
       break;

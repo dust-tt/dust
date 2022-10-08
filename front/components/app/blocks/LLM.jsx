@@ -190,7 +190,7 @@ export default function LLM({
             <div className="ml-6 flex flex-col">
               <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
                 <div className="flex flex-initial items-center">
-                  pre prompt :
+                  introduction :
                 </div>
                 <div className="flex w-full font-normal">
                   <TextareaAutosize
@@ -230,7 +230,7 @@ export default function LLM({
               </div>
 
               <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial items-center">prompt :</div>
+                <div className="flex flex-initial items-center">examples :</div>
                 <div className="flex w-full font-normal">
                   <TextareaAutosize
                     minRows={1}

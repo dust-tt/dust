@@ -3,11 +3,11 @@ import MainTab from "../../../components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
 import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAIProviderSetup from "../../../components/app/providers/OpenAIProviderSetup";
 import { useState } from "react";
+import { useProviders } from "../../../lib/swr";
 
 const { URL } = process.env;
 
@@ -16,24 +16,64 @@ export default function ProfileProviders() {
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
 
-  const modelProviders = [
+  let modelProviders = [
     {
       providerId: "openai",
       name: "OpenAI",
       built: true,
       setter: setOpenAIOpen,
+      enabled: false,
     },
-    { providerId: "cohere", name: "Cohere", built: false },
-    { providerId: "hugging_face", name: "HuggingFace", built: false },
-    { providerId: "replicate", name: "Replicate", built: false },
+    { providerId: "cohere", name: "Cohere", built: false, enabled: false },
+    {
+      providerId: "hugging_face",
+      name: "HuggingFace",
+      built: false,
+      enabled: false,
+    },
+    {
+      providerId: "replicate",
+      name: "Replicate",
+      built: false,
+      enabled: false,
+    },
   ];
 
-  const serviceProviders = [
-    { providerId: "google_search", name: "Google Search", built: false },
-    { providerId: "bing_search", name: "Bing Search", built: false },
-    { providerId: "youtube", name: "Youtube Search", built: false },
-    { providerId: "notion", name: "Notion", built: false },
+  let serviceProviders = [
+    {
+      providerId: "google_search",
+      name: "Google Search",
+      built: false,
+      enabled: false,
+    },
+    {
+      providerId: "youtube",
+      name: "Youtube Search",
+      built: false,
+      enabled: false,
+    },
+    { providerId: "notion", name: "Notion", built: false, enabled: false },
+    { providerId: "gmail", name: "GMail", built: false, enabled: false },
   ];
+
+  let { providers, isProvidersLoading, isProvidersError } = useProviders();
+
+  if (!isProvidersLoading && !isProvidersError) {
+    for (var i = 0; i < providers.length; i++) {
+      for (var j = 0; j < modelProviders.length; j++) {
+        if (providers[i].providerId == modelProviders[j].providerId) {
+          modelProviders[j].enabled = true;
+          modelProviders[j].config = JSON.parse(providers[i].config);
+        }
+      }
+      for (var j = 0; j < serviceProviders.length; j++) {
+        if (providers[i].providerId == serviceProviders[j].providerId) {
+          serviceProviders[j].enabled = true;
+          serviceProviders[j].config = JSON.parse(providers[i].config);
+        }
+      }
+    }
+  }
 
   return (
     <AppLayout>
@@ -42,7 +82,11 @@ export default function ProfileProviders() {
           <MainTab current_tab="Providers" />
         </div>
 
-        <OpenAIProviderSetup open={openAIOpen} setter={setOpenAIOpen}/>
+        <OpenAIProviderSetup
+          open={openAIOpen}
+          setter={setOpenAIOpen}
+          enabled={modelProviders[0].enabled}
+        />
 
         <div className="">
           <div className="mx-auto max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
@@ -64,19 +108,24 @@ export default function ProfileProviders() {
                 <li key={provider.providerId} className="px-2 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <p className="truncate text-base font-bold text-slate-400">
+                      <p
+                        className={classNames(
+                          "truncate text-base font-bold",
+                          provider.enabled ? "text-slate-700" : "text-slate-400"
+                        )}
+                      >
                         {provider.name}
                       </p>
                       <div className="ml-2 flex flex-shrink-0 mt-0.5">
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            false
+                            provider.enabled
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          disabled
+                          {provider.enabled ? "enabled" : "disabled"}
                         </p>
                       </div>
                     </div>
@@ -122,12 +171,12 @@ export default function ProfileProviders() {
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            false
+                            provider.enabled
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          disabled
+                          {provider.enabled ? "enabled" : "disabled"}
                         </p>
                       </div>
                     </div>

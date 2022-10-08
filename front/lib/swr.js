@@ -11,3 +11,13 @@ export function useDatasets(app) {
     isDatasetsError: error,
   };
 }
+
+export function useProviders() {
+  const { data, error } = useSWR(`/api/providers`, fetcher);
+
+  return {
+    providers: data ? data.providers : [],
+    isProvidersLoading: !error && !data,
+    isProvidersError: error,
+  };
+}
