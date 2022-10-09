@@ -84,8 +84,9 @@ export default function ProfileProviders() {
 
         <OpenAIProviderSetup
           open={openAIOpen}
-          setter={setOpenAIOpen}
+          setOpen={setOpenAIOpen}
           enabled={modelProviders[0].enabled}
+          config={modelProviders[0].config}
         />
 
         <div className="">
@@ -136,7 +137,7 @@ export default function ProfileProviders() {
                           provider.setter(true);
                         }}
                       >
-                        Setup
+                        {provider.enabled ? "Edit" : "Setup"}
                       </Button>
                     </div>
                   </div>
