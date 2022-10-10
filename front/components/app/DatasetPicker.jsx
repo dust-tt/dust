@@ -92,7 +92,12 @@ export default function DatasetPicker({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <Menu.Items
+              className={classNames(
+                "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                dataset ? "-left-8" : "left-1"
+              )}
+            >
               <div className="py-1">
                 {datasets.map((d) => {
                   return (

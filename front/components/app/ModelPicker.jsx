@@ -123,7 +123,14 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items className="absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <Menu.Items
+                className={classNames(
+                  "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  model.provider_id && model.provider_id.length > 0
+                    ? "-left-12"
+                    : "left-1"
+                )}
+              >
                 <div className="py-1">
                   {providers.map((p) => {
                     return (
@@ -203,7 +210,14 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items className="absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <Menu.Items
+                  className={classNames(
+                    "absolute shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                    model.model_id && model.model_id.length > 0
+                      ? "-left-24"
+                      : "left-1"
+                  )}
+                >
                   <div className="py-1">
                     {models.map((m) => {
                       return (
