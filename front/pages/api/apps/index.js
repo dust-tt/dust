@@ -28,6 +28,7 @@ export default async function handler(req, res) {
         where: {
           userId: user.id,
         },
+        order: [["updatedAt", "DESC"]],
         attributes: [
           "id",
           "uId",

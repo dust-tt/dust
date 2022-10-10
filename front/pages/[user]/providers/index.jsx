@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAIProviderSetup from "../../../components/app/providers/OpenAIProviderSetup";
+import CohereProviderSetup from "../../../components/app/providers/CohereProviderSetup";
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 
@@ -15,6 +16,7 @@ export default function ProfileProviders() {
   const { data: session } = useSession();
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
+  const [cohereOpen, setCohereOpen] = useState(false);
 
   let modelProviders = [
     {
@@ -24,7 +26,13 @@ export default function ProfileProviders() {
       setter: setOpenAIOpen,
       enabled: false,
     },
-    { providerId: "cohere", name: "Cohere", built: false, enabled: false },
+    {
+      providerId: "cohere",
+      name: "Cohere",
+      built: true,
+      setter: setCohereOpen,
+      enabled: false,
+    },
     {
       providerId: "hugging_face",
       name: "HuggingFace",
@@ -88,6 +96,12 @@ export default function ProfileProviders() {
           enabled={modelProviders[0].enabled}
           config={modelProviders[0].config}
         />
+        <CohereProviderSetup
+          open={cohereOpen}
+          setOpen={setCohereOpen}
+          enabled={modelProviders[1].enabled}
+          config={modelProviders[1].config}
+        />
 
         <div className="">
           <div className="mx-auto max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
@@ -137,7 +151,11 @@ export default function ProfileProviders() {
                           provider.setter(true);
                         }}
                       >
-                        {provider.enabled ? "Edit" : "Setup"}
+                        {provider.enabled
+                          ? "Edit"
+                          : provider.built
+                          ? "Setup"
+                          : "Coming Soon"}
                       </Button>
                     </div>
                   </div>
@@ -182,7 +200,13 @@ export default function ProfileProviders() {
                       </div>
                     </div>
                     <div>
-                      <Button disabled={!provider.built}>Setup</Button>
+                      <Button disabled={!provider.built}>
+                        {provider.enabled
+                          ? "Edit"
+                          : provider.built
+                          ? "Setup"
+                          : "Coming Soon"}
+                      </Button>
                     </div>
                   </div>
                 </li>

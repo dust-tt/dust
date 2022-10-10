@@ -3,7 +3,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { ActionButton, Button } from "../../Button";
 import { useSWRConfig } from "swr";
 
-export default function OpenAIProviderSetup({
+export default function CohereProviderSetup({
   open,
   setOpen,
   config,
@@ -24,16 +24,18 @@ export default function OpenAIProviderSetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let modelsRes = await fetch("https://api.openai.com/v1/models", {
-      method: "GET",
+    let modelsRes = await fetch("https://api.cohere.ai/tokenize", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ text: "Hello World" }),
     });
 
     if (!modelsRes.ok) {
       let err = await modelsRes.json();
-      setTestError(err.error.code);
+      setTestError(err.message);
       setTestSuccessful(false);
       setTestRunning(false);
     } else {
@@ -46,7 +48,7 @@ export default function OpenAIProviderSetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/providers/openai`, {
+    let res = await fetch(`/api/providers/cohere`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -63,7 +65,7 @@ export default function OpenAIProviderSetup({
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/providers/openai`, {
+    let res = await fetch(`/api/providers/cohere`, {
       method: "DELETE",
     });
     mutate(`/api/providers`);
@@ -100,15 +102,15 @@ export default function OpenAIProviderSetup({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-900"
                     >
-                      Setup OpenAI
+                      Setup Cohere
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        To use OpenAI's models you must provide your API key. It
+                        To use Cohere models you must provide your API key. It
                         can be found{" "}
                         <a
                           className="text-violet-600 hover:text-violet-500 font-bold"
-                          href="https://beta.openai.com/account/api-keys"
+                          href="https://os.cohere.ai/"
                           target="_blank"
                         >
                           here
@@ -139,7 +141,7 @@ export default function OpenAIProviderSetup({
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
                     <span className="text-green-600">
-                      Test succeeded! You can enable OpenAI.
+                      Test succeeded! You can enable Cohere.
                     </span>
                   ) : (
                     <span>&nbsp;</span>

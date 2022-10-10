@@ -2,8 +2,6 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
 import { User, Provider } from "../../../lib/models";
 
-const { DUST_API } = process.env;
-
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
   if (!session) {
