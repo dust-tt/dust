@@ -5,10 +5,11 @@ import { authOptions } from "../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
-import OpenAIProviderSetup from "../../../components/app/providers/OpenAIProviderSetup";
-import CohereProviderSetup from "../../../components/app/providers/CohereProviderSetup";
+import OpenAISetup from "../../../components/providers/OpenAISetup";
+import CohereSetup from "../../../components/providers/CohereSetup";
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
+import { modelProviders, serviceProviders } from "../../../lib/providers";
 
 const { URL } = process.env;
 
@@ -18,68 +19,13 @@ export default function ProfileProviders() {
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
 
-  let modelProviders = [
-    {
-      providerId: "openai",
-      name: "OpenAI",
-      built: true,
-      setter: setOpenAIOpen,
-      enabled: false,
-    },
-    {
-      providerId: "cohere",
-      name: "Cohere",
-      built: true,
-      setter: setCohereOpen,
-      enabled: false,
-    },
-    {
-      providerId: "hugging_face",
-      name: "HuggingFace",
-      built: false,
-      enabled: false,
-    },
-    {
-      providerId: "replicate",
-      name: "Replicate",
-      built: false,
-      enabled: false,
-    },
-  ];
-
-  let serviceProviders = [
-    {
-      providerId: "google_search",
-      name: "Google Search",
-      built: false,
-      enabled: false,
-    },
-    {
-      providerId: "youtube",
-      name: "Youtube Search",
-      built: false,
-      enabled: false,
-    },
-    { providerId: "notion", name: "Notion", built: false, enabled: false },
-    { providerId: "gmail", name: "GMail", built: false, enabled: false },
-  ];
-
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
+
+  let configs = {};
 
   if (!isProvidersLoading && !isProvidersError) {
     for (var i = 0; i < providers.length; i++) {
-      for (var j = 0; j < modelProviders.length; j++) {
-        if (providers[i].providerId == modelProviders[j].providerId) {
-          modelProviders[j].enabled = true;
-          modelProviders[j].config = JSON.parse(providers[i].config);
-        }
-      }
-      for (var j = 0; j < serviceProviders.length; j++) {
-        if (providers[i].providerId == serviceProviders[j].providerId) {
-          serviceProviders[j].enabled = true;
-          serviceProviders[j].config = JSON.parse(providers[i].config);
-        }
-      }
+      configs[providers[i].providerId] = JSON.parse(providers[i].config);
     }
   }
 
@@ -90,17 +36,17 @@ export default function ProfileProviders() {
           <MainTab current_tab="Providers" />
         </div>
 
-        <OpenAIProviderSetup
+        <OpenAISetup
           open={openAIOpen}
           setOpen={setOpenAIOpen}
-          enabled={modelProviders[0].enabled}
-          config={modelProviders[0].config}
+          enabled={configs["openai"] ? true : false}
+          config={configs["openai"] ? configs["openai"] : null}
         />
-        <CohereProviderSetup
+        <CohereSetup
           open={cohereOpen}
           setOpen={setCohereOpen}
-          enabled={modelProviders[1].enabled}
-          config={modelProviders[1].config}
+          enabled={configs["cohere"] ? true : false}
+          config={configs["cohere"] ? configs["cohere"] : null}
         />
 
         <div className="">
@@ -126,7 +72,9 @@ export default function ProfileProviders() {
                       <p
                         className={classNames(
                           "truncate text-base font-bold",
-                          provider.enabled ? "text-slate-700" : "text-slate-400"
+                          configs[provider.providerId]
+                            ? "text-slate-700"
+                            : "text-slate-400"
                         )}
                       >
                         {provider.name}
@@ -135,12 +83,14 @@ export default function ProfileProviders() {
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            provider.enabled
+                            configs[provider.providerId]
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          {provider.enabled ? "enabled" : "disabled"}
+                          {configs[provider.providerId]
+                            ? "enabled"
+                            : "disabled"}
                         </p>
                       </div>
                     </div>
@@ -148,10 +98,17 @@ export default function ProfileProviders() {
                       <Button
                         disabled={!provider.built}
                         onClick={() => {
-                          provider.setter(true);
+                          switch (provider.providerId) {
+                            case "openai":
+                              setOpenAIOpen(true);
+                              break;
+                            case "cohere":
+                              setCohereOpen(true);
+                              break;
+                          }
                         }}
                       >
-                        {provider.enabled
+                        {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
                           ? "Setup"
@@ -190,7 +147,7 @@ export default function ProfileProviders() {
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            provider.enabled
+                            configs[provider.providerId]
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           )}
@@ -201,7 +158,7 @@ export default function ProfileProviders() {
                     </div>
                     <div>
                       <Button disabled={!provider.built}>
-                        {provider.enabled
+                        {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
                           ? "Setup"

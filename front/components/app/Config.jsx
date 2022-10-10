@@ -1,11 +1,20 @@
 import { classNames } from "../../lib/utils";
 import DatasetPicker from "./DatasetPicker";
+import ModelPicker from "./ModelPicker";
 
 export default function Config({ app, config, readOnly, onConfigUpdate }) {
   const handleDatasetChange = (name, dataset) => {
     let b = Object.assign({}, config);
     b[name] = Object.assign({}, config[name]);
     b[name].dataset = dataset;
+    onConfigUpdate(b);
+  };
+
+  const handleModelChange = (name, model) => {
+    let b = Object.assign({}, config);
+    b[name] = Object.assign({}, config[name]);
+    b[name].provider_id = model.provider_id;
+    b[name].model_id = model.model_id;
     onConfigUpdate(b);
   };
 
@@ -54,26 +63,19 @@ export default function Config({ app, config, readOnly, onConfigUpdate }) {
                     key={name}
                     className="flex sm:flex-row items-center space-x-2 leading-8"
                   >
-                    <div className="flex flex-initial items-center">
+                    <div className="flex flex-initial items-center mr-2">
                       <span className="font-bold">{name}</span>
                     </div>
-                    <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
-                      <DatasetPicker
-                        app={app}
-                        dataset=""
-                        onDatasetUpdate={(name) => {}}
-                        readOnly={readOnly}
-                      />
-                    </div>
-                    <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
-                      <div className="flex flex-initial">model:</div>
-                      <DatasetPicker
-                        app={app}
-                        dataset=""
-                        onDatasetUpdate={(name) => {}}
-                        readOnly={readOnly}
-                      />
-                    </div>
+                    <ModelPicker
+                      app={app}
+                      model={{
+                        provider_id: c.provider_id,
+                        model_id: c.model_id,
+                      }}
+                      onModelUpdate={(model) => {
+                        handleModelChange(name, model);
+                      }}
+                    />
                   </div>
                 );
                 break;

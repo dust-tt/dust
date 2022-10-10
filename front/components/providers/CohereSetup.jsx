@@ -1,9 +1,10 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { ActionButton, Button } from "../../Button";
+import { ActionButton, Button } from "../Button";
 import { useSWRConfig } from "swr";
+import { checkProvider } from "../../lib/providers";
 
-export default function CohereProviderSetup({
+export default function CohereSetup({
   open,
   setOpen,
   config,
@@ -24,22 +25,13 @@ export default function CohereProviderSetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let modelsRes = await fetch("https://api.cohere.ai/tokenize", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: "Hello World" }),
-    });
+    let check = await checkProvider("cohere", { api_key: apiKey });
 
-    if (!modelsRes.ok) {
-      let err = await modelsRes.json();
-      setTestError(err.message);
+    if (!check.ok) {
+      setTestError(check.error);
       setTestSuccessful(false);
       setTestRunning(false);
     } else {
-      let models = await modelsRes.json();
       setTestError("");
       setTestSuccessful(true);
       setTestRunning(false);
@@ -126,7 +118,7 @@ export default function CohereProviderSetup({
                       <input
                         type="text"
                         className="shadow-sm focus:ring-violet-500 focus:border-violet-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        placeholder="OpenAI API Key"
+                        placeholder="Cohere API Key"
                         value={apiKey}
                         onChange={(e) => {
                           setApiKey(e.target.value);

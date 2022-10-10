@@ -1,14 +1,10 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { ActionButton, Button } from "../../Button";
+import { ActionButton, Button } from "../Button";
 import { useSWRConfig } from "swr";
+import { checkProvider } from "../../lib/providers";
 
-export default function OpenAIProviderSetup({
-  open,
-  setOpen,
-  config,
-  enabled,
-}) {
+export default function OpenAISetup({ open, setOpen, config, enabled }) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
@@ -24,20 +20,13 @@ export default function OpenAIProviderSetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let modelsRes = await fetch("https://api.openai.com/v1/models", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
+    let check = await checkProvider("openai", { api_key: apiKey });
 
-    if (!modelsRes.ok) {
-      let err = await modelsRes.json();
-      setTestError(err.error.code);
+    if (!check.ok) {
+      setTestError(check.error);
       setTestSuccessful(false);
       setTestRunning(false);
     } else {
-      let models = await modelsRes.json();
       setTestError("");
       setTestSuccessful(true);
       setTestRunning(false);
@@ -104,7 +93,7 @@ export default function OpenAIProviderSetup({
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        To use OpenAI's models you must provide your API key. It
+                        To use OpenAI models you must provide your API key. It
                         can be found{" "}
                         <a
                           className="text-violet-600 hover:text-violet-500 font-bold"
