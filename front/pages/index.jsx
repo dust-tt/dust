@@ -1,7 +1,5 @@
-import { useState } from "react";
-import Link from "next/link";
 import Head from "next/head";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
@@ -16,8 +14,7 @@ export default function Home() {
       </Head>
 
       <main className="mx-12">
-        <div className="mx-auto max-w-4xl">
-
+        <div className="mx-auto sm:max-w-2xl lg:max-w-3xl">
           <div className="flex items-center mt-8">
             <div className="flex rotate-[30deg]">
               <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
@@ -30,14 +27,14 @@ export default function Home() {
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mt-10">
-            <span className="block xl:inline">
-              Specification language and design platform for
-            </span>{" "}
-            <span className="block text-indigo-600 xl:inline">LLM Apps</span>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mt-16">
+            <span className="">Specification language and</span>{" "}
+            <span className="">design platform for</span>{" "}
+            <span className="text-violet-600">Large Language Models</span>{" "}
+            <span className="text-violet-600">Apps</span>
           </h1>
 
-          <div className="mx-auto mt-5 max-w-md sm:justify-center mt-14">
+          <div className="mx-auto w-48 mt-20">
             <Button
               onClick={() => signIn("github", { callbackUrl: "/api/login" })}
             >

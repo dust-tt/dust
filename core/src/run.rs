@@ -29,25 +29,6 @@ impl RunConfig {
         self.blocks.get(name)
     }
 
-    pub async fn load(run_id: &str) -> Result<Self> {
-        let root_path = utils::init_check().await?;
-        let runs_dir = root_path.join(".runs");
-
-        assert!(runs_dir.is_dir().await);
-        let run_dir = runs_dir.join(run_id);
-
-        if !run_dir.exists().await {
-            Err(anyhow!("Run `{}` does not exist", run_id))?;
-        }
-
-        let config_path = run_dir.join("config.json");
-
-        let config_data = async_std::fs::read_to_string(config_path).await?;
-        let config: RunConfig = serde_json::from_str(&config_data)?;
-
-        Ok(config)
-    }
-
     pub fn concurrency_for_block(&self, block_type: BlockType, name: &str) -> usize {
         let block_config = self.config_for_block(name);
 
