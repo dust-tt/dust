@@ -1,0 +1,4 @@
+{
+  "include": ["lib/**/*.js", "pages/**/*", "components/**/*"],
+  "exclude": ["node_modules"]
+}
