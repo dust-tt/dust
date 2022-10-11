@@ -21,7 +21,7 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 - [Install Node](https://nodejs.org/en/download/)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
 - Run the internal API:
-  - `cd $DUST_PATH/code`
+  - `cd $DUST_PATH/core`
   - `cargo run --bin dust-api`
 - Setup the Frontend app:
   - `cd $DUST_PATH/front`
