@@ -29,6 +29,8 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
   - create [`.env.local`](https://discord.com/channels/1021427834230673428/1021427834725609516/1029374475378098227)
 - Run the Frontend app:
   - `npm run dev`
+  - Visit `http://localhost:3000/api/init` 🙈
+  - Then go to `http://localhost:3000/`
 
 ## Questions / Help
 
