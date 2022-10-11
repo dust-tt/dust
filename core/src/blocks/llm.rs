@@ -362,7 +362,13 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = request.execute_with_cache(env.project.clone(), env.store.clone()).await?;
+        let g = request
+            .execute_with_cache(
+                env.credentials.clone(),
+                env.project.clone(),
+                env.store.clone(),
+            )
+            .await?;
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {
@@ -385,7 +391,7 @@ mod tests {
     use super::*;
     use crate::blocks::block::InputState;
     use crate::project::Project;
-    use crate::run::RunConfig;
+    use crate::run::{Credentials, RunConfig};
     use crate::stores::sqlite::SQLiteStore;
     use std::collections::HashMap;
 
@@ -423,6 +429,7 @@ mod tests {
             map: None,
             project: Project::new_from_id(1),
             store: Box::new(SQLiteStore::new_in_memory()?),
+            credentials: Credentials::new(),
         };
         assert_eq!(
             LLM::replace_few_shot_prompt_variables("QUESTION: ${RETRIEVE.question}\n", &env)?,
@@ -452,6 +459,7 @@ mod tests {
             map: None,
             project: Project::new_from_id(1),
             store: Box::new(SQLiteStore::new_in_memory()?),
+            credentials: Credentials::new(),
         };
         assert_eq!(
             LLM::replace_prompt_variables(

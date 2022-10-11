@@ -30,7 +30,7 @@ struct APIResponse {
 /// API State
 
 struct RunManager {
-    pending_apps: Vec<app::App>,
+    pending_apps: Vec<(app::App, run::Credentials)>,
     pending_runs: Vec<String>,
 }
 
@@ -50,21 +50,21 @@ impl APIState {
         }
     }
 
-    fn run_app(&self, app: app::App) {
+    fn run_app(&self, app: app::App, credentials: run::Credentials) {
         let mut run_manager = self.run_manager.lock();
-        run_manager.pending_apps.push(app);
+        run_manager.pending_apps.push((app, credentials));
     }
 
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
         loop {
-            let apps: Vec<app::App> = {
+            let apps: Vec<(app::App, run::Credentials)> = {
                 let mut manager = self.run_manager.lock();
                 let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
                     manager
                         .pending_runs
-                        .push(app.run_ref().unwrap().run_id().to_string());
+                        .push(app.0.run_ref().unwrap().run_id().to_string());
                 });
                 apps
             };
@@ -76,12 +76,12 @@ impl APIState {
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     println!("IN SPAWN STARTING RUN");
-                    match app.run(store).await {
+                    match app.0.run(app.1, store).await {
                         Ok(()) => {
                             utils::done(&format!(
                                 "Run `{}` for app version `{}` finished",
-                                app.run_ref().unwrap().run_id(),
-                                app.hash(),
+                                app.0.run_ref().unwrap().run_id(),
+                                app.0.hash(),
                             ));
                         }
                         Err(e) => {
@@ -92,7 +92,7 @@ impl APIState {
                         let mut manager = manager.lock();
                         manager
                             .pending_runs
-                            .retain(|run_id| run_id != app.run_ref().unwrap().run_id());
+                            .retain(|run_id| run_id != app.0.run_ref().unwrap().run_id());
                     }
                 });
             });
@@ -326,6 +326,7 @@ struct RunsCreatePayload {
     specification: String,
     dataset_id: String,
     config: run::RunConfig,
+    credentials: run::Credentials,
 }
 
 async fn runs_create(
@@ -468,7 +469,7 @@ async fn runs_create(
     // The run is empty for now, we can clone it for the response.
     let run = app.run_ref().unwrap().clone();
 
-    state.run_app(app);
+    state.run_app(app, payload.credentials.clone());
 
     (
         StatusCode::OK,

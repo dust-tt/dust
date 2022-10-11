@@ -1,13 +1,13 @@
 use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
-use crate::run::RunConfig;
 use crate::project::Project;
+use crate::run::{RunConfig, Credentials};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
@@ -25,6 +25,7 @@ pub struct InputState {
     pub index: usize,
 }
 
+// Env is serialized when passed to code blocks. RunConfig.credentials are not serialized.
 #[derive(Serialize, Clone)]
 pub struct Env {
     pub config: RunConfig,
@@ -35,6 +36,8 @@ pub struct Env {
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]
     pub project: Project,
+    #[serde(skip_serializing)]
+    pub credentials: Credentials,
 }
 
 // pub enum Expectations {

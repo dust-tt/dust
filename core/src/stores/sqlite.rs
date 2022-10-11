@@ -949,7 +949,7 @@ impl Store for SQLiteStore {
 mod tests {
     use super::*;
     use crate::app::App;
-    use crate::run::{RunConfig, Status};
+    use crate::run::{Credentials, RunConfig, Status};
     use serde_json::json;
 
     #[tokio::test]
@@ -1079,7 +1079,7 @@ _fun = (env) => {
         )
         .await?;
 
-        app.run(Box::new(store.clone())).await?;
+        app.run(Credentials::new(), Box::new(store.clone())).await?;
 
         let r = store
             .load_run(&project, app.run_ref().unwrap().run_id(), None)

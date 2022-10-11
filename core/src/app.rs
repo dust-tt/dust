@@ -1,7 +1,7 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
 use crate::project::Project;
-use crate::run::{BlockExecution, BlockStatus, Run, RunConfig, Status};
+use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, Status};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
@@ -215,7 +215,7 @@ impl App {
         Ok(())
     }
 
-    pub async fn run(&mut self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    pub async fn run(&mut self, credentials: Credentials, store: Box<dyn Store + Sync + Send>) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
         assert!(self.dataset.is_some());
@@ -236,6 +236,7 @@ impl App {
             map: None,
             project: project.clone(),
             store: store.clone(),
+            credentials: credentials.clone(),
         }]];
 
         let mut current_map: Option<String> = None;
@@ -654,5 +655,5 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
     app.prepare_run(run_config, project.clone(), d, Box::new(store.clone()))
         .await?;
 
-    app.run(Box::new(store)).await
+    app.run(Credentials::new(), Box::new(store)).await
 }

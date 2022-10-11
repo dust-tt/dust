@@ -1,6 +1,7 @@
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMGeneration, LLM};
-use crate::providers::provider::{ModelError, Provider, ProviderID, ModelErrorRetryOptions};
+use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
+use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -192,11 +193,11 @@ impl OpenAILLM {
                             "OpenAIAPIError: [{}] {}",
                             error.error._type, error.error.message,
                         ),
-                        retryable: Some(ModelErrorRetryOptions{
+                        retryable: Some(ModelErrorRetryOptions {
                             sleep: Duration::from_millis(2000),
                             factor: 2,
                             retries: 8,
-                        })
+                        }),
                     }),
                     _ => Err(ModelError {
                         message: format!(
@@ -219,12 +220,19 @@ impl LLM for OpenAILLM {
         self.id.clone()
     }
 
-    async fn initialize(&mut self) -> Result<()> {
-        match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-            Ok(key) => {
-                self.api_key = Some(key);
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        match credentials.get("OPENAI_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
             }
-            Err(_) => Err(anyhow!("Environment variable `OPENAI_API_KEY` is not set."))?,
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
+                }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                ))?,
+            },
         }
         Ok(())
     }
@@ -343,7 +351,7 @@ impl Provider for OpenAIProvider {
         }
 
         let mut llm = self.llm(String::from("text-ada-001"));
-        llm.initialize().await?;
+        llm.initialize(Credentials::new()).await?;
 
         let _ = llm.generate("Hello 😊", Some(1), 0.7, 1, &vec![]).await?;
 

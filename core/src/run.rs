@@ -19,6 +19,8 @@ pub struct BlockExecution {
     pub error: Option<String>,
 }
 
+pub type Credentials = HashMap<String, String>;
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {
     pub blocks: HashMap<String, Value>,

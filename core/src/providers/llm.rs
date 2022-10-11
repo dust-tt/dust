@@ -1,6 +1,7 @@
-use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
-use crate::stores::store::Store;
 use crate::project::Project;
+use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
+use crate::run::Credentials;
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -26,7 +27,7 @@ pub struct LLMGeneration {
 pub trait LLM {
     fn id(&self) -> String;
 
-    async fn initialize(&mut self) -> Result<()>;
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()>;
 
     async fn generate(
         &self,
@@ -89,9 +90,9 @@ impl LLMRequest {
         &self.hash
     }
 
-    pub async fn execute(&self) -> Result<LLMGeneration> {
+    pub async fn execute(&self, credentials: Credentials) -> Result<LLMGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
-        llm.initialize().await?;
+        llm.initialize(credentials).await?;
 
         match with_retryable_back_off(
             || {
@@ -146,6 +147,7 @@ impl LLMRequest {
 
     pub async fn execute_with_cache(
         &self,
+        credentials: Credentials,
         project: Project,
         store: Box<dyn Store + Send + Sync>,
     ) -> Result<LLMGeneration> {
@@ -160,7 +162,7 @@ impl LLMRequest {
         match generation {
             Some(generation) => Ok(generation),
             None => {
-                let generation = self.execute().await?;
+                let generation = self.execute(credentials).await?;
                 store.llm_cache_store(&project, self, &generation).await?;
                 Ok(generation)
             }
