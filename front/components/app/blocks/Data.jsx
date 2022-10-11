@@ -36,10 +36,12 @@ export default function Data({
             readOnly={readOnly}
           />
         </div>
+        {/*
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial">version:</div>
           <div className="flex flex-1 font-normal">latest</div>
         </div>
+        */}
       </div>
     </Block>
   );

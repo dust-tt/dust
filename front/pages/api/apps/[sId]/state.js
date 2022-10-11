@@ -40,7 +40,8 @@ export default async function handler(req, res) {
       if (
         !req.body ||
         !(typeof req.body.specification == "string") ||
-        !(typeof req.body.config == "string")
+        !(typeof req.body.config == "string") ||
+        !(typeof req.body.run == "string")
       ) {
         res.status(400).end();
         break;
@@ -49,6 +50,7 @@ export default async function handler(req, res) {
       await app.update({
         savedSpecification: req.body.specification,
         savedConfig: req.body.config,
+        savedRun: req.body.run,
       });
 
       res.status(200).json({ app });

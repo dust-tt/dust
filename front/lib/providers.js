@@ -153,3 +153,19 @@ export async function getProviderLLMModels(providerId, config) {
       break;
   }
 }
+
+export const credentialsFromProviders = (providers) => {
+  let credentials = {};
+  providers.forEach((provider) => {
+    let config = JSON.parse(provider.config);
+    switch (provider.providerId) {
+      case "openai":
+        credentials["OPENAI_API_KEY"] = config.api_key;
+        break;
+      case "cohere":
+        credentials["COHERE_API_KEY"] = config.api_key;
+        break;
+    }
+  });
+  return credentials;
+};

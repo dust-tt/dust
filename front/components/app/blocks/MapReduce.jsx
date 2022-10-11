@@ -31,14 +31,14 @@ export function Map({
       onBlockDown={onBlockDown}
     >
       <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-col sm:flex-row sm:space-x-2">
+        <div className="flex flex-col lg:flex-row lg:space-x-4">
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <div className="flex flex-initial">from:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-black text-gray-700 uppercase text-sm py-1 w-24 mr-4",
+                  "block flex-1 rounded-md px-1 font-black text-gray-700 uppercase text-sm py-1 w-24",
                   readOnly
                     ? "border-white ring-0 focus:ring-0 focus:border-white"
                     : "border-white focus:border-gray-300 focus:ring-0"

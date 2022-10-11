@@ -51,7 +51,7 @@ export default function DatasetPicker({
                   dataset ? "px-1" : "border px-3",
                   readOnly
                     ? "text-gray-300 border-white"
-                    : "text-gray-700 border-gray-200",
+                    : "text-gray-700 border-orange-400",
                   "focus:outline-none focus:ring-0"
                 )}
               >
@@ -65,7 +65,7 @@ export default function DatasetPicker({
                 dataset ? "px-0" : "border px-3",
                 readOnly
                   ? "text-gray-300 border-white"
-                  : "text-gray-700 border-gray-200",
+                  : "text-gray-700 border-orange-400",
                 "focus:outline-none focus:ring-0"
               )}
               readOnly={readOnly}
@@ -106,8 +106,7 @@ export default function DatasetPicker({
                       onClick={() => onDatasetUpdate(d.name)}
                     >
                       {({ active }) => (
-                        <a
-                          href="#"
+                        <span
                           className={classNames(
                             active
                               ? "bg-gray-50 text-gray-900"
@@ -116,7 +115,7 @@ export default function DatasetPicker({
                           )}
                         >
                           {d.name}
-                        </a>
+                        </span>
                       )}
                     </Menu.Item>
                   );

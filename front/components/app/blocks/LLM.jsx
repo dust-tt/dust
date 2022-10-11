@@ -3,6 +3,7 @@ import { classNames, shallowBlockClone } from "../../../lib/utils";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import ModelPicker from "../ModelPicker";
 
 export default function LLM({
   block,
@@ -63,6 +64,12 @@ export default function LLM({
     }
   };
 
+  const handleModelChange = (model) => {
+    let b = shallowBlockClone(block);
+    b.config = model;
+    onBlockUpdate(b);
+  };
+
   const [fewShotExpanded, setFewShotExpanded] = useState(
     (block.spec.few_shot_prompt && block.spec.few_shot_prompt.length > 0) ||
       (block.spec.few_shot_preprompt &&
@@ -82,14 +89,26 @@ export default function LLM({
       onBlockDown={onBlockDown}
     >
       <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-col sm:flex-row sm:space-x-2">
+        <div className="flex flex-col lg:flex-row lg:space-x-4">
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+            <div className="flex flex-initial mr-1">model:</div>
+            <ModelPicker
+              readOnly={readOnly}
+              model={
+                block.config ? block.config : { provider_id: "", model_id: "" }
+              }
+              onModelUpdate={(model) => {
+                handleModelChange(model);
+              }}
+            />
+          </div>
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <div className="flex flex-initial">temperature:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8 mr-4",
+                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
                   readOnly
                     ? "border-white ring-0 focus:ring-0 focus:border-white"
                     : "border-white focus:border-gray-300 focus:ring-0"

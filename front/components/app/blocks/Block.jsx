@@ -25,7 +25,7 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "flex flex-col group rounded-sm border border-gray-400 px-4 py-2"
+          "flex flex-col group rounded-sm border-2 border-gray-300 px-4 py-2"
         )}
       >
         <div className="flex flex-row items-center w-full">
@@ -44,6 +44,8 @@ export default function Block({
                 "block w-full min-w-0 flex-1 rounded-md py-1 px-1 placeholder-gray-200 uppercase",
                 readOnly
                   ? "border-white ring-0 focus:ring-0 focus:border-white"
+                  : block.name.length == 0
+                  ? "border-orange-400 focus:border-orange-400 focus:ring-0"
                   : "border-white focus:border-gray-300 focus:ring-0"
               )}
               readOnly={readOnly}

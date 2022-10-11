@@ -20,7 +20,7 @@ export default function Home({ apps }) {
           <MainTab current_tab="Apps" />
         </div>
         <div className="">
-          <div className="mx-auto max-w-4xl px-6 divide-y divide-gray-200 mt-8">
+          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">
             <div>
               <div className="sm:flex sm:items-center">
                 <div className="sm:flex-auto"></div>

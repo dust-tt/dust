@@ -50,7 +50,7 @@ export default function ProfileProviders() {
         />
 
         <div className="">
-          <div className="mx-auto max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
             <div className="sm:flex sm:items-center">
               <div className="sm:flex-auto mt-8">
                 <h1 className="text-base font-medium text-gray-900">
@@ -121,7 +121,7 @@ export default function ProfileProviders() {
             </ul>
           </div>
 
-          <div className="mx-auto max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
             <div className="sm:flex sm:items-center">
               <div className="sm:flex-auto mt-8">
                 <h1 className="text-base font-medium text-gray-900">

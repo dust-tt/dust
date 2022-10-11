@@ -56,6 +56,9 @@ export const App = sequelize.define(
     savedConfig: {
       type: DataTypes.TEXT,
     },
+    savedRun: {
+      type: DataTypes.TEXT,
+    },
     dustAPIProjectId: {
       type: DataTypes.STRING,
       allowNull: false,

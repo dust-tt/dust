@@ -22,7 +22,7 @@ export function ActionButton({ type, onClick, disabled, children }) {
     <button
       type={type ? type : "button"}
       className={classNames(
-        "inline-flex items-center rounded-md border  px-3 py-1 text-sm font-medium leading-6",
+        "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
         disabled ? "border-gray-200 bg-white text-gray-300" : "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white",
         "shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
       )}

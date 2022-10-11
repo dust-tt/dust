@@ -35,6 +35,7 @@ export default async function handler(req, res) {
           "visibility",
           "savedSpecification",
           "savedConfig",
+          "savedRun",
           "updatedAt",
         ],
       });

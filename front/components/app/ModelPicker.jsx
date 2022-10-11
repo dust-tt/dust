@@ -96,7 +96,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                     : "border px-3",
                   readOnly
                     ? "text-gray-300 border-white"
-                    : "text-gray-700 border-gray-200",
+                    : "text-gray-700 border-orange-400",
                   "focus:outline-none focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -145,8 +145,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                         }}
                       >
                         {({ active }) => (
-                          <a
-                            href="#"
+                          <span
                             className={classNames(
                               active
                                 ? "bg-gray-50 text-gray-900"
@@ -155,7 +154,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                             )}
                           >
                             {p.providerId}
-                          </a>
+                          </span>
                         )}
                       </Menu.Item>
                     );
@@ -184,7 +183,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                     : "border px-3",
                   readOnly
                     ? "text-gray-300 border-white"
-                    : "text-gray-700 border-gray-200",
+                    : "text-gray-700 border-orange-400",
                   "focus:outline-none focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -231,8 +230,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                           }
                         >
                           {({ active }) => (
-                            <a
-                              href="#"
+                            <span
                               className={classNames(
                                 active
                                   ? "bg-gray-50 text-gray-900"
@@ -241,7 +239,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                               )}
                             >
                               {m.id}
-                            </a>
+                            </span>
                           )}
                         </Menu.Item>
                       );

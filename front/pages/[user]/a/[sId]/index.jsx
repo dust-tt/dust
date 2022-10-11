@@ -11,27 +11,56 @@ import {
   deleteBlock,
   moveBlockDown,
   moveBlockUp,
+  dump,
 } from "../../../../lib/specification";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import Root from "../../../../components/app/blocks/Root";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
-import { updateConfig } from "../../../../lib/config";
-import Config from "../../../../components/app/Config";
+import { extractConfig } from "../../../../lib/config";
 
 const { URL } = process.env;
+
 let saveTimeout = null;
+
+const isRunnable = (spec, config) => {
+  for (const name in config) {
+    for (const key in config[name]) {
+      if (!config[name][key] || config[name][key].length == 0) {
+        return false;
+      }
+    }
+  }
+  for (const name in spec) {
+    let block = spec[name];
+    switch (block.type) {
+      case "data":
+        if (!block.spec.dataset || block.spec.dataset.length == 0) {
+          return false;
+        }
+      default:
+        if (!block.name || block.name.length == 0) {
+          return false;
+        }
+    }
+  }
+  return true;
+};
 
 export default function App({ app }) {
   const { data: session } = useSession();
 
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
   const [config, setConfig] = useState(
-    updateConfig(JSON.parse(app.savedConfig || `{}`), spec)
+    extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );
+  const [runnable, setRunnable] = useState(isRunnable(spec, config));
+  const [runError, setRunError] = useState(null);
+
+  const bottomRef = useRef(null);
 
   const saveState = async (spec, config) => {
     if (saveTimeout) {
@@ -49,6 +78,7 @@ export default function App({ app }) {
           body: JSON.stringify({
             specification: JSON.stringify(spec),
             config: JSON.stringify(config),
+            run: "",
           }),
         }),
       ]);
@@ -56,41 +86,37 @@ export default function App({ app }) {
     }, 1000);
   };
 
-  const handleNewBlock = (blockType) => {
-    let s = addBlock(spec, blockType);
-    let c = updateConfig(config, s);
+  const update = (s) => {
+    let c = extractConfig(s);
+    setRunnable(isRunnable(s, c));
     setSpec(s);
     setConfig(c);
     saveState(s, c);
+  };
+
+  const handleNewBlock = (blockType) => {
+    let s = addBlock(spec, blockType);
+    update(s);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleDeleteBlock = (idx) => {
     let s = deleteBlock(spec, idx);
-    let c = updateConfig(config, s);
-    setSpec(s);
-    setConfig(c);
-    saveState(s, c);
+    update(s);
   };
 
   const handleMoveBlockUp = (idx) => {
     let s = moveBlockUp(spec, idx);
-    let c = updateConfig(config, s);
-    setSpec(s);
-    setConfig(c);
-    saveState(s, c);
+    update(s);
   };
 
   const handleMoveBlockDown = (idx) => {
     let s = moveBlockDown(spec, idx);
-    let c = updateConfig(config, s);
-    setSpec(s);
-    setConfig(c);
-    saveState(s, c);
+    update(s);
   };
 
   const handleSetBlock = (idx, block) => {
     let s = spec.map((b) => b);
-
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
       for (var i = idx; i < s.length; i++) {
@@ -108,19 +134,32 @@ export default function App({ app }) {
         }
       }
     }
-
     s[idx] = block;
-
-    let c = updateConfig(config, s);
-
-    setSpec(s);
-    setConfig(c);
-    saveState(s, c);
+    update(s);
   };
 
-  const handleSetConfig = (c) => {
-    setConfig(c);
-    saveState(spec, c);
+  const handleRun = async () => {
+    const [runRes] = await Promise.all([
+      fetch(`/api/apps/${app.sId}/runs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          specification: JSON.stringify(spec),
+          config: JSON.stringify(config),
+        }),
+      }),
+    ]);
+
+    if (!runRes.ok) {
+      const [error] = await Promise.all([runRes.json()]);
+      setRunError(error);
+    } else {
+      setRunError(null);
+      const [run] = await Promise.all([runRes.json()]);
+      console.log(run);
+    }
   };
 
   return (
@@ -134,7 +173,7 @@ export default function App({ app }) {
         </div>
         <div className="flex flex-1">
           <div className="flex flex-col mx-4 w-full">
-            <div className="flex flex-row my-4 space-x-2">
+            <div className="flex flex-row my-4 space-x-2 items-center">
               <div className="flex">
                 <NewBlock
                   disabled={false}
@@ -143,11 +182,23 @@ export default function App({ app }) {
                 />
               </div>
               <div className="flex">
-                <ActionButton disabled={true}>
+                <ActionButton disabled={!runnable} onClick={() => handleRun()}>
                   <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
                   Run
                 </ActionButton>
               </div>
+              {runError ? (
+                <div className="flex text-sm font-bold text-red-400 text-sm px-2">
+                  {(() => {
+                    switch (runError.code) {
+                      case "invalid_specification_error":
+                        return `Specification error: ${runError.message}`;
+                      default:
+                        return `Error: ${runError.message}`;
+                    }
+                  })()}
+                </div>
+              ) : null}
             </div>
 
             {/* This is a hack to force loading the component before we render the LLM blocks.
@@ -157,12 +208,6 @@ export default function App({ app }) {
             <TextareaAutosize className="hidden" value="foo" />
 
             <div className="flex flex-col space-y-2 mb-12">
-              <Config
-                app={app}
-                config={config}
-                onConfigUpdate={handleSetConfig}
-              />
-
               {spec.map((block, idx) => {
                 switch (block.type) {
                   case "root":
@@ -267,6 +312,7 @@ export default function App({ app }) {
             </div>
           </div>
         </div>
+        <div ref={bottomRef}></div>
       </div>
     </AppLayout>
   );

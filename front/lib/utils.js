@@ -14,5 +14,6 @@ export function new_id() {
 export const shallowBlockClone = (block) => {
   let b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
+  b.config = Object.assign({}, block.config || {});
   return b;
 };

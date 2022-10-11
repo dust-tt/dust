@@ -56,7 +56,7 @@ export default function DatasetsView({ app, datasets }) {
                       <a className="block">
                         <div
                           key={d.name}
-                          className="group px-4 py-4 rounded-md border border-gray-200"
+                          className="group px-4 py-4 rounded-sm border-2 border-gray-300"
                         >
                           <div className="flex items-center justify-between">
                             <p className="truncate text-base font-bold text-violet-600">
