@@ -26,7 +26,7 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 - Setup the Frontend app:
   - `cd $DUST_PATH/front`
   - `npm install`
-  - create (`.env.local`)[https://discord.com/channels/1021427834230673428/1021427834725609516/1029374475378098227]
+  - create [`.env.local`](https://discord.com/channels/1021427834230673428/1021427834725609516/1029374475378098227)
 - Run the Frontend app:
   - `npm run dev`
 
