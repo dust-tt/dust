@@ -7,6 +7,7 @@ import {
 
 export default function Block({
   block,
+  status,
   readOnly,
   children,
   onBlockUpdate,
@@ -80,6 +81,13 @@ export default function Block({
         </div>
         <div className="flex">{children}</div>
       </div>
+      {status ? (
+        <div className="flex flex-row items-center text-sm text-gray-400">
+          {status.status == "running"
+            ? `Running: ${status.success_count} successes ${status.error_count} errors`
+            : `Done: ${status.success_count} successes ${status.error_count} errors`}
+        </div>
+      ) : null}
     </div>
   );
 }

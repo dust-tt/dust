@@ -21,6 +21,8 @@ import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
+import { useSavedRun } from "../../../../lib/swr";
+import { mutate } from "swr";
 
 const { URL } = process.env;
 
@@ -58,7 +60,23 @@ export default function App({ app }) {
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );
   const [runnable, setRunnable] = useState(isRunnable(spec, config));
+  const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null);
+
+  let { run, isRunLoading, isRunError } = useSavedRun(app, (data) => {
+    if (data && data.run) {
+      switch (data?.run.status.run) {
+        case "running":
+          return 100;
+        default:
+          if (runRequested) {
+            setRunRequested(false);
+          }
+          return 0;
+      }
+    }
+    return 0;
+  });
 
   const bottomRef = useRef(null);
 
@@ -78,7 +96,6 @@ export default function App({ app }) {
           body: JSON.stringify({
             specification: JSON.stringify(spec),
             config: JSON.stringify(config),
-            run: "",
           }),
         }),
       ]);
@@ -139,6 +156,7 @@ export default function App({ app }) {
   };
 
   const handleRun = async () => {
+    setRunRequested(true);
     const [runRes] = await Promise.all([
       fetch(`/api/apps/${app.sId}/runs`, {
         method: "POST",
@@ -158,7 +176,7 @@ export default function App({ app }) {
     } else {
       setRunError(null);
       const [run] = await Promise.all([runRes.json()]);
-      console.log(run);
+      mutate(`/api/apps/${app.sId}/runs/saved`);
     }
   };
 
@@ -182,9 +200,16 @@ export default function App({ app }) {
                 />
               </div>
               <div className="flex">
-                <ActionButton disabled={!runnable} onClick={() => handleRun()}>
+                <ActionButton
+                  disabled={
+                    !runnable || runRequested || run?.status.run == "running"
+                  }
+                  onClick={() => handleRun()}
+                >
                   <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-                  Run
+                  {runRequested || run?.status.run == "running"
+                    ? "Running"
+                    : "Run"}
                 </ActionButton>
               </div>
               {runError ? (
@@ -209,6 +234,17 @@ export default function App({ app }) {
 
             <div className="flex flex-col space-y-2 mb-12">
               {spec.map((block, idx) => {
+                // Match status with block
+                let status = null;
+                if (
+                  run &&
+                  run.status &&
+                  idx < run.status.blocks.length &&
+                  run.status.blocks[idx].block_type == block.type &&
+                  run.status.blocks[idx].name == block.name
+                ) {
+                  status = run.status.blocks[idx];
+                }
                 switch (block.type) {
                   case "root":
                     return (
@@ -216,6 +252,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -231,6 +268,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -246,6 +284,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -261,6 +300,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -276,6 +316,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -291,6 +332,7 @@ export default function App({ app }) {
                         key={idx}
                         block={block}
                         app={app}
+                        status={status}
                         readOnly={false}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -302,8 +344,8 @@ export default function App({ app }) {
 
                   default:
                     return (
-                      <div key={idx} className="flex flex-row px-4">
-                        {block.type}
+                      <div key={idx} className="flex flex-row px-4 py-4">
+                        Unknown block type: {block.type}
                       </div>
                     );
                     break;

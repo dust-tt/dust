@@ -21,3 +21,15 @@ export function useProviders() {
     isProvidersError: error,
   };
 }
+
+export function useSavedRun(app, refresh) {
+  const { data, error } = useSWR(`/api/apps/${app.sId}/runs/saved`, fetcher, {
+    refreshInterval: refresh,
+  });
+
+  return {
+    run: data ? data.run : null,
+    isRunLoading: !error && !data,
+    isRunError: error,
+  };
+}

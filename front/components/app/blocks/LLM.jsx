@@ -7,6 +7,7 @@ import ModelPicker from "../ModelPicker";
 
 export default function LLM({
   block,
+  status,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -82,6 +83,7 @@ export default function LLM({
   return (
     <Block
       block={block}
+      status={status}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

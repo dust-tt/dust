@@ -3,6 +3,7 @@ import { classNames, shallowBlockClone } from "../../../lib/utils";
 
 export function Map({
   block,
+  status,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -24,6 +25,7 @@ export function Map({
   return (
     <Block
       block={block}
+      status={status}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
@@ -75,6 +77,7 @@ export function Map({
 
 export function Reduce({
   block,
+  status,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -84,6 +87,7 @@ export function Reduce({
   return (
     <Block
       block={block}
+      status={status}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

@@ -5,6 +5,7 @@ import DatasetPicker from "../DatasetPicker";
 export default function Root({
   app,
   block,
+  status,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -20,6 +21,7 @@ export default function Root({
   return (
     <Block
       block={block}
+      status={status}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

@@ -1,7 +1,8 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]";
-import { User } from "../../../../lib/models";
-import { App } from "../../../../lib/models";
+import { authOptions } from "../../../auth/[...nextauth]";
+import { User, App } from "../../../../../lib/models";
+
+const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
@@ -36,22 +37,26 @@ export default async function handler(req, res) {
   }
 
   switch (req.method) {
-    case "POST":
-      if (
-        !req.body ||
-        !(typeof req.body.specification == "string") ||
-        !(typeof req.body.config == "string")
-      ) {
-        res.status(400).end();
+    case "GET":
+      if (!app.savedRun || app.savedRun.length == 0) {
+        res.status(200).json({ run: null });
+      }
+
+      const runRes = await fetch(
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${app.savedRun}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!runRes.ok) {
+        res.status(500).end();
         break;
       }
 
-      await app.update({
-        savedSpecification: req.body.specification,
-        savedConfig: req.body.config,
-      });
+      const run = await runRes.json();
 
-      res.status(200).json({ app });
+      res.status(200).json({ run: run.response.run });
       break;
 
     default:
