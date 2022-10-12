@@ -22,7 +22,7 @@ function ArrayViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {value.map((item, index) => (
-        <ValueViewer key={index} block={block} value={item} />
+        <ValueViewer key={index} block={block} value={item} k={index}/>
       ))}
     </div>
   );
@@ -71,7 +71,7 @@ function ValueViewer({ block, value, k }) {
                 <div onClick={() => setExpanded(false)}>
                   <span className="flex flex-row items-center">
                     <ChevronDownIcon className="h-4 w-4 mt-0.5" />
-                    {k ? (
+                    {k != null ? (
                       <span className="text-gray-700 mr-1 font-bold">{k}:</span>
                     ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
@@ -81,7 +81,7 @@ function ValueViewer({ block, value, k }) {
                 <div onClick={() => setExpanded(true)}>
                   <span className="flex flex-row items-center">
                     <ChevronRightIcon className="h-4 w-4 mt-0.5" />
-                    {k ? (
+                    {k != null ? (
                       <span className="text-gray-700 mr-1 font-bold">{k}:</span>
                     ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
@@ -102,7 +102,7 @@ function ValueViewer({ block, value, k }) {
         </>
       ) : (
         <div className="flex text-sm text-gray-600 ml-4">
-          {k ? (
+          {k != null ? (
             <span className="text-gray-700 mr-1 font-bold">{k}:</span>
           ) : null}
           <span className="whitespace-pre-wrap">{value}</span>
