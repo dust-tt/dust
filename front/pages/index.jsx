@@ -22,7 +22,7 @@ export default function Home() {
               <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
             </div>
             <div className="bg-white w-[8px] h-4"></div>
-            <div className="text-gray-800 font-black text-2xl tracking-tight select-none">
+            <div className="text-gray-800 font-bold text-2xl tracking-tight select-none">
               DUST
             </div>
           </div>

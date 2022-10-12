@@ -40,7 +40,7 @@ export default function Block({
             </div>
           </div>
 
-          <div className="flex flex-auto font-black text-gray-700">
+          <div className="flex flex-auto font-bold text-gray-700">
             <input
               type="text"
               placeholder="BLOCK_NAME"

@@ -32,7 +32,7 @@ export default function AppLayout({ app, children }) {
                       <div className="bg-gray-400 w-[4px] h-3 rounded-md"></div>
                     </div>
                     <div className="bg-white w-[4px] h-2"></div>
-                    <div className="text-gray-800 font-black text-base tracking-tight select-none">
+                    <div className="text-gray-800 font-bold text-base tracking-tight select-none">
                       <Link href={session ? `/${session.user.username}/apps` : `/`}>
                         DUST
                       </Link>

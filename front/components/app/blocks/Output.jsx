@@ -87,7 +87,7 @@ function ValueViewer({ block, value, k }) {
       ) : (
         <div className="flex text-sm text-gray-600 ml-4">
           {k ? <span className="text-gray-700 mr-1 font-bold">{k}:</span> : null}
-          <span className="whitespace-pre">{value}</span>
+          <span className="whitespace-pre-wrap">{value}</span>
         </div>
       )}
     </div>

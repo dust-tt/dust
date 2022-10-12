@@ -137,7 +137,7 @@ export default function OpenAISetup({ open, setOpen, config, enabled }) {
                 <div className="flex flex-row mt-5 sm:mt-6 space-x-2 items-center">
                   {enabled ? (
                     <div
-                      className="flex-initial text-red-500 text-sm font-black cursor-pointer"
+                      className="flex-initial text-red-500 text-sm font-bold cursor-pointer"
                       onClick={() => handleDisable()}
                     >
                       Disable
