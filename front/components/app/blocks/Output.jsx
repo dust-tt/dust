@@ -6,7 +6,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function ObjectViewer({ block, value }) {
   return (
@@ -29,8 +29,6 @@ function ArrayViewer({ block, value }) {
 }
 
 function ValueViewer({ block, value, k }) {
-  const [expanded, setExpanded] = useState(false);
-
   const summary = (value) => {
     if (Array.isArray(value)) {
       return `[ ${value.length} items ]`;
@@ -42,8 +40,26 @@ function ValueViewer({ block, value, k }) {
   };
 
   const isExpandable = (value) => {
-    return Array.isArray(value) || (typeof value === "object" && value !== null);
+    return (
+      Array.isArray(value) || (typeof value === "object" && value !== null)
+    );
   };
+
+  const autoExpand = (value) => {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      let flat = true;
+      let keys = Object.keys(value);
+      for (let i = 0; i < keys.length; i++) {
+        if (isExpandable(value[keys[i]])) {
+          flat = false;
+        }
+      }
+      return flat;
+    }
+    return false;
+  };
+
+  const [expanded, setExpanded] = useState(autoExpand(value));
 
   return (
     <div>
@@ -86,7 +102,9 @@ function ValueViewer({ block, value, k }) {
         </>
       ) : (
         <div className="flex text-sm text-gray-600 ml-4">
-          {k ? <span className="text-gray-700 mr-1 font-bold">{k}:</span> : null}
+          {k ? (
+            <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+          ) : null}
           <span className="whitespace-pre-wrap">{value}</span>
         </div>
       )}

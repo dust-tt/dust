@@ -35,11 +35,12 @@ export default function DatasetsView({ app, datasets }) {
           />
         </div>
         <div className="flex flex-1">
-          <div className="flex flex-col mx-4 my-4 flex-1">
+          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-4">
             <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
               <a>
                 <ActionButton disabled={false}>
                   <PlusIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+
                   New Dataset
                 </ActionButton>
               </a>
