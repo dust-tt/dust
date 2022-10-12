@@ -35,14 +35,14 @@ function ValueViewer({ block, value, k }) {
     if (Array.isArray(value)) {
       return `[ ${value.length} items ]`;
     }
-    if (typeof value === "object") {
+    if (typeof value === "object" && value !== null) {
       return `{ ${Object.keys(value).join(", ")} }`;
     }
     return value;
   };
 
   const isExpandable = (value) => {
-    return Array.isArray(value) || typeof value === "object";
+    return Array.isArray(value) || (typeof value === "object" && value !== null);
   };
 
   return (
@@ -55,7 +55,9 @@ function ValueViewer({ block, value, k }) {
                 <div onClick={() => setExpanded(false)}>
                   <span className="flex flex-row items-center">
                     <ChevronDownIcon className="h-4 w-4 mt-0.5" />
-                    {k ? <span className="">{k}</span> : null}
+                    {k ? (
+                      <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+                    ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
                   </span>
                 </div>
@@ -63,7 +65,9 @@ function ValueViewer({ block, value, k }) {
                 <div onClick={() => setExpanded(true)}>
                   <span className="flex flex-row items-center">
                     <ChevronRightIcon className="h-4 w-4 mt-0.5" />
-                    {k ? <span className="">{k}</span> : null}
+                    {k ? (
+                      <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+                    ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
                   </span>
                 </div>
@@ -71,7 +75,7 @@ function ValueViewer({ block, value, k }) {
             </div>
           </div>
           {expanded ? (
-            <div className="flex ml-2">
+            <div className="flex ml-4">
               {Array.isArray(value) ? (
                 <ArrayViewer value={value} block={block} />
               ) : typeof value == "object" ? (
@@ -81,7 +85,10 @@ function ValueViewer({ block, value, k }) {
           ) : null}
         </>
       ) : (
-        <div className="flex text-sm text-gray-500 ml-1">{value}</div>
+        <div className="flex text-sm text-gray-600 ml-4">
+          {k ? <span className="text-gray-700 mr-1 font-bold">{k}:</span> : null}
+          <span className="whitespace-pre">{value}</span>
+        </div>
       )}
     </div>
   );

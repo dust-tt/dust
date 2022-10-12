@@ -86,15 +86,15 @@ export default function Block({
         <div className="flex">{children}</div>
       </div>
 
-      <div className={classNames(block.indent == 1 ? "ml-8" : "ml-0")}>
-        {(status && !["map", "reduce"].includes(block.type))? (
+      <div className={classNames(block.indent == 1 ? "ml-8" : "ml-0","py-1")}>
+        {(status && status.status == "running" && !["map", "reduce"].includes(block.type))? (
           <div className="flex flex-row items-center text-sm text-gray-400">
             {status.status == "running"
               ? `Running... ${status.success_count} successes ${status.error_count} errors`
               : `Done: ${status.success_count} successes ${status.error_count} errors`}
           </div>
         ) : null}
-        <Output block={block} status={status} app={app} />
+        <Output block={block} status={status} app={app}/>
       </div>
     </div>
   );
