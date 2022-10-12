@@ -83,10 +83,6 @@ export default async function handler(req, res) {
           rootDataset = c.dataset;
         }
       }
-      if (!rootDataset) {
-        res.status(400).end();
-        break;
-      }
 
       let credentials = credentialsFromProviders(providers);
 

@@ -50,6 +50,12 @@ impl App {
             .collect()
     }
 
+    pub fn has_root(&self) -> bool {
+        self.blocks
+            .iter()
+            .any(|(_, _, block)| block.block_type() == BlockType::Root)
+    }
+
     pub async fn new(spec_data: &str) -> Result<Self> {
         let parsed = DustParser::parse(Rule::dust, &spec_data)?.next().unwrap();
 
@@ -89,9 +95,7 @@ impl App {
 
         // Check that:
         // - maps are matched by a reduce and that they are not nested.
-        // - there is only one root.
-        // - map blocks are preceded by the root block
-        //   TODO(spolu): probably waivable in the future
+        // - there is at most one root.
         let mut current_map: Option<String> = None;
         let mut root_found = false;
         let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
@@ -106,12 +110,6 @@ impl App {
                 root_found = true;
             }
             if block.block_type() == BlockType::Map {
-                if !root_found {
-                    Err(anyhow!(
-                        "Map blocks must be preceded by the root block, found `map {}` before root",
-                        name
-                    ))?;
-                }
                 if current_map.is_some() {
                     Err(anyhow!(
                         "Nested maps are not currently supported, \
@@ -157,9 +155,6 @@ impl App {
                 }
             }
         }
-        if !root_found {
-            Err(anyhow!("No root block found"))?;
-        }
 
         // At this point the app looks valid (of course code blocks can fail in arbitrary ways).
         // Let's compute the hash of each block and the hash of the app.
@@ -192,14 +187,18 @@ impl App {
         &mut self,
         run_config: RunConfig,
         project: Project,
-        dataset: Dataset,
+        dataset: Option<Dataset>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<()> {
         assert!(self.run.is_none());
 
         self.project = Some(project);
         self.run_config = Some(run_config);
-        self.dataset = Some(dataset);
+        self.dataset = dataset;
+
+        if self.dataset.is_none() && self.has_root() {
+            Err(anyhow!("Found root block but no dataset was provided"))?;
+        }
 
         let store = store.clone();
         self.run = Some(Run::new(
@@ -215,10 +214,14 @@ impl App {
         Ok(())
     }
 
-    pub async fn run(&mut self, credentials: Credentials, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    pub async fn run(
+        &mut self,
+        credentials: Credentials,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
-        assert!(self.dataset.is_some());
+        // assert!(self.dataset.is_some());
         assert!(self.project.is_some());
 
         let project = self.project.as_ref().unwrap().clone();
@@ -652,8 +655,13 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
         .register_specification(&project, &app.hash, &spec_data)
         .await?;
 
-    app.prepare_run(run_config, project.clone(), d, Box::new(store.clone()))
-        .await?;
+    app.prepare_run(
+        run_config,
+        project.clone(),
+        Some(d),
+        Box::new(store.clone()),
+    )
+    .await?;
 
     app.run(Credentials::new(), Box::new(store)).await
 }

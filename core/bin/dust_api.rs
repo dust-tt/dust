@@ -324,7 +324,7 @@ async fn datasets_retrieve(
 #[derive(serde::Deserialize)]
 struct RunsCreatePayload {
     specification: String,
-    dataset_id: String,
+    dataset_id: Option<String>,
     config: run::RunConfig,
     credentials: run::Credentials,
 }
@@ -352,40 +352,9 @@ async fn runs_create(
         Ok(app) => app,
     };
 
-    let d = match state
-        .store
-        .latest_dataset_hash(&project, &payload.dataset_id)
-        .await
-    {
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to retrieve dataset: {}", e),
-                    }),
-                    response: None,
-                }),
-            )
-        }
-        Ok(None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("dataset_not_found_error"),
-                        message: format!("No dataset found for id `{}`", payload.dataset_id),
-                    }),
-                    response: None,
-                }),
-            )
-        }
-        Ok(Some(latest)) => match state
-            .store
-            .load_dataset(&project, &payload.dataset_id, &latest)
-            .await
-        {
+    let d = match payload.dataset_id.as_ref() {
+        None => None,
+        Some(dataset_id) => match state.store.latest_dataset_hash(&project, dataset_id).await {
             Err(e) => {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -398,34 +367,69 @@ async fn runs_create(
                     }),
                 )
             }
-            Ok(d) => match d {
-                None => unreachable!(),
-                Some(d) => d,
+            Ok(None) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("dataset_not_found_error"),
+                            message: format!("No dataset found for id `{}`", dataset_id),
+                        }),
+                        response: None,
+                    }),
+                )
+            }
+            Ok(Some(latest)) => match state
+                .store
+                .load_dataset(&project, dataset_id, &latest)
+                .await
+            {
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(APIResponse {
+                            error: Some(APIError {
+                                code: String::from("internal_server_error"),
+                                message: format!("Failed to retrieve dataset: {}", e),
+                            }),
+                            response: None,
+                        }),
+                    )
+                }
+                Ok(d) => match d {
+                    None => unreachable!(),
+                    Some(d) => Some(d),
+                },
             },
         },
     };
 
-    if d.len() == 0 {
+    if d.is_some() && d.as_ref().unwrap().len() == 0 {
         return (
             StatusCode::BAD_REQUEST,
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("dataset_empty_error"),
-                    message: format!("Dataset `{}` has 0 record", payload.dataset_id),
+                    message: format!(
+                        "Dataset `{}` has 0 record",
+                        payload.dataset_id.as_ref().unwrap()
+                    ),
                 }),
                 response: None,
             }),
         );
     }
 
-    utils::info(
-        format!(
-            "Retrieved {} records from latest data version for `{}`.",
-            d.len(),
-            payload.dataset_id
-        )
-        .as_str(),
-    );
+    if d.is_some() {
+        utils::info(
+            format!(
+                "Retrieved {} records from latest data version for `{}`.",
+                d.as_ref().unwrap().len(),
+                payload.dataset_id.as_ref().unwrap(),
+            )
+            .as_str(),
+        );
+    }
 
     match state
         .store

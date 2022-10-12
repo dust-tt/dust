@@ -1074,7 +1074,7 @@ _fun = (env) => {
                 blocks: HashMap::new(),
             },
             project.clone(),
-            d,
+            Some(d),
             Box::new(store.clone()),
         )
         .await?;
@@ -1108,6 +1108,83 @@ _fun = (env) => {
             .unwrap();
         assert!(r.traces.len() == 1);
         assert!(r.traces[0].1.len() == 2);
+        assert!(r.traces[0].1[0].len() == 1);
+        assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn sqlite_no_root() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let spec_data = "code CODE1 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": '1'};
+}
+```
+}
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env['state']['CODE1']['res'] + '1'};
+}
+```
+}";
+
+        let mut app = App::new(&spec_data).await?;
+
+        store
+            .register_specification(&project, &app.hash(), &spec_data)
+            .await?;
+
+        let r = store.latest_specification_hash(&project).await?;
+        assert!(r.unwrap() == app.hash());
+
+        app.prepare_run(
+            RunConfig {
+                blocks: HashMap::new(),
+            },
+            project.clone(),
+            None,
+            Box::new(store.clone()),
+        )
+        .await?;
+
+        app.run(Credentials::new(), Box::new(store.clone())).await?;
+
+        let r = store
+            .load_run(&project, app.run_ref().unwrap().run_id(), None)
+            .await?
+            .unwrap();
+
+        assert!(r.run_id() == app.run_ref().unwrap().run_id());
+        assert!(r.app_hash() == app.hash());
+        assert!(r.status().run_status() == Status::Succeeded);
+        assert!(r.traces.len() == 2);
+        assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "1");
+
+        let r = store
+            .load_run(&project, app.run_ref().unwrap().run_id(), Some(None))
+            .await?
+            .unwrap();
+        assert!(r.traces.len() == 0);
+
+        let r = store
+            .load_run(
+                &project,
+                app.run_ref().unwrap().run_id(),
+                Some(Some((BlockType::Code, "CODE2".to_string()))),
+            )
+            .await?
+            .unwrap();
+        assert!(r.traces.len() == 1);
+        assert!(r.traces[0].1.len() == 1);
         assert!(r.traces[0].1[0].len() == 1);
         assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
 

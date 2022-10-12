@@ -36,3 +36,32 @@
 - [~] Design + Run
 - [ ] Deploy
 
+
+
+# Go LIvE
+
+## P0 (must-have)
+
+- Block output display
+- Integrate cohere in dust/core
+- Allow read-only/unsigned access of public apps
+- Sign-in in App top-bar when unsigned
+- Support menu:
+  - minimal documentation
+  - discord invite
+- Move to postgres
+- Minimal deployment on gcp
+- Prod Github app with icon
+- Initial demo (TBD)
+- A bit of work on the landing
+
+## P1 (rapid follow-up)
+- Twitter card
+- Edit/Delete app
+- Clone app
+- Google block
+- while block
+- if/then block
+
+## P2
+- Deploy as an endpoint + capture traffic
