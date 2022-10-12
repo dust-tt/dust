@@ -100,7 +100,7 @@ export function addBlock(spec, blockType) {
         name: "",
         indent: 0,
         spec: {
-          code: "_fun = (env) => {\n  // env['state'][BLOCK_NAME] constains BLOCK_NAME output.\n}",
+          code: "_fun = (env) => {\n  // `env.state.BLOCK_NAME` constains BLOCK_NAME output.\n}",
         },
         config: {},
       });

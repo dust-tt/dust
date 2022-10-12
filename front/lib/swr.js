@@ -22,8 +22,20 @@ export function useProviders() {
   };
 }
 
-export function useSavedRun(app, refresh) {
-  const { data, error } = useSWR(`/api/apps/${app.sId}/runs/saved`, fetcher, {
+export function useSavedRunStatus(app, refresh) {
+  const { data, error } = useSWR(`/api/apps/${app.sId}/runs/saved/status`, fetcher, {
+    refreshInterval: refresh,
+  });
+
+  return {
+    run: data ? data.run : null,
+    isRunLoading: !error && !data,
+    isRunError: error,
+  };
+}
+
+export function useSavedRunBlock(app, type, name, refresh) {
+  const { data, error } = useSWR(`/api/apps/${app.sId}/runs/saved/blocks/${type}/${name}`, fetcher, {
     refreshInterval: refresh,
   });
 

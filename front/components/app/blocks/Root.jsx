@@ -20,6 +20,7 @@ export default function Root({
 
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}

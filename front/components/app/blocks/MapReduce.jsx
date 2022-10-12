@@ -2,6 +2,7 @@ import Block from "./Block";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
 
 export function Map({
+  app,
   block,
   status,
   readOnly,
@@ -24,6 +25,7 @@ export function Map({
 
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}
@@ -76,6 +78,7 @@ export function Map({
 }
 
 export function Reduce({
+  app,
   block,
   status,
   readOnly,
@@ -86,6 +89,7 @@ export function Reduce({
 }) {
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}

@@ -127,10 +127,7 @@ export default function AppLayout({ app, children }) {
           </>
         )}
       </Disclosure>
-      <div className="inset-0 flex items-center" aria-hidden="true">
-        <div className="w-full" />
-      </div>
-      <div className="mx-auto mt-0">{children}</div>
+      <div className="mt-0">{children}</div>
     </main>
   );
 }

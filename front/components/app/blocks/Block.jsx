@@ -4,8 +4,10 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
+import Output from "./Output";
 
 export default function Block({
+  app,
   block,
   status,
   readOnly,
@@ -22,14 +24,14 @@ export default function Block({
   };
 
   return (
-    <div>
+    <div className="">
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "flex flex-col group rounded-sm border-2 border-gray-300 px-4 py-2"
+          "flex flex-auto flex-col group rounded-sm border-2 border-gray-300 px-4 py-2"
         )}
       >
-        <div className="flex flex-row items-center w-full">
+        <div className="flex flex-row items-center">
           <div className="flex-initial mr-2">
             <div className="">
               <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
@@ -37,12 +39,13 @@ export default function Block({
               </span>
             </div>
           </div>
-          <div className="flex flex-1 font-black text-gray-700">
+
+          <div className="flex flex-auto font-black text-gray-700">
             <input
               type="text"
               placeholder="BLOCK_NAME"
               className={classNames(
-                "block w-full min-w-0 flex-1 rounded-md py-1 px-1 placeholder-gray-200 uppercase",
+                "block w-full rounded-md py-1 px-1 placeholder-gray-200 uppercase",
                 readOnly
                   ? "border-white ring-0 focus:ring-0 focus:border-white"
                   : block.name.length == 0
@@ -54,6 +57,7 @@ export default function Block({
               onChange={(e) => handleNameChange(e.target.value.toUpperCase())}
             />
           </div>
+
           <div
             className={classNames(
               readOnly ? "hidden" : "flex flex-initial flex-row space-x-1 ml-2"
@@ -81,13 +85,17 @@ export default function Block({
         </div>
         <div className="flex">{children}</div>
       </div>
-      {status ? (
-        <div className="flex flex-row items-center text-sm text-gray-400">
-          {status.status == "running"
-            ? `Running: ${status.success_count} successes ${status.error_count} errors`
-            : `Done: ${status.success_count} successes ${status.error_count} errors`}
-        </div>
-      ) : null}
+
+      <div className={classNames(block.indent == 1 ? "ml-8" : "ml-0")}>
+        {(status && !["map", "reduce"].includes(block.type))? (
+          <div className="flex flex-row items-center text-sm text-gray-400">
+            {status.status == "running"
+              ? `Running... ${status.success_count} successes ${status.error_count} errors`
+              : `Done: ${status.success_count} successes ${status.error_count} errors`}
+          </div>
+        ) : null}
+        <Output block={block} status={status} app={app} />
+      </div>
     </div>
   );
 }

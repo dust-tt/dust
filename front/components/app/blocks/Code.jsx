@@ -9,6 +9,7 @@ const CodeEditor = dynamic(
 );
 
 export default function Code({
+  app,
   block,
   status,
   readOnly,
@@ -25,6 +26,7 @@ export default function Code({
 
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}

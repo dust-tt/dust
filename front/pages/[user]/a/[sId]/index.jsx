@@ -11,7 +11,6 @@ import {
   deleteBlock,
   moveBlockDown,
   moveBlockUp,
-  dump,
 } from "../../../../lib/specification";
 import { useState, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -21,7 +20,7 @@ import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
-import { useSavedRun } from "../../../../lib/swr";
+import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 
 const { URL } = process.env;
@@ -63,7 +62,7 @@ export default function App({ app }) {
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null);
 
-  let { run, isRunLoading, isRunError } = useSavedRun(app, (data) => {
+  let { run, isRunLoading, isRunError } = useSavedRunStatus(app, (data) => {
     if (data && data.run) {
       switch (data?.run.status.run) {
         case "running":
@@ -176,7 +175,16 @@ export default function App({ app }) {
     } else {
       setRunError(null);
       const [run] = await Promise.all([runRes.json()]);
-      mutate(`/api/apps/${app.sId}/runs/saved`);
+
+      // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
+      mutate(`/api/apps/${app.sId}/runs/saved/status`);
+
+      // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
+      spec.forEach((block) => {
+        mutate(
+          `/api/apps/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+        );
+      });
     }
   };
 
@@ -189,8 +197,8 @@ export default function App({ app }) {
             current_tab="Specification"
           />
         </div>
-        <div className="flex flex-1">
-          <div className="flex flex-col mx-4 w-full">
+        <div className="flex flex-auto">
+          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
             <div className="flex flex-row my-4 space-x-2 items-center">
               <div className="flex">
                 <NewBlock

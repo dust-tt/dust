@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../ModelPicker";
 
 export default function LLM({
+  app,
   block,
   status,
   readOnly,
@@ -82,6 +83,7 @@ export default function LLM({
 
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}

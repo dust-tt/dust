@@ -2,10 +2,10 @@ import Block from "./Block";
 import DatasetPicker from "../DatasetPicker";
 
 export default function Data({
+  app,
   block,
   status,
   readOnly,
-  app,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -20,6 +20,7 @@ export default function Data({
 
   return (
     <Block
+      app={app}
       block={block}
       status={status}
       readOnly={readOnly}

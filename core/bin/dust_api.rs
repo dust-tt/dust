@@ -72,10 +72,8 @@ impl APIState {
                 let store = self.store.clone();
                 let manager = self.run_manager.clone();
 
-                println!("STARTING RUN");
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
-                    println!("IN SPAWN STARTING RUN");
                     match app.0.run(app.1, store).await {
                         Ok(()) => {
                             utils::done(&format!(

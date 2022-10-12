@@ -1,6 +1,6 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../auth/[...nextauth]";
-import { User, App } from "../../../../../lib/models";
+import { authOptions } from "../../../../auth/[...nextauth]";
+import { User, App } from "../../../../../../lib/models";
 
 const { DUST_API } = process.env;
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       }
 
       const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${app.savedRun}`,
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${app.savedRun}/status`,
         {
           method: "GET",
         }
