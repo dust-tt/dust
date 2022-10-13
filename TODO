@@ -41,6 +41,7 @@
 ## P0 (must-have)
 
 - [x] block output display
+- [x] work on the landing
 - [ ] integrate cohere in dust/core
 - [ ] allow read-only/unsigned access of public apps
 - [ ] sign-in in App top-bar when unsigned
@@ -51,7 +52,6 @@
 - [ ] minimal deployment on gcp
 - [ ] prod Github app with icon
 - [ ] initial demo (math to code)
-- [ ] a bit of work on the landing
 
 ## P1 (rapid follow-up)
 
@@ -62,6 +62,7 @@
 - [ ] while block
 - [ ] if/then block
 - [ ] demo 2: self-ask / react
+- [ ] dataset iteration: upload, item list, save on update
 
 ## P2
 

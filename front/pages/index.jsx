@@ -3,46 +3,163 @@ import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import { Button } from "../components/Button";
+import { ActionButton, Button } from "../components/Button";
+import { classNames } from "../lib/utils";
+
+import { CheckIcon } from "@heroicons/react/24/outline";
+
+const features = [
+  {
+    name: "Chained LLM apps",
+    built: true,
+    description: "Chain calls to models and arbitrary code execution.",
+  },
+  {
+    name: "Multiple inputs at once",
+    built: true,
+    description:
+      "Avoid overfitting by iterating on your LLM app design on multiple inputs at once.",
+  },
+  {
+    name: "Switch models",
+    built: true,
+    description:
+      "Design against models served by OpenAI & Cohere (more soon). Switch model instantaneously.",
+  },
+  {
+    name: "Few-shot examples sanity",
+    built: true,
+    description:
+      "Manage your few-shot examples in isolated versioned datasets.",
+  },
+  {
+    name: "History preserved",
+    built: true,
+    description:
+      "All your iterations, model ouptputs and few-shot examples are saved and versioned.",
+  },
+  {
+    name: "Caching",
+    built: true,
+    description:
+      "All your models interactions are cached for faster iteration and reduced costs.",
+  },
+  {
+    name: "Deploy",
+    built: false,
+    description:
+      "Deploy in one click. Aggregate production traffic for later testing and fine-tuning.",
+  },
+  {
+    name: "Take actions",
+    built: false,
+    description:
+      "Integrations to build apps that take action: search Google, write to Notion...",
+  },
+];
+
+export function Features() {
+  return (
+    <div className="mx-auto max-w-3xl lg:max-w-7xl">
+      <div className="mx-auto text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+          Prompt-engineering, re-imagined🔥
+        </h2>
+        <p className="mt-4 text-lg text-gray-500">
+          Built on years of experience working with large language models.
+          <br />
+          With one goal, help accelerate the deployment of LLMs.
+        </p>
+      </div>
+      <div className="py-16 px-4 sm:px-6 lg:py-24 lg:px-8">
+        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-4 lg:gap-x-8">
+          {features.map((feature) => (
+            <div key={feature.name} className="relative">
+              <dt>
+                <CheckIcon
+                  className="absolute h-6 w-6 text-green-500"
+                  aria-hidden="true"
+                />
+                <p className="flex flex-row ml-9 text-lg font-medium leading-6 text-gray-900 items-center">
+                  <span>{feature.name}</span>
+                  {feature.built ? null : (
+                    <span className="text-xs font-normal bg-gray-400 text-white rounded-md px-2 py-0.5 ml-2">
+                      coming soon
+                    </span>
+                  )}
+                </p>
+              </dt>
+              <dd className="mt-2 ml-9 text-base text-gray-500">
+                {feature.description}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+export function Logo() {
+  return (
+    <div className="flex flex-row items-center mt-8 mx-4">
+      <div className="flex rotate-[30deg]">
+        <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
+        <div className="bg-white w-[2px] h-4"></div>
+        <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
+      </div>
+      <div className="flex bg-white w-[8px] h-4"></div>
+      <div className="flex text-gray-800 font-bold text-2xl tracking-tight">
+        DUST
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
     <>
       <Head>
-        <title>Dust - LLM Apps Platform</title>
+        <title>
+          Dust - Design and Deploy Large Language Models Apps
+        </title>
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
       <main className="mx-12">
-        <div className="mx-auto sm:max-w-2xl lg:max-w-3xl">
-          <div className="flex items-center mt-8">
-            <div className="flex rotate-[30deg]">
-              <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
-              <div className="bg-white w-[2px] h-4"></div>
-              <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
-            </div>
-            <div className="bg-white w-[8px] h-4"></div>
-            <div className="text-gray-800 font-bold text-2xl tracking-tight select-none">
-              DUST
-            </div>
-          </div>
+        <Logo />
 
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mt-16">
-            <span className="">Specification language and</span>{" "}
-            <span className="">design platform for</span>{" "}
-            <span className="text-violet-600">Large Language Models</span>{" "}
-            <span className="text-violet-600">Apps</span>
+        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl mt-12">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
+            <span className="">Design and Deploy</span> <br />
+            <span className="text-violet-600">
+              Large Language Models Apps
+            </span>{" "}
+            {/*
+            <span className="">Advanced Playground for</span> <br />
+            <span className="text-violet-600">
+              Large Language Models Apps
+            </span>{" "}
+            <br />
+            <span className="">Design</span>
+           */}
           </h1>
 
-          <div className="mx-auto w-48 mt-20">
-            <Button
+          <div className="mx-auto w-48 mt-16">
+            <ActionButton
               onClick={() => signIn("github", { callbackUrl: "/api/login" })}
             >
-              <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5" />
+              <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
               Sign in with Github
-            </Button>
+            </ActionButton>
           </div>
         </div>
+
+        <div className="mt-24">
+          <Features />
+        </div>
+
+        <div className="mt-20"></div>
       </main>
     </>
   );
