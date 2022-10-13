@@ -2,8 +2,8 @@ import useSWR from "swr";
 
 export const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export function useDatasets(app) {
-  const { data, error } = useSWR(`/api/apps/${app.sId}/datasets`, fetcher);
+export function useDatasets(user, app) {
+  const { data, error } = useSWR(`/api/apps/${user}/${app.sId}/datasets`, fetcher);
 
   return {
     datasets: data ? data.datasets : [],

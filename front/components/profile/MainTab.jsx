@@ -1,4 +1,4 @@
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { classNames } from "../../lib/utils";
 import Link from "next/link";
 import { CodeBracketIcon } from "@heroicons/react/24/solid";

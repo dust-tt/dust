@@ -18,7 +18,7 @@ export default function DatasetPicker({
         isDatasetsLoading: false,
         isDatasetsError: false,
       }
-    : useDatasets(app);
+    : useDatasets(user, app);
 
   // Remove the dataset if it was suppressed.
   if (

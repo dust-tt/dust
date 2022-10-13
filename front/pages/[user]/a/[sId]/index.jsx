@@ -21,6 +21,7 @@ import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
+import { useSession } from "next-auth/react";
 
 const { URL } = process.env;
 
@@ -53,6 +54,8 @@ const isRunnable = (readOnly, spec, config) => {
 };
 
 export default function App({ app, readOnly, user }) {
+  const { data: session } = useSession();
+
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
   const [config, setConfig] = useState(
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
@@ -61,20 +64,24 @@ export default function App({ app, readOnly, user }) {
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null);
 
-  let { run, isRunLoading, isRunError } = useSavedRunStatus(user, app, (data) => {
-    if (data && data.run) {
-      switch (data?.run.status.run) {
-        case "running":
-          return 100;
-        default:
-          if (runRequested) {
-            setRunRequested(false);
-          }
-          return 0;
+  let { run, isRunLoading, isRunError } = useSavedRunStatus(
+    user,
+    app,
+    (data) => {
+      if (data && data.run) {
+        switch (data?.run.status.run) {
+          case "running":
+            return 100;
+          default:
+            if (runRequested) {
+              setRunRequested(false);
+            }
+            return 0;
+        }
       }
+      return 0;
     }
-    return 0;
-  });
+  );
 
   const bottomRef = useRef(null);
 
@@ -86,7 +93,7 @@ export default function App({ app, readOnly, user }) {
 
     saveTimeout = setTimeout(async () => {
       const [specRes] = await Promise.all([
-        fetch(`/api/apps/${app.sId}/state`, {
+        fetch(`/api/apps/${session.user.username}/${app.sId}/state`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -156,7 +163,7 @@ export default function App({ app, readOnly, user }) {
   const handleRun = async () => {
     setRunRequested(true);
     const [runRes] = await Promise.all([
-      fetch(`/api/apps/${app.sId}/runs`, {
+      fetch(`/api/apps/${session.user.username}/${app.sId}/runs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -176,12 +183,12 @@ export default function App({ app, readOnly, user }) {
       const [run] = await Promise.all([runRes.json()]);
 
       // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-      mutate(`/api/apps/${user}/${app.sId}/runs/saved/status`);
+      mutate(`/api/apps/${session.user.username}/${app.sId}/runs/saved/status`);
 
       // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
       spec.forEach((block) => {
         mutate(
-          `/api/apps/${user}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+          `/api/apps/${session.user.username}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
         );
       });
     }
