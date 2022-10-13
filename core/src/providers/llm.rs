@@ -127,7 +127,10 @@ impl LLMRequest {
                     self.prompt.len(),
                     self.max_tokens.unwrap_or(0),
                     self.temperature,
-                    c.prompt.logprobs.as_ref().unwrap().len(),
+                    match c.prompt.logprobs.as_ref() {
+                        None => 0,
+                        Some(logprobs) => logprobs.len(),
+                    },
                     c.completions
                         .iter()
                         .map(|c| c.logprobs.as_ref().unwrap().len().to_string())

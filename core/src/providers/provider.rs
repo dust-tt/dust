@@ -1,5 +1,6 @@
 use crate::providers::llm::LLM;
 use crate::providers::openai::OpenAIProvider;
+use crate::providers::cohere::CohereProvider;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -11,12 +12,14 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 pub enum ProviderID {
     OpenAI,
+    Cohere,
 }
 
 impl ToString for ProviderID {
     fn to_string(&self) -> String {
         match self {
             ProviderID::OpenAI => String::from("openai"),
+            ProviderID::Cohere => String::from("cohere"),
         }
     }
 }
@@ -26,6 +29,7 @@ impl FromStr for ProviderID {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "openai" => Ok(ProviderID::OpenAI),
+            "cohere" => Ok(ProviderID::Cohere),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID (possible values: openai)",
             ))?,
@@ -115,6 +119,7 @@ pub trait Provider {
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
+        ProviderID::Cohere => Box::new(CohereProvider::new()),
     }
 }
 

@@ -20,6 +20,7 @@ pub mod utils;
 pub mod providers {
     pub mod llm;
     pub mod openai;
+    pub mod cohere;
     pub mod provider;
 }
 pub mod blocks {
