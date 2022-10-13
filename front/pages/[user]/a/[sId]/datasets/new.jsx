@@ -11,7 +11,7 @@ import DatasetView from "../../../../../components/app/DatasetView";
 
 const { URL } = process.env;
 
-export default function NewDatasetView({ app, datasets }) {
+export default function NewDatasetView({ app, datasets, user }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
@@ -27,7 +27,7 @@ export default function NewDatasetView({ app, datasets }) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(`/api/apps/${app.sId}/datasets`, {
+    const res = await fetch(`/api/apps/${session.user.username}/${app.sId}/datasets`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -45,6 +45,7 @@ export default function NewDatasetView({ app, datasets }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             current_tab="Datasets"
+            user={user}
           />
         </div>
         <div className="flex flex-1">
@@ -102,20 +103,23 @@ export async function getServerSideProps(context) {
   }
 
   const [appRes, datasetsRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${context.query.sId}`, {
+    fetch(`${URL}/api/apps/${session.user.username}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Cookie: context.req.headers.cookie,
       },
     }),
-    fetch(`${URL}/api/apps/${context.query.sId}/datasets`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }),
+    fetch(
+      `${URL}/api/apps/${session.user.username}/${context.query.sId}/datasets`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    ),
   ]);
 
   const [app, datasets] = await Promise.all([
@@ -125,6 +129,7 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
+      user: session.user.username,
       session,
       app: app.app,
       datasets: datasets.datasets,

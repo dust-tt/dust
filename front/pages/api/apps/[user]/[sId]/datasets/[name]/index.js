@@ -1,7 +1,7 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../auth/[...nextauth]";
-import { User, App, Dataset } from "../../../../../../lib/models";
-import { checkDatasetData } from "../../../../../../lib/datasets";
+import { authOptions } from "../../../../../auth/[...nextauth]";
+import { User, App, Dataset } from "../../../../../../../lib/models";
+import { checkDatasetData } from "../../../../../../../lib/datasets";
 
 const { DUST_API } = process.env;
 

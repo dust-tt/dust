@@ -49,7 +49,7 @@ export default function New({ apps }) {
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <form
-              action="/api/apps"
+              action={`/api/apps/${session.user.username}`}
               method="POST"
               className="space-y-8 divide-y divide-gray-200 mt-8"
             >
@@ -236,7 +236,7 @@ export async function getServerSideProps(context) {
   }
 
   const [appsRes] = await Promise.all([
-    fetch(`${URL}/api/apps`, {
+    fetch(`${URL}/api/apps/${session.user.username}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
