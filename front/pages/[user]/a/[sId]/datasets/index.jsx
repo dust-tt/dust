@@ -11,16 +11,19 @@ import Router from "next/router";
 
 const { URL } = process.env;
 
-export default function DatasetsView({ app, datasets }) {
+export default function DatasetsView({ app, datasets, user, readOnly }) {
   const { data: session } = useSession();
 
   const handleDelete = async (datasetName) => {
-    const res = await fetch(`/api/apps/${app.sId}/datasets/${datasetName}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `/api/apps/${session.user.username}/${app.sId}/datasets/${datasetName}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     const data = await res.json();
     Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
   };
@@ -32,15 +35,16 @@ export default function DatasetsView({ app, datasets }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             current_tab="Datasets"
+            user={user}
+            readOnly={readOnly}
           />
         </div>
         <div className="flex flex-1">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-4">
-            <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
+            <Link href={`/${user}/a/${app.sId}/datasets/new`}>
               <a>
-                <ActionButton disabled={false}>
+                <ActionButton disabled={readOnly}>
                   <PlusIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-
                   New Dataset
                 </ActionButton>
               </a>
@@ -52,7 +56,7 @@ export default function DatasetsView({ app, datasets }) {
                   return (
                     <Link
                       key={d.name}
-                      href={`/${session.user.username}/a/${app.sId}/datasets/${d.name}`}
+                      href={`/${user}/a/${app.sId}/datasets/${d.name}`}
                     >
                       <a className="block">
                         <div
@@ -63,15 +67,17 @@ export default function DatasetsView({ app, datasets }) {
                             <p className="truncate text-base font-bold text-violet-600">
                               {d.name}
                             </p>
-                            <div className="ml-2 flex flex-shrink-0">
-                              <TrashIcon
-                                className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-700"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleDelete(d.name);
-                                }}
-                              />
-                            </div>
+                            {readOnly ? null : (
+                              <div className="ml-2 flex flex-shrink-0">
+                                <TrashIcon
+                                  className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-700"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleDelete(d.name);
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                           <div className="mt-2 sm:flex sm:justify-between">
                             <div className="sm:flex">
@@ -123,41 +129,26 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  // TODO(spolu): allow public viewing of apps
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly = !session || context.query.user !== session.user.username;
 
   const [appRes, datasetsRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${context.query.sId}`, {
+    fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Cookie: context.req.headers.cookie,
       },
     }),
-    fetch(`${URL}/api/apps/${context.query.sId}/datasets`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }),
+    fetch(
+      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    ),
   ]);
 
   const [app, datasets] = await Promise.all([
@@ -170,6 +161,8 @@ export async function getServerSideProps(context) {
       session,
       app: app.app,
       datasets: datasets.datasets,
+      readOnly,
+      user: context.query.user,
     },
   };
 }

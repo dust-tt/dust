@@ -7,6 +7,7 @@ import {
 import Output from "./Output";
 
 export default function Block({
+  user,
   app,
   block,
   status,
@@ -97,7 +98,7 @@ export default function Block({
           </div>
         ) : null}
         {status && status.status != "running" ? (
-          <Output block={block} status={status} app={app} />
+          <Output user={user} block={block} status={status} app={app} />
         ) : null}
       </div>
     </div>

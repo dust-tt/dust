@@ -1,31 +1,37 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../../auth/[...nextauth]";
-import { User, App, Dataset } from "../../../../../../../lib/models";
+import { authOptions } from "../../../../../../auth/[...nextauth]";
+import { User, App, Dataset } from "../../../../../../../../lib/models";
 
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
+
   let user = await User.findOne({
     where: {
-      githubId: session.github.id,
+      username: req.query.user,
     },
   });
+
   if (!user) {
-    res.status(401).end();
+    res.status(404).end();
     return;
   }
 
+  const readOnly = !(session && session.github.id.toString() === user.githubId);
+
   let [app] = await Promise.all([
     App.findOne({
-      where: {
-        userId: user.id,
-        sId: req.query.sId,
-      },
+      where: readOnly
+        ? {
+            userId: user.id,
+            sId: req.query.sId,
+            visibility: "public",
+          }
+        : {
+            userId: user.id,
+            sId: req.query.sId,
+          },
       attributes: [
         "id",
         "uId",
@@ -40,6 +46,11 @@ export default async function handler(req, res) {
     }),
   ]);
 
+  if (!app) {
+    res.status(404).end();
+    return;
+  }
+
   let [dataset] = await Promise.all([
     Dataset.findOne({
       where: {
@@ -51,15 +62,13 @@ export default async function handler(req, res) {
     }),
   ]);
 
+  if (!dataset) {
+    res.status(404).end();
+    return;
+  }
+
   switch (req.method) {
     case "GET":
-      if (!dataset) {
-        res.status(404).end();
-        break;
-      }
-
-      // Retrieve dataset data
-
       let hash = req.query.hash;
 
       // Translate latest if needed.

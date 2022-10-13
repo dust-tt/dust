@@ -1,7 +1,7 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../auth/[...nextauth]";
-import { User, App, Dataset } from "../../../../../lib/models";
-import { checkDatasetData } from "../../../../../lib/datasets";
+import { authOptions } from "../../../../../auth/[...nextauth]";
+import { User, App, Dataset } from "../../../../../../../lib/models";
+import { checkDatasetData } from "../../../../../../../lib/datasets";
 
 const { DUST_API } = process.env;
 
@@ -11,14 +11,11 @@ export default async function handler(req, res) {
     res.status(401).end();
     return;
   }
-
-  let [user] = await Promise.all([
-    User.findOne({
-      where: {
-        githubId: session.github.id,
-      },
-    }),
-  ]);
+  let user = await User.findOne({
+    where: {
+      githubId: session.github.id,
+    },
+  });
   if (!user) {
     res.status(401).end();
     return;
@@ -43,53 +40,41 @@ export default async function handler(req, res) {
       ],
     }),
   ]);
-  if (!app) {
-    res.status(400).end();
-    return;
-  }
+
+  let [dataset] = await Promise.all([
+    Dataset.findOne({
+      where: {
+        userId: user.id,
+        appId: app.id,
+        name: req.query.name,
+      },
+    }),
+  ]);
 
   switch (req.method) {
     case "GET":
-      let datasets = await Dataset.findAll({
-        where: {
-          userId: user.id,
-          appId: app.id,
-        },
-        order: [["updatedAt", "DESC"]],
-        attributes: ["id", "name", "description"],
-      });
+      if (!dataset) {
+        res.status(404).end();
+        break;
+      }
 
-      res.status(200).json({ datasets });
+      // Retrieve latest dataset data
+
+      res.status(200).json({ dataset });
       break;
 
     case "POST":
+      if (!dataset) {
+        res.status(404).end();
+        break;
+      }
+
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
         !(typeof req.body.data == "string")
       ) {
-        res.status(400).end();
-        break;
-      }
-
-      // Check that dataset does not already exist.
-
-      let existing = await Dataset.findAll({
-        where: {
-          userId: user.id,
-          appId: app.id,
-        },
-        attributes: ["name"],
-      });
-
-      let exists = false;
-      existing.forEach((e) => {
-        if (e.name == req.body.name) {
-          exists = true;
-        }
-      });
-      if (exists) {
         res.status(400).end();
         break;
       }
@@ -120,7 +105,9 @@ export default async function handler(req, res) {
           }),
         }
       );
+
       const d = await r.json();
+
       if (d.error) {
         res.status(500).end();
         break;
@@ -128,17 +115,36 @@ export default async function handler(req, res) {
 
       let description = req.body.description ? req.body.description : null;
 
-      let dataset = await Dataset.create({
+      await dataset.update({
         name: req.body.name,
         description,
-        userId: user.id,
-        appId: app.id,
       });
 
       res.status(200).json({
         dataset: {
           name: req.body.name,
           description,
+        },
+      });
+      break;
+
+    case "DELETE":
+      if (!dataset) {
+        res.status(404).end();
+        break;
+      }
+
+      await Dataset.destroy({
+        where: {
+          userId: user.id,
+          appId: app.id,
+          name: req.query.name,
+        },
+      });
+
+      res.status(200).json({
+        dataset: {
+          name: req.body.name,
         },
       });
       break;

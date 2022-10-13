@@ -145,8 +145,9 @@ function Error({ error }) {
   );
 }
 
-export default function Output({ block, status, app }) {
+export default function Output({ user, block, status, app }) {
   let { run, isRunLoading, isRunError } = useSavedRunBlock(
+    user,
     app,
     block.type,
     block.name,
@@ -175,12 +176,12 @@ export default function Output({ block, status, app }) {
       <div className="flex flex-col flex-auto">
         {traces.map((trace, i) => {
           return (
-            <div className="flex flex-row flex-auto ml-1">
+            <div key={i} className="flex flex-row flex-auto ml-1">
               <div className="flex text-sm text-gray-300 mr-2">{i}:</div>
               <div className="flex flex-auto flex-col overflow-hidden">
-                {trace.map((t) => {
+                {trace.map((t, i) => {
                   return (
-                    <div className="flex-auto flex-col">
+                    <div key={i} className="flex-auto flex-col">
                       {t.error != null ? (
                         <div className="flex flex-auto flex-row">
                           <ExclamationCircleIcon className="flex h-4 w-4 text-red-400 mt-0.5" />

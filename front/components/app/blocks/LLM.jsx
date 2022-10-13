@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../ModelPicker";
 
 export default function LLM({
+  user,
   app,
   block,
   status,
@@ -83,6 +84,7 @@ export default function LLM({
 
   return (
     <Block
+      user={user}
       app={app}
       block={block}
       status={status}
@@ -97,6 +99,7 @@ export default function LLM({
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <div className="flex flex-initial mr-1">model:</div>
             <ModelPicker
+              user={user}
               readOnly={readOnly}
               model={
                 block.config ? block.config : { provider_id: "", model_id: "" }
@@ -156,32 +159,34 @@ export default function LLM({
                     </div>
                   ))}
                 </div>
-                <input
-                  type="text"
-                  placeholder="add"
-                  value={newStop}
-                  onChange={(e) => setNewStop(e.target.value)}
-                  className={classNames(
-                    "flex flex-1 rounded-md ring-0 px-1 font-normal text-sm py-1 w-20 ml-1",
-                    "placeholder-gray-300",
-                    readOnly
-                      ? "border-white ring-0 focus:ring-0 focus:border-white"
-                      : "border-white focus:border-gray-300 focus:ring-0"
-                  )}
-                  readOnly={readOnly}
-                  onKeyDown={(e) => {
-                    if (
-                      (e.key === "Tab" || e.key == "Enter") &&
-                      e.target.value.length > 0
-                    ) {
-                      handleAddStop(e.target.value);
-                      e.preventDefault();
-                    }
-                    if (e.key === "Backspace" && newStop.length === 0) {
-                      handleRemoveStop();
-                    }
-                  }}
-                />
+                {readOnly ? null : (
+                  <input
+                    type="text"
+                    placeholder="add"
+                    value={newStop}
+                    onChange={(e) => setNewStop(e.target.value)}
+                    className={classNames(
+                      "flex flex-1 rounded-md ring-0 px-1 font-normal text-sm py-1 w-20 ml-1",
+                      "placeholder-gray-300",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    readOnly={readOnly}
+                    onKeyDown={(e) => {
+                      if (
+                        (e.key === "Tab" || e.key == "Enter") &&
+                        e.target.value.length > 0
+                      ) {
+                        handleAddStop(e.target.value);
+                        e.preventDefault();
+                      }
+                      if (e.key === "Backspace" && newStop.length === 0) {
+                        handleRemoveStop();
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>

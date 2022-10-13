@@ -25,6 +25,7 @@ export function Map({
 
   return (
     <Block
+      user={user}
       app={app}
       block={block}
       status={status}

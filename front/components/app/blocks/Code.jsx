@@ -9,6 +9,7 @@ const CodeEditor = dynamic(
 );
 
 export default function Code({
+  user,
   app,
   block,
   status,
@@ -26,6 +27,7 @@ export default function Code({
 
   return (
     <Block
+      user={user}
       app={app}
       block={block}
       status={status}
@@ -50,6 +52,7 @@ export default function Code({
                 }}
               >
                 <CodeEditor
+                  readOnly={readOnly}
                   value={block.spec.code}
                   language="js"
                   placeholder=""

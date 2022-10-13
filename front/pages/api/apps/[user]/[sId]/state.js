@@ -1,11 +1,10 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../../../../auth/[...nextauth]";
-import { User, App } from "../../../../../../../../../lib/models";
-
-const { DUST_API } = process.env;
+import { authOptions } from "../../../auth/[...nextauth]";
+import { User, App } from "../../../../../lib/models";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
+
   if (!session) {
     res.status(401).end();
     return;
@@ -18,6 +17,7 @@ export default async function handler(req, res) {
       },
     }),
   ]);
+
   if (!user) {
     res.status(401).end();
     return;
@@ -31,32 +31,29 @@ export default async function handler(req, res) {
       },
     }),
   ]);
+
   if (!app) {
-    res.status(400).end();
+    res.status(404).end();
     return;
   }
 
   switch (req.method) {
-    case "GET":
-      if (!app.savedRun || app.savedRun.length == 0) {
-        res.status(200).json({ run: null });
-      }
-
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${app.savedRun}/blocks/${req.query.type}/${req.query.name}`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (!runRes.ok) {
-        res.status(500).end();
+    case "POST":
+      if (
+        !req.body ||
+        !(typeof req.body.specification == "string") ||
+        !(typeof req.body.config == "string")
+      ) {
+        res.status(400).end();
         break;
       }
 
-      const run = await runRes.json();
+      await app.update({
+        savedSpecification: req.body.specification,
+        savedConfig: req.body.config,
+      });
 
-      res.status(200).json({ run: run.response.run });
+      res.status(200).json({ app });
       break;
 
     default:

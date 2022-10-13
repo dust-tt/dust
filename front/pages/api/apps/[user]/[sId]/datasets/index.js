@@ -7,26 +7,32 @@ const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
+
   let user = await User.findOne({
     where: {
-      githubId: session.github.id,
+      username: req.query.user,
     },
   });
+
   if (!user) {
-    res.status(401).end();
+    res.status(404).end();
     return;
   }
 
+  const readOnly = !(session && session.github.id.toString() === user.githubId);
+
   let [app] = await Promise.all([
     App.findOne({
-      where: {
-        userId: user.id,
-        sId: req.query.sId,
-      },
+      where: readOnly
+        ? {
+            userId: user.id,
+            sId: req.query.sId,
+            visibility: "public",
+          }
+        : {
+            userId: user.id,
+            sId: req.query.sId,
+          },
       attributes: [
         "id",
         "uId",
@@ -41,32 +47,29 @@ export default async function handler(req, res) {
     }),
   ]);
 
-  let [dataset] = await Promise.all([
-    Dataset.findOne({
-      where: {
-        userId: user.id,
-        appId: app.id,
-        name: req.query.name,
-      },
-    }),
-  ]);
+  if (!app) {
+    res.status(404).end();
+    return;
+  }
 
   switch (req.method) {
     case "GET":
-      if (!dataset) {
-        res.status(404).end();
-        break;
-      }
+      let datasets = await Dataset.findAll({
+        where: {
+          userId: user.id,
+          appId: app.id,
+        },
+        order: [["updatedAt", "DESC"]],
+        attributes: ["id", "name", "description"],
+      });
 
-      // Retrieve latest dataset data
-
-      res.status(200).json({ dataset });
+      res.status(200).json({ datasets });
       break;
 
     case "POST":
-      if (!dataset) {
-        res.status(404).end();
-        break;
+      if (readOnly) {
+        res.status(401).end();
+        return;
       }
 
       if (
@@ -75,6 +78,27 @@ export default async function handler(req, res) {
         !(typeof req.body.description == "string") ||
         !(typeof req.body.data == "string")
       ) {
+        res.status(400).end();
+        break;
+      }
+
+      // Check that dataset does not already exist.
+
+      let existing = await Dataset.findAll({
+        where: {
+          userId: user.id,
+          appId: app.id,
+        },
+        attributes: ["name"],
+      });
+
+      let exists = false;
+      existing.forEach((e) => {
+        if (e.name == req.body.name) {
+          exists = true;
+        }
+      });
+      if (exists) {
         res.status(400).end();
         break;
       }
@@ -105,9 +129,7 @@ export default async function handler(req, res) {
           }),
         }
       );
-
       const d = await r.json();
-
       if (d.error) {
         res.status(500).end();
         break;
@@ -115,36 +137,17 @@ export default async function handler(req, res) {
 
       let description = req.body.description ? req.body.description : null;
 
-      await dataset.update({
+      let dataset = await Dataset.create({
         name: req.body.name,
         description,
+        userId: user.id,
+        appId: app.id,
       });
 
       res.status(200).json({
         dataset: {
           name: req.body.name,
           description,
-        },
-      });
-      break;
-
-    case "DELETE":
-      if (!dataset) {
-        res.status(404).end();
-        break;
-      }
-
-      await Dataset.destroy({
-        where: {
-          userId: user.id,
-          appId: app.id,
-          name: req.query.name,
-        },
-      });
-
-      res.status(200).json({
-        dataset: {
-          name: req.body.name,
         },
       });
       break;

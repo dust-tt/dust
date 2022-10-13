@@ -11,7 +11,13 @@ import DatasetView from "../../../../../../components/app/DatasetView";
 
 const { URL } = process.env;
 
-export default function ViewDatasetView({ app, datasets, dataset }) {
+export default function ViewDatasetView({
+  app,
+  datasets,
+  dataset,
+  user,
+  readOnly,
+}) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
@@ -27,13 +33,16 @@ export default function ViewDatasetView({ app, datasets, dataset }) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(`/api/apps/${app.sId}/datasets/${dataset.name}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatedDataset),
-    });
+    const res = await fetch(
+      `/api/apps/${session.user.username}/${app.sId}/datasets/${dataset.name}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedDataset),
+      }
+    );
     const data = await res.json();
     Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
   };
@@ -45,28 +54,33 @@ export default function ViewDatasetView({ app, datasets, dataset }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             current_tab="Datasets"
+            user={user}
+            readOnly={readOnly}
           />
         </div>
         <div className="flex flex-1">
           <div className="w-full px-4 sm:px-6">
             <div className="space-y-6 divide-y divide-gray-200 mt-4">
               <DatasetView
+                readOnly={readOnly}
                 datasets={datasets}
                 dataset={dataset}
-                onUpdate={onUpdate}
+                onUpdate={readOnly ? () => {} : onUpdate}
                 nameDisabled={true}
               />
 
-              <div className="pt-6">
-                <div className="flex">
-                  <Button
-                    disabled={disable || loading}
-                    onClick={() => handleSubmit()}
-                  >
-                    Update
-                  </Button>
+              {readOnly ? null : (
+                <div className="pt-6">
+                  <div className="flex">
+                    <Button
+                      disabled={disable || loading}
+                      onClick={() => handleSubmit()}
+                    >
+                      Update
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -82,35 +96,10 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  // TODO(spolu): allow public viewing of apps
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly = !session || context.query.user !== session.user.username;
 
   const [appRes, datasetsRes, datasetRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${context.query.sId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }),
-    fetch(`${URL}/api/apps/${context.query.sId}/datasets`, {
+    fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -118,7 +107,17 @@ export async function getServerSideProps(context) {
       },
     }),
     fetch(
-      `${URL}/api/apps/${context.query.sId}/datasets/${context.query.name}/latest`,
+      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    ),
+    fetch(
+      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets/${context.query.name}/latest`,
       {
         method: "GET",
         headers: {
@@ -141,6 +140,8 @@ export async function getServerSideProps(context) {
       app: app.app,
       datasets: datasets.datasets,
       dataset: dataset.dataset,
+      user: context.query.user,
+      readOnly,
     },
   };
 }
