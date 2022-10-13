@@ -1,13 +1,14 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../auth/[...nextauth]";
-import { User, App, Provider } from "../../../../../lib/models";
-import { dumpSpecification } from "../../../../../lib/specification";
-import { credentialsFromProviders } from "../../../../../lib/providers";
+import { authOptions } from "../../../../auth/[...nextauth]";
+import { User, App, Provider } from "../../../../../../lib/models";
+import { dumpSpecification } from "../../../../../../lib/specification";
+import { credentialsFromProviders } from "../../../../../../lib/providers";
 
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
+
   if (!session) {
     res.status(401).end();
     return;
@@ -20,8 +21,9 @@ export default async function handler(req, res) {
       },
     }),
   ]);
+
   if (!user) {
-    res.status(401).end();
+    res.status(404).end();
     return;
   }
 
@@ -38,8 +40,9 @@ export default async function handler(req, res) {
       },
     }),
   ]);
+
   if (!app) {
-    res.status(400).end();
+    res.status(404).end();
     return;
   }
 

@@ -1,16 +1,13 @@
-import { useSession, signOut } from "next-auth/react";
 import { classNames } from "../../lib/utils";
 import Link from "next/link";
 import { CodeBracketIcon } from "@heroicons/react/24/solid";
 import { DocumentIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 
-export default function MainTab({ app, current_tab }) {
-  const { data: session } = useSession();
-
+export default function MainTab({ app, current_tab, user, readOnly }) {
   const tabs = [
     {
       name: "Specification",
-      href: `/${session.user.username}/a/${app.sId}`,
+      href: `/${user}/a/${app.sId}`,
       icon: (
         <CodeBracketIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
@@ -20,7 +17,7 @@ export default function MainTab({ app, current_tab }) {
     },
     {
       name: "Datasets",
-      href: `/${session.user.username}/a/${app.sId}/datasets`,
+      href: `/${user}/a/${app.sId}/datasets`,
       icon: (
         <DocumentIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"

@@ -1,35 +1,38 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../auth/[...nextauth]";
-import { User, App, Dataset } from "../../../../../lib/models";
-import { checkDatasetData } from "../../../../../lib/datasets";
+import { authOptions } from "../../../../auth/[...nextauth]";
+import { User, App, Dataset } from "../../../../../../lib/models";
+import { checkDatasetData } from "../../../../../../lib/datasets";
 
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
+
+  let user = await User.findOne({
+    where: {
+      username: req.query.user,
+    },
+  });
+
+  if (!user) {
+    res.status(404).end();
     return;
   }
 
-  let [user] = await Promise.all([
-    User.findOne({
-      where: {
-        githubId: session.github.id,
-      },
-    }),
-  ]);
-  if (!user) {
-    res.status(401).end();
-    return;
-  }
+  const readOnly = !(session && session.github.id.toString() === user.githubId);
 
   let [app] = await Promise.all([
     App.findOne({
-      where: {
-        userId: user.id,
-        sId: req.query.sId,
-      },
+      where: readOnly
+        ? {
+            userId: user.id,
+            sId: req.query.sId,
+            visibility: "public",
+          }
+        : {
+            userId: user.id,
+            sId: req.query.sId,
+          },
       attributes: [
         "id",
         "uId",
@@ -43,8 +46,9 @@ export default async function handler(req, res) {
       ],
     }),
   ]);
+
   if (!app) {
-    res.status(400).end();
+    res.status(404).end();
     return;
   }
 
@@ -63,6 +67,11 @@ export default async function handler(req, res) {
       break;
 
     case "POST":
+      if (readOnly) {
+        res.status(401).end();
+        return;
+      }
+
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||

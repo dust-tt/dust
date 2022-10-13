@@ -10,6 +10,7 @@ const CodeEditor = dynamic(
 );
 
 export default function DatasetView({
+  readOnly,
   datasets,
   dataset,
   onUpdate,
@@ -106,7 +107,7 @@ export default function DatasetView({
           </label>
           <div className="mt-1 flex rounded-md shadow-sm">
             <input
-              disabled={nameDisabled}
+              disabled={readOnly || nameDisabled}
               type="text"
               name="name"
               id="datasetName"
@@ -134,6 +135,7 @@ export default function DatasetView({
           </div>
           <div className="mt-1 flex rounded-md shadow-sm">
             <input
+              disabled={readOnly}
               type="text"
               name="description"
               id="datasetDescription"
@@ -164,6 +166,7 @@ export default function DatasetView({
               }}
             >
               <CodeEditor
+                readOnly={readOnly}
                 value={datasetData}
                 language="json"
                 placeholder=""

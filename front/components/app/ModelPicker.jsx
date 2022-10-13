@@ -4,23 +4,27 @@ import { Fragment } from "react";
 import { useProviders } from "../../lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import {
   filterModelProviders,
   getProviderLLMModels,
 } from "../../lib/providers";
 import { useState } from "react";
 
-export default function ModelPicker({ model, readOnly, onModelUpdate }) {
-  const { data: session } = useSession();
-
-  let { providers, isProvidersLoading, isProvidersError } = useProviders();
+export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
+  let { providers, isProvidersLoading, isProvidersError } = readOnly
+    ? {
+        providers: [],
+        isProvidersLoading: false,
+        isProvidersError: false,
+      }
+    : useProviders();
   let modelProviders = filterModelProviders(providers);
 
   let [models, setModels] = useState([]);
 
   // Remove the model if its provider was disabled.
   if (
+    !readOnly &&
     !isProvidersLoading &&
     !isProvidersError &&
     model &&
@@ -50,6 +54,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
   };
 
   if (
+    !readOnly &&
     !isProvidersError &&
     !isProvidersLoading &&
     model.provider_id &&
@@ -70,8 +75,9 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
         </div>
         <Menu as="div" className="relative inline-block text-left">
           <div>
-            {providers.length == 0 ? (
-              <Link href={`/${session.user.username}/providers`}>
+            {providers.length == 0 &&
+            !(model.provider_id && model.provider_id.length > 0) ? (
+              <Link href={`/${user}/providers`}>
                 <a
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
@@ -87,7 +93,7 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                   {isProvidersLoading ? "Loading..." : "Setup provider"}
                 </a>
               </Link>
-            ) : (
+            ) : readOnly ? null : (
               <Menu.Button
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal",
@@ -173,33 +179,33 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
               ? model.model_id
               : ""}
           </div>
-          <Menu as="div" className="relative inline-block text-left">
-            <div>
-              <Menu.Button
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                  model.model_id && model.model_id.length > 0
-                    ? "px-0"
-                    : "border px-3",
-                  readOnly
-                    ? "text-gray-300 border-white"
-                    : "text-gray-700 border-orange-400",
-                  "focus:outline-none focus:ring-0"
-                )}
-                readOnly={readOnly}
-              >
-                {model.model_id && model.model_id.length > 0 ? (
-                  <>
-                    &nbsp;
-                    <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
-                  </>
-                ) : (
-                  "Select model"
-                )}
-              </Menu.Button>
-            </div>
+          {readOnly ? null : (
+            <Menu as="div" className="relative inline-block text-left">
+              <div>
+                <Menu.Button
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    model.model_id && model.model_id.length > 0
+                      ? "px-0"
+                      : "border px-3",
+                    readOnly
+                      ? "text-gray-300 border-white"
+                      : "text-gray-700 border-orange-400",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                  readOnly={readOnly}
+                >
+                  {model.model_id && model.model_id.length > 0 ? (
+                    <>
+                      &nbsp;
+                      <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                    </>
+                  ) : (
+                    "Select model"
+                  )}
+                </Menu.Button>
+              </div>
 
-            {readOnly ? null : (
               <Transition
                 as={Fragment}
                 enter="transition ease-out duration-100"
@@ -247,8 +253,8 @@ export default function ModelPicker({ model, readOnly, onModelUpdate }) {
                   </div>
                 </Menu.Items>
               </Transition>
-            )}
-          </Menu>
+            </Menu>
+          )}
         </div>
       ) : (
         <></>

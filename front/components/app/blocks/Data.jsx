@@ -2,6 +2,7 @@ import Block from "./Block";
 import DatasetPicker from "../DatasetPicker";
 
 export default function Data({
+  user,
   app,
   block,
   status,
@@ -20,6 +21,7 @@ export default function Data({
 
   return (
     <Block
+      user={user}
       app={app}
       block={block}
       status={status}
@@ -33,6 +35,7 @@ export default function Data({
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial">dataset:</div>
           <DatasetPicker
+            user={user}
             app={app}
             dataset={block.spec.dataset}
             onDatasetUpdate={handleSetDataset}

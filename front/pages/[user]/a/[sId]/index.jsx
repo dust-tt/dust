@@ -4,7 +4,6 @@ import { ActionButton } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
 import { PlayCircleIcon } from "@heroicons/react/20/solid";
-import { useSession } from "next-auth/react";
 import NewBlock from "../../../../components/app/NewBlock";
 import {
   addBlock,
@@ -27,7 +26,9 @@ const { URL } = process.env;
 
 let saveTimeout = null;
 
-const isRunnable = (spec, config) => {
+const isRunnable = (readOnly, spec, config) => {
+  if (readOnly) return false;
+
   for (const name in config) {
     for (const key in config[name]) {
       if (!config[name][key] || config[name][key].length == 0) {
@@ -51,18 +52,16 @@ const isRunnable = (spec, config) => {
   return true;
 };
 
-export default function App({ app }) {
-  const { data: session } = useSession();
-
+export default function App({ app, readOnly, user }) {
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
   const [config, setConfig] = useState(
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );
-  const [runnable, setRunnable] = useState(isRunnable(spec, config));
+  const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null);
 
-  let { run, isRunLoading, isRunError } = useSavedRunStatus(app, (data) => {
+  let { run, isRunLoading, isRunError } = useSavedRunStatus(user, app, (data) => {
     if (data && data.run) {
       switch (data?.run.status.run) {
         case "running":
@@ -104,7 +103,7 @@ export default function App({ app }) {
 
   const update = (s) => {
     let c = extractConfig(s);
-    setRunnable(isRunnable(s, c));
+    setRunnable(isRunnable(readOnly, s, c));
     setSpec(s);
     setConfig(c);
     saveState(s, c);
@@ -177,12 +176,12 @@ export default function App({ app }) {
       const [run] = await Promise.all([runRes.json()]);
 
       // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-      mutate(`/api/apps/${app.sId}/runs/saved/status`);
+      mutate(`/api/apps/${user}/${app.sId}/runs/saved/status`);
 
       // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
       spec.forEach((block) => {
         mutate(
-          `/api/apps/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+          `/api/apps/${user}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
         );
       });
     }
@@ -195,6 +194,8 @@ export default function App({ app }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             current_tab="Specification"
+            user={user}
+            readOnly={readOnly}
           />
         </div>
         <div className="flex flex-auto">
@@ -202,7 +203,7 @@ export default function App({ app }) {
             <div className="flex flex-row my-4 space-x-2 items-center">
               <div className="flex">
                 <NewBlock
-                  disabled={false}
+                  disabled={readOnly}
                   onClick={handleNewBlock}
                   spec={spec}
                 />
@@ -259,9 +260,10 @@ export default function App({ app }) {
                       <Root
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -275,9 +277,10 @@ export default function App({ app }) {
                       <Data
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -291,9 +294,10 @@ export default function App({ app }) {
                       <LLM
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -307,9 +311,10 @@ export default function App({ app }) {
                       <Code
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -323,9 +328,10 @@ export default function App({ app }) {
                       <Map
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -339,9 +345,10 @@ export default function App({ app }) {
                       <Reduce
                         key={idx}
                         block={block}
+                        user={user}
                         app={app}
                         status={status}
-                        readOnly={false}
+                        readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
                         onBlockUp={() => handleMoveBlockUp(idx)}
@@ -375,28 +382,10 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  // TODO(spolu): allow public viewing of apps
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly = !session || context.query.user !== session.user.username;
 
   const [appRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${context.query.sId}`, {
+    fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -408,6 +397,6 @@ export async function getServerSideProps(context) {
   const [app] = await Promise.all([appRes.json()]);
 
   return {
-    props: { session, app: app.app },
+    props: { session, app: app.app, readOnly, user: context.query.user },
   };
 }

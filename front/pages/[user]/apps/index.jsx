@@ -10,31 +10,33 @@ import { classNames } from "../../../lib/utils";
 
 const { URL } = process.env;
 
-export default function Home({ apps }) {
+export default function Home({ apps, readOnly, user }) {
   const { data: session } = useSession();
 
   return (
     <AppLayout>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="Apps" />
+          <MainTab current_tab="Apps" user={user} readOnly={readOnly} />
         </div>
         <div className="">
           <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">
             <div>
-              <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto"></div>
-                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                  <Link href={`/${session.user.username}/apps/new`}>
-                    <a>
-                      <Button>
-                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                        New App
-                      </Button>
-                    </a>
-                  </Link>
+              {readOnly ? null : (
+                <div className="sm:flex sm:items-center">
+                  <div className="sm:flex-auto"></div>
+                  <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+                    <Link href={`/${session.user.username}/apps/new`}>
+                      <a>
+                        <Button>
+                          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                          New App
+                        </Button>
+                      </a>
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="overflow-hidden bg-white mt-8">
                 <ul role="list" className="">
@@ -42,7 +44,7 @@ export default function Home({ apps }) {
                     <li key={app.id} className="px-2">
                       <div className="py-4">
                         <div className="flex items-center justify-between">
-                          <Link href={`/${session.user.username}/a/${app.sId}`}>
+                          <Link href={`/${user}/a/${app.sId}`}>
                             <a className="block">
                               <p className="truncate text-base font-bold text-violet-600">
                                 {app.name}
@@ -92,26 +94,10 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  if (!session) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly = !session || context.query.user !== session.user.username;
 
   const [appsRes] = await Promise.all([
-    fetch(`${URL}/api/apps`, {
+    fetch(`${URL}/api/apps/${context.query.user}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -123,6 +109,6 @@ export async function getServerSideProps(context) {
   const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: apps.apps },
+    props: { session, apps: apps.apps, readOnly, user: context.query.user },
   };
 }

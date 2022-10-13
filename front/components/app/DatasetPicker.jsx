@@ -4,20 +4,25 @@ import { Fragment } from "react";
 import { useDatasets } from "../../lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 
 export default function DatasetPicker({
+  user,
   dataset,
   readOnly,
   app,
   onDatasetUpdate,
 }) {
-  const { data: session } = useSession();
-
-  let { datasets, isDatasetsLoading, isDatasetsError } = useDatasets(app);
+  let { datasets, isDatasetsLoading, isDatasetsError } = readOnly
+    ? {
+        datasets: [],
+        isDatasetsLoading: false,
+        isDatasetsError: false,
+      }
+    : useDatasets(app);
 
   // Remove the dataset if it was suppressed.
   if (
+    !readOnly &&
     !isDatasetsLoading &&
     !isDatasetsError &&
     dataset &&
@@ -31,9 +36,7 @@ export default function DatasetPicker({
   return (
     <div className="flex items-center">
       {dataset ? (
-        <Link
-          href={`/${session.user.username}/a/${app.sId}/datasets/${dataset}`}
-        >
+        <Link href={`/${user}/a/${app.sId}/datasets/${dataset}`}>
           <a>
             <div className="font-bold text-violet-600 text-sm">{dataset}</div>
           </a>
@@ -43,8 +46,8 @@ export default function DatasetPicker({
       )}
       <Menu as="div" className="relative inline-block text-left">
         <div>
-          {datasets.length == 0 ? (
-            <Link href={`/${session.user.username}/a/${app.sId}/datasets/new`}>
+          {datasets.length == 0 && !dataset ? (
+            <Link href={`/${user}/a/${app.sId}/datasets/new`}>
               <a
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal",
@@ -58,7 +61,7 @@ export default function DatasetPicker({
                 {isDatasetsLoading ? "Loading..." : "Create dataset"}
               </a>
             </Link>
-          ) : (
+          ) : readOnly ? null : (
             <Menu.Button
               className={classNames(
                 "inline-flex items-center rounded-md py-1 text-sm font-normal",

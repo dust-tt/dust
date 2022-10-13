@@ -1,33 +1,38 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]";
-import { User } from "../../../lib/models";
-import { new_id } from "../../../lib/utils";
-import { App } from "../../../lib/models";
+import { authOptions } from "../../auth/[...nextauth]";
+import { User, App } from "../../../../lib/models";
+import { new_id } from "../../../../lib/utils";
 
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
+
   let user = await User.findOne({
     where: {
-      githubId: session.github.id,
+      username: req.query.user,
     },
   });
+
   if (!user) {
-    res.status(401).end();
+    res.status(404).end();
     return;
   }
 
+  const readOnly = !(session && session.github.id.toString() === user.githubId);
+
   switch (req.method) {
     case "GET":
+      const where = readOnly
+        ? {
+            userId: user.id,
+            visibility: "public",
+          }
+        : {
+            userId: user.id,
+          };
       let apps = await App.findAll({
-        where: {
-          userId: user.id,
-        },
+        where,
         order: [["updatedAt", "DESC"]],
         attributes: [
           "id",
@@ -44,6 +49,11 @@ export default async function handler(req, res) {
       break;
 
     case "POST":
+      if (readOnly) {
+        res.status(401).end();
+        return;
+      }
+
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||

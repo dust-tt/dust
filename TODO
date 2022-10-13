@@ -42,9 +42,10 @@
 
 - [x] block output display
 - [x] work on the landing
-- [ ] integrate cohere in dust/core
+- [x] integrate cohere in dust/core
 - [ ] allow read-only/unsigned access of public apps
 - [ ] sign-in in App top-bar when unsigned
+- [ ] better loading of blocks (loading message on runRequest)
 - [ ] support menu:
   - [ ] minimal documentation
   - [ ] discord invite
