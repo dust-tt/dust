@@ -156,7 +156,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                               active
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
-                              "block px-4 py-2 text-sm"
+                              "block px-4 py-2 text-sm cursor-pointer"
                             )}
                           >
                             {p.providerId}
@@ -241,7 +241,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                                 active
                                   ? "bg-gray-50 text-gray-900"
                                   : "text-gray-700",
-                                "block px-4 py-2 text-sm w-40"
+                                "block px-4 py-2 text-sm w-40 cursor-pointer"
                               )}
                             >
                               {m.id}

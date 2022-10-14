@@ -77,6 +77,25 @@ export default function Home({ apps, readOnly, user }) {
                       </div>
                     </li>
                   ))}
+                  {apps.length == 0 ? (
+                    <div className="flex flex-col items-center justify-center text-sm text-gray-500 mt-10">
+                      {readOnly ? (
+                        <>
+                          <p>
+                            Welcome to Dust 🔥{" "}
+                            <span className="font-bold">{user}</span> has not
+                            created any apps yet 🙃
+                          </p>
+                          <p className="mt-2">Sign-in to create your own app.</p>
+                        </>
+                      ) : (
+                        <p>
+                          Welcome to Dust 🔥 Setup your Providers or create your
+                          first app to get started.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </ul>
               </div>
             </div>
@@ -105,6 +124,12 @@ export async function getServerSideProps(context) {
       },
     }),
   ]);
+
+  if (appsRes.status === 404) {
+    return {
+      notFound: true,
+    };
+  }
 
   const [apps] = await Promise.all([appsRes.json()]);
 

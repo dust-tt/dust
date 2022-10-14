@@ -13,7 +13,7 @@ import {
 } from "../../../../lib/specification";
 import { useState, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import Root from "../../../../components/app/blocks/Root";
+import Input from "../../../../components/app/blocks/Input";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
@@ -37,7 +37,11 @@ const isRunnable = (readOnly, spec, config) => {
       }
     }
   }
+
+  let block_count = 0;
+
   for (const name in spec) {
+    block_count += 1;
     let block = spec[name];
     switch (block.type) {
       case "data":
@@ -50,6 +54,11 @@ const isRunnable = (readOnly, spec, config) => {
         }
     }
   }
+
+  if (block_count == 0) {
+    return false;
+  }
+
   return true;
 };
 
@@ -264,7 +273,7 @@ export default function App({ app, readOnly, user }) {
                 switch (block.type) {
                   case "input":
                     return (
-                      <Root
+                      <Input
                         key={idx}
                         block={block}
                         user={user}
@@ -379,6 +388,20 @@ export default function App({ app, readOnly, user }) {
                     break;
                 }
               })}
+              {spec.length == 0 ? (
+                <div className="sm:px-2 max-w-4xl mt-4 text-sm text-gray-400">
+                  <p className="">
+                    To get started we recommend you review Dust's{" "}
+                    <a href="/readme" target="_blank" className="font-bold">
+                      README
+                    </a>{" "}
+                    and/or explore an example Dust app.
+                  </p>
+                  <p className="py-2">
+                    When ready, start adding blocks to your app.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

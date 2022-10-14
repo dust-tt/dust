@@ -6,7 +6,7 @@ import { Fragment } from "react";
 export default function NewBlock({ spec, disabled, onClick }) {
   let containsInput = spec.filter((block) => block.type == "input").length > 0;
   let blocks = [
-    { type: "data", display: ["data"]},
+    { type: "data", display: ["data"] },
     { type: "llm", display: ["llm"] },
     { type: "code", display: ["code"] },
     { type: "map_reduce", display: ["map", "reduce"] },
@@ -57,7 +57,7 @@ export default function NewBlock({ spec, disabled, onClick }) {
                   <span
                     className={classNames(
                       active ? "bg-gray-50 text-gray-900" : "text-gray-700",
-                      "block px-4 py-2 text-sm"
+                      "block px-4 py-2 text-sm cursor-pointer"
                     )}
                   >
                     {block.display.map((d) => (
