@@ -146,7 +146,7 @@ export default function DatasetView({
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
       onUpdate(valid, {
         name: datasetName,
-        description: datasetDescription,
+        description: datasetDescription || "",
         data: datasetData,
       });
     }

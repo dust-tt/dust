@@ -1,6 +1,6 @@
 import { Menu, Transition } from "@headlessui/react";
 import { classNames } from "../../lib/utils";
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import { useProviders } from "../../lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
@@ -53,17 +53,19 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
     }
   };
 
-  if (
-    !readOnly &&
-    !isProvidersError &&
-    !isProvidersLoading &&
-    model.provider_id &&
-    model.provider_id.length > 0
-  ) {
-    if (!models || models.length == 0) {
-      refreshModels();
+  useEffect(() => {
+    if (
+      !readOnly &&
+      !isProvidersError &&
+      !isProvidersLoading &&
+      model.provider_id &&
+      model.provider_id.length > 0
+    ) {
+      if (!models || models.length == 0) {
+        refreshModels();
+      }
     }
-  }
+  });
 
   return (
     <div className="flex items-center">

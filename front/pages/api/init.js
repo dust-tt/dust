@@ -3,11 +3,12 @@ import { User, App, Dataset, Provider } from "../../lib/models";
 export default async function handler(req, res) {
   switch (req.method) {
     case "GET":
-      User.sync({ alter: true });
-      App.sync({ alter: true });
-      Dataset.sync({ alter: true });
-      Provider.sync({ alter: true });
-      console.log("OK");
+
+      await User.sync({ alter: true });
+      await App.sync({ alter: true });
+      await Dataset.sync({ alter: true });
+      await Provider.sync({ alter: true });
+
       res.status(200).json({ ok: true });
       break;
 

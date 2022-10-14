@@ -101,19 +101,21 @@ export default function App({ app, readOnly, user }) {
     }
 
     saveTimeout = setTimeout(async () => {
-      const [specRes] = await Promise.all([
-        fetch(`/api/apps/${session.user.username}/${app.sId}/state`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            specification: JSON.stringify(spec),
-            config: JSON.stringify(config),
+      if (session) {
+        const [specRes] = await Promise.all([
+          fetch(`/api/apps/${session.user.username}/${app.sId}/state`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              specification: JSON.stringify(spec),
+              config: JSON.stringify(config),
+            }),
           }),
-        }),
-      ]);
-      console.log("STATE SAVED", spec, config);
+        ]);
+        console.log("STATE SAVED", spec, config);
+      }
     }, 1000);
   };
 
