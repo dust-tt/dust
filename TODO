@@ -46,13 +46,14 @@
 - [x] allow read-only/unsigned access of public apps
 - [x] sign-in in App top-bar when unsigned
 - [x] better loading of blocks (loading message on runRequest)
-- [ ] rename root -> input
-- [ ] support menu:
-  - [ ] minimal documentation
-  - [ ] discord invite
+- [x] rename root -> input
+- [x] support menu:
+  - [x] minimal documentation (README)
+  - [x] discord invite
 - [ ] move to postgres
 - [ ] minimal deployment on gcp
 - [ ] prod Github app with icon
+- [ ] fix #11
 - [ ] initial demo (math to code)
 
 ## P1 (rapid follow-up)
