@@ -86,7 +86,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                       : "border px-3",
                     readOnly
                       ? "text-gray-300 border-white"
-                      : "text-gray-700 border-gray-200",
+                      : "text-gray-700 border-orange-400",
                     "focus:outline-none focus:ring-0"
                   )}
                 >

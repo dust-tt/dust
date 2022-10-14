@@ -430,6 +430,12 @@ export async function getServerSideProps(context) {
     }),
   ]);
 
+  if (appRes.status === 404) {
+    return {
+      notFound: true,
+    };
+  }
+
   const [app] = await Promise.all([appRes.json()]);
 
   return {

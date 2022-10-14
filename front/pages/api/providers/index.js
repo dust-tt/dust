@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
   let user = await User.findOne({
     where: {
-      githubId: session.github.id,
+      githubId: session.github.id.toString(),
     },
   });
   if (!user) {

@@ -1,9 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
-const sequelize = new Sequelize({
-  dialect: "sqlite",
-  storage: "front_store.sqlite",
-});
+const { DATABASE_URI } = process.env;
+const sequelize = new Sequelize(DATABASE_URI);
 
 export const User = sequelize.define(
   "user",

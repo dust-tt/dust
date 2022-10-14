@@ -12,6 +12,8 @@
     "next": "^12.2.5",
     "next-auth": "^4.12.0",
     "next-remove-imports": "^1.0.7",
+    "pg": "^8.8.0",
+    "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-textarea-autosize": "^8.3.4",
