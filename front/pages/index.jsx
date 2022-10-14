@@ -15,22 +15,21 @@ const features = [
     description: "Chain calls to models and arbitrary code execution.",
   },
   {
-    name: "Multiple inputs at once",
+    name: "Multiple inputs",
     built: true,
     description:
-      "Avoid overfitting by iterating on your LLM app design on multiple inputs at once.",
+      "Avoid overfitting by iterating on your LLM app design on several inputs simultaneously.",
   },
   {
     name: "Switch models",
     built: true,
     description:
-      "Design against models served by OpenAI & Cohere (more soon). Switch model instantaneously.",
+      "Design against models served by Cohere, OpenAI, and more soon. Switch models seamlessly.",
   },
   {
     name: "Few-shot examples sanity",
     built: true,
-    description:
-      "Manage your few-shot examples in isolated versioned datasets.",
+    description: "Manage few-shot examples in isolated and versioned datasets.",
   },
   {
     name: "History preserved",
@@ -42,16 +41,16 @@ const features = [
     name: "Caching",
     built: true,
     description:
-      "All your models interactions are cached for faster iteration and reduced costs.",
+      "Speed up iterations and reduce costs with cached model interactions.",
   },
   {
-    name: "Deploy",
+    name: "Easy deployment",
     built: false,
     description:
       "Deploy in one click. Aggregate production traffic for later testing and fine-tuning.",
   },
   {
-    name: "Take actions",
+    name: "Models that act",
     built: false,
     description:
       "Integrations to build apps that take action: search Google, write to Notion...",
@@ -63,12 +62,12 @@ export function Features() {
     <div className="mx-auto max-w-3xl lg:max-w-7xl">
       <div className="mx-auto text-center">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          Prompt-engineering, re-imagined🔥
+          Prompt engineering, re-imagined🔥
         </h2>
         <p className="mt-4 text-lg text-gray-500">
           Built on years of experience working with large language models.
           <br />
-          With one goal, help accelerate the deployment of LLMs.
+          With one goal, help accelerate their deployment.
         </p>
       </div>
       <div className="py-16 px-4 sm:px-6 lg:py-24 lg:px-8">
@@ -120,9 +119,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>
-          Dust - Design and Deploy Large Language Models Apps
-        </title>
+        <title>Dust - Design and Deploy Large Language Models Apps</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
@@ -133,7 +130,7 @@ export default function Home() {
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
             <span className="">Design and Deploy</span> <br />
             <span className="text-violet-600">
-              Large Language Models Apps
+              Large Language Model Apps
             </span>{" "}
             {/*
             <span className="">Advanced Playground for</span> <br />
@@ -159,7 +156,24 @@ export default function Home() {
           <Features />
         </div>
 
-        <div className="mt-20"></div>
+        <div className="my-10 mx-auto max-w-3xl text-center text-gray-400">
+          Dust is{" "}
+          <a
+            className="text-gray-700"
+            href="https://github.com/spolu/dust"
+            target="_blank"
+          >
+            open source
+          </a>{" "}
+          and part of{" "}
+          <a
+            className="text-gray-700"
+            href="https://aigrant.org"
+            target="_blank"
+          >
+            AI Grant
+          </a>
+        </div>
       </main>
     </>
   );
