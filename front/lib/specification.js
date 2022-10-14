@@ -35,9 +35,9 @@ export function getNextName(spec, name) {
 export function addBlock(spec, blockType) {
   let s = spec.map((b) => b);
   switch (blockType) {
-    case "root":
+    case "input":
       s.push({
-        type: "root",
+        type: "input",
         name: "INPUT",
         indent: 0,
         spec: {},
@@ -188,8 +188,8 @@ export function dumpSpecification(spec, latestDatasets) {
   for (var i = 0; i < spec.length; i++) {
     let block = spec[i];
     switch (block.type) {
-      case "root": {
-        out += `root ${block.name} { }\n`;
+      case "input": {
+        out += `input ${block.name} { }\n`;
         out += "\n";
         break;
       }

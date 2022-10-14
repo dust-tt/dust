@@ -4,15 +4,15 @@ import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 
 export default function NewBlock({ spec, disabled, onClick }) {
-  let containsRoot = spec.filter((block) => block.type == "root").length > 0;
+  let containsInput = spec.filter((block) => block.type == "input").length > 0;
   let blocks = [
     { type: "data", display: ["data"]},
     { type: "llm", display: ["llm"] },
     { type: "code", display: ["code"] },
     { type: "map_reduce", display: ["map", "reduce"] },
   ];
-  if (!containsRoot) {
-    blocks.splice(0, 0, { type: "root", display: ["root"] });
+  if (!containsInput) {
+    blocks.splice(0, 0, { type: "input", display: ["input"] });
   }
 
   return (

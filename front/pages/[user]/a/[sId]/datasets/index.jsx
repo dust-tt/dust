@@ -105,7 +105,7 @@ export default function DatasetsView({ app, datasets, user, readOnly }) {
                 <div className="text-sm text-gray-400 py-2">
                   Datasets are used as input data to apps (
                   <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
-                    root
+                    input
                   </span>{" "}
                   block) or few-shot examples to prompt models (
                   <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">

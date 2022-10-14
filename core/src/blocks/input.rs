@@ -6,24 +6,24 @@ use pest::iterators::Pair;
 use serde_json::Value;
 
 #[derive(Clone)]
-pub struct Root {}
+pub struct Input {}
 
-impl Root {
+impl Input {
     pub fn parse(_block_pair: Pair<Rule>) -> Result<Self> {
-        // TODO(spolu): implement expected for Root as a starter
-        Ok(Root {})
+        // TODO(spolu): implement expected for Input as a starter
+        Ok(Input {})
     }
 }
 
 #[async_trait]
-impl Block for Root {
+impl Block for Input {
     fn block_type(&self) -> BlockType {
-        BlockType::Root
+        BlockType::Input
     }
 
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
-        hasher.update("root".as_bytes());
+        hasher.update("input".as_bytes());
         format!("{}", hasher.finalize().to_hex())
     }
 

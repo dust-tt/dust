@@ -1,3 +1,0 @@
-root ROOT {
-  expected: {foo, bar}
-}

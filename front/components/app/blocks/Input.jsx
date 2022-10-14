@@ -2,7 +2,7 @@ import Block from "./Block";
 import { shallowBlockClone } from "../../../lib/utils";
 import DatasetPicker from "../DatasetPicker";
 
-export default function Root({
+export default function Input({
   user,
   app,
   block,

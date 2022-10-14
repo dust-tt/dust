@@ -51,11 +51,11 @@ _fun = (env) => {
 ```
 }
 
-root ROOT {
+input INPUT {
   expected: {train, test}
 }
 
-code FORMAT_ROOT {
+code FORMAT_INPUT {
   code:
 ```
 format = (data) => {
@@ -65,7 +65,7 @@ format = (data) => {
 };
 
 _fun = (env) => {
-  let data = env['state']['ROOT'];
+  let data = env['state']['INPUT'];
   let train = data['train'].map((item) => {
     return [format(item["input"]), format(item["output"])];
   });
@@ -90,7 +90,7 @@ _fun = (env) => {
 }
 
 map LOOP {
-  from: FORMAT_ROOT
+  from: FORMAT_INPUT
   repeat: 8
 }
 
@@ -175,7 +175,7 @@ _fun = (env) => {
       output = a;
     }
   });
-  let ground_truth = env['state']['FORMAT_ROOT']['test'][1];
+  let ground_truth = env['state']['FORMAT_INPUT']['test'][1];
   let match = output === ground_truth;
   console.log("OUTPUT      : " + output);
   console.log("GROUND_TRUTH: " + ground_truth);

@@ -44,7 +44,7 @@ impl RunConfig {
 
         // Default concurrency parameters
         match block_type {
-            BlockType::Root => 64,
+            BlockType::Input => 64,
             BlockType::Data => 64,
             BlockType::Code => 64,
             BlockType::LLM => 8,

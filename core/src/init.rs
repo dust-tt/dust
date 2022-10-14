@@ -33,7 +33,7 @@ pub async fn cmd_init(target: &str) -> Result<()> {
     utils::action(&format!("Creating {}", index_path.display()));
     async_std::fs::write(
         &index_path,
-        "root ROOT {\
+        "input INPUT {\
            expected: {foo, bar}\
          }",
     )

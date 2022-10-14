@@ -1,4 +1,4 @@
-root ROOT {
+input INPUT {
   expected: {query}
 }
 
@@ -19,7 +19,7 @@ CLASS: ${MUSIC_CLASSIFICATION_FEW_SHOT.class}
 ```
   prompt:
 ```
-QUERY: ${ROOT.query}
+QUERY: ${INPUT.query}
 ```
 }
 

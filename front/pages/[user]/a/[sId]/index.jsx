@@ -262,7 +262,7 @@ export default function App({ app, readOnly, user }) {
                   status = run.status.blocks[idx];
                 }
                 switch (block.type) {
-                  case "root":
+                  case "input":
                     return (
                       <Root
                         key={idx}
