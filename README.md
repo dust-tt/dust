@@ -2,6 +2,14 @@
 
 Generative Models App Specification and Execution Engine.
 
+
+## Docker Quick Start
+  1. Install Docker
+  2. Clone this repo
+  3. Run `docker compose up` in the root of the repo
+  4. Go to `http://localhost:3000/api/init` to initialize the database
+  5. Go to `http://localhost:3000` to use Dust
+
 ## Command-line Client Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
