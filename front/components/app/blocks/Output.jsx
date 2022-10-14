@@ -189,7 +189,7 @@ export default function Output({ user, block, status, app }) {
                         </div>
                       ) : (
                         <div className="flex flex-auto flex-row">
-                          <CheckCircleIcon className="text-emerald-300 h-4 w-4 mt-0.5" />
+                          <CheckCircleIcon className="text-emerald-200 h-4 w-4 mt-0.5" />
                           <ValueViewer block={block} value={t.value} />
                         </div>
                       )}
