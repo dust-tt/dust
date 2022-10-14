@@ -1,4 +1,4 @@
-root ROOT {
+input INPUT {
   expected: {question}
 }
 
@@ -32,7 +32,7 @@ Code: ${EXAMPLE.code}
 ```
   prompt:
 ```
-Question: ${ROOT.question}
+Question: ${INPUT.question}
 Code:
 ```
   stop:
@@ -58,7 +58,7 @@ _fun = (env) => {
   let code = env['state']['EXTRACT_CODE']['code'];
   let result = null;
   try { result = eval(code); } catch {}
-  return {"result": result, "ground_truth": env['state']['ROOT']['answer']}
+  return {"result": result, "ground_truth": env['state']['INPUT']['answer']}
 }
 ```
 }

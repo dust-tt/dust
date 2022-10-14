@@ -9,9 +9,9 @@ export function extractConfig(spec) {
           model_id: spec[i].config ? spec[i].config.model_id : "",
         };
         break;
-      case "root":
+      case "input":
         c[spec[i].name] = {
-          type: "root",
+          type: "input",
           dataset: spec[i].config ? spec[i].config.dataset : "",
         };
         break;

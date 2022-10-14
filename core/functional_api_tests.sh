@@ -6,8 +6,8 @@ echo ""
 # curl -XGET localhost:3001/projects/1/datasets
 # echo ""
 
-curl -XPOST localhost:3001/projects/1/specifications/check -H 'Content-Type: application/json' -d '{"specification": "root ROOT{}\ncode CODE {\n  code:\n```\n_fun = (env) => { return {\"bar\": env[\"state\"][\"ROOT\"][\"foo\"]} }\n```\n}"}'
+curl -XPOST localhost:3001/projects/1/specifications/check -H 'Content-Type: application/json' -d '{"specification": "input INPUT {}\ncode CODE {\n  code:\n```\n_fun = (env) => { return {\"bar\": env[\"state\"][\"INPUT\"][\"foo\"]} }\n```\n}"}'
 echo ""
 
-curl -XPOST localhost:3001/projects/1/runs -H 'Content-Type: application/json' -d '{"dataset_id": "dev", "config": { "blocks": {}}, "credentials": {}, "specification": "root ROOT{}\ncode CODE {\n  code:\n```\n_fun = (env) => { return {\"bar\": env[\"state\"][\"ROOT\"][\"foo\"]} }\n```\n}"}'
+curl -XPOST localhost:3001/projects/1/runs -H 'Content-Type: application/json' -d '{"dataset_id": "dev", "config": { "blocks": {}}, "credentials": {}, "specification": "input INPUT {}\ncode CODE {\n  code:\n```\n_fun = (env) => { return {\"bar\": env[\"state\"][\"INPUT\"][\"foo\"]} }\n```\n}"}'
 echo ""

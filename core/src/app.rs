@@ -50,10 +50,10 @@ impl App {
             .collect()
     }
 
-    pub fn has_root(&self) -> bool {
+    pub fn has_input(&self) -> bool {
         self.blocks
             .iter()
-            .any(|(_, _, block)| block.block_type() == BlockType::Root)
+            .any(|(_, _, block)| block.block_type() == BlockType::Input)
     }
 
     pub async fn new(spec_data: &str) -> Result<Self> {
@@ -95,19 +95,19 @@ impl App {
 
         // Check that:
         // - maps are matched by a reduce and that they are not nested.
-        // - there is at most one root.
+        // - there is at most one input.
         let mut current_map: Option<String> = None;
-        let mut root_found = false;
+        let mut input_found = false;
         let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
         for (name, block) in &blocks {
-            if block.block_type() == BlockType::Root {
-                if root_found {
+            if block.block_type() == BlockType::Input {
+                if input_found {
                     Err(anyhow!(
-                        "Extraneous `root {}` block, only one root block is allowed",
+                        "Extraneous `input {}` block, only one input block is allowed",
                         name
                     ))?;
                 }
-                root_found = true;
+                input_found = true;
             }
             if block.block_type() == BlockType::Map {
                 if current_map.is_some() {
@@ -196,8 +196,8 @@ impl App {
         self.run_config = Some(run_config);
         self.dataset = dataset;
 
-        if self.dataset.is_none() && self.has_root() {
-            Err(anyhow!("Found root block but no dataset was provided"))?;
+        if self.dataset.is_none() && self.has_input() {
+            Err(anyhow!("Found input block but no dataset was provided"))?;
         }
 
         let store = store.clone();
@@ -227,8 +227,8 @@ impl App {
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
 
-        // Initialize the ExecutionEnv as a PreRoot. Blocks executed before the ROOT node is found
-        // are executed only once instead of once per input data.
+        // Initialize the ExecutionEnv. Blocks executed before the input block is found are executed
+        // only once instead of once per input data.
         let mut envs = vec![vec![Env {
             config: self.run_config.as_ref().unwrap().clone(),
             state: HashMap::new(),
@@ -247,9 +247,9 @@ impl App {
 
         let mut block_idx = 0;
         for (_, name, block) in &self.blocks {
-            // Special pre-processing of the root blocks, injects data as input and build
+            // Special pre-processing of the input block, injects data as input and build
             // input_envs.
-            if block.block_type() == BlockType::Root {
+            if block.block_type() == BlockType::Input {
                 assert!(envs.len() == 1 && envs[0].len() == 1);
                 envs = self
                     .dataset

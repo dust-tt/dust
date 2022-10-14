@@ -9,6 +9,63 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
+const defaultData = [
+  {
+    question: "What is 12*4?",
+    answer: "48",
+  },
+  {
+    question: "What is 56/7?",
+    answer: "8",
+  },
+  {
+    question: "What is 43-78?",
+    answer: "-35",
+  },
+  {
+    question: "What is 2+2?",
+    answer: "4",
+  },
+  {
+    question: "What is 5^2?",
+    answer: "25",
+  },
+  {
+    question: "What is 81/9?",
+    answer: "9",
+  },
+  {
+    question: "What is 5-24?",
+    answer: "-19",
+  },
+  {
+    question: "What is 67*4?",
+    answer: "268",
+  },
+  {
+    question: "What is 5*6?",
+    answer: "30",
+  },
+  {
+    question: "What is 2^7?",
+    answer: "128",
+  },
+  {
+    question: "What is 7*6?",
+    answer: "42",
+  },
+  {
+    question: "What is 23*9?",
+    answer: "207",
+  },
+];
+
+const genDefaultDataset = () => {
+  const shuffled = defaultData.map((a) => a );
+  shuffled.sort(() => 0.5 - Math.random());
+  return JSON.stringify(shuffled.slice(0, 3), null, 2);
+};
+
 export default function DatasetView({
   readOnly,
   datasets,
@@ -20,7 +77,7 @@ export default function DatasetView({
     dataset = {
       name: "",
       description: "",
-      data: '[\n  {\n    "foo": "hello",\n    "bar": "world"\n  }\n]',
+      data: genDefaultDataset(),
     };
   }
   if (!datasets) {

@@ -79,11 +79,11 @@ export default async function handler(req, res) {
       );
 
       let config = JSON.parse(req.body.config);
-      let rootDataset = null;
+      let inputDataset = null;
       for (const name in config) {
         const c = config[name];
-        if (c.type == "root") {
-          rootDataset = c.dataset;
+        if (c.type == "input") {
+          inputDataset = c.dataset;
         }
       }
 
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
 
       // console.log(spec);
       // console.log(config);
-      // console.log(rootDataset);
+      // console.log(inputDataset);
       // console.log(credentials);
 
       const runRes = await fetch(
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             specification: spec,
-            dataset_id: rootDataset,
+            dataset_id: inputDataset,
             config: { blocks: config },
             credentials,
           }),

@@ -1,4 +1,4 @@
-root ROOT {
+input INPUT {
   expected: {question}
 }
 
@@ -6,7 +6,7 @@ code FILTER {
   code:
 ```
 _fun = (env) => {
-  return {"q": env['state']['ROOT']['question']};
+  return {"q": env['state']['INPUT']['question']};
 };
 ```
 }

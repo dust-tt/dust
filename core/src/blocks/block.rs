@@ -1,4 +1,4 @@
-use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, root::Root};
+use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, input::Input};
 use crate::project::Project;
 use crate::run::{RunConfig, Credentials};
 use crate::stores::store::Store;
@@ -48,7 +48,7 @@ pub struct Env {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum BlockType {
-    Root,
+    Input,
     Data,
     Code,
     LLM,
@@ -59,7 +59,7 @@ pub enum BlockType {
 impl ToString for BlockType {
     fn to_string(&self) -> String {
         match self {
-            BlockType::Root => String::from("root"),
+            BlockType::Input => String::from("input"),
             BlockType::Data => String::from("data"),
             BlockType::Code => String::from("code"),
             BlockType::LLM => String::from("llm"),
@@ -73,7 +73,7 @@ impl FromStr for BlockType {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "root" => Ok(BlockType::Root),
+            "input" => Ok(BlockType::Input),
             "data" => Ok(BlockType::Data),
             "code" => Ok(BlockType::Code),
             "llm" => Ok(BlockType::LLM),
@@ -135,7 +135,7 @@ pub fn parse_pair(pair_pair: Pair<Rule>) -> Result<(String, String)> {
 // TODO(spolu): pass in block_name for better error messages.
 pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block + Sync + Send>> {
     match t {
-        BlockType::Root => Ok(Box::new(Root::parse(block_pair)?)),
+        BlockType::Input => Ok(Box::new(Input::parse(block_pair)?)),
         BlockType::Data => Ok(Box::new(Data::parse(block_pair)?)),
         BlockType::Code => Ok(Box::new(Code::parse(block_pair)?)),
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),

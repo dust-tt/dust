@@ -1042,12 +1042,12 @@ mod tests {
         .await?;
         store.register_dataset(&project, &d).await?;
 
-        let spec_data = "root ROOT {}
+        let spec_data = "input INPUT {}
 code CODE1 {
   code:
 ```
 _fun = (env) => {
-  return {\"res\": env['state']['ROOT']['foo']};
+  return {\"res\": env['state']['INPUT']['foo']};
 }
 ```
 }
@@ -1055,7 +1055,7 @@ code CODE2 {
   code:
 ```
 _fun = (env) => {
-  return {\"res\": env['state']['CODE1']['res'] + env['state']['ROOT']['bar']};
+  return {\"res\": env['state']['CODE1']['res'] + env['state']['INPUT']['bar']};
 }
 ```
 }";
@@ -1115,7 +1115,7 @@ _fun = (env) => {
     }
 
     #[tokio::test]
-    async fn sqlite_no_root() -> Result<()> {
+    async fn sqlite_no_input() -> Result<()> {
         let store = SQLiteStore::new_in_memory()?;
         store.init().await?;
         let project = store.create_project().await?;
