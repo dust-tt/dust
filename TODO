@@ -45,7 +45,8 @@
 - [x] integrate cohere in dust/core
 - [x] allow read-only/unsigned access of public apps
 - [x] sign-in in App top-bar when unsigned
-- [ ] better loading of blocks (loading message on runRequest)
+- [x] better loading of blocks (loading message on runRequest)
+- [ ] rename root -> input
 - [ ] support menu:
   - [ ] minimal documentation
   - [ ] discord invite

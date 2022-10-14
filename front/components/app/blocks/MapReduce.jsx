@@ -5,6 +5,7 @@ export function Map({
   app,
   block,
   status,
+  running,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -29,6 +30,7 @@ export function Map({
       app={app}
       block={block}
       status={status}
+      running={running}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
@@ -82,6 +84,7 @@ export function Reduce({
   app,
   block,
   status,
+  running,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -93,6 +96,7 @@ export function Reduce({
       app={app}
       block={block}
       status={status}
+      running={running}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

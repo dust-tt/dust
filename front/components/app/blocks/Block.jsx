@@ -11,6 +11,7 @@ export default function Block({
   app,
   block,
   status,
+  running,
   readOnly,
   children,
   onBlockUpdate,
@@ -92,9 +93,11 @@ export default function Block({
         status.status == "running" &&
         !["map", "reduce"].includes(block.type) ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
-            {status.status == "running"
-              ? `Running... ${status.success_count} successes ${status.error_count} errors`
-              : `Done: ${status.success_count} successes ${status.error_count} errors`}
+            {`Running... ${status.success_count} successes ${status.error_count} errors`}
+          </div>
+        ) : running && !(status && status.status != "running") ? (
+          <div className="flex flex-row items-center text-sm text-gray-400">
+            {`Running... 0 successes 0 errors`}
           </div>
         ) : null}
         {status && status.status != "running" ? (

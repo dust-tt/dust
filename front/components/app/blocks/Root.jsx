@@ -7,6 +7,7 @@ export default function Root({
   app,
   block,
   status,
+  running,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -25,6 +26,7 @@ export default function Root({
       app={app}
       block={block}
       status={status}
+      running={running}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

@@ -270,6 +270,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -287,6 +288,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -304,6 +306,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -321,6 +324,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -338,6 +342,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}
@@ -355,6 +360,7 @@ export default function App({ app, readOnly, user }) {
                         user={user}
                         app={app}
                         status={status}
+                        running={runRequested || run?.status.run == "running"}
                         readOnly={readOnly}
                         onBlockUpdate={(block) => handleSetBlock(idx, block)}
                         onBlockDelete={() => handleDeleteBlock(idx)}

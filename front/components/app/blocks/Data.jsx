@@ -6,6 +6,7 @@ export default function Data({
   app,
   block,
   status,
+  running,
   readOnly,
   onBlockUpdate,
   onBlockDelete,
@@ -25,6 +26,7 @@ export default function Data({
       app={app}
       block={block}
       status={status}
+      running={running}
       readOnly={readOnly}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
