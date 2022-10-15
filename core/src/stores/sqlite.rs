@@ -113,6 +113,7 @@ impl SQLiteStore {
                     hash                 TEXT NOT NULL,
                     request              TEXT NOT NULL,
                     generation           TEXT NOT NULL,
+                    miss                 INTEGER NOT NULL,
                     FOREIGN KEY(project) REFERENCES projects(id)
                  );",
             ];
@@ -921,18 +922,19 @@ impl Store for SQLiteStore {
         tokio::task::spawn_blocking(move || -> Result<()> {
             let c = pool.get()?;
             let mut stmt = c.prepare_cached(
-                "INSERT INTO llm_cache (project, created, hash, request, generation)
-                   VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO llm_cache (project, created, hash, request, generation, miss)
+                   VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (hash) DO UPDATE SET miss = miss + 1",
             )?;
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
-            let _ = stmt.insert(params![
+            stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
-                generation_data
+                generation_data,
+                0
             ])?;
 
             Ok(())
