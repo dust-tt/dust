@@ -927,15 +927,19 @@ impl Store for SQLiteStore {
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
-            let _ = stmt.insert(params![
+            match stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 generation_data
-            ])?;
-
-            Ok(())
+            ]) {
+                Ok(_) => Ok(()),
+                Err(e) => match e.to_string().as_str() {
+                    "UNIQUE constraint failed: llm_cache.hash" => Ok(()),
+                    _ => Err(e.into()),
+                },
+            }
         })
         .await?
     }
