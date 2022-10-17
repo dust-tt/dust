@@ -460,8 +460,6 @@ impl Store for PostgresStore {
                                 let mut hasher = blake3::Hasher::new();
                                 hasher.update(execution_json.as_bytes());
                                 let hash = format!("{}", hasher.finalize().to_hex());
-                                println!("HASH: {}", hash);
-                                println!("EXECUTION: {}", execution_json);
                                 Ok((
                                     block_idx,
                                     block_type.clone(),

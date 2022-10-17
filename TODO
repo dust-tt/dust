@@ -50,7 +50,7 @@
 - [x] support menu:
   - [x] minimal documentation (README)
   - [x] discord invite
-- [ ] move to postgres
+- [x] move to postgres
 - [ ] minimal deployment on gcp
 - [ ] prod Github app with icon
 - [ ] fix #11
