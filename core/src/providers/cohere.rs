@@ -113,36 +113,36 @@ impl CohereLLM {
             ))?;
 
         let res = cli.request(req).await?;
-
+        let status = res.status();
         let body = hyper::body::aggregate(res).await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
-        let response: Response = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
+        let response = match status {
+            hyper::StatusCode::OK => {
+                let response: Response = serde_json::from_slice(c)?;
+                Ok(response)
+            }
+            hyper::StatusCode::TOO_MANY_REQUESTS => {
                 let error: Error = serde_json::from_slice(c)?;
-                match error.message.as_str() {
-                    // "requests" => Err(ModelError {
-                    //     message: format!(
-                    //         "CohereAPIError: {}",
-                    //         error.error.message,
-                    //     ),
-                    //     retryable: Some(ModelErrorRetryOptions {
-                    //         sleep: Duration::from_millis(2000),
-                    //         factor: 2,
-                    //         retries: 8,
-                    //     }),
-                    // }),
-                    _ => Err(ModelError {
-                        message: format!("CohereAPIError: {}", error.message,),
-                        retryable: None,
+                Err(ModelError {
+                    message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(2000),
+                        factor: 2,
+                        retries: 8,
                     }),
-                }
+                })
+            }
+            status => {
+                let error: Error = serde_json::from_slice(c)?;
+                Err(ModelError {
+                    message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
+                    retryable: None,
+                })
             }
         }?;
-
         Ok(response)
     }
 }
