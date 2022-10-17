@@ -27,7 +27,6 @@ export default function ViewDatasetView({
   const onUpdate = (valid, dataset) => {
     setDisabled(!valid);
     if (valid) {
-      console.log("STATE SAVED", spec, config);
       setUpdatedDataset(dataset);
     }
   };
