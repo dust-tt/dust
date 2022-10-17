@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use dust::{
-    app, blocks::block::BlockType, dataset, project, run, stores::sqlite, stores::store, utils,
+    app, blocks::block::BlockType, dataset, project, run, stores::postgres, stores::store, utils,
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -615,7 +615,7 @@ async fn runs_retrieve_status(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
+    let store = postgres::PostgresStore::new().await?;
     store.init().await?;
 
     let state = Arc::new(APIState::new(Box::new(store)));

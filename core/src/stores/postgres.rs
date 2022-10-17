@@ -1,8 +1,9 @@
+use crate::app::App;
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
+use crate::run::{BlockExecution, Credentials, Run, RunConfig, RunStatus, Status};
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::Result;
@@ -16,32 +17,92 @@ use std::str::FromStr;
 use tokio_postgres::NoTls;
 
 pub async fn test() -> Result<()> {
-    println!("FOO");
-    let s = PostgresStore::new().await?;
-    s.init().await?;
+    let store = PostgresStore::new().await?;
+    store.init().await?;
 
-    let pool = s.pool.clone();
-    let c = pool.get().await?;
+    // let pool = s.pool.clone();
+    // let c = pool.get().await?;
 
-    let p = s.create_project().await?;
-    println!("PROJECT: {:?}", p.project_id());
-
-    let h = s.latest_dataset_hash(&p, "FOO").await?;
-    println!("DATASET (NULL): {:?}", h);
+    let project = store.create_project().await?;
 
     let d = Dataset::new_from_jsonl(
-        "test",
+        "env",
         vec![
             json!({"foo": "1", "bar": "1"}),
             json!({"foo": "2", "bar": "2"}),
         ],
     )
     .await?;
+    store.register_dataset(&project, &d).await?;
 
-    s.register_dataset(&p, &d).await?;
+    let spec_data = "input INPUT {}
+code CODE1 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env['state']['INPUT']['foo']};
+}
+```
+}
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env['state']['CODE1']['res'] + env['state']['INPUT']['bar']};
+}
+```
+}";
 
-    let h = s.latest_dataset_hash(&p, "test").await?.unwrap();
-    println!("DATASET (NULL): {:?}", h);
+    let mut app = App::new(&spec_data).await?;
+
+    store
+        .register_specification(&project, &app.hash(), &spec_data)
+        .await?;
+
+    let r = store.latest_specification_hash(&project).await?;
+    assert!(r.unwrap() == app.hash());
+
+    app.prepare_run(
+        RunConfig {
+            blocks: HashMap::new(),
+        },
+        project.clone(),
+        Some(d),
+        Box::new(store.clone()),
+    )
+    .await?;
+
+    app.run(Credentials::new(), Box::new(store.clone())).await?;
+
+    let r = store
+        .load_run(&project, app.run_ref().unwrap().run_id(), None)
+        .await?
+        .unwrap();
+
+    assert!(r.run_id() == app.run_ref().unwrap().run_id());
+    assert!(r.app_hash() == app.hash());
+    assert!(r.status().run_status() == Status::Succeeded);
+    assert!(r.traces.len() == 3);
+    assert!(r.traces[1].1[0][0].value.as_ref().unwrap()["res"] == "1");
+
+    let r = store
+        .load_run(&project, app.run_ref().unwrap().run_id(), Some(None))
+        .await?
+        .unwrap();
+    assert!(r.traces.len() == 0);
+
+    let r = store
+        .load_run(
+            &project,
+            app.run_ref().unwrap().run_id(),
+            Some(Some((BlockType::Code, "CODE2".to_string()))),
+        )
+        .await?
+        .unwrap();
+    assert!(r.traces.len() == 1);
+    assert!(r.traces[0].1.len() == 2);
+    assert!(r.traces[0].1[0].len() == 1);
+    assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
 
     Ok(())
 }
@@ -312,7 +373,7 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let r = c
             .query(
-                "SELECT hash FROM specifications WHERE project = &1 ORDER BY created DESC LIMIT 1",
+                "SELECT hash FROM specifications WHERE project = $1 ORDER BY created DESC LIMIT 1",
                 &[&project_id],
             )
             .await?;
@@ -362,7 +423,7 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let r = c
             .query(
-                "SELECT run_id FROM runs WHERE project = &1 ORDER BY created DESC LIMIT 1",
+                "SELECT run_id FROM runs WHERE project = $1 ORDER BY created DESC LIMIT 1",
                 &[&project_id],
             )
             .await?;
@@ -381,7 +442,7 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         // Retrieve runs.
         let stmt = c
-            .prepare("SELECT run_id, created, app_hash, config_json FROM runs WHERE project = &1")
+            .prepare("SELECT run_id, created, app_hash, config_json FROM runs WHERE project = $1")
             .await?;
         let rows = c.query(&stmt, &[&project_id]).await?;
 
@@ -455,7 +516,7 @@ impl Store for PostgresStore {
         // Create run.
         let status_data = serde_json::to_string(&run_status)?;
         let stmt = c
-            .prepare("UPDATE runs SET status_json = &1 WHERE project = &2 AND run_id = &3")
+            .prepare("UPDATE runs SET status_json = $1 WHERE project = $2 AND run_id = $3")
             .await?;
         let _ = c
             .query(&stmt, &[&status_data, &project_id, &run_id])
@@ -495,6 +556,8 @@ impl Store for PostgresStore {
                                 let mut hasher = blake3::Hasher::new();
                                 hasher.update(execution_json.as_bytes());
                                 let hash = format!("{}", hasher.finalize().to_hex());
+                                println!("HASH: {}", hash);
+                                println!("EXECUTION: {}", execution_json);
                                 Ok((
                                     block_idx,
                                     block_type.clone(),
@@ -524,7 +587,7 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO block_executions (id, hash, execution)
-               VALUES (DEFAULT, $1, $2) REUTRNING id",
+               VALUES (DEFAULT, $1, $2) RETURNING id",
             )
             .await?;
 
@@ -847,7 +910,7 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         // Retrieve generations.
         let stmt = c
-            .prepare("SELECT created, generation FROM llm_cache WHERE project = $1 AND hash = $2")
+            .prepare("SELECT created, response FROM cache WHERE project = $1 AND hash = $2")
             .await?;
         let rows = c.query(&stmt, &[&project_id, &hash]).await?;
         let mut generations = rows
@@ -879,7 +942,7 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let stmt = c
             .prepare(
-                "INSERT INTO llm_cache (id, project, created, hash, request, generation)
+                "INSERT INTO cache (id, project, created, hash, request, response)
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
             )
             .await?;
