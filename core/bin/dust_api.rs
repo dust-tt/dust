@@ -6,7 +6,12 @@ use axum::{
     Router,
 };
 use dust::{
-    app, blocks::block::BlockType, dataset, project, run, stores::postgres, stores::store, utils,
+    app,
+    blocks::block::BlockType,
+    dataset, project, run,
+    stores::store,
+    stores::{postgres, sqlite},
+    utils,
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -615,10 +620,20 @@ async fn runs_retrieve_status(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let store = postgres::PostgresStore::new().await?;
-    store.init().await?;
+    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("DATABASE_URI") {
+        Ok(db_uri) => {
+            let store = postgres::PostgresStore::new(&db_uri).await?;
+            store.init().await?;
+            Box::new(store)
+        }
+        Err(_) => {
+            let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
+            store.init().await?;
+            Box::new(store)
+        }
+    };
 
-    let state = Arc::new(APIState::new(Box::new(store)));
+    let state = Arc::new(APIState::new(store));
 
     let app = Router::new()
         // Index

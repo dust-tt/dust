@@ -122,7 +122,7 @@ impl CohereLLM {
                     }),
                 })
             }
-            status => {
+            _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
                     message: format!("CohereAPIError: {}", error.message),

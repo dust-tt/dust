@@ -1,111 +1,18 @@
-use crate::app::App;
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Credentials, Run, RunConfig, RunStatus, Status};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio_postgres::NoTls;
-
-pub async fn test() -> Result<()> {
-    let store = PostgresStore::new().await?;
-    store.init().await?;
-
-    // let pool = s.pool.clone();
-    // let c = pool.get().await?;
-
-    let project = store.create_project().await?;
-
-    let d = Dataset::new_from_jsonl(
-        "env",
-        vec![
-            json!({"foo": "1", "bar": "1"}),
-            json!({"foo": "2", "bar": "2"}),
-        ],
-    )
-    .await?;
-    store.register_dataset(&project, &d).await?;
-
-    let spec_data = "input INPUT {}
-code CODE1 {
-  code:
-```
-_fun = (env) => {
-  return {\"res\": env['state']['INPUT']['foo']};
-}
-```
-}
-code CODE2 {
-  code:
-```
-_fun = (env) => {
-  return {\"res\": env['state']['CODE1']['res'] + env['state']['INPUT']['bar']};
-}
-```
-}";
-
-    let mut app = App::new(&spec_data).await?;
-
-    store
-        .register_specification(&project, &app.hash(), &spec_data)
-        .await?;
-
-    let r = store.latest_specification_hash(&project).await?;
-    assert!(r.unwrap() == app.hash());
-
-    app.prepare_run(
-        RunConfig {
-            blocks: HashMap::new(),
-        },
-        project.clone(),
-        Some(d),
-        Box::new(store.clone()),
-    )
-    .await?;
-
-    app.run(Credentials::new(), Box::new(store.clone())).await?;
-
-    let r = store
-        .load_run(&project, app.run_ref().unwrap().run_id(), None)
-        .await?
-        .unwrap();
-
-    assert!(r.run_id() == app.run_ref().unwrap().run_id());
-    assert!(r.app_hash() == app.hash());
-    assert!(r.status().run_status() == Status::Succeeded);
-    assert!(r.traces.len() == 3);
-    assert!(r.traces[1].1[0][0].value.as_ref().unwrap()["res"] == "1");
-
-    let r = store
-        .load_run(&project, app.run_ref().unwrap().run_id(), Some(None))
-        .await?
-        .unwrap();
-    assert!(r.traces.len() == 0);
-
-    let r = store
-        .load_run(
-            &project,
-            app.run_ref().unwrap().run_id(),
-            Some(Some((BlockType::Code, "CODE2".to_string()))),
-        )
-        .await?
-        .unwrap();
-    assert!(r.traces.len() == 1);
-    assert!(r.traces[0].1.len() == 2);
-    assert!(r.traces[0].1[0].len() == 1);
-    assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
-
-    Ok(())
-}
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -113,11 +20,8 @@ pub struct PostgresStore {
 }
 
 impl PostgresStore {
-    pub async fn new() -> Result<Self> {
-        let manager = PostgresConnectionManager::new_from_stringlike(
-            "postgres://dev:dev@localhost:5432/dust_api",
-            NoTls,
-        )?;
+    pub async fn new(db_uri: &str) -> Result<Self> {
+        let manager = PostgresConnectionManager::new_from_stringlike(db_uri, NoTls)?;
         let pool = Pool::builder().max_size(16).build(manager).await?;
         Ok(PostgresStore { pool })
     }
