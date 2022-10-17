@@ -7,25 +7,10 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
-use itertools::izip;
-use lazy_static::lazy_static;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::io::prelude::*;
 use std::time::Duration;
-
-// {
-//  "id":"4b78fb74-a631-4370-9fd0-d7fba5b4a42c",
-//  "generations":[
-//    {
-//      "text":", an album by Chatham House on Spotify\nHuguenots of New England, an album",
-//      "likelihood":-3.063711,
-//      "token_likelihoods":[{"token":"hello"},{"token":" world","likelihood":-5.876836},{"token":",","likelihood":-4.151756},{"token":" an","likelihood":-6.5982795},{"token":" album","likelihood":-7.2390523},{"token":" by","likelihood":-0.45501173},{"token":" Ch","likelihood":-6.037514},{"token":"atham","likelihood":-5.3197503},{"token":" House","likelihood":-4.6671867},{"token":" on","likelihood":-1.3503187},{"token":" Spotify","likelihood":-0.048749793},{"token":"\n","likelihood":-0.63467366},{"token":"H","likelihood":-4.282529},{"token":"ug","likelihood":-5.4297037},{"token":"uen","likelihood":-2.9047787},{"token":"ots","likelihood":-0.5460036},{"token":" of","likelihood":-3.0726528},{"token":" New","likelihood":-2.2586355},{"token":" England","likelihood":-2.0952332},{"token":",","likelihood":-0.71053344},{"token":" an","likelihood":-0.4245346},{"token":" album","likelihood":-0.23419714}]
-//    }
-//  ],
-//  "prompt":"hello world"
-// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenLikelihood {
@@ -126,10 +111,10 @@ impl CohereLLM {
             }
             hyper::StatusCode::TOO_MANY_REQUESTS => {
                 let error: Error = serde_json::from_slice(c).unwrap_or(Error {
-                    message: "TOO MANY REQUESTS".to_string(),
+                    message: "Too many requests".to_string(),
                 });
                 Err(ModelError {
-                    message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
+                    message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(2000),
                         factor: 2,
@@ -137,12 +122,10 @@ impl CohereLLM {
                     }),
                 })
             }
-            status => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
-                    message: "Something wrong happened with Cohere API".to_string(),
-                });
+            _ => {
+                let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
-                    message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
+                    message: format!("CohereAPIError: {}", error.message),
                     retryable: None,
                 })
             }

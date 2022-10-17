@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, dataset, init, providers::provider, run, utils, blocks::block::BlockType};
+use dust::{app, blocks::block::BlockType, dataset, init, providers::provider, run, stores, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -37,6 +37,7 @@ enum Commands {
         #[clap(subcommand)]
         command: RunCommands,
     },
+    Test {},
 }
 
 #[derive(Subcommand)]
@@ -133,10 +134,13 @@ fn main() -> Result<()> {
         },
         Commands::Run { command } => match command {
             RunCommands::List {} => rt.block_on(run::cmd_list()),
-            RunCommands::Inspect { run_id, block_type, block_name } => {
-                rt.block_on(run::cmd_inspect(run_id, *block_type, block_name))
-            }
+            RunCommands::Inspect {
+                run_id,
+                block_type,
+                block_name,
+            } => rt.block_on(run::cmd_inspect(run_id, *block_type, block_name)),
         },
+        Commands::Test {} => rt.block_on(stores::postgres::test()),
     };
 
     match err {
