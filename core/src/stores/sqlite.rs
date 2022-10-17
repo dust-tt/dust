@@ -834,7 +834,7 @@ impl Store for SQLiteStore {
             ]) {
                 Ok(_) => Ok(()),
                 Err(e) => match e.to_string().as_str() {
-                    "UNIQUE constraint failed: llm_cache.hash" => Ok(()),
+                    "UNIQUE constraint failed: cache.hash" => Ok(()),
                     _ => Err(e.into()),
                 },
             }
