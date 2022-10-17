@@ -200,10 +200,12 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        // TODO(spolu): this may be too big? We will want to use buffer_unordered.
-        let pt_row_ids = futures::future::join_all(d.iter().map(|v| async {
+        // We need to insert the points in order to properly catch duplicates.
+        // TODO(spolu): optimize but since in a transaction it should be fine.
+        let mut pt_row_ids: Vec<i64> = vec![];
+        for v in d.iter() {
             let mut hasher = blake3::Hasher::new();
-            let value_json = serde_json::to_string(&v.clone())?;
+            let value_json = serde_json::to_string(v)?;
             hasher.update(value_json.as_bytes());
             let hash = format!("{}", hasher.finalize().to_hex());
             let r = tx
@@ -214,17 +216,12 @@ impl Store for PostgresStore {
                 1 => Some(r[0].get(0)),
                 _ => unreachable!(),
             };
-            match row_id {
-                Some(row_id) => Ok(row_id),
-                None => {
-                    let row_id = tx.query_one(&stmt, &[&hash, &value_json]).await?.get(0);
-                    Ok(row_id)
-                }
-            }
-        }))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>>>()?;
+            let row_id = match row_id {
+                Some(row_id) => row_id,
+                None => tx.query_one(&stmt, &[&hash, &value_json]).await?.get(0),
+            };
+            pt_row_ids.push(row_id);
+        }
         tx.commit().await?;
 
         let stmt = c
@@ -253,6 +250,8 @@ impl Store for PostgresStore {
                    VALUES (DEFAULT, $1, $2, $3) RETURNING id",
             )
             .await?;
+
+        // Prepare the joins.
         let pt_row_ids = pt_row_ids.into_iter().enumerate().collect::<Vec<_>>();
 
         // TODO(spolu): this may be too big? We will want to use buffer_unordered.
@@ -267,6 +266,7 @@ impl Store for PostgresStore {
         .await
         .into_iter()
         .collect::<Result<Vec<_>>>()?;
+
         tx.commit().await?;
 
         Ok(())
@@ -591,42 +591,41 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        let ex_row_ids = futures::future::join_all(executions.iter().map(
-            |(block_idx, block_type, block_name, input_idx, map_idx, execution_json, hash)| async {
-                let r = tx
-                    .query(
-                        "SELECT id FROM block_executions WHERE hash = $1",
-                        &[&hash.clone()],
-                    )
-                    .await?;
+        let mut ex_row_ids: Vec<(usize, BlockType, String, usize, usize, i64)> = vec![];
+        for (block_idx, block_type, block_name, input_idx, map_idx, execution_json, hash) in
+            executions
+        {
+            let r = tx
+                .query(
+                    "SELECT id FROM block_executions WHERE hash = $1",
+                    &[&hash.clone()],
+                )
+                .await?;
 
-                let row_id: Option<i64> = match r.len() {
-                    0 => None,
-                    1 => Some(r[0].get(0)),
-                    _ => unreachable!(),
-                };
+            let row_id: Option<i64> = match r.len() {
+                0 => None,
+                1 => Some(r[0].get(0)),
+                _ => unreachable!(),
+            };
 
-                let row_id = match row_id {
-                    Some(row_id) => row_id,
-                    None => tx
-                        .query_one(&stmt, &[&hash.clone(), &execution_json.clone()])
-                        .await?
-                        .get(0),
-                };
+            let row_id = match row_id {
+                Some(row_id) => row_id,
+                None => tx
+                    .query_one(&stmt, &[&hash.clone(), &execution_json.clone()])
+                    .await?
+                    .get(0),
+            };
 
-                Ok((
-                    block_idx.clone(),
-                    block_type.clone(),
-                    block_name.clone(),
-                    input_idx.clone(),
-                    map_idx.clone(),
-                    row_id,
-                ))
-            },
-        ))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>>>()?;
+            ex_row_ids.push((
+                block_idx.clone(),
+                block_type.clone(),
+                block_name.clone(),
+                input_idx.clone(),
+                map_idx.clone(),
+                row_id,
+            ));
+        }
+
         tx.commit().await?;
 
         let project_id = project.project_id();
@@ -674,6 +673,7 @@ impl Store for PostgresStore {
         .collect::<Result<Vec<_>>>()?;
 
         tx.commit().await?;
+
         Ok(())
     }
 
