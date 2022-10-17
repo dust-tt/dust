@@ -125,7 +125,9 @@ impl CohereLLM {
                 Ok(response)
             }
             hyper::StatusCode::TOO_MANY_REQUESTS => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                    message: "TOO MANY REQUESTS".to_string(),
+                });
                 Err(ModelError {
                     message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
                     retryable: Some(ModelErrorRetryOptions {
@@ -136,7 +138,9 @@ impl CohereLLM {
                 })
             }
             status => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                    message: "Something wrong happened with Cohere API".to_string(),
+                });
                 Err(ModelError {
                     message: format!("CohereAPIError: {} {}", status.as_str(), error.message),
                     retryable: None,
