@@ -12,7 +12,7 @@ const features = [
   {
     name: "Chained LLM apps",
     built: true,
-    description: "Chain calls to models and arbitrary code execution.",
+    description: "Chain arbitrarily between calls to models and code execution.",
   },
   {
     name: "Multiple inputs",
@@ -35,7 +35,7 @@ const features = [
     name: "History preserved",
     built: true,
     description:
-      "All your iterations, model ouptputs and few-shot examples are saved and versioned.",
+      "Iterations, model ouptputs and few-shot examples are saved and versioned automatically.",
   },
   {
     name: "Caching",
@@ -59,7 +59,7 @@ const features = [
 
 function Features() {
   return (
-    <div className="mx-auto max-w-3xl lg:max-w-7xl">
+    <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
           Prompt engineering, re-imagined🔥
@@ -70,8 +70,8 @@ function Features() {
           With one goal, help accelerate their deployment.
         </p>
       </div>
-      <div className="py-16 px-4 sm:px-6 lg:py-24 lg:px-8">
-        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-4 lg:gap-x-8">
+      <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
+        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 xl:grid-cols-4 xl:gap-x-8">
           {features.map((feature) => (
             <div key={feature.name} className="relative">
               <dt>
