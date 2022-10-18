@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "dependencies": {
+    "sequelize": "^6.23.1"
+  },
+  "devDependencies": {
+  }
+}
