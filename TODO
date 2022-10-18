@@ -51,8 +51,8 @@
   - [x] minimal documentation (README)
   - [x] discord invite
 - [x] move to postgres
-- [ ] minimal deployment on gcp
 - [x] prod Github app with icon
+- [ ] minimal deployment on gcp
 - [ ] fix #11 #17 #18
 - [ ] initial demo 1 (math to code)
 - [ ] initial demo 2 (TBD)

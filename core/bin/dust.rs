@@ -37,7 +37,6 @@ enum Commands {
         #[clap(subcommand)]
         command: RunCommands,
     },
-    Test {},
 }
 
 #[derive(Subcommand)]
@@ -140,7 +139,6 @@ fn main() -> Result<()> {
                 block_name,
             } => rt.block_on(run::cmd_inspect(run_id, *block_type, block_name)),
         },
-        Commands::Test {} => rt.block_on(stores::postgres::test()),
     };
 
     match err {
