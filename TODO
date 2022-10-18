@@ -52,9 +52,10 @@
   - [x] discord invite
 - [x] move to postgres
 - [ ] minimal deployment on gcp
-- [ ] prod Github app with icon
-- [ ] fix #11
-- [ ] initial demo (math to code)
+- [x] prod Github app with icon
+- [ ] fix #11 #17 #18
+- [ ] initial demo 1 (math to code)
+- [ ] initial demo 2 (TBD)
 
 ## P1 (rapid follow-up)
 

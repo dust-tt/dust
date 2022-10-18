@@ -144,7 +144,7 @@ export default function Home() {
           Dust is{" "}
           <a
             className="text-gray-700"
-            href="https://github.com/spolu/dust"
+            href="https://github.com/dust-tt/dust"
             target="_blank"
           >
             open source
