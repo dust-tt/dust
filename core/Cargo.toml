@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["rc", "derive"] }
 serde_json = "1.0"
 pest = "2.0"
 pest_derive = "2.0"
-js-sandbox = "0.1"
+js-sandbox = "0.2.0-rc.0"
 clap = { version = "3.2", features = ["derive"] }
 colored = "2.0"
 shellexpand = "2.1"
