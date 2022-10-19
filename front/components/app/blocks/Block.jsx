@@ -96,7 +96,7 @@ export default function Block({
             <div role="status">
               <svg
                 aria-hidden="true"
-                class="ml-2 mr-2 w-3 h-3 text-gray-200 animate-spin dark:text-gray-300 fill-violet-600"
+                className="ml-2 mr-2 w-3 h-3 text-gray-200 animate-spin dark:text-gray-300 fill-violet-600"
                 viewBox="0 0 100 101"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -110,7 +110,7 @@ export default function Block({
                   fill="currentFill"
                 />
               </svg>
-              <span class="sr-only">Running...</span>
+              <span className="sr-only">Running...</span>
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
@@ -119,7 +119,7 @@ export default function Block({
             <div role="status">
               <svg
                 aria-hidden="true"
-                class="ml-2 mr-2 w-3 h-3 text-gray-200 animate-spin dark:text-gray-300 fill-violet-600"
+                className="ml-2 mr-2 w-3 h-3 text-gray-200 animate-spin dark:text-gray-300 fill-violet-600"
                 viewBox="0 0 100 101"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -133,7 +133,7 @@ export default function Block({
                   fill="currentFill"
                 />
               </svg>
-              <span class="sr-only">Running...</span>
+              <span className="sr-only">Running...</span>
             </div>
             {` 0 successes 0 errors`}
           </div>

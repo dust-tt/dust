@@ -72,7 +72,7 @@ export default function AppLayout({ app, children }) {
                           <Link href={`/${route_user}/a/${app.sId}`}>
                             <a
                               href="#"
-                              className="text-base font-bold w-20 sm:w-auto truncate text-violet-600"
+                              className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
                             >
                               {app.name}
                             </a>
@@ -84,7 +84,7 @@ export default function AppLayout({ app, children }) {
                     )}
                   </ol>
                 </nav>
-                <div className="static inset-auto flex flex-initial items-center pr-4">
+                <div className="static inset-auto hidden sm:flex flex-initial items-center pr-4">
                   <Menu as="div" className="relative ml-3">
                     <div>
                       <Menu.Button

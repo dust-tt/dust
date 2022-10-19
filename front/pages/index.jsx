@@ -12,7 +12,8 @@ const features = [
   {
     name: "Chained LLM apps",
     built: true,
-    description: "Chain arbitrarily between calls to models and code execution.",
+    description:
+      "Chain arbitrarily between calls to models and code execution.",
   },
   {
     name: "Multiple inputs",
@@ -107,8 +108,10 @@ export default function Home() {
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <main className="mx-12">
-        <Logo />
+      <main className="mx-4">
+        <div className="mx-8">
+          <Logo />
+        </div>
 
         <div className="mx-auto sm:max-w-3xl lg:max-w-4xl mt-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
