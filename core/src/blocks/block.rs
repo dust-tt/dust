@@ -1,4 +1,4 @@
-use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, input::Input};
+use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, input::Input, google_answer::GoogleAnswer};
 use crate::project::Project;
 use crate::run::{RunConfig, Credentials};
 use crate::stores::store::Store;
@@ -12,6 +12,9 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
+use lazy_static::lazy_static;
+use regex::Regex;
+
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -54,6 +57,7 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
+    GoogleAnswer,
 }
 
 impl ToString for BlockType {
@@ -65,6 +69,7 @@ impl ToString for BlockType {
             BlockType::LLM => String::from("llm"),
             BlockType::Map => String::from("map"),
             BlockType::Reduce => String::from("reduce"),
+            BlockType::GoogleAnswer => String::from("google_answer"),
         }
     }
 }
@@ -79,6 +84,7 @@ impl FromStr for BlockType {
             "llm" => Ok(BlockType::LLM),
             "map" => Ok(BlockType::Map),
             "reduce" => Ok(BlockType::Reduce),
+            "google_answer" => Ok(BlockType::GoogleAnswer),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -141,5 +147,91 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
+        BlockType::GoogleAnswer => Ok(Box::new(GoogleAnswer::parse(block_pair)?)),
+    }
+}
+
+pub fn replace_variables_in_string(text: &str, argument_name: &str, env: &Env) -> Result<String> {
+    let variables = find_variables(text);
+
+    let mut result = text.to_string();
+
+    variables
+        .iter()
+        .map(|(name, key)| {
+            // Check that the block output exists and is an object.
+            let output = env
+                .state
+                .get(name)
+                .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
+            if !output.is_object() {
+                Err(anyhow!(
+                    "Block `{}` output is not an object, the blocks output referred in \
+                     `{}` must be objects",
+                    name, 
+                    argument_name
+                ))?;
+            }
+            let output = output.as_object().unwrap();
+
+            if !output.contains_key(key) {
+                Err(anyhow!(
+                    "Key `{}` is not present in block `{}` output",
+                    key,
+                    name
+                ))?;
+            }
+            // Check that output[key] is a string.
+            if !output.get(key).unwrap().is_string() {
+                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
+            }
+            result = result.replace(
+                &format!("${{{}.{}}}", name, key),
+                &output[key].as_str().unwrap(),
+            );
+
+            Ok(())
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(result)
+}
+
+pub fn find_variables(text: &str) -> Vec<(String, String)> {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+    }
+
+    RE.captures_iter(text)
+        .map(|c| {
+            let name = c.name("name").unwrap().as_str();
+            let key = c.name("key").unwrap().as_str();
+            // println!("{} {}", name, key);
+            (String::from(name), String::from(key))
+        })
+        .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blocks::block::InputState;
+    use crate::project::Project;
+    use crate::run::{Credentials, RunConfig};
+    use crate::stores::sqlite::SQLiteStore;
+    use std::collections::HashMap;
+
+    #[test]
+    fn find_variables_test() -> Result<()> {
+        assert_eq!(
+            find_variables("QUESTION: ${RETRIEVE.question}\nANSWER: ${DATA.answer}"),
+            vec![
+                ("RETRIEVE".to_string(), "question".to_string()),
+                ("DATA".to_string(), "answer".to_string()),
+            ]
+        );
+
+        Ok(())
     }
 }

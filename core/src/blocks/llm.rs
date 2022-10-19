@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, replace_variables_in_string, find_variables, Block, BlockType, Env};
 use crate::providers::llm::{LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
@@ -86,24 +86,8 @@ impl LLM {
         })
     }
 
-    fn find_variables(text: &str) -> Vec<(String, String)> {
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
-        }
-
-        RE.captures_iter(text)
-            .map(|c| {
-                let name = c.name("name").unwrap().as_str();
-                let key = c.name("key").unwrap().as_str();
-                // println!("{} {}", name, key);
-                (String::from(name), String::from(key))
-            })
-            .collect::<Vec<_>>()
-    }
-
     fn replace_few_shot_prompt_variables(text: &str, env: &Env) -> Result<Vec<String>> {
-        let variables = LLM::find_variables(text);
+        let variables = find_variables(text);
 
         if variables.len() == 0 {
             Err(anyhow!(
@@ -186,48 +170,7 @@ impl LLM {
     }
 
     fn replace_prompt_variables(text: &str, env: &Env) -> Result<String> {
-        let variables = LLM::find_variables(text);
-
-        let mut prompt = text.to_string();
-
-        variables
-            .iter()
-            .map(|(name, key)| {
-                // Check that the block output exists and is an object.
-                let output = env
-                    .state
-                    .get(name)
-                    .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-                if !output.is_object() {
-                    Err(anyhow!(
-                        "Block `{}` output is not an object, the blocks output referred in \
-                         `prompt` must be objects",
-                        name
-                    ))?;
-                }
-                let output = output.as_object().unwrap();
-
-                if !output.contains_key(key) {
-                    Err(anyhow!(
-                        "Key `{}` is not present in block `{}` output",
-                        key,
-                        name
-                    ))?;
-                }
-                // Check that output[key] is a string.
-                if !output.get(key).unwrap().is_string() {
-                    Err(anyhow!("`{}.{}` is not a string", name, key,))?;
-                }
-                prompt = prompt.replace(
-                    &format!("${{{}.{}}}", name, key),
-                    &output[key].as_str().unwrap(),
-                );
-
-                Ok(())
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(prompt)
+        replace_variables_in_string(text, &"prompt", env)
     }
 
     fn prompt(&self, env: &Env) -> Result<String> {
@@ -394,19 +337,6 @@ mod tests {
     use crate::run::{Credentials, RunConfig};
     use crate::stores::sqlite::SQLiteStore;
     use std::collections::HashMap;
-
-    #[test]
-    fn find_variables() -> Result<()> {
-        assert_eq!(
-            LLM::find_variables("QUESTION: ${RETRIEVE.question}\nANSWER: ${DATA.answer}"),
-            vec![
-                ("RETRIEVE".to_string(), "question".to_string()),
-                ("DATA".to_string(), "answer".to_string()),
-            ]
-        );
-
-        Ok(())
-    }
 
     #[test]
     fn replace_few_shot_prompt_variables() -> Result<()> {
