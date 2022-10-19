@@ -16,6 +16,9 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
+use lazy_static::lazy_static;
+use regex::Regex;
+
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -171,7 +174,7 @@ pub fn find_variables(text: &str) -> Vec<(String, String)> {
 pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
     let variables = find_variables(text);
 
-    let mut prompt = text.to_string();
+    let mut result = text.to_string();
 
     variables
         .iter()
@@ -183,8 +186,8 @@ pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
                 .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
             if !output.is_object() {
                 Err(anyhow!(
-                    "Block `{}` output is not an object, the blocks output referred in \
-                     `prompt` must be objects",
+                    "Block `{}` output is not an object, the block outputs referred in \
+                     later blocks as variables must be objects",
                     name
                 ))?;
             }
@@ -201,7 +204,7 @@ pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
             if !output.get(key).unwrap().is_string() {
                 Err(anyhow!("`{}.{}` is not a string", name, key,))?;
             }
-            prompt = prompt.replace(
+            result = result.replace(
                 &format!("${{{}.{}}}", name, key),
                 &output[key].as_str().unwrap(),
             );
@@ -210,7 +213,23 @@ pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
         })
         .collect::<Result<Vec<_>>>()?;
 
-    Ok(prompt)
+    Ok(result)
+}
+
+pub fn find_variables(text: &str) -> Vec<(String, String)> {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+    }
+
+    RE.captures_iter(text)
+        .map(|c| {
+            let name = c.name("name").unwrap().as_str();
+            let key = c.name("key").unwrap().as_str();
+            // println!("{} {}", name, key);
+            (String::from(name), String::from(key))
+        })
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
