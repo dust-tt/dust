@@ -102,7 +102,7 @@ export default function CohereSetup({
                         can be found{" "}
                         <a
                           className="text-violet-600 hover:text-violet-500 font-bold"
-                          href="https://os.cohere.ai/"
+                          href="https://dashboard.cohere.ai/api-keys"
                           target="_blank"
                         >
                           here
