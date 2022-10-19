@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require("sequelize");
+import { Sequelize, DataTypes } from "sequelize";
 
 const { DATABASE_URI } = process.env;
 const sequelize = new Sequelize(DATABASE_URI);

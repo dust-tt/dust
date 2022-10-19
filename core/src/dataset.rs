@@ -183,7 +183,11 @@ pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     let d = Dataset::new_from_jsonl(dataset_id, data).await?;
-    store.register_dataset(&project, &d).await?;
+
+    let current_hash = store.latest_dataset_hash(&project, &d.dataset_id()).await?;
+    if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
+        store.register_dataset(&project, &d).await?;
+    }
 
     utils::done(&format!(
         "Registered dataset `{}` version ({}) with {} records (record keys: {:?})",

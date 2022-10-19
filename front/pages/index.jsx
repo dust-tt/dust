@@ -12,7 +12,8 @@ const features = [
   {
     name: "Chained LLM apps",
     built: true,
-    description: "Chain calls to models and arbitrary code execution.",
+    description:
+      "Chain arbitrarily between calls to models and code execution.",
   },
   {
     name: "Multiple inputs",
@@ -35,7 +36,7 @@ const features = [
     name: "History preserved",
     built: true,
     description:
-      "All your iterations, model ouptputs and few-shot examples are saved and versioned.",
+      "Iterations, model ouptputs and few-shot examples are saved and versioned automatically.",
   },
   {
     name: "Caching",
@@ -59,19 +60,19 @@ const features = [
 
 function Features() {
   return (
-    <div className="mx-auto max-w-3xl lg:max-w-7xl">
+    <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           Prompt engineering, re-imagined🔥
         </h2>
-        <p className="mt-4 text-lg text-gray-500">
+        <p className="mt-4 px-4 text-normal sm:text-lg text-gray-500">
           Built on years of experience working with large language models.
           <br />
           With one goal, help accelerate their deployment.
         </p>
       </div>
-      <div className="py-16 px-4 sm:px-6 lg:py-24 lg:px-8">
-        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-4 lg:gap-x-8">
+      <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
+        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 xl:grid-cols-4 xl:gap-x-8">
           {features.map((feature) => (
             <div key={feature.name} className="relative">
               <dt>
@@ -107,8 +108,10 @@ export default function Home() {
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <main className="mx-12">
-        <Logo />
+      <main className="mx-4">
+        <div className="mx-8">
+          <Logo />
+        </div>
 
         <div className="mx-auto sm:max-w-3xl lg:max-w-4xl mt-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
@@ -144,7 +147,7 @@ export default function Home() {
           Dust is{" "}
           <a
             className="text-gray-700"
-            href="https://github.com/spolu/dust"
+            href="https://github.com/dust-tt/dust"
             target="_blank"
           >
             open source

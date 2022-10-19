@@ -27,7 +27,6 @@ export default function ViewDatasetView({
   const onUpdate = (valid, dataset) => {
     setDisabled(!valid);
     if (valid) {
-      console.log("STATE SAVED", spec, config);
       setUpdatedDataset(dataset);
     }
   };
@@ -49,7 +48,9 @@ export default function ViewDatasetView({
   };
 
   return (
-    <AppLayout app={{ sId: app.sId, name: app.name }}>
+    <AppLayout
+      app={{ sId: app.sId, name: app.name, description: app.description }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab

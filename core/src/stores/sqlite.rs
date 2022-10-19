@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
-use crate::stores::store::Store;
+use crate::stores::store::{Store, SQL_INDEXES, SQLITE_TABLES};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -37,116 +37,14 @@ impl SQLiteStore {
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || {
             let c = pool.get()?;
-            let tables = vec![
-                "-- projects
-                 CREATE TABLE IF NOT EXISTS projects (
-                    id INTEGER PRIMARY KEY
-                );",
-                "-- app specifications
-                 CREATE TABLE IF NOT EXISTS specifications (
-                    id                   INTEGER PRIMARY KEY,
-                    project              INTEGER NOT NULL,
-                    created              INTEGER NOT NULL,
-                    hash                 TEXT NOT NULL,
-                    specification        TEXT NOT NULL,
-                    FOREIGN KEY(project) REFERENCES projects(id)
-                 );",
-                "-- datasets
-                 CREATE TABLE IF NOT EXISTS datasets (
-                    id                   INTEGER PRIMARY KEY,
-                    project              INTEGER NOT NULL,
-                    created              INTEGER NOT NULL,
-                    dataset_id           TEXT NOT NULL,
-                    hash                 TEXT NOT NULL,
-                    FOREIGN KEY(project) REFERENCES projects(id)
-                 );",
-                "-- datasets raw hashed data points
-                 CREATE TABLE IF NOT EXISTS datasets_points (
-                    id   INTEGER PRIMARY KEY,
-                    hash TEXT NOT NULL,
-                    json TEXT NOT NULL
-                 );",
-                "-- datasets to data association (avoid duplication)
-                 CREATE TABLE IF NOT EXISTS datasets_joins (
-                    id                   INTEGER PRIMARY KEY,
-                    dataset              INTEGER NOT NULL,
-                    point                INTEGER NOT NULL,
-                    point_idx            INTEGER NOT NULL,
-                    FOREIGN KEY(dataset) REFERENCES datasets(id),
-                    FOREIGN KEY(point)   REFERENCES datasets_points(id)
-                 );",
-                "-- runs
-                 CREATE TABLE IF NOT EXISTS runs (
-                    id                   INTEGER PRIMARY KEY,
-                    project              INTEGER NOT NULL,
-                    created              INTEGER NOT NULL,
-                    run_id               TEXT NOT NULL,
-                    app_hash             TEXT NOT NULL,
-                    config_json          TEXT NOT NULL,
-                    status_json          TEXT NOT NULL,
-                    FOREIGN KEY(project) REFERENCES projects(id)
-                 );",
-                "-- block executions
-                 CREATE TABLE IF NOT EXISTS block_executions (
-                    id        INTEGER PRIMARY KEY,
-                    hash      TEXT NOT NULL,
-                    execution TEXT NOT NULL
-                 );",
-                "-- runs to block_executions association (avoid duplication)
-                 CREATE TABLE IF NOT EXISTS runs_joins (
-                    id                           INTEGER PRIMARY KEY,
-                    run                          INTEGER NOT NULL,
-                    block_idx                    INTEGER NOT NULL,
-                    block_type                   TEXT NOT NULL,
-                    block_name                   TEXT NOT NULL,
-                    input_idx                    INTEGER NOT NULL,
-                    map_idx                      INTEGER NOT NULL,
-                    block_execution              INTEGER NOT NULL,
-                    FOREIGN KEY(run)             REFERENCES runs(id),
-                    FOREIGN KEY(block_execution) REFERENCES block_executions(id)
-                 );",
-                "-- LLM Cache (non unique hash index)
-                 CREATE TABLE IF NOT EXISTS llm_cache (
-                    id                   INTEGER PRIMARY KEY,
-                    project              INTEGER NOT NULL,
-                    created              INTEGER NOT NULL,
-                    hash                 TEXT NOT NULL,
-                    request              TEXT NOT NULL,
-                    generation           TEXT NOT NULL,
-                    FOREIGN KEY(project) REFERENCES projects(id)
-                 );",
-            ];
-            for t in tables {
+            for t in SQLITE_TABLES {
                 match c.execute(t, ()) {
                     Err(e) => Err(e)?,
                     Ok(_) => {}
                 }
             }
 
-            let indices = vec![
-                "CREATE INDEX IF NOT EXISTS
-                   idx_specifications_project_created ON specifications (project, created);",
-                "CREATE INDEX IF NOT EXISTS
-                   idx_datasets_project_dataset_id_created
-                   ON datasets (project, dataset_id, created);",
-                "CREATE INDEX IF NOT EXISTS
-                   idx_runs_project_created ON runs (project, created);",
-                "CREATE UNIQUE INDEX IF NOT EXISTS
-                   idx_runs_id ON runs (run_id);",
-                "CREATE UNIQUE INDEX IF NOT EXISTS
-                   idx_block_executions_hash ON block_executions (hash);",
-                "CREATE UNIQUE INDEX IF NOT EXISTS
-                   idx_datasets_points_hash ON datasets_points (hash);",
-                "CREATE INDEX IF NOT EXISTS
-                   idx_datasets_joins ON datasets_joins (dataset, point);",
-                "CREATE INDEX IF NOT EXISTS
-                   idx_runs_joins ON runs_joins (run, block_execution);",
-                "CREATE UNIQUE INDEX IF NOT EXISTS
-                   idx_llm_cache_hash ON llm_cache (hash);",
-                "CREATE INDEX IF NOT EXISTS
-                   idx_llm_cache_project_hash ON llm_cache (project, hash);",
-            ];
-            for i in indices {
+            for i in SQL_INDEXES {
                 match c.execute(i, ()) {
                     Err(e) => Err(e)?,
                     Ok(_) => {}
@@ -305,7 +203,8 @@ impl Store for SQLiteStore {
             // Check that the dataset_id and hash exist
             let d: Option<(u64, u64)> = match c.query_row(
                 "SELECT id, created FROM datasets
-                   WHERE project = ?1 AND dataset_id = ?2 AND hash = ?3",
+                   WHERE project = ?1 AND dataset_id = ?2 AND hash = ?3
+                   ORDER BY created DESC LIMIT 1",
                 params![project_id, dataset_id, hash],
                 |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())),
             ) {
@@ -889,7 +788,7 @@ impl Store for SQLiteStore {
             let c = pool.get()?;
             // Retrieve generations.
             let mut stmt = c.prepare_cached(
-                "SELECT created, generation FROM llm_cache WHERE project = ?1 AND hash = ?2",
+                "SELECT created, response FROM cache WHERE project = ?1 AND hash = ?2",
             )?;
             let mut rows = stmt.query(params![project_id, hash])?;
             let mut generations: Vec<(u64, LLMGeneration)> = vec![];
@@ -921,21 +820,25 @@ impl Store for SQLiteStore {
         tokio::task::spawn_blocking(move || -> Result<()> {
             let c = pool.get()?;
             let mut stmt = c.prepare_cached(
-                "INSERT INTO llm_cache (project, created, hash, request, generation)
+                "INSERT INTO cache (project, created, hash, request, response)
                    VALUES (?, ?, ?, ?, ?)",
             )?;
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
-            let _ = stmt.insert(params![
+            match stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 generation_data
-            ])?;
-
-            Ok(())
+            ]) {
+                Ok(_) => Ok(()),
+                Err(e) => match e.to_string().as_str() {
+                    "UNIQUE constraint failed: cache.hash" => Ok(()),
+                    _ => Err(e.into()),
+                },
+            }
         })
         .await?
     }

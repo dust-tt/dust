@@ -114,7 +114,7 @@ export default function DatasetPicker({
                             active
                               ? "bg-gray-50 text-gray-900"
                               : "text-gray-700",
-                            "block px-4 py-2 text-sm cursor-pointer"
+                            "block px-4 py-2 text-sm cursor-pointer whitespace-nowrap"
                           )}
                         >
                           {d.name}
@@ -123,6 +123,24 @@ export default function DatasetPicker({
                     </Menu.Item>
                   );
                 })}
+                <Menu.Item key="__create_dataset" onClick={() => {}}>
+                  {({ active }) => (
+                    <a>
+                      <Link href={`/${user}/a/${app.sId}/datasets/new`}>
+                        <div
+                          className={classNames(
+                            active
+                              ? "bg-gray-50 text-gray-500"
+                              : "text-gray-400",
+                            "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
+                          )}
+                        >
+                          Create new dataset
+                        </div>
+                      </Link>
+                    </a>
+                  )}
+                </Menu.Item>
               </div>
             </Menu.Items>
           </Transition>

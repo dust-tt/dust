@@ -240,6 +240,24 @@ export default function LLM({
                 </div>
               </div>
 
+              <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial items-center">examples :</div>
+                <div className="flex w-full font-normal">
+                  <TextareaAutosize
+                    minRows={1}
+                    className={classNames(
+                      "block w-full resize-none px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    readOnly={readOnly}
+                    value={block.spec.few_shot_prompt}
+                    onChange={(e) => handleFewShotPromptChange(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
                 <div className="flex flex-initial">count:</div>
                 <div className="flex flex-initial font-normal">
@@ -255,24 +273,6 @@ export default function LLM({
                     readOnly={readOnly}
                     value={block.spec.few_shot_count}
                     onChange={(e) => handleFewShotCountChange(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial items-center">examples :</div>
-                <div className="flex w-full font-normal">
-                  <TextareaAutosize
-                    minRows={1}
-                    className={classNames(
-                      "block w-full resize-none px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                      readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
-                    readOnly={readOnly}
-                    value={block.spec.few_shot_prompt}
-                    onChange={(e) => handleFewShotPromptChange(e.target.value)}
                   />
                 </div>
               </div>

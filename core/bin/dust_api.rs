@@ -6,7 +6,12 @@ use axum::{
     Router,
 };
 use dust::{
-    app, blocks::block::BlockType, dataset, project, run, stores::sqlite, stores::store, utils,
+    app,
+    blocks::block::BlockType,
+    dataset, project, run,
+    stores::store,
+    stores::{postgres, sqlite},
+    utils,
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -201,32 +206,61 @@ async fn datasets_register(
                 response: None,
             }),
         ),
-        Ok(d) => match state.store.register_dataset(&project, &d).await {
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to store dataset: {}", e),
+        Ok(d) => {
+            // First retrieve the latest hash of the dataset to avoid registering if it matches the
+            // current hash.
+            let current_hash = match state
+                .store
+                .latest_dataset_hash(&project, &d.dataset_id())
+                .await
+            {
+                Err(_) => None,
+                Ok(hash) => hash,
+            };
+            if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
+                match state.store.register_dataset(&project, &d).await {
+                    Err(e) => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(APIResponse {
+                            error: Some(APIError {
+                                code: String::from("internal_server_error"),
+                                message: format!("Failed to store dataset: {}", e),
+                            }),
+                            response: None,
+                        }),
+                    ),
+                    Ok(()) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "dataset": {
+                                    "created": d.created(),
+                                    "dataset_id": d.dataset_id(),
+                                    "hash": d.hash(),
+                                    "keys": d.keys(),
+                                }
+                            })),
+                        }),
+                    ),
+                }
+            } else {
+                (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "dataset": {
+                                "created": d.created(),
+                                "dataset_id": d.dataset_id(),
+                                "hash": d.hash(),
+                                "keys": d.keys(),
+                            }
+                        })),
                     }),
-                    response: None,
-                }),
-            ),
-            Ok(()) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "dataset": {
-                            "created": d.created(),
-                            "dataset_id": d.dataset_id(),
-                            "hash": d.hash(),
-                            "keys": d.keys(),
-                        }
-                    })),
-                }),
-            ),
-        },
+                )
+            }
+        }
     }
 }
 
@@ -615,10 +649,20 @@ async fn runs_retrieve_status(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
-    store.init().await?;
+    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("DATABASE_URI") {
+        Ok(db_uri) => {
+            let store = postgres::PostgresStore::new(&db_uri).await?;
+            store.init().await?;
+            Box::new(store)
+        }
+        Err(_) => {
+            let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
+            store.init().await?;
+            Box::new(store)
+        }
+    };
 
-    let state = Arc::new(APIState::new(Box::new(store)));
+    let state = Arc::new(APIState::new(store));
 
     let app = Router::new()
         // Index

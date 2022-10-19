@@ -10,6 +10,7 @@ pub struct DustParser;
 pub mod stores {
     pub mod store;
     pub mod sqlite;
+    pub mod postgres;
 }
 pub mod project;
 pub mod app;

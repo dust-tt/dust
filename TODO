@@ -50,21 +50,24 @@
 - [x] support menu:
   - [x] minimal documentation (README)
   - [x] discord invite
-- [ ] move to postgres
-- [ ] minimal deployment on gcp
-- [ ] prod Github app with icon
-- [ ] fix #11
-- [ ] initial demo (math to code)
+- [x] move to postgres
+- [x] prod Github app with icon
+- [x] minimal deployment on gcp
+- [x] fix #11 #17 #18
+- [x] fix map reduce
+- [x] twitter card
+- [ ] google analytics
+- [ ] initial demo 1 (math to code)
+- [ ] initial demo 2 (TBD)
 
 ## P1 (rapid follow-up)
 
-- [ ] twitter card
+- [ ] while block
+- [ ] google block
+- [ ] demo 2: self-ask / react
 - [ ] edit/Delete app
 - [ ] clone app
-- [ ] google block
-- [ ] while block
 - [ ] if/then block
-- [ ] demo 2: self-ask / react
 - [ ] dataset iteration: upload, item list, save on update
 
 ## P2

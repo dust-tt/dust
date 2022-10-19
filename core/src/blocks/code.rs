@@ -59,8 +59,9 @@ impl Block for Code {
         let code = self.code.clone();
         let env = env.clone();
         let result = tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(code.as_str())?;
-            script.call("_fun", &env)
+            let mut script = Script::from_string(code.as_str())?
+                .with_timeout(std::time::Duration::from_secs(10));
+            script.call("_fun", (&env,))
         })
         .await??;
 
