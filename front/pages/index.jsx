@@ -62,10 +62,10 @@ function Features() {
   return (
     <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           Prompt engineering, re-imagined🔥
         </h2>
-        <p className="mt-4 text-lg text-gray-500">
+        <p className="mt-4 px-4 text-normal sm:text-lg text-gray-500">
           Built on years of experience working with large language models.
           <br />
           With one goal, help accelerate their deployment.
