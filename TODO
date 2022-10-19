@@ -54,6 +54,7 @@
 - [x] prod Github app with icon
 - [x] minimal deployment on gcp
 - [x] fix #11 #17 #18
+- [ ] google analytics
 - [ ] initial demo 1 (math to code)
 - [ ] initial demo 2 (TBD)
 

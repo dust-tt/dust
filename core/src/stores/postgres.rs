@@ -193,7 +193,8 @@ impl Store for PostgresStore {
         let r = c
             .query(
                 "SELECT id, created FROM datasets
-                   WHERE project = $1 AND dataset_id = $2 AND hash = $3",
+                   WHERE project = $1 AND dataset_id = $2 AND hash = $3
+                   ORDER BY created DESC LIMIT 1",
                 &[&project_id, &dataset_id, &hash],
             )
             .await?;

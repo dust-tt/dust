@@ -203,7 +203,8 @@ impl Store for SQLiteStore {
             // Check that the dataset_id and hash exist
             let d: Option<(u64, u64)> = match c.query_row(
                 "SELECT id, created FROM datasets
-                   WHERE project = ?1 AND dataset_id = ?2 AND hash = ?3",
+                   WHERE project = ?1 AND dataset_id = ?2 AND hash = ?3
+                   ORDER BY created DESC LIMIT 1",
                 params![project_id, dataset_id, hash],
                 |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())),
             ) {
