@@ -18,8 +18,26 @@ export default function AppLayout({ app, children }) {
   return (
     <main>
       <Head>
-        <title>Dust - Design and Deploy Large Language Models Apps</title>
+        <title>Dust - {route_user}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
+        {app ? (
+          <>
+            <meta name="twitter:card" content="summary" />
+            <meta name="twitter:site" content="@dust4ai" />
+            <meta
+              name="twitter:title"
+              content={"[Dust] " + route_user + " > " + app.name}
+            />
+            <meta
+              name="twitter:description"
+              content={app.description ? app.description : ""}
+            />
+            <meta
+              name="twitter:image"
+              content={`https://dust.tt/api/apps/${route_user}/${app.sId}/card`}
+            />
+          </>
+        ) : null}
       </Head>
       <Disclosure as="nav" className="bg-white">
         {({ open }) => (

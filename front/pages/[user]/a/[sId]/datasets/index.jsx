@@ -29,7 +29,9 @@ export default function DatasetsView({ app, datasets, user, readOnly }) {
   };
 
   return (
-    <AppLayout app={{ sId: app.sId, name: app.name }}>
+    <AppLayout
+      app={{ sId: app.sId, name: app.name, description: app.description }}
+    >
       <div className="leadingflex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab

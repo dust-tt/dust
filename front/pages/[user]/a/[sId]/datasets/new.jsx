@@ -27,19 +27,24 @@ export default function NewDatasetView({ app, datasets, user }) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(`/api/apps/${session.user.username}/${app.sId}/datasets`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dataset),
-    });
+    const res = await fetch(
+      `/api/apps/${session.user.username}/${app.sId}/datasets`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataset),
+      }
+    );
     const data = await res.json();
     Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
   };
 
   return (
-    <AppLayout app={{ sId: app.sId, name: app.name }}>
+    <AppLayout
+      app={{ sId: app.sId, name: app.name, description: app.description }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab

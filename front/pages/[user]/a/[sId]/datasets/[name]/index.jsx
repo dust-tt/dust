@@ -48,7 +48,9 @@ export default function ViewDatasetView({
   };
 
   return (
-    <AppLayout app={{ sId: app.sId, name: app.name }}>
+    <AppLayout
+      app={{ sId: app.sId, name: app.name, description: app.description }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab
