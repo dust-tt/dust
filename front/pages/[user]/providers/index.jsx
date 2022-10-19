@@ -7,6 +7,8 @@ import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
+import GoogleSetup from "../../../components/providers/GoogleSetup";
+
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
@@ -18,6 +20,8 @@ export default function ProfileProviders() {
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
+  const [googleOpen, setGoogleOpen] = useState(false);
+
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
 
@@ -47,6 +51,12 @@ export default function ProfileProviders() {
           setOpen={setCohereOpen}
           enabled={configs["cohere"] ? true : false}
           config={configs["cohere"] ? configs["cohere"] : null}
+        />
+        <GoogleSetup
+          open={googleOpen}
+          setOpen={setGoogleOpen}
+          enabled={configs["google_search"] ? true : false}
+          config={configs["google_search"] ? configs["google_search"] : null}
         />
 
         <div className="">
@@ -152,12 +162,21 @@ export default function ProfileProviders() {
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          {provider.enabled ? "enabled" : "disabled"}
+                          {configs[provider.providerId] ? "enabled" : "disabled"}
                         </p>
                       </div>
                     </div>
                     <div>
-                      <Button disabled={!provider.built}>
+                      <Button
+                          disabled={!provider.built}
+                          onClick={() => {
+                            switch (provider.providerId) {
+                              case "google_search":
+                                setGoogleOpen(true);
+                                break;
+                            }
+                          }}
+                        >
                         {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
