@@ -171,38 +171,44 @@ export default function App({ app, readOnly, user }) {
     update(s);
   };
 
-  const handleRun = async () => {
+  const handleRun = () => {
     setRunRequested(true);
-    const [runRes] = await Promise.all([
-      fetch(`/api/apps/${session.user.username}/${app.sId}/runs`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          specification: JSON.stringify(spec),
-          config: JSON.stringify(config),
+
+    // setTimeout to yield execution so that the button updates right away.
+    setTimeout(async () => {
+      const [runRes] = await Promise.all([
+        fetch(`/api/apps/${session.user.username}/${app.sId}/runs`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            specification: JSON.stringify(spec),
+            config: JSON.stringify(config),
+          }),
         }),
-      }),
-    ]);
+      ]);
 
-    if (!runRes.ok) {
-      const [error] = await Promise.all([runRes.json()]);
-      setRunError(error);
-    } else {
-      setRunError(null);
-      const [run] = await Promise.all([runRes.json()]);
+      if (!runRes.ok) {
+        const [error] = await Promise.all([runRes.json()]);
+        setRunError(error);
+      } else {
+        setRunError(null);
+        const [run] = await Promise.all([runRes.json()]);
 
-      // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-      mutate(`/api/apps/${session.user.username}/${app.sId}/runs/saved/status`);
-
-      // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
-      spec.forEach((block) => {
+        // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
         mutate(
-          `/api/apps/${session.user.username}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+          `/api/apps/${session.user.username}/${app.sId}/runs/saved/status`
         );
-      });
-    }
+
+        // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
+        spec.forEach((block) => {
+          mutate(
+            `/api/apps/${session.user.username}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+          );
+        });
+      }
+    }, 0);
   };
 
   return (
