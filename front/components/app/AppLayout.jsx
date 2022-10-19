@@ -22,7 +22,7 @@ export default function AppLayout({ app, children }) {
         <link rel="shortcut icon" href="/static/favicon.png" />
         {app ? (
           <>
-            <meta name="twitter:card" content="summary" />
+            <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:site" content="@dust4ai" />
             <meta
               name="twitter:title"
