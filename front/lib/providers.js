@@ -27,8 +27,8 @@ export const modelProviders = [
 
 export const serviceProviders = [
   {
-    providerId: "google_search",
-    name: "Google Search",
+    providerId: "serpapi",
+    name: "SerpAPI Search",
     built: true,
     enabled: false,
   },
@@ -78,9 +78,9 @@ export async function checkProvider(providerId, config) {
       }
       break;
 
-    case "google_search":
+    case "serpapi":
       let testSearch = await fetch(
-        `https://www.googleapis.com/customsearch/v1?cx=${config.search_engine_id}&q=hello&key=${config.api_key}`,
+        `https://serpapi.com/search.json?engine=google&q=Coffee&api_key=${config.api_key}`,
         {
           method: "GET",
         }

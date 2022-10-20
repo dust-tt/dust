@@ -56,12 +56,13 @@
 - [x] fix #11 #17 #18
 - [x] fix map reduce
 - [x] twitter card
+- [x] initial demo 1 (math to code)
 - [ ] google analytics
-- [ ] initial demo 1 (math to code)
 - [ ] initial demo 2 (TBD)
 
 ## P1 (rapid follow-up)
 
+- [ ] better error handling for serpapi
 - [ ] while block
 - [ ] google block
 - [ ] demo 2: self-ask / react

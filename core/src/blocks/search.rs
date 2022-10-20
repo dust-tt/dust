@@ -1,20 +1,30 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
-use crate::providers::google::{GoogleSearch, ProviderID};
-use crate::{utils, Rule};
+use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use hyper::{body::Buf, Body, Client, Method, Request};
+use hyper_tls::HttpsConnector;
 use pest::iterators::Pair;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str::FromStr;
+use std::io::prelude::*;
+use urlencoding::encode;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Error {
+    pub message: String,
+}
 
 #[derive(Clone)]
 pub struct Search {
     query: String,
+    engine: String,
 }
 
 impl Search {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut query: Option<String> = None;
+        let mut engine: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -22,6 +32,7 @@ impl Search {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
                         "query" => query = Some(value),
+                        "engine" => engine = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `search` block", key))?,
                     }
                 }
@@ -33,13 +44,29 @@ impl Search {
         }
 
         if !query.is_some() {
-            Err(anyhow!("Missing required `query` in `search` block"))?;
+            Err(anyhow!(
+                "Missing required `question` in `googleanswer` block"
+            ))?;
         }
 
         Ok(Search {
             query: query.unwrap(),
+            engine: match engine {
+                Some(engine) => engine,
+                None => "google".to_string(),
+            },
         })
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct SerpApiAnswerBoxResult {
+    answer: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SerpApiResult {
+    answer_box: SerpApiAnswerBoxResult,
 }
 
 #[async_trait]
@@ -52,57 +79,49 @@ impl Block for Search {
         let mut hasher = blake3::Hasher::new();
         hasher.update("search".as_bytes());
         hasher.update(self.query.as_bytes());
+        hasher.update(self.engine.as_bytes());
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
-        let config = env.config.config_for_block(name);
+    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+        let query = replace_variables_in_string(&self.query, env)?;
 
-        let provider_id = match config {
-            Some(v) => {
-                let provider_id = match v.get("provider_id") {
-                    Some(v) => match v {
-                        Value::String(s) => match ProviderID::from_str(s) {
-                            Ok(p) => p,
-                            Err(e) => Err(anyhow!(
-                                "Invalid `provider_id` `{}` in configuration \
-                                 for search block `{}`: {}",
-                                s,
-                                name,
-                                e
-                            ))?,
-                        },
-                        _ => Err(anyhow!(
-                            "Invalid `provider_id` in configuration for search block `{}`: \
-                             string expected",
-                            name
-                        ))?,
-                    },
-                    _ => Err(anyhow!(
-                        "Missing `provider_id` in configuration for search block `{}`",
-                        name
-                    ))?,
-                };
+        let serp_api_key = match env.credentials.get("SERP_API_KEY") {
+            Some(api_key) => Ok(api_key.clone()),
+            None => match std::env::var("SERP_API_KEY") {
+                Ok(key) => Ok(key),
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `SERP_API_KEY` is not set."
+                )),
+            },
+        }?;
 
-                provider_id
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(format!(
+                "https://serpapi.com/search?q={}&engine={}&api_key={}",
+                encode(&query),
+                self.engine,
+                serp_api_key
+            ))
+            .body(Body::empty())?;
+
+        let res = cli.request(req).await?;
+
+        match res.status() {
+            hyper::StatusCode::OK => {
+                let body = hyper::body::aggregate(res).await?;
+                let mut b: Vec<u8> = vec![];
+                body.reader().read_to_end(&mut b)?;
+                let c: &[u8] = &b;
+                let raw: serde_json::Value = serde_json::from_slice(c)?;
+                Ok(raw)
             }
-            _ => Err(anyhow!(
-                "Missing configuration for search block `{}`, \
-                 expecting `{{ \"provider_id\": ... }}`",
-                name
-            ))?,
-        };
-
-        let env = env.clone();
-        let mut google = match provider_id {
-            ProviderID::Google => GoogleSearch::new(),
-        };
-        google.initialize(env.credentials.clone()).await?;
-        let parsed_query = replace_variables_in_string(&self.query, &env)?;
-
-        let result = google.query(parsed_query.as_str()).await?;
-
-        Ok(serde_json::to_value(result)?)
+            s => Err(anyhow!("SerpAPIError: unexpected returned status {}", s)),
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
