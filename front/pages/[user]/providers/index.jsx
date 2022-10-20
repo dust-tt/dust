@@ -7,6 +7,7 @@ import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
+import SerpApiSetup from "../../../components/providers/SerpApiSetup";
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
@@ -18,6 +19,7 @@ export default function ProfileProviders() {
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
+  const [serpApiOpen, setSerpApiOpen] = useState(false);
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
 
@@ -47,6 +49,12 @@ export default function ProfileProviders() {
           setOpen={setCohereOpen}
           enabled={configs["cohere"] ? true : false}
           config={configs["cohere"] ? configs["cohere"] : null}
+        />
+        <SerpApiSetup
+          open={serpApiOpen}
+          setOpen={setSerpApiOpen}
+          enabled={configs["serpapi"] ? true : false}
+          config={configs["serpapi"] ? configs["serpapi"] : null}
         />
 
         <div className="">
@@ -157,7 +165,16 @@ export default function ProfileProviders() {
                       </div>
                     </div>
                     <div>
-                      <Button disabled={!provider.built}>
+                      <Button
+                        disabled={!provider.built}
+                        onClick={() => {
+                          switch (provider.providerId) {
+                            case "serpapi":
+                              setSerpApiOpen(true);
+                              break;
+                          }
+                        }}
+                      >
                         {configs[provider.providerId]
                           ? "Edit"
                           : provider.built

@@ -105,6 +105,16 @@ export function addBlock(spec, blockType) {
         config: {},
       });
       break;
+    case "google_answer":
+      s.push({
+        type: "google_answer",
+        name: "GOOGLE_ANSWER",
+        spec: {
+          question: "How tall is the Empire State Building?",
+        },
+        config: {},
+      });
+      break;
     default:
       s.push({
         type: blockType,
@@ -243,6 +253,13 @@ export function dumpSpecification(spec, latestDatasets) {
       }
       case "reduce": {
         out += `reduce ${block.name} { }\n`;
+        out += "\n";
+        break;
+      }
+      case "google_answer": {
+        out += `google_answer ${block.name} {\n`;
+        out += `  question: \n\`\`\`\n${block.spec.question}\n\`\`\`\n`;
+        out += `}\n`;
         out += "\n";
         break;
       }

@@ -57,7 +57,7 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
-    GoogleAnswer,
+    Google_Answer,
 }
 
 impl ToString for BlockType {
@@ -69,7 +69,7 @@ impl ToString for BlockType {
             BlockType::LLM => String::from("llm"),
             BlockType::Map => String::from("map"),
             BlockType::Reduce => String::from("reduce"),
-            BlockType::GoogleAnswer => String::from("google_answer"),
+            BlockType::Google_Answer => String::from("google_answer"),
         }
     }
 }
@@ -84,7 +84,7 @@ impl FromStr for BlockType {
             "llm" => Ok(BlockType::LLM),
             "map" => Ok(BlockType::Map),
             "reduce" => Ok(BlockType::Reduce),
-            "google_answer" => Ok(BlockType::GoogleAnswer),
+            "google_answer" => Ok(BlockType::Google_Answer),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -147,7 +147,7 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
-        BlockType::GoogleAnswer => Ok(Box::new(GoogleAnswer::parse(block_pair)?)),
+        BlockType::Google_Answer => Ok(Box::new(GoogleAnswer::parse(block_pair)?)),
     }
 }
 

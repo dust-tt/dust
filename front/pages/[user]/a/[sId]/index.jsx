@@ -18,6 +18,7 @@ import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
+import GoogleAnswer from "../../../../components/app/blocks/GoogleAnswer";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
@@ -388,6 +389,23 @@ export default function App({ app, readOnly, user }) {
                       />
                     );
                     break;
+
+                  case "google_answer":
+                    return (
+                      <GoogleAnswer
+                        key={idx}
+                        block={block}
+                        user={user}
+                        app={app}
+                        status={status}
+                        running={runRequested || run?.status.run == "running"}
+                        readOnly={readOnly}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
 
                   default:
                     return (

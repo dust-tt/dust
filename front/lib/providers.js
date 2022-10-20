@@ -26,6 +26,7 @@ export const modelProviders = [
 ];
 
 export const serviceProviders = [
+  { providerId: "serpapi", name: "SerpApi", built: true, enabled: false },
   {
     providerId: "google_search",
     name: "Google Search",
@@ -76,6 +77,24 @@ export async function checkProvider(providerId, config) {
         let test = await testRes.json();
         return { ok: true };
       }
+      break;
+
+    case "serpapi":
+      // TODO (sashaa): SerpApi does not allow CORS requests from the front end
+      // so we need to proxy it through the backend, which we can do with code that looks
+      // like the commented out code below. for now, just assume it's right.
+      return { ok: true };
+
+      // let serpApiTestRes = await fetch(
+      //   `https://serpapi.com/search?q=dogs&engine=google&api_key=${config.api_key}`
+      // );
+      // if (!testRes.ok) {
+      //   let err = await testRes.json();
+      //   return { ok: false, error: err.message };
+      // } else {
+      //   let test = await testRes.json();
+      //   return { ok: true };
+      // }
       break;
 
     default:
@@ -164,6 +183,9 @@ export const credentialsFromProviders = (providers) => {
         break;
       case "cohere":
         credentials["COHERE_API_KEY"] = config.api_key;
+        break;
+      case "serpapi":
+        credentials["SERP_API_KEY"] = config.api_key;
         break;
     }
   });

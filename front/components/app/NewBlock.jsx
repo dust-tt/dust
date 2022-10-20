@@ -10,6 +10,7 @@ export default function NewBlock({ spec, disabled, onClick }) {
     { type: "llm", display: ["llm"] },
     { type: "code", display: ["code"] },
     { type: "map_reduce", display: ["map", "reduce"] },
+    { type: "google_answer", display: ["google answer"] },
   ];
   if (!containsInput) {
     blocks.splice(0, 0, { type: "input", display: ["input"] });

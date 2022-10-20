@@ -27,16 +27,16 @@ impl GoogleAnswer {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
                         "question" => question = Some(value),
-                        _ => Err(anyhow!("Unexpected `{}` in `googleanswer` block", key))?,
+                        _ => Err(anyhow!("Unexpected `{}` in `google_answer` block", key))?,
                     }
                 }
-                Rule::expected => Err(anyhow!("`expected` is not yet supported in `googleanswer` block"))?,
+                Rule::expected => Err(anyhow!("`expected` is not yet supported in `google_answer` block"))?,
                 _ => unreachable!(),
             }
         }
 
         if !question.is_some() {
-            Err(anyhow!("Missing required `question` in `googleanswer` block"))?;
+            Err(anyhow!("Missing required `question` in `google_answer` block"))?;
         }
 
         Ok(GoogleAnswer {
@@ -59,7 +59,7 @@ struct SerpApiResult {
 #[async_trait]
 impl Block for GoogleAnswer {
     fn block_type(&self) -> BlockType {
-        BlockType::GoogleAnswer
+        BlockType::Google_Answer
     }
 
     fn inner_hash(&self) -> String {
