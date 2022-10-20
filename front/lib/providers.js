@@ -43,61 +43,13 @@ export const serviceProviders = [
 ];
 
 export async function checkProvider(providerId, config) {
-  switch (providerId) {
-    case "openai":
-      let modelsRes = await fetch("https://api.openai.com/v1/models", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${config.api_key}`,
-        },
-      });
-      if (!modelsRes.ok) {
-        let err = await modelsRes.json();
-        return { ok: false, error: err.error.code };
-      } else {
-        let models = await modelsRes.json();
-        return { ok: true };
-      }
-      break;
-
-    case "cohere":
-      let testRes = await fetch("https://api.cohere.ai/tokenize", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.api_key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: "Hello World" }),
-      });
-      if (!testRes.ok) {
-        let err = await testRes.json();
-        return { ok: false, error: err.message };
-      } else {
-        let test = await testRes.json();
-        return { ok: true };
-      }
-      break;
-
-    case "serpapi":
-      return { ok: true };
-      let testSearch = await fetch(
-        `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
-        {
-          method: "GET",
-        }
-      );
-      if (!testSearch.ok) {
-        let err = await testSearch.json();
-        return { ok: false, error: err.message };
-      } else {
-        let test = await testSearch.json();
-        return { ok: true };
-      }
-      break;
-
-    default:
-      return { ok: false, error: "Provider not built" };
-      break;
+  try {
+    const result = await fetch(
+      `/api/providers/${providerId}/check?config=${JSON.stringify(config)}`
+    );
+    return await result.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
   }
 }
 
