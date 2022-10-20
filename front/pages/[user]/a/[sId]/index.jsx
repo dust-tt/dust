@@ -17,6 +17,7 @@ import Input from "../../../../components/app/blocks/Input";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
+import Search from "../../../../components/app/blocks/Search";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
@@ -374,6 +375,22 @@ export default function App({ app, readOnly, user }) {
                   case "reduce":
                     return (
                       <Reduce
+                        key={idx}
+                        block={block}
+                        user={user}
+                        app={app}
+                        status={status}
+                        running={runRequested || run?.status.run == "running"}
+                        readOnly={readOnly}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
+                  case "search":
+                   return (
+                      <Search
                         key={idx}
                         block={block}
                         user={user}

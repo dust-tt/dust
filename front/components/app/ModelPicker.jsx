@@ -140,7 +140,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                 )}
               >
                 <div className="py-1">
-                  {providers.map((p) => {
+                  {modelProviders.map((p) => {
                     return (
                       <Menu.Item
                         key={p.providerId}

@@ -29,7 +29,7 @@ export const serviceProviders = [
   {
     providerId: "google_search",
     name: "Google Search",
-    built: false,
+    built: true,
     enabled: false,
   },
   {
@@ -74,6 +74,22 @@ export async function checkProvider(providerId, config) {
         return { ok: false, error: err.message };
       } else {
         let test = await testRes.json();
+        return { ok: true };
+      }
+      break;
+
+    case "google_search":
+      let testSearch = await fetch(
+        `https://www.googleapis.com/customsearch/v1?cx=${config.search_engine_id}&q=hello&key=${config.api_key}`,
+        {
+          method: "GET",
+        }
+      );
+      if (!testSearch.ok) {
+        let err = await testSearch.json();
+        return { ok: false, error: err.message };
+      } else {
+        let test = await testSearch.json();
         return { ok: true };
       }
       break;
@@ -164,6 +180,10 @@ export const credentialsFromProviders = (providers) => {
         break;
       case "cohere":
         credentials["COHERE_API_KEY"] = config.api_key;
+        break;
+      case "google_search":
+        credentials["GOOGLE_API_KEY"] = config.api_key;
+        credentials["SEARCH_ENGINE_ID"] = config.search_engine_id;
         break;
     }
   });

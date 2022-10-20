@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 use std::str::FromStr;
 use std::time::Duration;
+use urlencoding::encode;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 pub enum ProviderID {
@@ -18,7 +19,7 @@ pub enum ProviderID {
 impl ToString for ProviderID {
     fn to_string(&self) -> String {
         match self {
-            ProviderID::Google => String::from("google"),
+            ProviderID::Google => String::from("google_search"),
         }
     }
 }
@@ -27,7 +28,7 @@ impl FromStr for ProviderID {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "google" => Ok(ProviderID::Google),
+            "google_search" => Ok(ProviderID::Google),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID (possible values: google)",
             ))?,
@@ -74,7 +75,7 @@ impl GoogleSearch {
         Ok(format!(
             "https://www.googleapis.com/customsearch/v1?cx={}&q={}&key={}",
             self.search_engine_id.clone().unwrap(),
-            q,
+            encode(&q),
             self.api_key.clone().unwrap(),
         )
         .parse::<Uri>()?)
@@ -143,7 +144,7 @@ impl GoogleSearch {
                         html_title: item["htmlTitle"].as_str().unwrap().to_string(),
                         snippet: item["snippet"].as_str().unwrap().to_string(),
                         html_snippet: item["htmlSnippet"].as_str().unwrap().to_string(),
-                        provider: "google".to_string(),
+                        provider: "google_search".to_string(),
                     })
                     .collect::<Vec<SearchResult>>();
 
@@ -173,7 +174,7 @@ impl GoogleSearch {
         Ok(SearchResponse {
             created: utils::now(),
             items: response,
-            provider: "google".to_string(),
+            provider: "google_search".to_string(),
             query: q.to_string(),
         })
     }

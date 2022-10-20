@@ -8,7 +8,9 @@ use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use pest::iterators::Pair;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
@@ -147,5 +149,119 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
         BlockType::Search => Ok(Box::new(Search::parse(block_pair)?)),
+    }
+}
+
+pub fn find_variables(text: &str) -> Vec<(String, String)> {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+    }
+
+    RE.captures_iter(text)
+        .map(|c| {
+            let name = c.name("name").unwrap().as_str();
+            let key = c.name("key").unwrap().as_str();
+            println!("{} {}", name, key);
+            (String::from(name), String::from(key))
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
+    let variables = find_variables(text);
+
+    let mut prompt = text.to_string();
+
+    variables
+        .iter()
+        .map(|(name, key)| {
+            // Check that the block output exists and is an object.
+            let output = env
+                .state
+                .get(name)
+                .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
+            if !output.is_object() {
+                Err(anyhow!(
+                    "Block `{}` output is not an object, the blocks output referred in \
+                     `prompt` must be objects",
+                    name
+                ))?;
+            }
+            let output = output.as_object().unwrap();
+
+            if !output.contains_key(key) {
+                Err(anyhow!(
+                    "Key `{}` is not present in block `{}` output",
+                    key,
+                    name
+                ))?;
+            }
+            // Check that output[key] is a string.
+            if !output.get(key).unwrap().is_string() {
+                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
+            }
+            prompt = prompt.replace(
+                &format!("${{{}.{}}}", name, key),
+                &output[key].as_str().unwrap(),
+            );
+
+            Ok(())
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(prompt)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blocks::block::InputState;
+    use crate::project::Project;
+    use crate::run::{Credentials, RunConfig};
+    use crate::stores::sqlite::SQLiteStore;
+    use std::collections::HashMap;
+
+    #[test]
+    fn find_variables_test() -> Result<()> {
+        assert_eq!(
+            find_variables("QUESTION: ${RETRIEVE.question}\nANSWER: ${DATA.answer}"),
+            vec![
+                ("RETRIEVE".to_string(), "question".to_string()),
+                ("DATA".to_string(), "answer".to_string()),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn replace_variables_in_string_test() -> Result<()> {
+        let env = Env {
+            config: RunConfig {
+                blocks: HashMap::new(),
+            },
+            state: serde_json::from_str(
+                r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
+            )
+            .unwrap(),
+            input: InputState {
+                value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
+                index: 0,
+            },
+            map: None,
+            project: Project::new_from_id(1),
+            store: Box::new(SQLiteStore::new_in_memory()?),
+            credentials: Credentials::new(),
+        };
+        assert_eq!(
+            replace_variables_in_string(
+                r#"QUESTION: ${RETRIEVE.question} ANSWER: ${DATA.answer}"#,
+                &env
+            )?,
+            r#"QUESTION: What is your name? ANSWER: John"#.to_string()
+        );
+
+        Ok(())
     }
 }

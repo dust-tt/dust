@@ -74,6 +74,19 @@ export function addBlock(spec, blockType) {
         config: {},
       });
       break;
+    case "search":
+      s.push({
+        type: "search",
+        name: getNextName(spec, "SEARCH"),
+        indent: 0,
+        spec: {
+          query: "",
+        },
+        config: {
+          provider_id: "",
+        },
+      });
+      break;
     case "llm":
       s.push({
         type: "llm",
@@ -244,6 +257,15 @@ export function dumpSpecification(spec, latestDatasets) {
       case "reduce": {
         out += `reduce ${block.name} { }\n`;
         out += "\n";
+        break;
+      }
+
+      case "search": {
+        out += `search ${block.name} {\n`;
+        out += `query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
+        out += `}\n`;
+        out += "\n";
+        debugger;
         break;
       }
     }

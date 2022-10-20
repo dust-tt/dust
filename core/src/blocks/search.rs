@@ -1,6 +1,6 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
 use crate::providers::google::{GoogleSearch, ProviderID};
-use crate::Rule;
+use crate::{utils, Rule};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
@@ -98,7 +98,9 @@ impl Block for Search {
             ProviderID::Google => GoogleSearch::new(),
         };
         google.initialize(env.credentials.clone()).await?;
-        let result = google.query(self.query.as_str()).await?;
+        let parsed_query = replace_variables_in_string(&self.query, &env)?;
+
+        let result = google.query(parsed_query.as_str()).await?;
 
         Ok(serde_json::to_value(result)?)
     }
