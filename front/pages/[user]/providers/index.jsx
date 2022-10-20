@@ -160,7 +160,9 @@ export default function ProfileProviders() {
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          {provider.enabled ? "enabled" : "disabled"}
+                          {configs[provider.providerId]
+                            ? "enabled"
+                            : "disabled"}
                         </p>
                       </div>
                     </div>
