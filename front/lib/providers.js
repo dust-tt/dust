@@ -80,7 +80,7 @@ export async function checkProvider(providerId, config) {
 
     case "serpapi":
       let testSearch = await fetch(
-        `https://serpapi.com/search.json?engine=google&q=Coffee&api_key=${config.api_key}`,
+        `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
         {
           method: "GET",
         }

@@ -52,7 +52,7 @@ export default function ProfileProviders() {
           config={configs["cohere"] ? configs["cohere"] : null}
         />
         <SerpAPISetup
-          open={googleOpen}
+          open={serpapiOpen}
           setOpen={setSerpapiOpen}
           enabled={configs["serpapi"] ? true : false}
           config={configs["serpapi"] ? configs["serpapi"] : null}
