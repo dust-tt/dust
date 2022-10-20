@@ -79,6 +79,7 @@ export async function checkProvider(providerId, config) {
       break;
 
     case "serpapi":
+      return { ok: true };
       let testSearch = await fetch(
         `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
         {
@@ -181,9 +182,8 @@ export const credentialsFromProviders = (providers) => {
       case "cohere":
         credentials["COHERE_API_KEY"] = config.api_key;
         break;
-      case "google_search":
-        credentials["GOOGLE_API_KEY"] = config.api_key;
-        credentials["SEARCH_ENGINE_ID"] = config.search_engine_id;
+      case "serpapi":
+        credentials["SERP_API_KEY"] = config.api_key;
         break;
     }
   });
