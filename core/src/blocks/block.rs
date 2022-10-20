@@ -16,9 +16,6 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
-use lazy_static::lazy_static;
-use regex::Regex;
-
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -214,22 +211,6 @@ pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
         .collect::<Result<Vec<_>>>()?;
 
     Ok(result)
-}
-
-pub fn find_variables(text: &str) -> Vec<(String, String)> {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
-    }
-
-    RE.captures_iter(text)
-        .map(|c| {
-            let name = c.name("name").unwrap().as_str();
-            let key = c.name("key").unwrap().as_str();
-            // println!("{} {}", name, key);
-            (String::from(name), String::from(key))
-        })
-        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
