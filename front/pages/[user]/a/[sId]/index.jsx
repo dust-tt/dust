@@ -402,10 +402,29 @@ export default function App({ app, readOnly, user }) {
                 <div className="px-2 max-w-4xl mt-4 text-sm text-gray-400">
                   <p className="">
                     To get started we recommend you review Dust's{" "}
-                    <a href="/readme" target="_blank" className="font-bold">
+                    <a
+                      href="/readme"
+                      target="_blank"
+                      className="font-bold text-violet-500 underline"
+                    >
                       README
                     </a>{" "}
-                    and/or explore an example Dust app.
+                    and/or explore a{" "}
+                    <a
+                      href="https://dust.tt/spolu/a/d12ac33169"
+                      className="font-bold text-violet-500 underline"
+                      target="_blank"
+                    >
+                      working
+                    </a>{" "}
+                    <a
+                      href="https://dust.tt/bcmejla/a/cc20d98f70"
+                      className="font-bold text-violet-500 underline"
+                      target="_blank"
+                    >
+                      example
+                    </a>
+                    .
                   </p>
                   <p className="py-2">
                     When ready, start adding blocks to your app.
