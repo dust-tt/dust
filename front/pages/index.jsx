@@ -1,12 +1,14 @@
 import Head from "next/head";
+import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
 import { ActionButton, Button } from "../components/Button";
 import { Logo } from "../components/Logo";
-
 import { CheckIcon } from "@heroicons/react/24/outline";
+
+const { GA_TRACKING_ID } = process.env;
 
 const features = [
   {
@@ -161,6 +163,21 @@ export default function Home() {
             AI Grant
           </a>
         </div>
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+             window.dataLayer = window.dataLayer || [];
+             function gtag(){window.dataLayer.push(arguments);}
+             gtag('js', new Date());
+
+             gtag('config', '${GA_TRACKING_ID}');
+            `}
+          </Script>
+        </>
       </main>
     </>
   );

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Head from "next/head";
+import Script from "next/script";
 import Link from "next/link";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
@@ -8,6 +9,8 @@ import { classNames } from "../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "../Button";
 import { signIn } from "next-auth/react";
+
+const { GA_TRACKING_ID } = process.env;
 
 export default function AppLayout({ app, children }) {
   const { data: session } = useSession();
@@ -218,6 +221,21 @@ export default function AppLayout({ app, children }) {
         )}
       </Disclosure>
       <div className="mt-0">{children}</div>
+      <>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){window.dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', '${GA_TRACKING_ID}');
+          `}
+        </Script>
+      </>
     </main>
   );
 }

@@ -55,11 +55,10 @@
 - [x] fix map reduce
 - [x] twitter card
 - [x] initial demo 1 (math to code)
-- [ ] google analytics
-- [ ] initial demo 2 (TBD)
 
 ## P1 (rapid follow-up)
 
+- [x] google analytics
 - [x] search block
 - [ ] while block
 - [ ] demo 2: self-ask / react
