@@ -137,7 +137,7 @@ impl LLM {
 
         // Check that all the keys are present in the block output.
         for key in keys {
-            if !output[0].as_object().unwrap().contains_key(&key) {
+            if output.len() > 0 && !output[0].as_object().unwrap().contains_key(&key) {
                 Err(anyhow!(
                     "Key `{}` is not present in block `{}` output objects",
                     key,
@@ -145,12 +145,13 @@ impl LLM {
                 ))?;
             }
             // Check that output[0][key] is a string.
-            if !output[0]
-                .as_object()
-                .unwrap()
-                .get(&key)
-                .unwrap()
-                .is_string()
+            if output.len() > 0
+                && !output[0]
+                    .as_object()
+                    .unwrap()
+                    .get(&key)
+                    .unwrap()
+                    .is_string()
             {
                 Err(anyhow!("`{}.{}` is not a string", name, key,))?;
             }
