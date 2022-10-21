@@ -10,9 +10,7 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "../Button";
 import { signIn } from "next-auth/react";
 
-const { GA_TRACKING_ID } = process.env;
-
-export default function AppLayout({ app, children }) {
+export default function AppLayout({ app, ga_tracking_id, children }) {
   const { data: session } = useSession();
 
   const router = useRouter();
@@ -223,7 +221,7 @@ export default function AppLayout({ app, children }) {
       <div className="mt-0">{children}</div>
       <>
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -232,7 +230,7 @@ export default function AppLayout({ app, children }) {
           function gtag(){window.dataLayer.push(arguments);}
           gtag('js', new Date());
 
-          gtag('config', '${GA_TRACKING_ID}');
+          gtag('config', '${ga_tracking_id}');
           `}
         </Script>
       </>

@@ -24,7 +24,7 @@ import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
 let saveTimeout = null;
 
@@ -63,7 +63,7 @@ const isRunnable = (readOnly, spec, config) => {
   return true;
 };
 
-export default function App({ app, readOnly, user }) {
+export default function App({ app, readOnly, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
@@ -215,6 +215,7 @@ export default function App({ app, readOnly, user }) {
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
+      ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
@@ -389,7 +390,7 @@ export default function App({ app, readOnly, user }) {
                       />
                     );
                   case "search":
-                   return (
+                    return (
                       <Search
                         key={idx}
                         block={block}
@@ -485,6 +486,12 @@ export async function getServerSideProps(context) {
   const [app] = await Promise.all([appRes.json()]);
 
   return {
-    props: { session, app: app.app, readOnly, user: context.query.user },
+    props: {
+      session,
+      app: app.app,
+      readOnly,
+      user: context.query.user,
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }

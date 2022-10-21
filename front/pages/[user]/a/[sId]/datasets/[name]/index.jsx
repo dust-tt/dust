@@ -9,7 +9,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
 import DatasetView from "../../../../../../components/app/DatasetView";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
 export default function ViewDatasetView({
   app,
@@ -17,6 +17,7 @@ export default function ViewDatasetView({
   dataset,
   user,
   readOnly,
+  ga_tracking_id,
 }) {
   const { data: session } = useSession();
 
@@ -50,6 +51,7 @@ export default function ViewDatasetView({
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
+      ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
@@ -150,6 +152,7 @@ export async function getServerSideProps(context) {
       dataset: dataset.dataset,
       user: context.query.user,
       readOnly,
+      ga_tracking_id: GA_TRACKING_ID,
     },
   };
 }

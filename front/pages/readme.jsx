@@ -14,7 +14,7 @@ function Block({ type }) {
   );
 }
 
-export default function Readme() {
+export default function Readme({ ga_tracking_id }) {
   return (
     <>
       <Head>
@@ -208,7 +208,7 @@ export default function Readme() {
         </div>
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
             strategy="afterInteractive"
           />
           <Script id="google-analytics" strategy="afterInteractive">
@@ -217,7 +217,7 @@ export default function Readme() {
              function gtag(){window.dataLayer.push(arguments);}
              gtag('js', new Date());
 
-             gtag('config', '${GA_TRACKING_ID}');
+             gtag('config', '${ga_tracking_id}');
             `}
           </Script>
         </>
@@ -234,6 +234,6 @@ export async function getServerSideProps(context) {
   );
 
   return {
-    props: { session },
+    props: { session, ga_tracking_id: GA_TRACKING_ID },
   };
 }

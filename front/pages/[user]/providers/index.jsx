@@ -13,9 +13,9 @@ import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
-export default function ProfileProviders() {
+export default function ProfileProviders({ ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function ProfileProviders() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab current_tab="Providers" />
@@ -222,6 +222,6 @@ export async function getServerSideProps(context) {
   }
 
   return {
-    props: { session },
+    props: { session, ga_tracking_id: GA_TRACKING_ID },
   };
 }
