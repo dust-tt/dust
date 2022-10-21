@@ -247,7 +247,11 @@ export function dumpSpecification(spec, latestDatasets) {
       case "map": {
         out += `map ${block.name} {\n`;
         out += `  from: ${block.spec.from}\n`;
-        if (block.spec.repeat !== undefined && block.spec.repeat !== null) {
+        if (
+          block.spec.repeat !== undefined &&
+          block.spec.repeat !== null &&
+          block.spec.repeat.length > 0
+        ) {
           out += `  repeat: ${block.spec.repeat}\n`;
         }
         out += `}\n`;
