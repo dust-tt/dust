@@ -82,7 +82,9 @@ export function addBlock(spec, blockType) {
         spec: {
           query: "",
         },
-        config: {},
+        config: {
+          provider_id: "",
+        },
       });
       break;
     case "llm":

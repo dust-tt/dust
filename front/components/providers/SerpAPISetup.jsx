@@ -93,8 +93,9 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        To use SerpAPI Search you must provide your API key, It
-                        can be found{" "}
+                        SerpAPI lets you search Google (and other search
+                        engines). To use SerpAPI you must provide your API key.
+                        It can be found{" "}
                         <a
                           className="text-violet-600 hover:text-violet-500 font-bold"
                           href="https://serpapi.com/manage-api-key"
