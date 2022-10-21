@@ -162,13 +162,13 @@ pub fn find_variables(text: &str) -> Vec<(String, String)> {
         .map(|c| {
             let name = c.name("name").unwrap().as_str();
             let key = c.name("key").unwrap().as_str();
-            println!("{} {}", name, key);
+            // println!("{} {}", name, key);
             (String::from(name), String::from(key))
         })
         .collect::<Vec<_>>()
 }
 
-pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
+pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
     let variables = find_variables(text);
 
     let mut result = text.to_string();
@@ -183,9 +183,11 @@ pub fn replace_variables_in_string(text: &str, env: &Env) -> Result<String> {
                 .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
             if !output.is_object() {
                 Err(anyhow!(
-                    "Block `{}` output is not an object, the block outputs referred in \
-                     later blocks as variables must be objects",
-                    name
+                    "Block `{}` output is not an object, the output of `{}` referred to \
+                     as a variable in `{}` must be an object",
+                    name,
+                    name,
+                    field
                 ))?;
             }
             let output = output.as_object().unwrap();
@@ -257,6 +259,7 @@ mod tests {
         assert_eq!(
             replace_variables_in_string(
                 r#"QUESTION: ${RETRIEVE.question} ANSWER: ${DATA.answer}"#,
+                "foo",
                 &env
             )?,
             r#"QUESTION: What is your name? ANSWER: John"#.to_string()

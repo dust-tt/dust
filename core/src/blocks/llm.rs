@@ -170,16 +170,16 @@ impl LLM {
     }
 
     fn replace_prompt_variables(text: &str, env: &Env) -> Result<String> {
-        replace_variables_in_string(text, env)
+        replace_variables_in_string(text, "prompt", env)
     }
 
     fn prompt(&self, env: &Env) -> Result<String> {
         // Initialize a mutable prompt String.
         let mut prompt = String::new();
 
-        // If there is a few_shot_preprompt add it to the prompt.
+        // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.
         if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
-            prompt.push_str(few_shot_preprompt);
+            prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
         }
 
         // If `few_shot_prompt` is defined check that `few_shot_count` and add few shots to the

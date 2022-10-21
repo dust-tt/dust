@@ -82,7 +82,7 @@ impl Block for Search {
     }
 
     async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
-        let query = replace_variables_in_string(&self.query, env)?;
+        let query = replace_variables_in_string(&self.query, "query", env)?;
 
         let serp_api_key = match env.credentials.get("SERP_API_KEY") {
             Some(api_key) => Ok(api_key.clone()),
