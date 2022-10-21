@@ -45,7 +45,7 @@ impl Search {
 
         if !query.is_some() {
             Err(anyhow!(
-                "Missing required `question` in `googleanswer` block"
+                "Missing required `query` in `search` block"
             ))?;
         }
 
