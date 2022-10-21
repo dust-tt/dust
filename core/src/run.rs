@@ -50,6 +50,7 @@ impl RunConfig {
             BlockType::LLM => 8,
             BlockType::Map => 64,
             BlockType::Reduce => 64,
+            BlockType::Search => 8,
         }
     }
 }

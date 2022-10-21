@@ -54,7 +54,7 @@ const features = [
     name: "Models that act",
     built: false,
     description:
-      "Integrations to build apps that take action: search Google, write to Notion...",
+      "Integrations to build apps that take action: search Google (available now), write to Notion...",
   },
 ];
 

@@ -4,11 +4,9 @@
 - [x] move storage to sqlite for cli
 - [x] ensure there is no (type, name) duplicate
 - [x] extend sqlite functional tests
-- [ ] options block
+- [ ] block options
 - [ ] if/end block
 - [ ] while block
-- [ ] eval block
-- [ ] interrupt only affected inputs on error
 
 ## api
 
@@ -18,7 +16,7 @@
   - [x] run status (updated in DB as we make progress)
   - [x] incremental run ceation in DB
   - [x] APIState pointers to runs in progress
-- [ ] Postgres Store
+- [x] Postgres Store
 
 ## cli
 
@@ -56,17 +54,18 @@
 - [x] fix #11 #17 #18
 - [x] fix map reduce
 - [x] twitter card
+- [x] initial demo 1 (math to code)
 - [ ] google analytics
-- [ ] initial demo 1 (math to code)
 - [ ] initial demo 2 (TBD)
 
 ## P1 (rapid follow-up)
 
+- [x] search block
 - [ ] while block
-- [ ] google block
 - [ ] demo 2: self-ask / react
 - [ ] edit/Delete app
-- [ ] clone app
+- [ ] fork app
+- [ ] copy dataset to app
 - [ ] if/then block
 - [ ] dataset iteration: upload, item list, save on update
 

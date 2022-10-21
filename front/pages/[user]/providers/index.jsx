@@ -7,6 +7,8 @@ import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
+import SerpAPISetup from "../../../components/providers/SerpAPISetup";
+
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
@@ -18,6 +20,7 @@ export default function ProfileProviders() {
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
+  const [serpapiOpen, setSerpapiOpen] = useState(false);
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
 
@@ -47,6 +50,12 @@ export default function ProfileProviders() {
           setOpen={setCohereOpen}
           enabled={configs["cohere"] ? true : false}
           config={configs["cohere"] ? configs["cohere"] : null}
+        />
+        <SerpAPISetup
+          open={serpapiOpen}
+          setOpen={setSerpapiOpen}
+          enabled={configs["serpapi"] ? true : false}
+          config={configs["serpapi"] ? configs["serpapi"] : null}
         />
 
         <div className="">
@@ -152,12 +161,23 @@ export default function ProfileProviders() {
                               : "bg-gray-100 text-gray-800"
                           )}
                         >
-                          {provider.enabled ? "enabled" : "disabled"}
+                          {configs[provider.providerId]
+                            ? "enabled"
+                            : "disabled"}
                         </p>
                       </div>
                     </div>
                     <div>
-                      <Button disabled={!provider.built}>
+                      <Button
+                        disabled={!provider.built}
+                        onClick={() => {
+                          switch (provider.providerId) {
+                            case "serpapi":
+                              setSerpapiOpen(true);
+                              break;
+                          }
+                        }}
+                      >
                         {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
