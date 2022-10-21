@@ -262,10 +262,9 @@ export function dumpSpecification(spec, latestDatasets) {
 
       case "search": {
         out += `search ${block.name} {\n`;
-        out += `query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
+        out += `  query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
-        debugger;
         break;
       }
     }

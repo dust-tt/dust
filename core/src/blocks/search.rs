@@ -12,7 +12,7 @@ use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
-    pub message: String,
+    pub error: String,
 }
 
 #[derive(Clone)]
@@ -44,9 +44,7 @@ impl Search {
         }
 
         if !query.is_some() {
-            Err(anyhow!(
-                "Missing required `query` in `search` block"
-            ))?;
+            Err(anyhow!("Missing required `query` in `search` block"))?;
         }
 
         Ok(Search {
@@ -111,16 +109,24 @@ impl Block for Search {
 
         let res = cli.request(req).await?;
 
-        match res.status() {
+        let status = res.status();
+
+        let body = hyper::body::aggregate(res).await?;
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
+
+        match status {
             hyper::StatusCode::OK => {
-                let body = hyper::body::aggregate(res).await?;
-                let mut b: Vec<u8> = vec![];
-                body.reader().read_to_end(&mut b)?;
-                let c: &[u8] = &b;
                 let raw: serde_json::Value = serde_json::from_slice(c)?;
                 Ok(raw)
             }
-            s => Err(anyhow!("SerpAPIError: unexpected returned status {}", s)),
+            s => {
+                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                    error: format!("Unexpected error with HTTP status {}", s),
+                });
+                Err(anyhow!("SerpAPIError: {}", error.error))
+            }
         }
     }
 
