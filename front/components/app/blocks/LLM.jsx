@@ -175,6 +175,12 @@ export default function LLM({
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     readOnly={readOnly}
+                    onBlur={(e) => {
+                      if (e.target.value.trim().length > 0) {
+                        handleAddStop(e.target.value);
+                        e.preventDefault();
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
