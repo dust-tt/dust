@@ -8,9 +8,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
-export default function New({ apps }) {
+export default function New({ apps, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
@@ -41,7 +41,7 @@ export default function New({ apps }) {
   }, [appName]);
 
   return (
-    <AppLayout>
+    <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab current_tab="Apps" />
@@ -254,6 +254,6 @@ export async function getServerSideProps(context) {
   const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: apps.apps },
+    props: { session, apps: apps.apps, ga_tracking_id: GA_TRACKING_ID },
   };
 }

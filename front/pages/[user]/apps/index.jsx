@@ -8,13 +8,13 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { classNames } from "../../../lib/utils";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
-export default function Home({ apps, readOnly, user }) {
+export default function Home({ apps, readOnly, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
   return (
-    <AppLayout>
+    <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab current_tab="Apps" user={user} readOnly={readOnly} />
@@ -86,7 +86,9 @@ export default function Home({ apps, readOnly, user }) {
                             <span className="font-bold">{user}</span> has not
                             created any apps yet 🙃
                           </p>
-                          <p className="mt-2">Sign-in to create your own app.</p>
+                          <p className="mt-2">
+                            Sign-in to create your own app.
+                          </p>
                         </>
                       ) : (
                         <p>
@@ -134,6 +136,12 @@ export async function getServerSideProps(context) {
   const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: apps.apps, readOnly, user: context.query.user },
+    props: {
+      session,
+      apps: apps.apps,
+      readOnly,
+      user: context.query.user,
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }

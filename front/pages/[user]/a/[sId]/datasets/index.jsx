@@ -9,9 +9,15 @@ import { useSession } from "next-auth/react";
 import { classNames } from "../../../../../lib/utils";
 import Router from "next/router";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
-export default function DatasetsView({ app, datasets, user, readOnly }) {
+export default function DatasetsView({
+  app,
+  datasets,
+  user,
+  readOnly,
+  ga_tracking_id,
+}) {
   const { data: session } = useSession();
 
   const handleDelete = async (datasetName) => {
@@ -31,6 +37,7 @@ export default function DatasetsView({ app, datasets, user, readOnly }) {
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
+      ga_tracking_id={ga_tracking_id}
     >
       <div className="leadingflex flex-col">
         <div className="flex flex-initial mt-2">
@@ -171,6 +178,7 @@ export async function getServerSideProps(context) {
       datasets: datasets.datasets,
       readOnly,
       user: context.query.user,
+      ga_tracking_id: GA_TRACKING_ID,
     },
   };
 }

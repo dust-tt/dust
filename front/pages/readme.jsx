@@ -1,7 +1,10 @@
 import Head from "next/head";
+import Script from "next/script";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { Logo } from "../components/Logo";
+
+const { GA_TRACKING_ID } = process.env;
 
 function Block({ type }) {
   return (
@@ -11,7 +14,7 @@ function Block({ type }) {
   );
 }
 
-export default function Readme() {
+export default function Readme({ ga_tracking_id }) {
   return (
     <>
       <Head>
@@ -19,18 +22,34 @@ export default function Readme() {
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <main className="mx-12">
-        <Logo />
+      <main className="mx-4">
+        <div className="mx-8">
+          <Logo />
+        </div>
 
-        <div className="mx-4 mt-10 text-gray-800 text-justify">
+        <div className="mx-2 sm:mx-12 mt-10 text-gray-800 text-justify">
           <p className="font-bold my-8 text-xl">
             <span className="text-gray-200">#</span> Dust README
           </p>
           <p className="mb-4">
             Welcome to Dust! This README formally covers the basic concepts of
-            Dust apps. The easiest way to get started is to explore a working
-            example. You can then use this document as reference as you build
-            your first app.
+            Dust apps. The easiest way to get started is to explore a{" "}
+            <a
+              href="https://dust.tt/spolu/a/d12ac33169"
+              className="font-bold text-violet-600 underline"
+              target="_blank"
+            >
+              working
+            </a>{" "}
+            <a
+              href="https://dust.tt/bcmejla/a/cc20d98f70"
+              className="font-bold text-violet-600 underline"
+              target="_blank"
+            >
+              example
+            </a>
+            . You can then use this document as reference as you build your
+            first app.
           </p>
           <p className="mb-4">
             Dust apps are composed of blocks which are executed sequentially on
@@ -151,7 +170,26 @@ export default function Readme() {
           </p>
           <ul>
             <li className="my-4 mx-2">
-              <span className="font-mono">TODO(spolu)</span>
+              <span className="font-mono">
+                <a
+                  href="https://dust.tt/spolu/a/d12ac33169"
+                  className="font-bold text-violet-600 underline"
+                  target="_blank"
+                >
+                  Generate code to answer math questions
+                </a>{" "}
+              </span>
+            </li>
+            <li className="my-4 mx-2">
+              <span className="font-mono">
+                <a
+                  href="https://dust.tt/bcmejla/a/cc20d98f70"
+                  className="font-bold text-violet-600 underline"
+                  target="_blank"
+                >
+                  Automatic wedding thank you notes
+                </a>{" "}
+              </span>
             </li>
           </ul>
           <p className="mb-4">
@@ -159,7 +197,7 @@ export default function Readme() {
             it provides. Don't hesitate to join our{" "}
             <a
               href="https://discord.gg/8NJR3zQU5X"
-              className="font-bold text-violet-600"
+              className="font-bold text-violet-600 underline"
               target="_blank"
             >
               Discord server
@@ -168,6 +206,21 @@ export default function Readme() {
           </p>
           <div className="mt-10"></div>
         </div>
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+             window.dataLayer = window.dataLayer || [];
+             function gtag(){window.dataLayer.push(arguments);}
+             gtag('js', new Date());
+
+             gtag('config', '${ga_tracking_id}');
+            `}
+          </Script>
+        </>
       </main>
     </>
   );
@@ -181,6 +234,6 @@ export async function getServerSideProps(context) {
   );
 
   return {
-    props: { session },
+    props: { session, ga_tracking_id: GA_TRACKING_ID },
   };
 }

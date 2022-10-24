@@ -77,7 +77,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
         </div>
         <Menu as="div" className="relative inline-block text-left">
           <div>
-            {providers.length == 0 &&
+            {modelProviders.length == 0 &&
             !(model.provider_id && model.provider_id.length > 0) ? (
               <Link href={`/${user}/providers`}>
                 <a
@@ -140,7 +140,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                 )}
               >
                 <div className="py-1">
-                  {providers.map((p) => {
+                  {modelProviders.map((p) => {
                     return (
                       <Menu.Item
                         key={p.providerId}

@@ -7,19 +7,20 @@ import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
-import SerpApiSetup from "../../../components/providers/SerpApiSetup";
+import SerpAPISetup from "../../../components/providers/SerpAPISetup";
+
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
-export default function ProfileProviders() {
+export default function ProfileProviders({ ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
-  const [serpApiOpen, setSerpApiOpen] = useState(false);
+  const [serpapiOpen, setSerpapiOpen] = useState(false);
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
 
@@ -32,7 +33,7 @@ export default function ProfileProviders() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
           <MainTab current_tab="Providers" />
@@ -50,9 +51,9 @@ export default function ProfileProviders() {
           enabled={configs["cohere"] ? true : false}
           config={configs["cohere"] ? configs["cohere"] : null}
         />
-        <SerpApiSetup
-          open={serpApiOpen}
-          setOpen={setSerpApiOpen}
+        <SerpAPISetup
+          open={serpapiOpen}
+          setOpen={setSerpapiOpen}
           enabled={configs["serpapi"] ? true : false}
           config={configs["serpapi"] ? configs["serpapi"] : null}
         />
@@ -172,7 +173,7 @@ export default function ProfileProviders() {
                         onClick={() => {
                           switch (provider.providerId) {
                             case "serpapi":
-                              setSerpApiOpen(true);
+                              setSerpapiOpen(true);
                               break;
                           }
                         }}
@@ -221,6 +222,6 @@ export async function getServerSideProps(context) {
   }
 
   return {
-    props: { session },
+    props: { session, ga_tracking_id: GA_TRACKING_ID },
   };
 }

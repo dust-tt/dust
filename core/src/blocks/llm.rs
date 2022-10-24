@@ -1,12 +1,12 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, find_variables, Block, BlockType, Env};
+use crate::blocks::block::{
+    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env,
+};
 use crate::providers::llm::{LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use lazy_static::lazy_static;
 use pest::iterators::Pair;
-use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 use std::str::FromStr;
@@ -137,7 +137,7 @@ impl LLM {
 
         // Check that all the keys are present in the block output.
         for key in keys {
-            if !output[0].as_object().unwrap().contains_key(&key) {
+            if output.len() > 0 && !output[0].as_object().unwrap().contains_key(&key) {
                 Err(anyhow!(
                     "Key `{}` is not present in block `{}` output objects",
                     key,
@@ -145,12 +145,13 @@ impl LLM {
                 ))?;
             }
             // Check that output[0][key] is a string.
-            if !output[0]
-                .as_object()
-                .unwrap()
-                .get(&key)
-                .unwrap()
-                .is_string()
+            if output.len() > 0
+                && !output[0]
+                    .as_object()
+                    .unwrap()
+                    .get(&key)
+                    .unwrap()
+                    .is_string()
             {
                 Err(anyhow!("`{}.{}` is not a string", name, key,))?;
             }
@@ -170,16 +171,16 @@ impl LLM {
     }
 
     fn replace_prompt_variables(text: &str, env: &Env) -> Result<String> {
-        replace_variables_in_string(text, &"prompt", env)
+        replace_variables_in_string(text, "prompt", env)
     }
 
     fn prompt(&self, env: &Env) -> Result<String> {
         // Initialize a mutable prompt String.
         let mut prompt = String::new();
 
-        // If there is a few_shot_preprompt add it to the prompt.
+        // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.
         if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
-            prompt.push_str(few_shot_preprompt);
+            prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
         }
 
         // If `few_shot_prompt` is defined check that `few_shot_count` and add few shots to the

@@ -1,12 +1,16 @@
-use crate::blocks::{code::Code, data::Data, llm::LLM, map::Map, reduce::Reduce, input::Input, google_answer::GoogleAnswer};
+use crate::blocks::{
+    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search,
+};
 use crate::project::Project;
-use crate::run::{RunConfig, Credentials};
+use crate::run::{Credentials, RunConfig};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use pest::iterators::Pair;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
@@ -57,7 +61,7 @@ pub enum BlockType {
     LLM,
     Map,
     Reduce,
-    Google_Answer,
+    Search,
 }
 
 impl ToString for BlockType {
@@ -69,7 +73,7 @@ impl ToString for BlockType {
             BlockType::LLM => String::from("llm"),
             BlockType::Map => String::from("map"),
             BlockType::Reduce => String::from("reduce"),
-            BlockType::Google_Answer => String::from("google_answer"),
+            BlockType::Search => String::from("search"),
         }
     }
 }
@@ -84,7 +88,7 @@ impl FromStr for BlockType {
             "llm" => Ok(BlockType::LLM),
             "map" => Ok(BlockType::Map),
             "reduce" => Ok(BlockType::Reduce),
-            "google_answer" => Ok(BlockType::Google_Answer),
+            "search" => Ok(BlockType::Search),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -147,11 +151,27 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
-        BlockType::Google_Answer => Ok(Box::new(GoogleAnswer::parse(block_pair)?)),
+        BlockType::Search => Ok(Box::new(Search::parse(block_pair)?)),
     }
 }
 
-pub fn replace_variables_in_string(text: &str, argument_name: &str, env: &Env) -> Result<String> {
+pub fn find_variables(text: &str) -> Vec<(String, String)> {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+    }
+
+    RE.captures_iter(text)
+        .map(|c| {
+            let name = c.name("name").unwrap().as_str();
+            let key = c.name("key").unwrap().as_str();
+            // println!("{} {}", name, key);
+            (String::from(name), String::from(key))
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
     let variables = find_variables(text);
 
     let mut result = text.to_string();
@@ -166,10 +186,11 @@ pub fn replace_variables_in_string(text: &str, argument_name: &str, env: &Env) -
                 .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
             if !output.is_object() {
                 Err(anyhow!(
-                    "Block `{}` output is not an object, the blocks output referred in \
-                     `{}` must be objects",
-                    name, 
-                    argument_name
+                    "Block `{}` output is not an object, the output of `{}` referred to \
+                     as a variable in `{}` must be an object",
+                    name,
+                    name,
+                    field
                 ))?;
             }
             let output = output.as_object().unwrap();
@@ -197,22 +218,6 @@ pub fn replace_variables_in_string(text: &str, argument_name: &str, env: &Env) -
     Ok(result)
 }
 
-pub fn find_variables(text: &str) -> Vec<(String, String)> {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
-    }
-
-    RE.captures_iter(text)
-        .map(|c| {
-            let name = c.name("name").unwrap().as_str();
-            let key = c.name("key").unwrap().as_str();
-            // println!("{} {}", name, key);
-            (String::from(name), String::from(key))
-        })
-        .collect::<Vec<_>>()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,6 +235,37 @@ mod tests {
                 ("RETRIEVE".to_string(), "question".to_string()),
                 ("DATA".to_string(), "answer".to_string()),
             ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn replace_variables_in_string_test() -> Result<()> {
+        let env = Env {
+            config: RunConfig {
+                blocks: HashMap::new(),
+            },
+            state: serde_json::from_str(
+                r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
+            )
+            .unwrap(),
+            input: InputState {
+                value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
+                index: 0,
+            },
+            map: None,
+            project: Project::new_from_id(1),
+            store: Box::new(SQLiteStore::new_in_memory()?),
+            credentials: Credentials::new(),
+        };
+        assert_eq!(
+            replace_variables_in_string(
+                r#"QUESTION: ${RETRIEVE.question} ANSWER: ${DATA.answer}"#,
+                "foo",
+                &env
+            )?,
+            r#"QUESTION: What is your name? ANSWER: John"#.to_string()
         );
 
         Ok(())

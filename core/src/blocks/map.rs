@@ -80,15 +80,26 @@ impl Block for Map {
                             or `repeat` must be defined",
                         self.from
                     )),
-                    Some(_) => Ok(v.clone()),
+                    Some(arr) => match arr.len() {
+                        0 => Err(anyhow::anyhow!(
+                            "Map `from` block `{}` output must be a non-empty array",
+                            self.from
+                        )),
+                        _ => Ok(v.clone()),
+                    },
                 },
-                Some(repeat) => {
-                    let mut output = Vec::new();
-                    for _ in 0..repeat {
-                        output.push(v.clone());
+                Some(repeat) => match repeat {
+                    0 => Err(anyhow::anyhow!(
+                        "Map `repeat` must be a positive integer, got 0",
+                    )),
+                    _ => {
+                        let mut output = Vec::new();
+                        for _ in 0..repeat {
+                            output.push(v.clone());
+                        }
+                        Ok(Value::Array(output))
                     }
-                    Ok(Value::Array(output))
-                }
+                },
             },
         }
     }

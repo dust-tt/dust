@@ -74,6 +74,19 @@ export function addBlock(spec, blockType) {
         config: {},
       });
       break;
+    case "search":
+      s.push({
+        type: "search",
+        name: getNextName(spec, "SEARCH"),
+        indent: 0,
+        spec: {
+          query: "",
+        },
+        config: {
+          provider_id: "",
+        },
+      });
+      break;
     case "llm":
       s.push({
         type: "llm",
@@ -244,7 +257,11 @@ export function dumpSpecification(spec, latestDatasets) {
       case "map": {
         out += `map ${block.name} {\n`;
         out += `  from: ${block.spec.from}\n`;
-        if (block.spec.repeat !== undefined && block.spec.repeat !== null) {
+        if (
+          block.spec.repeat !== undefined &&
+          block.spec.repeat !== null &&
+          block.spec.repeat.length > 0
+        ) {
           out += `  repeat: ${block.spec.repeat}\n`;
         }
         out += `}\n`;
@@ -256,9 +273,10 @@ export function dumpSpecification(spec, latestDatasets) {
         out += "\n";
         break;
       }
-      case "google_answer": {
-        out += `google_answer ${block.name} {\n`;
-        out += `  question: \n\`\`\`\n${block.spec.question}\n\`\`\`\n`;
+
+      case "search": {
+        out += `search ${block.name} {\n`;
+        out += `  query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

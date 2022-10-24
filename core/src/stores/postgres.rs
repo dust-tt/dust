@@ -12,7 +12,7 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use tokio_postgres::NoTls;
+use tokio_postgres::{error::SqlState, NoTls};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -852,7 +852,7 @@ impl Store for PostgresStore {
         let created = generation.created as i64;
         let request_data = serde_json::to_string(&request)?;
         let generation_data = serde_json::to_string(&generation)?;
-        let _ = c
+        match c
             .query_one(
                 &stmt,
                 &[
@@ -863,9 +863,15 @@ impl Store for PostgresStore {
                     &generation_data,
                 ],
             )
-            .await?;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => match e.code() {
+                // The entry was inserted concurrently.
+                Some(&SqlState::UNIQUE_VIOLATION) => Ok(()),
+                _ => Err(e.into()),
+            },
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {

@@ -15,6 +15,12 @@ export function extractConfig(spec) {
           dataset: spec[i].config ? spec[i].config.dataset : "",
         };
         break;
+      case "search":
+        c[spec[i].name] = {
+          type: "search",
+          provider_id: spec[i].config ? spec[i].config.provider_id : "",
+        };
+        break;
     }
   }
   return c;

@@ -17,6 +17,7 @@ import Input from "../../../../components/app/blocks/Input";
 import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
+import Search from "../../../../components/app/blocks/Search";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import GoogleAnswer from "../../../../components/app/blocks/GoogleAnswer";
 import { extractConfig } from "../../../../lib/config";
@@ -24,7 +25,7 @@ import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 
-const { URL } = process.env;
+const { URL, GA_TRACKING_ID } = process.env;
 
 let saveTimeout = null;
 
@@ -63,7 +64,7 @@ const isRunnable = (readOnly, spec, config) => {
   return true;
 };
 
-export default function App({ app, readOnly, user }) {
+export default function App({ app, readOnly, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
@@ -215,6 +216,7 @@ export default function App({ app, readOnly, user }) {
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
+      ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
@@ -388,6 +390,22 @@ export default function App({ app, readOnly, user }) {
                         onBlockDown={() => handleMoveBlockDown(idx)}
                       />
                     );
+                  case "search":
+                    return (
+                      <Search
+                        key={idx}
+                        block={block}
+                        user={user}
+                        app={app}
+                        status={status}
+                        running={runRequested || run?.status.run == "running"}
+                        readOnly={readOnly}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
                     break;
 
                   case "google_answer":
@@ -420,10 +438,29 @@ export default function App({ app, readOnly, user }) {
                 <div className="px-2 max-w-4xl mt-4 text-sm text-gray-400">
                   <p className="">
                     To get started we recommend you review Dust's{" "}
-                    <a href="/readme" target="_blank" className="font-bold">
+                    <a
+                      href="/readme"
+                      target="_blank"
+                      className="font-bold text-violet-500 underline"
+                    >
                       README
                     </a>{" "}
-                    and/or explore an example Dust app.
+                    and/or explore a{" "}
+                    <a
+                      href="https://dust.tt/spolu/a/d12ac33169"
+                      className="font-bold text-violet-500 underline"
+                      target="_blank"
+                    >
+                      working
+                    </a>{" "}
+                    <a
+                      href="https://dust.tt/bcmejla/a/cc20d98f70"
+                      className="font-bold text-violet-500 underline"
+                      target="_blank"
+                    >
+                      example
+                    </a>
+                    .
                   </p>
                   <p className="py-2">
                     When ready, start adding blocks to your app.
@@ -467,6 +504,12 @@ export async function getServerSideProps(context) {
   const [app] = await Promise.all([appRes.json()]);
 
   return {
-    props: { session, app: app.app, readOnly, user: context.query.user },
+    props: {
+      session,
+      app: app.app,
+      readOnly,
+      user: context.query.user,
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }

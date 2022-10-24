@@ -1,12 +1,14 @@
 import Head from "next/head";
+import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
 import { ActionButton, Button } from "../components/Button";
 import { Logo } from "../components/Logo";
-
 import { CheckIcon } from "@heroicons/react/24/outline";
+
+const { GA_TRACKING_ID } = process.env;
 
 const features = [
   {
@@ -54,7 +56,7 @@ const features = [
     name: "Models that act",
     built: false,
     description:
-      "Integrations to build apps that take action: search Google, write to Notion...",
+      "Integrations to build apps that take action: search Google (available now), write to Notion...",
   },
 ];
 
@@ -100,7 +102,7 @@ function Features() {
   );
 }
 
-export default function Home() {
+export default function Home({ ga_tracking_id }) {
   return (
     <>
       <Head>
@@ -161,6 +163,21 @@ export default function Home() {
             AI Grant
           </a>
         </div>
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+             window.dataLayer = window.dataLayer || [];
+             function gtag(){window.dataLayer.push(arguments);}
+             gtag('js', new Date());
+
+             gtag('config', '${ga_tracking_id}');
+            `}
+          </Script>
+        </>
       </main>
     </>
   );
@@ -174,6 +191,6 @@ export async function getServerSideProps(context) {
   );
 
   return {
-    props: { session },
+    props: { session, ga_tracking_id: GA_TRACKING_ID },
   };
 }

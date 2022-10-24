@@ -169,7 +169,7 @@ export default function Output({ user, block, status, app }) {
     run.traces.length > 0 &&
     run.traces[0].length > 0 &&
     run.traces[0][1].length > 0 &&
-    !["map", "reduce"].includes(block.type)
+    !["reduce"].includes(block.type)
   ) {
     let traces = run.traces[0][1];
     return (
