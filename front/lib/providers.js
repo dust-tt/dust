@@ -26,7 +26,6 @@ export const modelProviders = [
 ];
 
 export const serviceProviders = [
-  { providerId: "serpapi", name: "SerpApi", built: true, enabled: false },
   {
     providerId: "serpapi",
     name: "SerpAPI (Google) Search",

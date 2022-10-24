@@ -118,16 +118,6 @@ export function addBlock(spec, blockType) {
         config: {},
       });
       break;
-    case "google_answer":
-      s.push({
-        type: "google_answer",
-        name: "GOOGLE_ANSWER",
-        spec: {
-          question: "How tall is the Empire State Building?",
-        },
-        config: {},
-      });
-      break;
     default:
       s.push({
         type: blockType,
