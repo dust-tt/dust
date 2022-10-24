@@ -4,10 +4,11 @@ import { Button } from "../../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
-import Router from "next/router";
+import Router, { useRouter } from "next/router";
 import DatasetView from "../../../../../../components/app/DatasetView";
+import { useBeforeunload } from "react-beforeunload";
 
 const { URL, GA_TRACKING_ID } = process.env;
 
@@ -23,12 +24,35 @@ export default function ViewDatasetView({
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [isFinishedEditing, setIsFinishedEditing] = useState(false);
   const [updatedDataset, setUpdatedDataset] = useState(dataset);
 
-  const onUpdate = (valid, dataset) => {
+  useRegisterUnloadHandlers(editorDirty);
+
+  // this is a little wonky, but in order to redirect to the datasets main page and not
+  // pop up the "You have unsaved changes" dialog, we need to set editorDirty to false
+  // and then do the router redirect in the next render cycle. We use the isFinishedEditing
+  // state variable to tell us when this should happen.
+  useEffect(() => {
+    if (isFinishedEditing) {
+      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    }
+  }, [isFinishedEditing]);
+
+  const onUpdate = (valid, currentDatasetInEditor) => {
     setDisabled(!valid);
+    if (
+      currentDatasetInEditor.data !== dataset.data ||
+      currentDatasetInEditor.name !== dataset.name ||
+      currentDatasetInEditor.description !== dataset.description
+    ) {
+      setEditorDirty(true);
+    } else {
+      setEditorDirty(false);
+    }
     if (valid) {
-      setUpdatedDataset(dataset);
+      setUpdatedDataset(currentDatasetInEditor);
     }
   };
 
@@ -45,7 +69,8 @@ export default function ViewDatasetView({
       }
     );
     const data = await res.json();
-    Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    setEditorDirty(false);
+    setIsFinishedEditing(true);
   };
 
   return (
@@ -90,6 +115,42 @@ export default function ViewDatasetView({
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function useRegisterUnloadHandlers(
+  editorDirty,
+  unloadWarning = "You have edited your dataset but not saved your changes. Do you really want to leave this page?"
+) {
+  // add handlers for browser navigation (typing in address bar, refresh, back button)
+  useBeforeunload((event) => {
+    if (editorDirty) {
+      event.preventDefault();
+      // most browsers no longer support custom messages, but for those
+      // that do:
+      return unloadWarning;
+    }
+  });
+
+  // add handler for next.js router events that don't load a new page in the browser.
+  const router = useRouter();
+  useEffect(
+    (e) => {
+      const confirmBrowseAway = () => {
+        if (!editorDirty) return;
+        if (window.confirm(unloadWarning)) return;
+
+        router.events.emit("routeChangeError");
+        throw "routeChange aborted.";
+      };
+
+      router.events.on("routeChangeStart", confirmBrowseAway);
+
+      return () => {
+        router.events.off("routeChangeStart", confirmBrowseAway);
+      };
+    },
+    [editorDirty, router]
   );
 }
 
