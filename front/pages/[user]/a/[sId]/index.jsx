@@ -238,6 +238,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                   disabled={readOnly}
                   onClick={handleNewBlock}
                   spec={spec}
+                  direction="down"
                 />
               </div>
               <div className="flex">
@@ -273,7 +274,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
             */}
             <TextareaAutosize className="hidden" value="foo" />
 
-            <div className="flex flex-col space-y-2 mb-12">
+            <div className="flex flex-col space-y-2">
               {spec.map((block, idx) => {
                 // Match status with block
                 let status = null;
@@ -454,9 +455,47 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                 </div>
               ) : null}
             </div>
+
+            {spec.length > 2 ? (
+              <div className="flex flex-row my-4 space-x-2 items-center">
+                <div className="flex">
+                  <NewBlock
+                    disabled={readOnly}
+                    onClick={handleNewBlock}
+                    spec={spec}
+                    direction="up"
+                  />
+                </div>
+                <div className="flex">
+                  <ActionButton
+                    disabled={
+                      !runnable || runRequested || run?.status.run == "running"
+                    }
+                    onClick={() => handleRun()}
+                  >
+                    <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                    {runRequested || run?.status.run == "running"
+                      ? "Running"
+                      : "Run"}
+                  </ActionButton>
+                </div>
+                {runError ? (
+                  <div className="flex text-sm font-bold text-red-400 text-sm px-2">
+                    {(() => {
+                      switch (runError.code) {
+                        case "invalid_specification_error":
+                          return `Specification error: ${runError.message}`;
+                        default:
+                          return `Error: ${runError.message}`;
+                      }
+                    })()}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
-        <div ref={bottomRef}></div>
+        <div ref={bottomRef} className="mt-4"></div>
       </div>
     </AppLayout>
   );

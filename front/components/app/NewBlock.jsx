@@ -3,7 +3,7 @@ import { classNames } from "../../lib/utils";
 import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 
-export default function NewBlock({ spec, disabled, onClick }) {
+export default function NewBlock({ spec, disabled, onClick, direction }) {
   let containsInput = spec.filter((block) => block.type == "input").length > 0;
   let blocks = [
     { type: "data", display: ["data"] },
@@ -43,7 +43,12 @@ export default function NewBlock({ spec, disabled, onClick }) {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute shadow left-1 z-10 mt-1 w-32 origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <Menu.Items
+          className={classNames(
+            "absolute shadow left-1 z-10 mt-1 w-32 origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+            direction == "up" ? "bottom-10" : ""
+          )}
+        >
           <div className="py-1">
             {blocks.map((block) => (
               <Menu.Item
