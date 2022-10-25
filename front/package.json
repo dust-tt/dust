@@ -16,6 +16,7 @@
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
+    "react-beforeunload": "^2.5.3",
     "react-dom": "^18.2.0",
     "react-textarea-autosize": "^8.3.4",
     "sequelize": "^6.23.1",
