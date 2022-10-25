@@ -1,25 +1,26 @@
-import AppLayout from "../../../components/app/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
+import AppLayout from "../../../../components/app/AppLayout";
+import MainTab from "../../../../components/app/MainTab";
+import { Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
-import { Button } from "../../../components/Button";
+import { authOptions } from "../../../api/auth/[...nextauth]";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { classNames } from "../../../../lib/utils";
+import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
-import React, { useState, useEffect, useRef } from "react";
-import { classNames } from "../../../lib/utils";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useEffect } from "react";
 
 const { URL, GA_TRACKING_ID } = process.env;
 
-export default function New({ apps, ga_tracking_id }) {
+export default function DatasetsView({ app, user, readOnly, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);
 
-  const [appName, setAppName] = useState("");
+  const [appName, setAppName] = useState(app.name);
   const [appNameError, setAppNameError] = useState(null);
 
-  const [appDescription, setAppDescription] = useState("");
-  const [appVisibility, setAppVisibility] = useState("public");
+  const [appDescription, setAppDescription] = useState(app.description || "");
+  const [appVisibility, setAppVisibility] = useState(app.visibility);
 
   const formValidation = () => {
     if (appName.length == 0) {
@@ -41,30 +42,28 @@ export default function New({ apps, ga_tracking_id }) {
   }, [appName]);
 
   return (
-    <AppLayout ga_tracking_id={ga_tracking_id}>
-      <div className="flex flex-col">
+    <AppLayout
+      app={{ sId: app.sId, name: app.name, description: app.description }}
+      ga_tracking_id={ga_tracking_id}
+    >
+      <div className="leadingflex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="Apps" />
+          <MainTab
+            app={{ sId: app.sId, name: app.name }}
+            current_tab="Settings"
+            user={user}
+            readOnly={readOnly}
+          />
         </div>
+
         <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="px-4 sm:px-6 lg:px-8 w-full max-w-5xl">
             <form
-              action={`/api/apps/${session.user.username}`}
+              action={`/api/apps/${session.user.username}/${app.sId}`}
               method="POST"
               className="space-y-8 divide-y divide-gray-200 mt-8"
             >
               <div className="space-y-8 divide-y divide-gray-200">
-                <div>
-                  <h3 className="text-base font-medium leading-6 text-gray-900">
-                    Create a new App
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    An app consists of its specification (defining chained
-                    interactions with models and external services), datasets to
-                    run the app or few-shot prompt models. Everything is
-                    automatically versioned and stored.
-                  </p>
-                </div>
                 <div>
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-3">
@@ -93,12 +92,10 @@ export default function New({ apps, ga_tracking_id }) {
                               : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                           )}
                           value={appName}
+                          readOnly={readOnly}
                           onChange={(e) => setAppName(e.target.value)}
                         />
                       </div>
-                      <p className="mt-2 text-sm text-gray-500">
-                        Think GitHub repository names, short and memorable.
-                      </p>
                     </div>
 
                     <div className="sm:col-span-6">
@@ -194,12 +191,8 @@ export default function New({ apps, ga_tracking_id }) {
 
               <div className="pt-6">
                 <div className="flex">
-                  <Button
-                    disabled={disable}
-                    type="submit"
-                    // onClick={() => handleSubmit()}
-                  >
-                    Create
+                  <Button disabled={disable} type="submit">
+                    Update
                   </Button>
                 </div>
               </div>
@@ -218,26 +211,19 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  if (!session) {
+  let readOnly = !session || context.query.user !== session.user.username;
+
+  if (readOnly) {
     return {
       redirect: {
-        destination: `/`,
+        destination: `/${context.query.user}/a/${context.query.app}`,
         permanent: false,
       },
     };
   }
 
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
-  const [appsRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${session.user.username}`, {
+  const [appRes] = await Promise.all([
+    fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -246,15 +232,21 @@ export async function getServerSideProps(context) {
     }),
   ]);
 
-  if (appsRes.status === 404) {
+  if (appRes.status === 404) {
     return {
       notFound: true,
     };
   }
 
-  const [apps] = await Promise.all([appsRes.json()]);
+  const [app] = await Promise.all([appRes.json()]);
 
   return {
-    props: { session, apps: apps.apps, ga_tracking_id: GA_TRACKING_ID },
+    props: {
+      session,
+      app: app.app,
+      readOnly,
+      user: context.query.user,
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }
