@@ -64,13 +64,12 @@
 - [x] search block
 - [x] alert on dataset not saved
 - [ ] fork app
+- [ ] replit block (to cover curl, headless browser, advanced code)
 - [ ] pre-fill new app + community examples in app view
-- [ ] edit inputs from input block
 - [ ] deploy as an endpoint + capture production executions
       this may require ability to view old versions
 - [ ] while block
 - [ ] if/then block
-- [ ] replit block (to cover curl, headless browser, advanced code)
 - [ ] demo 2: self-ask / react
 - [ ] edit/delete app
 
@@ -80,3 +79,4 @@
 - [ ] previous app version / runs explorer
 - [ ] eval jobs
 - [ ] copy dataset to app
+- [ ] edit inputs from input block

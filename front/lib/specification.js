@@ -27,6 +27,7 @@ export function getNextName(spec, name) {
     }
     if (b.name == n) {
       suffix += 1;
+      n = `${name}_${suffix}`;
     }
   });
   return n;
