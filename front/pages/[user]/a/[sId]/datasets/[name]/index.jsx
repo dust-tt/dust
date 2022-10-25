@@ -30,7 +30,7 @@ export default function ViewDatasetView({
 
   useRegisterUnloadHandlers(editorDirty);
 
-  // this is a little wonky, but in order to redirect to the datasets main page and not
+  // This is a little wonky, but in order to redirect to the dataset's main page and not
   // pop up the "You have unsaved changes" dialog, we need to set editorDirty to false
   // and then do the router redirect in the next render cycle. We use the isFinishedEditing
   // state variable to tell us when this should happen.
@@ -122,17 +122,17 @@ function useRegisterUnloadHandlers(
   editorDirty,
   unloadWarning = "You have edited your dataset but not saved your changes. Do you really want to leave this page?"
 ) {
-  // add handlers for browser navigation (typing in address bar, refresh, back button)
+  // Add handlers for browser navigation (typing in address bar, refresh, back button).
   useBeforeunload((event) => {
     if (editorDirty) {
       event.preventDefault();
-      // most browsers no longer support custom messages, but for those
-      // that do:
+      // Most browsers no longer support custom messages, but for those
+      // that do, we return the warning.
       return unloadWarning;
     }
   });
 
-  // add handler for next.js router events that don't load a new page in the browser.
+  // Add handler for next.js router events that don't load a new page in the browser.
   const router = useRouter();
   useEffect(
     (e) => {
