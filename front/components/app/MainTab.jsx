@@ -1,7 +1,7 @@
 import { classNames } from "../../lib/utils";
 import Link from "next/link";
 import { CodeBracketIcon } from "@heroicons/react/24/solid";
-import { DocumentIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { DocumentIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 
 export default function MainTab({ app, current_tab, user, readOnly }) {
   let tabs = [
@@ -32,7 +32,7 @@ export default function MainTab({ app, current_tab, user, readOnly }) {
       name: "Settings",
       href: `/${user}/a/${app.sId}/settings`,
       icon: (
-        <LockClosedIcon
+        <Cog6ToothIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
           aria-hidden="true"
         />
