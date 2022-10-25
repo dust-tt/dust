@@ -456,7 +456,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
               ) : null}
             </div>
 
-            {spec.length > 2 ? (
+            {spec.length > 2 && !readOnly ? (
               <div className="flex flex-row my-4 space-x-2 items-center">
                 <div className="flex">
                   <NewBlock
