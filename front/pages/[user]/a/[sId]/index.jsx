@@ -50,7 +50,11 @@ const isRunnable = (readOnly, spec, config) => {
           return false;
         }
       default:
-        if (!block.name || block.name.length == 0) {
+        if (
+          !block.name ||
+          block.name.length == 0 ||
+          !block.name.match(/^[A-Z0-9_]+$/)
+        ) {
           return false;
         }
     }

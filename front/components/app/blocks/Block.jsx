@@ -4,6 +4,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
+import { useState } from "react";
 import Output from "./Output";
 
 export default function Block({
@@ -20,9 +21,25 @@ export default function Block({
   onBlockDown,
 }) {
   const handleNameChange = (name) => {
+    const valid = nameValidation(name);
     let b = Object.assign({}, block);
     b.name = name;
     onBlockUpdate(b);
+  };
+
+  const [nameError, setNameError] = useState(null);
+
+  const nameValidation = (name) => {
+    let valid = true;
+    if (!name.match(/^[A-Z0-9_]+$/)) {
+      setNameError(
+        "Block name must only contain uppercase letters, numbers, and the character `_`."
+      );
+      valid = false;
+    } else {
+      setNameError(null);
+    }
+    return valid;
   };
 
   return (
@@ -50,7 +67,7 @@ export default function Block({
                 "block w-full rounded-md py-1 px-1 placeholder-gray-200 uppercase",
                 readOnly
                   ? "border-white ring-0 focus:ring-0 focus:border-white"
-                  : block.name.length == 0
+                  : nameError != null
                   ? "border-orange-400 focus:border-orange-400 focus:ring-0"
                   : "border-white focus:border-gray-300 focus:ring-0"
               )}
