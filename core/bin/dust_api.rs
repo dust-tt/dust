@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use axum::{
     extract,
     response::Json,
@@ -141,6 +141,95 @@ async fn projects_create(
             }),
         ),
     }
+}
+
+/// Clones a project.
+/// Simply consists in cloning the latest dataset versions, as we don't copy runs and hence specs.
+
+async fn projects_clone(
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    extract::Path(project_id): extract::Path<i64>,
+) -> (StatusCode, Json<APIResponse>) {
+    let cloned = project::Project::new_from_id(project_id);
+
+    // Create cloned project
+    let project = match state.store.create_project().await {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to create cloned project: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(project) => project,
+    };
+
+    // Retrieve datasets
+    let datasets = match state.store.list_datasets(&cloned).await {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to list cloned project datasets: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(datasets) => datasets,
+    };
+
+    // Load and register datasets
+    let store = state.store.clone();
+    match futures::future::join_all(datasets.iter().map(|(d, v)| async {
+        let dataset = match store
+            .load_dataset(&cloned, &d.clone(), &v[0].clone().0)
+            .await?
+        {
+            Some(dataset) => dataset,
+            None => Err(anyhow!(
+                "Could not find latest version of dataset {}",
+                d.clone()
+            ))?,
+        };
+        store.register_dataset(&project, &dataset).await?;
+        Ok::<(), anyhow::Error>(())
+    }))
+    .await
+    .into_iter()
+    .collect::<Result<Vec<_>>>()
+    {
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to clone project datasets: {}", e),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(_) => (),
+    }
+
+    return (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "project": project,
+            })),
+        }),
+    );
 }
 
 /// Check a specification
@@ -669,6 +758,7 @@ async fn main() -> Result<()> {
         .route("/", get(index))
         // Projects
         .route("/projects", post(projects_create))
+        .route("/projects/:project_id/clone", post(projects_clone))
         // Specifications
         .route(
             "/projects/:project_id/specifications/check",
