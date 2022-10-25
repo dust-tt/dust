@@ -268,6 +268,14 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
               ) : null}
             </div>
 
+            {app.description ? (
+              <div className="flex flex-auto mb-4">
+                <div className="flex text-sm text-gray-400 italic">
+                  {app.description}
+                </div>
+              </div>
+            ) : null}
+
             {/* This is a hack to force loading the component before we render the LLM blocks.
                 Otherwise the autoresize does not work on init?
                 TODO(spolu): investigate

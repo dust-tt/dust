@@ -4,7 +4,7 @@ import { CodeBracketIcon } from "@heroicons/react/24/solid";
 import { DocumentIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 
 export default function MainTab({ app, current_tab, user, readOnly }) {
-  const tabs = [
+  let tabs = [
     {
       name: "Specification",
       href: `/${user}/a/${app.sId}`,
@@ -26,6 +26,19 @@ export default function MainTab({ app, current_tab, user, readOnly }) {
       ),
     },
   ];
+
+  if (!readOnly) {
+    tabs.push({
+      name: "Settings",
+      href: `/${user}/a/${app.sId}/settings`,
+      icon: (
+        <LockClosedIcon
+          className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+          aria-hidden="true"
+        />
+      ),
+    });
+  }
 
   return (
     <div className="w-full">

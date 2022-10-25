@@ -18,39 +18,66 @@ export default async function handler(req, res) {
 
   const readOnly = !(session && session.github.id.toString() === user.githubId);
 
+  let app = await App.findOne({
+    where: readOnly
+      ? {
+          userId: user.id,
+          sId: req.query.sId,
+          visibility: "public",
+        }
+      : {
+          userId: user.id,
+          sId: req.query.sId,
+        },
+    attributes: [
+      "id",
+      "uId",
+      "sId",
+      "name",
+      "description",
+      "visibility",
+      "savedSpecification",
+      "savedConfig",
+      "savedRun",
+      "updatedAt",
+    ],
+  });
+
+  if (!app) {
+    res.status(404).json({ app });
+    return;
+  }
+
   switch (req.method) {
     case "GET":
-      let app = await App.findOne({
-        where: readOnly
-          ? {
-              userId: user.id,
-              sId: req.query.sId,
-              visibility: "public",
-            }
-          : {
-              userId: user.id,
-              sId: req.query.sId,
-            },
-        attributes: [
-          "id",
-          "uId",
-          "sId",
-          "name",
-          "description",
-          "visibility",
-          "savedSpecification",
-          "savedConfig",
-          "savedRun",
-          "updatedAt",
-        ],
-      });
+      res.status(200).json({ app });
+      break;
 
-      if (!app) {
-        res.status(404).json({ app });
+    case "POST":
+      if (readOnly) {
+        res.status(401).end();
         return;
       }
 
-      res.status(200).json({ app });
+      if (
+        !req.body ||
+        !(typeof req.body.name == "string") ||
+        !(typeof req.body.description == "string") ||
+        !["public", "private"].includes(req.body.visibility)
+      ) {
+        res.status(400).end();
+        break;
+      }
+
+      let description = req.body.description ? req.body.description : null;
+
+      await app.update({
+        name: req.body.name,
+        description,
+        visibility: req.body.visibility,
+      });
+
+      res.redirect(`/${session.user.username}/a/${app.sId}`);
       break;
 
     default:
