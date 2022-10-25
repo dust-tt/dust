@@ -108,7 +108,8 @@ impl Block for Replit {
             .header("Content-Type", "application/json")
             .body(Body::from(
                 json!(HashMap::from([
-                    ("env", env),
+                    ("version", json!("1.0.0")),
+                    ("env", json!(env)),
                 ]))
                 .to_string(),
             ))?;
