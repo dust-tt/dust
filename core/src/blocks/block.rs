@@ -1,5 +1,5 @@
 use crate::blocks::{
-    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search,
+    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search, replit::Replit,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
@@ -59,6 +59,7 @@ pub enum BlockType {
     Map,
     Reduce,
     Search,
+    Replit,
 }
 
 impl ToString for BlockType {
@@ -71,6 +72,7 @@ impl ToString for BlockType {
             BlockType::Map => String::from("map"),
             BlockType::Reduce => String::from("reduce"),
             BlockType::Search => String::from("search"),
+            BlockType::Replit => String::from("replit"),
         }
     }
 }
@@ -86,6 +88,7 @@ impl FromStr for BlockType {
             "map" => Ok(BlockType::Map),
             "reduce" => Ok(BlockType::Reduce),
             "search" => Ok(BlockType::Search),
+            "replit" => Ok(BlockType::Replit),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -149,6 +152,7 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::Map => Ok(Box::new(Map::parse(block_pair)?)),
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
         BlockType::Search => Ok(Box::new(Search::parse(block_pair)?)),
+        BlockType::Replit => Ok(Box::new(Replit::parse(block_pair)?)),
     }
 }
 
