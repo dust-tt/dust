@@ -10,6 +10,7 @@ export default function NewBlock({ spec, disabled, onClick }) {
     { type: "llm", display: ["llm"] },
     { type: "code", display: ["code"] },
     { type: "search", display: ["search"] },
+    { type: "replit", display: ["replit"] },
     { type: "map_reduce", display: ["map", "reduce"] },
   ];
   if (!containsInput) {

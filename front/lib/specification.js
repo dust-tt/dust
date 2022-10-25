@@ -87,6 +87,21 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
+    case "replit":
+      s.push({
+        type: "replit",
+        name: getNextName(spec, "REPLIT"),
+        indent: 0,
+        spec: {
+          repl: "",
+          replit_user: "",
+          path: "",
+        },
+        config: {
+          provider_id: "",
+        },
+      });
+      break;
     case "llm":
       s.push({
         type: "llm",
@@ -267,6 +282,15 @@ export function dumpSpecification(spec, latestDatasets) {
       case "search": {
         out += `search ${block.name} {\n`;
         out += `  query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "replit": {
+        out += `replit ${block.name} {\n`;
+        out += `  repl: ${block.spec.repl}\n`;
+        out += `  replit_user: ${block.spec.replit_user}\n`;
+        out += `  path: ${block.spec.path}\n`;
         out += `}\n`;
         out += "\n";
         break;
