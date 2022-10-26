@@ -36,6 +36,13 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
         "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
     },
     {
+      type: "curl",
+      typeNames: ["curl"],
+      name: "Curl Request",
+      description:
+        "Perform a HTTP request to interface with external services.",
+    },
+    {
       type: "search",
       typeNames: ["search"],
       name: "Google Search",

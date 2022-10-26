@@ -33,5 +33,5 @@ pub mod blocks {
     pub mod map;
     pub mod reduce;
     pub mod search;
-    pub mod replit;
+    pub mod curl;
 }

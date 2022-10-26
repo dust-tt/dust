@@ -54,10 +54,9 @@ impl Block for Code {
 
     async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
         // Assumes there is a _fun function defined in `source`.
-
         // TODO(spolu): revisit, not sure this is optimal.
-        let code = self.code.clone();
         let env = env.clone();
+        let code = self.code.clone();
         let result = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));

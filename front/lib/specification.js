@@ -88,19 +88,19 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
-    case "replit":
+    case "curl":
       s.push({
-        type: "replit",
-        name: getNextName(spec, "REPLIT"),
+        type: "curl",
+        name: "",
         indent: 0,
         spec: {
-          repl: "",
-          replit_user: "",
-          path: "",
+          method: "POST",
+          url: "",
+          headers_code:
+            '_fun = (env) => {\n  return {"Content-Type": "application/json"};\n}',
+          body_code: "_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: \"bar\" });\n}",
         },
-        config: {
-          provider_id: "",
-        },
+        config: {},
       });
       break;
     case "llm":
@@ -287,11 +287,12 @@ export function dumpSpecification(spec, latestDatasets) {
         out += "\n";
         break;
       }
-      case "replit": {
-        out += `replit ${block.name} {\n`;
-        out += `  repl: ${block.spec.repl}\n`;
-        out += `  replit_user: ${block.spec.replit_user}\n`;
-        out += `  path: ${block.spec.path}\n`;
+      case "curl": {
+        out += `curl ${block.name} {\n`;
+        out += `  method: ${block.spec.method}\n`;
+        out += `  url: \n\`\`\`\nhttps://${block.spec.url}\n\`\`\`\n`;
+        out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
+        out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

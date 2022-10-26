@@ -18,7 +18,7 @@ import Data from "../../../../components/app/blocks/Data";
 import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import Search from "../../../../components/app/blocks/Search";
-import Replit from "../../../../components/app/blocks/Replit";
+import Curl from "../../../../components/app/blocks/Curl";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
@@ -421,9 +421,9 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                     );
                     break;
 
-                  case "replit":
+                  case "curl":
                     return (
-                      <Replit
+                      <Curl
                         key={idx}
                         block={block}
                         user={user}
