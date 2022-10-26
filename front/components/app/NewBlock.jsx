@@ -19,7 +19,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
     {
       type: "llm",
       description:
-        "Use an artificial intelligence Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
+        "Ask an artificial intelligence Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
     },
     {
       type: "data",
