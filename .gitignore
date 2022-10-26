@@ -1,3 +1,4 @@
 /core/target
 *.sqlite
 Cargo.lock
+.DS_Store
