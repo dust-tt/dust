@@ -18,26 +18,31 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
   let blocks = [
     {
       type: "llm",
+      typeNames: ["llm"],
       description:
         "Ask an artificial intelligence Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
     },
     {
       type: "data",
+      typeNames: ["data"],
       description:
         "Load a dataset to be used for every run of the Dust app. Typically used to seed a few-shot prompt to an LLM block.",
     },
     {
       type: "code",
+      typeNames: ["code"],
       description:
         "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
     },
     {
       type: "search",
+      typeNames: ["search"],
       description:
         "Issue a query to Google so you can feed the results to other blocks.",
     },
     {
       type: "map_reduce",
+      typeNames: ["map", "reduce"],
       description:
         "Loop over multiple runs of this Dust app and combine them into one result.",
     },
@@ -45,6 +50,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
   if (!containsInput) {
     blocks.splice(0, 0, {
       type: "input",
+      typeNames: ["input"],
       description:
         "Select a dataset that is used as the input to this Dust app, like the arguments to a function. Each element in the dataset kicks off a separate parallel run of the Dust app.",
       display: ["input"],
@@ -104,7 +110,12 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
               </div>
               <div className="ml-4 max-w-lg">
                 <p className="text-base font-medium text-gray-900">
-                  {getDisplayNameForBlock(block.type)}
+                  {getDisplayNameForBlock(block.type)}{" "}
+                  {block.typeNames.map((type) => (
+                    <span className="rounded-md px-1 py-0.5 bg-gray-200 text-sm font-bold mr-1">
+                      {type}
+                    </span>
+                  ))}
                 </p>
                 <p className="text-sm text-gray-500">{block.description}</p>
               </div>
