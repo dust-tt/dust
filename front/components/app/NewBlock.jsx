@@ -40,7 +40,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
       typeNames: ["curl"],
       name: "Curl Request",
       description:
-        "Perform a HTTP request to interface with external services.",
+        "Perform an HTTP request to interface with external services.",
     },
     {
       type: "search",
@@ -97,8 +97,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
           style={styles.popper}
           {...attributes.popper}
           className={classNames(
-            "absolute shadow left-1 z-10 mt-1 origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-            direction === "up" ? "bottom-10" : ""
+            "absolute shadow left-1 z-10 my-1 origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
           )}
         >
           {blocks.map((block) => (
@@ -110,18 +109,24 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
                   onClick(block.type);
                 }
               }}
-              className="flex flex-row flex-nowrap gap-4 bg-white p-4 hover:bg-gray-100 cursor-pointer"
+              className="flex flex-row my-1 flex-nowrap gap-4 bg-white py-1 px-2 hover:bg-gray-100 cursor-pointer"
             >
-              <div className="ml-4 max-w-lg">
-                <p className="text-base font-medium text-gray-900">
-                  {block.name}{" "}
-                  {block.typeNames.map((type) => (
-                    <span className="rounded-md px-1 py-0.5 bg-gray-200 text-sm font-bold mr-1">
-                      {type}
-                    </span>
-                  ))}
-                </p>
-                <p className="text-sm text-gray-500">{block.description}</p>
+              <div className="grid grid-cols-12 ml-4 max-w-md items-center">
+                <div className="col-span-4 sm:col-span-3">
+                  <div className="flex text-base font-medium text-gray-900">
+                    {block.typeNames.map((type) => (
+                      <div
+                        key={type}
+                        className="rounded-md px-1 py-0.5 bg-gray-200 text-sm font-bold mr-1"
+                      >
+                        {type}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-8 sm:col-span-9 text-sm text-gray-500 pr-2">
+                  {block.description}
+                </div>
               </div>
             </Popover.Button>
           ))}
