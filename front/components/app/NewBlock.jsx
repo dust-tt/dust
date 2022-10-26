@@ -5,6 +5,7 @@ import { Fragment } from "react";
 import { usePopper } from "react-popper";
 import { useState } from "react";
 import Image from "next/image";
+import { getDisplayNameForBlock, getIconForBlock } from "../../lib/utils";
 
 export default function NewBlock({ spec, disabled, onClick, direction }) {
   let [referenceElement, setReferenceElement] = useState();
@@ -17,36 +18,26 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
   let blocks = [
     {
       type: "llm",
-      name: "Large Language Model (LLM)",
-      icon: "/static/noun-artificial-intelligence-5255740.svg",
       description:
         "Use an artificial intelligence Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
     },
     {
       type: "data",
-      name: "Data",
-      icon: "/static/noun-analytics-5257465.svg",
       description:
         "Load a dataset to be used for every run of the Dust app. Typically used to seed a few-shot prompt to an LLM block.",
     },
     {
       type: "code",
-      name: "JavaScript",
-      icon: "/static/noun-javascript-1637023.svg",
       description:
         "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
     },
     {
       type: "search",
-      name: "Google Search",
-      icon: "/static/noun-online-search-1625822.svg",
       description:
         "Issue a query to Google so you can feed the results to other blocks.",
     },
     {
       type: "map_reduce",
-      name: "Map Reduce",
-      icon: "/static/noun-parallel-processing-3383085.svg",
       description:
         "Loop over multiple runs of this Dust app and combine them into one result.",
     },
@@ -54,8 +45,6 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
   if (!containsInput) {
     blocks.splice(0, 0, {
       type: "input",
-      name: "Input",
-      icon: "/static/noun-input-2980167.svg",
       description:
         "Select a dataset that is used as the input to this Dust app, like the arguments to a function. Each element in the dataset kicks off a separate parallel run of the Dust app.",
       display: ["input"],
@@ -107,11 +96,15 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
               className="flex flex-row flex-nowrap gap-4 bg-white p-4 hover:bg-gray-100 cursor-pointer"
             >
               <div className="flex-none h-10 w-10 shrink-0 items-center justify-center sm:h-12 sm:w-12">
-                <Image src={block.icon} width="48" height="48" />
+                <Image
+                  src={getIconForBlock(block.type)}
+                  width="48"
+                  height="48"
+                />
               </div>
               <div className="ml-4 max-w-lg">
                 <p className="text-base font-medium text-gray-900">
-                  {block.name}
+                  {getDisplayNameForBlock(block.type)}
                 </p>
                 <p className="text-sm text-gray-500">{block.description}</p>
               </div>

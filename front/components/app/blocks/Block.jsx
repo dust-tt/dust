@@ -1,4 +1,8 @@
-import { classNames } from "../../../lib/utils";
+import {
+  classNames,
+  getDisplayNameForBlock,
+  getIconForBlock,
+} from "../../../lib/utils";
 import {
   TrashIcon,
   ChevronUpIcon,
@@ -6,6 +10,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import Output from "./Output";
+import Image from "next/image";
 
 export default function Block({
   user,
@@ -53,9 +58,13 @@ export default function Block({
         <div className="flex flex-row items-center">
           <div className="flex-initial mr-2">
             <div className="">
-              <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
-                {block.type}
-              </span>
+              <Image
+                height={25}
+                width={25}
+                alt={getDisplayNameForBlock(block.type)}
+                title={getDisplayNameForBlock(block.type)}
+                src={getIconForBlock(block.type)}
+              />
             </div>
           </div>
 
