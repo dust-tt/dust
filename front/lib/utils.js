@@ -17,35 +17,3 @@ export const shallowBlockClone = (block) => {
   b.config = Object.assign({}, block.config || {});
   return b;
 };
-
-const blockUiConfig = {
-  llm: {
-    name: "Large Language Model (LLM)",
-  },
-  data: {
-    name: "Data",
-  },
-  code: {
-    name: "JavaScript",
-  },
-  search: {
-    name: "Google Search",
-  },
-  map_reduce: {
-    name: "Map Reduce",
-  },
-  map: {
-    name: "Map",
-  },
-  reduce: {
-    name: "Reduce",
-  },
-  input: {
-    name: "Input",
-  },
-};
-
-export const getDisplayNameForBlock = (blockType) => {
-  if (!blockUiConfig[blockType]) return null;
-  return blockUiConfig[blockType].name;
-};
