@@ -2,14 +2,18 @@ use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, Block
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use dns_lookup::lookup_host;
 use hyper::header;
 use hyper::{body::Buf, Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
 use js_sandbox::Script;
+use lazy_static::lazy_static;
 use pest::iterators::Pair;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
+use url::{Host, Url};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
@@ -94,8 +98,6 @@ impl Block for Curl {
     }
 
     async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
-        let url = replace_variables_in_string(&self.url, "url", env)?;
-
         let method = match self.method.as_str() {
             "GET" => Method::GET,
             "POST" => Method::POST,
@@ -133,7 +135,47 @@ impl Block for Curl {
             Err(e) => Err(anyhow!("Error in body code: {}", e))?,
         };
 
-        // TODO(spolu): parse URL, check https, encode query, resolve host, ban internal IPs
+        let url = replace_variables_in_string(&self.url, "url", env)?;
+        let parsed_url = Url::parse(url.as_str())?;
+
+        match parsed_url.scheme() {
+            "https" => (),
+            _ => Err(anyhow!("Only the `https` scheme is authorized."))?,
+        }
+
+        let _: Vec<std::net::Ipv4Addr> = match parsed_url.host() {
+            Some(h) => match h {
+                Host::Domain(d) => {
+                    let ipv4: Vec<std::net::Ipv4Addr> = lookup_host(d)?
+                        .into_iter()
+                        .filter_map(|ip| match ip {
+                            std::net::IpAddr::V4(ip) => Some(ip),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+                    match ipv4.len() {
+                        0 => Err(anyhow!("Could not find an ipv4 address for host: {}", d))?,
+                        _ => ipv4,
+                    }
+                }
+                Host::Ipv4(ip) => vec![ip],
+                Host::Ipv6(_) => Err(anyhow!("Ipv6 addresses are not supported."))?,
+            },
+            None => Err(anyhow!("Provided URL has an empty host"))?,
+        }
+        .into_iter()
+        .map(|ip| {
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"^(0|127|10|172|192)\..*").unwrap();
+            }
+            match RE.is_match(ip.to_string().as_str()) {
+                true => Err(anyhow!("Forbidden IP range"))?,
+                false => Ok(ip),
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+        // TODO(spolu): encode query
 
         let mut req = Request::builder().method(method).uri(url.as_str());
 
