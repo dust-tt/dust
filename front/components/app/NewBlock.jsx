@@ -19,14 +19,14 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
       typeNames: ["llm"],
       name: "Large Language Model (LLM)",
       description:
-        "Ask an artificial intelligence Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
+        "Query a Large Language Model to complete a prompt for you. Current LLMs supported: OpenAI's GPT-3 and Cohere.",
     },
     {
       type: "data",
       typeNames: ["data"],
       name: "Data",
       description:
-        "Load a dataset to be used for every run of the Dust app. Typically used to seed a few-shot prompt to an LLM block.",
+        "Load a dataset and output its elements as an array. Typically used to seed a few-shot prompt to an LLM block.",
     },
     {
       type: "code",
@@ -56,7 +56,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
       typeNames: ["input"],
       name: "Input",
       description:
-        "Select a dataset that is used as the input to this Dust app, like the arguments to a function. Each element in the dataset kicks off a separate parallel run of the Dust app.",
+        "Select a dataset of inputs used for the design your Dust app. Each element in the dataset kicks off a separate parallel execution of the Dust app.",
       display: ["input"],
     });
   }
@@ -90,7 +90,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
           style={styles.popper}
           {...attributes.popper}
           className={classNames(
-            "absolute shadow left-1 z-10 mt-1  origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+            "absolute shadow left-1 z-10 mt-1 origin-top-right rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
             direction === "up" ? "bottom-10" : ""
           )}
         >
