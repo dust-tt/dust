@@ -162,11 +162,11 @@ export default function Curl({
                   placeholder=""
                   onChange={(e) => handleHeadersCodeChange(e.target.value)}
                   padding={15}
-                  className="bg-slate-100"
                   style={{
                     fontSize: 12,
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
                   }}
                 />
               </div>
@@ -190,11 +190,11 @@ export default function Curl({
                   placeholder=""
                   onChange={(e) => handleBodyCodeChange(e.target.value)}
                   padding={15}
-                  className="bg-slate-100"
                   style={{
                     fontSize: 12,
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
                   }}
                 />
               </div>
