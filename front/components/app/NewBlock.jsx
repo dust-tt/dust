@@ -87,8 +87,8 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
       >
         <Menu.Items
           className={classNames(
-            "absolute w-96 block shadow -left-1 sm:left-1 z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-            direction === "up" ? "bottom-9" : "origin-top-right"
+            "absolute w-96 block shadow -left-1 z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+            direction === "up" ? "bottom-9" : ""
           )}
         >
           {blocks.map((block) => (
