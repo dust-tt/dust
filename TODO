@@ -64,7 +64,8 @@
 - [x] search block
 - [x] alert on dataset not saved
 - [x] run/block button at the bottom
-- [ ] app description
+- [x] app description
+- [x] settings pane (no delete)
 - [ ] fork app
 - [ ] replit block (to cover curl, headless browser, advanced code)
 - [ ] pre-fill new app + community examples in app view
