@@ -158,7 +158,9 @@ impl Block for Curl {
                         _ => ipv4,
                     }
                 }
-                Host::Ipv4(ip) => vec![ip],
+                Host::Ipv4(_) => Err(anyhow!(
+                    "Raw Ipv4 addresses are not supported, ping us if needed."
+                ))?,
                 Host::Ipv6(_) => Err(anyhow!("Ipv6 addresses are not supported."))?,
             },
             None => Err(anyhow!("Provided URL has an empty host"))?,
@@ -176,6 +178,7 @@ impl Block for Curl {
         .collect::<Result<Vec<_>>>()?;
 
         // TODO(spolu): encode query
+        // TODO(spolu): timeout requests
 
         let mut req = Request::builder().method(method).uri(url.as_str());
 
