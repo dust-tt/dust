@@ -101,13 +101,6 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
               }}
               className="flex flex-row flex-nowrap gap-4 bg-white p-4 hover:bg-gray-100 cursor-pointer"
             >
-              <div className="flex-none h-10 w-10 shrink-0 items-center justify-center sm:h-12 sm:w-12">
-                <Image
-                  src={getIconForBlock(block.type)}
-                  width="48"
-                  height="48"
-                />
-              </div>
               <div className="ml-4 max-w-lg">
                 <p className="text-base font-medium text-gray-900">
                   {getDisplayNameForBlock(block.type)}{" "}

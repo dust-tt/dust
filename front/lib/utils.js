@@ -21,44 +21,31 @@ export const shallowBlockClone = (block) => {
 const blockUiConfig = {
   llm: {
     name: "Large Language Model (LLM)",
-    icon: "/static/noun-artificial-intelligence-5255740.svg",
   },
   data: {
     name: "Data",
-    icon: "/static/noun-analytics-5257465.svg",
   },
   code: {
     name: "JavaScript",
-    icon: "/static/noun-javascript-1637023.svg",
   },
   search: {
     name: "Google Search",
-    icon: "/static/noun-online-search-1625822.svg",
   },
   map_reduce: {
     name: "Map Reduce",
-    icon: "/static/noun-parallel-processing-3383085.svg",
   },
   map: {
     name: "Map",
-    icon: "/static/noun-parallel-processing-3383085.svg",
   },
   reduce: {
     name: "Reduce",
-    icon: "/static/noun-parallel-processing-3383085.svg",
   },
   input: {
     name: "Input",
-    icon: "/static/noun-input-2980167.svg",
   },
 };
 
 export const getDisplayNameForBlock = (blockType) => {
   if (!blockUiConfig[blockType]) return null;
   return blockUiConfig[blockType].name;
-};
-
-export const getIconForBlock = (blockType) => {
-  if (!blockUiConfig[blockType]) return null;
-  return blockUiConfig[blockType].icon;
 };
