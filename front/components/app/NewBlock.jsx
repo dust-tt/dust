@@ -44,7 +44,7 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
       type: "map_reduce",
       typeNames: ["map", "reduce"],
       description:
-        "Loop over multiple runs of this Dust app and combine them into one result.",
+        "Map over an array and execute a sequence of blocks in parallel.",
     },
   ];
   if (!containsInput) {
