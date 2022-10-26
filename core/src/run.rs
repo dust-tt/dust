@@ -51,6 +51,7 @@ impl RunConfig {
             BlockType::Map => 64,
             BlockType::Reduce => 64,
             BlockType::Search => 8,
+            BlockType::Curl => 8,
         }
     }
 }

@@ -17,9 +17,9 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
   let route_user = router.query.user;
 
   return (
-    <main>
+    <main data-color-mode="light">
       <Head>
-        <title>Dust - {route_user}</title>
+        <title>{`Dust - ${route_user}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
         {app ? (
           <>

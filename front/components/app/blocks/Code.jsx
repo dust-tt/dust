@@ -66,6 +66,7 @@ export default function Code({
                     fontSize: 12,
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
                   }}
                 />
               </div>

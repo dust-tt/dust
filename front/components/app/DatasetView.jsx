@@ -61,7 +61,7 @@ const defaultData = [
 ];
 
 const genDefaultDataset = () => {
-  const shuffled = defaultData.map((a) => a );
+  const shuffled = defaultData.map((a) => a);
   shuffled.sort(() => 0.5 - Math.random());
   return JSON.stringify(shuffled.slice(0, 3), null, 2);
 };
@@ -232,7 +232,7 @@ export default function DatasetView({
                 minHeight={300}
                 style={{
                   fontSize: 12,
-                  backgroundColor: "#f5f5f5",
+                  backgroundColor: "rgb(241 245 249)",
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                 }}

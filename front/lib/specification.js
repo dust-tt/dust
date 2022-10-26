@@ -88,6 +88,21 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
+    case "curl":
+      s.push({
+        type: "curl",
+        name: "",
+        indent: 0,
+        spec: {
+          method: "POST",
+          url: "",
+          headers_code:
+            '_fun = (env) => {\n  return {"Content-Type": "application/json"};\n}',
+          body_code: "_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: \"bar\" });\n}",
+        },
+        config: {},
+      });
+      break;
     case "llm":
       s.push({
         type: "llm",
@@ -268,6 +283,16 @@ export function dumpSpecification(spec, latestDatasets) {
       case "search": {
         out += `search ${block.name} {\n`;
         out += `  query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "curl": {
+        out += `curl ${block.name} {\n`;
+        out += `  method: ${block.spec.method}\n`;
+        out += `  url: \n\`\`\`\nhttps://${block.spec.url}\n\`\`\`\n`;
+        out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
+        out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;
