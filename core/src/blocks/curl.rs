@@ -158,9 +158,7 @@ impl Block for Curl {
                         _ => ipv4,
                     }
                 }
-                Host::Ipv4(_) => Err(anyhow!(
-                    "Raw Ipv4 addresses are not supported, ping us if needed."
-                ))?,
+                Host::Ipv4(ip) => vec![ip],
                 Host::Ipv6(_) => Err(anyhow!("Ipv6 addresses are not supported."))?,
             },
             None => Err(anyhow!("Provided URL has an empty host"))?,
