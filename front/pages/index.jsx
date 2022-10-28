@@ -190,6 +190,15 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
+  if (session) {
+    return {
+      redirect: {
+        destination: `/${session.user.username}/apps`,
+        permanent: false,
+      },
+    };
+  }
+
   return {
     props: { session, ga_tracking_id: GA_TRACKING_ID },
   };

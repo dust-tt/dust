@@ -4,7 +4,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Output from "./Output";
 
 export default function Block({
@@ -21,7 +21,6 @@ export default function Block({
   onBlockDown,
 }) {
   const handleNameChange = (name) => {
-    const valid = nameValidation(name);
     let b = Object.assign({}, block);
     b.name = name;
     onBlockUpdate(b);
@@ -41,6 +40,10 @@ export default function Block({
     }
     return valid;
   };
+
+  useEffect(() => {
+    nameValidation(block.name);
+  });
 
   return (
     <div className="">
