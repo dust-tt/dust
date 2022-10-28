@@ -1,6 +1,6 @@
 import Block from "./Block";
 import { Menu, Transition } from "@headlessui/react";
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
@@ -25,6 +25,12 @@ export default function Curl({
 }) {
   const availableMethods = ["GET", "POST", "PUT", "PATCH"];
 
+  const handleSchemeChange = (scheme) => {
+    let b = shallowBlockClone(block);
+    b.spec.scheme = scheme;
+    onBlockUpdate(b);
+  };
+
   const handleHeadersCodeChange = (headersCode) => {
     let b = shallowBlockClone(block);
     b.spec.headers_code = headersCode;
@@ -48,6 +54,12 @@ export default function Curl({
     b.spec.method = method;
     onBlockUpdate(b);
   };
+
+  useEffect(() => {
+    if (!block.spec.scheme) {
+      onSchemeChange("https");
+    }
+  });
 
   return (
     <Block
@@ -126,8 +138,17 @@ export default function Curl({
           <div className="flex-initial flex flex-row flex-1 items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <div className="flex flex-1 font-normal">
               <div className="flex rounded-md flex-1">
-                <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-gray-500 text-sm">
-                  https://
+                <span
+                  className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-gray-500 text-sm cursor-pointer"
+                  onClick={() => {
+                    if (block.spec.scheme == "https") {
+                      handleSchemeChange("http");
+                    } else {
+                      handleSchemeChange("https");
+                    }
+                  }}
+                >
+                  {block.spec.scheme}://
                 </span>
                 <input
                   type="text"

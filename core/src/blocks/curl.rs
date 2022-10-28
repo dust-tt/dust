@@ -138,11 +138,6 @@ impl Block for Curl {
         let url = replace_variables_in_string(&self.url, "url", env)?;
         let parsed_url = Url::parse(url.as_str())?;
 
-        match parsed_url.scheme() {
-            "https" => (),
-            _ => Err(anyhow!("Only the `https` scheme is authorized."))?,
-        }
-
         let _: Vec<std::net::Ipv4Addr> = match parsed_url.host() {
             Some(h) => match h {
                 Host::Domain(d) => {
@@ -206,10 +201,18 @@ impl Block for Curl {
             _ => Err(anyhow!("Returned body must be either a string or null."))?,
         };
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let res = cli.request(req).await?;
+        let res = match parsed_url.scheme() {
+            "https" => {
+                let https = HttpsConnector::new();
+                let cli = Client::builder().build::<_, hyper::Body>(https);
+                cli.request(req).await?
+            }
+            "http" => {
+                let cli = Client::new();
+                cli.request(req).await?
+            }
+            _ => Err(anyhow!("Only the `https` scheme is authorized."))?,
+        };
 
         let status = res.status();
 

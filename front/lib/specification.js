@@ -94,6 +94,7 @@ export function addBlock(spec, blockType) {
         name: "",
         indent: 0,
         spec: {
+          scheme: "https",
           method: "POST",
           url: "",
           headers_code:
@@ -290,7 +291,7 @@ export function dumpSpecification(spec, latestDatasets) {
       case "curl": {
         out += `curl ${block.name} {\n`;
         out += `  method: ${block.spec.method}\n`;
-        out += `  url: \n\`\`\`\nhttps://${block.spec.url}\n\`\`\`\n`;
+        out += `  url: \n\`\`\`\n${block.spec.scheme}://${block.spec.url}\n\`\`\`\n`;
         out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
         out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
         out += `}\n`;
