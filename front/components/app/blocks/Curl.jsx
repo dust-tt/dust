@@ -57,7 +57,7 @@ export default function Curl({
 
   useEffect(() => {
     if (!block.spec.scheme) {
-      onSchemeChange("https");
+      handleSchemeChange("https");
     }
   });
 
