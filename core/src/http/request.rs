@@ -31,19 +31,18 @@ pub struct HttpResponse {
 }
 
 impl HttpRequest {
-    pub fn new(method: String, url: &str, headers: Value, body: Value) -> Result<Self> {
+    pub fn new(method: &str, url: &str, headers: Value, body: Value) -> Result<Self> {
         let mut hasher = blake3::Hasher::new();
-        hasher.update(method.to_string().as_bytes());
+        hasher.update(method.as_bytes());
         hasher.update(url.as_bytes());
         hasher.update(serde_json::to_string(&headers)?.as_bytes());
         hasher.update(serde_json::to_string(&body)?.as_bytes());
 
         let hash = format!("{}", hasher.finalize().to_hex());
-        println!("HTTP REQUEST HASH: {}", hash);
 
         Ok(Self {
             hash,
-            method,
+            method: method.to_string(),
             url: url.to_string(),
             headers,
             body,

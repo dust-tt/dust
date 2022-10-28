@@ -93,7 +93,7 @@ impl Block for Search {
         }?;
 
         let request = HttpRequest::new(
-            String::from("GET"),
+            "GET",
             format!(
                 "https://serpapi.com/search?q={}&engine={}&api_key={}",
                 encode(&query),

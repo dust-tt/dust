@@ -120,7 +120,7 @@ impl Block for Curl {
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
         let request =
-            HttpRequest::new(self.method.clone(), url.as_str(), headers_value, body_value)?;
+            HttpRequest::new(self.method.as_str(), url.as_str(), headers_value, body_value)?;
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), true)
