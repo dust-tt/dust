@@ -296,6 +296,17 @@ impl Block for LLM {
             ))?,
         };
 
+        let use_cache = match config {
+            Some(v) => match v.get("use_cache") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => true,
+                },
+                None => true,
+            },
+            _ => true,
+        };
+
         let request = LLMRequest::new(
             provider_id,
             &model_id,
@@ -311,7 +322,7 @@ impl Block for LLM {
                 env.credentials.clone(),
                 env.project.clone(),
                 env.store.clone(),
-                true,
+                use_cache,
             )
             .await?;
         assert!(g.completions.len() == 1);

@@ -85,6 +85,7 @@ export function addBlock(spec, blockType) {
         },
         config: {
           provider_id: "",
+          use_cache: true,
         },
       });
       break;
@@ -99,9 +100,12 @@ export function addBlock(spec, blockType) {
           url: "",
           headers_code:
             '_fun = (env) => {\n  return {"Content-Type": "application/json"};\n}',
-          body_code: "_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: \"bar\" });\n}",
+          body_code:
+            '_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: "bar" });\n}',
         },
-        config: {},
+        config: {
+          use_cache: true,
+        },
       });
       break;
     case "llm":
@@ -121,6 +125,7 @@ export function addBlock(spec, blockType) {
         config: {
           provider_id: "",
           model_id: "",
+          use_cache: true,
         },
       });
       break;

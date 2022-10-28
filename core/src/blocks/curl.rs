@@ -90,7 +90,20 @@ impl Block for Curl {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+        let config = env.config.config_for_block(name);
+
+        let use_cache = match config {
+            Some(v) => match v.get("use_cache") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => true,
+                },
+                None => true,
+            },
+            _ => true,
+        };
+
         let e = env.clone();
         let headers_code = self.headers_code.clone();
         let headers_value: Value = match tokio::task::spawn_blocking(move || {
@@ -123,7 +136,7 @@ impl Block for Curl {
             HttpRequest::new(self.method.as_str(), url.as_str(), headers_value, body_value)?;
 
         let response = request
-            .execute_with_cache(env.project.clone(), env.store.clone(), true)
+            .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
 
         Ok(json!(response))

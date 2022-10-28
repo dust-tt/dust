@@ -34,8 +34,10 @@ const isRunnable = (readOnly, spec, config) => {
 
   for (const name in config) {
     for (const key in config[name]) {
-      if (!config[name][key] || config[name][key].length == 0) {
-        return false;
+      if (key != "use_cache") {
+        if (!config[name][key] || config[name][key].length == 0) {
+          return false;
+        }
       }
     }
   }

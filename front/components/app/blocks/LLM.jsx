@@ -70,7 +70,8 @@ export default function LLM({
 
   const handleModelChange = (model) => {
     let b = shallowBlockClone(block);
-    b.config = model;
+    b.config.provider_id = model.provider_id;
+    b.config.model_id = model.model_id;
     onBlockUpdate(b);
   };
 
@@ -91,6 +92,7 @@ export default function LLM({
       status={status}
       running={running}
       readOnly={readOnly}
+      canUseCache={true}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

@@ -153,10 +153,10 @@ impl LLMRequest {
         credentials: Credentials,
         project: Project,
         store: Box<dyn Store + Send + Sync>,
-        cached: bool,
+        use_cache: bool,
     ) -> Result<LLMGeneration> {
         let generation = {
-            match cached {
+            match use_cache {
                 false => None,
                 true => {
                     let mut generations = store.llm_cache_get(&project, self).await?;

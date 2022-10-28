@@ -3,7 +3,10 @@ import {
   TrashIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  ArrowPathIcon,
+  // CircleStackIcon,
 } from "@heroicons/react/20/solid";
+import { CircleStackIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import Output from "./Output";
 
@@ -15,6 +18,7 @@ export default function Block({
   running,
   readOnly,
   children,
+  canUseCache,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -23,6 +27,12 @@ export default function Block({
   const handleNameChange = (name) => {
     let b = Object.assign({}, block);
     b.name = name;
+    onBlockUpdate(b);
+  };
+
+  const handleUseCacheChange = (useCache) => {
+    let b = Object.assign({}, block);
+    b.config.use_cache = useCache;
     onBlockUpdate(b);
   };
 
@@ -43,6 +53,9 @@ export default function Block({
 
   useEffect(() => {
     nameValidation(block.name);
+    if (canUseCache && block.config.use_cache === undefined) {
+      handleUseCacheChange(true);
+    }
   });
 
   return (
@@ -78,6 +91,34 @@ export default function Block({
               value={block.name}
               onChange={(e) => handleNameChange(e.target.value.toUpperCase())}
             />
+          </div>
+
+          <div
+            className={classNames(
+              readOnly || !canUseCache
+                ? "hidden"
+                : "flex flex-initial flex-row space-x-1 mx-2"
+            )}
+          >
+            {block.config && block.config.use_cache ? (
+              <div
+                className="flex-initial text-gray-400 flex cursor-pointer"
+                onClick={() => {
+                  handleUseCacheChange(false);
+                }}
+              >
+                <CircleStackIcon className="h-4 w-4" />
+              </div>
+            ) : (
+              <div
+                className="flex-initial text-gray-400 flex cursor-pointer"
+                onClick={() => {
+                  handleUseCacheChange(true);
+                }}
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+              </div>
+            )}
           </div>
 
           <div

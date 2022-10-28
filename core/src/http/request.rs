@@ -178,10 +178,10 @@ impl HttpRequest {
         &self,
         project: Project,
         store: Box<dyn Store + Send + Sync>,
-        cached: bool,
+        use_cache: bool,
     ) -> Result<HttpResponse> {
         let response = {
-            match cached {
+            match use_cache {
                 false => None,
                 true => {
                     let mut responses = store.http_cache_get(&project, self).await?;
