@@ -1,13 +1,11 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::{body::Buf, Body, Client, Method, Request};
-use hyper_tls::HttpsConnector;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::io::prelude::*;
+use serde_json::{json, Value};
 use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -81,7 +79,20 @@ impl Block for Search {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+        let config = env.config.config_for_block(name);
+
+        let use_cache = match config {
+            Some(v) => match v.get("use_cache") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => true,
+                },
+                None => true,
+            },
+            _ => true,
+        };
+
         let query = replace_variables_in_string(&self.query, "query", env)?;
 
         let serp_api_key = match env.credentials.get("SERP_API_KEY") {
@@ -94,39 +105,29 @@ impl Block for Search {
             },
         }?;
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(format!(
+        let request = HttpRequest::new(
+            "GET",
+            format!(
                 "https://serpapi.com/search?q={}&engine={}&api_key={}",
                 encode(&query),
                 self.engine,
                 serp_api_key
-            ))
-            .body(Body::empty())?;
+            )
+            .as_str(),
+            json!({}),
+            Value::Null,
+        )?;
 
-        let res = cli.request(req).await?;
+        let response = request
+            .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
+            .await?;
 
-        let status = res.status();
-
-        let body = hyper::body::aggregate(res).await?;
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        match status {
-            hyper::StatusCode::OK => {
-                let raw: serde_json::Value = serde_json::from_slice(c)?;
-                Ok(raw)
-            }
-            s => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
-                    error: format!("Unexpected error with HTTP status {}", s),
-                });
-                Err(anyhow!("SerpAPIError: {}", error.error))
-            }
+        match response.status {
+            200 => Ok(response.body),
+            s => Err(anyhow!(
+                "SerpAPIError: Unexpected error with HTTP status {}",
+                s
+            )),
         }
     }
 

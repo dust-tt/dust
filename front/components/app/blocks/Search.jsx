@@ -35,7 +35,7 @@ export default function Search({
     ) {
       setTimeout(() => {
         let b = shallowBlockClone(block);
-        b.config = { provider_id: "serpapi" };
+        b.config.provider_id = "serpapi";
         onBlockUpdate(b);
       });
     }
@@ -46,7 +46,7 @@ export default function Search({
     ) {
       setTimeout(() => {
         let b = shallowBlockClone(block);
-        b.config = { provider_id: "" };
+        b.config.provider_id = "";
         onBlockUpdate(b);
       });
     }
@@ -66,6 +66,7 @@ export default function Search({
       status={status}
       running={running}
       readOnly={readOnly}
+      canUseCache={true}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

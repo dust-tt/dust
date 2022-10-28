@@ -69,6 +69,7 @@ export default function Curl({
       status={status}
       running={running}
       readOnly={readOnly}
+      canUseCache={true}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

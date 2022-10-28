@@ -7,6 +7,11 @@ export function extractConfig(spec) {
           type: "llm",
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           model_id: spec[i].config ? spec[i].config.model_id : "",
+          use_cache: spec[i].config
+            ? spec[i].config.use_cache
+              ? spec[i].config.use_cache
+              : false
+            : false,
         };
         break;
       case "input":
@@ -19,6 +24,21 @@ export function extractConfig(spec) {
         c[spec[i].name] = {
           type: "search",
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
+          use_cache: spec[i].config
+            ? spec[i].config.use_cache
+              ? spec[i].config.use_cache
+              : false
+            : false,
+        };
+        break;
+      case "curl":
+        c[spec[i].name] = {
+          type: "curl",
+          use_cache: spec[i].config
+            ? spec[i].config.use_cache
+              ? spec[i].config.use_cache
+              : false
+            : false,
         };
         break;
     }
