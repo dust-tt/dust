@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
@@ -861,6 +862,79 @@ impl Store for PostgresStore {
                     &request.hash().to_string(),
                     &request_data,
                     &generation_data,
+                ],
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => match e.code() {
+                // The entry was inserted concurrently.
+                Some(&SqlState::UNIQUE_VIOLATION) => Ok(()),
+                _ => Err(e.into()),
+            },
+        }
+    }
+
+    async fn http_cache_get(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+    ) -> Result<Vec<HttpResponse>> {
+        let project_id = project.project_id();
+        let hash = request.hash().to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+        // Retrieve responses.
+        let stmt = c
+            .prepare("SELECT created, response FROM cache WHERE project = $1 AND hash = $2")
+            .await?;
+        let rows = c.query(&stmt, &[&project_id, &hash]).await?;
+        let mut responses = rows
+            .iter()
+            .map(|row| {
+                let created: i64 = row.get(0);
+                let response_data: String = row.get(1);
+                let response: HttpResponse = serde_json::from_str(&response_data)?;
+                Ok((created as u64, response))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        // Latest first.
+        responses.sort_by(|a, b| b.0.cmp(&a.0));
+
+        Ok(responses.into_iter().map(|(_, g)| g).collect::<Vec<_>>())
+    }
+
+    async fn http_cache_store(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+        response: &HttpResponse,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let request = request.clone();
+        let response = response.clone();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+        let stmt = c
+            .prepare(
+                "INSERT INTO cache (id, project, created, hash, request, response)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+            )
+            .await?;
+        let created = response.created as i64;
+        let request_data = serde_json::to_string(&request)?;
+        let response_data = serde_json::to_string(&response)?;
+        match c
+            .query_one(
+                &stmt,
+                &[
+                    &project_id,
+                    &created,
+                    &request.hash().to_string(),
+                    &request_data,
+                    &response_data,
                 ],
             )
             .await

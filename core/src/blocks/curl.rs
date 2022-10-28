@@ -122,7 +122,9 @@ impl Block for Curl {
         let request =
             HttpRequest::new(self.method.clone(), url.as_str(), headers_value, body_value)?;
 
-        let response = request.execute().await?;
+        let response = request
+            .execute_with_cache(env.project.clone(), env.store.clone(), true)
+            .await?;
 
         Ok(json!(response))
     }

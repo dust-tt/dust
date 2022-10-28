@@ -105,7 +105,9 @@ impl Block for Search {
             Value::Null,
         )?;
 
-        let response = request.execute().await?;
+        let response = request
+            .execute_with_cache(env.project.clone(), env.store.clone(), true)
+            .await?;
 
         match response.status {
             200 => Ok(response.body),

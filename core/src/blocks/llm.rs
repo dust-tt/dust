@@ -311,6 +311,7 @@ impl Block for LLM {
                 env.credentials.clone(),
                 env.project.clone(),
                 env.store.clone(),
+                true,
             )
             .await?;
         assert!(g.completions.len() == 1);

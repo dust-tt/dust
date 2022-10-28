@@ -1,3 +1,5 @@
+use crate::project::Project;
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use dns_lookup::lookup_host;
@@ -171,5 +173,34 @@ impl HttpRequest {
                 Err(_) => Value::String(response_body),
             },
         })
+    }
+
+    pub async fn execute_with_cache(
+        &self,
+        project: Project,
+        store: Box<dyn Store + Send + Sync>,
+        cached: bool,
+    ) -> Result<HttpResponse> {
+        let response = {
+            match cached {
+                false => None,
+                true => {
+                    let mut responses = store.http_cache_get(&project, self).await?;
+                    match responses.len() {
+                        0 => None,
+                        _ => Some(responses.remove(0)),
+                    }
+                }
+            }
+        };
+
+        match response {
+            Some(response) => Ok(response),
+            None => {
+                let response = self.execute().await?;
+                store.http_cache_store(&project, self, &response).await?;
+                Ok(response)
+            }
+        }
     }
 }
