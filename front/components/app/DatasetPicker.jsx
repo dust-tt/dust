@@ -46,7 +46,7 @@ export default function DatasetPicker({
       )}
       <Menu as="div" className="relative inline-block text-left">
         <div>
-          {datasets.length == 0 && !dataset ? (
+          {datasets.length == 0 && !dataset && !readOnly ? (
             <Link href={`/${user}/a/${app.sId}/datasets/new`}>
               <a
                 className={classNames(

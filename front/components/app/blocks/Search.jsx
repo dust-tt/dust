@@ -75,7 +75,7 @@ export default function Search({
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex-initial flex flex-row items-center space-x-1">
             <div className="flex flex-initial items-center">query :</div>
-            {!isProvidersLoading && !serpAPIProvider ? (
+            {!isProvidersLoading && !serpAPIProvider && !readOnly ? (
               <div className="px-2">
                 <Link href={`/${user}/providers`}>
                   <a

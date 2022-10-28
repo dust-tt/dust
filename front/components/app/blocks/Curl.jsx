@@ -82,7 +82,8 @@ export default function Curl({
                 <Menu.Button
                   className={classNames(
                     "inline-flex items-center rounded-md border border-gray-300 bg-gray-50 py-1 px-1 text-sm font-normal",
-                    "focus:outline-none focus:ring-0"
+                    "focus:outline-none focus:ring-0",
+                    readOnly ? "cursor-default" : "cursor-pointer"
                   )}
                   readOnly={readOnly}
                 >
@@ -103,8 +104,7 @@ export default function Curl({
                 >
                   <Menu.Items
                     className={classNames(
-                      "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-                      "left-1"
+                      "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none left-1"
                     )}
                   >
                     <div className="py-1">
@@ -139,12 +139,17 @@ export default function Curl({
             <div className="flex flex-1 font-normal">
               <div className="flex rounded-md flex-1">
                 <span
-                  className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-gray-500 text-sm cursor-pointer"
+                  className={classNames(
+                    readOnly ? "cursor-default" : "cursor-pointer",
+                    "inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-gray-500 text-sm"
+                  )}
                   onClick={() => {
-                    if (block.spec.scheme == "https") {
-                      handleSchemeChange("http");
-                    } else {
-                      handleSchemeChange("https");
+                    if (!readOnly) {
+                      if (block.spec.scheme == "https") {
+                        handleSchemeChange("http");
+                      } else {
+                        handleSchemeChange("https");
+                      }
                     }
                   }}
                 >
@@ -154,9 +159,7 @@ export default function Curl({
                   type="text"
                   className={classNames(
                     "block flex-1 rounded-none rounded-r-md font-normal text-sm py-1 pl-1",
-                    readOnly
-                      ? "border-gray-300 ring-0 focus:ring-0 focus:border-white"
-                      : "border-gray-300 focus:border-gray-300 focus:ring-0"
+                    "border-gray-300 focus:border-gray-300 focus:ring-0"
                   )}
                   readOnly={readOnly}
                   value={block.spec.url}

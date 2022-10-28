@@ -78,7 +78,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
         <Menu as="div" className="relative inline-block text-left">
           <div>
             {modelProviders.length == 0 &&
-            !(model.provider_id && model.provider_id.length > 0) ? (
+            !(model.provider_id && model.provider_id.length > 0) && !readOnly ? (
               <Link href={`/${user}/providers`}>
                 <a
                   className={classNames(
