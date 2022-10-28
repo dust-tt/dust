@@ -1,13 +1,11 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::{body::Buf, Body, Client, Method, Request};
-use hyper_tls::HttpsConnector;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::io::prelude::*;
+use serde_json::{json, Value};
 use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -94,39 +92,27 @@ impl Block for Search {
             },
         }?;
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(format!(
+        let request = HttpRequest::new(
+            String::from("GET"),
+            format!(
                 "https://serpapi.com/search?q={}&engine={}&api_key={}",
                 encode(&query),
                 self.engine,
                 serp_api_key
-            ))
-            .body(Body::empty())?;
+            )
+            .as_str(),
+            json!({}),
+            Value::Null,
+        )?;
 
-        let res = cli.request(req).await?;
+        let response = request.execute().await?;
 
-        let status = res.status();
-
-        let body = hyper::body::aggregate(res).await?;
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        match status {
-            hyper::StatusCode::OK => {
-                let raw: serde_json::Value = serde_json::from_slice(c)?;
-                Ok(raw)
-            }
-            s => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
-                    error: format!("Unexpected error with HTTP status {}", s),
-                });
-                Err(anyhow!("SerpAPIError: {}", error.error))
-            }
+        match response.status {
+            200 => Ok(response.body),
+            s => Err(anyhow!(
+                "SerpAPIError: Unexpected error with HTTP status {}",
+                s
+            )),
         }
     }
 
