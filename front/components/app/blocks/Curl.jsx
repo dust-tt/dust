@@ -75,7 +75,7 @@ export default function Curl({
       onBlockDown={onBlockDown}
     >
       <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-row space-x-2">
+        <div className="flex flex-row space-x-2 mt-1">
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <Menu as="div" className="relative inline-block text-left">
               <div>
@@ -86,7 +86,7 @@ export default function Curl({
                   )}
                   readOnly={readOnly}
                 >
-                  {block.spec.method}{" "}
+                  {block.spec.method}
                   <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
                 </Menu.Button>
               </div>
@@ -120,7 +120,7 @@ export default function Curl({
                                   active
                                     ? "bg-gray-50 text-gray-900"
                                     : "text-gray-700",
-                                  "block px-4 py-2 text-sm cursor-pointer whitespace-nowrap"
+                                  "block px-4 py-1 text-sm cursor-pointer whitespace-nowrap"
                                 )}
                               >
                                 {method}
