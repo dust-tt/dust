@@ -85,6 +85,7 @@ export function addBlock(spec, blockType) {
         },
         config: {
           provider_id: "",
+          use_cache: true,
         },
       });
       break;
@@ -94,13 +95,17 @@ export function addBlock(spec, blockType) {
         name: "",
         indent: 0,
         spec: {
+          scheme: "https",
           method: "POST",
           url: "",
           headers_code:
             '_fun = (env) => {\n  return {"Content-Type": "application/json"};\n}',
-          body_code: "_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: \"bar\" });\n}",
+          body_code:
+            '_fun = (env) => {\n  // return a string or null to skip sending a body.\n  return JSON.stringify({ foo: "bar" });\n}',
         },
-        config: {},
+        config: {
+          use_cache: true,
+        },
       });
       break;
     case "llm":
@@ -120,6 +125,7 @@ export function addBlock(spec, blockType) {
         config: {
           provider_id: "",
           model_id: "",
+          use_cache: true,
         },
       });
       break;
@@ -290,7 +296,7 @@ export function dumpSpecification(spec, latestDatasets) {
       case "curl": {
         out += `curl ${block.name} {\n`;
         out += `  method: ${block.spec.method}\n`;
-        out += `  url: \n\`\`\`\nhttps://${block.spec.url}\n\`\`\`\n`;
+        out += `  url: \n\`\`\`\n${block.spec.scheme}://${block.spec.url}\n\`\`\`\n`;
         out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
         out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
         out += `}\n`;

@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate pest_derive;
-//extern crate pest;
-//use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "dust.pest"]
@@ -23,6 +21,9 @@ pub mod providers {
     pub mod llm;
     pub mod openai;
     pub mod provider;
+}
+pub mod http {
+    pub mod request;
 }
 pub mod blocks {
     pub mod block;

@@ -22,7 +22,7 @@ function ArrayViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {value.map((item, index) => (
-        <ValueViewer key={index} block={block} value={item} k={index}/>
+        <ValueViewer key={index} block={block} value={item} k={index} />
       ))}
     </div>
   );
@@ -188,9 +188,13 @@ export default function Output({ user, block, status, app }) {
                           <Error error={t.error} />
                         </div>
                       ) : (
-                        <div className="flex flex-auto flex-row">
-                          <CheckCircleIcon className="text-emerald-300 h-4 w-4 mt-0.5" />
-                          <ValueViewer block={block} value={t.value} />
+                        <div className="flex flex-row">
+                          <div className="flex flex-initial">
+                            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
+                          </div>
+                          <div className="flex flex-1">
+                            <ValueViewer block={block} value={t.value} />
+                          </div>
                         </div>
                       )}
                     </div>

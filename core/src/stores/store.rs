@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{Run, RunConfig, RunStatus};
@@ -72,6 +73,19 @@ pub trait Store {
         project: &Project,
         request: &LLMRequest,
         generation: &LLMGeneration,
+    ) -> Result<()>;
+
+    // HTTP Cache
+    async fn http_cache_get(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+    ) -> Result<Vec<HttpResponse>>;
+    async fn http_cache_store(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+        response: &HttpResponse,
     ) -> Result<()>;
 
     // Cloning

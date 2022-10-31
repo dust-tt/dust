@@ -46,7 +46,7 @@ export function Map({
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-bold text-gray-700 uppercase text-sm py-1 w-24",
+                  "block flex-1 rounded-md px-1 font-bold text-gray-700 uppercase text-sm py-1 w-48",
                   readOnly
                     ? "border-white ring-0 focus:ring-0 focus:border-white"
                     : "border-white focus:border-gray-300 focus:ring-0"

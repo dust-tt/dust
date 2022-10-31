@@ -6,7 +6,7 @@ import { authOptions } from "../../api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { classNames } from "../../../lib/utils";
+import { classNames, communityApps } from "../../../lib/utils";
 
 const { URL, GA_TRACKING_ID } = process.env;
 
@@ -38,7 +38,7 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                 </div>
               )}
 
-              <div className="overflow-hidden bg-white mt-8">
+              <div className="overflow-hidden mt-8">
                 <ul role="list" className="">
                   {apps.map((app) => (
                     <li key={app.id} className="px-2">
@@ -91,10 +91,13 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                           </p>
                         </>
                       ) : (
-                        <p>
-                          Welcome to Dust 🔥 Setup your Providers or create your
-                          first app to get started.
-                        </p>
+                        <>
+                          <p>Welcome to Dust 🔥</p>
+                          <p className="mt-2">
+                            Setup your Providers, explore example apps below or
+                            create your first app to get started.
+                          </p>
+                        </>
                       )}
                     </div>
                   ) : null}
@@ -102,6 +105,65 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
               </div>
             </div>
           </div>
+
+          {!readOnly ? (
+            <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+              <div className="sm:flex sm:items-center">
+                <div className="sm:flex-auto mt-16">
+                  <h1 className="text-base font-medium text-gray-900">
+                    Community Example Apps
+                  </h1>
+
+                  <p className="text-sm text-gray-500">
+                    Discover apps created by the community. They serve as great
+                    examples to get started with Dust.
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-hidden mt-8">
+                <ul role="list" className="mb-8">
+                  {communityApps.map((app) => (
+                    <li key={app.sId} className="px-2">
+                      <div className="py-4">
+                        <div className="flex items-center justify-between">
+                          <Link href={`/${app.user}/a/${app.sId}`}>
+                            <a className="block">
+                              <p className="truncate text-base font-bold text-violet-600">
+                                {app.name}
+                              </p>
+                            </a>
+                          </Link>
+                          <div className="ml-2 flex flex-shrink-0">
+                            <p
+                              className={classNames(
+                                "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                                app.visibility == "public"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              )}
+                            >
+                              {app.visibility}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 sm:flex sm:justify-between">
+                          <div className="sm:flex">
+                            <p className="flex items-center text-sm text-gray-700">
+                              {app.description}
+                            </p>
+                          </div>
+                          <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                            <p>{app.sId}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </AppLayout>

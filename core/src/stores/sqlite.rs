@@ -1,9 +1,10 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
-use crate::stores::store::{Store, SQL_INDEXES, SQLITE_TABLES};
+use crate::stores::store::{Store, SQLITE_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -832,6 +833,74 @@ impl Store for SQLiteStore {
                 request.hash().to_string(),
                 request_data,
                 generation_data
+            ]) {
+                Ok(_) => Ok(()),
+                Err(e) => match e.to_string().as_str() {
+                    "UNIQUE constraint failed: cache.hash" => Ok(()),
+                    _ => Err(e.into()),
+                },
+            }
+        })
+        .await?
+    }
+
+    async fn http_cache_get(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+    ) -> Result<Vec<HttpResponse>> {
+        let project_id = project.project_id();
+        let hash = request.hash().to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Vec<HttpResponse>> {
+            let c = pool.get()?;
+            // Retrieve generations.
+            let mut stmt = c.prepare_cached(
+                "SELECT created, response FROM cache WHERE project = ?1 AND hash = ?2",
+            )?;
+            let mut rows = stmt.query(params![project_id, hash])?;
+            let mut responses: Vec<(u64, HttpResponse)> = vec![];
+            while let Some(row) = rows.next()? {
+                let created: u64 = row.get(0)?;
+                let response_data: String = row.get(1)?;
+                let response: HttpResponse = serde_json::from_str(&response_data)?;
+                responses.push((created, response));
+            }
+            // Latest first.
+            responses.sort_by(|a, b| b.0.cmp(&a.0));
+
+            Ok(responses.into_iter().map(|(_, g)| g).collect::<Vec<_>>())
+        })
+        .await?
+    }
+
+    async fn http_cache_store(
+        &self,
+        project: &Project,
+        request: &HttpRequest,
+        response: &HttpResponse,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let request = request.clone();
+        let response = response.clone();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO cache (project, created, hash, request, response)
+                   VALUES (?, ?, ?, ?, ?)",
+            )?;
+            let created = response.created;
+            let request_data = serde_json::to_string(&request)?;
+            let response_data = serde_json::to_string(&response)?;
+            match stmt.insert(params![
+                project_id,
+                created,
+                request.hash().to_string(),
+                request_data,
+                response_data
             ]) {
                 Ok(_) => Ok(()),
                 Err(e) => match e.to_string().as_str() {

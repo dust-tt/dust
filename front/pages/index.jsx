@@ -7,6 +7,8 @@ import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
 import { ActionButton, Button } from "../components/Button";
 import { Logo } from "../components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
+import { classNames, communityApps } from "../lib/utils";
 
 const { GA_TRACKING_ID } = process.env;
 
@@ -47,16 +49,16 @@ const features = [
       "Speed up iterations and reduce costs with cached model interactions.",
   },
   {
+    name: "Models that act",
+    built: true,
+    description:
+      "Build apps that take action: search Google, curl block and more integrations to come.",
+  },
+  {
     name: "Easy deployment",
     built: false,
     description:
       "Deploy in one click. Aggregate production traffic for later testing and fine-tuning.",
-  },
-  {
-    name: "Models that act",
-    built: false,
-    description:
-      "Integrations to build apps that take action: search Google (available now), write to Notion...",
   },
 ];
 
@@ -145,6 +147,63 @@ export default function Home({ ga_tracking_id }) {
           <Features />
         </div>
 
+        <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="sm:flex sm:items-center">
+            <div className="sm:flex-auto mt-8">
+              <h1 className="text-base font-medium text-gray-900">
+                Community Example Apps
+              </h1>
+
+              <p className="text-sm text-gray-500">
+                Discover apps created by the community. They serve as great
+                examples to get started with Dust.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden mt-8">
+            <ul role="list" className="mb-8">
+              {communityApps.map((app) => (
+                <li key={app.sId} className="px-2">
+                  <div className="py-4">
+                    <div className="flex items-center justify-between">
+                      <Link href={`/${app.user}/a/${app.sId}`}>
+                        <a className="block">
+                          <p className="truncate text-base font-bold text-violet-600">
+                            {app.name}
+                          </p>
+                        </a>
+                      </Link>
+                      <div className="ml-2 flex flex-shrink-0">
+                        <p
+                          className={classNames(
+                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                            app.visibility == "public"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          )}
+                        >
+                          {app.visibility}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 sm:flex sm:justify-between">
+                      <div className="sm:flex">
+                        <p className="flex items-center text-sm text-gray-700">
+                          {app.description}
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                        <p>{app.sId}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
         <div className="my-10 mx-auto max-w-3xl text-center text-gray-400">
           Dust is{" "}
           <a
@@ -189,6 +248,15 @@ export async function getServerSideProps(context) {
     context.res,
     authOptions
   );
+
+  if (session) {
+    return {
+      redirect: {
+        destination: `/${session.user.username}/apps`,
+        permanent: false,
+      },
+    };
+  }
 
   return {
     props: { session, ga_tracking_id: GA_TRACKING_ID },

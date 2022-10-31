@@ -17,3 +17,28 @@ export const shallowBlockClone = (block) => {
   b.config = Object.assign({}, block.config || {});
   return b;
 };
+
+export const communityApps = [
+  {
+    user: "spolu",
+    sId: "d12ac33169",
+    name: "maths-generate-code",
+    description: "Generate code to answer maths questions",
+    visibility: "public",
+  },
+  {
+    user: "bcmejla",
+    sId: "cc20d98f70",
+    name: "wedding-thank-yous",
+    description: "Solving the blank page problem for wedding thank you notes",
+    visibility: "public",
+  },
+  {
+    user: "spolu",
+    sId: "41770fd3d9",
+    name: "web-search-assistant",
+    description:
+      "Answer questions with high factual accuracy by searching online and compiling responses based on content downloaded from websites (with references).",
+    visibility: "public",
+  },
+];

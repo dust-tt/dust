@@ -45,7 +45,8 @@ export default function ViewDatasetView({
     if (
       currentDatasetInEditor.data !== dataset.data ||
       currentDatasetInEditor.name !== dataset.name ||
-      currentDatasetInEditor.description !== dataset.description
+      (currentDatasetInEditor.description !== dataset.description &&
+        (currentDatasetInEditor.description || dataset.description))
     ) {
       setEditorDirty(true);
     } else {
