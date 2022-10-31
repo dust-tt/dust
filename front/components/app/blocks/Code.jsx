@@ -41,7 +41,11 @@ export default function Code({
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-          <div className="flex flex-initial items-center">code :</div>
+          <div className="flex flex-initial items-center">
+            Run the JavaScript
+            <span className="font-mono whitespace-pre"> _fun </span>
+            function defined here:
+          </div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
               <div
