@@ -196,16 +196,16 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
                 Value::String(string_value) => Ok(string_value),
                 Value::Number(number_value) => serde_number_to_string(&number_value),
                 Value::Array(ref array_value) => match array_value.len() {
-                    0 =>  Err(anyhow!("The JSONPath query `{}` did not match any values in the app state.", jsonpath_query)),
+                    0 =>  Err(anyhow!("The JSONPath query `{}` in {} did not match any values in the app state.", jsonpath_query, field)),
                     1 => match &array_value[0] {
                         Value::String(string_value) => Ok(string_value.clone()),
                         Value::Number(number_value) => serde_number_to_string(&number_value),
-                        _ => Err(anyhow!("The JSONPath query `{}` matched a value that was not a string.", jsonpath_query)),
+                        _ => Err(anyhow!("The JSONPath query `{}` in {} matched a value that was not a string.", jsonpath_query, field)),
                     }
-                    _ => Err(anyhow!("The JSONPath query `{}` matched more than one value in the app state: {}.", jsonpath_query, output)),
+                    _ => Err(anyhow!("The JSONPath query `{}` in {} matched more than one value in the app state: {}.", jsonpath_query, field, output)),
 
                 }
-                _ => Err(anyhow!("The JSONPath query `{}` returned a value that was not a string.", jsonpath_query)),
+                _ => Err(anyhow!("The JSONPath query `{}` in {} returned a value that was not a string.", jsonpath_query, field)),
             }?;
 
             result = result.replace(
