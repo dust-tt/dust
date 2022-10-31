@@ -52,6 +52,16 @@ const isRunnable = (readOnly, spec, config) => {
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
           return false;
         }
+      case "map":
+        // Should we also make it so that it can't run if the from block doesn't exist?
+        if (!block.spec.from) {
+          return false;
+        }
+        // repeat as 0 is a special case that is displayed in the UI as
+        // "Loop N times over the full output of block:" but with a blank repeat input.
+        if (block.spec.repeat === 0) {
+          return false;
+        }
       default:
         if (
           !block.name ||
