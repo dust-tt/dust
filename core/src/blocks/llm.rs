@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env,
+    find_variables, parse_pair, replace_variables_in_string, serde_number_to_string, Block, BlockType, Env,
 };
 use crate::providers::llm::{LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
@@ -8,8 +8,9 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::str::FromStr;
+use jsonpath_rust::JsonPathQuery;
 
 #[derive(Clone)]
 pub struct LLM {
@@ -91,83 +92,83 @@ impl LLM {
 
         if variables.len() == 0 {
             Err(anyhow!(
-                "`few_shot_prompt` must contain variables \
-                 refering to a block output (${{BLOCK.key}})"
+                "`few_shot_prompt` must contain JSONPath variables inside ${{}} brackets. If you do \
+                not want to include any variables, just move this text into the main llm prompt."
             ))?
         }
 
-        // Check that all variables refer to the same block.
-        let name = variables[0].0.clone();
-        for (n, _) in &variables {
-            if n != &name {
-                Err(anyhow!(
-                    "Variables in `few_shot_prompt` must refer to the same block (`{}` != `{}`)",
-                    n,
-                    name
-                ))?;
+        // First run each of the JSONPath queries against the environment, and get the array of
+        // results that comes back from each query. values_from_env will be a Vector of tuples
+        // which are the JSONPath query and the array of results from that JSONPath query.
+        let values_from_env : Vec<(String, Vec<String>)> = variables.iter().map(|jsonpath_query_raw| {
+            // For whatever reason, the JSONPath library we use insists on queries starting with $,
+            // which seems to be not required in general. If it's not there, we add it to make the
+            // JSONPath library happy.
+            let jsonpath_query = if !jsonpath_query_raw.starts_with("$.") {
+                "$.".to_owned() + jsonpath_query_raw
+            } else {
+                jsonpath_query_raw.to_string()
+            };
+
+            let array_of_values = match json!(env.state).path(&jsonpath_query) {
+                Ok(matched_values) =>  match matched_values {
+                    Value::Number(number_value) => Ok([serde_number_to_string(&number_value)?].to_vec()),
+                    Value::String(string_value) => Ok([string_value.to_string()].to_vec()),
+                    Value::Array(array_value) => array_value.iter().map(|value| {
+                            match value {
+                                Value::Number(number_value) => Ok(serde_number_to_string(&number_value)?),
+                                Value::String(string_value) => Ok(string_value.to_string()),
+                                _ => Err(anyhow!("All the patterns that match the JSONPath query {} must be numbers or strings.", jsonpath_query))
+                            }
+                        })
+                        .collect(),
+                    Value::Null => Err(anyhow!("`few_shot_prompt` JSONPath queries must result in a number, \
+                    a string, or a an array of numbers or strings, but the query `{}` resulted in \
+                    the null.", jsonpath_query)),
+                    Value::Bool(bool_value) => Err(anyhow!("`few_shot_prompt` JSONPath queries must result in a number, \
+                    a string, or a an array of numbers or strings, but the query `{}` resulted in \
+                    the boolean `{}`.", jsonpath_query, if bool_value  { "true" } else { "false" })),
+                    Value::Object(object_value) => Err(anyhow!("`few_shot_prompt` JSONPath queries must result in a number, \
+                    a string, or a an array of numbers or strings, but the query `{}` resulted in \
+                    the object `{}`.", jsonpath_query, object_value.serialize(serde_json::value::Serializer)?)),
+                },
+                Err(e) => Err(anyhow!("Error applying JSONPath `{}`: {}", jsonpath_query, e)),
+            }?;
+
+            Ok((jsonpath_query_raw.clone(), array_of_values))
+
+        }).collect::<Result<Vec<_>,anyhow::Error>>()?;
+
+        // Check that all of the JSONPath queries returned the same number of results. If one 
+        // JSONPath query returns more results than another, we won't know how many few shot 
+        // prompts to return.
+        let first_array_len = values_from_env[0].1.len();
+        values_from_env.iter().map(|(jsonpath_query, values_for_one_query)| {
+            if values_for_one_query.len() == first_array_len { 
+                Ok(())
+            } else {
+                Err(anyhow!("`few_shot_prompt` JSONPath queries must result in the same number \
+                    of results. The query `{}` returned {} result(s), while the query `{}` returned {} result(s). \
+                    Results for `{}`: {:?}. \
+                    Results for `{}`: {:?}.", 
+                    values_from_env[0].0, first_array_len, jsonpath_query, values_for_one_query.len(), 
+                    values_from_env[0].0, values_from_env[0].1,
+                    jsonpath_query, values_for_one_query))
             }
+        }).collect::<Result<Vec<_>,_>>()?;
+
+        // Replace all the JSONPath queries with their respective values in text.
+        // let mut i : usize = 0;
+        let mut results : Vec<String> = Vec::new();
+        for (i, _) in Vec::from_iter(0..first_array_len).iter().enumerate() {
+            let mut single_result = text.clone().to_string();
+            for (jsonpath_query, values) in &values_from_env {
+                single_result = single_result.replace(&format!("${{{}}}", jsonpath_query), &values[i]);
+            };
+            results.push(single_result);
         }
 
-        let keys = variables.iter().map(|v| v.1.clone()).collect::<Vec<_>>();
-
-        // Check that the block output exists and is an array.
-        let output = env
-            .state
-            .get(&name)
-            .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-        if !output.is_array() {
-            Err(anyhow!(
-                "Block `{}` output is not an array, the block output referred in \
-                 `few_shot_prompt` must be an array",
-                name
-            ))?;
-        }
-        let output = output.as_array().unwrap();
-
-        // Check that the block output elements are objects.
-        for o in output {
-            if !o.is_object() {
-                Err(anyhow!(
-                    "Block `{}` output elements are not objects, the block output referred \
-                     in `few_shot_prompt` must be an array of objects",
-                    name
-                ))?;
-            }
-        }
-
-        // Check that all the keys are present in the block output.
-        for key in keys {
-            if output.len() > 0 && !output[0].as_object().unwrap().contains_key(&key) {
-                Err(anyhow!(
-                    "Key `{}` is not present in block `{}` output objects",
-                    key,
-                    name
-                ))?;
-            }
-            // Check that output[0][key] is a string.
-            if output.len() > 0
-                && !output[0]
-                    .as_object()
-                    .unwrap()
-                    .get(&key)
-                    .unwrap()
-                    .is_string()
-            {
-                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
-            }
-        }
-
-        Ok(output
-            .iter()
-            .map(|o| {
-                let mut text = text.to_string();
-                for (name, key) in &variables {
-                    text =
-                        text.replace(&format!("${{{}.{}}}", name, key), &o[key].as_str().unwrap());
-                }
-                text
-            })
-            .collect())
+        Ok(results)
     }
 
     fn replace_prompt_variables(text: &str, env: &Env) -> Result<String> {

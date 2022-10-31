@@ -12,10 +12,11 @@ use lazy_static::lazy_static;
 use pest::iterators::Pair;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
+use jsonpath_rust::JsonPathQuery;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -156,18 +157,17 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
     }
 }
 
-pub fn find_variables(text: &str) -> Vec<(String, String)> {
+pub fn find_variables(text: &str) -> Vec<String> {
     lazy_static! {
         static ref RE: Regex =
-            Regex::new(r"\$\{(?P<name>[A-Z0-9_]+)\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+            Regex::new(r"\$\{(?P<jsonpath_query>[^}]+)\}").unwrap();
     }
 
     RE.captures_iter(text)
         .map(|c| {
-            let name = c.name("name").unwrap().as_str();
-            let key = c.name("key").unwrap().as_str();
-            // println!("{} {}", name, key);
-            (String::from(name), String::from(key))
+            let jsonpath_query = c.name("jsonpath_query").unwrap().as_str();
+            // println!("{}", jsonpath_query);
+            String::from(jsonpath_query)
         })
         .collect::<Vec<_>>()
 }
@@ -179,45 +179,67 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
 
     variables
         .iter()
-        .map(|(name, key)| {
-            // Check that the block output exists and is an object.
-            let output = env
-                .state
-                .get(name)
-                .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-            if !output.is_object() {
-                Err(anyhow!(
-                    "Block `{}` output is not an object, the output of `{}` referred to \
-                     as a variable in `{}` must be an object",
-                    name,
-                    name,
-                    field
-                ))?;
-            }
-            let output = output.as_object().unwrap();
+        .map(|jsonpath_query_raw| {
 
-            if !output.contains_key(key) {
-                Err(anyhow!(
-                    "Key `{}` is not present in block `{}` output",
-                    key,
-                    name
-                ))?;
-            }
-            // Check that output[key] is a string.
-            if !output.get(key).unwrap().is_string() {
-                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
-            }
+            // For whatever reason, the JSONPath library we use insists on queries starting with $,
+            // which seems to be not required in general. If it's not there, we add it to make the
+            // JSONPath library happy.
+            let jsonpath_query = if !jsonpath_query_raw.starts_with("$.") {
+                "$.".to_owned() + jsonpath_query_raw
+            } else {
+                jsonpath_query_raw.to_string()
+            };
+
+            let output = json!(env.state).path(&jsonpath_query).unwrap();
+
+            let replacement = match output {
+                Value::String(string_value) => Ok(string_value),
+                Value::Number(number_value) => serde_number_to_string(&number_value),
+                Value::Array(ref array_value) => match array_value.len() {
+                    0 =>  Err(anyhow!("The JSONPath query `{}` did not match any values in the app state.", jsonpath_query)),
+                    1 => match &array_value[0] {
+                        Value::String(string_value) => Ok(string_value.clone()),
+                        Value::Number(number_value) => serde_number_to_string(&number_value),
+                        _ => Err(anyhow!("The JSONPath query `{}` matched a value that was not a string.", jsonpath_query)),
+                    }
+                    _ => Err(anyhow!("The JSONPath query `{}` matched more than one value in the app state: {}.", jsonpath_query, output)),
+
+                }
+                _ => Err(anyhow!("The JSONPath query `{}` returned a value that was not a string.", jsonpath_query)),
+            }?;
+
             result = result.replace(
-                &format!("${{{}.{}}}", name, key),
-                &output[key].as_str().unwrap(),
+                &format!("${{{}}}", jsonpath_query_raw),
+                &replacement,
             );
-
             Ok(())
         })
         .collect::<Result<Vec<_>>>()?;
 
     Ok(result)
 }
+
+pub fn serde_number_to_string(input : &serde_json::value::Number) -> Result<String> {
+    if input.is_i64() {
+        match input.as_i64() {
+            Some(n) => Ok(n.to_string()),
+            None => Err(anyhow!("Serde json reported a number as i64 but did not return it as i64."))
+        }
+    } else if input.is_u64() {
+        match input.as_u64() {
+            Some(n) => Ok(n.to_string()),
+            None => Err(anyhow!("Serde json reported a number as u64 but did not return it as u64."))
+        }
+    } else if input.is_f64(){
+        match input.as_f64() {
+            Some(n) => Ok(n.to_string()),
+            None => Err(anyhow!("Serde json reported a number as f64 but did not return it as f64."))
+        }
+    } else {
+        Err(anyhow!("Number value from serde json was neither signed int, unsigned int, nor float."))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
