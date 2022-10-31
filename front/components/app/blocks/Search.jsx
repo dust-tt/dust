@@ -75,9 +75,11 @@ export default function Search({
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex-initial flex flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">query :</div>
             {!isProvidersLoading && !serpAPIProvider && !readOnly ? (
-              <div className="px-2">
+              <div className="px-2 flex flex-row">
+                <div className="pr-2">
+                  Click here to set up your SerpAPI key:
+                </div>
                 <Link href={`/${user}/providers`}>
                   <a
                     className={classNames(
@@ -93,21 +95,27 @@ export default function Search({
                   </a>
                 </Link>
               </div>
-            ) : null}
-          </div>
-          <div className="flex w-full font-normal">
-            <TextareaAutosize
-              placeholder=""
-              className={classNames(
-                "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
-                  : "border-white focus:border-gray-300 focus:ring-0"
-              )}
-              readOnly={readOnly}
-              value={block.spec.query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-            />
+            ) : (
+              <div className="flex flex-row w-full">
+                <div className="flex-initial whitespace-nowrap pr-2">
+                  Search Google for:
+                </div>
+                <div className="flex w-full font-normal">
+                  <TextareaAutosize
+                    placeholder=""
+                    className={classNames(
+                      "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    readOnly={readOnly}
+                    value={block.spec.query}
+                    onChange={(e) => handleQueryChange(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
