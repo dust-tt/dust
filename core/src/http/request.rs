@@ -128,6 +128,8 @@ impl HttpRequest {
         let req = match &self.body {
             Value::String(body) => req.body(Body::from(body.clone()))?,
             Value::Null => req.body(Body::empty())?,
+            Value::Object(_) => req.body(Body::from(self.body.to_string().clone()))?,
+            Value::Array(_) => req.body(Body::from(self.body.to_string().clone()))?,
             _ => Err(anyhow!("Returned body must be either a string or null."))?,
         };
 
