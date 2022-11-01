@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
@@ -53,30 +52,6 @@ impl Web_Scrape {
             },
         })
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct BrowserlessApiAttribute {
-    name: String,
-    value: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct BrowserlessApiSingleResult {
-    html: String,
-    text: String,
-    attributes: Vec<BrowserlessApiAttribute>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct BrowserlessApiSelectorResult {
-    selector: String,
-    results: Vec<BrowserlessApiSingleResult>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct BrowserlessApiResult {
-    data: BrowserlessApiSelectorResult,
 }
 
 
