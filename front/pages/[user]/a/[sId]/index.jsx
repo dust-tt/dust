@@ -19,6 +19,7 @@ import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import Search from "../../../../components/app/blocks/Search";
 import Curl from "../../../../components/app/blocks/Curl";
+import WebScrape from "../../../../components/app/blocks/WebScrape";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
@@ -52,14 +53,22 @@ const isRunnable = (readOnly, spec, config) => {
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
           return false;
         }
-      default:
+        break;
+      case "web_scrape":
         if (
-          !block.name ||
-          block.name.length == 0 ||
-          !block.name.match(/^[A-Z0-9_]+$/)
+          !block.spec.url ||
+          !block.spec.selector ||
+          !block.config.provider_id
         ) {
           return false;
         }
+    }
+    if (
+      !block.name ||
+      block.name.length == 0 ||
+      !block.name.match(/^[A-Z0-9_]+$/)
+    ) {
+      return false;
     }
   }
 
@@ -426,6 +435,24 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                   case "curl":
                     return (
                       <Curl
+                        key={idx}
+                        block={block}
+                        user={user}
+                        app={app}
+                        status={status}
+                        running={runRequested || run?.status.run == "running"}
+                        readOnly={readOnly}
+                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                        onBlockDelete={() => handleDeleteBlock(idx)}
+                        onBlockUp={() => handleMoveBlockUp(idx)}
+                        onBlockDown={() => handleMoveBlockDown(idx)}
+                      />
+                    );
+                    break;
+
+                  case "web_scrape":
+                    return (
+                      <WebScrape
                         key={idx}
                         block={block}
                         user={user}

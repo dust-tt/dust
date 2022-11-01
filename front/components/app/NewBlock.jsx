@@ -34,6 +34,13 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
         "Perform an HTTP request to interface with external services.",
     },
     {
+      type: "web_scrape",
+      typeNames: ["web_scrape"],
+      name: "Web Scrape",
+      description:
+        "Download the html (or a portion of the html) of a page on the web.",
+    },
+    {
       type: "search",
       typeNames: ["search"],
       name: "Google Search",
