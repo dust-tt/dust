@@ -9,7 +9,7 @@ import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DatasetsView({ app, user, readOnly, ga_tracking_id }) {
   const { data: session } = useSession();

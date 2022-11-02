@@ -4,7 +4,7 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { Logo } from "../components/Logo";
 
-const { GA_TRACKING_ID } = process.env;
+const { GA_TRACKING_ID = null } = process.env;
 
 function Block({ type }) {
   return (
