@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
 import { modelProviders, serviceProviders } from "../../../lib/providers";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function ProfileProviders({ ga_tracking_id }) {
   const { data: session } = useSession();

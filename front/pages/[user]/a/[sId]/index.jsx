@@ -26,7 +26,7 @@ import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 let saveTimeout = null;
 
