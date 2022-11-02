@@ -5,6 +5,7 @@ async function main() {
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
+  process.exit(0);
 }
 
 await main();
