@@ -105,11 +105,42 @@ function ValueViewer({ block, value, k }) {
           {k != null ? (
             <span className="text-gray-700 mr-1 font-bold">{k}:</span>
           ) : null}
-          <span className="whitespace-pre-wrap">{value}</span>
+          <span className="whitespace-pre-wrap">
+            {typeof value === "string" ? <StringViewer value={value} /> : value}
+          </span>
         </div>
       )}
     </div>
   );
+}
+
+const STRING_SHOW_MORE_LINK_LENGTH = 400;
+
+// This viewer just truncates very long strings with a show all link for
+// seeing the full value. It does not currently allow you to hide the
+// text again.
+function StringViewer({ value }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (expanded) {
+    return value;
+  }
+
+  if (value.length < STRING_SHOW_MORE_LINK_LENGTH) {
+    return value;
+  } else {
+    return (
+      <span>
+        {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
+        <span
+          className="text-violet-600 hover:text-violet-500 font-bold cursor-pointer"
+          onClick={(e) => setExpanded(!expanded)}
+        >
+          show all
+        </span>
+      </span>
+    );
+  }
 }
 
 function Error({ error }) {
