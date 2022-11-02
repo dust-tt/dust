@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function New({ apps, ga_tracking_id }) {
   const { data: session } = useSession();

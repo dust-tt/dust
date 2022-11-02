@@ -10,7 +10,7 @@ import { CheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { classNames, communityApps } from "../lib/utils";
 
-const { GA_TRACKING_ID } = process.env;
+const { GA_TRACKING_ID = null } = process.env;
 
 const features = [
   {

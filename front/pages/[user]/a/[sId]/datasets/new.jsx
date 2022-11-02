@@ -9,9 +9,14 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
 import DatasetView from "../../../../../components/app/DatasetView";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function NewDatasetView({ app, datasets, user, ga_tracking_id }) {
+export default function NewDatasetView({
+  app,
+  datasets,
+  user,
+  ga_tracking_id,
+}) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { classNames, communityApps } from "../../../lib/utils";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function Home({ apps, readOnly, user, ga_tracking_id }) {
   const { data: session } = useSession();

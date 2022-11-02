@@ -10,7 +10,7 @@ import Router, { useRouter } from "next/router";
 import DatasetView from "../../../../../../components/app/DatasetView";
 import { useBeforeunload } from "react-beforeunload";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function ViewDatasetView({
   app,

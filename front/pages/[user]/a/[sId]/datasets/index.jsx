@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import { classNames } from "../../../../../lib/utils";
 import Router from "next/router";
 
-const { URL, GA_TRACKING_ID } = process.env;
+const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DatasetsView({
   app,
