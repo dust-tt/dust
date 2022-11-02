@@ -12,7 +12,8 @@ use lazy_static::lazy_static;
 use pest::iterators::Pair;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
+use tera::{Context, Tera};
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -173,50 +174,12 @@ pub fn find_variables(text: &str) -> Vec<(String, String)> {
 }
 
 pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
-    let variables = find_variables(text);
-
-    let mut result = text.to_string();
-
-    variables
-        .iter()
-        .map(|(name, key)| {
-            // Check that the block output exists and is an object.
-            let output = env
-                .state
-                .get(name)
-                .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-            if !output.is_object() {
-                Err(anyhow!(
-                    "Block `{}` output is not an object, the output of `{}` referred to \
-                     as a variable in `{}` must be an object",
-                    name,
-                    name,
-                    field
-                ))?;
-            }
-            let output = output.as_object().unwrap();
-
-            if !output.contains_key(key) {
-                Err(anyhow!(
-                    "Key `{}` is not present in block `{}` output",
-                    key,
-                    name
-                ))?;
-            }
-            // Check that output[key] is a string.
-            if !output.get(key).unwrap().is_string() {
-                Err(anyhow!("`{}.{}` is not a string", name, key,))?;
-            }
-            result = result.replace(
-                &format!("${{{}.{}}}", name, key),
-                &output[key].as_str().unwrap(),
-            );
-
-            Ok(())
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    Ok(result)
+    let context = Context::from_value(json!(env.state))?;
+    // context.insert("greeting", &"hello");
+    match Tera::one_off(text, &context, false) {
+        Ok(r) => Ok(r),
+        Err(e) => Err(anyhow!("Error with running template in field `{}`: {}", field, e))
+    }
 }
 
 #[cfg(test)]
