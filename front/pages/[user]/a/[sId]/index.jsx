@@ -19,7 +19,7 @@ import LLM from "../../../../components/app/blocks/LLM";
 import Code from "../../../../components/app/blocks/Code";
 import Search from "../../../../components/app/blocks/Search";
 import Curl from "../../../../components/app/blocks/Curl";
-import WebScrape from "../../../../components/app/blocks/WebScrape";
+import Browser from "../../../../components/app/blocks/Browser";
 import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
@@ -54,7 +54,7 @@ const isRunnable = (readOnly, spec, config) => {
           return false;
         }
         break;
-      case "web_scrape":
+      case "browser":
         if (
           !block.spec.url ||
           !block.spec.selector ||
@@ -450,9 +450,9 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                     );
                     break;
 
-                  case "web_scrape":
+                  case "browser":
                     return (
-                      <WebScrape
+                      <Browser
                         key={idx}
                         block={block}
                         user={user}

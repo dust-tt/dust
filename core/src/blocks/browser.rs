@@ -13,12 +13,12 @@ pub struct Error {
 }
 
 #[derive(Clone)]
-pub struct Web_Scrape {
+pub struct Browser {
     url: String,
     selector: String,
 }
 
-impl Web_Scrape {
+impl Browser {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut url: Option<String> = None;
         let mut selector: Option<String> = None;
@@ -30,21 +30,21 @@ impl Web_Scrape {
                     match key.as_str() {
                         "url" => url = Some(value),
                         "selector" => selector = Some(value),
-                        _ => Err(anyhow!("Unexpected `{}` in `web_scrape` block", key))?,
+                        _ => Err(anyhow!("Unexpected `{}` in `browser` block", key))?,
                     }
                 }
                 Rule::expected => {
-                    Err(anyhow!("`expected` is not yet supported in `web_scrape` block"))?
+                    Err(anyhow!("`expected` is not yet supported in `browser` block"))?
                 }
                 _ => unreachable!(),
             }
         }
 
         if !url.is_some() {
-            Err(anyhow!("Missing required `url` in `web_scrape` block"))?;
+            Err(anyhow!("Missing required `url` in `browser` block"))?;
         }
 
-        Ok(Web_Scrape {
+        Ok(Browser {
             url: url.unwrap(),
             selector: match selector {
                 Some(selector) => selector,
@@ -56,14 +56,14 @@ impl Web_Scrape {
 
 
 #[async_trait]
-impl Block for Web_Scrape {
+impl Block for Browser {
     fn block_type(&self) -> BlockType {
-        BlockType::Web_Scrape
+        BlockType::Browser
     }
 
     fn inner_hash(&self) -> String {
         let mut hasher = blake3::Hasher::new();
-        hasher.update("web_scrape".as_bytes());
+        hasher.update("browser".as_bytes());
         hasher.update(self.url.as_bytes());
         hasher.update(self.selector.as_bytes());
         format!("{}", hasher.finalize().to_hex())

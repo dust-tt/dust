@@ -89,9 +89,9 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
-    case "web_scrape":
+    case "browser":
       s.push({
-        type: "web_scrape",
+        type: "browser",
         name: getNextName(spec, "WEB"),
         indent: 0,
         spec: {
@@ -318,8 +318,8 @@ export function dumpSpecification(spec, latestDatasets) {
         out += "\n";
         break;
       }
-      case "web_scrape": {
-        out += `web_scrape ${block.name} {\n`;
+      case "browser": {
+        out += `browser ${block.name} {\n`;
         out += `  url: \n\`\`\`\n${block.spec.url}\n\`\`\`\n`;
         out += `  selector: ${block.spec.selector}\n`;
         out += `}\n`;

@@ -6,7 +6,7 @@ import { useProviders } from "../../../lib/swr";
 import { filterServiceProviders } from "../../../lib/providers";
 import Link from "next/link";
 
-export default function WebScrape({
+export default function Browser({
   user,
   app,
   block,
@@ -60,6 +60,12 @@ export default function WebScrape({
     }
   }
 
+  const handleUrlBlur = (url) => {
+    if (url.startsWith("https://")) {
+      handleUrlChange(url.slice("https://".length));
+    }
+  };
+
   const handleUrlChange = (url) => {
     let b = shallowBlockClone(block);
     b.spec.url = url ? "https://" + url : "";
@@ -111,7 +117,7 @@ export default function WebScrape({
           </div>
           <div className="flex w-full font-normal">
             <div className="flex rounded-md flex-1">
-              Scrape this URL:&nbsp;
+              Scrape this URL&nbsp;
               <span
                 className={classNames(
                   readOnly ? "cursor-default" : "cursor-pointer",
@@ -131,12 +137,13 @@ export default function WebScrape({
                 readOnly={readOnly}
                 value={urlWithoutScheme}
                 onChange={(e) => handleUrlChange(e.target.value)}
+                onBlur={(e) => handleUrlBlur(e.target.value)}
               />
             </div>
           </div>
           <div className="flex flex-row ">
             <div className="whitespace-nowrap font-normal">
-              Return the content from this CSS selector:&nbsp;
+              Return the content from this CSS selector&nbsp;
             </div>
             <TextareaAutosize
               placeholder=""

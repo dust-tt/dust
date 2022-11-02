@@ -35,5 +35,5 @@ pub mod blocks {
     pub mod reduce;
     pub mod search;
     pub mod curl;
-    pub mod web_scrape;
+    pub mod browser;
 }

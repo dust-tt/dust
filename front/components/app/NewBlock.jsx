@@ -34,11 +34,11 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
         "Perform an HTTP request to interface with external services.",
     },
     {
-      type: "web_scrape",
-      typeNames: ["web_scrape"],
-      name: "Web Scrape",
+      type: "browser",
+      typeNames: ["browser"],
+      name: "Browser",
       description:
-        "Download the html (or a portion of the html) of a page on the web.",
+        "Download the HTML or text content of page on the web (or a portion of it).",
     },
     {
       type: "search",
