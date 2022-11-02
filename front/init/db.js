@@ -1,4 +1,4 @@
-import { User, App, Dataset, Provider } from './lib/models.js';
+import { User, App, Dataset, Provider } from '../lib/models.js';
 
 async function main() {
   await User.sync({ alter: true });
