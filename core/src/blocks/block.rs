@@ -1,5 +1,5 @@
 use crate::blocks::{
-    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search, curl::Curl,
+    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search, curl::Curl, browser::Browser,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
@@ -60,6 +60,7 @@ pub enum BlockType {
     Reduce,
     Search,
     Curl,
+    Browser,
 }
 
 impl ToString for BlockType {
@@ -73,6 +74,7 @@ impl ToString for BlockType {
             BlockType::Reduce => String::from("reduce"),
             BlockType::Search => String::from("search"),
             BlockType::Curl => String::from("curl"),
+            BlockType::Browser => String::from("browser"),
         }
     }
 }
@@ -89,6 +91,7 @@ impl FromStr for BlockType {
             "reduce" => Ok(BlockType::Reduce),
             "search" => Ok(BlockType::Search),
             "curl" => Ok(BlockType::Curl),
+            "browser" => Ok(BlockType::Browser),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -153,6 +156,7 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::Reduce => Ok(Box::new(Reduce::parse(block_pair)?)),
         BlockType::Search => Ok(Box::new(Search::parse(block_pair)?)),
         BlockType::Curl => Ok(Box::new(Curl::parse(block_pair)?)),
+        BlockType::Browser => Ok(Box::new(Browser::parse(block_pair)?)),
     }
 }
 

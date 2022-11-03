@@ -34,6 +34,13 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
         "Perform an HTTP request to interface with external services.",
     },
     {
+      type: "browser",
+      typeNames: ["browser"],
+      name: "Browser",
+      description:
+        "Download the HTML or text content of page on the web (or a portion of it).",
+    },
+    {
       type: "search",
       typeNames: ["search"],
       name: "Google Search",

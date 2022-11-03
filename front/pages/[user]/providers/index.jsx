@@ -8,6 +8,7 @@ import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
 import SerpAPISetup from "../../../components/providers/SerpAPISetup";
+import BrowserlessAPISetup from "../../../components/providers/BrowserlessAPISetup";
 
 import { useState } from "react";
 import { useProviders } from "../../../lib/swr";
@@ -21,6 +22,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
+  const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
 
@@ -56,6 +58,12 @@ export default function ProfileProviders({ ga_tracking_id }) {
           setOpen={setSerpapiOpen}
           enabled={configs["serpapi"] ? true : false}
           config={configs["serpapi"] ? configs["serpapi"] : null}
+        />
+        <BrowserlessAPISetup
+          open={browserlessapiOpen}
+          setOpen={setBrowserlessapiOpen}
+          enabled={configs["browserlessapi"] ? true : false}
+          config={configs["browserlessapi"] ? configs["browserlessapi"] : null}
         />
 
         <div className="">
@@ -174,6 +182,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
                           switch (provider.providerId) {
                             case "serpapi":
                               setSerpapiOpen(true);
+                              break;
+                            case "browserlessapi":
+                              setBrowserlessapiOpen(true);
                               break;
                           }
                         }}

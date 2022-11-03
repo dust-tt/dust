@@ -52,6 +52,7 @@ impl RunConfig {
             BlockType::Reduce => 64,
             BlockType::Search => 8,
             BlockType::Curl => 8,
+            BlockType::Browser => 8,
         }
     }
 }

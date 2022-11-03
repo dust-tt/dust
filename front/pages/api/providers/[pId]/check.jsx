@@ -74,6 +74,31 @@ export default async function handler(req, res) {
           }
           break;
 
+        case "browserlessapi":
+          let testScrape = await fetch(
+            `https://chrome.browserless.io/scrape?token=${config.api_key}`,
+            {
+              method: "POST",
+              headers: {
+                "Cache-Control": "no-cache",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                url: "https://example.com/",
+                elements: [{ selector: "body" }],
+              }),
+            }
+          );
+          if (!testScrape.ok) {
+            // Browserless API returns errors just as plain text, not as JSON.
+            let err = await testScrape.text();
+            res.status(400).json({ ok: false, error: err });
+          } else {
+            let test = await testScrape.json();
+            res.status(200).json({ ok: true });
+          }
+          break;
+
         default:
           res.status(404).json({ ok: false, error: "Provider not built" });
           break;

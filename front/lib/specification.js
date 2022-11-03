@@ -89,6 +89,21 @@ export function addBlock(spec, blockType) {
         },
       });
       break;
+    case "browser":
+      s.push({
+        type: "browser",
+        name: getNextName(spec, "WEB"),
+        indent: 0,
+        spec: {
+          url: "",
+          selector: "body",
+        },
+        config: {
+          provider_id: "",
+          use_cache: true,
+        },
+      });
+      break;
     case "curl":
       s.push({
         type: "curl",
@@ -299,6 +314,14 @@ export function dumpSpecification(spec, latestDatasets) {
         out += `  url: \n\`\`\`\n${block.spec.scheme}://${block.spec.url}\n\`\`\`\n`;
         out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
         out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "browser": {
+        out += `browser ${block.name} {\n`;
+        out += `  url: \n\`\`\`\n${block.spec.url}\n\`\`\`\n`;
+        out += `  selector: ${block.spec.selector}\n`;
         out += `}\n`;
         out += "\n";
         break;
