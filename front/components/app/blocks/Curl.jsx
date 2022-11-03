@@ -2,14 +2,8 @@ import Block from "./Block";
 import { Menu, Transition } from "@headlessui/react";
 import { Fragment, useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import dynamic from "next/dynamic";
-import "@uiw/react-textarea-code-editor/dist.css";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
+import CodeEditor from "../CodeEditor";
 
 export default function Curl({
   user,
@@ -156,16 +150,27 @@ export default function Curl({
                 >
                   {block.spec.scheme}://
                 </span>
-                <input
-                  type="text"
+                <div
                   className={classNames(
                     "block flex-1 rounded-none rounded-r-md font-normal text-sm py-1 pl-1",
-                    "border-gray-300 focus:border-gray-300 focus:ring-0"
+                    "border border-gray-300 focus:border-gray-300 focus:ring-0"
                   )}
-                  readOnly={readOnly}
-                  value={block.spec.url}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                />
+                >
+                  <CodeEditor
+                    language="jinja2"
+                    placeholder=""
+                    padding={0}
+                    readOnly={readOnly}
+                    value={block.spec.url}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    allowEnter={false}
+                    style={{
+                      fontSize: 12,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
