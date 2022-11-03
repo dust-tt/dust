@@ -1,5 +1,6 @@
 use crate::blocks::{
-    code::Code, data::Data, input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search, curl::Curl, browser::Browser,
+    browser::Browser, code::Code, curl::Curl, data::Data, input::Input, llm::LLM, map::Map,
+    reduce::Reduce, search::Search,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};

@@ -53,22 +53,14 @@ const isRunnable = (readOnly, spec, config) => {
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
           return false;
         }
-        break;
-      case "browser":
+      default:
         if (
-          !block.spec.url ||
-          !block.spec.selector ||
-          !block.config.provider_id
+          !block.name ||
+          block.name.length == 0 ||
+          !block.name.match(/^[A-Z0-9_]+$/)
         ) {
           return false;
         }
-    }
-    if (
-      !block.name ||
-      block.name.length == 0 ||
-      !block.name.match(/^[A-Z0-9_]+$/)
-    ) {
-      return false;
     }
   }
 

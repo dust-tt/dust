@@ -125,7 +125,7 @@ impl Block for Search {
         match response.status {
             200 => Ok(response.body),
             s => Err(anyhow!(
-                "SerpAPIError: Unexpected error with HTTP status {}",
+                "SerpAPIError: Unexpected error with HTTP status {}.",
                 s
             )),
         }

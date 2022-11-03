@@ -128,8 +128,6 @@ impl HttpRequest {
         let req = match &self.body {
             Value::String(body) => req.body(Body::from(body.clone()))?,
             Value::Null => req.body(Body::empty())?,
-            Value::Object(_) => req.body(Body::from(self.body.to_string().clone()))?,
-            Value::Array(_) => req.body(Body::from(self.body.to_string().clone()))?,
             _ => Err(anyhow!("Returned body must be either a string or null."))?,
         };
 
@@ -143,7 +141,9 @@ impl HttpRequest {
                 let cli = Client::new();
                 cli.request(req).await?
             }
-            _ => Err(anyhow!("Only the `https` scheme is authorized."))?,
+            _ => Err(anyhow!(
+                "Only the `http` and `https` schemes are authorized."
+            ))?,
         };
 
         let status = res.status();
@@ -164,7 +164,7 @@ impl HttpRequest {
                     .map(|(k, v)| {
                         (
                             k.as_str().to_string(),
-                            Value::String(v.to_str().unwrap().to_string()),
+                            Value::String(v.to_str().unwrap_or("").to_string()),
                         )
                     })
                     .collect::<serde_json::Map<String, Value>>(),

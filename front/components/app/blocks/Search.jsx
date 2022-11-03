@@ -25,7 +25,7 @@ export default function Search({
       }
     : useProviders();
   let serviceProviders = filterServiceProviders(providers);
-  let serpAPIProvider = providers.find((p) => p.providerId == "serpapi");
+  let serpAPIProvider = serviceProviders.find((p) => p.providerId == "serpapi");
 
   // Update the config to impact run state based on the serpAPI provider presence.
   if (!readOnly && !isProvidersLoading && !isProvidersError) {
@@ -75,7 +75,7 @@ export default function Search({
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex-initial flex flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">query :</div>
+            <div className="flex flex-initial items-center">query:</div>
             {!isProvidersLoading && !serpAPIProvider && !readOnly ? (
               <div className="px-2">
                 <Link href={`/${user}/providers`}>
@@ -96,7 +96,8 @@ export default function Search({
             ) : null}
           </div>
           <div className="flex w-full font-normal">
-            <TextareaAutosize
+            <input
+              type="text"
               placeholder=""
               className={classNames(
                 "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",

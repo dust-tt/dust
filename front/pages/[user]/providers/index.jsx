@@ -157,7 +157,14 @@ export default function ProfileProviders({ ga_tracking_id }) {
                 <li key={provider.providerId} className="px-2 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <p className="truncate text-base font-bold text-slate-400">
+                      <p
+                        className={classNames(
+                          "truncate text-base font-bold",
+                          configs[provider.providerId]
+                            ? "text-slate-700"
+                            : "text-slate-400"
+                        )}
+                      >
                         {provider.name}
                       </p>
                       <div className="ml-2 flex flex-shrink-0 mt-0.5">

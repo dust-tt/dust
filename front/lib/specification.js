@@ -92,7 +92,7 @@ export function addBlock(spec, blockType) {
     case "browser":
       s.push({
         type: "browser",
-        name: getNextName(spec, "WEB"),
+        name: getNextName(spec, "WEBCONTENT"),
         indent: 0,
         spec: {
           url: "",

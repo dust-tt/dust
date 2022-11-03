@@ -33,9 +33,9 @@ impl Browser {
                         _ => Err(anyhow!("Unexpected `{}` in `browser` block", key))?,
                     }
                 }
-                Rule::expected => {
-                    Err(anyhow!("`expected` is not yet supported in `browser` block"))?
-                }
+                Rule::expected => Err(anyhow!(
+                    "`expected` is not yet supported in `browser` block"
+                ))?,
                 _ => unreachable!(),
             }
         }
@@ -43,17 +43,16 @@ impl Browser {
         if !url.is_some() {
             Err(anyhow!("Missing required `url` in `browser` block"))?;
         }
+        if !selector.is_some() {
+            Err(anyhow!("Missing required `selector` in `browser` block"))?;
+        }
 
         Ok(Browser {
             url: url.unwrap(),
-            selector: match selector {
-                Some(selector) => selector,
-                None => "body".to_string(),
-            },
+            selector: selector.unwrap(),
         })
     }
 }
-
 
 #[async_trait]
 impl Block for Browser {
@@ -106,12 +105,14 @@ impl Block for Browser {
                 "Cache-Control": "no-cache",
                 "Content-Type": "application/json",
             }),
-            json!({
-                "url": url,
-                "elements": [ { "selector": self.selector } ],
-            }),
+            Value::String(
+                json!({
+                    "url": url,
+                    "elements": [ { "selector": self.selector } ],
+                })
+                .to_string(),
+            ),
         )?;
-
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
@@ -130,11 +131,11 @@ impl Block for Browser {
                     }
                 });
                 Ok(result)
-            },
+            }
             s => Err(anyhow!(
-                "Browserless API: Unexpected error with HTTP status {} and response body {}",
+                "BrowserlessAPIError: Error with HTTP status {} and body {}",
                 s,
-                response.body,
+                response.body.to_string(),
             )),
         }
     }
