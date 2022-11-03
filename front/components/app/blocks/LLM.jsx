@@ -4,6 +4,13 @@ import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../ModelPicker";
+import dynamic from "next/dynamic";
+import "@uiw/react-textarea-code-editor/dist.css";
+
+const CodeEditor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 export default function LLM({
   user,
@@ -291,7 +298,8 @@ export default function LLM({
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial items-center">prompt :</div>
           <div className="flex w-full font-normal">
-            <TextareaAutosize
+            <CodeEditor
+              language="jinja2"
               placeholder=""
               className={classNames(
                 "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
@@ -302,6 +310,12 @@ export default function LLM({
               readOnly={readOnly}
               value={block.spec.prompt}
               onChange={(e) => handlePromptChange(e.target.value)}
+              style={{
+                fontSize: 12,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                backgroundColor: "rgb(241 245 249)",
+              }}
             />
           </div>
         </div>
