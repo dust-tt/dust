@@ -4,6 +4,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { useProviders } from "../../../lib/swr";
 import { filterServiceProviders } from "../../../lib/providers";
 import Link from "next/link";
+import CodeEditor from "../CodeEditor";
 
 export default function Search({
   user,
@@ -24,6 +25,7 @@ export default function Search({
         isProvidersError: false,
       }
     : useProviders();
+
   let serviceProviders = filterServiceProviders(providers);
   let serpAPIProvider = providers.find((p) => p.providerId == "serpapi");
 
@@ -96,7 +98,8 @@ export default function Search({
             ) : null}
           </div>
           <div className="flex w-full font-normal">
-            <TextareaAutosize
+            <CodeEditor
+              language="jinja2"
               placeholder=""
               className={classNames(
                 "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
@@ -107,6 +110,13 @@ export default function Search({
               readOnly={readOnly}
               value={block.spec.query}
               onChange={(e) => handleQueryChange(e.target.value)}
+              allowEnter={false}
+              style={{
+                fontSize: 12,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                backgroundColor: "rgb(241 245 249)",
+              }}
             />
           </div>
         </div>

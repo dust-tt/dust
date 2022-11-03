@@ -4,13 +4,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../ModelPicker";
-import dynamic from "next/dynamic";
-import "@uiw/react-textarea-code-editor/dist.css";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
+import CodeEditor from "../CodeEditor";
 
 export default function LLM({
   user,
