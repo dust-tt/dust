@@ -35,7 +35,7 @@ export default function Readme({ ga_tracking_id }) {
             Welcome to Dust! This README formally covers the basic concepts of
             Dust apps. The easiest way to get started is to explore{" "}
             <a
-              href="https://dust.tt/spolu/a/41770fd3d9"
+              href="https://dust.tt/spolu/a/2316f9c6b0"
               className="font-bold text-violet-600 underline"
               target="_blank"
             >
@@ -267,7 +267,7 @@ export default function Readme({ ga_tracking_id }) {
             <li className="my-4 mx-2">
               <span className="font-mono">
                 <a
-                  href="https://dust.tt/spolu/a/41770fd3d9"
+                  href="https://dust.tt/spolu/a/2316f9c6b0"
                   className="font-bold text-violet-600 underline"
                   target="_blank"
                 >

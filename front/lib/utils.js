@@ -35,7 +35,7 @@ export const communityApps = [
   },
   {
     user: "spolu",
-    sId: "41770fd3d9",
+    sId: "2316f9c6b0",
     name: "web-search-assistant",
     description:
       "Answer questions with high factual accuracy by searching online and compiling responses based on content downloaded from websites (with references).",

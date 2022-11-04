@@ -498,7 +498,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                     </a>{" "}
                     and/or explore and potentially clone{" "}
                     <a
-                      href="https://dust.tt/spolu/a/41770fd3d9"
+                      href="https://dust.tt/spolu/a/2316f9c6b0"
                       className="font-bold text-violet-600 underline"
                       target="_blank"
                     >
