@@ -3,7 +3,10 @@ import MainTab from "../../../../components/app/MainTab";
 import { ActionButton } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
-import { PlayCircleIcon } from "@heroicons/react/20/solid";
+import {
+  PlayCircleIcon,
+  DocumentDuplicateIcon,
+} from "@heroicons/react/20/solid";
 import NewBlock from "../../../../components/app/NewBlock";
 import {
   addBlock,
@@ -25,6 +28,7 @@ import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -268,6 +272,18 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                         return `Error: ${runError.message}`;
                     }
                   })()}
+                </div>
+              ) : null}
+              {session && readOnly ? (
+                <div className="flex">
+                  <Link href={`/${user}/a/${app.sId}/clone`}>
+                    <a>
+                      <ActionButton>
+                        <DocumentDuplicateIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                        Clone
+                      </ActionButton>
+                    </a>
+                  </Link>
                 </div>
               ) : null}
             </div>

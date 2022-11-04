@@ -50,7 +50,6 @@ export default function MainTab({ app, current_tab, user, readOnly }) {
                 <Link href={tab.href} key={tab.name}>
                   <a
                     key={tab.name}
-                    foo={tab.name}
                     className={classNames(
                       "whitespace-nowrap flex py-3 px-4 border-b-2 text-sm flex items-center",
                       tab.name == current_tab

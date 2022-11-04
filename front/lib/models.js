@@ -97,3 +97,33 @@ export const Dataset = sequelize.define(
 );
 User.hasMany(Dataset);
 App.hasMany(Dataset);
+
+export const Clone = sequelize.define(
+  "clone",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    fromId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "apps",
+        key: "id",
+      },
+    },
+    toId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "apps",
+        key: "id",
+      },
+    },
+  },
+  {}
+);
+Clone.belongsTo(App, { as: "from", foreignKey: "fromId" });
+Clone.belongsTo(App, { as: "to", foreignKey: "toId" });

@@ -3,11 +3,12 @@ import MainTab from "../../../../components/app/MainTab";
 import { Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../../../lib/utils";
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
+import Link from "next/link";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -20,7 +21,7 @@ export default function DatasetsView({ app, user, ga_tracking_id }) {
   const [appNameError, setAppNameError] = useState(null);
 
   const [appDescription, setAppDescription] = useState(app.description || "");
-  const [appVisibility, setAppVisibility] = useState(app.visibility);
+  const [appVisibility, setAppVisibility] = useState("public");
 
   const formValidation = () => {
     if (appName.length == 0) {
@@ -50,20 +51,43 @@ export default function DatasetsView({ app, user, ga_tracking_id }) {
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Settings"
+            current_tab="Specification"
             user={user}
-            readOnly={false}
+            readOnly={true}
           />
         </div>
 
         <div className="flex flex-1">
-          <div className="px-4 sm:px-6 lg:px-8 w-full max-w-5xl">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <form
-              action={`/api/apps/${session.user.username}/${app.sId}`}
+              action={`/api/apps/${user}/${app.sId}/clone`}
               method="POST"
               className="space-y-8 divide-y divide-gray-200 mt-8"
             >
               <div className="space-y-8 divide-y divide-gray-200">
+                <div>
+                  <h3 className="text-base font-medium leading-6 text-gray-900">
+                    Clone <span className="font-bold ml-1">{user}</span>
+                    <ChevronRightIcon
+                      className="inline h-5 w-5 text-gray-500 pt-0.5 ml-0.5"
+                      aria-hidden="true"
+                    />
+                    <Link href={`/${user}/a/${app.sId}`}>
+                      <a
+                        href="#"
+                        className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                      >
+                        {app.name}
+                      </a>
+                    </Link>{" "}
+                    to your account
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    This will clone the app (specification along with associated
+                    datasets) to your account. You can pick a new name and
+                    description for the app in the process.
+                  </p>
+                </div>
                 <div>
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-3">
@@ -92,6 +116,7 @@ export default function DatasetsView({ app, user, ga_tracking_id }) {
                               : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                           )}
                           value={appName}
+                          readOnly={false}
                           onChange={(e) => setAppName(e.target.value)}
                         />
                       </div>
@@ -191,7 +216,7 @@ export default function DatasetsView({ app, user, ga_tracking_id }) {
               <div className="pt-6">
                 <div className="flex">
                   <Button disabled={disable} type="submit">
-                    Update
+                    Clone
                   </Button>
                 </div>
               </div>
@@ -210,9 +235,7 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  let readOnly = !session || context.query.user !== session.user.username;
-
-  if (readOnly) {
+  if (!session) {
     return {
       redirect: {
         destination: `/${context.query.user}/a/${context.query.sId}`,
