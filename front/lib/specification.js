@@ -321,7 +321,7 @@ export function dumpSpecification(spec, latestDatasets) {
       case "browser": {
         out += `browser ${block.name} {\n`;
         out += `  url: \n\`\`\`\n${block.spec.url}\n\`\`\`\n`;
-        out += `  selector: ${block.spec.selector}\n`;
+        out += `  selector: \n\`\`\`\n${block.spec.selector}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;
