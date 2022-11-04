@@ -92,7 +92,7 @@ impl HttpRequest {
             lazy_static! {
                 static ref RE: Regex = Regex::new(r"^(0|127|10|192\.168)\..*").unwrap();
             }
-            println!("IP {}", ip.to_string());
+            // println!("IP {}", ip.to_string());
             match RE.is_match(ip.to_string().as_str()) {
                 true => Err(anyhow!("Forbidden IP range"))?,
                 false => Ok(ip),
@@ -196,9 +196,19 @@ impl HttpRequest {
         };
 
         match response {
-            Some(response) => Ok(response),
+            Some(response) => {
+                utils::done(&format!(
+                    "Retrieved cached HTTPRequest cached: method={} url={} hash={}",
+                    self.method, self.url, self.hash,
+                ));
+                Ok(response)
+            }
             None => {
                 let response = self.execute().await?;
+                utils::done(&format!(
+                    "Performed fresh HTTPRequest: method={} url={} hash={}",
+                    self.method, self.url, self.hash,
+                ));
                 store.http_cache_store(&project, self, &response).await?;
                 Ok(response)
             }
