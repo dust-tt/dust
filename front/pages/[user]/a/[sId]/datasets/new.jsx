@@ -4,10 +4,11 @@ import { Button } from "../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
 import DatasetView from "../../../../../components/app/DatasetView";
+import { useRegisterUnloadHandlers } from "../../../../../lib/front";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -23,10 +24,26 @@ export default function NewDatasetView({
   const [loading, setLoading] = useState(false);
   const [dataset, setDataset] = useState(null);
 
-  const onUpdate = (valid, dataset) => {
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [isFinishedEditing, setIsFinishedEditing] = useState(false);
+
+  useRegisterUnloadHandlers(editorDirty);
+
+  // This is a little wonky, but in order to redirect to the dataset's main page and not pop up the
+  // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
+  // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
+  // this should happen.
+  useEffect(() => {
+    if (isFinishedEditing) {
+      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    }
+  }, [isFinishedEditing]);
+
+  const onUpdate = (valid, currentDatasetInEditor) => {
     setDisabled(!valid);
+    setEditorDirty(true);
     if (valid) {
-      setDataset(dataset);
+      setDataset(currentDatasetInEditor);
     }
   };
 
@@ -43,7 +60,8 @@ export default function NewDatasetView({
       }
     );
     const data = await res.json();
-    Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    setEditorDirty(false);
+    setIsFinishedEditing(true);
   };
 
   return (

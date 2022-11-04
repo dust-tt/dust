@@ -6,9 +6,9 @@ import { authOptions } from "../../../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
-import Router, { useRouter } from "next/router";
+import Router from "next/router";
 import DatasetView from "../../../../../../components/app/DatasetView";
-import { useBeforeunload } from "react-beforeunload";
+import { useRegisterUnloadHandlers } from "../../../../../../lib/front";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -24,16 +24,17 @@ export default function ViewDatasetView({
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
+
   const [editorDirty, setEditorDirty] = useState(false);
   const [isFinishedEditing, setIsFinishedEditing] = useState(false);
   const [updatedDataset, setUpdatedDataset] = useState(dataset);
 
   useRegisterUnloadHandlers(editorDirty);
 
-  // This is a little wonky, but in order to redirect to the dataset's main page and not
-  // pop up the "You have unsaved changes" dialog, we need to set editorDirty to false
-  // and then do the router redirect in the next render cycle. We use the isFinishedEditing
-  // state variable to tell us when this should happen.
+  // This is a little wonky, but in order to redirect to the dataset's main page and not pop up the
+  // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
+  // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
+  // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
       Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
@@ -116,42 +117,6 @@ export default function ViewDatasetView({
         </div>
       </div>
     </AppLayout>
-  );
-}
-
-function useRegisterUnloadHandlers(
-  editorDirty,
-  unloadWarning = "You have edited your dataset but not saved your changes. Do you really want to leave this page?"
-) {
-  // Add handlers for browser navigation (typing in address bar, refresh, back button).
-  useBeforeunload((event) => {
-    if (editorDirty) {
-      event.preventDefault();
-      // Most browsers no longer support custom messages, but for those
-      // that do, we return the warning.
-      return unloadWarning;
-    }
-  });
-
-  // Add handler for next.js router events that don't load a new page in the browser.
-  const router = useRouter();
-  useEffect(
-    (e) => {
-      const confirmBrowseAway = () => {
-        if (!editorDirty) return;
-        if (window.confirm(unloadWarning)) return;
-
-        router.events.emit("routeChangeError");
-        throw "routeChange aborted.";
-      };
-
-      router.events.on("routeChangeStart", confirmBrowseAway);
-
-      return () => {
-        router.events.off("routeChangeStart", confirmBrowseAway);
-      };
-    },
-    [editorDirty, router]
   );
 }
 
