@@ -117,6 +117,8 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                   <p className="text-sm text-gray-500">
                     Discover apps created by the community. They serve as great
                     examples to get started with Dust.
+                    <br />
+                    You can clone them directly to your account.
                   </p>
                 </div>
               </div>

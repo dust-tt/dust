@@ -31,10 +31,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (session.github.id.toString() === cloneFromUser.githubId) {
-    res.status(403).end();
-    return;
-  }
+  // We allow self-cloning even if we don't display it in the UI.
 
   let [cloneFromApp] = await Promise.all([
     App.findOne({
@@ -62,7 +59,7 @@ export default async function handler(req, res) {
 
   // console.log("cloneFromUser", cloneFromUser);
   // console.log("cloneFromApp", cloneFromApp);
-  console.log("cloneFromDatasets", cloneFromDatasets);
+  // console.log("cloneFromDatasets", cloneFromDatasets);
   // console.log("session", session);
 
   switch (req.method) {

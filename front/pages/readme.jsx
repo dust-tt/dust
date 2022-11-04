@@ -33,7 +33,14 @@ export default function Readme({ ga_tracking_id }) {
           </p>
           <p className="mb-4">
             Welcome to Dust! This README formally covers the basic concepts of
-            Dust apps. The easiest way to get started is to explore a{" "}
+            Dust apps. The easiest way to get started is to explore{" "}
+            <a
+              href="https://dust.tt/spolu/a/41770fd3d9"
+              className="font-bold text-violet-600 underline"
+              target="_blank"
+            >
+              a
+            </a>{" "}
             <a
               href="https://dust.tt/spolu/a/d12ac33169"
               className="font-bold text-violet-600 underline"
@@ -58,8 +65,9 @@ export default function Readme({ ga_tracking_id }) {
             data-point outputs a JSON object that can be accessed by later
             blocks when executed on the same input data-point.
           </p>
+
           <p className="font-bold mt-6 mb-4">
-            <span className="text-gray-200">##</span> Block types
+            <span className="text-gray-200">##</span> Core block types
           </p>
           <ul>
             <li className="my-4">
@@ -151,6 +159,70 @@ export default function Readme({ ga_tracking_id }) {
               </span>
             </li>
           </ul>
+
+          <p className="font-bold mt-6 mb-4">
+            <span className="text-gray-200">##</span> Integration block types
+          </p>
+          <ul>
+            <li className="my-4">
+              <span className="flex flex-row items-center">
+                <div className="mx-8">
+                  <Block type="curl" />
+                </div>
+                <p>
+                  This block lets you perform a curl request to an external
+                  service. You can use it to call into a{" "}
+                  <a
+                    href="https://replit.com/"
+                    className="font-bold text-violet-600 underline"
+                    target="_blank"
+                  >
+                    Replit
+                  </a>{" "}
+                  endpoint as an example to perform advanced computations.
+                </p>
+              </span>
+            </li>
+            <li className="my-4">
+              <span className="flex flex-row items-center">
+                <div className="mx-6">
+                  <Block type="search" />
+                </div>
+                <p>
+                  This block lets you query Google to retrieve search results.
+                  It is based on{" "}
+                  <a
+                    href="https://serpapi.com/"
+                    className="font-bold text-violet-600 underline"
+                    target="_blank"
+                  >
+                    SerpAPI
+                  </a>
+                  . You can set it up in your account's provider section.
+                </p>
+              </span>
+            </li>
+            <li className="my-4">
+              <span className="flex flex-row items-center">
+                <div className="mx-4 ml-5">
+                  <Block type="browser" />
+                </div>
+                <p>
+                  This block lets you scrape the content of a web page. It is
+                  based on{" "}
+                  <a
+                    href="https://browserless.io/"
+                    className="font-bold text-violet-600 underline"
+                    target="_blank"
+                  >
+                    Browserless.io
+                  </a>
+                  . You can set it up in your account's provider section.
+                </p>
+              </span>
+            </li>
+          </ul>
+
           <p className="font-bold mt-6 mb-4">
             <span className="text-gray-200">##</span> Datasets
           </p>
@@ -161,12 +233,13 @@ export default function Readme({ ga_tracking_id }) {
             data-points or few-shot examples. When an app is run, the version of
             the dataset used is stored and can be later retrieved.
           </p>
+
           <p className="font-bold mt-6 mb-4">
             <span className="text-gray-200">##</span> Getting started
           </p>
           <p className="mb-4">
             The best way to get started before building your first app is to
-            study the following example apps:
+            study and potentially directly clone the following example apps:
           </p>
           <ul>
             <li className="my-4 mx-2">
@@ -188,6 +261,17 @@ export default function Readme({ ga_tracking_id }) {
                   target="_blank"
                 >
                   Automatic wedding thank you notes
+                </a>{" "}
+              </span>
+            </li>
+            <li className="my-4 mx-2">
+              <span className="font-mono">
+                <a
+                  href="https://dust.tt/spolu/a/41770fd3d9"
+                  className="font-bold text-violet-600 underline"
+                  target="_blank"
+                >
+                  Answer questions by searching the web
                 </a>{" "}
               </span>
             </li>

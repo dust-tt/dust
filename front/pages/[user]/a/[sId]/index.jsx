@@ -496,7 +496,14 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                     >
                       README
                     </a>{" "}
-                    and/or explore a{" "}
+                    and/or explore and potentially clone{" "}
+                    <a
+                      href="https://dust.tt/spolu/a/41770fd3d9"
+                      className="font-bold text-violet-600 underline"
+                      target="_blank"
+                    >
+                      a
+                    </a>{" "}
                     <a
                       href="https://dust.tt/spolu/a/d12ac33169"
                       className="font-bold text-violet-500 underline"

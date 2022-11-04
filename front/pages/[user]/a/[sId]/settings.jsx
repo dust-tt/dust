@@ -11,7 +11,7 @@ import { useEffect } from "react";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function DatasetsView({ app, user, ga_tracking_id }) {
+export default function SettingsView({ app, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [disable, setDisabled] = useState(true);

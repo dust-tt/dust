@@ -123,14 +123,6 @@ export default function Home({ ga_tracking_id }) {
             <span className="text-violet-600">
               Large Language Model Apps
             </span>{" "}
-            {/*
-            <span className="">Advanced Playground for</span> <br />
-            <span className="text-violet-600">
-              Large Language Models Apps
-            </span>{" "}
-            <br />
-            <span className="">Design</span>
-           */}
           </h1>
 
           <div className="mx-auto w-48 mt-16">
