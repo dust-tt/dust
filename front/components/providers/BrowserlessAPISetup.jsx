@@ -111,6 +111,11 @@ export default function BrowserlessAPISetup({
                         .
                       </p>
                       <p className="text-sm text-gray-500 mt-2">
+                        Note that it generally takes{" "}
+                        <span className="font-bold">5 mins</span> for the API key
+                        to become active (an email is sent when it's ready).
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
                         We'll never use your API key for anything other than to
                         run your apps.
                       </p>
