@@ -203,6 +203,21 @@ export default function Output({ user, block, status, app }) {
     !["reduce"].includes(block.type)
   ) {
     let traces = run.traces[0][1];
+
+    // For `map` blocks, chirurgically transform the outputs when there is no error so that it looks
+    // like the map has taken place. The map block applies the map after it is executed as the
+    // execution guarantees to return an error or an array that is valid for mapping.
+    if ("map" === block.type) {
+      traces = traces.map((input) => {
+        if (input.find((t) => t.error)) {
+          return input;
+        }
+        return input[0].value.map((v) => {
+          return { value: v };
+        });
+      });
+    }
+
     return (
       <div className="flex flex-col flex-auto">
         {traces.map((trace, i) => {
