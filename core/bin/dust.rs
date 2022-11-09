@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, blocks::block::BlockType, dataset, init, providers::provider, run, stores, utils};
+use dust::{app, blocks::block::BlockType, dataset, init, providers::provider, run, utils};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -14,7 +14,7 @@ enum Commands {
     /// Initialize a new Dust project
     Init {
         /// Path to the directory to init
-        #[clap(default_value = ".")]
+        #[clap(value_parser, default_value = ".")]
         path: String,
     },
     /// Manage versioned JSONL dataset files
@@ -45,10 +45,10 @@ enum DatasetCommands {
     /// be checked and stored in the Dust project store.
     Register {
         /// Dataset id to register or update
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         dataset_id: String,
         /// Path to the JSONL dataset file
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         jsonl_path: String,
     },
 }
@@ -58,13 +58,13 @@ enum ProviderCommands {
     /// Provides instructions to setup a new provider.
     Setup {
         /// Provider id
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         provider_id: provider::ProviderID,
     },
     /// Tests whether a provider is properly setup.
     Test {
         /// Provider id
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         provider_id: provider::ProviderID,
     },
 }
@@ -74,11 +74,11 @@ enum AppCommands {
     /// Runs an app on registered data using the specified model
     Run {
         /// Dataset id to run the app on
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         dataset_id: String,
 
         /// Run config path (JSON)
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         config_path: String,
     },
 }
@@ -90,15 +90,15 @@ enum RunCommands {
     /// Inspect data from a previous run
     Inspect {
         /// Run id to inspect
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         run_id: String,
 
         /// Block type to inspect
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         block_type: BlockType,
 
         /// Block name to inspect
-        #[clap(required = true)]
+        #[clap(value_parser, required = true)]
         block_name: String,
     },
 }

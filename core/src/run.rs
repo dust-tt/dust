@@ -127,11 +127,39 @@ impl RunStatus {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RunType {
+    Deploy,
+    Local,
+}
+
+impl ToString for RunType {
+    fn to_string(&self) -> String {
+        match self {
+            RunType::Deploy => "deploy".to_string(),
+            RunType::Local => "local".to_string(),
+        }
+    }
+}
+
+impl FromStr for RunType {
+    type Err = utils::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "deploy" => Ok(RunType::Deploy),
+            "local" => Ok(RunType::Local),
+            _ => Err(utils::ParseError::with_message("Unknown RunType"))?,
+        }
+    }
+}
+
 /// Execution represents the full execution of an app on input data.
 #[derive(PartialEq, Debug, Serialize, Clone)]
 pub struct Run {
     run_id: String,
     created: u64,
+    run_type: RunType,
     app_hash: String,
     config: RunConfig,
     status: RunStatus,
@@ -148,10 +176,11 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn new(app_hash: &str, config: RunConfig) -> Self {
+    pub fn new(run_type: RunType, app_hash: &str, config: RunConfig) -> Self {
         Run {
             run_id: utils::new_id(),
             created: utils::now(),
+            run_type,
             app_hash: app_hash.to_string(),
             config,
             status: RunStatus {
@@ -166,6 +195,7 @@ impl Run {
     pub fn new_from_store(
         run_id: &str,
         created: u64,
+        run_type: RunType,
         app_hash: &str,
         config: &RunConfig,
         status: &RunStatus,
@@ -174,6 +204,7 @@ impl Run {
         Run {
             run_id: run_id.to_string(),
             created,
+            run_type,
             app_hash: app_hash.to_string(),
             config: config.clone(),
             status: status.clone(),
@@ -187,6 +218,10 @@ impl Run {
 
     pub fn created(&self) -> u64 {
         self.created
+    }
+
+    pub fn run_type(&self) -> RunType {
+        self.run_type.clone()
     }
 
     pub fn app_hash(&self) -> &str {
@@ -223,7 +258,7 @@ pub async fn cmd_inspect(run_id: &str, block_type: BlockType, block_name: &str) 
     let mut run_id = run_id.to_string();
 
     if run_id == "latest" {
-        run_id = match store.latest_run_id(&project).await? {
+        run_id = match store.latest_run_id(&project, RunType::Local).await? {
             Some(run_id) => run_id,
             None => Err(anyhow!("No run found, the app was never executed"))?,
         };
@@ -293,7 +328,7 @@ pub async fn cmd_list() -> Result<()> {
     let project = Project::new_from_id(1);
 
     store
-        .all_runs(&project)
+        .all_runs(&project, RunType::Local)
         .await?
         .iter()
         .for_each(|(run_id, created, app_hash, _config)| {

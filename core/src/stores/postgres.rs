@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::Result;
@@ -322,15 +322,16 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn latest_run_id(&self, project: &Project) -> Result<Option<String>> {
+    async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
         let r = c
             .query(
-                "SELECT run_id FROM runs WHERE project = $1 ORDER BY created DESC LIMIT 1",
-                &[&project_id],
+                "SELECT run_id FROM runs WHERE project = $1 AND run_type = $2
+                   ORDER BY created DESC LIMIT 1",
+                &[&project_id, &run_type.to_string()],
             )
             .await?;
 
@@ -341,16 +342,25 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>> {
+    async fn all_runs(
+        &self,
+        project: &Project,
+        run_type: RunType,
+    ) -> Result<Vec<(String, u64, String, RunConfig)>> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
         // Retrieve runs.
         let stmt = c
-            .prepare("SELECT run_id, created, app_hash, config_json FROM runs WHERE project = $1")
+            .prepare(
+                "SELECT run_id, created, app_hash, config_json FROM runs
+                   WHERE project = $1 AND run_type = $2",
+            )
             .await?;
-        let rows = c.query(&stmt, &[&project_id]).await?;
+        let rows = c
+            .query(&stmt, &[&project_id, &run_type.to_string()])
+            .await?;
 
         let mut runs: Vec<(String, u64, String, RunConfig)> = rows
             .iter()
@@ -374,6 +384,7 @@ impl Store for PostgresStore {
         let project_id = project.project_id();
         let run_id = run.run_id().to_string();
         let created = run.created() as i64;
+        let run_type = run.run_type();
         let app_hash = run.app_hash().to_string();
         let run_config = run.config().clone();
         let run_status = run.status().clone();
@@ -385,10 +396,13 @@ impl Store for PostgresStore {
         let config_data = serde_json::to_string(&run_config)?;
         let status_data = serde_json::to_string(&run_status)?;
 
-        let stmt = c.prepare(
-            "INSERT INTO runs (id, project, created, run_id, app_hash, config_json, status_json)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
-        ).await?;
+        let stmt = c
+            .prepare(
+                "INSERT INTO runs
+                   (id, project, created, run_id, run_type, app_hash, config_json, status_json)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
+            )
+            .await?;
         let _ = c
             .query_one(
                 &stmt,
@@ -396,6 +410,7 @@ impl Store for PostgresStore {
                     &project_id,
                     &created,
                     &run_id,
+                    &run_type.to_string(),
                     &app_hash,
                     &config_data,
                     &status_data,
@@ -597,13 +612,13 @@ impl Store for PostgresStore {
         // Check that the run_id exists
         let r = c
             .query(
-                "SELECT id, created, app_hash, config_json, status_json FROM runs
+                "SELECT id, created, run_type, app_hash, config_json, status_json FROM runs
                    WHERE project = $1 AND run_id = $2",
                 &[&project_id, &run_id],
             )
             .await?;
 
-        let d: Option<(i64, i64, String, String, String)> = match r.len() {
+        let d: Option<(i64, i64, String, String, String, String)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -611,6 +626,7 @@ impl Store for PostgresStore {
                 r[0].get(2),
                 r[0].get(3),
                 r[0].get(4),
+                r[0].get(5),
             )),
             _ => unreachable!(),
         };
@@ -619,7 +635,8 @@ impl Store for PostgresStore {
             return Ok(None);
         }
 
-        let (row_id, created, app_hash, config_data, status_data) = d.unwrap();
+        let (row_id, created, run_type_str, app_hash, config_data, status_data) = d.unwrap();
+        let run_type = RunType::from_str(&run_type_str)?;
         let run_config: RunConfig = serde_json::from_str(&config_data)?;
         let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
@@ -795,6 +812,7 @@ impl Store for PostgresStore {
         Ok(Some(Run::new_from_store(
             &run_id,
             created as u64,
+            run_type,
             &app_hash,
             &run_config,
             &run_status,

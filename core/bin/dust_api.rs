@@ -444,6 +444,7 @@ async fn datasets_retrieve(
 
 #[derive(serde::Deserialize)]
 struct RunsCreatePayload {
+    run_type: run::RunType,
     specification: String,
     dataset_id: Option<String>,
     config: run::RunConfig,
@@ -573,7 +574,13 @@ async fn runs_create(
     }
 
     match app
-        .prepare_run(payload.config, project.clone(), d, state.store.clone())
+        .prepare_run(
+            payload.run_type,
+            payload.config,
+            project.clone(),
+            d,
+            state.store.clone(),
+        )
         .await
     {
         Err(e) => {

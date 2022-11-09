@@ -1,7 +1,7 @@
 use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
 use crate::project::Project;
-use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, Status};
+use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, RunType, Status};
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use crate::{DustParser, Rule};
@@ -185,6 +185,7 @@ impl App {
 
     pub async fn prepare_run(
         &mut self,
+        run_type: RunType,
         run_config: RunConfig,
         project: Project,
         dataset: Option<Dataset>,
@@ -202,6 +203,7 @@ impl App {
 
         let store = store.clone();
         self.run = Some(Run::new(
+            run_type,
             &self.hash,
             self.run_config.as_ref().unwrap().clone(),
         ));
@@ -657,6 +659,7 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
         .await?;
 
     app.prepare_run(
+        RunType::Local,
         run_config,
         project.clone(),
         Some(d),
