@@ -223,7 +223,6 @@ impl App {
     ) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
-        // assert!(self.dataset.is_some());
         assert!(self.project.is_some());
 
         let project = self.project.as_ref().unwrap().clone();

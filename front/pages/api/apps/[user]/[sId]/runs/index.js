@@ -102,6 +102,7 @@ export default async function handler(req, res) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            run_type: "local",
             specification: spec,
             dataset_id: inputDataset,
             config: { blocks: config },
