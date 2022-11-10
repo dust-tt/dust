@@ -871,26 +871,18 @@ impl Store for PostgresStore {
         let created = generation.created as i64;
         let request_data = serde_json::to_string(&request)?;
         let generation_data = serde_json::to_string(&generation)?;
-        match c
-            .query_one(
-                &stmt,
-                &[
-                    &project_id,
-                    &created,
-                    &request.hash().to_string(),
-                    &request_data,
-                    &generation_data,
-                ],
-            )
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => match e.code() {
-                // The entry was inserted concurrently.
-                Some(&SqlState::UNIQUE_VIOLATION) => Ok(()),
-                _ => Err(e.into()),
-            },
-        }
+        c.query_one(
+            &stmt,
+            &[
+                &project_id,
+                &created,
+                &request.hash().to_string(),
+                &request_data,
+                &generation_data,
+            ],
+        )
+        .await?;
+        Ok(())
     }
 
     async fn http_cache_get(
@@ -944,26 +936,18 @@ impl Store for PostgresStore {
         let created = response.created as i64;
         let request_data = serde_json::to_string(&request)?;
         let response_data = serde_json::to_string(&response)?;
-        match c
-            .query_one(
-                &stmt,
-                &[
-                    &project_id,
-                    &created,
-                    &request.hash().to_string(),
-                    &request_data,
-                    &response_data,
-                ],
-            )
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => match e.code() {
-                // The entry was inserted concurrently.
-                Some(&SqlState::UNIQUE_VIOLATION) => Ok(()),
-                _ => Err(e.into()),
-            },
-        }
+        c.query_one(
+            &stmt,
+            &[
+                &project_id,
+                &created,
+                &request.hash().to_string(),
+                &request_data,
+                &response_data,
+            ],
+        )
+        .await?;
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {

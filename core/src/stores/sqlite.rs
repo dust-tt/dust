@@ -845,19 +845,14 @@ impl Store for SQLiteStore {
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
-            match stmt.insert(params![
+            stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 generation_data
-            ]) {
-                Ok(_) => Ok(()),
-                Err(e) => match e.to_string().as_str() {
-                    "UNIQUE constraint failed: cache.hash" => Ok(()),
-                    _ => Err(e.into()),
-                },
-            }
+            ])?;
+            Ok(())
         })
         .await?
     }
@@ -913,19 +908,14 @@ impl Store for SQLiteStore {
             let created = response.created;
             let request_data = serde_json::to_string(&request)?;
             let response_data = serde_json::to_string(&response)?;
-            match stmt.insert(params![
+            stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 response_data
-            ]) {
-                Ok(_) => Ok(()),
-                Err(e) => match e.to_string().as_str() {
-                    "UNIQUE constraint failed: cache.hash" => Ok(()),
-                    _ => Err(e.into()),
-                },
-            }
+            ])?;
+            Ok(())
         })
         .await?
     }
