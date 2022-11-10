@@ -13,7 +13,7 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use tokio_postgres::{error::SqlState, NoTls};
+use tokio_postgres::NoTls;
 
 #[derive(Clone)]
 pub struct PostgresStore {
