@@ -417,7 +417,8 @@ impl App {
 
             // Flatten the result and extract results (Env, Value) or error strings.
             let mut flat: Vec<Vec<Option<(Env, Option<Value>, Option<String>)>>> =
-                vec![vec![None; envs[0].len()]; envs.len()];
+                envs.iter().map(|e| vec![None; e.len()]).collect::<Vec<_>>();
+
             let mut errors: Vec<String> = vec![];
             let mut success = 0_usize;
             e.into_iter().for_each(|(input_idx, map_idx, e, r)| {
