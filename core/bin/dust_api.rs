@@ -444,8 +444,10 @@ async fn datasets_retrieve(
 
 #[derive(serde::Deserialize)]
 struct RunsCreatePayload {
+    run_type: run::RunType,
     specification: String,
     dataset_id: Option<String>,
+    inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
 }
@@ -473,7 +475,7 @@ async fn runs_create(
         Ok(app) => app,
     };
 
-    let d = match payload.dataset_id.as_ref() {
+    let mut d = match payload.dataset_id.as_ref() {
         None => None,
         Some(dataset_id) => match state.store.latest_dataset_hash(&project, dataset_id).await {
             Err(e) => {
@@ -525,23 +527,38 @@ async fn runs_create(
         },
     };
 
-    if d.is_some() && d.as_ref().unwrap().len() == 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("dataset_empty_error"),
-                    message: format!(
-                        "Dataset `{}` has 0 record",
-                        payload.dataset_id.as_ref().unwrap()
-                    ),
-                }),
-                response: None,
-            }),
-        );
-    }
-
     if d.is_some() {
+        if payload.run_type != run::RunType::Local {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("invalid_run_type_error"),
+                        message: String::from(
+                            "RunType `local` is expected when a `dataset_id` is provided",
+                        ),
+                    }),
+                    response: None,
+                }),
+            );
+        }
+
+        if d.as_ref().unwrap().len() == 0 {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("dataset_empty_error"),
+                        message: format!(
+                            "Dataset `{}` has 0 record",
+                            payload.dataset_id.as_ref().unwrap()
+                        ),
+                    }),
+                    response: None,
+                }),
+            );
+        }
+
         utils::info(
             format!(
                 "Retrieved {} records from latest data version for `{}`.",
@@ -550,6 +567,41 @@ async fn runs_create(
             )
             .as_str(),
         );
+    }
+
+    if payload.inputs.is_some() {
+        if payload.run_type != run::RunType::Deploy {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("invalid_run_type_error"),
+                        message: String::from(
+                            "RunType `deploy` is expected when `inputs` are provided",
+                        ),
+                    }),
+                    response: None,
+                }),
+            );
+        }
+
+        d = match dataset::Dataset::new_from_jsonl("inputs", payload.inputs.unwrap()).await {
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("invalid_inputs_error"),
+                            message: e.to_string(),
+                        }),
+                        response: None,
+                    }),
+                )
+            }
+            Ok(d) => Some(d),
+        };
+
+        utils::info(format!("Received {} inputs.", d.as_ref().unwrap().len(),).as_str());
     }
 
     match state
@@ -573,7 +625,13 @@ async fn runs_create(
     }
 
     match app
-        .prepare_run(payload.config, project.clone(), d, state.store.clone())
+        .prepare_run(
+            payload.run_type,
+            payload.config,
+            project.clone(),
+            d,
+            state.store.clone(),
+        )
         .await
     {
         Err(e) => {

@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{Run, RunConfig, RunStatus};
+use crate::run::{Run, RunConfig, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -35,8 +35,12 @@ pub trait Store {
         -> Result<()>;
 
     // Runs
-    async fn latest_run_id(&self, project: &Project) -> Result<Option<String>>;
-    async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>>;
+    async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>>;
+    async fn all_runs(
+        &self,
+        project: &Project,
+        run_type: RunType,
+    ) -> Result<Vec<(String, u64, String, RunConfig)>>;
 
     async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()>;
     async fn update_run_status(
@@ -142,6 +146,7 @@ pub const SQLITE_TABLES: [&'static str; 9] = [
        project              INTEGER NOT NULL,
        created              INTEGER NOT NULL,
        run_id               TEXT NOT NULL,
+       run_type             TEXT NOT NULL,
        app_hash             TEXT NOT NULL,
        config_json          TEXT NOT NULL,
        status_json          TEXT NOT NULL,
@@ -222,6 +227,7 @@ pub const POSTGRES_TABLES: [&'static str; 9] = [
        project              BIGINT NOT NULL,
        created              BIGINT NOT NULL,
        run_id               TEXT NOT NULL,
+       run_type             TEXT NOT NULL,
        app_hash             TEXT NOT NULL,
        config_json          TEXT NOT NULL,
        status_json          TEXT NOT NULL,
@@ -258,14 +264,14 @@ pub const POSTGRES_TABLES: [&'static str; 9] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 10] = [
+pub const SQL_INDEXES: [&'static str; 9] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
        idx_datasets_project_dataset_id_created
        ON datasets (project, dataset_id, created);",
     "CREATE INDEX IF NOT EXISTS
-       idx_runs_project_created ON runs (project, created);",
+       idx_runs_project_run_type_created ON runs (project, run_type, created);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_runs_id ON runs (run_id);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
@@ -276,8 +282,6 @@ pub const SQL_INDEXES: [&'static str; 10] = [
        idx_datasets_joins ON datasets_joins (dataset, point);",
     "CREATE INDEX IF NOT EXISTS
        idx_runs_joins ON runs_joins (run, block_execution);",
-    "CREATE UNIQUE INDEX IF NOT EXISTS
-       idx_cache_hash ON cache (hash);",
     "CREATE INDEX IF NOT EXISTS
        idx_cache_project_hash ON cache (project, hash);",
 ];

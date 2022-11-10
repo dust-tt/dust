@@ -1,0 +1,4 @@
+ALTER TABLE runs ADD COLUMN run_type TEXT DEFAULT 'local';
+CREATE INDEX IF NOT EXISTS idx_runs_project_run_type_created ON runs (project, run_type, created);
+DROP INDEX IF EXISTS idx_runs_project_created;
+DROP INDEX IF EXISTS idx_cache_hash;

@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, SQLITE_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::Result;
@@ -328,15 +328,16 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn latest_run_id(&self, project: &Project) -> Result<Option<String>> {
+    async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<String>> {
             let c = pool.get()?;
             match c.query_row(
-                "SELECT run_id FROM runs WHERE project = ?1 ORDER BY created DESC LIMIT 1",
-                params![project_id],
+                "SELECT run_id FROM runs WHERE project = ?1 AND run_type = ?2
+                   ORDER BY created DESC LIMIT 1",
+                params![project_id, run_type.to_string()],
                 |row| row.get(0),
             ) {
                 Err(e) => match e {
@@ -349,7 +350,11 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn all_runs(&self, project: &Project) -> Result<Vec<(String, u64, String, RunConfig)>> {
+    async fn all_runs(
+        &self,
+        project: &Project,
+        run_type: RunType,
+    ) -> Result<Vec<(String, u64, String, RunConfig)>> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
@@ -357,9 +362,11 @@ impl Store for SQLiteStore {
             let c = pool.get()?;
             // Retrieve runs.
             let mut stmt = c.prepare_cached(
-                "SELECT run_id, created, app_hash, config_json FROM runs WHERE project = ?1",
+                "SELECT run_id, created, app_hash, config_json FROM runs
+                   WHERE project = ?1 AND run_type = ?2
+                   ORDER BY created DESC",
             )?;
-            let mut rows = stmt.query(params![project_id])?;
+            let mut rows = stmt.query(params![project_id, run_type.to_string()])?;
             let mut runs: Vec<(String, u64, String, RunConfig)> = vec![];
             while let Some(row) = rows.next()? {
                 let run_id: String = row.get(0)?;
@@ -381,6 +388,7 @@ impl Store for SQLiteStore {
         let project_id = project.project_id();
         let run_id = run.run_id().to_string();
         let created = run.created();
+        let run_type = run.run_type();
         let app_hash = run.app_hash().to_string();
         let run_config = run.config().clone();
         let run_status = run.status().clone();
@@ -392,13 +400,15 @@ impl Store for SQLiteStore {
             let config_data = serde_json::to_string(&run_config)?;
             let status_data = serde_json::to_string(&run_status)?;
             let mut stmt = c.prepare_cached(
-                "INSERT INTO runs (project, created, run_id, app_hash, config_json, status_json)
-                   VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO runs
+                   (project, created, run_id, run_type, app_hash, config_json, status_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)",
             )?;
             let _ = stmt.insert(params![
                 project_id,
                 created,
                 run_id,
+                run_type.to_string(),
                 app_hash,
                 config_data,
                 status_data
@@ -586,8 +596,8 @@ impl Store for SQLiteStore {
         tokio::task::spawn_blocking(move || -> Result<Option<Run>> {
             let c = pool.get()?;
             // Check that the run_id exists
-            let d: Option<(u64, u64, String, String, String)> = match c.query_row(
-                "SELECT id, created, app_hash, config_json, status_json FROM runs
+            let d: Option<(u64, u64, String, String, String, String)> = match c.query_row(
+                "SELECT id, created, run_type, app_hash, config_json, status_json FROM runs
                    WHERE project = ?1 AND run_id = ?2",
                 params![project_id, run_id],
                 |row| {
@@ -597,6 +607,7 @@ impl Store for SQLiteStore {
                         row.get(2).unwrap(),
                         row.get(3).unwrap(),
                         row.get(4).unwrap(),
+                        row.get(5).unwrap(),
                     ))
                 },
             ) {
@@ -604,14 +615,20 @@ impl Store for SQLiteStore {
                     rusqlite::Error::QueryReturnedNoRows => None,
                     _ => Err(e)?,
                 },
-                Ok((row_id, created, app_hash, config_data, status_data)) => {
-                    Some((row_id, created, app_hash, config_data, status_data))
-                }
+                Ok((row_id, created, run_type, app_hash, config_data, status_data)) => Some((
+                    row_id,
+                    created,
+                    run_type,
+                    app_hash,
+                    config_data,
+                    status_data,
+                )),
             };
             if d.is_none() {
                 return Ok(None);
             }
-            let (row_id, created, app_hash, config_data, status_data) = d.unwrap();
+            let (row_id, created, run_type_str, app_hash, config_data, status_data) = d.unwrap();
+            let run_type = RunType::from_str(&run_type_str)?;
             let run_config: RunConfig = serde_json::from_str(&config_data)?;
             let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
@@ -767,6 +784,7 @@ impl Store for SQLiteStore {
             Ok(Some(Run::new_from_store(
                 &run_id,
                 created,
+                run_type,
                 &app_hash,
                 &run_config,
                 &run_status,
@@ -827,19 +845,14 @@ impl Store for SQLiteStore {
             let created = generation.created;
             let request_data = serde_json::to_string(&request)?;
             let generation_data = serde_json::to_string(&generation)?;
-            match stmt.insert(params![
+            stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 generation_data
-            ]) {
-                Ok(_) => Ok(()),
-                Err(e) => match e.to_string().as_str() {
-                    "UNIQUE constraint failed: cache.hash" => Ok(()),
-                    _ => Err(e.into()),
-                },
-            }
+            ])?;
+            Ok(())
         })
         .await?
     }
@@ -895,19 +908,14 @@ impl Store for SQLiteStore {
             let created = response.created;
             let request_data = serde_json::to_string(&request)?;
             let response_data = serde_json::to_string(&response)?;
-            match stmt.insert(params![
+            stmt.insert(params![
                 project_id,
                 created,
                 request.hash().to_string(),
                 request_data,
                 response_data
-            ]) {
-                Ok(_) => Ok(()),
-                Err(e) => match e.to_string().as_str() {
-                    "UNIQUE constraint failed: cache.hash" => Ok(()),
-                    _ => Err(e.into()),
-                },
-            }
+            ])?;
+            Ok(())
         })
         .await?
     }
@@ -993,7 +1001,7 @@ mod tests {
         store.init().await?;
         let project = store.create_project().await?;
 
-        let r = store.latest_run_id(&project).await?;
+        let r = store.latest_run_id(&project, RunType::Local).await?;
         assert!(r.is_none());
         Ok(())
     }
@@ -1042,6 +1050,7 @@ _fun = (env) => {
         assert!(r.unwrap() == app.hash());
 
         app.prepare_run(
+            RunType::Local,
             RunConfig {
                 blocks: HashMap::new(),
             },
@@ -1119,6 +1128,7 @@ _fun = (env) => {
         assert!(r.unwrap() == app.hash());
 
         app.prepare_run(
+            RunType::Local,
             RunConfig {
                 blocks: HashMap::new(),
             },
