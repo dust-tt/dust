@@ -2,7 +2,7 @@ import { useSession } from "next-auth/react";
 import { classNames } from "../../lib/utils";
 import Link from "next/link";
 import { CodeBracketIcon } from "@heroicons/react/24/solid";
-import { LinkIcon } from "@heroicons/react/24/outline";
+import { LinkIcon, KeyIcon } from "@heroicons/react/24/outline";
 
 export default function MainTab({ current_tab, user, readOnly }) {
   const { data: session } = useSession();
@@ -36,6 +36,16 @@ export default function MainTab({ current_tab, user, readOnly }) {
           href: `/${session.user.username}/providers`,
           icon: (
             <LinkIcon
+              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              aria-hidden="true"
+            />
+          ),
+        },
+        {
+          name: "API keys",
+          href: `/${session.user.username}/keys`,
+          icon: (
+            <KeyIcon
               className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
               aria-hidden="true"
             />

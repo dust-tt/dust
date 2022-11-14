@@ -62,7 +62,7 @@ export const App = sequelize.define(
       allowNull: false,
     },
   },
-  {}
+  { indexes: [{ fields: ["userId", "visibility"] }] }
 );
 User.hasMany(App);
 
@@ -78,7 +78,7 @@ export const Provider = sequelize.define(
       allowNull: false,
     },
   },
-  {}
+  { indexes: [{ fields: ["userId"] }] }
 );
 User.hasMany(Provider);
 
@@ -93,7 +93,7 @@ export const Dataset = sequelize.define(
       type: DataTypes.STRING,
     },
   },
-  {}
+  { indexes: [{ fields: ["userId", "appId"] }] }
 );
 User.hasMany(Dataset);
 App.hasMany(Dataset);
@@ -127,3 +127,19 @@ export const Clone = sequelize.define(
 );
 Clone.belongsTo(App, { as: "from", foreignKey: "fromId" });
 Clone.belongsTo(App, { as: "to", foreignKey: "toId" });
+
+export const Keys = sequelize.define(
+  "keys",
+  {
+    secret: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  { indexes: [{ unique: true, fields: ["secret"] }, { fields: ["userId"] }] }
+);
+User.hasMany(Keys);

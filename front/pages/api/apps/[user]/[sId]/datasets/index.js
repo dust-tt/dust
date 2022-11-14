@@ -144,7 +144,7 @@ export default async function handler(req, res) {
         appId: app.id,
       });
 
-      res.status(200).json({
+      res.status(201).json({
         dataset: {
           name: req.body.name,
           description,

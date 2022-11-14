@@ -40,13 +40,14 @@ export default async function handler(req, res) {
           config: req.body.config,
           userId: user.id,
         });
+        res.status(201).json({ provider });
       } else {
         await provider.update({
           config: req.body.config,
         });
+        res.status(200).json({ provider });
       }
 
-      res.status(200).json({ provider });
       break;
 
     case "DELETE":
