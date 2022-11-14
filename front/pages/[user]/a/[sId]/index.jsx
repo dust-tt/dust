@@ -15,15 +15,7 @@ import {
   moveBlockUp,
 } from "../../../../lib/specification";
 import { useState, useRef } from "react";
-import TextareaAutosize from "react-textarea-autosize";
-import Input from "../../../../components/app/blocks/Input";
-import Data from "../../../../components/app/blocks/Data";
-import LLM from "../../../../components/app/blocks/LLM";
-import Code from "../../../../components/app/blocks/Code";
-import Search from "../../../../components/app/blocks/Search";
-import Curl from "../../../../components/app/blocks/Curl";
-import Browser from "../../../../components/app/blocks/Browser";
-import { Map, Reduce } from "../../../../components/app/blocks/MapReduce";
+import SpecRunView from "../../../../components/app/SpecRunView";
 import { extractConfig } from "../../../../lib/config";
 import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
@@ -288,244 +280,59 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
               ) : null}
             </div>
 
-            {app.description ? (
-              <div className="flex flex-auto mb-4">
-                <div className="flex text-sm text-gray-400 italic">
-                  {app.description}
-                </div>
+            <SpecRunView
+              user={user}
+              app={app}
+              readOnly={readOnly}
+              spec={spec}
+              run={run}
+              runRequested={runRequested}
+              handleSetBlock={handleSetBlock}
+              handleDeleteBlock={handleDeleteBlock}
+              handleMoveBlockUp={handleMoveBlockUp}
+              handleMoveBlockDown={handleMoveBlockDown}
+            />
+
+            {spec.length == 0 ? (
+              <div className="px-2 max-w-4xl mt-4 text-sm text-gray-400">
+                <p className="">
+                  To get started we recommend you review Dust's{" "}
+                  <a
+                    href="/readme"
+                    target="_blank"
+                    className="font-bold text-violet-500 underline"
+                  >
+                    README
+                  </a>{" "}
+                  and/or explore and potentially clone{" "}
+                  <a
+                    href="https://dust.tt/spolu/a/2316f9c6b0"
+                    className="font-bold text-violet-600 underline"
+                    target="_blank"
+                  >
+                    a
+                  </a>{" "}
+                  <a
+                    href="https://dust.tt/spolu/a/d12ac33169"
+                    className="font-bold text-violet-500 underline"
+                    target="_blank"
+                  >
+                    working
+                  </a>{" "}
+                  <a
+                    href="https://dust.tt/bcmejla/a/cc20d98f70"
+                    className="font-bold text-violet-500 underline"
+                    target="_blank"
+                  >
+                    example
+                  </a>
+                  .
+                </p>
+                <p className="py-2">
+                  When ready, start adding blocks to your app.
+                </p>
               </div>
             ) : null}
-
-            {/* This is a hack to force loading the component before we render the LLM blocks.
-                Otherwise the autoresize does not work on init?
-                TODO(spolu): investigate
-            */}
-            <TextareaAutosize className="hidden" value="foo" />
-
-            <div className="flex flex-col space-y-2">
-              {spec.map((block, idx) => {
-                // Match status with block
-                let status = null;
-                if (
-                  run &&
-                  run.status &&
-                  idx < run.status.blocks.length &&
-                  run.status.blocks[idx].block_type == block.type &&
-                  run.status.blocks[idx].name == block.name
-                ) {
-                  status = run.status.blocks[idx];
-                }
-                switch (block.type) {
-                  case "input":
-                    return (
-                      <Input
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "data":
-                    return (
-                      <Data
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "llm":
-                    return (
-                      <LLM
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "code":
-                    return (
-                      <Code
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "map":
-                    return (
-                      <Map
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "reduce":
-                    return (
-                      <Reduce
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                  case "search":
-                    return (
-                      <Search
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "curl":
-                    return (
-                      <Curl
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  case "browser":
-                    return (
-                      <Browser
-                        key={idx}
-                        block={block}
-                        user={user}
-                        app={app}
-                        status={status}
-                        running={runRequested || run?.status.run == "running"}
-                        readOnly={readOnly}
-                        onBlockUpdate={(block) => handleSetBlock(idx, block)}
-                        onBlockDelete={() => handleDeleteBlock(idx)}
-                        onBlockUp={() => handleMoveBlockUp(idx)}
-                        onBlockDown={() => handleMoveBlockDown(idx)}
-                      />
-                    );
-                    break;
-
-                  default:
-                    return (
-                      <div key={idx} className="flex flex-row px-4 py-4">
-                        Unknown block type: {block.type}
-                      </div>
-                    );
-                    break;
-                }
-              })}
-              {spec.length == 0 ? (
-                <div className="px-2 max-w-4xl mt-4 text-sm text-gray-400">
-                  <p className="">
-                    To get started we recommend you review Dust's{" "}
-                    <a
-                      href="/readme"
-                      target="_blank"
-                      className="font-bold text-violet-500 underline"
-                    >
-                      README
-                    </a>{" "}
-                    and/or explore and potentially clone{" "}
-                    <a
-                      href="https://dust.tt/spolu/a/2316f9c6b0"
-                      className="font-bold text-violet-600 underline"
-                      target="_blank"
-                    >
-                      a
-                    </a>{" "}
-                    <a
-                      href="https://dust.tt/spolu/a/d12ac33169"
-                      className="font-bold text-violet-500 underline"
-                      target="_blank"
-                    >
-                      working
-                    </a>{" "}
-                    <a
-                      href="https://dust.tt/bcmejla/a/cc20d98f70"
-                      className="font-bold text-violet-500 underline"
-                      target="_blank"
-                    >
-                      example
-                    </a>
-                    .
-                  </p>
-                  <p className="py-2">
-                    When ready, start adding blocks to your app.
-                  </p>
-                </div>
-              ) : null}
-            </div>
 
             {spec.length > 2 && !readOnly ? (
               <div className="flex flex-row my-4 space-x-2 items-center">

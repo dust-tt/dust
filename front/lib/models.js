@@ -23,7 +23,9 @@ export const User = sequelize.define(
       allowNull: false,
     },
   },
-  {}
+  {
+    indexes: [{ fields: ["githubId"] }, { fields: ["username"] }],
+  }
 );
 
 export const App = sequelize.define(
@@ -62,7 +64,12 @@ export const App = sequelize.define(
       allowNull: false,
     },
   },
-  { indexes: [{ fields: ["userId", "visibility"] }] }
+  {
+    indexes: [
+      { fields: ["userId", "visibility"] },
+      { fields: ["userId", "sId", "visibility"] },
+    ],
+  }
 );
 User.hasMany(App);
 
@@ -93,7 +100,9 @@ export const Dataset = sequelize.define(
       type: DataTypes.STRING,
     },
   },
-  { indexes: [{ fields: ["userId", "appId"] }] }
+  {
+    indexes: [{ fields: ["userId", "appId", "name"] }],
+  }
 );
 User.hasMany(Dataset);
 App.hasMany(Dataset);
