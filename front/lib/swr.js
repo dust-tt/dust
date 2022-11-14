@@ -45,3 +45,13 @@ export function useSavedRunBlock(user, app, type, name, refresh) {
     isRunError: error,
   };
 }
+
+export function useKeys() {
+  const { data, error } = useSWR(`/api/keys`, fetcher);
+
+  return {
+    keys: data ? data.keys : [],
+    isKeysLoading: !error && !data,
+    isKeysError: error,
+  };
+}

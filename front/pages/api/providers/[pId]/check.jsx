@@ -4,6 +4,7 @@ import { User } from "../../../../lib/models";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
+
   if (!session) {
     res.status(401).end();
     return;
@@ -14,6 +15,7 @@ export default async function handler(req, res) {
       githubId: session.github.id.toString(),
     },
   });
+
   if (!user) {
     res.status(401).end();
     return;
