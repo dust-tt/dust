@@ -328,6 +328,36 @@ impl Store for SQLiteStore {
         .await?
     }
 
+    async fn load_specification(
+        &self,
+        project: &Project,
+        hash: &str,
+    ) -> Result<Option<(u64, String)>> {
+        let project_id = project.project_id();
+        let hash = hash.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<(u64, String)>> {
+            let c = pool.get()?;
+            // Check that the dataset_id and hash exist
+            let d: Option<(u64, String)> = match c.query_row(
+                "SELECT created, specification FROM specifications
+                   WHERE project = ?1 AND hash = ?2
+                   ORDER BY created DESC LIMIT 1",
+                params![project_id, hash],
+                |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok((created, spec)) => Some((created, spec)),
+            };
+            Ok(d)
+        })
+        .await?
+    }
+
     async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>> {
         let project_id = project.project_id();
 

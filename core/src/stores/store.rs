@@ -33,6 +33,11 @@ pub trait Store {
     async fn latest_specification_hash(&self, project: &Project) -> Result<Option<String>>;
     async fn register_specification(&self, project: &Project, hash: &str, spec: &str)
         -> Result<()>;
+    async fn load_specification(
+        &self,
+        project: &Project,
+        hash: &str,
+    ) -> Result<Option<(u64, String)>>;
 
     // Runs
     async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>>;
@@ -264,9 +269,11 @@ pub const POSTGRES_TABLES: [&'static str; 9] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 9] = [
+pub const SQL_INDEXES: [&'static str; 10] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_specifications_project_hash ON specifications (project, hash);",
     "CREATE INDEX IF NOT EXISTS
        idx_datasets_project_dataset_id_created
        ON datasets (project, dataset_id, created);",

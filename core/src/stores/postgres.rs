@@ -322,6 +322,39 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn load_specification(
+        &self,
+        project: &Project,
+        hash: &str,
+    ) -> Result<Option<(u64, String)>> {
+        let project_id = project.project_id();
+        let hash = hash.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Check that the dataset_id and hash exist
+        let r = c
+            .query(
+                "SELECT created, specification FROM specifications
+                   WHERE project = $1 AND hash = $2
+                   ORDER BY created DESC LIMIT 1",
+                &[&project_id, &hash],
+            )
+            .await?;
+
+        let d: Option<(i64, String)> = match r.len() {
+            0 => None,
+            1 => Some((r[0].get(0), r[0].get(1))),
+            _ => unreachable!(),
+        };
+
+        match d {
+            None => Ok(None),
+            Some((created, spec)) => Ok(Some((created as u64, spec))),
+        }
+    }
+
     async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>> {
         let project_id = project.project_id();
 
