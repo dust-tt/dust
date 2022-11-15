@@ -41,4 +41,12 @@ export const communityApps = [
       "Answer questions with high factual accuracy by searching online and compiling responses based on content downloaded from websites (with references).",
     visibility: "public",
   },
+  {
+    user: "spolu",
+    sId: "b39f8e9023",
+    name: "toolbot-repro",
+    description:
+      "Teach LLM to teach itself new tasks by teaching it to generate few shot examples from high-level tasks descriptions and prompting itself with them.",
+    visibility: "public",
+  },
 ];
