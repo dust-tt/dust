@@ -35,14 +35,18 @@ export default function Input({
     >
       <div className="flex flex-col sm:flex-row sm:space-x-2 mx-4">
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
-          <div className="flex flex-initial">dataset:</div>
-          <DatasetPicker
-            user={user}
-            app={app}
-            dataset={block.config ? block.config.dataset : ""}
-            onDatasetUpdate={handleSetDataset}
-            readOnly={readOnly}
-          />
+          {!((!block.config || !block.config.dataset) && readOnly) ? (
+            <>
+              <div className="flex flex-initial">dataset:</div>
+              <DatasetPicker
+                user={user}
+                app={app}
+                dataset={block.config ? block.config.dataset : ""}
+                onDatasetUpdate={handleSetDataset}
+                readOnly={readOnly}
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </Block>

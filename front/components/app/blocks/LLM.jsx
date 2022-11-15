@@ -157,7 +157,7 @@ export default function LLM({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
-                  {block.spec.stop.map((stop, i) => (
+                  {(block.spec.stop || []).map((stop, i) => (
                     <div key={i} className="flex bg-slate-100 rounded-md px-1">
                       {stop}
                     </div>
