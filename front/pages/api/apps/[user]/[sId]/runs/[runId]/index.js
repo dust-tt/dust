@@ -90,6 +90,8 @@ export default async function handler(req, res) {
         if (spec[i].name in config.blocks) {
           spec[i].config = { ...config.blocks[spec[i].name] };
           delete spec[i].config.type;
+          // We remove the dataset from the config so that INPUT block do not refer to a dataset in
+          // the context of a run display.
           if (spec[i].type === "input") {
             delete spec[i].config.dataset;
           }
@@ -97,7 +99,7 @@ export default async function handler(req, res) {
       }
       spec = recomputeIndents(spec);
 
-      console.log("SPEC", spec);
+      // console.log("SPEC", spec);
       // console.log("CONFIG", config);
       // console.log("RUN", run);
 
