@@ -294,7 +294,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
             />
 
             {spec.length == 0 ? (
-              <div className="px-2 max-w-4xl mt-4 text-sm text-gray-400">
+              <div className="max-w-4xl mt-2 text-sm text-gray-400">
                 <p className="">
                   To get started we recommend you review Dust's{" "}
                   <a

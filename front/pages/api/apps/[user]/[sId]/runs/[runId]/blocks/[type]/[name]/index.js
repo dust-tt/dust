@@ -1,6 +1,6 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../../auth/[...nextauth]";
-import { User, App } from "../../../../../../../lib/models";
+import { authOptions } from "../../../../../../../../auth/[...nextauth]";
+import { User, App } from "../../../../../../../../../../lib/models";
 
 const { DUST_API } = process.env;
 
@@ -40,14 +40,20 @@ export default async function handler(req, res) {
     return;
   }
 
+  let runId = req.query.runId;
+  if (runId === "saved") {
+    runId = app.savedRun;
+  }
+
   switch (req.method) {
     case "GET":
-      if (!app.savedRun || app.savedRun.length == 0) {
+      if (!runId || runId.length == 0) {
         res.status(200).json({ run: null });
+        break;
       }
 
       const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${app.savedRun}/status`,
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/blocks/${req.query.type}/${req.query.name}`,
         {
           method: "GET",
         }

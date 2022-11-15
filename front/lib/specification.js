@@ -1,4 +1,4 @@
-const recomputeIndents = (spec) => {
+export function recomputeIndents(spec) {
   var indent = 0;
   for (var i = 0; i < spec.length; i++) {
     switch (spec[i].type) {
@@ -16,7 +16,7 @@ const recomputeIndents = (spec) => {
     }
   }
   return spec;
-};
+}
 
 export function getNextName(spec, name) {
   let suffix = 0;

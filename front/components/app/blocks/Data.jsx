@@ -36,13 +36,19 @@ export default function Data({
       <div className="flex flex-col sm:flex-row sm:space-x-2 mx-4">
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial">dataset:</div>
-          <DatasetPicker
-            user={user}
-            app={app}
-            dataset={block.spec.dataset}
-            onDatasetUpdate={handleSetDataset}
-            readOnly={readOnly}
-          />
+          {block.spec.dataset_id && block.spec.hash ? (
+            <div className="flex items-center">
+              {block.spec.dataset_id}<div className="ml-1 text-gray-400">({block.spec.hash.slice(-7)})</div>
+            </div>
+          ) : (
+            <DatasetPicker
+              user={user}
+              app={app}
+              dataset={block.spec.dataset}
+              onDatasetUpdate={handleSetDataset}
+              readOnly={readOnly}
+            />
+          )}
         </div>
         {/*
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">

@@ -270,6 +270,51 @@ async fn specifications_check(
     }
 }
 
+/// Retrieve a specification
+
+async fn specifications_retrieve(
+    extract::Path((project_id, hash)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_specification(&project, &hash).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve specification: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(s) => match s {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("specification_not_found"),
+                        message: format!("No specification found with hash `{}`", hash),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some((created, spec)) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "specification": {
+                            "created": created,
+                            "data": spec,
+                        },
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 /// Register a new dataset
 
 #[derive(serde::Deserialize)]
@@ -417,10 +462,10 @@ async fn datasets_retrieve(
         ),
         Ok(dataset) => match dataset {
             None => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(APIResponse {
                     error: Some(APIError {
-                        code: String::from("dataset_not_found_error"),
+                        code: String::from("dataset_not_found"),
                         message: format!(
                             "No dataset found for id `{}` and hash `{}`",
                             dataset_id, hash
@@ -492,10 +537,10 @@ async fn runs_create(
             }
             Ok(None) => {
                 return (
-                    StatusCode::BAD_REQUEST,
+                    StatusCode::NOT_FOUND,
                     Json(APIResponse {
                         error: Some(APIError {
-                            code: String::from("dataset_not_found_error"),
+                            code: String::from("dataset_not_found"),
                             message: format!("No dataset found for id `{}`", dataset_id),
                         }),
                         response: None,
@@ -683,10 +728,10 @@ async fn runs_retrieve(
         ),
         Ok(run) => match run {
             None => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(APIResponse {
                     error: Some(APIError {
-                        code: String::from("run_not_found_error"),
+                        code: String::from("run_not_found"),
                         message: format!("No run found for id `{}`", run_id),
                     }),
                     response: None,
@@ -732,10 +777,10 @@ async fn runs_retrieve_block(
         ),
         Ok(run) => match run {
             None => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(APIResponse {
                     error: Some(APIError {
-                        code: String::from("run_not_found_error"),
+                        code: String::from("run_not_found"),
                         message: format!("No run found for id `{}`", run_id),
                     }),
                     response: None,
@@ -772,10 +817,10 @@ async fn runs_retrieve_status(
         ),
         Ok(run) => match run {
             None => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(APIResponse {
                     error: Some(APIError {
-                        code: String::from("run_not_found_error"),
+                        code: String::from("run_not_found"),
                         message: format!("No run found for id `{}`", run_id),
                     }),
                     response: None,
@@ -821,6 +866,10 @@ async fn main() -> Result<()> {
         .route(
             "/projects/:project_id/specifications/check",
             post(specifications_check),
+        )
+        .route(
+            "/projects/:project_id/specifications/:hash",
+            get(specifications_retrieve),
         )
         // Datasets
         .route("/projects/:project_id/datasets", post(datasets_register))
