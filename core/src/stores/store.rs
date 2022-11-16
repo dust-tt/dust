@@ -45,7 +45,8 @@ pub trait Store {
         &self,
         project: &Project,
         run_type: RunType,
-    ) -> Result<Vec<(String, u64, String, RunConfig)>>;
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<(String, u64, String, RunConfig)>, usize)>;
 
     async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()>;
     async fn update_run_status(

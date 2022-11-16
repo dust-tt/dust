@@ -327,18 +327,17 @@ pub async fn cmd_list() -> Result<()> {
     store.init().await?;
     let project = Project::new_from_id(1);
 
-    store
-        .all_runs(&project, RunType::Local)
-        .await?
-        .iter()
-        .for_each(|(run_id, created, app_hash, _config)| {
-            utils::info(&format!(
-                "Run: {} app_hash={} created={}",
-                run_id,
-                app_hash,
-                utils::utc_date_from(*created),
-            ));
-        });
+    let r = store.all_runs(&project, RunType::Local, None).await?;
+
+    utils::info(&format!("{} runs", r.1));
+    r.0.iter().for_each(|(run_id, created, app_hash, _config)| {
+        utils::info(&format!(
+            "Run: {} app_hash={} created={}",
+            run_id,
+            app_hash,
+            utils::utc_date_from(*created),
+        ));
+    });
 
     Ok(())
 }
