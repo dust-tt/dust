@@ -162,7 +162,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                                 className={classNames(
                                   "inline-flex rounded-md px-1 text-sm font-semibold leading-5",
                                   block.status == "succeeded"
-                                    ? "bg-gray-50"
+                                    ? "bg-gray-200"
                                     : "bg-red-100"
                                 )}
                               >
@@ -186,8 +186,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                     <p>No runs found 🔎</p>
                     {runType == "local" ? (
                       <p className="mt-2">
-                        Runs triggered from Dust during the app design process
-                        will appear here.
+                        Runs triggered from Dust will appear here.
                       </p>
                     ) : (
                       <p className="mt-2">
