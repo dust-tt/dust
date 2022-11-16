@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::run::{Run, RunConfig, RunStatus, RunType};
+use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -41,12 +41,12 @@ pub trait Store {
 
     // Runs
     async fn latest_run_id(&self, project: &Project, run_type: RunType) -> Result<Option<String>>;
-    async fn all_runs(
+    async fn list_runs(
         &self,
         project: &Project,
         run_type: RunType,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<(String, u64, String, RunConfig)>, usize)>;
+    ) -> Result<(Vec<Run>, usize)>;
 
     async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()>;
     async fn update_run_status(

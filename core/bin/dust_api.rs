@@ -710,6 +710,49 @@ async fn runs_create(
     )
 }
 
+#[derive(serde::Deserialize)]
+struct RunsListQuery {
+    offset: usize,
+    limit: usize,
+    run_type: run::RunType,
+}
+
+async fn runs_list(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Query(query): extract::Query<RunsListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .list_runs(&project, query.run_type, Some((query.limit, query.offset)))
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to list runs: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok((runs, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
+                    "runs": runs,
+                })),
+            }),
+        ),
+    }
+}
+
 async fn runs_retrieve(
     extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
@@ -880,6 +923,7 @@ async fn main() -> Result<()> {
         )
         // Runs
         .route("/projects/:project_id/runs", post(runs_create))
+        .route("/projects/:project_id/runs", get(runs_list))
         .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
         .route(
             "/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
