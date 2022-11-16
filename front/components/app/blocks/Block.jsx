@@ -13,6 +13,7 @@ import Output from "./Output";
 export default function Block({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -200,7 +201,7 @@ export default function Block({
           </div>
         ) : null}
         {status && status.status != "running" ? (
-          <Output user={user} block={block} status={status} app={app} />
+          <Output user={user} runId={run.run_id} block={block} status={status} app={app} />
         ) : null}
       </div>
     </div>

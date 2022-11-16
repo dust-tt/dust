@@ -4,6 +4,7 @@ import DatasetPicker from "../DatasetPicker";
 export default function Data({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -24,6 +25,7 @@ export default function Data({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}
@@ -38,7 +40,10 @@ export default function Data({
           <div className="flex flex-initial">dataset:</div>
           {block.spec.dataset_id && block.spec.hash ? (
             <div className="flex items-center">
-              {block.spec.dataset_id}<div className="ml-1 text-gray-400">({block.spec.hash.slice(-7)})</div>
+              {block.spec.dataset_id}
+              <div className="ml-1 text-gray-400">
+                ({block.spec.hash.slice(-7)})
+              </div>
             </div>
           ) : (
             <DatasetPicker

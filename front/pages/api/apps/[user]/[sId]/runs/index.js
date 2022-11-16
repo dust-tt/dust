@@ -9,35 +9,31 @@ const { DUST_API } = process.env;
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
-
-  let [user] = await Promise.all([
-    User.findOne({
-      where: {
-        githubId: session.github.id.toString(),
-      },
-    }),
-  ]);
+  let user = await User.findOne({
+    where: {
+      username: req.query.user,
+    },
+  });
 
   if (!user) {
     res.status(404).end();
     return;
   }
 
-  let [app, providers] = await Promise.all([
+  const readOnly = !(session && session.github.id.toString() === user.githubId);
+
+  let [app] = await Promise.all([
     App.findOne({
-      where: {
-        userId: user.id,
-        sId: req.query.sId,
-      },
-    }),
-    Provider.findAll({
-      where: {
-        userId: user.id,
-      },
+      where: readOnly
+        ? {
+            userId: user.id,
+            sId: req.query.sId,
+            visibility: "public",
+          }
+        : {
+            userId: user.id,
+            sId: req.query.sId,
+          },
     }),
   ]);
 
@@ -48,6 +44,19 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "POST":
+      if (readOnly) {
+        res.status(401).end();
+        break;
+      }
+
+      let [providers] = await Promise.all([
+        Provider.findAll({
+          where: {
+            userId: user.id,
+          },
+        }),
+      ]);
+
       if (
         !req.body ||
         !(typeof req.body.specification == "string") ||
@@ -126,6 +135,31 @@ export default async function handler(req, res) {
       });
 
       res.status(200).json({ run: run.response.run });
+      break;
+
+    case "GET":
+      let limit = req.query.limit ? parseInt(req.query.limit) : 10;
+      let offset = req.query.offset ? parseInt(req.query.offset) : 0;
+      let runType = req.query.runType ? req.query.runType : "local";
+
+      const runsRes = await fetch(
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!runsRes.ok) {
+        const error = await runsRes.json();
+        res.status(400).json(error.error);
+        break;
+      }
+
+      const runs = await runsRes.json();
+
+      res
+        .status(200)
+        .json({ runs: runs.response.runs, total: runs.response.total });
       break;
 
     default:

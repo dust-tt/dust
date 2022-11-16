@@ -1,5 +1,5 @@
 import { classNames } from "../../../lib/utils";
-import { useSavedRunBlock } from "../../../lib/swr";
+import { useRunBlock } from "../../../lib/swr";
 import {
   ExclamationCircleIcon,
   CheckCircleIcon,
@@ -176,10 +176,11 @@ function Error({ error }) {
   );
 }
 
-export default function Output({ user, block, status, app }) {
-  let { run, isRunLoading, isRunError } = useSavedRunBlock(
+export default function Output({ user, block, runId, status, app }) {
+  let { run, isRunLoading, isRunError } = useRunBlock(
     user,
     app,
+    runId,
     block.type,
     block.name,
     (data) => {

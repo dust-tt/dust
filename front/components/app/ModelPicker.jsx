@@ -1,6 +1,6 @@
-import { Menu, Transition } from "@headlessui/react";
+import { Menu } from "@headlessui/react";
 import { classNames } from "../../lib/utils";
-import { Fragment, useEffect } from "react";
+import { useEffect } from "react";
 import { useProviders } from "../../lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
@@ -78,7 +78,8 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
         <Menu as="div" className="relative inline-block text-left">
           <div>
             {modelProviders.length == 0 &&
-            !(model.provider_id && model.provider_id.length > 0) && !readOnly ? (
+            !(model.provider_id && model.provider_id.length > 0) &&
+            !readOnly ? (
               <Link href={`/${user}/providers`}>
                 <a
                   className={classNames(
@@ -122,54 +123,44 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
           </div>
 
           {readOnly ? null : (
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
+            <Menu.Items
+              className={classNames(
+                "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                model.provider_id && model.provider_id.length > 0
+                  ? "-left-12"
+                  : "left-1"
+              )}
             >
-              <Menu.Items
-                className={classNames(
-                  "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  model.provider_id && model.provider_id.length > 0
-                    ? "-left-12"
-                    : "left-1"
-                )}
-              >
-                <div className="py-1">
-                  {modelProviders.map((p) => {
-                    return (
-                      <Menu.Item
-                        key={p.providerId}
-                        onClick={() => {
-                          setModels([]);
-                          onModelUpdate({
-                            provider_id: p.providerId,
-                            model_id: "",
-                          });
-                        }}
-                      >
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block px-4 py-2 text-sm cursor-pointer"
-                            )}
-                          >
-                            {p.providerId}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
-                </div>
-              </Menu.Items>
-            </Transition>
+              <div className="py-1">
+                {modelProviders.map((p) => {
+                  return (
+                    <Menu.Item
+                      key={p.providerId}
+                      onClick={() => {
+                        setModels([]);
+                        onModelUpdate({
+                          provider_id: p.providerId,
+                          model_id: "",
+                        });
+                      }}
+                    >
+                      {({ active }) => (
+                        <span
+                          className={classNames(
+                            active
+                              ? "bg-gray-50 text-gray-900"
+                              : "text-gray-700",
+                            "block px-4 py-2 text-sm cursor-pointer"
+                          )}
+                        >
+                          {p.providerId}
+                        </span>
+                      )}
+                    </Menu.Item>
+                  );
+                })}
+              </div>
+            </Menu.Items>
           )}
         </Menu>
       </div>
@@ -208,53 +199,43 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                 </Menu.Button>
               </div>
 
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+              <Menu.Items
+                className={classNames(
+                  "absolute shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  model.model_id && model.model_id.length > 0
+                    ? "-left-24"
+                    : "left-1"
+                )}
               >
-                <Menu.Items
-                  className={classNames(
-                    "absolute shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-                    model.model_id && model.model_id.length > 0
-                      ? "-left-24"
-                      : "left-1"
-                  )}
-                >
-                  <div className="py-1">
-                    {models.map((m) => {
-                      return (
-                        <Menu.Item
-                          key={m.id}
-                          onClick={() =>
-                            onModelUpdate({
-                              provider_id: model.provider_id,
-                              model_id: m.id,
-                            })
-                          }
-                        >
-                          {({ active }) => (
-                            <span
-                              className={classNames(
-                                active
-                                  ? "bg-gray-50 text-gray-900"
-                                  : "text-gray-700",
-                                "block px-4 py-2 text-sm w-40 cursor-pointer"
-                              )}
-                            >
-                              {m.id}
-                            </span>
-                          )}
-                        </Menu.Item>
-                      );
-                    })}
-                  </div>
-                </Menu.Items>
-              </Transition>
+                <div className="py-1">
+                  {models.map((m) => {
+                    return (
+                      <Menu.Item
+                        key={m.id}
+                        onClick={() =>
+                          onModelUpdate({
+                            provider_id: model.provider_id,
+                            model_id: m.id,
+                          })
+                        }
+                      >
+                        {({ active }) => (
+                          <span
+                            className={classNames(
+                              active
+                                ? "bg-gray-50 text-gray-900"
+                                : "text-gray-700",
+                              "block px-4 py-2 text-sm w-40 cursor-pointer"
+                            )}
+                          >
+                            {m.id}
+                          </span>
+                        )}
+                      </Menu.Item>
+                    );
+                  })}
+                </div>
+              </Menu.Items>
             </Menu>
           )}
         </div>

@@ -11,6 +11,7 @@ const CodeEditor = dynamic(
 export default function Code({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -30,6 +31,7 @@ export default function Code({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}

@@ -3,7 +3,10 @@ import useSWR from "swr";
 export const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
 export function useDatasets(user, app) {
-  const { data, error } = useSWR(`/api/apps/${user}/${app.sId}/datasets`, fetcher);
+  const { data, error } = useSWR(
+    `/api/apps/${user}/${app.sId}/datasets`,
+    fetcher
+  );
 
   return {
     datasets: data ? data.datasets : [],
@@ -23,9 +26,13 @@ export function useProviders() {
 }
 
 export function useSavedRunStatus(user, app, refresh) {
-  const { data, error } = useSWR(`/api/apps/${user}/${app.sId}/runs/saved/status`, fetcher, {
-    refreshInterval: refresh,
-  });
+  const { data, error } = useSWR(
+    `/api/apps/${user}/${app.sId}/runs/saved/status`,
+    fetcher,
+    {
+      refreshInterval: refresh,
+    }
+  );
 
   return {
     run: data ? data.run : null,
@@ -34,10 +41,14 @@ export function useSavedRunStatus(user, app, refresh) {
   };
 }
 
-export function useSavedRunBlock(user, app, type, name, refresh) {
-  const { data, error } = useSWR(`/api/apps/${user}/${app.sId}/runs/saved/blocks/${type}/${name}`, fetcher, {
-    refreshInterval: refresh,
-  });
+export function useRunBlock(user, app, runId, type, name, refresh) {
+  const { data, error } = useSWR(
+    `/api/apps/${user}/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
+    fetcher,
+    {
+      refreshInterval: refresh,
+    }
+  );
 
   return {
     run: data ? data.run : null,
@@ -53,5 +64,19 @@ export function useKeys() {
     keys: data ? data.keys : [],
     isKeysLoading: !error && !data,
     isKeysError: error,
+  };
+}
+
+export function useRuns(user, app, limit, offset, runType) {
+  const { data, error } = useSWR(
+    `/api/apps/${user}/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`,
+    fetcher
+  );
+
+  return {
+    runs: data ? data.runs : [],
+    total: data ? data.total : 0,
+    isRunsLoading: !error && !data,
+    isRunsError: error,
   };
 }

@@ -8,6 +8,7 @@ import ModelPicker from "../ModelPicker";
 export default function LLM({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -88,6 +89,7 @@ export default function LLM({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}

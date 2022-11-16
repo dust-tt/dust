@@ -95,6 +95,13 @@ export default async function handler(req, res) {
           if (spec[i].type === "input") {
             delete spec[i].config.dataset;
           }
+          if (spec[i].type === "llm") {
+            if (spec[i].spec.stop) {
+              spec[i].spec.stop = spec[i].spec.stop.split("\n");
+            }
+          }
+        } else {
+          spec[i].config = {};
         }
       }
       spec = recomputeIndents(spec);
