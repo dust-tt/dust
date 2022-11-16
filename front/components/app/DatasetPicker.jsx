@@ -1,6 +1,5 @@
-import { Menu, Transition } from "@headlessui/react";
-import { classNames, fetcher } from "../../lib/utils";
-import { Fragment } from "react";
+import { Menu } from "@headlessui/react";
+import { classNames } from "../../lib/utils";
 import { useDatasets } from "../../lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
@@ -86,64 +85,50 @@ export default function DatasetPicker({
         </div>
 
         {readOnly ? null : (
-          <Transition
-            as={Fragment}
-            enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
+          <Menu.Items
+            className={classNames(
+              "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+              dataset ? "-left-8" : "left-1"
+            )}
           >
-            <Menu.Items
-              className={classNames(
-                "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-                dataset ? "-left-8" : "left-1"
-              )}
-            >
-              <div className="py-1">
-                {datasets.map((d) => {
-                  return (
-                    <Menu.Item
-                      key={d.name}
-                      onClick={() => onDatasetUpdate(d.name)}
-                    >
-                      {({ active }) => (
-                        <span
-                          className={classNames(
-                            active
-                              ? "bg-gray-50 text-gray-900"
-                              : "text-gray-700",
-                            "block px-4 py-2 text-sm cursor-pointer whitespace-nowrap"
-                          )}
-                        >
-                          {d.name}
-                        </span>
-                      )}
-                    </Menu.Item>
-                  );
-                })}
-                <Menu.Item key="__create_dataset" onClick={() => {}}>
-                  {({ active }) => (
-                    <a>
-                      <Link href={`/${user}/a/${app.sId}/datasets/new`}>
-                        <div
-                          className={classNames(
-                            active
-                              ? "bg-gray-50 text-gray-500"
-                              : "text-gray-400",
-                            "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
-                          )}
-                        >
-                          Create new dataset
-                        </div>
-                      </Link>
-                    </a>
-                  )}
-                </Menu.Item>
-              </div>
-            </Menu.Items>
-          </Transition>
+            <div className="py-1">
+              {datasets.map((d) => {
+                return (
+                  <Menu.Item
+                    key={d.name}
+                    onClick={() => onDatasetUpdate(d.name)}
+                  >
+                    {({ active }) => (
+                      <span
+                        className={classNames(
+                          active ? "bg-gray-50 text-gray-900" : "text-gray-700",
+                          "block px-4 py-2 text-sm cursor-pointer whitespace-nowrap"
+                        )}
+                      >
+                        {d.name}
+                      </span>
+                    )}
+                  </Menu.Item>
+                );
+              })}
+              <Menu.Item key="__create_dataset" onClick={() => {}}>
+                {({ active }) => (
+                  <a>
+                    <Link href={`/${user}/a/${app.sId}/datasets/new`}>
+                      <div
+                        className={classNames(
+                          active ? "bg-gray-50 text-gray-500" : "text-gray-400",
+                          "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
+                        )}
+                      >
+                        Create new dataset
+                      </div>
+                    </Link>
+                  </a>
+                )}
+              </Menu.Item>
+            </div>
+          </Menu.Items>
         )}
       </Menu>
     </div>

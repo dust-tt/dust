@@ -380,36 +380,71 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn all_runs(
+    async fn list_runs(
         &self,
         project: &Project,
         run_type: RunType,
-    ) -> Result<Vec<(String, u64, String, RunConfig)>> {
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Run>, usize)> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
-        tokio::task::spawn_blocking(move || -> Result<Vec<(String, u64, String, RunConfig)>> {
+        tokio::task::spawn_blocking(move || -> Result<(Vec<Run>, usize)> {
             let c = pool.get()?;
             // Retrieve runs.
             let mut stmt = c.prepare_cached(
-                "SELECT run_id, created, app_hash, config_json FROM runs
-                   WHERE project = ?1 AND run_type = ?2
-                   ORDER BY created DESC",
+                "SELECT run_id, created, app_hash, config_json, status_json FROM runs
+                    WHERE project = ?1 AND run_type = ?2
+                    ORDER BY created DESC",
             )?;
-            let mut rows = stmt.query(params![project_id, run_type.to_string()])?;
-            let mut runs: Vec<(String, u64, String, RunConfig)> = vec![];
+            let mut stmt_limit_offset = c.prepare_cached(
+                "SELECT run_id, created, app_hash, config_json, status_json FROM runs
+                    WHERE project = ?1 AND run_type = ?2
+                    ORDER BY created DESC LIMIT ?3 OFFSET ?4",
+            )?;
+            let mut rows = match limit_offset {
+                None => stmt.query(params![project_id, run_type.to_string()])?,
+                Some((limit, offset)) => stmt_limit_offset.query(params![
+                    project_id,
+                    run_type.to_string(),
+                    limit,
+                    offset
+                ])?,
+            };
+
+            let mut runs: Vec<Run> = vec![];
             while let Some(row) = rows.next()? {
                 let run_id: String = row.get(0)?;
                 let created: u64 = row.get(1)?;
                 let app_hash: String = row.get(2)?;
                 let config_data: String = row.get(3)?;
-                let config: RunConfig = serde_json::from_str(&config_data)?;
+                let status_data: String = row.get(4)?;
+                let run_config: RunConfig = serde_json::from_str(&config_data)?;
+                let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
-                runs.push((run_id, created, app_hash, config));
+                runs.push(Run::new_from_store(
+                    &run_id,
+                    created as u64,
+                    run_type.clone(),
+                    &app_hash,
+                    &run_config,
+                    &run_status,
+                    vec![],
+                ));
             }
-            runs.sort_by(|a, b| b.1.cmp(&a.1));
 
-            Ok(runs)
+            let total = match limit_offset {
+                None => runs.len(),
+                Some(_) => {
+                    let mut stmt = c.prepare_cached(
+                        "SELECT COUNT(*) FROM runs
+                                WHERE project = ?1 AND run_type = ?2",
+                    )?;
+                    stmt.query_row(params![project_id, run_type.to_string()], |row| row.get(0))?
+                }
+            };
+
+            Ok((runs, total))
         })
         .await?
     }

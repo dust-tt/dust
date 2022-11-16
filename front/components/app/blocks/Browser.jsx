@@ -9,6 +9,7 @@ import Link from "next/link";
 export default function Browser({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -72,6 +73,7 @@ export default function Browser({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}
@@ -85,7 +87,9 @@ export default function Browser({
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex-initial flex flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">URL (with scheme):</div>
+            <div className="flex flex-initial items-center">
+              URL (with scheme):
+            </div>
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
               <div className="px-2">
                 <Link href={`/${user}/providers`}>

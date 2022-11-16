@@ -5,6 +5,7 @@ import DatasetPicker from "../DatasetPicker";
 export default function Input({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -24,6 +25,7 @@ export default function Input({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}

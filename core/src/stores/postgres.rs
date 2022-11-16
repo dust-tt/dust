@@ -375,42 +375,90 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn all_runs(
+    async fn list_runs(
         &self,
         project: &Project,
         run_type: RunType,
-    ) -> Result<Vec<(String, u64, String, RunConfig)>> {
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Run>, usize)> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
         // Retrieve runs.
-        let stmt = c
-            .prepare(
-                "SELECT run_id, created, app_hash, config_json FROM runs
-                   WHERE project = $1 AND run_type = $2",
-            )
-            .await?;
-        let rows = c
-            .query(&stmt, &[&project_id, &run_type.to_string()])
-            .await?;
+        let rows = match limit_offset {
+            None => {
+                let stmt = c
+                    .prepare(
+                        "SELECT run_id, created, app_hash, config_json, status_json FROM runs
+                            WHERE project = $1 AND run_type = $2 ORDER BY created DESC",
+                    )
+                    .await?;
+                c.query(&stmt, &[&project_id, &run_type.to_string()])
+                    .await?
+            }
+            Some((limit, offset)) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT run_id, created, app_hash, config_json, status_json FROM runs
+                            WHERE project = $1 AND run_type = $2
+                            ORDER BY created DESC LIMIT $3 OFFSET $4",
+                    )
+                    .await?;
+                c.query(
+                    &stmt,
+                    &[
+                        &project_id,
+                        &run_type.to_string(),
+                        &(limit as i64),
+                        &(offset as i64),
+                    ],
+                )
+                .await?
+            }
+        };
 
-        let mut runs: Vec<(String, u64, String, RunConfig)> = rows
+        let runs: Vec<Run> = rows
             .iter()
             .map(|r| {
                 let run_id: String = r.get(0);
                 let created: i64 = r.get(1);
                 let app_hash: String = r.get(2);
                 let config_data: String = r.get(3);
-                let config: RunConfig = serde_json::from_str(&config_data)?;
+                let status_data: String = r.get(4);
+                let run_config: RunConfig = serde_json::from_str(&config_data)?;
+                let run_status: RunStatus = serde_json::from_str(&status_data)?;
 
-                Ok((run_id, created as u64, app_hash, config))
+                Ok(Run::new_from_store(
+                    &run_id,
+                    created as u64,
+                    run_type.clone(),
+                    &app_hash,
+                    &run_config,
+                    &run_status,
+                    vec![],
+                ))
             })
             .collect::<Result<Vec<_>>>()?;
 
-        runs.sort_by(|a, b| b.1.cmp(&a.1));
+        let total = match limit_offset {
+            None => runs.len(),
+            Some(_) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT COUNT(*) FROM runs
+                            WHERE project = $1 AND run_type = $2",
+                    )
+                    .await?;
+                let t: i64 = c
+                    .query_one(&stmt, &[&project_id, &run_type.to_string()])
+                    .await?
+                    .get(0);
+                t as usize
+            }
+        };
 
-        Ok(runs)
+        Ok((runs, total))
     }
 
     async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()> {

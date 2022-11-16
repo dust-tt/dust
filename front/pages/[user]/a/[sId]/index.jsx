@@ -206,10 +206,10 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
           `/api/apps/${session.user.username}/${app.sId}/runs/saved/status`
         );
 
-        // Mutate all blocks to trigger a refresh of `useSavedRunBlock` in each block `Output`.
+        // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         spec.forEach((block) => {
           mutate(
-            `/api/apps/${session.user.username}/${app.sId}/runs/saved/blocks/${block.type}/${block.name}`
+            `/api/apps/${session.user.username}/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
           );
         });
       }

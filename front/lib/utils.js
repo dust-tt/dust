@@ -18,6 +18,31 @@ export const shallowBlockClone = (block) => {
   return b;
 };
 
+export const utcDateFrom = (millisSinceEpoch) => {
+  let d = new Date(millisSinceEpoch);
+  return d.toUTCString();
+};
+
+export const timeAgoFrom = (millisSinceEpoch) => {
+  // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
+  let now = new Date().getTime();
+  let diff = now - millisSinceEpoch;
+  let seconds = Math.floor(diff / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+  let days = Math.floor(hours / 24);
+  if (days > 0) {
+    return days + "d";
+  }
+  if (hours > 0) {
+    return hours + "h";
+  }
+  if (minutes > 0) {
+    return minutes + "m";
+  }
+  return seconds + "s";
+};
+
 export const communityApps = [
   {
     user: "spolu",

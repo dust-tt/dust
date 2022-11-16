@@ -1,6 +1,6 @@
 import Block from "./Block";
-import { Menu, Transition } from "@headlessui/react";
-import { Fragment, useEffect } from "react";
+import { Menu } from "@headlessui/react";
+import { useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
@@ -14,6 +14,7 @@ const CodeEditor = dynamic(
 export default function Curl({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -65,6 +66,7 @@ export default function Curl({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}
@@ -94,45 +96,35 @@ export default function Curl({
               </div>
 
               {readOnly ? null : (
-                <Transition
-                  as={Fragment}
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
+                <Menu.Items
+                  className={classNames(
+                    "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none left-1"
+                  )}
                 >
-                  <Menu.Items
-                    className={classNames(
-                      "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none left-1"
-                    )}
-                  >
-                    <div className="py-1">
-                      {availableMethods.map((method) => {
-                        return (
-                          <Menu.Item
-                            key={method}
-                            onClick={() => handleMethodChange(method)}
-                          >
-                            {({ active }) => (
-                              <span
-                                className={classNames(
-                                  active
-                                    ? "bg-gray-50 text-gray-900"
-                                    : "text-gray-700",
-                                  "block px-4 py-1 text-sm cursor-pointer whitespace-nowrap"
-                                )}
-                              >
-                                {method}
-                              </span>
-                            )}
-                          </Menu.Item>
-                        );
-                      })}
-                    </div>
-                  </Menu.Items>
-                </Transition>
+                  <div className="py-1">
+                    {availableMethods.map((method) => {
+                      return (
+                        <Menu.Item
+                          key={method}
+                          onClick={() => handleMethodChange(method)}
+                        >
+                          {({ active }) => (
+                            <span
+                              className={classNames(
+                                active
+                                  ? "bg-gray-50 text-gray-900"
+                                  : "text-gray-700",
+                                "block px-4 py-1 text-sm cursor-pointer whitespace-nowrap"
+                              )}
+                            >
+                              {method}
+                            </span>
+                          )}
+                        </Menu.Item>
+                      );
+                    })}
+                  </div>
+                </Menu.Items>
               )}
             </Menu>
           </div>
