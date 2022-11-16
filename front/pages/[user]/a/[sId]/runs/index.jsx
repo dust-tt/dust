@@ -19,7 +19,6 @@ const tabs = [
 ];
 
 const inputCount = (status) => {
-  console.log(status);
   for (var i = 0; i < status.blocks.length; i++) {
     if (status.blocks[i].block_type == "input") {
       return (
@@ -153,23 +152,21 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-2 sm:flex sm:justify-between">
-                        <div className="sm:flex">
-                          <p className="flex items-center text-sm text-gray-700 space-x-1">
-                            {run.status.blocks.map((block) => (
-                              <span
-                                key={block.name}
-                                className={classNames(
-                                  "inline-flex rounded-md px-1 text-sm font-semibold leading-5",
-                                  block.status == "succeeded"
-                                    ? "bg-gray-200"
-                                    : "bg-red-100"
-                                )}
-                              >
-                                {block.name}
-                              </span>
-                            ))}
-                          </p>
+                      <div className="mt-2 flex justify-between">
+                        <div className="flex flex-1 flex-wrap items-center text-sm text-gray-700 space-x-1">
+                          {run.status.blocks.map((block) => (
+                            <span
+                              key={block.name}
+                              className={classNames(
+                                "rounded-md px-1 text-sm font-semibold",
+                                block.status == "succeeded"
+                                  ? "bg-gray-200"
+                                  : "bg-red-100"
+                              )}
+                            >
+                              {block.name}
+                            </span>
+                          ))}
                           <span className="text-xs font-mono text-gray-700 ml-2 pt-1">
                             ({inputCount(run.status)} inputs)
                           </span>
