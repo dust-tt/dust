@@ -8,6 +8,7 @@ import Link from "next/link";
 export default function Search({
   user,
   app,
+  run,
   block,
   status,
   running,
@@ -62,6 +63,7 @@ export default function Search({
     <Block
       user={user}
       app={app}
+      run={run}
       block={block}
       status={status}
       running={running}
