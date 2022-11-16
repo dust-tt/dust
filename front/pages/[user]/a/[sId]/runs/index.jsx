@@ -45,7 +45,10 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
     runType
   );
 
-  console.log(runs);
+  let last = offset + limit;
+  if (offset + limit > total) {
+    last = total;
+  }
 
   return (
     <AppLayout
@@ -63,28 +66,60 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
         </div>
         <div className="flex flex-1">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-4">
-            <div className="flex flex-initial">
-              <div className="hidden sm:block">
-                <nav className="flex" aria-label="Tabs">
-                  {tabs.map((tab, tabIdx) => (
-                    <a
-                      key={tab.name}
-                      className={classNames(
-                        tab.runType == runType
-                          ? "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white"
-                          : "border-gray-300 text-gray-700 hover:text-gray-700",
-                        tabIdx === 0 ? "rounded-l-md" : "",
-                        tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
-                        "flex-1 py-1 px-3 text-sm border font-medium text-center hover:bg-gray-50 focus:z-10 cursor-pointer shadow-sm"
-                      )}
-                      aria-current={tab.current ? "page" : undefined}
-                      onClick={() => setRunType(tab.runType)}
-                    >
-                      <div className="py-0.5">{tab.name}</div>
-                    </a>
-                  ))}
-                </nav>
+            <div className="flex w-full">
+              <nav className="flex" aria-label="Tabs">
+                {tabs.map((tab, tabIdx) => (
+                  <a
+                    key={tab.name}
+                    className={classNames(
+                      tab.runType == runType
+                        ? "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white"
+                        : "border-gray-300 text-gray-700 hover:text-gray-700",
+                      tabIdx === 0 ? "rounded-l-md" : "",
+                      tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
+                      "flex-1 py-1 px-3 text-sm border font-medium text-center hover:bg-gray-50 focus:z-10 cursor-pointer shadow-sm"
+                    )}
+                    aria-current={tab.current ? "page" : undefined}
+                    onClick={() => setRunType(tab.runType)}
+                  >
+                    <div className="py-0.5">{tab.name}</div>
+                  </a>
+                ))}
+              </nav>
+
+              <div className="flex flex-1"></div>
+              <div className="flex flex-initial">
+                <div className="flex">
+                  <Button
+                    disabled={offset < limit}
+                    onClick={() => {
+                      if (offset >= limit) {
+                        setOffset(offset - limit);
+                      } else {
+                        setOffset(0);
+                      }
+                    }}
+                  >
+                    Previous
+                  </Button>
+                </div>
+                <div className="flex ml-2">
+                  <Button
+                    disabled={offset + limit >= total}
+                    onClick={() => {
+                      if (offset + limit < total) {
+                        setOffset(offset + limit);
+                      }
+                    }}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
+            </div>
+
+            <div className="flex flex-auto text-gray-700 text-sm mt-3 pl-1">
+              Showing runs {offset + 1} - {last} of {total} runs
             </div>
 
             <div className="mt-4">
@@ -99,7 +134,8 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                           >
                             <a className="block">
                               <p className="truncate text-base font-bold font-mono text-violet-600">
-                                {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
+                                {run.run_id.slice(0, 8)}...
+                                {run.run_id.slice(-8)}
                               </p>
                             </a>
                           </Link>

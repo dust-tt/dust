@@ -40,10 +40,10 @@ export default function AppRun({
             <div className="flex flex-row mb-4 mt-6 space-x-2 items-center text-sm">
               <span>
                 Viewing run:{" "}
-                <span className="hidden sm:inline font-mono text-gray-600">
+                <span className="hidden sm:inline font-mono text-gray-600 ml-1">
                   {run.run_id}
                 </span>
-                <span className="sm:hidden font-mono text-gray-600">
+                <span className="sm:hidden font-mono text-gray-600 ml-1">
                   {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                 </span>
               </span>
