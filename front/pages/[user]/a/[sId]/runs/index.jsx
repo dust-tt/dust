@@ -132,7 +132,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                             href={`/${user}/a/${app.sId}/runs/${run.run_id}`}
                           >
                             <a className="block">
-                              <p className="truncate text-base font-bold font-mono text-violet-600">
+                              <p className="truncate text-base font-mono text-violet-600">
                                 {run.run_id.slice(0, 8)}...
                                 {run.run_id.slice(-8)}
                               </p>
@@ -160,7 +160,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                               className={classNames(
                                 "rounded-md px-1 text-sm font-semibold",
                                 block.status == "succeeded"
-                                  ? "bg-gray-200"
+                                  ? "bg-gray-100"
                                   : "bg-red-100"
                               )}
                             >
