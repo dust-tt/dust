@@ -8,11 +8,19 @@ import {
 } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
+const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
+
 function ObjectViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {Object.keys(value).map((key, index) => (
-        <ValueViewer key={key} block={block} value={value[key]} k={key} />
+        <ValueViewer
+          key={key}
+          block={block}
+          value={value[key]}
+          k={key}
+          topLevel={false}
+        />
       ))}
     </div>
   );
@@ -22,13 +30,19 @@ function ArrayViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {value.map((item, index) => (
-        <ValueViewer key={index} block={block} value={item} k={index} />
+        <ValueViewer
+          key={index}
+          block={block}
+          value={item}
+          k={index}
+          topLevel={false}
+        />
       ))}
     </div>
   );
 }
 
-function ValueViewer({ block, value, k }) {
+function ValueViewer({ block, value, k, topLevel }) {
   const summary = (value) => {
     if (Array.isArray(value)) {
       return `[ ${value.length} items ]`;
@@ -46,6 +60,9 @@ function ValueViewer({ block, value, k }) {
   };
 
   const autoExpand = (value) => {
+    if (topLevel && !ENABLE_TOP_LEVEL_AUTO_EXPAND) {
+      return false;
+    }
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
       let flat = true;
       let keys = Object.keys(value);
@@ -240,7 +257,11 @@ export default function Output({ user, block, runId, status, app }) {
                             <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
                           </div>
                           <div className="flex flex-1">
-                            <ValueViewer block={block} value={t.value} />
+                            <ValueViewer
+                              block={block}
+                              value={t.value}
+                              topLevel={true}
+                            />
                           </div>
                         </div>
                       )}
