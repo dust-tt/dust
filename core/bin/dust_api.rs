@@ -490,7 +490,8 @@ async fn datasets_retrieve(
 #[derive(serde::Deserialize)]
 struct RunsCreatePayload {
     run_type: run::RunType,
-    specification: String,
+    specification: Option<String>,
+    specification_hash: Option<String>,
     dataset_id: Option<String>,
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
@@ -504,7 +505,61 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let mut app = match app::App::new(&payload.specification).await {
+    let mut register_spec = true;
+    let specification = match payload.specification {
+        Some(spec) => spec,
+        None => match payload.specification_hash {
+            Some(hash) => match state.store.load_specification(&project, &hash).await {
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(APIResponse {
+                            error: Some(APIError {
+                                code: String::from("internal_server_error"),
+                                message: format!("Failed to retrieve specification: {}", e),
+                            }),
+                            response: None,
+                        }),
+                    )
+                }
+                Ok(spec) => match spec {
+                    None => {
+                        return (
+                            StatusCode::NOT_FOUND,
+                            Json(APIResponse {
+                                error: Some(APIError {
+                                    code: String::from("specification_not_found"),
+                                    message: format!("No specification found for hash `{}`", hash),
+                                }),
+                                response: None,
+                            }),
+                        )
+                    }
+                    Some((_, s)) => {
+                        register_spec = false;
+                        s
+                    }
+                },
+            },
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("missing_specification_error"),
+                            message: String::from(
+                                "No specification provided, \
+                                 either `specification` or `specification_hash` must be provided",
+                            ),
+                        }),
+                        response: None,
+                    }),
+                )
+            }
+        },
+    };
+
+    let mut app = match app::App::new(&specification).await {
         Err(e) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -649,24 +704,27 @@ async fn runs_create(
         utils::info(format!("Received {} inputs.", d.as_ref().unwrap().len(),).as_str());
     }
 
-    match state
-        .store
-        .register_specification(&project, &app.hash(), &payload.specification)
-        .await
-    {
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to register specification: {}", e),
+    // Only register the specification if it was not passed by hash.
+    if register_spec {
+        match state
+            .store
+            .register_specification(&project, &app.hash(), &specification)
+            .await
+        {
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to register specification: {}", e),
+                        }),
+                        response: None,
                     }),
-                    response: None,
-                }),
-            )
+                )
+            }
+            Ok(_) => (),
         }
-        Ok(_) => (),
     }
 
     match app

@@ -137,7 +137,7 @@ export const Clone = sequelize.define(
 Clone.belongsTo(App, { as: "from", foreignKey: "fromId" });
 Clone.belongsTo(App, { as: "to", foreignKey: "toId" });
 
-export const Keys = sequelize.define(
+export const Key = sequelize.define(
   "keys",
   {
     secret: {
@@ -151,4 +151,4 @@ export const Keys = sequelize.define(
   },
   { indexes: [{ unique: true, fields: ["secret"] }, { fields: ["userId"] }] }
 );
-User.hasMany(Keys);
+User.hasMany(Key);

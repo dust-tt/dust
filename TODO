@@ -23,16 +23,17 @@
 - [x] split off cli code from core
       not fully splitted but well abstacted now (no filesystem in core code)
 - [x] take type on top of name for inspect
-- [ ] dust deploy (serve as an endpoint and log)
-    - what is the underlying data store? run-like?
-    - dust deploys list
 
 # front
 
 - [x] Landing
 - [x] Github Login
 - [x] Design + Run
-- [ ] Deploy
+- [ ] dust deploy (serve as an endpoint and log)
+    - [x] runs list
+    - [ ] deploy button
+    - [ ] blocking parameter
+    - [ ] retrieve runId status and traces (all?)
 
 # Go LIvE
 
@@ -66,15 +67,15 @@
 - [x] run/block button at the bottom
 - [x] app description
 - [x] settings pane (no delete)
-- [ ] fork app
+- [x] clone app
 - [x] replit block (to cover curl, headless browser, advanced code)
-- [ ] demo 2: web search assistant
+- [x] demo 2: web search assistant
 - [ ] pre-fill new app + community examples in app view
-  - [ ] blocked on fork
+  - [x] blocked on clone
   - [x] prepare template app: https://dust.tt/spolu/a/768845d004
-  - [ ] show community apps in app pane
+  - [x] show community apps in app pane
 - [ ] deploy as an endpoint + capture production executions
-      this may require ability to view old versions
+  - [x] this may require ability to view old versions
 - [ ] while block
 - [ ] if/then block
 - [ ] demo 3: self-ask / react
@@ -82,8 +83,7 @@
 
 ## P1
 
+- [x] previous app version / runs explorer
 - [ ] dataset iteration: upload, item list, save on update
-- [ ] previous app version / runs explorer
 - [ ] eval jobs
-- [ ] copy dataset to app
-- [ ] edit inputs from input block
+- [ ] edit inputs from input block?

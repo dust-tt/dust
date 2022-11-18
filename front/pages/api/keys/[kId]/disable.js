@@ -1,6 +1,6 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]";
-import { User, Keys } from "../../../../lib/models";
+import { User, Key } from "../../../../lib/models";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   let [key] = await Promise.all([
-    Keys.findOne({
+    Key.findOne({
       where: {
         id: req.query.kId,
         userId: user.id,
