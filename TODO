@@ -33,7 +33,9 @@
     - [x] runs list
     - [ ] deploy button
     - [ ] blocking parameter
-    - [ ] retrieve runId status and traces (all?)
+    - [x] retrieve runId status and traces
+    - [ ] APIRun object?
+    - [ ] Documentation
 
 # Go LIvE
 

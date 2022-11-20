@@ -1,5 +1,4 @@
-import { User, App, Provider, Key } from "../../../../../../../lib/models";
-import { credentialsFromProviders } from "../../../../../../../lib/providers";
+import { User, App, Provider, Key } from "../../../../../../../../lib/models";
 
 const { DUST_API } = process.env;
 
@@ -61,7 +60,7 @@ export default async function handler(req, res) {
     res.status(404).json({
       error: {
         type: "app_not_found",
-        message: "The app you're trying to run was not found.",
+        message: "The app whose run you're trying to retrieve was not found.",
       },
     });
     return;
@@ -115,66 +114,26 @@ export default async function handler(req, res) {
     res.status(404).json({
       error: {
         type: "app_not_found",
-        message: "The app you're trying to run was not found",
+        message: "The app whose run you're trying to retrieve was not found.",
       },
     });
     return;
   }
 
   switch (req.method) {
-    case "POST":
-      if (
-        !req.body ||
-        !(typeof req.body.specification_hash == "string") ||
-        !(typeof req.body.config == "object" || req.body.config == null) ||
-        !Array.isArray(req.body.inputs)
-      ) {
-        res.status(400).json({
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Invalid request body, \
-              `specification_hash` (string), `config` (object), and `inputs` (array) are required.",
-          },
-        });
-        break;
-      }
+    case "GET":
+      let runId = req.query.runId;
 
-      let config = req.body.config;
-      let inputs = req.body.inputs;
-      let specificationHash = req.body.specification_hash;
-
-      for (const name in config) {
-        const c = config[name];
-        if (c.type == "input") {
-          delete c.dataset;
-        }
-      }
-
-      let credentials = credentialsFromProviders(providers);
-
-      console.log("[API] app run creation:", {
+      console.log("[API] app run retrieve:", {
         user: reqUser.username,
         app: app.sId,
-        config,
-        inputs,
-        // credentials,
+        runId,
       });
 
       const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            run_type: "deploy",
-            specification_hash: specificationHash,
-            inputs,
-            config: { blocks: config },
-            credentials,
-          }),
+          method: "GET",
         }
       );
 
@@ -183,7 +142,7 @@ export default async function handler(req, res) {
         res.status(400).json({
           error: {
             type: "run_error",
-            message: "There was an error running the app.",
+            message: "There was an error retrieving the run.",
             run_error: error.error,
           },
         });
@@ -199,7 +158,7 @@ export default async function handler(req, res) {
       res.status(405).json({
         error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
       break;
