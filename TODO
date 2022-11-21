@@ -35,7 +35,7 @@
   - [x] retrieve runId status and traces
   - [x] APIRun object? (no need, everything is recoverable from run object)
   - [x] blocking parameter?
-  - [ ] deploy button
+  - [x] deploy button
   - [ ] Documentation
 
 # Go LIvE
