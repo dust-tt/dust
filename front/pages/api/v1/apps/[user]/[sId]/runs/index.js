@@ -3,6 +3,25 @@ import { credentialsFromProviders } from "../../../../../../../lib/providers";
 
 const { DUST_API } = process.env;
 
+const poll = async ({ fn, validate, interval, maxAttempts }) => {
+  let attempts = 0;
+
+  const executePoll = async (resolve, reject) => {
+    const result = await fn();
+    attempts++;
+
+    if (validate(result)) {
+      return resolve(result);
+    } else if (maxAttempts && attempts === maxAttempts) {
+      return reject(new Error("Exceeded max attempts"));
+    } else {
+      setTimeout(executePoll, interval, resolve, reject);
+    }
+  };
+
+  return new Promise(executePoll);
+};
+
 export default async function handler(req, res) {
   if (!req.headers.authorization) {
     res.status(401).json({
@@ -190,9 +209,64 @@ export default async function handler(req, res) {
         break;
       }
 
-      const run = await runRes.json();
+      let run = (await runRes.json()).response.run;
+      run.specification_hash = run.app_hash;
+      delete run.app_hash;
 
-      res.status(200).json({ run: run.response.run });
+      // If `blocking` is set, poll for run completion.
+      if (req.body.blocking) {
+        let runId = run.run_id;
+        let result = await poll({
+          fn: async () => {
+            const runRes = await fetch(
+              `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
+              {
+                method: "GET",
+              }
+            );
+            if (!runRes.ok) {
+              const error = await runRes.json();
+              return { status: "error" };
+            }
+            const r = (await runRes.json()).response.run;
+            return { status: r.status.run };
+          },
+          validate: (r) => {
+            if (r.status == "running") {
+              return false;
+            }
+            return true;
+          },
+          interval: 128,
+          maxAttempts: 512,
+        });
+
+        // Finally refresh the run object.
+        const runRes = await fetch(
+          `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}`,
+          {
+            method: "GET",
+          }
+        );
+
+        if (!runRes.ok) {
+          const error = await runRes.json();
+          res.status(400).json({
+            error: {
+              type: "run_error",
+              message: "There was an error retrieving the run while polling.",
+              run_error: error.error,
+            },
+          });
+          break;
+        }
+
+        run = (await runRes.json()).response.run;
+        run.specification_hash = run.app_hash;
+        delete run.app_hash;
+      }
+
+      res.status(200).json({ run });
       break;
 
     default:

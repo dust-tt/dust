@@ -149,9 +149,11 @@ export default async function handler(req, res) {
         break;
       }
 
-      const run = await runRes.json();
+      let run = (await runRes.json()).response.run;
+      run.specification_hash = run.app_hash;
+      delete run.app_hash;
 
-      res.status(200).json({ run: run.response.run });
+      res.status(200).json({ run });
       break;
 
     default:

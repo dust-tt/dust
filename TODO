@@ -30,12 +30,13 @@
 - [x] Github Login
 - [x] Design + Run
 - [ ] dust deploy (serve as an endpoint and log)
-    - [x] runs list
-    - [ ] deploy button
-    - [ ] blocking parameter
-    - [x] retrieve runId status and traces
-    - [ ] APIRun object?
-    - [ ] Documentation
+  - [x] runs list
+  - [x] create run API
+  - [x] retrieve runId status and traces
+  - [x] APIRun object? (no need, everything is recoverable from run object)
+  - [x] blocking parameter?
+  - [ ] deploy button
+  - [ ] Documentation
 
 # Go LIvE
 
