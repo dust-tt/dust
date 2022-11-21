@@ -33,3 +33,20 @@ export function ActionButton({ type, onClick, disabled, children }) {
     </button>
   );
 }
+
+export function HighlightButton({ type, onClick, disabled, children }) {
+  return (
+    <button
+      type={type ? type : "button"}
+      className={classNames(
+        "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
+        disabled ? "border-gray-200 bg-white text-gray-300" : "border-violet-600 hover:bg-violet-500 bg-violet-600 text-white",
+        "shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+      )}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}

@@ -66,7 +66,7 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                     <li>
                       <div className="flex items-center">
                         <ChevronRightIcon
-                          className="h-5 w-5 flex-shrink-0 text-gray-400 mr-1 pt-0.5"
+                          className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                           aria-hidden="true"
                         />
                         <Link href={`/${route_user}/apps`}>
@@ -84,7 +84,7 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                       <li>
                         <div className="flex items-center">
                           <ChevronRightIcon
-                            className="h-5 w-5 flex-shrink-0 text-gray-400 mr-1 pt-0.5"
+                            className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                             aria-hidden="true"
                           />
                           <Link href={`/${route_user}/a/${app.sId}`}>
