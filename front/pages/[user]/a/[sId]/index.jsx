@@ -21,6 +21,7 @@ import { useSavedRunStatus } from "../../../../lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Deploy from "../../../../components/app/Deploy";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -234,8 +235,8 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
         </div>
         <div className="flex flex-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
-            <div className="flex flex-row my-4 space-x-2 items-center">
-              <div className="flex">
+            <div className="flex flex-row flex-auto my-4 space-x-2 items-center">
+              <div className="flex-initial">
                 <NewBlock
                   disabled={readOnly}
                   onClick={handleNewBlock}
@@ -243,7 +244,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                   direction="down"
                 />
               </div>
-              <div className="flex">
+              <div className="flex-initial">
                 <ActionButton
                   disabled={
                     !runnable || runRequested || run?.status.run == "running"
@@ -257,7 +258,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                 </ActionButton>
               </div>
               {runError ? (
-                <div className="flex text-sm font-bold text-red-400 text-sm px-2">
+                <div className="flex-initial text-sm font-bold text-red-400 text-sm px-2">
                   {(() => {
                     switch (runError.code) {
                       case "invalid_specification_error":
@@ -269,7 +270,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                 </div>
               ) : null}
               {session && readOnly ? (
-                <div className="flex">
+                <div className="flex-initial">
                   <Link href={`/${user}/a/${app.sId}/clone`}>
                     <a>
                       <ActionButton>
@@ -278,6 +279,19 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                       </ActionButton>
                     </a>
                   </Link>
+                </div>
+              ) : null}
+              <div className="flex-1"></div>
+              {session && !readOnly ? (
+                <div className="flex-initial">
+                  <Deploy
+                    disabled={readOnly || !(run?.status.run == "succeeded")}
+                    user={user}
+                    app={app}
+                    run={run}
+                    spec={spec}
+                    direction="down"
+                  />
                 </div>
               ) : null}
             </div>
