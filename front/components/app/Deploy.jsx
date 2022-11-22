@@ -18,9 +18,9 @@ const cleanUpConfig = (config) => {
   for (var key in config.blocks) {
     if (config.blocks[key].type !== "input") {
       c[key] = config.blocks[key];
+      delete c[key].type;
     }
   }
-  // TODO remove ""
   return JSON.stringify(c);
 };
 
