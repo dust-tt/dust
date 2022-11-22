@@ -56,7 +56,7 @@ const features = [
   },
   {
     name: "Easy deployment",
-    built: false,
+    built: true,
     description:
       "Deploy in one click. Aggregate production traffic for later testing and fine-tuning.",
   },
