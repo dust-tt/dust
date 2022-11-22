@@ -70,13 +70,7 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                       >
                         Run by API
                       </Dialog.Title>
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500">
-                          You can run your app by API by using the following
-                          Request:
-                        </p>
-                      </div>
-                      <div className="mt-4 rounded-md bg-gray-700 px-4 py-4 text-sm text-white font-mono">
+                      <div className="mt-6 rounded-md bg-gray-700 px-4 py-4 text-sm text-white font-mono">
                         curl -XPOST https://dust.tt/api/v1/apps/{user}/{app.sId}
                         /runs \<br />
                         &nbsp;-H "Authorization: Bearer{" "}
@@ -92,13 +86,16 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                         </Link>
                         " \<br />
                         &nbsp;-H "Content-Type: application/json" \<br />
-                        &nbsp;-d '{"{"} \<br />
-                        &nbsp;&nbsp;"specification_hash": "{run?.app_hash}" \
+                        &nbsp;-d '{"{"}
                         <br />
-                        &nbsp;&nbsp;"config": {cleanUpConfig(run?.config)} \
+                        &nbsp;&nbsp;"specification_hash": "{run?.app_hash}",
                         <br />
-                        &nbsp;&nbsp;"blocking": true \<br />
-                        &nbsp;&nbsp;"inputs": {"[{...}, {...}]"} \<br />
+                        &nbsp;&nbsp;"config": {cleanUpConfig(run?.config)},
+                        <br />
+                        &nbsp;&nbsp;"blocking": true,
+                        <br />
+                        &nbsp;&nbsp;"inputs": {'[{ "hello": "world" }]'}
+                        <br />
                         {"  }"}'
                       </div>
                       <div className="mt-6">
@@ -114,27 +111,32 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                               here
                             </a>
                           </Link>
-                          . When run with your API key the app will be run using
-                          the providers set-up on your account.
+                          . Do not share your API key: when run with your API
+                          key, the app will use the providers set-up on your
+                          account.
                         </p>
                       </div>
-                      <div className="mt-1 text-sm font-bold">Parameters:</div>
-                      <ul>
+                      <div className="mt-4 text-sm font-bold">Parameters:</div>
+                      <ul className="list-disc px-4 space-y-1 mt-1">
                         <li className="text-sm">
-                          <span className="font-mono mr-2">
-                            specification_hash
+                          <span className="font-mono text-gray-600 mr-2">
+                            specification_hash:
                           </span>
                           The hash of the current specification, you don't need
                           to change it and can copy the value above.
                         </li>
                         <li className="text-sm">
-                          <span className="font-mono mr-2">config</span>
-                          The configuration of the app as used in your last run,
-                          you don't need to change it and can copy the value
-                          above.
+                          <span className="font-mono text-gray-600 mr-2">
+                            config:
+                          </span>
+                          The configuration of the app (providers, models to
+                          use, ...) as used in your last run, you don't need to
+                          change it and can copy the value above.
                         </li>
                         <li className="text-sm">
-                          <span className="font-mono mr-2">blocking</span>
+                          <span className="font-mono text-gray-600 mr-2">
+                            blocking:
+                          </span>
                           Whether to block the API call until the app has
                           finished running. If set to{" "}
                           <span className="font-mono">false</span>, the API call
@@ -145,7 +147,9 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                           </span>
                         </li>
                         <li className="text-sm">
-                          <span className="font-mono mr-2">inputs</span>
+                          <span className="font-mono text-gray-600 mr-2">
+                            inputs:
+                          </span>
                           An array of inputs to run your app on, represented as
                           JSON objects.
                         </li>
