@@ -109,6 +109,10 @@ impl Block for Browser {
                 json!({
                     "url": url,
                     "elements": [ { "selector": self.selector } ],
+                    "gotoOptions": {
+                        "timeout": 16000,
+                        "waitUntil": "networkidle2",
+                    },
                 })
                 .to_string(),
             ),
