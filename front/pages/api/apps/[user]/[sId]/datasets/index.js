@@ -132,7 +132,6 @@ export default async function handler(req, res) {
       );
       const d = await r.json();
       if (d.error) {
-        console.log("ERROR", d.error);
         res.status(500).end();
         break;
       }
