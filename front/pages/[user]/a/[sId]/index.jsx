@@ -88,9 +88,6 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
           case "running":
             return 100;
           default:
-            if (runRequested) {
-              setRunRequested(false);
-            }
             return 0;
         }
       }
@@ -181,6 +178,13 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
 
   const handleRun = () => {
     setRunRequested(true);
+
+    // We disable runRequested after 1s, time to disable the Run button while the network
+    // catches-up on the run status. This may lead to flickering if the network is not great, but
+    // haven't found a better solution yet.
+    setTimeout(async () => {
+      setRunRequested(false);
+    }, 1000);
 
     // setTimeout to yield execution so that the button updates right away.
     setTimeout(async () => {
