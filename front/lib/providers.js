@@ -115,12 +115,7 @@ export async function getProviderLLMModels(providerId, config) {
       }
       break;
     case "cohere":
-      let models = [
-        { id: "xlarge" },
-        { id: "large" },
-        { id: "medium" },
-        { id: "small" },
-      ];
+      let models = [{ id: "xlarge" }, { id: "medium" }];
       return { models: models };
       break;
     default:

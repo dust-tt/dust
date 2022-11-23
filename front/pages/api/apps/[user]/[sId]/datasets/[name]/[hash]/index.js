@@ -112,7 +112,7 @@ export default async function handler(req, res) {
         dataset: {
           name: dataset.name,
           description: dataset.description,
-          data: JSON.stringify(apiDataset.response.dataset.data, null, 2),
+          data: apiDataset.response.dataset.data,
         },
       });
       break;

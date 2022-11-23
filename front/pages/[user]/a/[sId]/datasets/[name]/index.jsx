@@ -1,6 +1,6 @@
 import AppLayout from "../../../../../../components/app/AppLayout";
 import MainTab from "../../../../../../components/app/MainTab";
-import { Button } from "../../../../../../components/Button";
+import { ActionButton } from "../../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
@@ -90,25 +90,25 @@ export default function ViewDatasetView({
           />
         </div>
         <div className="flex flex-1">
-          <div className="w-full px-4 sm:px-6">
+          <div className="w-full px-4 sm:px-6 mb-8">
             <div className="space-y-6 divide-y divide-gray-200 mt-4">
               <DatasetView
                 readOnly={readOnly}
                 datasets={datasets}
-                dataset={dataset}
+                dataset={updatedDataset}
                 onUpdate={readOnly ? () => {} : onUpdate}
                 nameDisabled={true}
               />
 
               {readOnly ? null : (
-                <div className="pt-6">
-                  <div className="flex">
-                    <Button
+                <div className="pt-6 flex flex-row">
+                  <div className="flex-initial">
+                    <ActionButton
                       disabled={disable || loading}
                       onClick={() => handleSubmit()}
                     >
                       Update
-                    </Button>
+                    </ActionButton>
                   </div>
                 </div>
               )}

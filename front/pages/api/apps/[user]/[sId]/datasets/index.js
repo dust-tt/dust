@@ -76,14 +76,13 @@ export default async function handler(req, res) {
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !(typeof req.body.data == "string")
+        !Array.isArray(req.body.data)
       ) {
         res.status(400).end();
         break;
       }
 
       // Check that dataset does not already exist.
-
       let existing = await Dataset.findAll({
         where: {
           userId: user.id,
@@ -104,18 +103,20 @@ export default async function handler(req, res) {
       }
 
       // Check data validity.
-
       try {
-        checkDatasetData(req.body.data);
+        checkDatasetData(req.body.data, false);
       } catch (e) {
         res.status(400).end();
         break;
       }
 
-      let data = JSON.parse(req.body.data);
+      // Reorder all keys as Dust API expects them ordered.
+      let data = req.body.data.map((d) => {
+        return JSON.parse(JSON.stringify(d, Object.keys(d).sort()));
+      });
+      //console.log("DATASET UPLOAD", data);
 
       // Register dataset with the Dust internal API.
-
       const r = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
         {

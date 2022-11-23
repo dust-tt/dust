@@ -31,9 +31,8 @@ export default function SpecRunView({
       ) : null}
 
       {/* This is a hack to force loading the component before we render the LLM blocks.
-                Otherwise the autoresize does not work on init?
-                TODO(spolu): investigate
-            */}
+          Otherwise the autoresize does not work on init?
+          TODO(spolu): investigate */}
       <TextareaAutosize className="hidden" value="foo" />
 
       <div className="flex flex-col space-y-2">

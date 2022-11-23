@@ -2,13 +2,16 @@ const eqSet = (xs, ys) =>
   xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
 // Returns the dataset keys or throw an error if validation failed.
-export function checkDatasetData(rawData) {
+export function checkDatasetData(data, parse) {
   let parsed = null;
-
-  try {
-    parsed = JSON.parse(rawData);
-  } catch (e) {
-    throw new Error("Invalid JSON");
+  if (!parse) {
+    parsed = data;
+  } else {
+    try {
+      parsed = JSON.parse(rawData);
+    } catch (e) {
+      throw new Error("Invalid JSON");
+    }
   }
 
   if (!parsed) {

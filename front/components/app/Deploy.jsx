@@ -2,13 +2,8 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { classNames } from "../../lib/utils";
 import { Dialog, Transition } from "@headlessui/react";
-import {
-  PlusIcon,
-  CubeTransparentIcon,
-  CubeIcon,
-} from "@heroicons/react/20/solid";
-import { Menu } from "@headlessui/react";
-import { HighlightButton, ActionButton, Button } from "../Button";
+import { CubeIcon } from "@heroicons/react/20/solid";
+import { HighlightButton, Button } from "../Button";
 
 const cleanUpConfig = (config) => {
   if (!config) {
