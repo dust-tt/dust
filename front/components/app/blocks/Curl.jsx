@@ -46,6 +46,15 @@ export default function Curl({
 
   const handleUrlChange = (url) => {
     let b = shallowBlockClone(block);
+    // if url begins with http:// or https://, remove it
+    if (url.startsWith("http://")) {
+      url = url.substring(7);
+      b.spec.scheme = "http";
+    }
+    if (url.startsWith("https://")) {
+      url = url.substring(8);
+      b.spec.scheme = "https";
+    }
     b.spec.url = url;
     onBlockUpdate(b);
   };
