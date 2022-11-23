@@ -347,24 +347,28 @@ export default function DatasetView({
                                 handleKeyUpdate(j, e.target.value);
                               }}
                             />
-                            {datasetKeys.length > 1 ? (
-                              <div className="flex-initial">
-                                <XCircleIcon
-                                  className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
-                                  onClick={(e) => {
-                                    handleDeleteKey(j);
-                                  }}
-                                />
-                              </div>
+                            {!readOnly ? (
+                              <>
+                                {datasetKeys.length > 1 ? (
+                                  <div className="flex-initial">
+                                    <XCircleIcon
+                                      className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
+                                      onClick={(e) => {
+                                        handleDeleteKey(j);
+                                      }}
+                                    />
+                                  </div>
+                                ) : null}
+                                <div className="flex-initial mr-2">
+                                  <PlusCircleIcon
+                                    className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
+                                    onClick={(e) => {
+                                      handleNewKey(j);
+                                    }}
+                                  />
+                                </div>
+                              </>
                             ) : null}
-                            <div className="flex-initial mr-2">
-                              <PlusCircleIcon
-                                className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
-                                onClick={(e) => {
-                                  handleNewKey(j);
-                                }}
-                              />
-                            </div>
                           </div>
                         </div>
                         <TextareaAutosize
@@ -383,26 +387,28 @@ export default function DatasetView({
                         />
                       </div>
                     ))}
-                    <div className="flex justify-end text-xs">
-                      {datasetData.length > 1 ? (
+                    {!readOnly ? (
+                      <div className="flex justify-end text-xs">
+                        {datasetData.length > 1 ? (
+                          <div className="flex-initial">
+                            <XCircleIcon
+                              className="h-4 w-4 text-gray-400 hover:text-red-500 cursor-pointer"
+                              onClick={(e) => {
+                                handleDeleteEntry(i);
+                              }}
+                            />
+                          </div>
+                        ) : null}
                         <div className="flex-initial">
-                          <XCircleIcon
-                            className="h-4 w-4 text-gray-400 hover:text-red-500 cursor-pointer"
+                          <PlusCircleIcon
+                            className="h-4 w-4 text-gray-400 hover:text-emerald-500 cursor-pointer"
                             onClick={(e) => {
-                              handleDeleteEntry(i);
+                              handleNewEntry(i);
                             }}
                           />
                         </div>
-                      ) : null}
-                      <div className="flex-initial">
-                        <PlusCircleIcon
-                          className="h-4 w-4 text-gray-400 hover:text-emerald-500 cursor-pointer"
-                          onClick={(e) => {
-                            handleNewEntry(i);
-                          }}
-                        />
                       </div>
-                    </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -419,14 +425,16 @@ export default function DatasetView({
                     handleFileUpload(e.target.files[0]);
                   }}
                 ></input>
-                <Button
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
-                  JSONL
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
+                    JSONL
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>

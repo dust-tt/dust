@@ -78,7 +78,7 @@ export default function NewDatasetView({
           />
         </div>
         <div className="flex flex-1">
-          <div className="w-full px-4 sm:px-6">
+          <div className="w-full px-4 sm:px-6 mb-8">
             <div className="space-y-6 divide-y divide-gray-200 mt-4">
               <DatasetView
                 datasets={datasets}
@@ -86,8 +86,8 @@ export default function NewDatasetView({
                 onUpdate={onUpdate}
               />
 
-              <div className="pt-6">
-                <div className="flex mb-8">
+              <div className="pt-6 flex flex-row">
+                <div className="flex-initial">
                   <ActionButton
                     disabled={disable || loading}
                     onClick={() => handleSubmit()}
