@@ -3,18 +3,27 @@ import { credentialsFromProviders } from "../../../../../../../lib/providers";
 
 const { DUST_API } = process.env;
 
-const poll = async ({ fn, validate, interval, maxAttempts }) => {
+const poll = async ({
+  fn,
+  validate,
+  interval,
+  increment,
+  maxInterval,
+  maxAttempts,
+}) => {
   let attempts = 0;
 
   const executePoll = async (resolve, reject) => {
     const result = await fn();
     attempts++;
+    if (interval < maxInterval) interval += increment;
 
     if (validate(result)) {
       return resolve(result);
     } else if (maxAttempts && attempts === maxAttempts) {
       return reject(new Error("Exceeded max attempts"));
     } else {
+      // console.log("polling again in", interval);
       setTimeout(executePoll, interval, resolve, reject);
     }
   };
@@ -216,7 +225,7 @@ export default async function handler(req, res) {
       // If `blocking` is set, poll for run completion.
       if (req.body.blocking) {
         let runId = run.run_id;
-        let result = await poll({
+        await poll({
           fn: async () => {
             const runRes = await fetch(
               `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
@@ -238,7 +247,9 @@ export default async function handler(req, res) {
             return true;
           },
           interval: 128,
-          maxAttempts: 512,
+          increment: 32,
+          maxInterval: 1024,
+          maxAttempts: 64,
         });
 
         // Finally refresh the run object.

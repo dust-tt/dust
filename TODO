@@ -77,7 +77,7 @@
   - [x] blocked on clone
   - [x] prepare template app: https://dust.tt/spolu/a/768845d004
   - [x] show community apps in app pane
-- [ ] deploy as an endpoint + capture production executions
+- [x] deploy as an endpoint + capture production executions
   - [x] this may require ability to view old versions
 - [ ] while block
 - [ ] if/then block
@@ -87,6 +87,6 @@
 ## P1
 
 - [x] previous app version / runs explorer
-- [ ] dataset iteration: upload, item list, save on update
+- [x] dataset iteration: upload, item list, save on update
 - [ ] eval jobs
 - [ ] edit inputs from input block?
