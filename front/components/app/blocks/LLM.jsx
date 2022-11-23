@@ -17,6 +17,7 @@ export default function LLM({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleTemperatureChange = (temperature) => {
     let b = shallowBlockClone(block);
@@ -99,6 +100,7 @@ export default function LLM({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col lg:flex-row lg:space-x-4">

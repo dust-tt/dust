@@ -132,10 +132,12 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
     saveState(s, c);
   };
 
-  const handleNewBlock = (blockType) => {
-    let s = addBlock(spec, blockType);
+  const handleNewBlock = (idx, blockType) => {
+    let s = addBlock(spec, idx || spec.length - 1, blockType);
     update(s);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (idx === null) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleDeleteBlock = (idx) => {
@@ -243,9 +245,12 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
               <div className="flex-initial">
                 <NewBlock
                   disabled={readOnly}
-                  onClick={handleNewBlock}
+                  onClick={(blockType) => {
+                    handleNewBlock(null, blockType);
+                  }}
                   spec={spec}
                   direction="down"
+                  small={false}
                 />
               </div>
               <div className="flex-initial">
@@ -311,6 +316,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
               handleDeleteBlock={handleDeleteBlock}
               handleMoveBlockUp={handleMoveBlockUp}
               handleMoveBlockDown={handleMoveBlockDown}
+              handleNewBlock={handleNewBlock}
             />
 
             {spec.length == 0 ? (
@@ -359,9 +365,12 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                 <div className="flex">
                   <NewBlock
                     disabled={readOnly}
-                    onClick={handleNewBlock}
+                    onClick={(blockType) => {
+                      handleNewBlock(null, blockType);
+                    }}
                     spec={spec}
                     direction="up"
+                    small={false}
                   />
                 </div>
                 <div className="flex">

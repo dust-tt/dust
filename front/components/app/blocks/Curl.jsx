@@ -23,6 +23,7 @@ export default function Curl({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const availableMethods = ["GET", "POST", "PUT", "PATCH"];
 
@@ -85,6 +86,7 @@ export default function Curl({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-row space-x-2 mt-1">

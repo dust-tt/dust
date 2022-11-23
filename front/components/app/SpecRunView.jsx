@@ -19,6 +19,7 @@ export default function SpecRunView({
   handleDeleteBlock,
   handleMoveBlockUp,
   handleMoveBlockDown,
+  handleNewBlock,
 }) {
   return (
     <>
@@ -64,6 +65,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -83,6 +85,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -102,6 +105,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -121,6 +125,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -140,6 +145,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -159,6 +165,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
             case "search":
@@ -176,6 +183,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -195,6 +203,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;
@@ -214,6 +223,7 @@ export default function SpecRunView({
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
                   onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
               break;

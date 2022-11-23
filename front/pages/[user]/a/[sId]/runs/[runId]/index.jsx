@@ -1,10 +1,7 @@
 import AppLayout from "../../../../../../components/app/AppLayout";
 import MainTab from "../../../../../../components/app/MainTab";
-import { ActionButton } from "../../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../api/auth/[...nextauth]";
-import { PlayCircleIcon } from "@heroicons/react/20/solid";
-import NewBlock from "../../../../../../components/app/NewBlock";
 import SpecRunView from "../../../../../../components/app/SpecRunView";
 import { useSession } from "next-auth/react";
 
@@ -60,6 +57,7 @@ export default function AppRun({
               handleDeleteBlock={() => {}}
               handleMoveBlockUp={() => {}}
               handleMoveBlockDown={() => {}}
+              handleNewBlock={() => {}}
             />
           </div>
         </div>

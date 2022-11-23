@@ -2,7 +2,13 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../lib/utils";
 import { Menu } from "@headlessui/react";
 
-export default function NewBlock({ spec, disabled, onClick, direction }) {
+export default function NewBlock({
+  spec,
+  disabled,
+  onClick,
+  direction,
+  small,
+}) {
   let containsInput = spec.filter((block) => block.type == "input").length > 0;
   let blocks = [
     {
@@ -68,23 +74,37 @@ export default function NewBlock({ spec, disabled, onClick, direction }) {
   return (
     <Menu as="div" className="relative inline-block">
       <div>
-        <Menu.Button
-          className={classNames(
-            "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
-            disabled
-              ? "border-gray-200 bg-white text-gray-300"
-              : "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white",
-            "shadow-sm focus:outline-none focus:ring-2 focus:ring-0"
-          )}
-          disabled={disabled}
-        >
-          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-          Block
-        </Menu.Button>
+        {small ? (
+          <Menu.Button
+            className={classNames(
+              "inline-flex items-center text-sm font-medium leading-6 bg-transparent text-gray-400 border-1 border-red-200 px-0 py-0",
+              disabled ? "text-gray-300" : "hover:text-gray-700",
+              "focus:outline-none focus:ring-0"
+            )}
+            disabled={disabled}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Menu.Button>
+        ) : (
+          <Menu.Button
+            className={classNames(
+              "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
+              disabled
+                ? "border-gray-200 bg-white text-gray-300"
+                : "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white",
+              "shadow-sm focus:outline-none focus:ring-2 focus:ring-0"
+            )}
+            disabled={disabled}
+          >
+            <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+            Block
+          </Menu.Button>
+        )}
       </div>
       <Menu.Items
         className={classNames(
-          "absolute w-96 block shadow -left-1 z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+          "absolute w-96 block shadow z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+          small ? "right-0" : "-left-1",
           direction === "up" ? "bottom-9" : ""
         )}
       >

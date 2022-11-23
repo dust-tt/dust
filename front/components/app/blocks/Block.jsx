@@ -4,10 +4,13 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   ArrowPathIcon,
+  PlusIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/20/solid";
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import Output from "./Output";
+import NewBlock from "../NewBlock";
 
 export default function Block({
   user,
@@ -23,6 +26,7 @@ export default function Block({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleNameChange = (name) => {
     let b = Object.assign({}, block);
@@ -75,7 +79,7 @@ export default function Block({
             </div>
           </div>
 
-          <div className="flex flex-auto font-bold text-gray-700">
+          <div className="flex flex-auto font-bold text-gray-700 pr-2">
             <input
               type="text"
               placeholder="BLOCK_NAME"
@@ -97,7 +101,7 @@ export default function Block({
             className={classNames(
               readOnly || !canUseCache
                 ? "hidden"
-                : "flex flex-initial flex-row space-x-1 mx-2"
+                : "flex flex-initial flex-row space-x-1 ml-1 mr-2"
             )}
           >
             {block.config && block.config.use_cache ? (
@@ -123,26 +127,37 @@ export default function Block({
 
           <div
             className={classNames(
-              readOnly ? "hidden" : "flex flex-initial flex-row space-x-1 ml-2"
+              readOnly
+                ? "hidden"
+                : "flex flex-initial flex-row space-x-1 items-center"
             )}
           >
+            <div className="flex-initial text-gray-400 mr-1 mt-1">
+              <NewBlock
+                disabled={readOnly}
+                onClick={onBlockNew}
+                spec={[]}
+                direction="down"
+                small={true}
+              />
+            </div>
             <div
-              className="flex-initial text-gray-400 sm:text-white group-hover:flex group-hover:text-gray-400 hover:text-red-700 cursor-pointer"
+              className="flex-initial text-gray-400 cursor-pointer"
               onClick={onBlockUp}
             >
               <ChevronUpIcon className="h-4 w-4 hover:text-gray-700" />
             </div>
             <div
-              className="flex-initial text-gray-400 sm:text-white group-hover:flex group-hover:text-gray-400 hover:text-red-700 cursor-pointer"
+              className="flex-initial text-gray-400 cursor-pointer"
               onClick={onBlockDown}
             >
               <ChevronDownIcon className="h-4 w-4 hover:text-gray-700" />
             </div>
             <div
-              className="flex-initial text-gray-400 sm:text-white group-hover:text-gray-400 cursor-pointer"
+              className="flex-initial text-gray-400 cursor-pointer"
               onClick={onBlockDelete}
             >
-              <TrashIcon className="ml-3 h-4 w-4 hover:text-red-700" />
+              <TrashIcon className="ml-2 h-4 w-4 hover:text-red-700" />
             </div>
           </div>
         </div>
@@ -200,7 +215,13 @@ export default function Block({
           </div>
         ) : null}
         {status && status.status != "running" ? (
-          <Output user={user} runId={run.run_id} block={block} status={status} app={app} />
+          <Output
+            user={user}
+            runId={run.run_id}
+            block={block}
+            status={status}
+            app={app}
+          />
         ) : null}
       </div>
     </div>
