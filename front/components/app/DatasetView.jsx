@@ -2,7 +2,7 @@ import { classNames } from "../../lib/utils";
 import { Button } from "../Button";
 import { checkDatasetData } from "../../lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PlusCircleIcon, XCircleIcon } from "@heroicons/react/20/solid";
 import { ArrowUpOnSquareStackIcon } from "@heroicons/react/24/outline";
 import "@uiw/react-textarea-code-editor/dist.css";
@@ -71,6 +71,8 @@ export default function DatasetView({
   onUpdate,
   nameDisabled,
 }) {
+  const fileInputRef = useRef(null);
+
   if (!dataset) {
     dataset = {
       name: "",
@@ -211,6 +213,51 @@ export default function DatasetView({
     });
     data.splice(i, 1);
     setDatasetData(data);
+  };
+
+  const handleFileLoaded = (e) => {
+    const content = e.target.result;
+    let data = [];
+    try {
+      data = content
+        .split("\n")
+        .filter((l) => {
+          return l.length > 0;
+        })
+        .map((l, i) => {
+          try {
+            return JSON.parse(l);
+          } catch (e) {
+            e.line = i;
+            throw e;
+          }
+        });
+    } catch (e) {
+      window.alert(`Error parsing JSONL line ${e.line}: ${e}`);
+      return;
+    }
+    if (data.length > 256) {
+      window.alert("Dataset size is currently limited to 256 entries");
+      return;
+    }
+    let keys = [];
+    try {
+      keys = checkDatasetData(data, false);
+    } catch (e) {
+      window.alert(`${e}`);
+    }
+    setDatasetKeys(keys);
+    setDatasetData(data);
+  };
+
+  const handleFileUpload = (file) => {
+    if (file.size > 1024 * 512) {
+      window.alert("JSONL upload size is currently limited to 512KB");
+      return;
+    }
+    let fileData = new FileReader();
+    fileData.onloadend = handleFileLoaded;
+    fileData.readAsText(file);
   };
 
   useEffect(() => {
@@ -363,8 +410,20 @@ export default function DatasetView({
             <div className="mt-6 flex flex-row">
               <div className="flex-1"></div>
               <div className="flex-initial ml-2">
-                <input type="file" accept=".jsonl"></input>
-                <Button>
+                <input
+                  className="hidden"
+                  type="file"
+                  accept=".jsonl"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    handleFileUpload(e.target.files[0]);
+                  }}
+                ></input>
+                <Button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                >
                   <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
                   JSONL
                 </Button>
