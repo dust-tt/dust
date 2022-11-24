@@ -1,4 +1,4 @@
-import { User, App, Dataset, Provider, Clone, Keys } from '../lib/models.js';
+import { User, App, Dataset, Provider, Clone, Key } from '../lib/models.js';
 
 async function main() {
   await User.sync({ alter: true });
@@ -6,7 +6,7 @@ async function main() {
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
-  await Keys.sync({ alter: true });
+  await Key.sync({ alter: true });
   process.exit(0);
 }
 
