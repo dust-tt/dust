@@ -57,6 +57,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -77,6 +78,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -97,6 +99,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -117,6 +120,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -137,6 +141,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -157,6 +162,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -175,6 +181,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -195,6 +202,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}
@@ -215,6 +223,7 @@ export default function SpecRunView({
                   block={block}
                   user={user}
                   app={app}
+                  spec={spec}
                   run={run}
                   status={status}
                   running={runRequested || run?.status.run == "running"}

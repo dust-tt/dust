@@ -9,6 +9,7 @@ import Link from "next/link";
 export default function Browser({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -74,6 +75,7 @@ export default function Browser({
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}

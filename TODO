@@ -90,9 +90,3 @@
 - [x] dataset iteration: upload, item list, save on update
 - [ ] eval jobs
 - [ ] edit inputs from input block?
-
-
-# Current Branch
-
-Propagage spec in block to enforce conditions on small NewBlock
-Re-enforce conditions in lib/specifications

@@ -15,6 +15,7 @@ import NewBlock from "../NewBlock";
 export default function Block({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -136,7 +137,7 @@ export default function Block({
               <NewBlock
                 disabled={readOnly}
                 onClick={onBlockNew}
-                spec={[]}
+                spec={spec}
                 direction="down"
                 small={true}
               />

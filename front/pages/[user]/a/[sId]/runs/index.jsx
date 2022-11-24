@@ -73,10 +73,10 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                     className={classNames(
                       tab.runType == runType
                         ? "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white"
-                        : "border-gray-300 text-gray-700 hover:text-gray-700",
+                        : "border-gray-300 hover:bg-gray-50 bg-white text-gray-700 hover:text-gray-700",
                       tabIdx === 0 ? "rounded-l-md" : "",
                       tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
-                      "flex-1 py-1 px-3 text-sm border font-medium text-center hover:bg-gray-50 focus:z-10 cursor-pointer shadow-sm"
+                      "flex-1 py-1 px-3 text-sm border font-medium text-center focus:z-10 cursor-pointer shadow-sm"
                     )}
                     aria-current={tab.current ? "page" : undefined}
                     onClick={() => setRunType(tab.runType)}
