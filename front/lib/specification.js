@@ -33,11 +33,12 @@ export function getNextName(spec, name) {
   return n;
 }
 
-export function addBlock(spec, blockType) {
+export function addBlock(spec, idx, blockType) {
   let s = spec.map((b) => b);
   switch (blockType) {
     case "input":
-      s.push({
+      // TODO(spolu): prevent if we already have an input
+      s.splice(idx + 1, 0, {
         type: "input",
         name: "INPUT",
         indent: 0,
@@ -48,7 +49,8 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "map_reduce":
-      s.push({
+      // TODO(spolu): prevent if we are already inside a map
+      s.splice(idx + 1, 0, {
         type: "map",
         name: getNextName(spec, "LOOP"),
         indent: 0,
@@ -58,7 +60,7 @@ export function addBlock(spec, blockType) {
         },
         config: {},
       });
-      s.push({
+      s.splice(idx + 2, 0, {
         type: "reduce",
         name: getNextName(spec, "LOOP"),
         indent: 0,
@@ -67,7 +69,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "data":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "data",
         name: getNextName(spec, "EXAMPLES"),
         indent: 0,
@@ -76,7 +78,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "search":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "search",
         name: getNextName(spec, "SEARCH"),
         indent: 0,
@@ -90,7 +92,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "browser":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "browser",
         name: getNextName(spec, "WEBCONTENT"),
         indent: 0,
@@ -105,7 +107,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "curl":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "curl",
         name: "",
         indent: 0,
@@ -124,7 +126,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "llm":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "llm",
         name: getNextName(spec, "MODEL"),
         indent: 0,
@@ -145,7 +147,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     case "code":
-      s.push({
+      s.splice(idx + 1, 0, {
         type: "code",
         name: "",
         indent: 0,
@@ -156,7 +158,7 @@ export function addBlock(spec, blockType) {
       });
       break;
     default:
-      s.push({
+      s.splice(idx + 1, 0, {
         type: blockType,
         name: "",
         indent: 0,

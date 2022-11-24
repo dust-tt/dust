@@ -8,6 +8,7 @@ import ModelPicker from "../ModelPicker";
 export default function LLM({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -17,6 +18,7 @@ export default function LLM({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleTemperatureChange = (temperature) => {
     let b = shallowBlockClone(block);
@@ -89,6 +91,7 @@ export default function LLM({
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}
@@ -99,6 +102,7 @@ export default function LLM({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col lg:flex-row lg:space-x-4">

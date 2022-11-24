@@ -4,6 +4,7 @@ import DatasetPicker from "../DatasetPicker";
 export default function Data({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -13,6 +14,7 @@ export default function Data({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleSetDataset = (dataset) => {
     let b = Object.assign({}, block);
@@ -25,6 +27,7 @@ export default function Data({
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}
@@ -34,6 +37,7 @@ export default function Data({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col sm:flex-row sm:space-x-2 mx-4">
         <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">

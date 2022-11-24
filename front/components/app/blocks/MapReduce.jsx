@@ -4,6 +4,7 @@ import { classNames, shallowBlockClone } from "../../../lib/utils";
 export function Map({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -13,6 +14,7 @@ export function Map({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleFromChange = (from) => {
     let b = shallowBlockClone(block);
@@ -30,6 +32,7 @@ export function Map({
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}
@@ -39,6 +42,7 @@ export function Map({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col lg:flex-row lg:space-x-4">
@@ -86,6 +90,7 @@ export function Map({
 export function Reduce({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -95,11 +100,13 @@ export function Reduce({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   return (
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}
@@ -109,6 +116,7 @@ export function Reduce({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     ></Block>
   );
 }

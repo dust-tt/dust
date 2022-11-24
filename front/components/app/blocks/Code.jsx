@@ -11,6 +11,7 @@ const CodeEditor = dynamic(
 export default function Code({
   user,
   app,
+  spec,
   run,
   block,
   status,
@@ -20,6 +21,7 @@ export default function Code({
   onBlockDelete,
   onBlockUp,
   onBlockDown,
+  onBlockNew,
 }) {
   const handleCodeChange = (code) => {
     let b = shallowBlockClone(block);
@@ -31,6 +33,7 @@ export default function Code({
     <Block
       user={user}
       app={app}
+      spec={spec}
       run={run}
       block={block}
       status={status}
@@ -40,6 +43,7 @@ export default function Code({
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
       onBlockDown={onBlockDown}
+      onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
