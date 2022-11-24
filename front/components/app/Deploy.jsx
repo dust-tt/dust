@@ -19,8 +19,10 @@ const cleanUpConfig = (config) => {
   return JSON.stringify(c);
 };
 
-export default function Deploy({ user, app, spec, run, disabled }) {
+export default function Deploy({ user, app, spec, run, disabled, url }) {
   const [open, setOpen] = useState(false);
+
+  console.log(url);
 
   return (
     <div>
@@ -66,7 +68,7 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                         Run by API
                       </Dialog.Title>
                       <div className="mt-6 rounded-md bg-gray-700 px-4 py-4 text-sm text-white font-mono">
-                        curl -XPOST https://dust.tt/api/v1/apps/{user}/{app.sId}
+                        curl -XPOST {url}/api/v1/apps/{user}/{app.sId}
                         /runs \<br />
                         &nbsp;-H "Authorization: Bearer{" "}
                         <Link href={`/${user}/keys`}>
@@ -147,6 +149,32 @@ export default function Deploy({ user, app, spec, run, disabled }) {
                           </span>
                           An array of inputs to run your app on, represented as
                           JSON objects.
+                        </li>
+                      </ul>
+
+                      <div className="mt-4 text-sm font-bold">Response:</div>
+                      <ul className="list-disc px-4 space-y-1 mt-1">
+                        <li className="text-sm">
+                          <span className="font-mono text-gray-600 mr-2">
+                            status:
+                          </span>
+                          An object containing the status of the run as well as
+                          the status of each individual block.
+                        </li>
+                        <li className="text-sm">
+                          <span className="font-mono text-gray-600 mr-2">
+                            traces:
+                          </span>
+                          A trace of each block execution, containing the output
+                          of the block on each input.
+                        </li>
+                        <li className="text-sm">
+                          <span className="font-mono text-gray-600 mr-2">
+                            results:
+                          </span>
+                          Only set if the run status is{" "}
+                          <span className="font-mono">succeeded</span>. The
+                          outputs of the last block of the app.
                         </li>
                       </ul>
                     </div>

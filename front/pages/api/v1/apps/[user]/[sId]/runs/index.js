@@ -277,6 +277,21 @@ export default async function handler(req, res) {
         delete run.app_hash;
       }
 
+      if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
+        run.traces = run.traces.filter((t) => {
+          return req.body.block_filter.includes(t[0][1]);
+        });
+        run.status.blocks = run.status.blocks.filter((c) => {
+          return req.body.block_filter.includes(c.name);
+        });
+      }
+
+      if (run.status.run === "succeeded" && run.traces.length > 0) {
+        run.results = run.traces[run.traces.length - 1][1];
+      } else {
+        run.results = null;
+      }
+
       res.status(200).json({ run });
       break;
 

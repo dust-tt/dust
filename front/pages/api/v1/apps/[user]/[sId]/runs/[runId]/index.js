@@ -153,6 +153,12 @@ export default async function handler(req, res) {
       run.specification_hash = run.app_hash;
       delete run.app_hash;
 
+      if (run.status.run === "succeeded" && run.traces.length > 0) {
+        run.results = run.traces[run.traces.length - 1][1];
+      } else {
+        run.results = null;
+      }
+
       res.status(200).json({ run });
       break;
 

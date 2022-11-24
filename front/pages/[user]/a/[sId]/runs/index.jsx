@@ -127,7 +127,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                   <li key={run.run_id} className="px-0">
                     <div className="py-4 rounded-sm border-2 border-gray-300 px-4 py-4">
                       <div className="flex items-center justify-between">
-                        <div class="flex flex-initial">
+                        <div className="flex flex-initial">
                           <Link
                             href={`/${user}/a/${app.sId}/runs/${run.run_id}`}
                           >
@@ -156,7 +156,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                         <div className="flex flex-1 flex-wrap items-center text-sm text-gray-700 space-x-1">
                           {run.status.blocks.map((block) => (
                             <span
-                              key={block.name}
+                              key={`${block.block_type}-${block.name}`}
                               className={classNames(
                                 "rounded-md px-1 text-sm font-semibold",
                                 block.status == "succeeded"

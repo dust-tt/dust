@@ -2,3 +2,4 @@
 *.sqlite
 Cargo.lock
 .DS_Store
+test.sh

@@ -68,7 +68,7 @@ const isRunnable = (readOnly, spec, config) => {
   return true;
 };
 
-export default function App({ app, readOnly, user, ga_tracking_id }) {
+export default function App({ app, readOnly, user, ga_tracking_id, url }) {
   const { data: session } = useSession();
 
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
@@ -133,7 +133,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
   };
 
   const handleNewBlock = (idx, blockType) => {
-    let s = addBlock(spec, idx || spec.length - 1, blockType);
+    let s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
     update(s);
     if (idx === null) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -299,7 +299,7 @@ export default function App({ app, readOnly, user, ga_tracking_id }) {
                     app={app}
                     run={run}
                     spec={spec}
-                    direction="down"
+                    url={url}
                   />
                 </div>
               ) : null}
@@ -437,6 +437,7 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
+      url: URL,
       session,
       app: app.app,
       readOnly,
