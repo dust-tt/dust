@@ -104,7 +104,7 @@ export default function NewBlock({
       <Menu.Items
         className={classNames(
           "absolute w-96 block shadow z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-          small ? "right-0" : "-left-1",
+          small ? "-right-16" : "-left-1",
           direction === "up" ? "bottom-9" : ""
         )}
       >
