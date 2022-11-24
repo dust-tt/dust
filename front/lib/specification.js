@@ -133,6 +133,8 @@ export function addBlock(spec, idx, blockType) {
         spec: {
           temperature: 0.7,
           max_tokens: 64,
+          frequence_penalty: 0.0,
+          presence_penalty: 0.0,
           few_shot_preprompt: "",
           few_shot_count: 0,
           few_shot_prompt: "",
@@ -256,6 +258,8 @@ export function dumpSpecification(spec, latestDatasets) {
       case "llm": {
         out += `llm ${block.name} {\n`;
         out += `  temperature: ${block.spec.temperature}\n`;
+        out += `  frequence_penalty: ${block.spec.frequence_penalty}\n`;
+        out += `  presence_penalty: ${block.spec.presence_penalty}\n`;
         out += `  max_tokens: ${block.spec.max_tokens}\n`;
         if (block.spec.few_shot_preprompt) {
           out += `  few_shot_preprompt: \n\`\`\`\n${block.spec.few_shot_preprompt}\n\`\`\`\n`;

@@ -105,8 +105,8 @@ export default function LLM({
       onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-col lg:flex-row lg:space-x-4">
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-col xl:flex-row xl:space-x-2">
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8 mr-2">
             <div className="flex flex-initial mr-1">model:</div>
             <ModelPicker
               user={user}
@@ -151,6 +151,42 @@ export default function LLM({
                 readOnly={readOnly}
                 value={block.spec.max_tokens}
                 onChange={(e) => handleMaxTokensChange(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+            <div className="flex flex-initial">frequence_penalty:</div>
+            <div className="flex flex-initial font-normal">
+              <input
+                type="text"
+                className={classNames(
+                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  readOnly
+                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    : "border-white focus:border-gray-300 focus:ring-0"
+                )}
+                spellCheck={false}
+                readOnly={readOnly}
+                value={block.spec.frequence_penalty}
+                onChange={(e) => handleFrequencePenaltyChange(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+            <div className="flex flex-initial">presence_penalty:</div>
+            <div className="flex flex-initial font-normal">
+              <input
+                type="text"
+                className={classNames(
+                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  readOnly
+                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    : "border-white focus:border-gray-300 focus:ring-0"
+                )}
+                spellCheck={false}
+                readOnly={readOnly}
+                value={block.spec.presence_penalty}
+                onChange={(e) => handlePresencePenaltyChange(e.target.value)}
               />
             </div>
           </div>
