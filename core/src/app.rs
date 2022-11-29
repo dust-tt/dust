@@ -463,7 +463,7 @@ impl App {
                 };
             });
 
-            self.run.as_mut().unwrap().traces.push((
+            let t = (
                 (block.block_type(), name.clone()),
                 flat.iter()
                     .map(|m| {
@@ -485,7 +485,22 @@ impl App {
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),
-            ));
+            );
+            // Send an event for the block execution trace.
+            match event_sender.as_ref() {
+                Some(sender) => {
+                    let _ = sender.send(json!({
+                        "type": "block_execution",
+                        "content": {
+                            "block_type": t.0.0,
+                            "block_name": t.0.1,
+                            "execution": t.1,
+                        }
+                    }));
+                }
+                None => (),
+            };
+            self.run.as_mut().unwrap().traces.push(t);
 
             // Update block run executions incrementally
             store

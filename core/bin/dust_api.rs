@@ -16,7 +16,7 @@ use dust::{
     stores::{postgres, sqlite},
     utils,
 };
-use futures::stream::{self, Stream};
+use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::unbounded_channel;
 
 #[derive(Serialize)]
 struct APIError {
@@ -749,7 +749,7 @@ async fn runs_create_stream(
 
             // Start a task that will run the app in the background.
             tokio::task::spawn(async move {
-                match app.run(credentials, store, Some(tx)).await {
+                match app.run(credentials, store, Some(tx.clone())).await {
                     Ok(()) => {
                         utils::done(&format!(
                             "Run `{}` for app version `{}` finished",
@@ -765,7 +765,8 @@ async fn runs_create_stream(
         }
         Err((_, api_error)) => {
             let _ = tx.send(json!({
-                "error": {
+                "type": "error",
+                "content": {
                     "code": api_error.code,
                     "message": api_error.message,
                 },
@@ -780,9 +781,17 @@ async fn runs_create_stream(
                 Err(e) => {
                     utils::error(&format!("Failed to create SSE event: {}", e));
                 }
-            }
+            };
         }
-
+        match Event::default().json_data(json!({
+            "type": "final",
+            "content": null,
+        })) {
+            Ok(event) => yield Ok(event),
+            Err(e) => {
+                utils::error(&format!("Failed to create SSE event: {}", e));
+            }
+        };
     };
 
     Sse::new(stream).keep_alive(KeepAlive::default())
