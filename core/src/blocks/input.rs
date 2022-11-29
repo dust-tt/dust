@@ -4,6 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct Input {}
@@ -27,7 +28,12 @@ impl Block for Input {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        _name: &str,
+        env: &Env,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         match env.input.value.as_ref() {
             Some(i) => Ok(i.clone()),
             None => unreachable!(),

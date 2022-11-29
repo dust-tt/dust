@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct Data {
@@ -59,8 +60,17 @@ impl Block for Data {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
-        match env.store.load_dataset(&env.project, &self.dataset_id, &self.hash).await? {
+    async fn execute(
+        &self,
+        _name: &str,
+        env: &Env,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
+        match env
+            .store
+            .load_dataset(&env.project, &self.dataset_id, &self.hash)
+            .await?
+        {
             Some(d) => Ok(d.data_as_value()),
             None => Err(anyhow!(
                 "Version `{}` not found for dataset `{}`",

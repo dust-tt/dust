@@ -8,13 +8,13 @@ use async_trait::async_trait;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
-use lazy_static::lazy_static;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Logprobs {
@@ -76,39 +76,8 @@ impl OpenAILLM {
         OpenAILLM { id, api_key: None }
     }
 
-    fn internal(&self) -> Option<(String, String, String)> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(
-                r"^internal:(?P<cluster>[a-z]+):(?P<user>[a-z0-9_\-]+):(?P<inst>[a-zA-Z0-9\-_]+)$"
-            )
-            .unwrap();
-        }
-
-        match RE.captures(self.id.as_str()) {
-            None => None,
-            Some(c) => {
-                let cluster = c.name("cluster").unwrap().as_str();
-                let user = c.name("user").unwrap().as_str();
-                let instance = c.name("inst").unwrap().as_str();
-                Some((cluster.to_string(), user.to_string(), instance.to_string()))
-            }
-        }
-    }
-
     fn uri(&self) -> Result<Uri> {
-        match self.internal() {
-            None => Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?),
-            Some((cluster, user, instance)) => {
-                let host = format!(
-                    "{instance}.{user}.svc.{cluster}.sci.openai.org",
-                    cluster = cluster,
-                    user = user,
-                    instance = instance
-                );
-                let url = format!("http://{}:5001/v1/engines/dummy/completions", host);
-                Ok(url.parse::<Uri>()?)
-            }
-        }
+        Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
     }
 
     async fn completion(
@@ -126,55 +95,32 @@ impl OpenAILLM {
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
-        let req = match self.internal() {
-            Some(_) => Request::builder()
-                .method(Method::POST)
-                .uri(self.uri()?)
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer dummy")
-                .header("OpenAI-Organization", "openai")
-                .body(Body::from(
-                    json!({
-                        "prompt": prompt,
-                        "max_tokens": max_tokens,
-                        "temperature": temperature,
-                        "n": n,
-                        "logprobs": logprobs,
-                        "echo": echo,
-                        "stop": match stop.len() {
-                            0 => None,
-                            _ => Some(stop),
-                        },
-                    })
-                    .to_string(),
-                ))?,
-            None => Request::builder()
-                .method(Method::POST)
-                .uri(self.uri()?)
-                .header("Content-Type", "application/json")
-                .header(
-                    "Authorization",
-                    format!("Bearer {}", self.api_key.clone().unwrap()),
-                )
-                // TODO(spolu): add support for custom organizations
-                // .header("OpenAI-Organization", "openai")
-                .body(Body::from(
-                    json!({
-                        "model": self.id.clone(),
-                        "prompt": prompt,
-                        "max_tokens": max_tokens,
-                        "temperature": temperature,
-                        "n": n,
-                        "logprobs": logprobs,
-                        "echo": echo,
-                        "stop": match stop.len() {
-                            0 => None,
-                            _ => Some(stop),
-                        },
-                    })
-                    .to_string(),
-                ))?,
-        };
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            // TODO(spolu): add support for custom organizations
+            // .header("OpenAI-Organization", "openai")
+            .body(Body::from(
+                json!({
+                    "model": self.id.clone(),
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "n": n,
+                    "logprobs": logprobs,
+                    "echo": echo,
+                    "stop": match stop.len() {
+                        0 => None,
+                        _ => Some(stop),
+                    },
+                })
+                .to_string(),
+            ))?;
 
         let res = cli.request(req).await?;
 
@@ -244,6 +190,7 @@ impl LLM for OpenAILLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
 
@@ -353,7 +300,9 @@ impl Provider for OpenAIProvider {
         let mut llm = self.llm(String::from("text-ada-001"));
         llm.initialize(Credentials::new()).await?;
 
-        let _ = llm.generate("Hello 😊", Some(1), 0.7, 1, &vec![]).await?;
+        let _ = llm
+            .generate("Hello 😊", Some(1), 0.7, 1, &vec![], None)
+            .await?;
 
         utils::done("Test successfully completed! OpenAI is ready to use.");
 

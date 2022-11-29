@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
 use axum::{
     extract,
-    response::Json,
+    response::{
+        sse::{Event, KeepAlive, Sse},
+        Json,
+    },
     routing::{get, post},
     Router,
 };
@@ -13,12 +16,15 @@ use dust::{
     stores::{postgres, sqlite},
     utils,
 };
+use futures::stream::{self, Stream};
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 #[derive(Serialize)]
 struct APIError {
@@ -79,7 +85,7 @@ impl APIState {
 
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
-                    match app.0.run(app.1, store).await {
+                    match app.0.run(app.1, store, None).await {
                         Ok(()) => {
                             utils::done(&format!(
                                 "Run `{}` for app version `{}` finished",
@@ -487,7 +493,7 @@ async fn datasets_retrieve(
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct RunsCreatePayload {
     run_type: run::RunType,
     specification: Option<String>,
@@ -498,11 +504,11 @@ struct RunsCreatePayload {
     credentials: run::Credentials,
 }
 
-async fn runs_create(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<RunsCreatePayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-) -> (StatusCode, Json<APIResponse>) {
+async fn run_helper(
+    project_id: i64,
+    payload: RunsCreatePayload,
+    state: Arc<APIState>,
+) -> Result<app::App, (StatusCode, APIError)> {
     let project = project::Project::new_from_id(project_id);
 
     let mut register_spec = true;
@@ -510,115 +516,80 @@ async fn runs_create(
         Some(spec) => spec,
         None => match payload.specification_hash {
             Some(hash) => match state.store.load_specification(&project, &hash).await {
-                Err(e) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(APIResponse {
-                            error: Some(APIError {
-                                code: String::from("internal_server_error"),
-                                message: format!("Failed to retrieve specification: {}", e),
-                            }),
-                            response: None,
-                        }),
-                    )
-                }
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to retrieve specification: {}", e),
+                    },
+                ))?,
                 Ok(spec) => match spec {
-                    None => {
-                        return (
-                            StatusCode::NOT_FOUND,
-                            Json(APIResponse {
-                                error: Some(APIError {
-                                    code: String::from("specification_not_found"),
-                                    message: format!("No specification found for hash `{}`", hash),
-                                }),
-                                response: None,
-                            }),
-                        )
-                    }
+                    None => Err((
+                        StatusCode::NOT_FOUND,
+                        APIError {
+                            code: String::from("specification_not_found"),
+                            message: format!("No specification found for hash `{}`", hash),
+                        },
+                    ))?,
                     Some((_, s)) => {
                         register_spec = false;
                         s
                     }
                 },
             },
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("missing_specification_error"),
-                            message: String::from(
-                                "No specification provided, \
+            None => Err((
+                StatusCode::BAD_REQUEST,
+                APIError {
+                    code: String::from("missing_specification_error"),
+                    message: String::from(
+                        "No specification provided, \
                                  either `specification` or `specification_hash` must be provided",
-                            ),
-                        }),
-                        response: None,
-                    }),
-                )
-            }
+                    ),
+                },
+            ))?,
         },
     };
 
     let mut app = match app::App::new(&specification).await {
-        Err(e) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("invalid_specification_error"),
-                        message: e.to_string(),
-                    }),
-                    response: None,
-                }),
-            )
-        }
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            APIError {
+                code: String::from("invalid_specification_error"),
+                message: e.to_string(),
+            },
+        ))?,
         Ok(app) => app,
     };
 
     let mut d = match payload.dataset_id.as_ref() {
         None => None,
         Some(dataset_id) => match state.store.latest_dataset_hash(&project, dataset_id).await {
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to retrieve dataset: {}", e),
-                        }),
-                        response: None,
-                    }),
-                )
-            }
-            Ok(None) => {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("dataset_not_found"),
-                            message: format!("No dataset found for id `{}`", dataset_id),
-                        }),
-                        response: None,
-                    }),
-                )
-            }
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve dataset: {}", e),
+                },
+            ))?,
+            Ok(None) => Err((
+                StatusCode::NOT_FOUND,
+                APIError {
+                    code: String::from("dataset_not_found"),
+                    message: format!("No dataset found for id `{}`", dataset_id),
+                },
+            ))?,
             Ok(Some(latest)) => match state
                 .store
                 .load_dataset(&project, dataset_id, &latest)
                 .await
             {
-                Err(e) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(APIResponse {
-                            error: Some(APIError {
-                                code: String::from("internal_server_error"),
-                                message: format!("Failed to retrieve dataset: {}", e),
-                            }),
-                            response: None,
-                        }),
-                    )
-                }
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to retrieve dataset: {}", e),
+                    },
+                ))?,
                 Ok(d) => match d {
                     None => unreachable!(),
                     Some(d) => Some(d),
@@ -629,34 +600,28 @@ async fn runs_create(
 
     if d.is_some() {
         if payload.run_type != run::RunType::Local {
-            return (
+            Err((
                 StatusCode::BAD_REQUEST,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("invalid_run_type_error"),
-                        message: String::from(
-                            "RunType `local` is expected when a `dataset_id` is provided",
-                        ),
-                    }),
-                    response: None,
-                }),
-            );
+                APIError {
+                    code: String::from("invalid_run_type_error"),
+                    message: String::from(
+                        "RunType `local` is expected when a `dataset_id` is provided",
+                    ),
+                },
+            ))?
         }
 
         if d.as_ref().unwrap().len() == 0 {
-            return (
+            Err((
                 StatusCode::BAD_REQUEST,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("dataset_empty_error"),
-                        message: format!(
-                            "Dataset `{}` has 0 record",
-                            payload.dataset_id.as_ref().unwrap()
-                        ),
-                    }),
-                    response: None,
-                }),
-            );
+                APIError {
+                    code: String::from("dataset_empty_error"),
+                    message: format!(
+                        "Dataset `{}` has 0 record",
+                        payload.dataset_id.as_ref().unwrap()
+                    ),
+                },
+            ))?
         }
 
         utils::info(
@@ -671,33 +636,25 @@ async fn runs_create(
 
     if payload.inputs.is_some() {
         if payload.run_type != run::RunType::Deploy {
-            return (
+            Err((
                 StatusCode::BAD_REQUEST,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("invalid_run_type_error"),
-                        message: String::from(
-                            "RunType `deploy` is expected when `inputs` are provided",
-                        ),
-                    }),
-                    response: None,
-                }),
-            );
+                APIError {
+                    code: String::from("invalid_run_type_error"),
+                    message: String::from(
+                        "RunType `deploy` is expected when `inputs` are provided",
+                    ),
+                },
+            ))?
         }
 
         d = match dataset::Dataset::new_from_jsonl("inputs", payload.inputs.unwrap()).await {
-            Err(e) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("invalid_inputs_error"),
-                            message: e.to_string(),
-                        }),
-                        response: None,
-                    }),
-                )
-            }
+            Err(e) => Err((
+                StatusCode::BAD_REQUEST,
+                APIError {
+                    code: String::from("invalid_inputs_error"),
+                    message: e.to_string(),
+                },
+            ))?,
             Ok(d) => Some(d),
         };
 
@@ -711,18 +668,13 @@ async fn runs_create(
             .register_specification(&project, &app.hash(), &specification)
             .await
         {
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to register specification: {}", e),
-                        }),
-                        response: None,
-                    }),
-                )
-            }
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to register specification: {}", e),
+                },
+            ))?,
             Ok(_) => (),
         }
     }
@@ -737,35 +689,103 @@ async fn runs_create(
         )
         .await
     {
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed prepare run: {}", e),
-                    }),
-                    response: None,
-                }),
-            )
-        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            APIError {
+                code: String::from("internal_server_error"),
+                message: format!("Failed prepare run: {}", e),
+            },
+        ))?,
         Ok(()) => (),
     }
 
-    // The run is empty for now, we can clone it for the response.
-    let run = app.run_ref().unwrap().clone();
+    Ok(app)
+}
 
-    state.run_app(app, payload.credentials.clone());
+async fn runs_create(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Json(payload): extract::Json<RunsCreatePayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    match run_helper(project_id, payload.clone(), state.clone()).await {
+        Ok(app) => {
+            // The run is empty for now, we can clone it for the response.
+            let run = app.run_ref().unwrap().clone();
+            state.run_app(app, payload.credentials.clone());
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "run": run,
+                    })),
+                }),
+            )
+        }
+        Err((status_code, api_error)) => (
+            status_code,
+            Json(APIResponse {
+                error: Some(api_error),
+                response: None,
+            }),
+        ),
+    }
+}
 
-    (
-        StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({
-                "run": run,
-            })),
-        }),
-    )
+async fn runs_create_stream(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Json(payload): extract::Json<RunsCreatePayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    // create unbounded channel to pass as stream to Sse::new
+    let (tx, mut rx) = unbounded_channel::<Value>();
+
+    match run_helper(project_id, payload.clone(), state.clone()).await {
+        Ok(mut app) => {
+            // The run is empty for now, we can clone it for the response.
+            // let run = app.run_ref().unwrap().clone();
+            let credentials = payload.credentials.clone();
+            let store = state.store.clone();
+
+            // Start a task that will run the app in the background.
+            tokio::task::spawn(async move {
+                match app.run(credentials, store, Some(tx)).await {
+                    Ok(()) => {
+                        utils::done(&format!(
+                            "Run `{}` for app version `{}` finished",
+                            app.run_ref().unwrap().run_id(),
+                            app.hash(),
+                        ));
+                    }
+                    Err(e) => {
+                        utils::error(&format!("Run error: {}", e));
+                    }
+                }
+            });
+        }
+        Err((_, api_error)) => {
+            let _ = tx.send(json!({
+                "error": {
+                    "code": api_error.code,
+                    "message": api_error.message,
+                },
+            }));
+        }
+    }
+
+    let stream = async_stream::stream! {
+        while let Some(v) = rx.recv().await {
+            match Event::default().json_data(v) {
+                Ok(event) => yield Ok(event),
+                Err(e) => {
+                    utils::error(&format!("Failed to create SSE event: {}", e));
+                }
+            }
+        }
+
+    };
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 #[derive(serde::Deserialize)]
@@ -981,6 +1001,10 @@ async fn main() -> Result<()> {
         )
         // Runs
         .route("/projects/:project_id/runs", post(runs_create))
+        .route(
+            "/projects/:project_id/runs/stream",
+            post(runs_create_stream),
+        )
         .route("/projects/:project_id/runs", get(runs_list))
         .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
         .route(

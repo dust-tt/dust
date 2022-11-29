@@ -8,8 +8,9 @@ use async_trait::async_trait;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::io::prelude::*;
+use tokio::sync::mpsc::UnboundedSender;
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -164,6 +165,7 @@ impl LLM for CohereLLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
 
@@ -248,7 +250,9 @@ impl Provider for CohereProvider {
         let mut llm = self.llm(String::from("small"));
         llm.initialize(Credentials::new()).await?;
 
-        let _ = llm.generate("Hello 😊", Some(1), 0.7, 1, &vec![]).await?;
+        let _ = llm
+            .generate("Hello 😊", Some(1), 0.7, 1, &vec![], None)
+            .await?;
 
         utils::done("Test successfully completed! Cohere is ready to use.");
 

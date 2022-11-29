@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct Code {
@@ -52,7 +53,12 @@ impl Block for Code {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        _name: &str,
+        env: &Env,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         // Assumes there is a _fun function defined in `source`.
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();

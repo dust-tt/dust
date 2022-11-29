@@ -17,6 +17,7 @@ use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::str::FromStr;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
 pub struct MapState {
@@ -104,7 +105,12 @@ pub trait Block {
 
     fn inner_hash(&self) -> String;
 
-    async fn execute(&self, name: &str, env: &Env) -> Result<Value>;
+    async fn execute(
+        &self,
+        name: &str,
+        env: &Env,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value>;
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
     fn as_any(&self) -> &dyn Any;

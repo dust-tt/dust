@@ -10,6 +10,7 @@ use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::Value;
 use std::str::FromStr;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct LLM {
@@ -244,7 +245,13 @@ impl Block for LLM {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        name: &str,
+        env: &Env,
+
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -317,14 +324,24 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = request
-            .execute_with_cache(
-                env.credentials.clone(),
-                env.project.clone(),
-                env.store.clone(),
-                use_cache,
-            )
-            .await?;
+        let g = match event_sender {
+            Some(_) => {
+                request
+                    .execute(env.credentials.clone(), event_sender)
+                    .await?
+            }
+            None => {
+                request
+                    .execute_with_cache(
+                        env.credentials.clone(),
+                        env.project.clone(),
+                        env.store.clone(),
+                        use_cache,
+                    )
+                    .await?
+            }
+        };
+
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {

@@ -10,10 +10,11 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use parking_lot::Mutex;
 use pest::Parser;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -220,6 +221,7 @@ impl App {
         &mut self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
@@ -227,6 +229,19 @@ impl App {
 
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
+
+        // Send an event for the initial run status.
+        match event_sender.as_ref() {
+            Some(sender) => {
+                let _ = sender.send(json!({
+                    "type": "run_status",
+                    "content": {
+                        "status": Status::Running,
+                    }
+                }));
+            }
+            None => (),
+        };
 
         // Initialize the ExecutionEnv. Blocks executed before the input block is found are executed
         // only once instead of once per input data.
@@ -334,6 +349,18 @@ impl App {
             store
                 .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
                 .await?;
+
+            // Send an event for the inital block execution status.
+            match event_sender.as_ref() {
+                Some(sender) => {
+                    let _ = sender.send(json!({
+                        "type": "block_status",
+                        "content": block_status.clone(),
+                    }));
+                }
+                None => (),
+            };
+
             let block_status = Arc::new(Mutex::new(block_status));
 
             // We flatten the envs for concurrent and parrallel execution of the block which
@@ -362,8 +389,9 @@ impl App {
                 let store = store.clone();
                 let project = project.clone();
                 let run_id = run_id.clone();
+                let event_sender = event_sender.clone();
                 tokio::spawn(async move {
-                    match b.execute(&name, &e).await {
+                    match b.execute(&name, &e, event_sender).await {
                         Ok(v) => {
                             let block_status = {
                                 let mut block_status = block_status.lock();
@@ -493,7 +521,7 @@ impl App {
             };
             let run_status = {
                 let mut run_status = run_status.lock();
-                run_status.set_block_status(block_status);
+                run_status.set_block_status(block_status.clone());
                 if errors.len() > 0 {
                     run_status.set_run_status(Status::Errored);
                 }
@@ -505,6 +533,17 @@ impl App {
                 .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
                 .await?;
 
+            // Send an event for the updated block execution status.
+            match event_sender.as_ref() {
+                Some(sender) => {
+                    let _ = sender.send(json!({
+                        "type": "block_status",
+                        "content": block_status.clone(),
+                    }));
+                }
+                None => (),
+            };
+
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
@@ -513,6 +552,19 @@ impl App {
                     &run_id,
                     self.run.as_ref().unwrap().app_hash(),
                 ));
+
+                // Send an event for the run status update.
+                match event_sender.as_ref() {
+                    Some(sender) => {
+                        let _ = sender.send(json!({
+                            "type": "run_status",
+                            "content": {
+                                "status": Status::Errored,
+                            }
+                        }));
+                    }
+                    None => (),
+                };
 
                 Err(anyhow!(
                     "Run `{}` for app version `{}` interrupted due to \
@@ -595,6 +647,19 @@ impl App {
             self.hash(),
         ));
 
+        // Send an event for the run status update.
+        match event_sender.as_ref() {
+            Some(sender) => {
+                let _ = sender.send(json!({
+                    "type": "run_status",
+                    "content": {
+                        "status": Status::Succeeded,
+                    }
+                }));
+            }
+            None => (),
+        };
+
         Ok(())
     }
 }
@@ -666,5 +731,5 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
     )
     .await?;
 
-    app.run(Credentials::new(), Box::new(store)).await
+    app.run(Credentials::new(), Box::new(store), None).await
 }

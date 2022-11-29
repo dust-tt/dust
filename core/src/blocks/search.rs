@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::sync::mpsc::UnboundedSender;
 use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -79,7 +80,12 @@ impl Block for Search {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        name: &str,
+        env: &Env,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         let config = env.config.config_for_block(name);
 
         let use_cache = match config {
