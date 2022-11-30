@@ -132,6 +132,26 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         </li>
                         <li className="text-sm">
                           <span className="font-mono text-gray-600 mr-2">
+                            inputs:
+                          </span>
+                          An array of inputs to run your app on, represented as
+                          JSON objects.
+                        </li>
+                        <li className="text-sm">
+                          <span className="font-mono text-gray-600 mr-2">
+                            stream:
+                          </span>
+                          Whether to stream the run as an Server-Side Event
+                          stream. If{" "}
+                          <span className="font-mono">use_stream</span> is
+                          additionally set in a model config, this will stream
+                          tokens as they are produced (if available for the
+                          provider in use). If set, the{" "}
+                          <span className="font-mono">blocking</span> parameter
+                          is ignored.
+                        </li>
+                        <li className="text-sm">
+                          <span className="font-mono text-gray-600 mr-2">
                             blocking:
                           </span>
                           Whether to block the API call until the app has
@@ -142,13 +162,6 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                           <span className="font-mono">
                             GET /api/v1/apps/{user}/{app.sId}/&lt;run_id&gt;
                           </span>
-                        </li>
-                        <li className="text-sm">
-                          <span className="font-mono text-gray-600 mr-2">
-                            inputs:
-                          </span>
-                          An array of inputs to run your app on, represented as
-                          JSON objects.
                         </li>
                       </ul>
 
