@@ -8,9 +8,9 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::str::FromStr;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 #[derive(Clone)]
 pub struct LLM {
@@ -249,7 +249,6 @@ impl Block for LLM {
         &self,
         name: &str,
         env: &Env,
-
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<Value> {
         let config = env.config.config_for_block(name);
@@ -337,9 +336,34 @@ impl Block for LLM {
 
         let g = match use_stream {
             true => {
-                request
-                    .execute(env.credentials.clone(), event_sender)
-                    .await?
+                let (tx, mut rx) = unbounded_channel::<Value>();
+                {
+                    let map = env.map.clone();
+                    let input_index = env.input.index.clone();
+                    let block_name = String::from(name);
+                    tokio::task::spawn(async move {
+                        while let Some(v) = rx.recv().await {
+                            let t = v.get("content");
+                            match event_sender.as_ref() {
+                                Some(sender) => {
+                                    let _ = sender.send(json!({
+                                        "type": "tokens",
+                                        "content": {
+                                            "block_type": "llm",
+                                            "block_name": block_name,
+                                            "input_index": input_index,
+                                            "map": map,
+                                            "tokens": t,
+                                        },
+                                    }));
+                                }
+                                None => (),
+                            }
+                        }
+                        // move tx to event_sender
+                    });
+                }
+                request.execute(env.credentials.clone(), Some(tx)).await?
             }
             false => {
                 request
