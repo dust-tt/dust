@@ -388,11 +388,11 @@ export default function DatasetView({
                       </div>
                     ))}
                     {!readOnly ? (
-                      <div className="flex justify-end text-xs">
+                      <div className="flex justify-end items-center text-xs">
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="h-4 w-4 text-gray-400 hover:text-red-500 cursor-pointer"
+                              className="h-4 w-4 text-gray-300 hover:text-red-500 cursor-pointer"
                               onClick={(e) => {
                                 handleDeleteEntry(i);
                               }}
@@ -401,7 +401,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="h-4 w-4 text-gray-400 hover:text-emerald-500 cursor-pointer"
+                            className="h-5 w-5 text-gray-300 hover:text-emerald-500 cursor-pointer"
                             onClick={(e) => {
                               handleNewEntry(i);
                             }}
