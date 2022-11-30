@@ -314,6 +314,17 @@ impl Block for LLM {
             _ => true,
         };
 
+        let use_stream = match config {
+            Some(v) => match v.get("use_stream") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => true,
+                },
+                None => true,
+            },
+            _ => true,
+        } && event_sender.is_some();
+
         let request = LLMRequest::new(
             provider_id,
             &model_id,
@@ -324,13 +335,13 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = match event_sender {
-            Some(_) => {
+        let g = match use_stream {
+            true => {
                 request
                     .execute(env.credentials.clone(), event_sender)
                     .await?
             }
-            None => {
+            false => {
                 request
                     .execute_with_cache(
                         env.credentials.clone(),

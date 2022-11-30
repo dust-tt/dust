@@ -5,14 +5,19 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use eventsource_client as es;
+use eventsource_client::Client as ESClient;
+use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::prelude::*;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -40,7 +45,7 @@ pub struct Choice {
     pub text: String,
     pub index: usize,
     pub logprobs: Option<Logprobs>,
-    pub finish_reason: String,
+    pub finish_reason: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -78,6 +83,189 @@ impl OpenAILLM {
 
     fn uri(&self) -> Result<Uri> {
         Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+    }
+
+    async fn streamed_completion(
+        &self,
+        prompt: &str,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        n: usize,
+        logprobs: Option<usize>,
+        echo: bool,
+        stop: &Vec<String>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Completion> {
+        assert!(self.api_key.is_some());
+
+        let url = self.uri()?.to_string();
+
+        let builder = match es::ClientBuilder::for_url(url.as_str()) {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+        let builder = match builder.method(String::from("POST")).header(
+            "Authorization",
+            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
+        ) {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+        let builder = match builder.header("Content-Type", "application/json") {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+
+        let client = builder
+            .body(
+                json!({
+                    "model": self.id.clone(),
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "n": n,
+                    "logprobs": logprobs,
+                    "echo": echo,
+                    "stop": match stop.len() {
+                        0 => None,
+                        _ => Some(stop),
+                    },
+                    "stream": true,
+                })
+                .to_string(),
+            )
+            .reconnect(
+                es::ReconnectOptions::reconnect(false)
+                    .retry_initial(false)
+                    .delay(Duration::from_secs(1))
+                    .backoff_factor(2)
+                    .delay_max(Duration::from_secs(30))
+                    .build(),
+            )
+            .build();
+
+        let mut stream = client.stream();
+
+        let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+
+        loop {
+            match stream.try_next().await {
+                Ok(e) => match e {
+                    Some(es::SSE::Comment(_)) => {}
+                    Some(es::SSE::Event(e)) => match e.data.as_str() {
+                        "[DONE]" => {
+                            break;
+                        }
+                        _ => {
+                            let completion: Completion = match serde_json::from_str(e.data.as_str())
+                            {
+                                Ok(c) => Ok(c),
+                                Err(e) => Err(anyhow!(
+                                    "Error parsing streamed completion from OpenAI: {}",
+                                    e
+                                )),
+                            }?;
+
+                            let index = {
+                                let guard = completions.lock();
+                                guard.len()
+                            };
+
+                            // Only stream if choices is length 1 but should always be the case.
+                            if index > 0 {
+                                match completion.choices.len() {
+                                    1 => {
+                                        match event_sender.as_ref() {
+                                            Some(sender) => {
+                                                let tokens =
+                                                    match completion.choices[0].logprobs.as_ref() {
+                                                        Some(l) => Some(l.tokens.clone()),
+                                                        None => None,
+                                                    };
+                                                let logprobs =
+                                                    match completion.choices[0].logprobs.as_ref() {
+                                                        Some(l) => Some(l.token_logprobs.clone()),
+                                                        None => None,
+                                                    };
+                                                let _ = sender.send(json!({
+                                                    "type": "tokens",
+                                                    "content": {
+                                                        "text": completion.choices[0].text.clone(),
+                                                        "tokens": tokens,
+                                                        "logprobs": logprobs,
+                                                    },
+                                                }));
+                                            }
+                                            None => (),
+                                        };
+                                    }
+                                    _ => (),
+                                }
+                            }
+                            completions.lock().push(completion);
+                        }
+                    },
+                    None => {
+                        break;
+                    }
+                },
+                Err(e) => {
+                    Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                }
+            }
+        }
+
+        let completion = {
+            let mut guard = completions.lock();
+            let mut c = match guard.len() {
+                0 => Err(anyhow!("No completions received from OpenAI")),
+                _ => Ok(guard[0].clone()),
+            }?;
+            guard.remove(0);
+            for i in 0..guard.len() {
+                let a = guard[i].clone();
+                if a.choices.len() != c.choices.len() {
+                    Err(anyhow!(
+                        "Inconsistent number of choices in streamed completions"
+                    ))?;
+                }
+                for j in 0..c.choices.len() {
+                    c.choices[j].finish_reason = a.choices.get(j).unwrap().finish_reason.clone();
+                    // OpenAI does the bytes merging for us <3.
+                    c.choices[j].text = format!("{}{}", c.choices[j].text, a.choices[j].text);
+
+                    match c.choices[j].logprobs.as_mut() {
+                        Some(c_logprobs) => match a.choices[j].logprobs.as_ref() {
+                            Some(a_logprobs) => {
+                                c_logprobs.tokens.extend(a_logprobs.tokens.clone());
+                                c_logprobs
+                                    .token_logprobs
+                                    .extend(a_logprobs.token_logprobs.clone());
+                                c_logprobs
+                                    .text_offset
+                                    .extend(a_logprobs.text_offset.clone());
+                                match c_logprobs.top_logprobs.as_mut() {
+                                    Some(c_top_logprobs) => {
+                                        match a_logprobs.top_logprobs.as_ref() {
+                                            Some(a_top_logprobs) => {
+                                                c_top_logprobs.extend(a_top_logprobs.clone());
+                                            }
+                                            None => (),
+                                        }
+                                    }
+                                    None => (),
+                                }
+                            }
+                            None => (),
+                        },
+                        None => (),
+                    }
+                }
+            }
+            c
+        };
+
+        Ok(completion)
     }
 
     async fn completion(
@@ -196,17 +384,33 @@ impl LLM for OpenAILLM {
 
         // println!("STOP: {:?}", stop);
 
-        let c = self
-            .completion(
-                prompt.clone(),
-                max_tokens,
-                temperature,
-                n,
-                Some(0),
-                true,
-                stop,
-            )
-            .await?;
+        let c = match event_sender {
+            Some(_) => {
+                self.streamed_completion(
+                    prompt.clone(),
+                    max_tokens,
+                    temperature,
+                    n,
+                    Some(0),
+                    true,
+                    stop,
+                    event_sender,
+                )
+                .await?
+            }
+            None => {
+                self.completion(
+                    prompt.clone(),
+                    max_tokens,
+                    temperature,
+                    n,
+                    Some(0),
+                    true,
+                    stop,
+                )
+                .await?
+            }
+        };
 
         // println!("COMPLETION: {:?}", c);
 
