@@ -319,9 +319,9 @@ impl Block for LLM {
                     Value::Bool(b) => *b,
                     _ => true,
                 },
-                None => true,
+                None => false
             },
-            _ => true,
+            _ => false
         } && event_sender.is_some();
 
         let request = LLMRequest::new(
