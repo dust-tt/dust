@@ -189,6 +189,53 @@ export default async function handler(req, res) {
         // credentials,
       });
 
+      // If `stream` is true, run in streaming mode.
+      if (req.body.stream) {
+        const runRes = await fetch(
+          `${DUST_API}/projects/${app.dustAPIProjectId}/runs/stream`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              run_type: "deploy",
+              specification_hash: specificationHash,
+              inputs,
+              config: { blocks: config },
+              credentials,
+            }),
+          }
+        );
+
+        if (!runRes.ok) {
+          const error = await runRes.json();
+          res.status(400).json({
+            error: {
+              type: "run_error",
+              message: "There was an error running the app.",
+              run_error: error.error,
+            },
+          });
+          break;
+        }
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+
+        try {
+          for await (const chunk of runRes.body) {
+            res.write(chunk);
+          }
+        } catch (err) {
+          console.log("ERROR streaming from Dust API:", err);
+        }
+        res.end();
+        break;
+      }
+
       const runRes = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
         {

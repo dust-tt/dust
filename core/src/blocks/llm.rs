@@ -8,8 +8,9 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::str::FromStr;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 #[derive(Clone)]
 pub struct LLM {
@@ -244,7 +245,12 @@ impl Block for LLM {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, name: &str, env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        name: &str,
+        env: &Env,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -307,6 +313,17 @@ impl Block for LLM {
             _ => true,
         };
 
+        let use_stream = match config {
+            Some(v) => match v.get("use_stream") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => true,
+                },
+                None => false
+            },
+            _ => false
+        } && event_sender.is_some();
+
         let request = LLMRequest::new(
             provider_id,
             &model_id,
@@ -317,14 +334,49 @@ impl Block for LLM {
             &self.stop,
         );
 
-        let g = request
-            .execute_with_cache(
-                env.credentials.clone(),
-                env.project.clone(),
-                env.store.clone(),
-                use_cache,
-            )
-            .await?;
+        let g = match use_stream {
+            true => {
+                let (tx, mut rx) = unbounded_channel::<Value>();
+                {
+                    let map = env.map.clone();
+                    let input_index = env.input.index.clone();
+                    let block_name = String::from(name);
+                    tokio::task::spawn(async move {
+                        while let Some(v) = rx.recv().await {
+                            let t = v.get("content");
+                            match event_sender.as_ref() {
+                                Some(sender) => {
+                                    let _ = sender.send(json!({
+                                        "type": "tokens",
+                                        "content": {
+                                            "block_type": "llm",
+                                            "block_name": block_name,
+                                            "input_index": input_index,
+                                            "map": map,
+                                            "tokens": t,
+                                        },
+                                    }));
+                                }
+                                None => (),
+                            }
+                        }
+                        // move tx to event_sender
+                    });
+                }
+                request.execute(env.credentials.clone(), Some(tx)).await?
+            }
+            false => {
+                request
+                    .execute_with_cache(
+                        env.credentials.clone(),
+                        env.project.clone(),
+                        env.store.clone(),
+                        use_cache,
+                    )
+                    .await?
+            }
+        };
+
         assert!(g.completions.len() == 1);
 
         Ok(serde_json::to_value(LLMValue {

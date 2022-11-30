@@ -6,6 +6,8 @@ use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -36,6 +38,7 @@ pub trait LLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration>;
 }
 
@@ -90,33 +93,55 @@ impl LLMRequest {
         &self.hash
     }
 
-    pub async fn execute(&self, credentials: Credentials) -> Result<LLMGeneration> {
+    pub async fn execute(
+        &self,
+        credentials: Credentials,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize(credentials).await?;
 
-        match with_retryable_back_off(
-            || {
+        // If we have an event_sender we don't retry calls to models.
+        let out = match event_sender {
+            Some(_) => {
                 llm.generate(
                     self.prompt.as_str(),
                     self.max_tokens,
                     self.temperature,
                     self.n,
                     &self.stop,
+                    event_sender,
                 )
-            },
-            |err_msg, sleep, attempts| {
-                utils::info(&format!(
-                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    attempts,
-                    sleep.as_millis(),
-                    err_msg,
-                ));
-            },
-        )
-        .await
-        {
+                .await
+            }
+            None => {
+                with_retryable_back_off(
+                    || {
+                        llm.generate(
+                            self.prompt.as_str(),
+                            self.max_tokens,
+                            self.temperature,
+                            self.n,
+                            &self.stop,
+                            None,
+                        )
+                    },
+                    |err_msg, sleep, attempts| {
+                        utils::info(&format!(
+                            "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
+                            self.provider_id.to_string(),
+                            self.model_id,
+                            attempts,
+                            sleep.as_millis(),
+                            err_msg,
+                        ));
+                    },
+                )
+                .await
+            }
+        };
+
+        match out {
             Ok(c) => {
                 utils::done(&format!(
                     "Success querying `{}:{}`: \
@@ -171,7 +196,7 @@ impl LLMRequest {
         match generation {
             Some(generation) => Ok(generation),
             None => {
-                let generation = self.execute(credentials).await?;
+                let generation = self.execute(credentials, None).await?;
                 store.llm_cache_store(&project, self, &generation).await?;
                 Ok(generation)
             }

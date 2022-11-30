@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct Reduce {}
@@ -41,7 +42,12 @@ impl Block for Reduce {
         format!("{}", hasher.finalize().to_hex())
     }
 
-    async fn execute(&self, _name: &str, _env: &Env) -> Result<Value> {
+    async fn execute(
+        &self,
+        _name: &str,
+        _env: &Env,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<Value> {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(Value::Null)
