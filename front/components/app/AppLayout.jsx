@@ -18,7 +18,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
   return (
     <main data-color-mode="light">
       <Head>
-        <title>{`Dust - ${route_user}`}</title>
+        {app ? (
+          <title>{`Dust - ${route_user} > ${app.name}`}</title>
+        ) : (
+          <title>{`Dust - ${route_user}`}</title>
+        )}
         <link rel="shortcut icon" href="/static/favicon.png" />
         {app ? (
           <>
@@ -116,50 +120,50 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                         Help
                       </Menu.Button>
                     </div>
-                      <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <a
-                              href="/readme"
-                              target="_blank"
-                              className={classNames(
-                                active ? "bg-gray-50" : "",
-                                "block px-4 py-2 text-sm text-gray-700"
-                              )}
-                            >
-                              README
-                            </a>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <a
-                              href="https://discord.gg/8NJR3zQU5X"
-                              target="_blank"
-                              className={classNames(
-                                active ? "bg-gray-50" : "",
-                                "block px-4 py-2 text-sm text-gray-700"
-                              )}
-                            >
-                              Discord
-                            </a>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <a
-                              href="https://github.com/dust-tt/dust"
-                              target="_blank"
-                              className={classNames(
-                                active ? "bg-gray-50" : "",
-                                "block px-4 py-2 text-sm text-gray-700"
-                              )}
-                            >
-                              GitHub
-                            </a>
-                          )}
-                        </Menu.Item>
-                      </Menu.Items>
+                    <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      <Menu.Item>
+                        {({ active }) => (
+                          <a
+                            href="/readme"
+                            target="_blank"
+                            className={classNames(
+                              active ? "bg-gray-50" : "",
+                              "block px-4 py-2 text-sm text-gray-700"
+                            )}
+                          >
+                            README
+                          </a>
+                        )}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <a
+                            href="https://discord.gg/8NJR3zQU5X"
+                            target="_blank"
+                            className={classNames(
+                              active ? "bg-gray-50" : "",
+                              "block px-4 py-2 text-sm text-gray-700"
+                            )}
+                          >
+                            Discord
+                          </a>
+                        )}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <a
+                            href="https://github.com/dust-tt/dust"
+                            target="_blank"
+                            className={classNames(
+                              active ? "bg-gray-50" : "",
+                              "block px-4 py-2 text-sm text-gray-700"
+                            )}
+                          >
+                            GitHub
+                          </a>
+                        )}
+                      </Menu.Item>
+                    </Menu.Items>
                   </Menu>
                 </div>
                 {session ? (
@@ -175,22 +179,22 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           />
                         </Menu.Button>
                       </div>
-                        <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                          <Menu.Item>
-                            {({ active }) => (
-                              <a
-                                href="#"
-                                onClick={() => signOut()}
-                                className={classNames(
-                                  active ? "bg-gray-50" : "",
-                                  "block px-4 py-2 text-sm text-gray-700"
-                                )}
-                              >
-                                Sign out
-                              </a>
-                            )}
-                          </Menu.Item>
-                        </Menu.Items>
+                      <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                        <Menu.Item>
+                          {({ active }) => (
+                            <a
+                              href="#"
+                              onClick={() => signOut()}
+                              className={classNames(
+                                active ? "bg-gray-50" : "",
+                                "block px-4 py-2 text-sm text-gray-700"
+                              )}
+                            >
+                              Sign out
+                            </a>
+                          )}
+                        </Menu.Item>
+                      </Menu.Items>
                     </Menu>
                   </div>
                 ) : (
