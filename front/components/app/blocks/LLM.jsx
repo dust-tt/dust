@@ -20,6 +20,13 @@ export default function LLM({
   onBlockDown,
   onBlockNew,
 }) {
+  const handleModelChange = (model) => {
+    let b = shallowBlockClone(block);
+    b.config.provider_id = model.provider_id;
+    b.config.model_id = model.model_id;
+    onBlockUpdate(b);
+  };
+
   const handleTemperatureChange = (temperature) => {
     let b = shallowBlockClone(block);
     b.spec.temperature = temperature;
@@ -29,6 +36,45 @@ export default function LLM({
   const handleMaxTokensChange = (max_tokens) => {
     let b = shallowBlockClone(block);
     b.spec.max_tokens = max_tokens;
+    onBlockUpdate(b);
+  };
+
+  const handleAddStop = (stop) => {
+    let b = shallowBlockClone(block);
+    b.spec.stop.push(stop);
+    onBlockUpdate(b);
+    setNewStop("");
+  };
+
+  const handleRemoveStop = () => {
+    if (block.spec.stop.length > 0) {
+      let b = shallowBlockClone(block);
+      b.spec.stop.splice(b.spec.stop.length - 1, 1);
+      onBlockUpdate(b);
+    }
+  };
+
+  const handlePresencePenaltyChange = (presence_penalty) => {
+    let b = shallowBlockClone(block);
+    b.spec.presence_penalty = presence_penalty;
+    onBlockUpdate(b);
+  };
+
+  const handleFrequencePenaltyChange = (frequence_penalty) => {
+    let b = shallowBlockClone(block);
+    b.spec.frequence_penalty = frequence_penalty;
+    onBlockUpdate(b);
+  };
+
+  const handleLogprobsChange = (logprobs) => {
+    let b = shallowBlockClone(block);
+    b.spec.logprobs = logprobs;
+    onBlockUpdate(b);
+  };
+
+  const handleTopPChange = (top_p) => {
+    let b = shallowBlockClone(block);
+    b.spec.top_p = top_p;
     onBlockUpdate(b);
   };
 
@@ -56,34 +102,14 @@ export default function LLM({
     onBlockUpdate(b);
   };
 
-  const handleAddStop = (stop) => {
-    let b = shallowBlockClone(block);
-    b.spec.stop.push(stop);
-    onBlockUpdate(b);
-    setNewStop("");
-  };
-
-  const handleRemoveStop = () => {
-    if (block.spec.stop.length > 0) {
-      let b = shallowBlockClone(block);
-      b.spec.stop.splice(b.spec.stop.length - 1, 1);
-      onBlockUpdate(b);
-    }
-  };
-
-  const handleModelChange = (model) => {
-    let b = shallowBlockClone(block);
-    b.config.provider_id = model.provider_id;
-    b.config.model_id = model.model_id;
-    onBlockUpdate(b);
-  };
-
   const [fewShotExpanded, setFewShotExpanded] = useState(
     (block.spec.few_shot_prompt && block.spec.few_shot_prompt.length > 0) ||
       (block.spec.few_shot_preprompt &&
         block.spec.few_shot_preprompt.length > 0) ||
       (block.spec.few_shot_count && block.spec.few_shot_count > 0)
   );
+
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   const [newStop, setNewStop] = useState("");
 
@@ -155,42 +181,6 @@ export default function LLM({
             </div>
           </div>
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-            <div className="flex flex-initial">frequence_penalty:</div>
-            <div className="flex flex-initial font-normal">
-              <input
-                type="text"
-                className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
-                  readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-                )}
-                spellCheck={false}
-                readOnly={readOnly}
-                value={block.spec.frequence_penalty}
-                onChange={(e) => handleFrequencePenaltyChange(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-            <div className="flex flex-initial">presence_penalty:</div>
-            <div className="flex flex-initial font-normal">
-              <input
-                type="text"
-                className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
-                  readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-                )}
-                spellCheck={false}
-                readOnly={readOnly}
-                value={block.spec.presence_penalty}
-                onChange={(e) => handlePresencePenaltyChange(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
             <div className="flex flex-initial">stop:</div>
             <div className="flex w-full font-normal">
               <div
@@ -242,6 +232,110 @@ export default function LLM({
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+          {advancedExpanded ? (
+            <div
+              onClick={() => setAdvancedExpanded(false)}
+              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+            >
+              <span>
+                <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
+              </span>
+              advanced
+            </div>
+          ) : (
+            <div
+              onClick={() => setAdvancedExpanded(true)}
+              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+            >
+              <span>
+                <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
+              </span>
+              advanced
+            </div>
+          )}
+          {advancedExpanded ? (
+            <div className="flex flex-col xl:flex-row xl:space-x-2">
+              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial">frequence_penalty:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="text"
+                    className={classNames(
+                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    spellCheck={false}
+                    readOnly={readOnly}
+                    value={block.spec.frequence_penalty}
+                    onChange={(e) =>
+                      handleFrequencePenaltyChange(e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial">presence_penalty:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="text"
+                    className={classNames(
+                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    spellCheck={false}
+                    readOnly={readOnly}
+                    value={block.spec.presence_penalty}
+                    onChange={(e) =>
+                      handlePresencePenaltyChange(e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial">top_p:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="text"
+                    className={classNames(
+                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    spellCheck={false}
+                    readOnly={readOnly}
+                    value={block.spec.top_p}
+                    onChange={(e) => handleTopPChange(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial">logprobs:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="text"
+                    className={classNames(
+                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      readOnly
+                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    spellCheck={false}
+                    readOnly={readOnly}
+                    value={block.spec.logprobs}
+                    onChange={(e) => handleLogprobsChange(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
