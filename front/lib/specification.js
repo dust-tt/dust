@@ -260,8 +260,8 @@ export function dumpSpecification(spec, latestDatasets) {
         if (block.spec.stop && block.spec.stop.length > 0) {
           out += `  stop: \n\`\`\`\n${block.spec.stop.join("\n")}\n\`\`\`\n`;
         }
-        if (block.spec.frequence_penalty) {
-          out += `  frequence_penalty: ${block.spec.frequence_penalty}\n`;
+        if (block.spec.frequency_penalty) {
+          out += `  frequency_penalty: ${block.spec.frequency_penalty}\n`;
         }
         if (block.spec.presence_penalty) {
           out += `  presence_penalty: ${block.spec.presence_penalty}\n`;
@@ -269,8 +269,8 @@ export function dumpSpecification(spec, latestDatasets) {
         if (block.spec.top_p) {
           out += `  top_p: ${block.spec.top_p}\n`;
         }
-        if (block.spec.logprobs) {
-          out += `  logprobs: ${block.spec.logprobs}\n`;
+        if (block.spec.top_logprobs) {
+          out += `  top_logprobs: ${block.spec.top_logprobs}\n`;
         }
         if (block.spec.few_shot_preprompt) {
           out += `  few_shot_preprompt: \n\`\`\`\n${block.spec.few_shot_preprompt}\n\`\`\`\n`;

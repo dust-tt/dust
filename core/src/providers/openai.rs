@@ -91,9 +91,12 @@ impl OpenAILLM {
         max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
-        logprobs: Option<usize>,
+        logprobs: Option<i32>,
         echo: bool,
         stop: &Vec<String>,
+        frequency_penalty: f32,
+        presence_penalty: f32,
+        top_p: f32,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
@@ -130,6 +133,9 @@ impl OpenAILLM {
                         0 => None,
                         _ => Some(stop),
                     },
+                    "frequency_penalty": frequency_penalty,
+                    "presence_penalty": presence_penalty,
+                    "top_p": top_p,
                     "stream": true,
                 })
                 .to_string(),
@@ -274,9 +280,12 @@ impl OpenAILLM {
         max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
-        logprobs: Option<usize>,
+        logprobs: Option<i32>,
         echo: bool,
         stop: &Vec<String>,
+        frequency_penalty: f32,
+        presence_penalty: f32,
+        top_p: f32,
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
@@ -306,6 +315,9 @@ impl OpenAILLM {
                         0 => None,
                         _ => Some(stop),
                     },
+                    "frequency_penalty": frequency_penalty,
+                    "presence_penalty": presence_penalty,
+                    "top_p": top_p,
                 })
                 .to_string(),
             ))?;
@@ -378,6 +390,10 @@ impl LLM for OpenAILLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        top_p: Option<f32>,
+        top_logprobs: Option<i32>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
@@ -391,9 +407,24 @@ impl LLM for OpenAILLM {
                     max_tokens,
                     temperature,
                     n,
-                    Some(0),
+                    match top_logprobs {
+                        Some(l) => Some(l),
+                        None => Some(0),
+                    },
                     true,
                     stop,
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
                     event_sender,
                 )
                 .await?
@@ -404,9 +435,24 @@ impl LLM for OpenAILLM {
                     max_tokens,
                     temperature,
                     n,
-                    Some(0),
+                    match top_logprobs {
+                        Some(l) => Some(l),
+                        None => Some(0),
+                    },
                     true,
                     stop,
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
                 )
                 .await?
             }
@@ -430,6 +476,10 @@ impl LLM for OpenAILLM {
             text: String::from(prompt),
             tokens: Some(vec![]),
             logprobs: Some(vec![]),
+            top_logprobs: match logp.top_logprobs {
+                Some(_) => Some(vec![]),
+                None => None,
+            },
         };
         for (o, t, l) in izip!(
             logp.text_offset.clone(),
@@ -442,6 +492,17 @@ impl LLM for OpenAILLM {
                 token_offset += 1;
             }
         }
+        if logp.top_logprobs.is_some() {
+            for (o, t) in izip!(
+                logp.text_offset.clone(),
+                logp.top_logprobs.as_ref().unwrap().clone()
+            ) {
+                if o < prompt_len {
+                    prompt_tokens.top_logprobs.as_mut().unwrap().push(t);
+                }
+            }
+        }
+
         Ok(LLMGeneration {
             created: utils::now(),
             provider: ProviderID::OpenAI.to_string(),
@@ -453,12 +514,20 @@ impl LLM for OpenAILLM {
                     let logp = c.logprobs.as_ref().unwrap();
                     assert!(logp.tokens.len() == logp.token_logprobs.len());
                     assert!(logp.tokens.len() == logp.text_offset.len());
+                    assert!(
+                        !logp.top_logprobs.is_some()
+                            || logp.tokens.len() == logp.top_logprobs.as_ref().unwrap().len()
+                    );
                     assert!(logp.tokens.len() >= token_offset);
 
                     Tokens {
                         text: c.text.chars().skip(prompt_len).collect::<String>(),
                         tokens: Some(logp.tokens[token_offset..].to_vec()),
                         logprobs: Some(logp.token_logprobs[token_offset..].to_vec()),
+                        top_logprobs: match logp.top_logprobs {
+                            Some(ref t) => Some(t[token_offset..].to_vec()),
+                            None => None,
+                        },
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -505,7 +574,18 @@ impl Provider for OpenAIProvider {
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
-            .generate("Hello 😊", Some(1), 0.7, 1, &vec![], None)
+            .generate(
+                "Hello 😊",
+                Some(1),
+                0.7,
+                1,
+                &vec![],
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .await?;
 
         utils::done("Test successfully completed! OpenAI is ready to use.");

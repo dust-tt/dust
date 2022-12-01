@@ -60,15 +60,15 @@ export default function LLM({
     onBlockUpdate(b);
   };
 
-  const handleFrequencePenaltyChange = (frequence_penalty) => {
+  const handleFrequencyPenaltyChange = (frequency_penalty) => {
     let b = shallowBlockClone(block);
-    b.spec.frequence_penalty = frequence_penalty;
+    b.spec.frequency_penalty = frequency_penalty;
     onBlockUpdate(b);
   };
 
-  const handleLogprobsChange = (logprobs) => {
+  const handleTopLogprobsChange = (top_logprobs) => {
     let b = shallowBlockClone(block);
-    b.spec.logprobs = logprobs;
+    b.spec.top_logprobs = top_logprobs;
     onBlockUpdate(b);
   };
 
@@ -258,7 +258,7 @@ export default function LLM({
           {advancedExpanded ? (
             <div className="flex flex-col xl:flex-row xl:space-x-2">
               <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial">frequence_penalty:</div>
+                <div className="flex flex-initial">frequency_penalty:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
@@ -270,9 +270,9 @@ export default function LLM({
                     )}
                     spellCheck={false}
                     readOnly={readOnly}
-                    value={block.spec.frequence_penalty}
+                    value={block.spec.frequency_penalty}
                     onChange={(e) =>
-                      handleFrequencePenaltyChange(e.target.value)
+                      handleFrequencyPenaltyChange(e.target.value)
                     }
                   />
                 </div>
@@ -316,7 +316,7 @@ export default function LLM({
                 </div>
               </div>
               <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial">logprobs:</div>
+                <div className="flex flex-initial">top_logprobs:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
@@ -328,8 +328,8 @@ export default function LLM({
                     )}
                     spellCheck={false}
                     readOnly={readOnly}
-                    value={block.spec.logprobs}
-                    onChange={(e) => handleLogprobsChange(e.target.value)}
+                    value={block.spec.top_logprobs}
+                    onChange={(e) => handleTopLogprobsChange(e.target.value)}
                   />
                 </div>
               </div>
