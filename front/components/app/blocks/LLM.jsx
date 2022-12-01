@@ -108,7 +108,6 @@ export default function LLM({
         block.spec.few_shot_preprompt.length > 0) ||
       (block.spec.few_shot_count && block.spec.few_shot_count > 0)
   );
-
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   const [newStop, setNewStop] = useState("");
