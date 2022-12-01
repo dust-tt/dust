@@ -7,8 +7,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::mpsc::UnboundedSender;
 use std::collections::HashMap;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -44,6 +44,7 @@ pub trait LLM {
         presence_penalty: Option<f32>,
         top_p: Option<f32>,
         top_logprobs: Option<i32>,
+        extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration>;
 }
@@ -62,6 +63,7 @@ pub struct LLMRequest {
     presence_penalty: Option<f32>,
     top_p: Option<f32>,
     top_logprobs: Option<i32>,
+    extras: Option<Value>,
 }
 
 impl LLMRequest {
@@ -77,6 +79,7 @@ impl LLMRequest {
         presence_penalty: Option<f32>,
         top_p: Option<f32>,
         top_logprobs: Option<i32>,
+        extras: Option<Value>,
     ) -> Self {
         let mut hasher = blake3::Hasher::new();
         hasher.update(provider_id.to_string().as_bytes());
@@ -102,6 +105,9 @@ impl LLMRequest {
         if !top_logprobs.is_none() {
             hasher.update(top_logprobs.unwrap().to_string().as_bytes());
         }
+        if !extras.is_none() {
+            hasher.update(extras.clone().unwrap().to_string().as_bytes());
+        }
 
         Self {
             hash: format!("{}", hasher.finalize().to_hex()),
@@ -116,6 +122,7 @@ impl LLMRequest {
             presence_penalty,
             top_p,
             top_logprobs,
+            extras,
         }
     }
 
@@ -144,6 +151,7 @@ impl LLMRequest {
                     self.presence_penalty,
                     self.top_p,
                     self.top_logprobs,
+                    self.extras.clone(),
                     event_sender,
                 )
                 .await
@@ -161,6 +169,7 @@ impl LLMRequest {
                             self.presence_penalty,
                             self.top_p,
                             self.top_logprobs,
+                            self.extras.clone(),
                             None,
                         )
                     },

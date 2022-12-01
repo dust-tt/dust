@@ -256,7 +256,9 @@ export function dumpSpecification(spec, latestDatasets) {
       case "llm": {
         out += `llm ${block.name} {\n`;
         out += `  temperature: ${block.spec.temperature}\n`;
-        out += `  max_tokens: ${block.spec.max_tokens}\n`;
+        if (block.spec.max_tokens) {
+          out += `  max_tokens: ${block.spec.max_tokens}\n`;
+        }
         if (block.spec.stop && block.spec.stop.length > 0) {
           out += `  stop: \n\`\`\`\n${block.spec.stop.join("\n")}\n\`\`\`\n`;
         }

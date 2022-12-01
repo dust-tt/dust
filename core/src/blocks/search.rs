@@ -96,7 +96,7 @@ impl Block for Search {
                 },
                 None => true,
             },
-            _ => true,
+            None => true,
         };
 
         let query = replace_variables_in_string(&self.query, "query", env)?;

@@ -358,7 +358,7 @@ impl Block for LLM {
                 },
                 None => true,
             },
-            _ => true,
+            None => true,
         };
 
         let use_stream = match config {
@@ -369,8 +369,21 @@ impl Block for LLM {
                 },
                 None => false,
             },
-            _ => false,
+            None => false,
         } && event_sender.is_some();
+
+        let extras = match config {
+            Some(v) => match v.get("openai_user") {
+                Some(v) => match v {
+                    Value::String(s) => Some(json!({
+                        "openai_user": s.clone(),
+                    })),
+                    _ => None,
+                },
+                None => None,
+            },
+            None => None,
+        };
 
         let request = LLMRequest::new(
             provider_id,
@@ -384,6 +397,7 @@ impl Block for LLM {
             self.presence_penalty,
             self.top_p,
             self.top_logprobs,
+            extras,
         );
 
         let g = match use_stream {

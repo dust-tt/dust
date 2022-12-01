@@ -97,6 +97,7 @@ impl OpenAILLM {
         frequency_penalty: f32,
         presence_penalty: f32,
         top_p: f32,
+        user: Option<String>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
@@ -119,27 +120,32 @@ impl OpenAILLM {
             Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
         };
 
+        let mut body = json!({
+            "model": self.id.clone(),
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "n": n,
+            "logprobs": logprobs,
+            "echo": echo,
+            "stop": match stop.len() {
+                0 => None,
+                _ => Some(stop),
+            },
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "top_p": top_p,
+            "user": user,
+            "stream": true,
+        });
+        if user.is_some() {
+            body["user"] = json!(user);
+        }
+
+        // println!("BODY: {}", body.to_string());
+
         let client = builder
-            .body(
-                json!({
-                    "model": self.id.clone(),
-                    "prompt": prompt,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                    "n": n,
-                    "logprobs": logprobs,
-                    "echo": echo,
-                    "stop": match stop.len() {
-                        0 => None,
-                        _ => Some(stop),
-                    },
-                    "frequency_penalty": frequency_penalty,
-                    "presence_penalty": presence_penalty,
-                    "top_p": top_p,
-                    "stream": true,
-                })
-                .to_string(),
-            )
+            .body(body.to_string())
             .reconnect(
                 es::ReconnectOptions::reconnect(false)
                     .retry_initial(false)
@@ -286,11 +292,34 @@ impl OpenAILLM {
         frequency_penalty: f32,
         presence_penalty: f32,
         top_p: f32,
+        user: Option<String>,
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = json!({
+            "model": self.id.clone(),
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "n": n,
+            "logprobs": logprobs,
+            "echo": echo,
+            "stop": match stop.len() {
+                0 => None,
+                _ => Some(stop),
+            },
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "top_p": top_p,
+        });
+        if user.is_some() {
+            body["user"] = json!(user);
+        }
+
+        // println!("BODY: {}", body.to_string());
 
         let req = Request::builder()
             .method(Method::POST)
@@ -302,25 +331,7 @@ impl OpenAILLM {
             )
             // TODO(spolu): add support for custom organizations
             // .header("OpenAI-Organization", "openai")
-            .body(Body::from(
-                json!({
-                    "model": self.id.clone(),
-                    "prompt": prompt,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                    "n": n,
-                    "logprobs": logprobs,
-                    "echo": echo,
-                    "stop": match stop.len() {
-                        0 => None,
-                        _ => Some(stop),
-                    },
-                    "frequency_penalty": frequency_penalty,
-                    "presence_penalty": presence_penalty,
-                    "top_p": top_p,
-                })
-                .to_string(),
-            ))?;
+            .body(Body::from(body.to_string()))?;
 
         let res = cli.request(req).await?;
 
@@ -394,6 +405,7 @@ impl LLM for OpenAILLM {
         presence_penalty: Option<f32>,
         top_p: Option<f32>,
         top_logprobs: Option<i32>,
+        extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
@@ -425,6 +437,13 @@ impl LLM for OpenAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
+                    match extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
+                    },
                     event_sender,
                 )
                 .await?
@@ -452,6 +471,13 @@ impl LLM for OpenAILLM {
                     match top_p {
                         Some(t) => t,
                         None => 1.0,
+                    },
+                    match extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
                     },
                 )
                 .await?
@@ -580,6 +606,7 @@ impl Provider for OpenAIProvider {
                 0.7,
                 1,
                 &vec![],
+                None,
                 None,
                 None,
                 None,

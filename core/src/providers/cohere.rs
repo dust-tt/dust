@@ -175,6 +175,7 @@ impl LLM for CohereLLM {
         presence_penalty: Option<f32>,
         top_p: Option<f32>,
         _top_logprobs: Option<i32>,
+        _extras: Option<Value>,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
@@ -281,6 +282,7 @@ impl Provider for CohereProvider {
                 0.7,
                 1,
                 &vec![],
+                None,
                 None,
                 None,
                 None,

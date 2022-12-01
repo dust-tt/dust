@@ -85,7 +85,7 @@ impl Block for Browser {
                 },
                 None => true,
             },
-            _ => true,
+            None => true,
         };
 
         let url = replace_variables_in_string(&self.url, "url", env)?;

@@ -107,7 +107,7 @@ impl Block for Curl {
                 },
                 None => true,
             },
-            _ => true,
+            None => true,
         };
 
         let e = env.clone();
