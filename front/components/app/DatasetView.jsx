@@ -4,7 +4,10 @@ import { checkDatasetData } from "../../lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";
 import { PlusCircleIcon, XCircleIcon } from "@heroicons/react/20/solid";
-import { ArrowUpOnSquareStackIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpOnSquareStackIcon,
+  ArrowDownOnSquareIcon,
+} from "@heroicons/react/24/outline";
 import "@uiw/react-textarea-code-editor/dist.css";
 
 const defaultData = [
@@ -415,6 +418,29 @@ export default function DatasetView({
             </div>
             <div className="mt-6 flex flex-row">
               <div className="flex-1"></div>
+              <div className="flex-initial ml-2">
+                <Button
+                  onClick={() => {
+                    var dataStr =
+                      "data:text/jsonl;charset=utf-8," +
+                      encodeURIComponent(
+                        dataset.data.map((d) => JSON.stringify(d)).join("\n")
+                      );
+                    var downloadAnchorNode = document.createElement("a");
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute(
+                      "download",
+                      `dataset-${dataset.name}.jsonl`
+                    );
+                    document.body.appendChild(downloadAnchorNode); // required for firefox
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                  }}
+                >
+                  <ArrowDownOnSquareIcon className="-ml-1 mr-1 h-5 w-5" />
+                  Download
+                </Button>
+              </div>
               <div className="flex-initial ml-2">
                 <input
                   className="hidden"
