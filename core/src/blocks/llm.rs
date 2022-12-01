@@ -21,6 +21,10 @@ pub struct LLM {
     max_tokens: i32,
     temperature: f32,
     stop: Vec<String>,
+    frequency_penalty: Option<f32>,
+    presence_penalty: Option<f32>,
+    top_p: Option<f32>,
+    top_logprobs: Option<i32>,
 }
 
 impl LLM {
@@ -32,6 +36,10 @@ impl LLM {
         let mut max_tokens: Option<i32> = None;
         let mut temperature: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
+        let mut frequency_penalty: Option<f32> = None;
+        let mut presence_penalty: Option<f32> = None;
+        let mut top_p: Option<f32> = None;
+        let mut top_logprobs: Option<i32> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -61,6 +69,30 @@ impl LLM {
                             ))?,
                         },
                         "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
+                        "frequency_penalty" => match value.parse::<f32>() {
+                            Ok(n) => frequency_penalty = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `frequency_penalty` in `llm` block, expecting float"
+                            ))?,
+                        },
+                        "presence_penalty" => match value.parse::<f32>() {
+                            Ok(n) => presence_penalty = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `presence_penalty` in `llm` block, expecting float"
+                            ))?,
+                        },
+                        "top_p" => match value.parse::<f32>() {
+                            Ok(n) => top_p = Some(n),
+                            Err(_) => {
+                                Err(anyhow!("Invalid `top_p` in `llm` block, expecting float"))?
+                            }
+                        },
+                        "top_logprobs" => match value.parse::<i32>() {
+                            Ok(n) => top_logprobs = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `top_logprobs` in `llm` block, expecting integer"
+                            ))?,
+                        },
                         _ => Err(anyhow!("Unexpected `{}` in `llm` block", key))?,
                     }
                 }
@@ -84,6 +116,10 @@ impl LLM {
             max_tokens: max_tokens.unwrap(),
             temperature: temperature.unwrap(),
             stop,
+            frequency_penalty,
+            presence_penalty,
+            top_p,
+            top_logprobs,
         })
     }
 
@@ -242,6 +278,18 @@ impl Block for LLM {
         for s in self.stop.iter() {
             hasher.update(s.as_bytes());
         }
+        if let Some(frequency_penalty) = &self.frequency_penalty {
+            hasher.update(frequency_penalty.to_string().as_bytes());
+        }
+        if let Some(presence_penalty) = &self.presence_penalty {
+            hasher.update(presence_penalty.to_string().as_bytes());
+        }
+        if let Some(top_p) = &self.top_p {
+            hasher.update(top_p.to_string().as_bytes());
+        }
+        if let Some(top_logprobs) = &self.top_logprobs {
+            hasher.update(top_logprobs.to_string().as_bytes());
+        }
         format!("{}", hasher.finalize().to_hex())
     }
 
@@ -319,9 +367,9 @@ impl Block for LLM {
                     Value::Bool(b) => *b,
                     _ => true,
                 },
-                None => false
+                None => false,
             },
-            _ => false
+            _ => false,
         } && event_sender.is_some();
 
         let request = LLMRequest::new(
@@ -332,6 +380,10 @@ impl Block for LLM {
             self.temperature,
             1,
             &self.stop,
+            self.frequency_penalty,
+            self.presence_penalty,
+            self.top_p,
+            self.top_logprobs,
         );
 
         let g = match use_stream {

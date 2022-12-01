@@ -8,12 +8,14 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
     pub text: String,
     pub tokens: Option<Vec<String>>,
     pub logprobs: Option<Vec<Option<f32>>>,
+    pub top_logprobs: Option<Vec<Option<HashMap<String, f32>>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -38,6 +40,10 @@ pub trait LLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        top_p: Option<f32>,
+        top_logprobs: Option<i32>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration>;
 }
@@ -52,6 +58,10 @@ pub struct LLMRequest {
     temperature: f32,
     n: usize,
     stop: Vec<String>,
+    frequency_penalty: Option<f32>,
+    presence_penalty: Option<f32>,
+    top_p: Option<f32>,
+    top_logprobs: Option<i32>,
 }
 
 impl LLMRequest {
@@ -63,6 +73,10 @@ impl LLMRequest {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        top_p: Option<f32>,
+        top_logprobs: Option<i32>,
     ) -> Self {
         let mut hasher = blake3::Hasher::new();
         hasher.update(provider_id.to_string().as_bytes());
@@ -76,6 +90,18 @@ impl LLMRequest {
         stop.iter().for_each(|s| {
             hasher.update(s.as_bytes());
         });
+        if !frequency_penalty.is_none() {
+            hasher.update(frequency_penalty.unwrap().to_string().as_bytes());
+        }
+        if !presence_penalty.is_none() {
+            hasher.update(presence_penalty.unwrap().to_string().as_bytes());
+        }
+        if !top_p.is_none() {
+            hasher.update(top_p.unwrap().to_string().as_bytes());
+        }
+        if !top_logprobs.is_none() {
+            hasher.update(top_logprobs.unwrap().to_string().as_bytes());
+        }
 
         Self {
             hash: format!("{}", hasher.finalize().to_hex()),
@@ -86,6 +112,10 @@ impl LLMRequest {
             temperature,
             n,
             stop: stop.clone(),
+            frequency_penalty,
+            presence_penalty,
+            top_p,
+            top_logprobs,
         }
     }
 
@@ -110,6 +140,10 @@ impl LLMRequest {
                     self.temperature,
                     self.n,
                     &self.stop,
+                    self.frequency_penalty,
+                    self.presence_penalty,
+                    self.top_p,
+                    self.top_logprobs,
                     event_sender,
                 )
                 .await
@@ -123,6 +157,10 @@ impl LLMRequest {
                             self.temperature,
                             self.n,
                             &self.stop,
+                            self.frequency_penalty,
+                            self.presence_penalty,
+                            self.top_p,
+                            self.top_logprobs,
                             None,
                         )
                     },

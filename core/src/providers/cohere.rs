@@ -10,8 +10,8 @@ use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
-use tokio::sync::mpsc::UnboundedSender;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenLikelihood {
@@ -67,6 +67,9 @@ impl CohereLLM {
         num_generations: usize,
         return_likelihoods: ReturnLikelihoods,
         stop: &Vec<String>,
+        frequency_penalty: f32,
+        presence_penalty: f32,
+        p: f32,
     ) -> Result<Response> {
         assert!(self.api_key.is_some());
 
@@ -94,6 +97,9 @@ impl CohereLLM {
                         0 => None,
                         _ => Some(stop),
                     },
+                    "frequency_penalty": frequency_penalty,
+                    "presence_penalty": presence_penalty,
+                    "p": p,
                 })
                 .to_string(),
             ))?;
@@ -165,6 +171,10 @@ impl LLM for CohereLLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        top_p: Option<f32>,
+        _top_logprobs: Option<i32>,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(n > 0);
@@ -179,6 +189,18 @@ impl LLM for CohereLLM {
                 n,
                 ReturnLikelihoods::GENERATION,
                 stop,
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
             )
             .await?;
 
@@ -201,6 +223,7 @@ impl LLM for CohereLLM {
                         text: g.text.clone(),
                         tokens: Some(logp.iter().map(|l| l.token.clone()).collect()),
                         logprobs: Some(logp.iter().map(|l| l.likelihood).collect()),
+                        top_logprobs: None,
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -208,6 +231,7 @@ impl LLM for CohereLLM {
                 text: r.prompt,
                 tokens: None,
                 logprobs: None,
+                top_logprobs: None,
             },
         })
     }
@@ -251,7 +275,18 @@ impl Provider for CohereProvider {
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
-            .generate("Hello 😊", Some(1), 0.7, 1, &vec![], None)
+            .generate(
+                "Hello 😊",
+                Some(1),
+                0.7,
+                1,
+                &vec![],
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .await?;
 
         utils::done("Test successfully completed! Cohere is ready to use.");

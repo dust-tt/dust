@@ -138,6 +138,12 @@ impl Block for Curl {
 
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
+        if url.contains("https://dust.tt") || url.contains("https://www.dust.tt") {
+            Err(anyhow!(
+                "Curl block cannot be used for reentrant calls to Dust"
+            ))?;
+        }
+
         let request = HttpRequest::new(
             self.method.as_str(),
             url.as_str(),
