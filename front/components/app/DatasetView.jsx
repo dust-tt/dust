@@ -383,7 +383,7 @@ export default function DatasetView({
                               : "border-white focus:border-gray-300 focus:ring-0"
                           )}
                           readOnly={readOnly}
-                          value={d[k]}
+                          value={typeof d[k] === "string" ? d[k] : JSON.stringify(d[k], null, 2)}
                           onChange={(e) => {
                             handleValueChange(i, k, e.target.value);
                           }}
