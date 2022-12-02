@@ -135,7 +135,6 @@ impl OpenAILLM {
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
             "top_p": top_p,
-            "user": user,
             "stream": true,
         });
         if user.is_some() {
