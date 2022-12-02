@@ -228,6 +228,7 @@ export default async function handler(req, res) {
         try {
           for await (const chunk of runRes.body) {
             res.write(chunk);
+            res.flush();
           }
         } catch (err) {
           console.log("ERROR streaming from Dust API:", err);
