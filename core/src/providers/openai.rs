@@ -182,37 +182,58 @@ impl OpenAILLM {
                                 guard.len()
                             };
 
+                            // UTF-8 length of the prompt (as used by the API for text_offset).
+                            let prompt_len = prompt.chars().count();
+
                             // Only stream if choices is length 1 but should always be the case.
-                            if index > 0 {
-                                match completion.choices.len() {
-                                    1 => {
-                                        match event_sender.as_ref() {
-                                            Some(sender) => {
-                                                let tokens =
-                                                    match completion.choices[0].logprobs.as_ref() {
-                                                        Some(l) => Some(l.tokens.clone()),
-                                                        None => None,
-                                                    };
-                                                let logprobs =
-                                                    match completion.choices[0].logprobs.as_ref() {
-                                                        Some(l) => Some(l.token_logprobs.clone()),
-                                                        None => None,
-                                                    };
-                                                let _ = sender.send(json!({
-                                                    "type": "tokens",
-                                                    "content": {
-                                                        "text": completion.choices[0].text.clone(),
-                                                        "tokens": tokens,
-                                                        "logprobs": logprobs,
-                                                    },
-                                                }));
+                            match event_sender.as_ref() {
+                                Some(sender) => {
+                                    let mut text = completion.choices[0].text.clone();
+                                    let mut tokens = match completion.choices[0].logprobs.as_ref() {
+                                        Some(l) => Some(l.tokens.clone()),
+                                        None => None,
+                                    };
+                                    let mut logprobs = match completion.choices[0].logprobs.as_ref()
+                                    {
+                                        Some(l) => Some(l.token_logprobs.clone()),
+                                        None => None,
+                                    };
+                                    let text_offset = match completion.choices[0].logprobs.as_ref()
+                                    {
+                                        Some(l) => Some(l.text_offset.clone()),
+                                        None => None,
+                                    };
+                                    if index == 0 && text_offset.is_some() {
+                                        let mut token_offset: usize = 0;
+                                        for o in text_offset.as_ref().unwrap() {
+                                            if *o < prompt_len {
+                                                token_offset += 1;
                                             }
-                                            None => (),
+                                        }
+                                        text = text.chars().skip(prompt_len).collect::<String>();
+                                        tokens = match tokens {
+                                            Some(t) => Some(t[token_offset..].to_vec()),
+                                            None => None,
+                                        };
+                                        logprobs = match logprobs {
+                                            Some(l) => Some(l[token_offset..].to_vec()),
+                                            None => None,
                                         };
                                     }
-                                    _ => (),
+
+                                    if text.len() > 0 {
+                                        let _ = sender.send(json!({
+                                            "type": "tokens",
+                                            "content": {
+                                                "text": text,
+                                                "tokens": tokens,
+                                                "logprobs": logprobs,
+                                            },
+                                        }));
+                                    }
                                 }
-                            }
+                                None => (),
+                            };
                             completions.lock().push(completion);
                         }
                     },
