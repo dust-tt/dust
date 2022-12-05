@@ -100,6 +100,12 @@ export default async function handler(req, res) {
               spec[i].spec.stop = spec[i].spec.stop.split("\n");
             }
           }
+          if (spec[i].type === "curl") {
+            if (spec[i].spec.url && spec[i].spec.url.includes("://")) {
+              spec[i].spec.scheme = spec[i].spec.url.split("://")[0];
+              spec[i].spec.url = spec[i].spec.url.split("://")[1];
+            }
+          }
         } else {
           spec[i].config = {};
         }
