@@ -74,54 +74,14 @@ export function filterServiceProviders(providers) {
 }
 
 export async function getProviderLLMModels(providerId, config) {
-  switch (providerId) {
-    case "openai":
-      let modelsRes = await fetch("https://api.openai.com/v1/models", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${config.api_key}`,
-        },
-      });
-      if (!modelsRes.ok) {
-        let err = await modelsRes.json();
-        return { models: [] };
-      } else {
-        let models = await modelsRes.json();
-        let f = models.data.filter((m) => {
-          return (
-            !(
-              m.id.includes("search") ||
-              m.id.includes("similarity") ||
-              m.id.includes("edit") ||
-              m.id.includes("insert") ||
-              m.id.includes("audio") ||
-              m.id.includes(":")
-            ) &&
-            (m.id.startsWith("text-") || m.id.startsWith("code-"))
-          );
-        });
-        f.sort((a, b) => {
-          if (a.id < b.id) {
-            return -1;
-          }
-          if (a.id > b.id) {
-            return 1;
-          }
-          return 0;
-        });
-        return {
-          models: f,
-        };
-      }
-      break;
-    case "cohere":
-      let models = [{ id: "xlarge" }, { id: "medium" }];
-      return { models: models };
-      break;
-    default:
-      return { models: [{ id: "not_found" }] };
-      break;
+  let modelsRes = await fetch(`/api/providers/${providerId}/models`);
+  if (!modelsRes.ok) {
+    let err = await modelsRes.json();
+    console.log(`Error fetching models for ${providerId}:`, err);
+    return { models: [] };
   }
+  let models = await modelsRes.json();
+  return { models: models.models };
 }
 
 export const credentialsFromProviders = (providers) => {

@@ -20,7 +20,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
     : useProviders();
   let modelProviders = filterModelProviders(providers);
 
-  let [models, setModels] = useState([]);
+  let [models, setModels] = useState(null);
 
   // Remove the model if its provider was disabled.
   if (
@@ -48,7 +48,6 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
         JSON.parse(provider.config)
       ).then((m) => {
         setModels(m.models);
-        // console.log("MODELS REFRESHED", m.models);
       });
     }
   };
@@ -61,7 +60,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
       model.provider_id &&
       model.provider_id.length > 0
     ) {
-      if (!models || models.length == 0) {
+      if (models === null) {
         refreshModels();
       }
     }
@@ -137,7 +136,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                     <Menu.Item
                       key={p.providerId}
                       onClick={() => {
-                        setModels([]);
+                        setModels(null);
                         onModelUpdate({
                           provider_id: p.providerId,
                           model_id: "",
@@ -208,7 +207,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
                 )}
               >
                 <div className="py-1">
-                  {models.map((m) => {
+                  {(models || []).map((m) => {
                     return (
                       <Menu.Item
                         key={m.id}
