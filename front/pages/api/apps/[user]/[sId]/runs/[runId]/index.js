@@ -1,7 +1,10 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../auth/[...nextauth]";
 import { User, App } from "../../../../../../../lib/models";
-import { recomputeIndents } from "../../../../../../../lib/specification";
+import {
+  recomputeIndents,
+  restoreTripleBackticks,
+} from "../../../../../../../lib/specification";
 import peg from "pegjs";
 import fs from "fs";
 import path from "path";
@@ -98,6 +101,19 @@ export default async function handler(req, res) {
           if (spec[i].type === "llm") {
             if (spec[i].spec.stop) {
               spec[i].spec.stop = spec[i].spec.stop.split("\n");
+            }
+            if (spec[i].spec.few_shot_preprompt) {
+              spec[i].spec.few_shot_preprompt = restoreTripleBackticks(
+                spec[i].spec.few_shot_preprompt
+              );
+            }
+            if (spec[i].spec.few_shot_prompt) {
+              spec[i].spec.few_shot_prompt = restoreTripleBackticks(
+                spec[i].spec.few_shot_prompt
+              );
+            }
+            if (spec[i].spec.prompt) {
+              spec[i].spec.prompt = restoreTripleBackticks(spec[i].spec.prompt);
             }
           }
           if (spec[i].type === "curl") {

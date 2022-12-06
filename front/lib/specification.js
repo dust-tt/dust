@@ -235,6 +235,13 @@ export function moveBlockDown(spec, index) {
   return recomputeIndents(s);
 }
 
+export function escapeTripleBackticks(s) {
+  return s.replace(/```/g, "<DUST_TRIPLE_BACKTICKS>");
+}
+export function restoreTripleBackticks(s) {
+  return s.replace(/<DUST_TRIPLE_BACKTICKS>/g, "```");
+}
+
 export function dumpSpecification(spec, latestDatasets) {
   var out = "";
   for (var i = 0; i < spec.length; i++) {
@@ -275,16 +282,22 @@ export function dumpSpecification(spec, latestDatasets) {
           out += `  top_logprobs: ${block.spec.top_logprobs}\n`;
         }
         if (block.spec.few_shot_preprompt) {
-          out += `  few_shot_preprompt: \n\`\`\`\n${block.spec.few_shot_preprompt}\n\`\`\`\n`;
+          out += `  few_shot_preprompt: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.few_shot_preprompt
+          )}\n\`\`\`\n`;
         }
         if (block.spec.few_shot_count) {
           out += `  few_shot_count: ${block.spec.few_shot_count}\n`;
         }
         if (block.spec.few_shot_prompt) {
-          out += `  few_shot_prompt: \n\`\`\`\n${block.spec.few_shot_prompt}\n\`\`\`\n`;
+          out += `  few_shot_prompt: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.few_shot_prompt
+          )}\n\`\`\`\n`;
         }
         if (block.spec.prompt) {
-          out += `  prompt: \n\`\`\`\n${block.spec.prompt}\n\`\`\`\n`;
+          out += `  prompt: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.prompt
+          )}\n\`\`\`\n`;
         }
         out += `}\n`;
         out += "\n";
