@@ -586,8 +586,9 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let stmt = tx
             .prepare(
-                "INSERT INTO block_executions (id, hash, execution)
-               VALUES (DEFAULT, $1, $2) RETURNING id",
+                "INSERT INTO block_executions (id, hash, execution) VALUES (DEFAULT, $1, $2)
+                   ON CONFLICT(hash) DO UPDATE SET hash = EXCLUDED.hash
+                   RETURNING id",
             )
             .await?;
 
