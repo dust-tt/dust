@@ -20,6 +20,7 @@ use std::io::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::time::timeout;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Logprobs {
@@ -353,9 +354,17 @@ impl OpenAILLM {
             // .header("OpenAI-Organization", "openai")
             .body(Body::from(body.to_string()))?;
 
-        let res = cli.request(req).await?;
+        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+            Ok(Ok(res)) => res,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+        };
+        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+            Ok(Ok(body)) => body,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+        };
 
-        let body = hyper::body::aggregate(res).await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
