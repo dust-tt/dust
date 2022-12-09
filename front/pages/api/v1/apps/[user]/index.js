@@ -89,7 +89,6 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      console.log(apps);
       res.status(200).json({
         apps: apps.map((a) => {
           return {
