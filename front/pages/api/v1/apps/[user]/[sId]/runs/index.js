@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     }),
   ]);
 
-  if (!appUser) {
+  if (!reqUser) {
     res.status(404).json({
       error: {
         type: "app_not_found",
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!reqUser) {
+  if (!appUser) {
     res.status(500).json({
       error: {
         type: "internal_server_error",
@@ -153,8 +153,8 @@ export default async function handler(req, res) {
     case "POST":
       if (
         !req.body ||
-        !(typeof req.body.specification_hash == "string") ||
-        !(typeof req.body.config == "object" || req.body.config == null) ||
+        !(typeof req.body.specification_hash === "string") ||
+        !(typeof req.body.config === "object" && req.body.config !== null) ||
         !Array.isArray(req.body.inputs)
       ) {
         res.status(400).json({

@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     }),
   ]);
 
-  if (!appUser) {
+  if (!reqUser) {
     res.status(404).json({
       error: {
         type: "app_not_found",
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!reqUser) {
+  if (!appUser) {
     res.status(500).json({
       error: {
         type: "internal_server_error",
