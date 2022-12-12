@@ -160,7 +160,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                           will return directly with the current status of the
                           run. You can then poll the run using{" "}
                           <span className="font-mono">
-                            GET /api/v1/apps/{user}/{app.sId}/&lt;run_id&gt;
+                            GET /api/v1/apps/{user}/{app.sId}/runs/&lt;run_id&gt;
                           </span>
                         </li>
                       </ul>
