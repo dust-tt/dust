@@ -237,6 +237,7 @@ impl App {
                     "type": "run_status",
                     "content": {
                         "status": Status::Running,
+                        "run_id": run_id,
                     }
                 }));
             }
@@ -575,6 +576,7 @@ impl App {
                             "type": "run_status",
                             "content": {
                                 "status": Status::Errored,
+                                "run_id": run_id,
                             }
                         }));
                     }
@@ -669,6 +671,7 @@ impl App {
                     "type": "run_status",
                     "content": {
                         "status": Status::Succeeded,
+                        "run_id": run_id,
                     }
                 }));
             }
