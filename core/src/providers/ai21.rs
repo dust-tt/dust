@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
 use std::time::Duration;
+use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -180,7 +181,7 @@ impl LLM for Ai21LLM {
         frequency_penalty: Option<f32>,
         presence_penalty: Option<f32>,
         top_p: Option<f32>,
-        _top_logprobs: Option<i32>,
+        top_logprobs: Option<i32>,
         _extras: Option<Value>,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
@@ -199,7 +200,10 @@ impl LLM for Ai21LLM {
                     None => 1.0,
                 },
                 stop,
-                0, // top_k_return
+                match top_logprobs {
+                    Some(f) => f,
+                    None => 0,
+                },
                 match frequency_penalty {
                     Some(f) => f,
                     None => 0.0,
@@ -227,7 +231,22 @@ impl LLM for Ai21LLM {
                         text: g.data.text.clone(),
                         tokens: Some(g.data.tokens.iter().map(|l| l.generated_token.token.clone()).collect()),
                         logprobs: Some(g.data.tokens.iter().map(|l| l.generated_token.logprob).collect()),
-                        top_logprobs: None,
+                        top_logprobs: Some(
+                            g.data.tokens.iter().map(
+                                |l| match l.top_tokens {
+                                    Some(ref t) => {
+                                        let mut top_tokens_map = HashMap::new();
+                                        for x in t.iter() {
+                                            if let Some(logprob) = x.logprob {
+                                                top_tokens_map.insert(x.token.clone(), logprob);
+                                            }
+                                        }
+                                        Some(top_tokens_map)
+                                    }
+                                    None => None,
+                                }
+                            ).collect()
+                        ),
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -235,7 +254,22 @@ impl LLM for Ai21LLM {
                 text: r.prompt.text.clone(),
                 tokens: Some(r.prompt.tokens.iter().map(|l| l.generated_token.token.clone()).collect()),
                 logprobs: Some(r.prompt.tokens.iter().map(|l| l.generated_token.logprob).collect()),
-                top_logprobs: None,
+                top_logprobs: Some(
+                    r.prompt.tokens.iter().map(
+                        |l| match l.top_tokens {
+                            Some(ref t) => {
+                                let mut top_tokens_map = HashMap::new();
+                                for x in t.iter() {
+                                    if let Some(logprob) = x.logprob {
+                                        top_tokens_map.insert(x.token.clone(), logprob);
+                                    }
+                                }
+                                Some(top_tokens_map)
+                            }
+                            None => None,
+                        }
+                    ).collect()
+                ),
             },
         })
     }
