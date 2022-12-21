@@ -17,6 +17,7 @@ pub mod project;
 pub mod run;
 pub mod utils;
 pub mod providers {
+    pub mod ai21;
     pub mod cohere;
     pub mod llm;
     pub mod openai;
