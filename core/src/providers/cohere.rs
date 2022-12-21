@@ -212,7 +212,7 @@ impl LLM for CohereLLM {
 
         Ok(LLMGeneration {
             created: utils::now(),
-            provider: ProviderID::OpenAI.to_string(),
+            provider: ProviderID::Cohere.to_string(),
             model: self.id.clone(),
             completions: r
                 .generations
