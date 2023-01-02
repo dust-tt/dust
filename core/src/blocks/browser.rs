@@ -88,6 +88,17 @@ impl Block for Browser {
             None => true,
         };
 
+        let error_as_output = match config {
+            Some(v) => match v.get("error_as_output") {
+                Some(v) => match v {
+                    Value::Bool(b) => *b,
+                    _ => false,
+                },
+                None => false,
+            },
+            None => false,
+        };
+
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
         let browserless_api_key = match env.credentials.get("BROWSERLESS_API_KEY") {
@@ -142,11 +153,22 @@ impl Block for Browser {
                 });
                 Ok(result)
             }
-            s => Err(anyhow!(
-                "BrowserlessAPIError: Error with HTTP status {} and body {}",
-                s,
-                response.body.to_string(),
-            )),
+            s => match error_as_output {
+                false => Err(anyhow!(
+                    "BrowserlessAPIError: Error with HTTP status {} and body {}",
+                    s,
+                    response.body.to_string(),
+                )),
+                true => {
+                    let result = json!({
+                        "error": {
+                            "status_code": s,
+                            "body": response.body,
+                        },
+                    });
+                    Ok(result)
+                }
+            },
         }
     }
 
