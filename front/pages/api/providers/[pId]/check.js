@@ -60,6 +60,27 @@ export default async function handler(req, res) {
           }
           break;
 
+        case "ai21":
+          let testTokenize = await fetch(
+            "https://api.ai21.com/studio/v1/tokenize",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ text: "Hello World" }),
+            }
+          );
+          if (!testTokenize.ok) {
+            let err = await testTokenize.json();
+            res.status(400).json({ ok: false, error: err.message });
+          } else {
+            let test = await testTokenize.json();
+            res.status(200).json({ ok: true });
+          }
+          break;
+
         case "serpapi":
           let testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,

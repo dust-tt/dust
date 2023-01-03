@@ -12,6 +12,12 @@ export const modelProviders = [
     enabled: false,
   },
   {
+    providerId: "ai21",
+    name: "AI21 Studio",
+    built: true,
+    enabled: false,
+  },
+  {
     providerId: "hugging_face",
     name: "HuggingFace",
     built: false,
@@ -94,6 +100,9 @@ export const credentialsFromProviders = (providers) => {
         break;
       case "cohere":
         credentials["COHERE_API_KEY"] = config.api_key;
+        break;
+      case "ai21":
+        credentials["AI21_API_KEY"] = config.api_key;
         break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
