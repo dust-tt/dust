@@ -19,7 +19,7 @@ export const modelProviders = [
   },
   {
     providerId: "hugging_face",
-    name: "HuggingFace",
+    name: "Hugging Face",
     built: false,
     enabled: false,
   },
@@ -34,7 +34,7 @@ export const modelProviders = [
 export const serviceProviders = [
   {
     providerId: "serpapi",
-    name: "SerpAPI (Google) Search",
+    name: "SerpApi (Google Search)",
     built: true,
     enabled: false,
   },
@@ -46,12 +46,12 @@ export const serviceProviders = [
   },
   {
     providerId: "youtube",
-    name: "Youtube Search",
+    name: "YouTube Search",
     built: false,
     enabled: false,
   },
   { providerId: "notion", name: "Notion", built: false, enabled: false },
-  { providerId: "gmail", name: "GMail", built: false, enabled: false },
+  { providerId: "gmail", name: "Gmail", built: false, enabled: false },
 ];
 
 export async function checkProvider(providerId, config) {
