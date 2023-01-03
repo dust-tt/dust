@@ -9,15 +9,15 @@ use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::io::prelude::*;
 use std::time::Duration;
-use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenDataItem {
     pub token: String,
-    pub logprob: Option<f32>
+    pub logprob: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,7 +30,7 @@ pub struct TokenData {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CompletionData {
     pub text: String,
-    pub tokens: Vec<TokenData>
+    pub tokens: Vec<TokenData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,18 +50,22 @@ pub struct Error {
     pub detail: String,
 }
 
-pub struct Ai21LLM {
+pub struct AI21LLM {
     id: String,
     api_key: Option<String>,
 }
 
-impl Ai21LLM {
+impl AI21LLM {
     pub fn new(id: String) -> Self {
-        Ai21LLM { id, api_key: None }
+        AI21LLM { id, api_key: None }
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.ai21.com/studio/v1/{}/complete",self.id.clone()).parse::<Uri>()?)
+        Ok(format!(
+            "https://api.ai21.com/studio/v1/{}/complete",
+            self.id.clone()
+        )
+        .parse::<Uri>()?)
     }
 
     async fn generate(
@@ -149,7 +153,7 @@ impl Ai21LLM {
 }
 
 #[async_trait]
-impl LLM for Ai21LLM {
+impl LLM for AI21LLM {
     fn id(&self) -> String {
         self.id.clone()
     }
@@ -211,52 +215,83 @@ impl LLM for Ai21LLM {
                 match presence_penalty {
                     Some(p) => p,
                     None => 0.0,
-                }
+                },
             )
             .await?;
-
-        // println!("RESPONSE: {:?}", r);
 
         assert!(r.completions.len() > 0);
 
         Ok(LLMGeneration {
             created: utils::now(),
-            provider: ProviderID::Ai21.to_string(),
+            provider: ProviderID::AI21.to_string(),
             model: self.id.clone(),
             completions: r
                 .completions
                 .iter()
-                .map(|g| {
-                    Tokens {
-                        text: g.data.text.clone(),
-                        tokens: Some(g.data.tokens.iter().map(|l| l.generated_token.token.clone()).collect()),
-                        logprobs: Some(g.data.tokens.iter().map(|l| l.generated_token.logprob).collect()),
-                        top_logprobs: Some(
-                            g.data.tokens.iter().map(
-                                |l| match l.top_tokens {
-                                    Some(ref t) => {
-                                        let mut top_tokens_map = HashMap::new();
-                                        for x in t.iter() {
-                                            if let Some(logprob) = x.logprob {
-                                                top_tokens_map.insert(x.token.clone(), logprob);
-                                            }
+                .map(|g| Tokens {
+                    text: g.data.text.clone(),
+                    tokens: Some(
+                        g.data
+                            .tokens
+                            .iter()
+                            .map(|l| l.generated_token.token.clone())
+                            .collect(),
+                    ),
+                    logprobs: Some(
+                        g.data
+                            .tokens
+                            .iter()
+                            .map(|l| l.generated_token.logprob)
+                            .collect(),
+                    ),
+                    top_logprobs: {
+                        let logp = g
+                            .data
+                            .tokens
+                            .iter()
+                            .map(|l| match l.top_tokens {
+                                Some(ref t) => {
+                                    let mut top_tokens_map = HashMap::new();
+                                    for x in t.iter() {
+                                        if let Some(logprob) = x.logprob {
+                                            top_tokens_map.insert(x.token.clone(), logprob);
                                         }
-                                        Some(top_tokens_map)
                                     }
-                                    None => None,
+                                    Some(top_tokens_map)
                                 }
-                            ).collect()
-                        ),
-                    }
+                                None => None,
+                            })
+                            .filter(|l| l.is_some())
+                            .collect::<Vec<_>>();
+                        match logp.len() {
+                            0 => None,
+                            _ => Some(logp),
+                        }
+                    },
                 })
                 .collect::<Vec<_>>(),
             prompt: Tokens {
                 text: r.prompt.text.clone(),
-                tokens: Some(r.prompt.tokens.iter().map(|l| l.generated_token.token.clone()).collect()),
-                logprobs: Some(r.prompt.tokens.iter().map(|l| l.generated_token.logprob).collect()),
-                top_logprobs: Some(
-                    r.prompt.tokens.iter().map(
-                        |l| match l.top_tokens {
+                tokens: Some(
+                    r.prompt
+                        .tokens
+                        .iter()
+                        .map(|l| l.generated_token.token.clone())
+                        .collect(),
+                ),
+                logprobs: Some(
+                    r.prompt
+                        .tokens
+                        .iter()
+                        .map(|l| l.generated_token.logprob)
+                        .collect(),
+                ),
+                top_logprobs: {
+                    let logp = r
+                        .prompt
+                        .tokens
+                        .iter()
+                        .map(|l| match l.top_tokens {
                             Some(ref t) => {
                                 let mut top_tokens_map = HashMap::new();
                                 for x in t.iter() {
@@ -267,34 +302,37 @@ impl LLM for Ai21LLM {
                                 Some(top_tokens_map)
                             }
                             None => None,
-                        }
-                    ).collect()
-                ),
+                        })
+                        .filter(|l| l.is_some())
+                        .collect::<Vec<_>>();
+                    match logp.len() {
+                        0 => None,
+                        _ => Some(logp),
+                    }
+                },
             },
         })
     }
 }
 
-pub struct Ai21Provider {}
+pub struct AI21Provider {}
 
-impl Ai21Provider {
+impl AI21Provider {
     pub fn new() -> Self {
-        Ai21Provider {}
+        AI21Provider {}
     }
 }
 
 #[async_trait]
-impl Provider for Ai21Provider {
+impl Provider for AI21Provider {
     fn id(&self) -> ProviderID {
-        ProviderID::Ai21
+        ProviderID::AI21
     }
 
     fn setup(&self) -> Result<()> {
         utils::info("Setting up AI21:");
         utils::info("");
-        utils::info(
-            "To use AI21's models, you must set the environment variable `AI21_API_KEY`.",
-        );
+        utils::info("To use AI21's models, you must set the environment variable `AI21_API_KEY`.");
         utils::info("Your API key can be found at `https://os.cohere.ai`.");
         utils::info("");
         utils::info("Once ready you can check your setup with `dust provider test cohere`");
@@ -334,6 +372,6 @@ impl Provider for Ai21Provider {
     }
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(Ai21LLM::new(id))
+        Box::new(AI21LLM::new(id))
     }
 }
