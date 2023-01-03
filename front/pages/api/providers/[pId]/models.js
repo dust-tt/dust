@@ -78,8 +78,17 @@ export default async function handler(req, res) {
           break;
 
         case "cohere":
-          let models = [{ id: "xlarge" }, { id: "medium" }];
-          res.status(200).json({ models });
+          let cohereModels = [{ id: "xlarge" }, { id: "medium" }];
+          res.status(200).json({ models: cohereModels });
+          break;
+
+        case "ai21":
+          let ai21Models = [
+            { id: "j1-large" },
+            { id: "j1-grande" },
+            { id: "j1-jumbo" },
+          ];
+          res.status(200).json({ models: ai21Models });
           break;
 
         default:

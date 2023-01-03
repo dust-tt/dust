@@ -7,6 +7,7 @@ import { classNames } from "../../../lib/utils";
 import { Button } from "../../../components/Button";
 import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
+import AI21Setup from "../../../components/providers/AI21Setup";
 import SerpAPISetup from "../../../components/providers/SerpAPISetup";
 import BrowserlessAPISetup from "../../../components/providers/BrowserlessAPISetup";
 
@@ -21,6 +22,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
 
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
+  const [ai21Open, setAI21Open] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
@@ -52,6 +54,12 @@ export default function ProfileProviders({ ga_tracking_id }) {
           setOpen={setCohereOpen}
           enabled={configs["cohere"] ? true : false}
           config={configs["cohere"] ? configs["cohere"] : null}
+        />
+        <AI21Setup
+          open={ai21Open}
+          setOpen={setAI21Open}
+          enabled={configs["ai21"] ? true : false}
+          config={configs["ai21"] ? configs["ai21"] : null}
         />
         <SerpAPISetup
           open={serpapiOpen}
@@ -121,6 +129,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
                               break;
                             case "cohere":
                               setCohereOpen(true);
+                              break;
+                            case "ai21":
+                              setAI21Open(true);
                               break;
                           }
                         }}
