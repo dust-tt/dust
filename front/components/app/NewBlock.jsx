@@ -103,8 +103,8 @@ export default function NewBlock({
       </div>
       <Menu.Items
         className={classNames(
-          "absolute w-96 block shadow z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-          small ? "-right-16" : "-left-1",
+          "absolute w-max block shadow z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+          small ? "-right-16" : "",
           direction === "up" ? "bottom-9" : ""
         )}
       >
@@ -133,7 +133,7 @@ export default function NewBlock({
                     ))}
                   </div>
                 </div>
-                <div className="col-span-8 sm:col-span-9 text-sm sm:pl-3 pr-2">
+                <div className="col-span-8 sm:col-span-9 text-sm text-gray-700 sm:pl-3 pr-2">
                   {block.description}
                 </div>
               </div>
