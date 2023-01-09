@@ -27,9 +27,11 @@ export default async function handler(req, res) {
         ? {
             userId: user.id,
             visibility: "public",
+            isDeleted: false,
           }
         : {
             userId: user.id,
+            isDeleted: false,
           };
       let apps = await App.findAll({
         where,
