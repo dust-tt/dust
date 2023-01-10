@@ -8,6 +8,7 @@ import { classNames } from "../../../../lib/utils";
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
+import Link from "next/link";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -34,6 +35,20 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
     } else {
       setAppNameError(null);
       return true;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this app?")) {
+      let res = await fetch(`/api/apps/${user}/${app.sId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        window.location = "/";
+      }
+      return true;
+    } else {
+      return false;
     }
   };
 
@@ -147,7 +162,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-public"
+                              htmlFor="appVisibilityPublic"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Public
@@ -172,7 +187,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-private"
+                              htmlFor="appVisibilityPrivate"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Private
@@ -182,17 +197,29 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                             </label>
                           </div>
                         </div>
+                        {appVisibility == "deleted" ? (
+                          <p className="mt-4 text-sm font-normal text-gray-500">
+                            This app is currently marked as deleted. Change its
+                            visibility above to restore it.
+                          </p>
+                        ) : null}
                       </fieldset>
                     </div>
                   </div>
                 </div>
               </div>
-
-              <div className="pt-6">
-                <div className="flex">
-                  <Button disabled={disable} type="submit">
-                    Update
-                  </Button>
+              <div className="flex pt-6">
+                <Button disabled={disable} type="submit">
+                  Update
+                </Button>
+                <span className="flex-1"></span>
+                <Link href={`/${user}/a/${app.sId}/clone`}>
+                  <a>
+                    <Button>Clone</Button>
+                  </a>
+                </Link>
+                <div className="flex ml-2">
+                  <Button onClick={handleDelete}>Delete</Button>
                 </div>
               </div>
             </form>

@@ -80,6 +80,19 @@ export default async function handler(req, res) {
       res.redirect(`/${session.user.username}/a/${app.sId}`);
       break;
 
+    case "DELETE":
+      if (readOnly) {
+        res.status(401).end();
+        return;
+      }
+
+      await app.update({
+        visibility: "deleted",
+      });
+
+      res.status(200).end();
+      break;
+
     default:
       res.status(405).end();
       break;

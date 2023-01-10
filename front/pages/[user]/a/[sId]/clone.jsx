@@ -66,27 +66,51 @@ export default function CloneView({ app, user, ga_tracking_id }) {
             >
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
-                  <h3 className="text-base font-medium leading-6 text-gray-900">
-                    Clone <span className="font-bold ml-1">{user}</span>
-                    <ChevronRightIcon
-                      className="inline h-5 w-5 text-gray-500 pt-0.5 ml-0.5"
-                      aria-hidden="true"
-                    />
-                    <Link href={`/${user}/a/${app.sId}`}>
-                      <a
-                        href="#"
-                        className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
-                      >
-                        {app.name}
-                      </a>
-                    </Link>{" "}
-                    to your account
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    This will clone the app (specification along with associated
-                    datasets) to your account. You can pick a new name and
-                    description for the app in the process.
-                  </p>
+                  {user !== session.user.username ? (
+                    <div>
+                      <h3 className="text-base font-medium leading-6 text-gray-900">
+                        Clone <span className="font-bold ml-1">{user}</span>
+                        <ChevronRightIcon
+                          className="inline h-5 w-5 text-gray-500 pt-0.5 ml-0.5"
+                          aria-hidden="true"
+                        />
+                        <Link href={`/${user}/a/${app.sId}`}>
+                          <a
+                            href="#"
+                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                          >
+                            {app.name}
+                          </a>
+                        </Link>{" "}
+                        to your account
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        This will clone the app (specification along with
+                        associated datasets) to your account. You can pick a new
+                        name and description for the app in the process.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="text-base font-medium leading-6 text-gray-900">
+                        Clone your app{" "}
+                        <Link href={`/${user}/a/${app.sId}`}>
+                          <a
+                            href="#"
+                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                          >
+                            {app.name}
+                          </a>
+                        </Link>
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        This will clone your app (specification along with
+                        associated datasets) without affecting the existing one.
+                        You can pick a new name and description for the app in
+                        the process.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">

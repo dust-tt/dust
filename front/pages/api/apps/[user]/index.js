@@ -3,6 +3,7 @@ import { authOptions } from "../../auth/[...nextauth]";
 import { User, App } from "../../../../lib/models";
 import { new_id } from "../../../../lib/utils";
 
+const { Op } = require("sequelize");
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
@@ -30,6 +31,9 @@ export default async function handler(req, res) {
           }
         : {
             userId: user.id,
+            visibility: {
+              [Op.or]: ["public", "private"],
+            },
           };
       let apps = await App.findAll({
         where,
