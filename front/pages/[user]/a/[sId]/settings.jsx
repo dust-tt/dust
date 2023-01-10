@@ -162,7 +162,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-public"
+                              htmlFor="appVisibilityPublic"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Public
@@ -187,7 +187,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-private"
+                              htmlFor="appVisibilityPrivate"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Private
@@ -197,6 +197,12 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                             </label>
                           </div>
                         </div>
+                        {appVisibility == "deleted" ? (
+                          <p className="mt-4 text-sm font-normal text-gray-500">
+                            This app is currently marked as deleted. Change its
+                            visibility above to restore it.
+                          </p>
+                        ) : null}
                       </fieldset>
                     </div>
                   </div>

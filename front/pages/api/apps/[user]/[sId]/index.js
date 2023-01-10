@@ -87,7 +87,7 @@ export default async function handler(req, res) {
       }
 
       await app.update({
-        isDeleted: true,
+        visibility: "deleted",
       });
 
       res.status(200).end();

@@ -63,16 +63,10 @@ export const App = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    isDeleted: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      allowNull: false,
-    },
   },
   {
     indexes: [
       { fields: ["userId", "visibility"] },
-      { fields: ["userId", "visibility", "isDeleted"] },
       { fields: ["userId", "sId", "visibility"] },
     ],
   }

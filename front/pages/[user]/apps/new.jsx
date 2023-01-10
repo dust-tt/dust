@@ -151,7 +151,7 @@ export default function New({ apps, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-public"
+                              htmlFor="appVisibilityPublic"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Public
@@ -176,7 +176,7 @@ export default function New({ apps, ga_tracking_id }) {
                               }}
                             />
                             <label
-                              htmlFor="app-visibility-private"
+                              htmlFor="appVisibilityPrivate"
                               className="ml-3 block text-sm font-medium text-gray-700"
                             >
                               Private
