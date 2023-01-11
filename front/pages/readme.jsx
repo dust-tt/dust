@@ -137,11 +137,11 @@ export default function Readme({ ga_tracking_id }) {
                     className="font-bold text-violet-600 underline"
                     target="_blank"
                   >
-                    Tera template engine
+                    Tera
                   </a>{" "}
-                  (similar to Jinja2/Django). Templating lets you easily define
-                  few-shot examples from blocks that output an array (such as a{" "}
-                  <Block type="data" /> block). See this{" "}
+                  template engine (similar to Jinja2/Django). Templating lets
+                  you easily define few-shot examples from blocks that output an
+                  array (such as a <Block type="data" /> block). See this{" "}
                   <a
                     href="https://dust.tt/spolu/a/d12ac33169"
                     className="font-bold text-violet-600 underline"
@@ -149,7 +149,7 @@ export default function Readme({ ga_tracking_id }) {
                   >
                     app
                   </a>{" "}
-                  for an example usage of templating.
+                  for an example usage of templating for few-shot prompting.
                 </p>
               </span>
             </li>
