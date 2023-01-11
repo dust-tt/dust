@@ -1,9 +1,16 @@
 import Block from "./Block";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
+import dynamic from "next/dynamic";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import "@uiw/react-textarea-code-editor/dist.css";
 import ModelPicker from "../ModelPicker";
+
+const CodeEditor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 export default function LLM({
   user,
@@ -426,18 +433,32 @@ export default function LLM({
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
-            <TextareaAutosize
-              placeholder=""
-              className={classNames(
-                "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
-                  : "border-white focus:border-gray-300 focus:ring-0"
-              )}
-              readOnly={readOnly}
-              value={block.spec.prompt}
-              onChange={(e) => handlePromptChange(e.target.value)}
-            />
+            <div className="w-full leading-5">
+              <div
+                className={classNames(
+                  "border bg-slate-100 rounded-md border-slate-100"
+                )}
+                style={{
+                  minHeight: "48px",
+                }}
+              >
+                <CodeEditor
+                  readOnly={readOnly}
+                  value={block.spec.prompt}
+                  language="jinja2"
+                  placeholder=""
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  padding={3}
+                  style={{
+                    color: "rgb(55 65 81)",
+                    fontSize: 14,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
