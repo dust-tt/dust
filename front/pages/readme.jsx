@@ -133,7 +133,7 @@ export default function Readme({ ga_tracking_id }) {
                   </span>
                   . It supports advanced templating using the{" "}
                   <a
-                    href="https://tera.netlify.app/"
+                    href="https://tera.netlify.app/docs/#templates"
                     className="font-bold text-violet-600 underline"
                     target="_blank"
                   >
