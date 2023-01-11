@@ -9,7 +9,7 @@
     "@heroicons/react": "^2.0.11",
     "@tailwindcss/forms": "^0.5.3",
     "@uiw/copy-to-clipboard": "^1.0.12",
-    "@uiw/react-textarea-code-editor": "^2.0.3",
+    "@uiw/react-textarea-code-editor": "^2.0.6",
     "blake3": "^2.1.7",
     "next": "^12.2.5",
     "next-auth": "^4.12.0",

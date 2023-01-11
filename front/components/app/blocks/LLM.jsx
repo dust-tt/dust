@@ -1,9 +1,16 @@
 import Block from "./Block";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
+import dynamic from "next/dynamic";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import "@uiw/react-textarea-code-editor/dist.css";
 import ModelPicker from "../ModelPicker";
+
+const CodeEditor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 export default function LLM({
   user,
@@ -102,12 +109,13 @@ export default function LLM({
     onBlockUpdate(b);
   };
 
-  const [fewShotExpanded, setFewShotExpanded] = useState(
+  const fewShotPresent =
     (block.spec.few_shot_prompt && block.spec.few_shot_prompt.length > 0) ||
-      (block.spec.few_shot_preprompt &&
-        block.spec.few_shot_preprompt.length > 0) ||
-      (block.spec.few_shot_count && block.spec.few_shot_count > 0)
-  );
+    (block.spec.few_shot_preprompt &&
+      block.spec.few_shot_preprompt.length > 0) ||
+    (block.spec.few_shot_count && block.spec.few_shot_count > 0);
+
+  const [fewShotExpanded, setFewShotExpanded] = useState(fewShotPresent);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   const [newStop, setNewStop] = useState("");
@@ -337,107 +345,127 @@ export default function LLM({
           ) : null}
         </div>
 
-        <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
-          {fewShotExpanded ? (
-            <div
-              onClick={() => setFewShotExpanded(false)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
-            >
-              <span>
-                <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
-              </span>
-              few-shot
-            </div>
-          ) : (
-            <div
-              onClick={() => setFewShotExpanded(true)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
-            >
-              <span>
-                <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
-              </span>
-              few-shot
-            </div>
-          )}
-          {fewShotExpanded ? (
-            <div className="ml-6 flex flex-col">
-              <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial items-center">
-                  introduction:
-                </div>
-                <div className="flex w-full font-normal">
-                  <TextareaAutosize
-                    minRows={1}
-                    className={classNames(
-                      "block w-full resize-none rounded-md  px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                      readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
-                    readOnly={readOnly}
-                    value={block.spec.few_shot_preprompt}
-                    onChange={(e) =>
-                      handleFewShotPrePromptChange(e.target.value)
-                    }
-                  />
-                </div>
+        {fewShotPresent ? (
+          <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+            {fewShotExpanded ? (
+              <div
+                onClick={() => setFewShotExpanded(false)}
+                className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              >
+                <span>
+                  <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
+                </span>
+                few-shot
               </div>
+            ) : (
+              <div
+                onClick={() => setFewShotExpanded(true)}
+                className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              >
+                <span>
+                  <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
+                </span>
+                few-shot
+              </div>
+            )}
+            {fewShotExpanded ? (
+              <div className="ml-6 flex flex-col">
+                <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+                  <div className="flex flex-initial items-center">
+                    introduction:
+                  </div>
+                  <div className="flex w-full font-normal">
+                    <TextareaAutosize
+                      minRows={1}
+                      className={classNames(
+                        "block w-full resize-none rounded-md  px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                        readOnly
+                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          : "border-white focus:border-gray-300 focus:ring-0"
+                      )}
+                      readOnly={readOnly}
+                      value={block.spec.few_shot_preprompt}
+                      onChange={(e) =>
+                        handleFewShotPrePromptChange(e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
 
-              <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial items-center">examples:</div>
-                <div className="flex w-full font-normal">
-                  <TextareaAutosize
-                    minRows={1}
-                    className={classNames(
-                      "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                      readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
-                    readOnly={readOnly}
-                    value={block.spec.few_shot_prompt}
-                    onChange={(e) => handleFewShotPromptChange(e.target.value)}
-                  />
+                <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+                  <div className="flex flex-initial items-center">
+                    examples:
+                  </div>
+                  <div className="flex w-full font-normal">
+                    <TextareaAutosize
+                      minRows={1}
+                      className={classNames(
+                        "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                        readOnly
+                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          : "border-white focus:border-gray-300 focus:ring-0"
+                      )}
+                      readOnly={readOnly}
+                      value={block.spec.few_shot_prompt}
+                      onChange={(e) =>
+                        handleFewShotPromptChange(e.target.value)
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
-                <div className="flex flex-initial">count:</div>
-                <div className="flex flex-initial font-normal">
-                  <input
-                    type="text"
-                    className={classNames(
-                      "block flex-1 px-1 font-normal text-sm py-1 w-8",
-                      readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
-                    spellCheck={false}
-                    readOnly={readOnly}
-                    value={block.spec.few_shot_count}
-                    onChange={(e) => handleFewShotCountChange(e.target.value)}
-                  />
+                <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                  <div className="flex flex-initial">count:</div>
+                  <div className="flex flex-initial font-normal">
+                    <input
+                      type="text"
+                      className={classNames(
+                        "block flex-1 px-1 font-normal text-sm py-1 w-8",
+                        readOnly
+                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          : "border-white focus:border-gray-300 focus:ring-0"
+                      )}
+                      spellCheck={false}
+                      readOnly={readOnly}
+                      value={block.spec.few_shot_count}
+                      onChange={(e) => handleFewShotCountChange(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
-            <TextareaAutosize
-              placeholder=""
-              className={classNames(
-                "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
-                readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
-                  : "border-white focus:border-gray-300 focus:ring-0"
-              )}
-              readOnly={readOnly}
-              value={block.spec.prompt}
-              onChange={(e) => handlePromptChange(e.target.value)}
-            />
+            <div className="w-full leading-5">
+              <div
+                className={classNames(
+                  "border bg-slate-100 rounded-md border-slate-100"
+                )}
+                style={{
+                  minHeight: "48px",
+                }}
+              >
+                <CodeEditor
+                  readOnly={readOnly}
+                  value={block.spec.prompt}
+                  language="jinja2"
+                  placeholder=""
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  padding={3}
+                  style={{
+                    color: "rgb(55 65 81)",
+                    fontSize: 14,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

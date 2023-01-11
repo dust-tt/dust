@@ -13,10 +13,12 @@ use lazy_static::lazy_static;
 use pest::iterators::Pair;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::any::Any;
 use std::collections::HashMap;
+use std::error::Error;
 use std::str::FromStr;
+use tera::{Context, Tera};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, PartialEq, Clone, Debug)]
@@ -227,7 +229,21 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
         })
         .collect::<Result<Vec<_>>>()?;
 
-    Ok(result)
+    // Finally run Tera templating engine one_off on the result.
+    let context = Context::from_value(json!(env.state))?;
+
+    match Tera::one_off(result.as_str(), &context, false) {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            let err_msg = e
+                .source()
+                .unwrap()
+                .to_string()
+                .replace("__tera_one_off", field);
+
+            Err(anyhow!("Templating error: {}", err_msg))
+        }
+    }
 }
 
 #[cfg(test)]
