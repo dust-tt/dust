@@ -65,11 +65,27 @@ pub struct InnerError {
     pub _type: String,
     pub param: Option<String>,
     pub code: Option<usize>,
+    pub internal_message: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
     pub error: InnerError,
+}
+
+impl Error {
+    pub fn message(&self) -> String {
+        match self.error.internal_message {
+            Some(ref msg) => format!(
+                "OpenAIAPIError: [{}] {} internal_message={}",
+                self.error._type, self.error.message, msg,
+            ),
+            None => format!(
+                "OpenAIAPIError: [{}] {}",
+                self.error._type, self.error.message,
+            ),
+        }
+    }
 }
 
 pub struct OpenAILLM {
@@ -169,17 +185,22 @@ impl OpenAILLM {
                             break;
                         }
                         _ => {
-                            let completion: Completion = match serde_json::from_str(e.data.as_str())
-                            {
-                                Ok(c) => Ok(c),
-                                Err(err) => {
-                                    println!("DATA FROM OAI: {}", e.data.as_str());
-                                    Err(anyhow!(
-                                        "Error parsing streamed completion from OpenAI: {}",
-                                        err
-                                    ))
-                                }
-                            }?;
+                            let completion: Completion =
+                                match serde_json::from_str(e.data.as_str()) {
+                                    Ok(c) => Ok(c),
+                                    Err(err) => {
+                                        let error: Result<Error, _> =
+                                            serde_json::from_str(e.data.as_str());
+                                        match error {
+                                            Ok(error) => Err(anyhow!("{}", error.message())),
+                                            Err(_) => Err(anyhow!(
+                                            "OpenAIAPIError: failed parsing streamed completion \
+                                              from OpenAI err={} data={}",
+                                            err, e.data.as_str(),
+                                        )),
+                                        }
+                                    }
+                                }?;
 
                             let index = {
                                 let guard = completions.lock();
@@ -378,10 +399,7 @@ impl OpenAILLM {
                 let error: Error = serde_json::from_slice(c)?;
                 match error.error._type.as_str() {
                     "requests" => Err(ModelError {
-                        message: format!(
-                            "OpenAIAPIError: [{}] {}",
-                            error.error._type, error.error.message,
-                        ),
+                        message: error.message(),
                         retryable: Some(ModelErrorRetryOptions {
                             sleep: Duration::from_millis(2000),
                             factor: 2,
@@ -389,10 +407,7 @@ impl OpenAILLM {
                         }),
                     }),
                     _ => Err(ModelError {
-                        message: format!(
-                            "OpenAIAPIError: [{}] {}",
-                            error.error._type, error.error.message,
-                        ),
+                        message: error.message(),
                         retryable: None,
                     }),
                 }
