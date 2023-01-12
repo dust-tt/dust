@@ -172,10 +172,13 @@ impl OpenAILLM {
                             let completion: Completion = match serde_json::from_str(e.data.as_str())
                             {
                                 Ok(c) => Ok(c),
-                                Err(e) => Err(anyhow!(
-                                    "Error parsing streamed completion from OpenAI: {}",
-                                    e
-                                )),
+                                Err(err) => {
+                                    println!("DATA FROM OAI: {}", e.data.as_str());
+                                    Err(anyhow!(
+                                        "Error parsing streamed completion from OpenAI: {}",
+                                        err
+                                    ))
+                                }
                             }?;
 
                             let index = {
