@@ -138,9 +138,8 @@ impl LLMRequest {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize(credentials).await?;
 
-        // If we have an event_sender we don't retry calls to models.
-        let out = match event_sender {
-            Some(_) => {
+        let out = with_retryable_back_off(
+            || {
                 llm.generate(
                     self.prompt.as_str(),
                     self.max_tokens,
@@ -152,41 +151,21 @@ impl LLMRequest {
                     self.top_p,
                     self.top_logprobs,
                     self.extras.clone(),
-                    event_sender,
+                    event_sender.clone(),
                 )
-                .await
-            }
-            None => {
-                with_retryable_back_off(
-                    || {
-                        llm.generate(
-                            self.prompt.as_str(),
-                            self.max_tokens,
-                            self.temperature,
-                            self.n,
-                            &self.stop,
-                            self.frequency_penalty,
-                            self.presence_penalty,
-                            self.top_p,
-                            self.top_logprobs,
-                            self.extras.clone(),
-                            None,
-                        )
-                    },
-                    |err_msg, sleep, attempts| {
-                        utils::info(&format!(
-                            "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
-                            self.provider_id.to_string(),
-                            self.model_id,
-                            attempts,
-                            sleep.as_millis(),
-                            err_msg,
-                        ));
-                    },
-                )
-                .await
-            }
-        };
+            },
+            |err_msg, sleep, attempts| {
+                utils::info(&format!(
+                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
+                    self.provider_id.to_string(),
+                    self.model_id,
+                    attempts,
+                    sleep.as_millis(),
+                    err_msg,
+                ));
+            },
+        )
+        .await;
 
         match out {
             Ok(c) => {

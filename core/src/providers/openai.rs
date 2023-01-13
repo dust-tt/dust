@@ -86,6 +86,23 @@ impl Error {
             ),
         }
     }
+
+    pub fn retryable(&self) -> bool {
+        match self.error._type.as_str() {
+            "requests" => true,
+            _ => false,
+        }
+    }
+
+    pub fn retryable_streamed(&self) -> bool {
+        match self.error._type.as_str() {
+            "server_error" => match self.error.internal_message {
+                Some(_) => true,
+                None => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 pub struct OpenAILLM {
@@ -185,27 +202,43 @@ impl OpenAILLM {
                             break;
                         }
                         _ => {
-                            let completion: Completion =
-                                match serde_json::from_str(e.data.as_str()) {
-                                    Ok(c) => Ok(c),
-                                    Err(err) => {
-                                        let error: Result<Error, _> =
-                                            serde_json::from_str(e.data.as_str());
-                                        match error {
-                                            Ok(error) => Err(anyhow!("{}", error.message())),
-                                            Err(_) => Err(anyhow!(
-                                            "OpenAIAPIError: failed parsing streamed completion \
-                                              from OpenAI err={} data={}",
-                                            err, e.data.as_str(),
-                                        )),
-                                        }
-                                    }
-                                }?;
-
                             let index = {
                                 let guard = completions.lock();
                                 guard.len()
                             };
+
+                            let completion: Completion = match serde_json::from_str(e.data.as_str())
+                            {
+                                Ok(c) => Ok(c),
+                                Err(err) => {
+                                    let error: Result<Error, _> =
+                                        serde_json::from_str(e.data.as_str());
+                                    match error {
+                                        Ok(error) => {
+                                            match error.retryable_streamed() && index == 0 {
+                                                true => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: Some(ModelErrorRetryOptions {
+                                                        sleep: Duration::from_millis(100),
+                                                        factor: 2,
+                                                        retries: 3,
+                                                    }),
+                                                }),
+                                                false => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: None,
+                                                }),
+                                            }
+                                        }
+                                        Err(_) => Err(anyhow!(
+                                            "OpenAIAPIError: failed parsing  streamed completion \
+                                              from OpenAI err={} data={}",
+                                            err,
+                                            e.data.as_str(),
+                                        ))?,
+                                    }
+                                }
+                            }?;
 
                             // UTF-8 length of the prompt (as used by the API for text_offset).
                             let prompt_len = prompt.chars().count();
@@ -397,8 +430,8 @@ impl OpenAILLM {
             Ok(c) => Ok(c),
             Err(_) => {
                 let error: Error = serde_json::from_slice(c)?;
-                match error.error._type.as_str() {
-                    "requests" => Err(ModelError {
+                match error.retryable() {
+                    true => Err(ModelError {
                         message: error.message(),
                         retryable: Some(ModelErrorRetryOptions {
                             sleep: Duration::from_millis(2000),
@@ -406,7 +439,7 @@ impl OpenAILLM {
                             retries: 8,
                         }),
                     }),
-                    _ => Err(ModelError {
+                    false => Err(ModelError {
                         message: error.message(),
                         retryable: None,
                     }),
