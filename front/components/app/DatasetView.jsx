@@ -3,12 +3,17 @@ import { Button } from "../Button";
 import { checkDatasetData } from "../../lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";
-import { PlusCircleIcon, XCircleIcon } from "@heroicons/react/20/solid";
+import {
+  PlusIcon,
+  PlusCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/20/solid";
 import {
   ArrowUpOnSquareStackIcon,
   ArrowDownOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import "@uiw/react-textarea-code-editor/dist.css";
+import { data } from "autoprefixer";
 
 const defaultData = [
   {
@@ -94,7 +99,6 @@ export default function DatasetView({
   );
   const [datasetData, setDatasetData] = useState(dataset.data);
 
-  // console.log("KEYS", dataset.keys);
   if (!dataset.keys) {
     dataset.keys = [];
     try {
@@ -104,8 +108,9 @@ export default function DatasetView({
     }
   }
   const [datasetKeys, setDatasetKeys] = useState(dataset.keys);
+  const [datasetTypes, setDatasetTypes] = useState([]);
 
-  const datasetValidation = () => {
+  const datasetNameValidation = () => {
     let valid = true;
 
     let exists = false;
@@ -130,7 +135,61 @@ export default function DatasetView({
     } else {
       setDatasetNameError(null);
     }
+
     return valid;
+  };
+
+  const datasetTypesValidation = () => {
+    // Initial inference of types
+    if (datasetTypes.length == 0) {
+      inferDatasetTypes();
+    }
+
+    // Check that all types are valid
+    let valid = true;
+    datasetData.map((d) => {
+      datasetKeys.map((k) => {
+        if (getValueType(d[k]) !== datasetTypes[datasetKeys.indexOf(k)]) {
+          valid = false;
+        }
+      });
+    });
+
+    return valid;
+  };
+
+  const getValueType = (value) => {
+    let type = typeof value;
+    if (type === "object") {
+      return type;
+    }
+    try {
+      let parsed = JSON.parse(value);
+      if (typeof parsed === "number") {
+        type = "number";
+      } else if (typeof parsed === "boolean") {
+        type = "boolean";
+      } else if (typeof parsed === "object") {
+        type = "object";
+      } else {
+        type = "string";
+      }
+    } catch (err) {
+      type = "string";
+    }
+    return type;
+  };
+
+  const inferDatasetTypes = () => {
+    let datasetTypes = [];
+    // Infer the dataset types based on the first entry
+    for (let i = 0; i < datasetKeys.length; i++) {
+      let key = datasetKeys[i];
+      let firstEntry = datasetData[0][key];
+      let type = getValueType(firstEntry);
+      datasetTypes.push(type);
+    }
+    setDatasetTypes(datasetTypes);
   };
 
   const handleKeyUpdate = (i, newKey) => {
@@ -173,6 +232,10 @@ export default function DatasetView({
     });
     setDatasetData(data);
     setDatasetKeys(keys);
+
+    let types = datasetTypes;
+    types[i + 1] = "string";
+    setDatasetTypes(types);
   };
 
   const handleDeleteKey = (i) => {
@@ -249,8 +312,17 @@ export default function DatasetView({
     } catch (e) {
       window.alert(`${e}`);
     }
+
     setDatasetKeys(keys);
     setDatasetData(data);
+    setDatasetTypes([]);
+    onUpdate(datasetTypesValidation(), {
+      name: datasetName,
+      keys: datasetKeys,
+      description: datasetDescription || "",
+      data: datasetData,
+    });
+    console.log("yo", datasetTypesValidation());
   };
 
   const handleFileUpload = (file) => {
@@ -264,7 +336,12 @@ export default function DatasetView({
   };
 
   useEffect(() => {
-    let valid = datasetValidation();
+    // Validate the dataset name
+    let valid = datasetNameValidation();
+
+    // Validate the dataset types
+    valid = datasetTypesValidation();
+
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
       onUpdate(valid, {
@@ -274,17 +351,17 @@ export default function DatasetView({
         data: datasetData,
       });
     }
-  }, [datasetName, datasetDescription, datasetData, datasetKeys]);
+  }, [datasetName, datasetDescription, datasetData, datasetKeys, datasetTypes]);
 
   return (
     <div>
-      <div className="mt-2 grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
-        <div className="sm:col-span-2">
+      <div className="mt-2 grid gap-y-4 gap-x-4 sm:grid-cols-5">
+        <div className="sm:col-span-1">
           <label
             htmlFor="datasetName"
             className="block text-sm font-medium text-gray-700"
           >
-            Dataset name
+            Dataset Name
           </label>
           <div className="mt-1 flex rounded-md shadow-sm">
             <input
@@ -327,63 +404,135 @@ export default function DatasetView({
           </div>
         </div>
 
-        <div className="sm:col-span-6 mt-2">
-          <div className="mt-1 w-full leading-4">
+        <div className="mt-4 sm:col-span-6">
+          <h3 className="text-sm font-medium text-gray-700">Schema</h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Set the properties and types to ensure your dataset is valid when
+            you update it.
+          </p>
+        </div>
+        <div className="sm:col-span-6">
+          <div className="space-y-[1px]">
+            {datasetKeys.map((k, j) => (
+              <div key={j} className="grid grid-cols-10">
+                <div className="col-span-2">
+                  <div className="flex group items-center bg-slate-300">
+                    <input
+                      className={classNames(
+                        "flex-1 px-2 py-1 max-w-xs font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none",
+                        readOnly
+                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          : "border-white ring-0 focus:border-gray-300 focus:ring-0"
+                      )}
+                      readOnly={readOnly}
+                      value={k}
+                      onChange={(e) => {
+                        handleKeyUpdate(j, e.target.value);
+                      }}
+                    />
+                    {!readOnly ? (
+                      <>
+                        {datasetKeys.length > 1 ? (
+                          <div className="flex-initial">
+                            <XCircleIcon
+                              className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
+                              onClick={(e) => {
+                                handleDeleteKey(j);
+                              }}
+                            />
+                          </div>
+                        ) : null}
+                        <div className="flex-initial mr-2">
+                          <PlusCircleIcon
+                            className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
+                            onClick={(e) => {
+                              handleNewKey(j);
+                            }}
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="col-span-8 bg-slate-100">
+                  {readOnly ? (
+                    <span className="text-gray-700 block px-4 py-2 text-sm cursor-pointer whitespace-nowrap">
+                      {datasetTypes[j] ? datasetTypes[j] : "string"}
+                    </span>
+                  ) : (
+                    <div className="inline-flex px-1" role="group">
+                      {["string", "number", "boolean", "object"].map((type) => (
+                        <button
+                          type="button"
+                          className={classNames(
+                            datasetTypes && datasetTypes[j] == type
+                              ? "text-gray-900 font-semibold underline underline-offset-4"
+                              : "text-gray-700 font-normal hover:text-gray-900",
+                            "px-1 py-1 text-sm font-mono"
+                          )}
+                          onClick={(e) => {
+                            let types = [...datasetTypes];
+                            types[j] = type;
+                            setDatasetTypes(types);
+                          }}
+                        >
+                          {type == "object" ? "JSON" : type}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 sm:col-span-6">
+          <h3 className="text-sm font-medium text-gray-700">Data</h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Add and edit your dataset entries below. You can insert or remove
+            entries using buttons on the right.
+          </p>
+          <div className="mt-4 w-full leading-4">
             <div className="">
-              <ul className="space-y-4">
+              <ul className="space-y-2">
                 {datasetData.map((d, i) => (
                   <li key={i} className="space-y-[1px]">
                     {datasetKeys.map((k, j) => (
-                      <div key={j} className="grid grid-cols-12">
+                      <div key={j} className="grid grid-cols-10">
                         <div className="col-span-2">
                           <div className="flex group items-center bg-slate-300">
                             <input
                               className={classNames(
-                                "flex-1 px-1 py-1 font-normal text-sm py-0 font-mono bg-slate-300 border-0 outline-none focus:outline-none",
+                                "flex-1 px-2 py-1 font-normal text-sm py-0 font-mono bg-slate-300 border-0 outline-none focus:outline-none",
                                 readOnly
                                   ? "border-white ring-0 focus:ring-0 focus:border-white"
                                   : "border-white ring-0 focus:border-gray-300 focus:ring-0"
                               )}
-                              readOnly={readOnly}
+                              readOnly={true}
                               value={k}
-                              onChange={(e) => {
-                                handleKeyUpdate(j, e.target.value);
-                              }}
                             />
-                            {!readOnly ? (
-                              <>
-                                {datasetKeys.length > 1 ? (
-                                  <div className="flex-initial">
-                                    <XCircleIcon
-                                      className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
-                                      onClick={(e) => {
-                                        handleDeleteKey(j);
-                                      }}
-                                    />
-                                  </div>
-                                ) : null}
-                                <div className="flex-initial mr-2">
-                                  <PlusCircleIcon
-                                    className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
-                                    onClick={(e) => {
-                                      handleNewKey(j);
-                                    }}
-                                  />
-                                </div>
-                              </>
-                            ) : null}
                           </div>
                         </div>
                         <TextareaAutosize
                           minRows={1}
                           className={classNames(
-                            "col-span-10 resize-none px-1 py-1 font-normal text-sm py-0 font-mono bg-slate-100 border-0",
+                            "col-span-8 resize-none px-2 py-1 font-normal text-sm py-0 font-mono bg-slate-100 border-0",
+                            !datasetTypes[datasetKeys.indexOf(k)] ||
+                              getValueType(d[k]) ===
+                                datasetTypes[datasetKeys.indexOf(k)]
+                              ? "text-gray-700"
+                              : "text-red-500",
                             readOnly
                               ? "border-white ring-0 focus:ring-0 focus:border-white"
                               : "border-white focus:border-gray-300 focus:ring-0"
                           )}
                           readOnly={readOnly}
-                          value={typeof d[k] === "string" ? d[k] : JSON.stringify(d[k], null, 2)}
+                          value={
+                            typeof d[k] === "string"
+                              ? d[k]
+                              : JSON.stringify(d[k], null, 2)
+                          }
                           onChange={(e) => {
                             handleValueChange(i, k, e.target.value);
                           }}
@@ -417,6 +566,14 @@ export default function DatasetView({
               </ul>
             </div>
             <div className="mt-6 flex flex-row">
+              <Button
+                onClick={() => {
+                  handleNewEntry(datasetData.length - 1);
+                }}
+              >
+                <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                New Entry
+              </Button>
               <div className="flex-1"></div>
               <div className="flex-initial ml-2">
                 <Button

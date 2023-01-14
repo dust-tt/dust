@@ -119,7 +119,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                         htmlFor="appName"
                         className="block text-sm font-medium text-gray-700"
                       >
-                        App name
+                        App Name
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 text-sm">
