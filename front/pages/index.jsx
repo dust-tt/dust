@@ -40,7 +40,7 @@ const features = [
     name: "History preserved",
     built: true,
     description:
-      "Iterations, model ouptputs and few-shot examples are saved and versioned automatically.",
+      "Iterations, model outputs and few-shot examples are saved and versioned automatically.",
   },
   {
     name: "Caching",
