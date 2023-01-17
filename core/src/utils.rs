@@ -71,7 +71,11 @@ pub fn now() -> u64 {
 
 pub fn utc_date_from(millis: u64) -> String {
     let date = chrono::DateTime::<chrono::Utc>::from_utc(
-        chrono::NaiveDateTime::from_timestamp((millis / 1000) as i64, 0),
+        match chrono::NaiveDateTime::from_timestamp_opt((millis / 1000) as i64, 0) {
+            Some(dt) => dt,
+            // If there is an error, default to epoch.
+            None => chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+        },
         chrono::Utc,
     );
     date.format("%Y-%m-%d %H:%M:%S").to_string()

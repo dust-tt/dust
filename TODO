@@ -79,10 +79,10 @@
   - [x] show community apps in app pane
 - [x] deploy as an endpoint + capture production executions
   - [x] this may require ability to view old versions
+- [x] delete app
 - [ ] while block
 - [ ] if/then block
 - [ ] demo 3: self-ask / react
-- [ ] delete app
 
 ## P1
 
@@ -90,3 +90,4 @@
 - [x] dataset iteration: upload, item list, save on update
 - [ ] eval jobs
 - [ ] edit inputs from input block?
+- [ ] block descriptions
