@@ -3,6 +3,7 @@ import { Button } from "../Button";
 import { checkDatasetData } from "../../lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import {
   PlusIcon,
   PlusCircleIcon,
@@ -13,7 +14,11 @@ import {
   ArrowDownOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import "@uiw/react-textarea-code-editor/dist.css";
-import { data } from "autoprefixer";
+
+const CodeEditor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 const defaultData = [
   {
@@ -322,7 +327,6 @@ export default function DatasetView({
       description: datasetDescription || "",
       data: datasetData,
     });
-    console.log("yo", datasetTypesValidation());
   };
 
   const handleFileUpload = (file) => {
@@ -406,10 +410,12 @@ export default function DatasetView({
 
         <div className="mt-4 sm:col-span-6">
           <h3 className="text-sm font-medium text-gray-700">Schema</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Set the properties and types to ensure your dataset is valid when
-            you update it.
-          </p>
+          {!readOnly ? (
+            <p className="mt-2 text-sm text-gray-500">
+              Set the properties and types to ensure your dataset is valid when
+              you update it.
+            </p>
+          ) : null}
         </div>
         <div className="sm:col-span-6">
           <div className="space-y-[1px]">
@@ -419,7 +425,7 @@ export default function DatasetView({
                   <div className="flex group items-center bg-slate-300">
                     <input
                       className={classNames(
-                        "flex-1 px-2 py-1 max-w-xs font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none",
+                        "flex-1 px-1 py-1 max-w-xs font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none",
                         readOnly
                           ? "border-white ring-0 focus:ring-0 focus:border-white"
                           : "border-white ring-0 focus:border-gray-300 focus:ring-0"
@@ -460,10 +466,11 @@ export default function DatasetView({
                       {datasetTypes[j] ? datasetTypes[j] : "string"}
                     </span>
                   ) : (
-                    <div className="inline-flex px-1" role="group">
+                    <div className="inline-flex" role="group">
                       {["string", "number", "boolean", "object"].map((type) => (
                         <button
                           type="button"
+                          disabled={readOnly}
                           className={classNames(
                             datasetTypes && datasetTypes[j] == type
                               ? "text-gray-900 font-semibold underline underline-offset-4"
@@ -489,10 +496,12 @@ export default function DatasetView({
 
         <div className="mt-4 sm:col-span-6">
           <h3 className="text-sm font-medium text-gray-700">Data</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Add and edit your dataset entries below. You can insert or remove
-            entries using buttons on the right.
-          </p>
+          {!readOnly ? (
+            <p className="mt-2 text-sm text-gray-500">
+              Add and edit your dataset entries below. You can insert or remove
+              entries using buttons on the right.
+            </p>
+          ) : null}
           <div className="mt-4 w-full leading-4">
             <div className="">
               <ul className="space-y-2">
@@ -504,7 +513,7 @@ export default function DatasetView({
                           <div className="flex group items-center bg-slate-300">
                             <input
                               className={classNames(
-                                "flex-1 px-2 py-1 font-normal text-sm py-0 font-mono bg-slate-300 border-0 outline-none focus:outline-none",
+                                "flex-1 px-1 py-1 font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none",
                                 readOnly
                                   ? "border-white ring-0 focus:ring-0 focus:border-white"
                                   : "border-white ring-0 focus:border-gray-300 focus:ring-0"
@@ -514,29 +523,51 @@ export default function DatasetView({
                             />
                           </div>
                         </div>
-                        <TextareaAutosize
-                          minRows={1}
+                        <div
                           className={classNames(
-                            "col-span-8 resize-none px-2 py-1 font-normal text-sm py-0 font-mono bg-slate-100 border-0",
-                            !datasetTypes[datasetKeys.indexOf(k)] ||
+                            "col-span-8 inline-grid space-y-0 resize-none font-normal text-sm px-0 py-0 font-mono border bg-slate-100",
+                            d[k] === "" ||
+                              !datasetTypes[datasetKeys.indexOf(k)] ||
                               getValueType(d[k]) ===
                                 datasetTypes[datasetKeys.indexOf(k)]
-                              ? "text-gray-700"
-                              : "text-red-500",
-                            readOnly
-                              ? "border-white ring-0 focus:ring-0 focus:border-white"
-                              : "border-white focus:border-gray-300 focus:ring-0"
+                              ? "border-slate-100"
+                              : "border-red-500"
                           )}
-                          readOnly={readOnly}
-                          value={
-                            typeof d[k] === "string"
-                              ? d[k]
-                              : JSON.stringify(d[k], null, 2)
-                          }
-                          onChange={(e) => {
-                            handleValueChange(i, k, e.target.value);
-                          }}
-                        />
+                        >
+                          {datasetTypes[datasetKeys.indexOf(k)] === "object" ? (
+                            <CodeEditor
+                              readOnly={readOnly}
+                              value={
+                                typeof d[k] === "string"
+                                  ? d[k]
+                                  : JSON.stringify(d[k], null, 2)
+                              }
+                              language="json"
+                              onChange={(e) => {
+                                handleValueChange(i, k, e.target.value);
+                              }}
+                              padding={4}
+                              style={{
+                                fontSize: 14,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                              }}
+                            />
+                          ) : (
+                            <TextareaAutosize
+                              minRows={1}
+                              className={classNames(
+                                "w-full resize-none font-normal text-sm px-1 py-1 bg-transparent border-0 font-mono ring-0 focus:ring-0",
+                                readOnly ? "text-gray-500" : "text-gray-700"
+                              )}
+                              readOnly={readOnly}
+                              value={d[k]}
+                              onChange={(e) => {
+                                handleValueChange(i, k, e.target.value);
+                              }}
+                            />
+                          )}
+                        </div>
                       </div>
                     ))}
                     {!readOnly ? (
