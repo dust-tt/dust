@@ -70,10 +70,13 @@ pub fn now() -> u64 {
 }
 
 pub fn utc_date_from(millis: u64) -> String {
-    let date = chrono::DateTime::<chrono::Utc>::from_utc(
-        chrono::NaiveDateTime::from_timestamp((millis / 1000) as i64, 0),
-        chrono::Utc,
-    );
+    // We don't want to naively unwrap to avoid panic on user data in serving stack.
+    let datetime = match chrono::NaiveDateTime::from_timestamp_millis(millis as i64) {
+        Some(dt) => dt,
+        // This unwrap is safe as input is hardcoded (and is always valid).
+        None => chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
+    let date = chrono::DateTime::<chrono::Utc>::from_utc(datetime, chrono::Utc);
     date.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
