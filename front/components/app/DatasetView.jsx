@@ -114,6 +114,7 @@ export default function DatasetView({
   }
   const [datasetKeys, setDatasetKeys] = useState(dataset.keys);
   const [datasetTypes, setDatasetTypes] = useState([]);
+  const [datasetInitializing, setDatasetInitializing] = useState(true);
 
   const datasetNameValidation = () => {
     let valid = true;
@@ -219,6 +220,11 @@ export default function DatasetView({
       datasetTypes.push(type);
     }
     setDatasetTypes(datasetTypes);
+    if (datasetInitializing) {
+      setTimeout(() => {
+        setDatasetInitializing(false);
+      }, 10);
+    }
   };
 
   const handleKeyUpdate = (i, newKey) => {
@@ -345,7 +351,7 @@ export default function DatasetView({
     setDatasetKeys(keys);
     setDatasetData(data);
     setDatasetTypes([]);
-    onUpdate(datasetTypesValidation(), {
+    onUpdate(datasetInitializing, datasetTypesValidation(), {
       name: datasetName,
       keys: datasetKeys,
       description: datasetDescription || "",
@@ -369,7 +375,7 @@ export default function DatasetView({
 
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
-      onUpdate(valid, {
+      onUpdate(datasetInitializing, valid, {
         name: datasetName,
         keys: datasetKeys,
         description: datasetDescription || "",
@@ -490,6 +496,7 @@ export default function DatasetView({
                     <div className="inline-flex" role="group">
                       {["string", "number", "boolean", "object"].map((type) => (
                         <button
+                          key={type}
                           type="button"
                           disabled={readOnly}
                           className={classNames(

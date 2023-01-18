@@ -41,13 +41,14 @@ export default function ViewDatasetView({
     }
   }, [isFinishedEditing]);
 
-  const onUpdate = (valid, currentDatasetInEditor) => {
+  const onUpdate = (initializing, valid, currentDatasetInEditor) => {
     setDisabled(!valid);
     if (
-      currentDatasetInEditor.data !== dataset.data ||
-      currentDatasetInEditor.name !== dataset.name ||
-      (currentDatasetInEditor.description !== dataset.description &&
-        (currentDatasetInEditor.description || dataset.description))
+      !initializing &&
+      (currentDatasetInEditor.data !== dataset.data ||
+        currentDatasetInEditor.name !== dataset.name ||
+        (currentDatasetInEditor.description !== dataset.description &&
+          (currentDatasetInEditor.description || dataset.description)))
     ) {
       setEditorDirty(true);
     } else {
