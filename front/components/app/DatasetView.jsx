@@ -163,6 +163,30 @@ export default function DatasetView({
     return valid;
   };
 
+  // Export the dataset with correct types (post-editing and validation)
+  const exportDataset = () => {
+    let finalDataset = [];
+
+    datasetData.map((d, i) => {
+      let entry = {};
+      datasetKeys.map((k) => {
+        entry[k] = datasetData[i][k];
+        let type = datasetTypes[datasetKeys.indexOf(k)];
+        try {
+          // Save objects, numbers, and booleans with their proper types
+          if (type !== "string") {
+            entry[k] = JSON.parse(entry[k]);
+          }
+        } catch (err) {
+          // no-op
+        }
+      });
+      finalDataset.push(entry);
+    });
+
+    return finalDataset;
+  };
+
   const getValueType = (value) => {
     let type = typeof value;
     if (type === "object") {
@@ -340,11 +364,8 @@ export default function DatasetView({
   };
 
   useEffect(() => {
-    // Validate the dataset name
-    let valid = datasetNameValidation();
-
-    // Validate the dataset types
-    valid = datasetTypesValidation();
+    // Validate the dataset types and dataset name
+    let valid = datasetTypesValidation() && datasetNameValidation();
 
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
@@ -352,7 +373,7 @@ export default function DatasetView({
         name: datasetName,
         keys: datasetKeys,
         description: datasetDescription || "",
-        data: datasetData,
+        data: exportDataset(),
       });
     }
   }, [datasetName, datasetDescription, datasetData, datasetKeys, datasetTypes]);
@@ -612,7 +633,9 @@ export default function DatasetView({
                     var dataStr =
                       "data:text/jsonl;charset=utf-8," +
                       encodeURIComponent(
-                        dataset.data.map((d) => JSON.stringify(d)).join("\n")
+                        exportDataset()
+                          .map((d) => JSON.stringify(d))
+                          .join("\n")
                       );
                     var downloadAnchorNode = document.createElement("a");
                     downloadAnchorNode.setAttribute("href", dataStr);
