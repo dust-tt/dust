@@ -4,9 +4,6 @@
 - [x] move storage to sqlite for cli
 - [x] ensure there is no (type, name) duplicate
 - [x] extend sqlite functional tests
-- [ ] block options
-- [ ] if/end block
-- [ ] while block
 
 ## api
 
@@ -80,14 +77,17 @@
 - [x] deploy as an endpoint + capture production executions
   - [x] this may require ability to view old versions
 - [x] delete app
-- [ ] while block
-- [ ] if/then block
-- [ ] demo 3: self-ask / react
 
 ## P1
 
 - [x] previous app version / runs explorer
 - [x] dataset iteration: upload, item list, save on update
+
+# Next
+
+- [ ] while block
+- [ ] if/then block
 - [ ] eval jobs
 - [ ] edit inputs from input block?
 - [ ] block descriptions
+- [ ] block options
