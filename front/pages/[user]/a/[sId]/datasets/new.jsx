@@ -39,9 +39,11 @@ export default function NewDatasetView({
     }
   }, [isFinishedEditing]);
 
-  const onUpdate = (valid, currentDatasetInEditor) => {
+  const onUpdate = (initializing, valid, currentDatasetInEditor) => {
     setDisabled(!valid);
-    setEditorDirty(true);
+    if (!initializing) {
+      setEditorDirty(true);
+    }
     if (valid) {
       setDataset(currentDatasetInEditor);
     }

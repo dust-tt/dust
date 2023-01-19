@@ -117,9 +117,11 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
               </div>
             </div>
 
-            <div className="flex flex-auto text-gray-700 text-sm mt-3 pl-1">
-              Showing runs {offset + 1} - {last} of {total} runs
-            </div>
+            {runs.length > 0 ? (
+              <div className="flex flex-auto text-gray-700 text-sm mt-3 pl-1">
+                Showing runs {offset + 1} - {last} of {total} runs
+              </div>
+            ) : null}
 
             <div className="mt-4">
               <ul role="list" className="space-y-4">
