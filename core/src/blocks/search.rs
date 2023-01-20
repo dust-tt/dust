@@ -18,12 +18,14 @@ pub struct Error {
 pub struct Search {
     query: String,
     engine: String,
+    num: Option<usize>,
 }
 
 impl Search {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut query: Option<String> = None;
         let mut engine: Option<String> = None;
+        let mut num: Option<usize> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -32,6 +34,12 @@ impl Search {
                     match key.as_str() {
                         "query" => query = Some(value),
                         "engine" => engine = Some(value),
+                        "num" => match value.parse::<usize>() {
+                            Ok(n) => num = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `num` in `search` block, expecting unsigned integer"
+                            ))?,
+                        },
                         _ => Err(anyhow!("Unexpected `{}` in `search` block", key))?,
                     }
                 }
@@ -52,6 +60,7 @@ impl Search {
                 Some(engine) => engine,
                 None => "google".to_string(),
             },
+            num,
         })
     }
 }
@@ -77,6 +86,9 @@ impl Block for Search {
         hasher.update("search".as_bytes());
         hasher.update(self.query.as_bytes());
         hasher.update(self.engine.as_bytes());
+        if let Some(num) = &self.num {
+            hasher.update(num.to_string().as_bytes());
+        }
         format!("{}", hasher.finalize().to_hex())
     }
 
@@ -111,18 +123,23 @@ impl Block for Search {
             },
         }?;
 
-        let request = HttpRequest::new(
-            "GET",
-            format!(
+        let url = match self.num {
+            None => format!(
                 "https://serpapi.com/search?q={}&engine={}&api_key={}",
                 encode(&query),
                 self.engine,
                 serp_api_key
-            )
-            .as_str(),
-            json!({}),
-            Value::Null,
-        )?;
+            ),
+            Some(n) => format!(
+                "https://serpapi.com/search?q={}&num={}&engine={}&api_key={}",
+                encode(&query),
+                n,
+                self.engine,
+                serp_api_key,
+            ),
+        };
+
+        let request = HttpRequest::new("GET", url.as_str(), json!({}), Value::Null)?;
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
