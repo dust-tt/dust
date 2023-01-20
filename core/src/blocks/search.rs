@@ -86,6 +86,9 @@ impl Block for Search {
         hasher.update("search".as_bytes());
         hasher.update(self.query.as_bytes());
         hasher.update(self.engine.as_bytes());
+        if let Some(num) = &self.num {
+            hasher.update(num.to_string().as_bytes());
+        }
         format!("{}", hasher.finalize().to_hex())
     }
 

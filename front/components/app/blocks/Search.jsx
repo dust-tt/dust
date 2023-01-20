@@ -61,6 +61,12 @@ export default function Search({
     onBlockUpdate(b);
   };
 
+  const handleNumChange = (num) => {
+    let b = shallowBlockClone(block);
+    b.spec.num = num;
+    onBlockUpdate(b);
+  };
+
   return (
     <Block
       user={user}
@@ -79,6 +85,25 @@ export default function Search({
       onBlockNew={onBlockNew}
     >
       <div className="flex flex-col mx-4 w-full">
+        <div className="flex flex-col xl:flex-row xl:space-x-2">
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+            <div className="flex flex-initial">num:</div>
+            <div className="flex flex-initial font-normal">
+              <input
+                type="text"
+                className={classNames(
+                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  readOnly
+                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    : "border-white focus:border-gray-300 focus:ring-0"
+                )}
+                readOnly={readOnly}
+                value={block.spec.num}
+                onChange={(e) => handleNumChange(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
           <div className="flex-initial flex flex-row items-center space-x-1">
             <div className="flex flex-initial items-center">query:</div>
@@ -101,6 +126,7 @@ export default function Search({
               </div>
             ) : null}
           </div>
+
           <div className="flex w-full font-normal">
             <input
               type="text"
