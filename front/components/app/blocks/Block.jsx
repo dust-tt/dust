@@ -68,7 +68,7 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "flex flex-auto flex-col group rounded-sm border-2 border-gray-300 px-4 py-2"
+          "flex flex-auto flex-col group rounded-sm border border-gray-300 px-4 py-2"
         )}
       >
         <div className="flex flex-row items-center">

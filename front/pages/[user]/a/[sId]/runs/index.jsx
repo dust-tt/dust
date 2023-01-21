@@ -127,7 +127,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
               <ul role="list" className="space-y-4">
                 {runs.map((run) => (
                   <li key={run.run_id} className="px-0">
-                    <div className="py-4 rounded-sm border-2 border-gray-300 px-4 py-4">
+                    <div className="py-4 rounded-sm border border-gray-300 px-4 py-4">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-initial">
                           <Link
