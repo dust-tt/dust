@@ -435,7 +435,7 @@ export default function DatasetView({
           </div>
         </div>
 
-        <div className="mt-4 sm:col-span-6">
+        <div className="mt-4 sm:col-span-5">
           <h3 className="text-sm font-medium text-gray-700">Schema</h3>
           {!readOnly ? (
             <p className="mt-2 text-sm text-gray-500">
@@ -444,29 +444,32 @@ export default function DatasetView({
             </p>
           ) : null}
         </div>
-        <div className="sm:col-span-6">
+
+        <div className="sm:col-span-5">
           <div className="space-y-[1px]">
             {datasetKeys.map((k, j) => (
-              <div key={j} className="grid grid-cols-10">
-                <div className="col-span-2">
+              <div key={j} className="grid sm:grid-cols-10">
+                <div className="sm:col-span-3">
                   <div className="flex group items-center bg-slate-300">
-                    <input
-                      className={classNames(
-                        "flex-1 px-1 py-1 max-w-xs font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none",
-                        readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
-                          : "border-white ring-0 focus:border-gray-300 focus:ring-0"
-                      )}
-                      readOnly={readOnly}
-                      value={k}
-                      onChange={(e) => {
-                        handleKeyUpdate(j, e.target.value);
-                      }}
-                    />
+                    <div class="flex flex-1">
+                      <input
+                        className={classNames(
+                          "px-1 py-1 font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none w-full",
+                          readOnly
+                            ? "border-white ring-0 focus:ring-0 focus:border-white"
+                            : "border-white ring-0 focus:border-gray-300 focus:ring-0"
+                        )}
+                        readOnly={readOnly}
+                        value={k}
+                        onChange={(e) => {
+                          handleKeyUpdate(j, e.target.value);
+                        }}
+                      />
+                    </div>
                     {!readOnly ? (
                       <>
                         {datasetKeys.length > 1 ? (
-                          <div className="flex-initial">
+                          <div className="flex flex-initial w-4">
                             <XCircleIcon
                               className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
                               onClick={(e) => {
@@ -475,7 +478,7 @@ export default function DatasetView({
                             />
                           </div>
                         ) : null}
-                        <div className="flex-initial mr-2">
+                        <div className="flex flex-initial w-4 mr-2">
                           <PlusCircleIcon
                             className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
                             onClick={(e) => {
@@ -487,7 +490,7 @@ export default function DatasetView({
                     ) : null}
                   </div>
                 </div>
-                <div className="col-span-8 bg-slate-100">
+                <div className="sm:col-span-7 bg-slate-100">
                   {readOnly ? (
                     <span className="text-gray-700 block px-4 py-2 text-sm cursor-pointer whitespace-nowrap">
                       {datasetTypes[j] ? datasetTypes[j] : "string"}
@@ -522,7 +525,7 @@ export default function DatasetView({
           </div>
         </div>
 
-        <div className="mt-4 sm:col-span-6">
+        <div className="mt-4 sm:col-span-5">
           <h3 className="text-sm font-medium text-gray-700">Data</h3>
           {!readOnly ? (
             <p className="mt-2 text-sm text-gray-500">
@@ -537,7 +540,7 @@ export default function DatasetView({
                   <li key={i} className="space-y-[1px]">
                     {datasetKeys.map((k, j) => (
                       <div key={j} className="grid grid-cols-10">
-                        <div className="col-span-2">
+                        <div className="col-span-3">
                           <div className="flex group items-center bg-slate-300">
                             <input
                               className={classNames(
@@ -553,7 +556,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "col-span-8 inline-grid space-y-0 resize-none font-normal text-sm px-0 py-0 font-mono border bg-slate-100",
+                            "col-span-7 inline-grid space-y-0 resize-none font-normal text-sm px-0 py-0 font-mono border bg-slate-100",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               getValueType(d[k]) ===
