@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { ActionButton, Button } from "../components/Button";
 import { Logo } from "../components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
@@ -125,13 +126,25 @@ export default function Home({ ga_tracking_id }) {
             </span>{" "}
           </h1>
 
-          <div className="mx-auto w-48 mt-16">
-            <ActionButton
-              onClick={() => signIn("github", { callbackUrl: "/api/login" })}
-            >
-              <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
-              Sign in with Github
-            </ActionButton>
+          <div className="flex flex-rows mt-16">
+            <div className="flex flex-1"></div>
+            <div className="flex flex-initial mr-4">
+              <Link href="https://docs.dust.tt">
+                <Button className="mr-2">
+                  <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                  View Documentation
+                </Button>
+              </Link>
+            </div>
+            <div className="flex flex-initial">
+              <ActionButton
+                onClick={() => signIn("github", { callbackUrl: "/api/login" })}
+              >
+                <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
+                Sign in with Github
+              </ActionButton>
+            </div>
+            <div className="flex flex-1"></div>
           </div>
         </div>
 
