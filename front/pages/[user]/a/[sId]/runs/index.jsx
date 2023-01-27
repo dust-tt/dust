@@ -132,13 +132,12 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                         <div className="flex flex-initial">
                           <Link
                             href={`/${user}/a/${app.sId}/runs/${run.run_id}`}
+                            className="block"
                           >
-                            <a className="block">
-                              <p className="truncate text-base font-mono text-violet-600">
-                                {run.run_id.slice(0, 8)}...
-                                {run.run_id.slice(-8)}
-                              </p>
-                            </a>
+                            <p className="truncate text-base font-mono text-violet-600">
+                              {run.run_id.slice(0, 8)}...
+                              {run.run_id.slice(-8)}
+                            </p>
                           </Link>
                         </div>
                         <div className="ml-2 flex flex-shrink-0">

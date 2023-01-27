@@ -129,29 +129,27 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                             <p className="text-sm text-gray-500">
                               This command is ready to copy with your first
                               active API key.{" "}
-                              <Link href={`/${user}/keys`}>
-                                <a
-                                  className={classNames(
-                                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                    "text-violet-600"
-                                  )}
-                                >
-                                  Manage your API keys
-                                </a>
+                              <Link
+                                href={`/${user}/keys`}
+                                className={classNames(
+                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                                  "text-violet-600"
+                                )}
+                              >
+                                Manage your API keys
                               </Link>{" "}
                               to use a different one.
                             </p>
                           ) : (
                             <p className="text-sm text-gray-500">
-                              <Link href={`/${user}/keys`}>
-                                <a
-                                  className={classNames(
-                                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                    "text-violet-600"
-                                  )}
-                                >
-                                  Create an API key
-                                </a>
+                              <Link
+                                href={`/${user}/keys`}
+                                className={classNames(
+                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                                  "text-violet-600"
+                                )}
+                              >
+                                Create an API key
                               </Link>{" "}
                               to run this command.
                             </p>

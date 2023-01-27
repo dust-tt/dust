@@ -73,13 +73,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                           aria-hidden="true"
                         />
-                        <Link href={`/${route_user}/apps`}>
-                          <a
-                            href="#"
-                            className="text-base font-bold text-gray-800"
-                          >
-                            {route_user}
-                          </a>
+                        <Link
+                          href={`/${route_user}/apps`}
+                          className="text-base font-bold text-gray-800"
+                        >
+                          {route_user}
                         </Link>
                       </div>
                     </li>
@@ -91,13 +89,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                             className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                             aria-hidden="true"
                           />
-                          <Link href={`/${route_user}/a/${app.sId}`}>
-                            <a
-                              href="#"
-                              className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
-                            >
-                              {app.name}
-                            </a>
+                          <Link
+                            href={`/${route_user}/a/${app.sId}`}
+                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
+                          >
+                            {app.name}
                           </Link>
                         </div>
                       </li>

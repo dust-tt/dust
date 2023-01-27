@@ -281,12 +281,10 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
               {session && readOnly ? (
                 <div className="flex-initial">
                   <Link href={`/${user}/a/${app.sId}/clone`}>
-                    <a>
-                      <ActionButton>
-                        <DocumentDuplicateIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-                        Clone
-                      </ActionButton>
-                    </a>
+                    <ActionButton>
+                      <DocumentDuplicateIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                      Clone
+                    </ActionButton>
                   </Link>
                 </div>
               ) : null}

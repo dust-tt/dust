@@ -96,19 +96,18 @@ export default function Browser({
             </div>
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
               <div className="px-2">
-                <Link href={`/${user}/providers`}>
-                  <a
-                    className={classNames(
-                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                      "border px-3",
-                      readOnly
-                        ? "text-gray-300 border-white"
-                        : "text-gray-700 border-orange-400",
-                      "focus:outline-none focus:ring-0"
-                    )}
-                  >
-                    Setup Browserless API
-                  </a>
+                <Link
+                  href={`/${user}/providers`}
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    "border px-3",
+                    readOnly
+                      ? "text-gray-300 border-white"
+                      : "text-gray-700 border-orange-400",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  Setup Browserless API
                 </Link>
               </div>
             ) : null}

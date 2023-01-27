@@ -27,12 +27,10 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                   <div className="sm:flex-auto"></div>
                   <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
                     <Link href={`/${session.user.username}/apps/new`}>
-                      <a>
-                        <Button>
-                          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                          New App
-                        </Button>
-                      </a>
+                      <Button>
+                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                        New App
+                      </Button>
                     </Link>
                   </div>
                 </div>
@@ -44,12 +42,13 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                     <li key={app.id} className="px-2">
                       <div className="py-4">
                         <div className="flex items-center justify-between">
-                          <Link href={`/${user}/a/${app.sId}`}>
-                            <a className="block">
-                              <p className="truncate text-base font-bold text-violet-600">
-                                {app.name}
-                              </p>
-                            </a>
+                          <Link
+                            href={`/${user}/a/${app.sId}`}
+                            className="block"
+                          >
+                            <p className="truncate text-base font-bold text-violet-600">
+                              {app.name}
+                            </p>
                           </Link>
                           <div className="ml-2 flex flex-shrink-0">
                             <p
@@ -129,12 +128,13 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                     <li key={app.sId} className="px-2">
                       <div className="py-4">
                         <div className="flex items-center justify-between">
-                          <Link href={`/${app.user}/a/${app.sId}`}>
-                            <a className="block">
-                              <p className="truncate text-base font-bold text-violet-600">
-                                {app.name}
-                              </p>
-                            </a>
+                          <Link
+                            href={`/${app.user}/a/${app.sId}`}
+                            className="block"
+                          >
+                            <p className="truncate text-base font-bold text-violet-600">
+                              {app.name}
+                            </p>
                           </Link>
                           <div className="ml-2 flex flex-shrink-0">
                             <p
