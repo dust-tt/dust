@@ -25,14 +25,15 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 
 ### Start core API on SQLite
 
-- `cd $DUST_PATH/core`
-- `cargo run --bin dust-api`
+1. `cd $DUST_PATH/core`
+2. `cargo run --bin dust-api`
 
 ### Start front on SQLite
 
-- `cd $DUST_PATH/front`
-- Create `.env.local` with the following content:
-```
+1. `cd $DUST_PATH/front`
+2. Create `.env.local` by running the command below:
+```sh
+cat <<EOF >> .env.local
 URL=http://localhost:3000
 
 NEXTAUTH_URL=$URL
@@ -47,10 +48,11 @@ DUST_API=http://localhost:3001
 
 THUM_IO_KEY=0-Foo
 GA_TRACKING_ID=Foo
+EOF
 ```
-- Run `DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
-- Run `npm install`
-- Start server with `npm run dev`
+3. Run `npm install`
+4. Run `DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
+5. Start server with `npm run dev`
 
 ## Questions / Help
 
