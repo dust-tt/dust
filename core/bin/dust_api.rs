@@ -94,7 +94,7 @@ impl APIState {
                             ));
                         }
                         Err(e) => {
-                            utils::error(&format!("Run error: {}", e));
+                            utils::error(&format!("Run error: {e}"));
                         }
                     }
                     {
@@ -132,7 +132,7 @@ async fn projects_create(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to create a new project: {}", e),
+                    message: format!("Failed to create a new project: {e}"),
                 }),
                 response: None,
             }),
@@ -166,7 +166,7 @@ async fn projects_clone(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to create cloned project: {}", e),
+                        message: format!("Failed to create cloned project: {e}"),
                     }),
                     response: None,
                 }),
@@ -183,7 +183,7 @@ async fn projects_clone(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to list cloned project datasets: {}", e),
+                        message: format!("Failed to list cloned project datasets: {e}"),
                     }),
                     response: None,
                 }),
@@ -218,7 +218,7 @@ async fn projects_clone(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to clone project datasets: {}", e),
+                        message: format!("Failed to clone project datasets: {e}"),
                     }),
                     response: None,
                 }),
@@ -227,7 +227,7 @@ async fn projects_clone(
         Ok(_) => (),
     }
 
-    return (
+    (
         StatusCode::OK,
         Json(APIResponse {
             error: None,
@@ -235,7 +235,7 @@ async fn projects_clone(
                 "project": project,
             })),
         }),
-    );
+    )
 }
 
 /// Check a specification
@@ -289,7 +289,7 @@ async fn specifications_retrieve(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve specification: {}", e),
+                    message: format!("Failed to retrieve specification: {e}"),
                 }),
                 response: None,
             }),
@@ -300,7 +300,7 @@ async fn specifications_retrieve(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("specification_not_found"),
-                        message: format!("No specification found with hash `{}`", hash),
+                        message: format!("No specification found with hash `{hash}`"),
                     }),
                     response: None,
                 }),
@@ -351,7 +351,7 @@ async fn datasets_register(
             // current hash.
             let current_hash = match state
                 .store
-                .latest_dataset_hash(&project, &d.dataset_id())
+                .latest_dataset_hash(&project, d.dataset_id())
                 .await
             {
                 Err(_) => None,
@@ -364,7 +364,7 @@ async fn datasets_register(
                         Json(APIResponse {
                             error: Some(APIError {
                                 code: String::from("internal_server_error"),
-                                message: format!("Failed to store dataset: {}", e),
+                                message: format!("Failed to store dataset: {e}"),
                             }),
                             response: None,
                         }),
@@ -415,7 +415,7 @@ async fn datasets_list(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to list datasets: {}", e),
+                    message: format!("Failed to list datasets: {e}"),
                 }),
                 response: None,
             }),
@@ -461,7 +461,7 @@ async fn datasets_retrieve(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve dataset: {}", e),
+                    message: format!("Failed to retrieve dataset: {e}"),
                 }),
                 response: None,
             }),
@@ -473,8 +473,7 @@ async fn datasets_retrieve(
                     error: Some(APIError {
                         code: String::from("dataset_not_found"),
                         message: format!(
-                            "No dataset found for id `{}` and hash `{}`",
-                            dataset_id, hash
+                            "No dataset found for id `{dataset_id}` and hash `{hash}`"
                         ),
                     }),
                     response: None,
@@ -520,7 +519,7 @@ async fn run_helper(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to retrieve specification: {}", e),
+                        message: format!("Failed to retrieve specification: {e}"),
                     },
                 ))?,
                 Ok(spec) => match spec {
@@ -528,7 +527,7 @@ async fn run_helper(
                         StatusCode::NOT_FOUND,
                         APIError {
                             code: String::from("specification_not_found"),
-                            message: format!("No specification found for hash `{}`", hash),
+                            message: format!("No specification found for hash `{hash}`"),
                         },
                     ))?,
                     Some((_, s)) => {
@@ -568,14 +567,14 @@ async fn run_helper(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve dataset: {}", e),
+                    message: format!("Failed to retrieve dataset: {e}"),
                 },
             ))?,
             Ok(None) => Err((
                 StatusCode::NOT_FOUND,
                 APIError {
                     code: String::from("dataset_not_found"),
-                    message: format!("No dataset found for id `{}`", dataset_id),
+                    message: format!("No dataset found for id `{dataset_id}`"),
                 },
             ))?,
             Ok(Some(latest)) => match state
@@ -587,7 +586,7 @@ async fn run_helper(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to retrieve dataset: {}", e),
+                        message: format!("Failed to retrieve dataset: {e}"),
                     },
                 ))?,
                 Ok(d) => match d {
@@ -665,14 +664,14 @@ async fn run_helper(
     if register_spec {
         match state
             .store
-            .register_specification(&project, &app.hash(), &specification)
+            .register_specification(&project, app.hash(), &specification)
             .await
         {
             Err(e) => Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to register specification: {}", e),
+                    message: format!("Failed to register specification: {e}"),
                 },
             ))?,
             Ok(_) => (),
@@ -693,7 +692,7 @@ async fn run_helper(
             StatusCode::INTERNAL_SERVER_ERROR,
             APIError {
                 code: String::from("internal_server_error"),
-                message: format!("Failed prepare run: {}", e),
+                message: format!("Failed prepare run: {e}"),
             },
         ))?,
         Ok(()) => (),
@@ -758,7 +757,7 @@ async fn runs_create_stream(
                         ));
                     }
                     Err(e) => {
-                        utils::error(&format!("Run error: {}", e));
+                        utils::error(&format!("Run error: {e}"));
                     }
                 }
             });
@@ -820,7 +819,7 @@ async fn runs_list(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to list runs: {}", e),
+                    message: format!("Failed to list runs: {e}"),
                 }),
                 response: None,
             }),
@@ -851,7 +850,7 @@ async fn runs_retrieve(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
+                    message: format!("Failed to retrieve run: {e}"),
                 }),
                 response: None,
             }),
@@ -862,7 +861,7 @@ async fn runs_retrieve(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
+                        message: format!("No run found for id `{run_id}`"),
                     }),
                     response: None,
                 }),
@@ -900,7 +899,7 @@ async fn runs_retrieve_block(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
+                    message: format!("Failed to retrieve run: {e}"),
                 }),
                 response: None,
             }),
@@ -911,7 +910,7 @@ async fn runs_retrieve_block(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
+                        message: format!("No run found for id `{run_id}`"),
                     }),
                     response: None,
                 }),
@@ -940,7 +939,7 @@ async fn runs_retrieve_status(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
+                    message: format!("Failed to retrieve run: {e}"),
                 }),
                 response: None,
             }),
@@ -951,7 +950,7 @@ async fn runs_retrieve_status(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
+                        message: format!("No run found for id `{run_id}`"),
                     }),
                     response: None,
                 }),

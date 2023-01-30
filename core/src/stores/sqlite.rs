@@ -1125,7 +1125,8 @@ _fun = (env) => {
         )
         .await?;
 
-        app.run(Credentials::new(), Box::new(store.clone()), None).await?;
+        app.run(Credentials::new(), Box::new(store.clone()), None)
+            .await?;
 
         let r = store
             .load_run(&project, app.run_ref().unwrap().run_id(), None)
@@ -1203,7 +1204,8 @@ _fun = (env) => {
         )
         .await?;
 
-        app.run(Credentials::new(), Box::new(store.clone()), None).await?;
+        app.run(Credentials::new(), Box::new(store.clone()), None)
+            .await?;
 
         let r = store
             .load_run(&project, app.run_ref().unwrap().run_id(), None)

@@ -143,7 +143,7 @@ fn main() -> Result<()> {
 
     match err {
         Err(e) => {
-            utils::error(&format!("{}", e));
+            utils::error(&format!("{e}"));
         }
         _ => (),
     }
