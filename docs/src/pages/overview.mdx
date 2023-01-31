@@ -66,7 +66,7 @@ Dust apps are composed of blocks which are executed sequentially. Blocks don't h
 can refer to the output of any previously executed block.
 
 A block has a **type** and a **BLOCK_NAME** (uppercase, no space). Each block, when executed outputs
-a JSON object that can later be accessed by subsequent blocks.
+a JSON object that can later be accessed by subsequent blocks using their name.
 
 <Image src="/block_overview.png" alt="Anatomy of a Dust block">
   _The anatomy of a Dust block showing where blocks type, name, and
@@ -75,6 +75,17 @@ a JSON object that can later be accessed by subsequent blocks.
   blocks outputs, respectively the `title` and `blob` fields of the `INPUT` and
   `AGGREGATE` blocks output objects._
 </Image>
+
+Each block have a set of _specification_ arguments and _configuration_ arguments. The specification
+arguments are arguments that are not meant to be changed from one execution to the other. The
+configuration arguments are arguments that can be changed from one execution to the other. The
+distinction between the two is somewhat arbitrary and guided by the motivation of being able to run
+an app with various configurations, as an example, to evaluate the performance of different models.
+To illustrate the distinction, the `llm` block's _prompt_ is part of its specification whereas the
+_model_ is part of its configuration.
+
+The Dust Platform UI does not explicitely expose the distinction. But you can arbitrarily change the
+configuration of each blocks of an app each time you call it by API.
 
 ## Inputs
 
