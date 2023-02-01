@@ -57,17 +57,16 @@ export const Header = forwardRef(function Header({ className }, ref) {
             'bg-zinc-900/7.5 dark:bg-white/7.5'
         )}
       />
-      <div className="flex hidden flex-1 md:block" />
       <div className="flex items-center gap-5 lg:hidden">
         <MobileNavigation />
         <Link href="https://dust.tt" aria-label="Home">
           <Logo className="h-6" />
         </Link>
       </div>
+      <div className="flex flex-1" />
       <div className="flex items-center gap-5">
         <nav className="hidden md:block">
           <ul role="list" className="flex items-center gap-8">
-            <TopLevelNavItem href="/">API</TopLevelNavItem>
             <TopLevelNavItem href="https://discord.gg/8NJR3zQU5X">
               Discord
             </TopLevelNavItem>
@@ -80,11 +79,6 @@ export const Header = forwardRef(function Header({ className }, ref) {
         <div className="flex gap-4">
           <ModeToggle />
         </div>
-        {/**
-        <div className="hidden min-[416px]:contents">
-          <Button href="https://dust.tt">Sign in</Button>
-        </div>
-        **/}
       </div>
     </motion.div>
   )

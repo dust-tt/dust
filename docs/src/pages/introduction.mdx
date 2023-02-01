@@ -172,9 +172,11 @@ As an example, the translation prompt above which consists in **data** (the few-
 **template** (the way these examples are presented to the model), reified as a function that, given a
 sentence, returns the output of the model, can be seen as a basic large language model app.
 
-// TODO(spolu): Screenshot of Dust LLM block
-
-
+<Image src="/llm_illustration.png" alt="Example LLM Dust block">
+  _Example of a Dust LLM block representing the call to a Large Language Model.
+  Dust apps are chains of such blocks. You'll learn more about Dust apps and blocks in the [Platform
+  overview](/overview)._
+</Image>
 
 The design of a large language model app is the process of defining prompts and chains of large
 language models or external services calls to expose a structured API with a predictable behavior
@@ -228,7 +230,7 @@ summarizing each chunk separately. The output of the summarization of each chunk
 concatenated and used to produce a final summary.
 
 If the text to summarize is extremely long, this process can be repeated recursively until the
-concatenation of the chunks fit in-context. Hence the name *recursive summarization*.
+concatenation of the chunks fit in-context. Hence the name _recursive summarization_.
 
 To summarize each chunk as well as produce the final summary we can use a model fine-tuned for
 instruction-following such as OpenAI's `text-davinci-003`.
@@ -261,6 +263,5 @@ instruct-following model. They can likely be improved or modified to produce spe
 The Dust app that demonstrates this technique leverages blocks such as `map` and `reduce` that will
 be more clearly explained in the following pages. Nonetheless you can find and explore its full
 implementation here: [recusive-summarization](https://dust.tt/spolu/a/eeac37ce40).
-
 
 ### (Advanced) Mathematics

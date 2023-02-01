@@ -3,27 +3,32 @@ import { Heading } from '@/components/Heading'
 
 const guides = [
   {
-    href: '/authentication',
-    name: 'Authentication',
-    description: 'Learn how to authenticate your API requests.',
+    href: '/introduction',
+    name: 'Introduction',
+    description: 'Understand the concept of Large Language Model App.',
   },
   {
-    href: '/pagination',
-    name: 'Pagination',
-    description: 'Understand how to work with paginated responses.',
+    href: '/overview',
+    name: 'Overview',
+    description: 'Get an overview of the Dust Platform.',
   },
   {
-    href: '/errors',
-    name: 'Errors',
-    description:
-      'Read about the different types of errors returned by the API.',
+    href: '/quickstart',
+    name: 'Quickstart',
+    description: 'Step-by-step guide to creating your first Dust app.',
   },
-  {
-    href: '/webhooks',
-    name: 'Webhooks',
-    description:
-      'Learn how to programmatically configure webhooks for your app.',
-  },
+  // {
+  //   href: '/errors',
+  //   name: 'Errors',
+  //   description:
+  //     'Read about the different types of errors returned by the API.',
+  // },
+  // {
+  //   href: '/webhooks',
+  //   name: 'Webhooks',
+  //   description:
+  //     'Learn how to programmatically configure webhooks for your app.',
+  // },
 ]
 
 export function Guides() {

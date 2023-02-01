@@ -81,7 +81,7 @@ outputs.
   </Property>
   <Property name="input" type="object">
     An object with fields `input` and `index`. `input` is the input object of
-    the current execution stream, `null` if there is no `input` block executed
+    the current execution stream, _null_ if there is no `input` block executed
     yet. `index` is the index of the current input object in the dataset
     associated with the `input` block.
   </Property>
@@ -118,8 +118,8 @@ It is used to issue completion requests to large language models as part of an a
   </Property>
   <Property name="temperature" type="float">
     The temperature to use when sampling from the model. Higher _temperature_
-    (eg `1.0`) results in more diverse completions, while lower _temperature_
-    (eg `0.0`) results in more conservative completions.
+    (eg _1.0_) results in more diverse completions, while lower _temperature_
+    (eg _0.0_) results in more conservative completions.
   </Property>
   <Property name="max_tokens" type="integer">
     The maximum number of tokens to generate from the model. A can very broadly
@@ -131,26 +131,26 @@ It is used to issue completion requests to large language models as part of an a
     model.
   </Property>
   <Property name="frequency_penalty" type="float">
-    Number between -2.0 and 2.0. Positive values penalize new tokens based on
-    their existing frequency in the text so far, decreasing the model's
+    Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
+    on their existing frequency in the text so far, decreasing the model's
     likelihood to repeat the same line verbatim.
   </Property>
   <Property name="presence_penalty" type="float">
-    Number between -2.0 and 2.0. Positive values penalize new tokens based on
-    whether they appear in the text so far, increasing the model's likelihood to
-    talk about new topics.
+    Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
+    on whether they appear in the text so far, increasing the model's likelihood
+    to talk about new topics.
   </Property>
   <Property name="top_p" type="float">
     An alternative to sampling with temperature, called nucleus sampling, where
     the model considers the results of the tokens with `top_p` probability mass.
-    So `0.1` means only the tokens comprising the top 10% probability mass are
+    So _0.1_ means only the tokens comprising the top 10% probability mass are
     considered.
   </Property>
   <Property name="top_logprobs" type="integer">
     Include the log probabilities on the `top_logprobs` most likely tokens, as
-    well as the chosen token. For example, if logprobs is 5, the API will return
-    a list of the 5 most likely tokens' probabilities. Useful for classification
-    tasks.
+    well as the chosen token. For example, if logprobs is _5_, the API will
+    return a list of the 5 most likely tokens' probabilities. Useful for
+    classification tasks.
   </Property>
 </Properties>
 
@@ -158,15 +158,15 @@ It is used to issue completion requests to large language models as part of an a
 
 <Properties>
   <Property name="provider_id" type="string">
-    The model provider to use. One of `openai`, `cohere`, `ai21`.
+    The model provider to use. One of _openai_, _cohere_, _ai21_.
   </Property>
   <Property name="model_id" type="string">
     The model to use from the provider specified by `provider_id`.
   </Property>
   <Property name="use_cache" type="bool">
     Whether to rely on the automated caching mechanism of the `llm` block. If
-    set to `true` and a previous request was made with the same specification
-    variables, then the cached response is returned.
+    set to _true_ and a previous request was made with the same specification
+    and configuration parameters, then the cached response is returned.
   </Property>
   <Property name="use_stream" type="bool">
     In the context of running an app by API. Whether to stream each token as
