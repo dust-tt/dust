@@ -1,0 +1,241 @@
+export const description =
+  'This guide will help you get started with Dust with step by step instructions to build your first Dust app.'
+
+# Quickstart
+
+This guide will help you get started with Dust with step by step instructions to build your first
+Dust app. {{ className: 'lead' }}
+
+<Note>
+  Before you can create your first Dust app you need to sign-in on
+  [Dust](https://dust.tt) with your GitHub account. If needed, you can create
+  one [here](https://github.com).
+</Note>
+
+## Setting up your first model provider
+
+Dust apps rely on models providers to interact with large language models. You can setup your first
+model provider by clicking on the **Providers** pane and setting up the OpenAI provider. You'll need
+to create an account at [OpenAI](https://platform.openai.com) and retrieve your [API
+key](https://platform.openai.com/account/api-keys).
+
+<Image src="/quickstart_openai_provider.png" alt="OpenAI provider setup">
+  _Once you have input a valid API key, you should see the OpenAI provider as
+  enabled in the **Providers** pane._
+</Image>
+
+Whenever your app will interact with an OpenAI model, it'll use the API key you provided to do so.
+The costs of running these models will be reported on OpenAI's dashboard.
+
+## Creating a new app
+
+You can now create a new app by clicking on the **New App** button from your main dashboard. You'll
+need to provide the following information:
+
+<Image src="/quickstart_newapp.png" alt="OpenAI app creation panel">
+  _The Dust app creation panel. The `name` should be short and memorable,
+  lowercase without spaces._
+</Image>
+
+<Note>
+  Public apps are visible to everyone, private apps are solely accessible to
+  you. Public apps can be cloned by others, but cannot be run by anyone else
+  than you.
+</Note>
+
+Once you click on **Create** you are redirected to your new Dust app's view. The default panel is
+the **Specification** panel where you will build your app by adding blocks. The **Datasets** panel
+let you manage datasets (for inputs or few-shot examples).
+
+The **Run** button is currently disabled as you haven't added any block to your app yet.
+
+## Add your first block
+
+You are ready to add your first block. Click on the **+ Block** button and add an `input` block. The
+`input` block appears in your app specification view. The `input` block needs to get attached to a
+dataset. Each time it will be executed, it'll fork your app execution on each element of the dataset
+to enable you to design your app against multiple examples to avoid overfitting your design to one
+input. You can learn more about how the `input` block works in the [Inputs](/overview#inputs)
+section of the platform overview.
+
+Click on the **Create Dataset** button inside the `input` block to create a new dataset. You are now
+redirected to the **Datasets** pane. And a new draft dataset with basic arithmetic questions has
+been prepared for you. Give the name _dev_ to your dataset, you can leave the description empty. Our
+example app will attempt to answer these basic arithmetic questions. The **Schema** lets you control
+the schema of your dataset's entries. The Data section lets you edit, add, or remove elements to
+your dataset. You can leave the dataset as is and click **Create**.
+
+You can now return to your app's specification view and select the _dev_ dataset from the `input`
+block dropdown.
+
+It is time to run your app for the first time! Click **Run** and wait for the execution to complete.
+
+<Image src="/quickstart_input.png" alt="First run of the input block">
+  _This is the expected state of your Dust app. The `input` block was run and
+  triggered 3 parallel executions of your app. For each execution you can see
+  the output of the `input` block which corresponds to each element of the
+  dataset it is associated with. The examples in your dataset might differ from
+  the ones shown above._
+</Image>
+
+## Data block
+
+Before we can add our first `llm` block, we'll add a `data` block to the app to store the few-shot
+examples used to prompt the model. Go to the **Datasets** panel and create a new dataset. Name it
+_examples_ and save it directly.
+
+Return to the **Specification** panel and click the **+ Block** button and add a `data` block.
+Similarly to the `input` block, the data block must be attached to a dataset. Click on the `data`
+block **Select Dataset** button and select _examples_.
+
+<Note>
+  Note that your blocks are automatically given a default name (_EXAMPLES_ for
+  your `data` block). Know that you can change the name of your blocks by
+  clicking on the block name in the specification view. Let's keep the default
+  name for now so that we can refer to it in the next blocks.
+</Note>
+
+Run your app again! You should be able to see the outputs of both the `input` block and the newly
+created `data` block.
+
+<Image src="/quickstart_data.png" alt="Execution of the data block">
+  _This is the expected state of your Dust app. As you can see the `data` block
+  as a different behaviour than the `input` block. For each execution stream it
+  returns the entire dataset as an array. This dataset is the same for each
+  execution stream and will be use to few-shot prompt the model in the next
+  block. The examples in your datasets might differ from the ones shown above._
+</Image>
+
+## LLM block
+
+We're ready to interact with a large language model. Add an `llm` block, select _openai_ as provider
+and _text-davinci-003_ as model. You can leave the `temparature` and `max_tokens` unchanged.
+
+Now is time to construct our prompt. The prompt field supports [Tera](https://tera.netlify.app/)
+templating to construct the prompt to the model from the outputs of the previously executed blocks.
+You can refer to the [LLM Block](core-blocks#llm-block) documentation for more details on the
+templating system.
+
+We will use the following prompt to encode to the model (using few-shot prompting) that we want it
+to reply with a valid numerical answer:
+
+```
+{% for e in EXAMPLES %}
+QUESTION: {{e.question}}
+ANSWER: {{e.answer}}
+{% endfor %}
+QUESTION: {{INPUT.question}}
+ANSWER:
+```
+
+As the `llm` block will be executed, it will receive as prompt the result of executing the template
+above, which should consists in:
+
+```
+QUESTION: What is 2+2?
+ANSWER: 4
+
+QUESTION: What is 5^2?
+ANSWER: 25
+
+QUESTION: What is 23*9?
+ANSWER: 207
+
+QUESTION: What is 12*4?
+ANSWER:
+```
+
+This is called few-shot prompting, by showing a few valid examples, we encode the task to the model.
+We finish the prompt with just the question from the input we're working on. As the model will try
+to complete the prompt, it should naturally try to answer the question with a valid answer.
+
+Also add a `stop` sequence, by typing in _QUESTION_ and hitting enter. This will stop the generation
+from the model once it encounters the _QUESTION_ sequence. This may happen as the model may simply
+try to complete the prompt with more questions and answers after genreting the answer to your
+question.
+
+You can now run your app. It will be a bit slower this time as we'll have to wait for the model to
+generate an answer by calling into the OpenAI API.
+
+<Note>
+  If you run the unmodified app again, the automatic caching mechanism of the
+  `llm` block will quick in and you won't spend any resources on OpenAI.
+</Note>
+
+You can explore the outputs of the `llm` block. It contains both a `prompt` object reprensenting
+what was sent to the model and a `completion` object which is the completion generated by the model.
+You can check that the values returned by the model are indeed correct.
+
+<Image src="/quickstart_llm.png" alt="Execution of the llm block">
+  _This is the expected configuration and state of the `llm` block after your
+  final execution of your app. Since there are 3 inputs in our `input` block
+  dataset, there are 3 parallel executions of the app and therefore 3 outputs
+  returned by the `llm` block._
+</Image>
+
+## Final code block
+
+We can finally add a `code` block to extract the answers from the model's completion. Name the
+`code` block _FINAL_. Code blocks' code parameter must define a Javascript `_fun` function accepting
+an `env` variable. The `env` variable enables you to access the output of the previous blocks. We'll
+use the following code:
+
+```js
+_fun = (env) => {
+  return {
+    question: env.state.INPUT.question,
+    asnwer: env.state.MODEL.completion.text.trim(),
+  }
+}
+```
+
+We're simply echoing the input `question` and returning the answer generated by the model by triming
+its completion. You can now run your app and explore the 3 executions final outputs to check that
+all answers are correct.
+
+<Image src="/quickstart_final.png" alt="Execution of the llm block">
+  _This is the expected output of the final block, echoing the intput question
+  and the generated answer. The question may be different in your app._
+</Image>
+
+Congrats on designing your first Dust app! You can inspect the different runs on your app in the
+**Runs** panel and see the various iterations we went through as we built the app.
+
+## (Advanced) Running your app by API
+
+Congrats on designing your first app! You can now return to your profile by clicking the Dust logo
+to create a new API key in the **API Keys** panel. Click the **Create new secret key** button and
+return to the **Apps** panel and finally to your app.
+
+As you can see the full state of the app is preserved, including block outputs.
+
+Now return to the **Specification** panel and click the **Deploy** button. Simply click the **Copy**
+button and copy the curl command in your favourite editor. You can leave the curl command untouched
+exception for the input given that your app expects an object with a `question` field. Modify the
+object and add an arithmetic question of your choice.
+
+<Note>
+  As you copy the curl command from the **Deploy** modal, your newly created API
+  key is automatically inserted as `Authentication` header.
+</Note>
+
+You can now prefix your file with `#!/bin/sh` and save it as a `.sh` and execute it from your
+terminal.
+
+Congrats, you've executed your app by API. You can check the execution in the **Runs** panel under
+the **API** section.
+
+## Next steps
+
+Great, you're now familiar with Dust app design. You can review the rest of the [documentation
+portal](/) or explore a few more complex community app examples:
+
+- [maths-generate-code](https://dust.tt/spolu/a/d12ac33169) Generate code to answer maths questions.
+- [wedding-thank-yous](https://dust.tt/bcmejla/a/cc20d98f70) Solving the blank page problem for
+  wedding thank you notes.
+- [web-search-assistant](https://dust.tt/spolu/a/2316f9c6b0) Answer questions with high factual
+  accuracy by searching online and compiling responses based on content downloaded from websites
+  (with references).
+- [toolbot-repro](https://dust.tt/spolu/a/b39f8e9023) Teach LLM to teach itself new tasks by
+  teaching it to generate few shot examples from high-level tasks descriptions and prompting itself
+  with them (a reproduction of @chillzaza\_'s ToolBot).

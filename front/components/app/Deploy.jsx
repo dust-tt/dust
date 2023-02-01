@@ -5,6 +5,7 @@ import { classNames } from "../../lib/utils";
 import { Dialog, Transition } from "@headlessui/react";
 import { DocumentDuplicateIcon, CubeIcon } from "@heroicons/react/20/solid";
 import { HighlightButton, ActionButton, Button } from "../Button";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
 import copyToClipboard from "@uiw/copy-to-clipboard";
 import dynamic from "next/dynamic";
@@ -129,29 +130,27 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                             <p className="text-sm text-gray-500">
                               This command is ready to copy with your first
                               active API key.{" "}
-                              <Link href={`/${user}/keys`}>
-                                <a
-                                  className={classNames(
-                                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                    "text-violet-600"
-                                  )}
-                                >
-                                  Manage your API keys
-                                </a>
+                              <Link
+                                href={`/${user}/keys`}
+                                className={classNames(
+                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                                  "text-violet-600"
+                                )}
+                              >
+                                Manage your API keys
                               </Link>{" "}
                               to use a different one.
                             </p>
                           ) : (
                             <p className="text-sm text-gray-500">
-                              <Link href={`/${user}/keys`}>
-                                <a
-                                  className={classNames(
-                                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                    "text-violet-600"
-                                  )}
-                                >
-                                  Create an API key
-                                </a>
+                              <Link
+                                href={`/${user}/keys`}
+                                className={classNames(
+                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                                  "text-violet-600"
+                                )}
+                              >
+                                Create an API key
                               </Link>{" "}
                               to run this command.
                             </p>
@@ -170,119 +169,18 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                           </ActionButton>
                         </div>
                       </div>
-                      <h4 class="mt-4 mb-4 font-medium leading-6 text-gray-900">
-                        Parameters
-                      </h4>
-                      <dl>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            specification_hash
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            The hash of the current app specification.
-                            <br />
-                            You don't need to change it, you can use the
-                            prefilled hash above.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            config
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            The configuration of the app (providers, models,
-                            etc.) as used in your last run.
-                            <br />
-                            You don't need to change it, you can use the
-                            prefilled object above.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            inputs
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            An array of inputs to run your app with, represented
-                            as JSON objects.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            stream
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            Whether to stream the run as Server-Sent Events
-                            (SSE). If{" "}
-                            <span className="font-mono font-medium text-gray-500">
-                              use_stream
-                            </span>{" "}
-                            is set in a model config, this will stream tokens as
-                            they are produced (if the model provider supports
-                            it).
-                            <br />
-                            If set, the{" "}
-                            <span className="font-mono font-medium text-gray-500">
-                              blocking
-                            </span>{" "}
-                            parameter is ignored.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            blocking
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            Whether to block the API call until the app has
-                            finished running. If set to{" "}
-                            <span className="font-mono font-medium text-gray-500">
-                              false
-                            </span>
-                            , the API call will return directly with the current
-                            status of the run. You can then poll the run status
-                            using the following request:
-                            <br />
-                            <span className="font-mono font-medium text-gray-500">
-                              GET {url}/api/v1/apps/{user}/{app.sId}
-                              /runs/&lt;run_id&gt;
-                            </span>
-                          </dd>
-                        </div>
-                      </dl>
-                      <h4 class="mt-4 mb-4 font-medium leading-6 text-gray-900">
-                        Response
-                      </h4>
-                      <dl>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            status
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            An object containing the status of the run as well
-                            as the status of each individual block.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            traces
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            A trace of each block execution, containing the
-                            output of the block on each input.
-                          </dd>
-                        </div>
-                        <div className="py-1 sm:grid sm:grid-cols-5">
-                          <dt className="text-sm font-mono font-medium text-gray-500">
-                            results
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-4 sm:mt-0">
-                            Only set if the run status is{" "}
-                            <span className="font-mono font-medium text-gray-500">
-                              succeeded
-                            </span>
-                            . The outputs of the last block of the app.
-                          </dd>
-                        </div>
-                      </dl>
+                      <p className="mt-4 text-sm text-gray-500">
+                        For a detailed documentation on the Run model and run
+                        creation parameters, refer to the API reference.
+                      </p>
+                      <p className="mt-2">
+                        <Link href="https://docs.dust.tt/runs" target="_blank">
+                          <Button className="mr-2">
+                            <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                            Visit API Reference
+                          </Button>
+                        </Link>
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-row mt-5 sm:mt-6 space-x-2 items-center">

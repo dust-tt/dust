@@ -74,13 +74,11 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                           className="inline h-5 w-5 text-gray-500 pt-0.5 ml-0.5"
                           aria-hidden="true"
                         />
-                        <Link href={`/${user}/a/${app.sId}`}>
-                          <a
-                            href="#"
-                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
-                          >
-                            {app.name}
-                          </a>
+                        <Link
+                          href={`/${user}/a/${app.sId}`}
+                          className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                        >
+                          {app.name}
                         </Link>{" "}
                         to your account
                       </h3>
@@ -94,13 +92,11 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                     <div>
                       <h3 className="text-base font-medium leading-6 text-gray-900">
                         Clone your app{" "}
-                        <Link href={`/${user}/a/${app.sId}`}>
-                          <a
-                            href="#"
-                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
-                          >
-                            {app.name}
-                          </a>
+                        <Link
+                          href={`/${user}/a/${app.sId}`}
+                          className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                        >
+                          {app.name}
                         </Link>
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">

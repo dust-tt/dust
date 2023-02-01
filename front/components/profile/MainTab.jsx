@@ -72,26 +72,24 @@ export default function MainTab({ current_tab, user, readOnly }) {
             </Menu.Button>
           </div>
           <Menu.Items className="absolute left-0 z-10 mt-0 w-full origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-            {tabs
-              .map((tab) => (
-                <Menu.Item key={tab.name}>
-                  {({ active }) => (
-                    <Link href={tab.href} key={tab.name}>
-                      <a
-                        key={tab.name}
-                        className={classNames(
-                          "whitespace-nowrap flex font-medium",
-                          active ? "bg-gray-50" : "",
-                          "block px-4 py-3 text-sm text-gray-500"
-                        )}
-                      >
-                        {tab.icon}
-                        {tab.name}
-                      </a>
-                    </Link>
-                  )}
-                </Menu.Item>
-              ))}
+            {tabs.map((tab) => (
+              <Menu.Item key={tab.name}>
+                {({ active }) => (
+                  <Link
+                    href={tab.href}
+                    key={tab.name}
+                    className={classNames(
+                      "whitespace-nowrap flex font-medium",
+                      active ? "bg-gray-50" : "",
+                      "block px-4 py-3 text-sm text-gray-500"
+                    )}
+                  >
+                    {tab.icon}
+                    {tab.name}
+                  </Link>
+                )}
+              </Menu.Item>
+            ))}
           </Menu.Items>
         </Menu>
       </div>
@@ -101,21 +99,20 @@ export default function MainTab({ current_tab, user, readOnly }) {
           <nav className="-mb-px flex" aria-label="Tabs">
             {tabs.map((tab) => (
               <div key={tab.name} className="flex flex-initial">
-                <Link href={tab.href} key={tab.name}>
-                  <a
-                    key={tab.name}
-                    foo={tab.name}
-                    className={classNames(
-                      "whitespace-nowrap flex py-3 px-4 border-b-2 text-sm flex items-center",
-                      tab.name == current_tab
-                        ? "border-gray-500 text-gray-700 font-bold"
-                        : "font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
-                    )}
-                    aria-current={tab.current ? "page" : undefined}
-                  >
-                    {tab.icon}
-                    {tab.name}
-                  </a>
+                <Link
+                  href={tab.href}
+                  key={tab.name}
+                  foo={tab.name}
+                  className={classNames(
+                    "whitespace-nowrap flex py-3 px-4 border-b-2 text-sm flex items-center",
+                    tab.name == current_tab
+                      ? "border-gray-500 text-gray-700 font-bold"
+                      : "font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
+                  )}
+                  aria-current={tab.current ? "page" : undefined}
+                >
+                  {tab.icon}
+                  {tab.name}
                 </Link>
               </div>
             ))}

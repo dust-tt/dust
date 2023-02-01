@@ -36,9 +36,7 @@ export default function DatasetPicker({
     <div className="flex items-center">
       {dataset ? (
         <Link href={`/${user}/a/${app.sId}/datasets/${dataset}`}>
-          <a>
-            <div className="font-bold text-violet-600 text-sm">{dataset}</div>
-          </a>
+          <div className="font-bold text-violet-600 text-sm">{dataset}</div>
         </Link>
       ) : (
         ""
@@ -46,19 +44,18 @@ export default function DatasetPicker({
       <Menu as="div" className="relative inline-block text-left">
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (
-            <Link href={`/${user}/a/${app.sId}/datasets/new`}>
-              <a
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                  dataset ? "px-1" : "border px-3",
-                  readOnly
-                    ? "text-gray-300 border-white"
-                    : "text-gray-700 border-orange-400",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {isDatasetsLoading ? "Loading..." : "Create dataset"}
-              </a>
+            <Link
+              href={`/${user}/a/${app.sId}/datasets/new`}
+              className={classNames(
+                "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                dataset ? "px-1" : "border px-3",
+                readOnly
+                  ? "text-gray-300 border-white"
+                  : "text-gray-700 border-orange-400",
+                "focus:outline-none focus:ring-0"
+              )}
+            >
+              {isDatasetsLoading ? "Loading..." : "Create dataset"}
             </Link>
           ) : readOnly ? null : (
             <Menu.Button
@@ -113,18 +110,16 @@ export default function DatasetPicker({
               })}
               <Menu.Item key="__create_dataset" onClick={() => {}}>
                 {({ active }) => (
-                  <a>
-                    <Link href={`/${user}/a/${app.sId}/datasets/new`}>
-                      <div
-                        className={classNames(
-                          active ? "bg-gray-50 text-gray-500" : "text-gray-400",
-                          "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
-                        )}
-                      >
-                        Create new dataset
-                      </div>
-                    </Link>
-                  </a>
+                  <Link href={`/${user}/a/${app.sId}/datasets/new`}>
+                    <div
+                      className={classNames(
+                        active ? "bg-gray-50 text-gray-500" : "text-gray-400",
+                        "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
+                      )}
+                    >
+                      Create new dataset
+                    </div>
+                  </Link>
                 )}
               </Menu.Item>
             </div>

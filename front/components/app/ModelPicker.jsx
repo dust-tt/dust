@@ -74,21 +74,20 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
             {modelProviders.length == 0 &&
             !(model.provider_id && model.provider_id.length > 0) &&
             !readOnly ? (
-              <Link href={`/${user}/providers`}>
-                <a
-                  className={classNames(
-                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                    (model.provider_id && model.provider_id.length) > 0
-                      ? "px-1"
-                      : "border px-3",
-                    readOnly
-                      ? "text-gray-300 border-white"
-                      : "text-gray-700 border-orange-400",
-                    "focus:outline-none focus:ring-0"
-                  )}
-                >
-                  {isProvidersLoading ? "Loading..." : "Setup provider"}
-                </a>
+              <Link
+                href={`/${user}/providers`}
+                className={classNames(
+                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                  (model.provider_id && model.provider_id.length) > 0
+                    ? "px-1"
+                    : "border px-3",
+                  readOnly
+                    ? "text-gray-300 border-white"
+                    : "text-gray-700 border-orange-400",
+                  "focus:outline-none focus:ring-0"
+                )}
+              >
+                {isProvidersLoading ? "Loading..." : "Setup provider"}
               </Link>
             ) : readOnly ? (
               <div className="font-bold text-gray-700 text-sm">

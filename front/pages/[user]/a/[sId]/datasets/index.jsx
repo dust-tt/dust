@@ -51,12 +51,10 @@ export default function DatasetsView({
         <div className="flex flex-1">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-4">
             <Link href={`/${user}/a/${app.sId}/datasets/new`}>
-              <a>
-                <ActionButton disabled={readOnly}>
-                  <PlusIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-                  New Dataset
-                </ActionButton>
-              </a>
+              <ActionButton disabled={readOnly}>
+                <PlusIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                New Dataset
+              </ActionButton>
             </Link>
 
             <div className="mt-4">
@@ -66,46 +64,43 @@ export default function DatasetsView({
                     <Link
                       key={d.name}
                       href={`/${user}/a/${app.sId}/datasets/${d.name}`}
+                      className="block"
                     >
-                      <a className="block">
-                        <div
-                          key={d.name}
-                          className="group px-4 py-4 rounded-sm border border-gray-300"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="truncate text-base font-bold text-violet-600">
-                              {d.name}
-                            </p>
-                            {readOnly ? null : (
-                              <div className="ml-2 flex flex-shrink-0">
-                                <TrashIcon
-                                  className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-700"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleDelete(d.name);
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <div className="mt-2 sm:flex sm:justify-between">
-                            <div className="sm:flex">
-                              <p
-                                className={classNames(
-                                  d.description
-                                    ? "text-gray-700"
-                                    : "text-gray-300",
-                                  "flex items-center text-sm text-gray-700"
-                                )}
-                              >
-                                {d.description
-                                  ? d.description
-                                  : "No description"}
-                              </p>
+                      <div
+                        key={d.name}
+                        className="group px-4 py-4 rounded-sm border border-gray-300"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="truncate text-base font-bold text-violet-600">
+                            {d.name}
+                          </p>
+                          {readOnly ? null : (
+                            <div className="ml-2 flex flex-shrink-0">
+                              <TrashIcon
+                                className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-700"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDelete(d.name);
+                                }}
+                              />
                             </div>
+                          )}
+                        </div>
+                        <div className="mt-2 sm:flex sm:justify-between">
+                          <div className="sm:flex">
+                            <p
+                              className={classNames(
+                                d.description
+                                  ? "text-gray-700"
+                                  : "text-gray-300",
+                                "flex items-center text-sm text-gray-700"
+                              )}
+                            >
+                              {d.description ? d.description : "No description"}
+                            </p>
                           </div>
                         </div>
-                      </a>
+                      </div>
                     </Link>
                   );
                 })}

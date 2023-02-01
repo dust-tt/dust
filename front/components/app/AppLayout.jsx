@@ -5,9 +5,10 @@ import { Disclosure, Menu } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
 import { classNames } from "../../lib/utils";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { Button } from "../Button";
+import { ChevronRightIcon, ComputerDesktopIcon } from "@heroicons/react/20/solid";
+import { ActionButton, Button } from "../Button";
 import { signIn } from "next-auth/react";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
 export default function AppLayout({ app, ga_tracking_id, children }) {
   const { data: session } = useSession();
@@ -73,13 +74,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                           aria-hidden="true"
                         />
-                        <Link href={`/${route_user}/apps`}>
-                          <a
-                            href="#"
-                            className="text-base font-bold text-gray-800"
-                          >
-                            {route_user}
-                          </a>
+                        <Link
+                          href={`/${route_user}/apps`}
+                          className="text-base font-bold text-gray-800"
+                        >
+                          {route_user}
                         </Link>
                       </div>
                     </li>
@@ -91,13 +90,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                             className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
                             aria-hidden="true"
                           />
-                          <Link href={`/${route_user}/a/${app.sId}`}>
-                            <a
-                              href="#"
-                              className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
-                            >
-                              {app.name}
-                            </a>
+                          <Link
+                            href={`/${route_user}/a/${app.sId}`}
+                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
+                          >
+                            {app.name}
                           </Link>
                         </div>
                       </li>
@@ -106,65 +103,13 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                     )}
                   </ol>
                 </nav>
-                <div className="static inset-auto hidden sm:flex flex-initial items-center pr-4">
-                  <Menu as="div" className="relative ml-3">
-                    <div>
-                      <Menu.Button
-                        className={classNames(
-                          "hover:bg-gray-50 text-gray-700",
-                          "flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4",
-                          "shadow-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2"
-                        )}
-                      >
-                        <span className="sr-only">Open help menu</span>
-                        Help
-                      </Menu.Button>
-                    </div>
-                    <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="/readme"
-                            target="_blank"
-                            className={classNames(
-                              active ? "bg-gray-50" : "",
-                              "block px-4 py-2 text-sm text-gray-700"
-                            )}
-                          >
-                            README
-                          </a>
-                        )}
-                      </Menu.Item>
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="https://discord.gg/8NJR3zQU5X"
-                            target="_blank"
-                            className={classNames(
-                              active ? "bg-gray-50" : "",
-                              "block px-4 py-2 text-sm text-gray-700"
-                            )}
-                          >
-                            Discord
-                          </a>
-                        )}
-                      </Menu.Item>
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="https://github.com/dust-tt/dust"
-                            target="_blank"
-                            className={classNames(
-                              active ? "bg-gray-50" : "",
-                              "block px-4 py-2 text-sm text-gray-700"
-                            )}
-                          >
-                            GitHub
-                          </a>
-                        )}
-                      </Menu.Item>
-                    </Menu.Items>
-                  </Menu>
+                <div className="static inset-auto hidden md:flex flex-initial items-center pr-4">
+                  <Link href="https://docs.dust.tt">
+                    <Button className="mr-2">
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      View Documentation
+                    </Button>
+                  </Link>
                 </div>
                 {session ? (
                   <div className="static inset-auto right-0 flex flex-initial items-center pr-2">
@@ -179,7 +124,48 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           />
                         </Menu.Button>
                       </div>
-                      <Menu.Items className="absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      <Menu.Items className="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                        <Menu.Item>
+                          {({ active }) => (
+                            <a
+                              href="https://docs.dust.tt"
+                              className={classNames(
+                                active ? "bg-gray-50" : "",
+                                "block px-4 py-2 text-sm text-gray-700"
+                              )}
+                            >
+                              Documentation
+                            </a>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <a
+                              href="https://discord.gg/8NJR3zQU5X"
+                              target="_blank"
+                              className={classNames(
+                                active ? "bg-gray-50" : "",
+                                "block px-4 py-2 text-sm text-gray-700"
+                              )}
+                            >
+                              Discord
+                            </a>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <a
+                              href="https://github.com/dust-tt/dust"
+                              target="_blank"
+                              className={classNames(
+                                active ? "bg-gray-50" : "",
+                                "block px-4 py-2 text-sm text-gray-700"
+                              )}
+                            >
+                              GitHub
+                            </a>
+                          )}
+                        </Menu.Item>
                         <Menu.Item>
                           {({ active }) => (
                             <a
@@ -200,13 +186,14 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                 ) : (
                   <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
                     <div className="-mr-2 sm:mr-0">
-                      <Button
+                      <ActionButton
                         onClick={() =>
                           signIn("github", { callbackUrl: "/api/login" })
                         }
                       >
+                        <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
                         Sign in with Github
-                      </Button>
+                      </ActionButton>
                     </div>
                   </div>
                 )}

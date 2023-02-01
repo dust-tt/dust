@@ -23,7 +23,7 @@ export default function SpecRunView({
 }) {
   return (
     <>
-      {app.description ? (
+      {app.description && spec.length > 0 ? (
         <div className="flex flex-auto mb-4">
           <div className="flex text-sm text-gray-400 italic">
             {app.description}
