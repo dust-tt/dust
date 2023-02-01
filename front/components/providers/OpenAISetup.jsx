@@ -97,7 +97,7 @@ export default function OpenAISetup({ open, setOpen, config, enabled }) {
                         can be found{" "}
                         <a
                           className="text-violet-600 hover:text-violet-500 font-bold"
-                          href="https://beta.openai.com/account/api-keys"
+                          href="https://platform.openai.com/account/api-keys"
                           target="_blank"
                         >
                           here

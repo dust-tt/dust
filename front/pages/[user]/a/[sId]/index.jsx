@@ -1,6 +1,6 @@
 import AppLayout from "../../../../components/app/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
-import { ActionButton } from "../../../../components/Button";
+import { ActionButton, Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
 import {
@@ -22,6 +22,7 @@ import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Deploy from "../../../../components/app/Deploy";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -318,43 +319,26 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
             />
 
             {spec.length == 0 ? (
-              <div className="max-w-4xl mt-2 text-sm text-gray-400">
-                <p className="">
-                  To get started we recommend you review Dust's{" "}
-                  <a
-                    href="/readme"
-                    target="_blank"
-                    className="font-bold text-violet-500 underline"
-                  >
-                    README
-                  </a>{" "}
-                  and/or explore and potentially clone{" "}
-                  <a
-                    href="https://dust.tt/spolu/a/2316f9c6b0"
-                    className="font-bold text-violet-600 underline"
-                    target="_blank"
-                  >
-                    a
-                  </a>{" "}
-                  <a
-                    href="https://dust.tt/spolu/a/d12ac33169"
-                    className="font-bold text-violet-500 underline"
-                    target="_blank"
-                  >
-                    working
-                  </a>{" "}
-                  <a
-                    href="https://dust.tt/bcmejla/a/cc20d98f70"
-                    className="font-bold text-violet-500 underline"
-                    target="_blank"
-                  >
-                    example
-                  </a>
-                  .
+              <div className="mx-auto mt-8 text-sm text-gray-400">
+                <p className="">Welcome to your new Dust app.</p>
+                <p className="mt-4">To get started:</p>
+                <p className="mt-2">
+                  <Link href="https://docs.dust.tt" target="_blank">
+                    <Button className="mr-2">
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      View Documentation
+                    </Button>
+                  </Link>
                 </p>
-                <p className="py-2">
-                  When ready, start adding blocks to your app.
+                <p className="mt-2">
+                  <Link href="https://docs.dust.tt/quickstart" target="_blank">
+                    <Button className="mr-2">
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      Follow the QuickStart Guide
+                    </Button>
+                  </Link>
                 </p>
+                <p className="mt-2">...or add your first block!</p>
               </div>
             ) : null}
 
