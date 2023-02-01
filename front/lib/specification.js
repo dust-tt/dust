@@ -152,7 +152,7 @@ export function addBlock(spec, idx, blockType) {
         name: "",
         indent: 0,
         spec: {
-          code: "_fun = (env) => {\n  // `env.state.BLOCK_NAME` constains BLOCK_NAME output.\n}",
+          code: "_fun = (env) => {\n  // `env.state.BLOCK_NAME` contains BLOCK_NAME's output.\n}",
         },
         config: {},
       });
