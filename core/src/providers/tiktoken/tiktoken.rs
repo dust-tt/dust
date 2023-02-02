@@ -1,4 +1,6 @@
 // Adapted from https://github.com/openai/tiktoken
+// Copyright (c) 2022 OpenAI, Shantanu Jain
+// License: https://github.com/openai/tiktoken/blob/main/LICENSE
 
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
