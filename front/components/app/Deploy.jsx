@@ -170,7 +170,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         </div>
                       </div>
                       <p className="mt-4 text-sm text-gray-500">
-                        For a detailed documentation on the Run model and run
+                        For a detailed documentation of the Run model and Run
                         creation parameters, refer to the API reference.
                       </p>
                       <p className="mt-2">

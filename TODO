@@ -26,14 +26,14 @@
 - [x] Landing
 - [x] Github Login
 - [x] Design + Run
-- [ ] dust deploy (serve as an endpoint and log)
+- [x] dust deploy (serve as an endpoint and log)
   - [x] runs list
   - [x] create run API
   - [x] retrieve runId status and traces
   - [x] APIRun object? (no need, everything is recoverable from run object)
   - [x] blocking parameter?
   - [x] deploy button
-  - [ ] Documentation
+  - [x] Documentation
 
 # Go LIvE
 
@@ -70,7 +70,7 @@
 - [x] clone app
 - [x] replit block (to cover curl, headless browser, advanced code)
 - [x] demo 2: web search assistant
-- [ ] pre-fill new app + community examples in app view
+- [-] pre-fill new app + community examples in app view
   - [x] blocked on clone
   - [x] prepare template app: https://dust.tt/spolu/a/768845d004
   - [x] show community apps in app pane
@@ -85,9 +85,13 @@
 
 # Next
 
+- [x] Documentation portal
+- [ ] tiktoken support + encode/decode on llm providers
+- [ ] llm block max_tokens=-1
+- [ ] browser block options
 - [ ] while block
 - [ ] if/then block
 - [ ] eval jobs
 - [ ] edit inputs from input block?
 - [ ] block descriptions
-- [ ] block options
+- [ ] block custom configs

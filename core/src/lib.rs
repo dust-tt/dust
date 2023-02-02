@@ -22,6 +22,9 @@ pub mod providers {
     pub mod llm;
     pub mod openai;
     pub mod provider;
+    pub mod tiktoken {
+        pub mod tiktoken;
+    }
 }
 pub mod http {
     pub mod request;
