@@ -4,6 +4,18 @@
 
 Generative Models App Specification and Execution Engine.
 
+## Documentation Portal
+
+- [LLM apps Primer](https://docs.dust.tt/introduction)
+- [Platform overview](https://docs.dust.tt/overview)
+- [Blocks documentation](https://docs.dust.tt/core-blocks)
+- [Getting started guide](https://docs.dust.tt/quickstart)
+- [Runs API Reference](https://docs.dust.tt/runs)
+
+### Questions / Help
+
+Join our [Discord](https://discord.gg/8NJR3zQU5X).
+
 ## Command-line Client Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
@@ -53,7 +65,3 @@ EOF
 3. Run `npm install`
 4. Run `DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
 5. Start server with `npm run dev`
-
-## Questions / Help
-
-https://discord.gg/8NJR3zQU5X
