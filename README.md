@@ -1,10 +1,10 @@
 [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40dust4ai&style=social&url=https%3A%2F%2Ftwitter.com-dust4ai)](https://twitter.com/dust4ai) [![](https://dcbadge.vercel.app/api/server/8NJR3zQU5X?compact=true&style=flat)](https://discord.gg/8NJR3zQU5X)
 
-# Dust
+# [Dust](https://dust.tt)
 
-Generative Models App Specification and Execution Engine.
+Design and Deploy Large Language Model Apps
 
-## Documentation Portal
+## :book: Documentation Portal
 
 - [LLM apps Primer](https://docs.dust.tt/introduction)
 - [Platform overview](https://docs.dust.tt/overview)
@@ -12,11 +12,11 @@ Generative Models App Specification and Execution Engine.
 - [Getting started guide](https://docs.dust.tt/quickstart)
 - [Runs API Reference](https://docs.dust.tt/runs)
 
-### Questions / Help
+### :thinking: Questions / Help
 
 Join our [Discord](https://discord.gg/8NJR3zQU5X).
 
-## Command-line Client Quick Start
+## :laptop: Command-line Client Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
