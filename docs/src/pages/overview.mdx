@@ -17,29 +17,28 @@ specifically intended to ease:
 
 ## Motivation
 
-In this section, based on years of experience designing large language model apps, we argue that
-code is not the most appropriate abstraction layer when designing large language model apps.
+Based on years of experience designing large language model apps, we argue that code is not the most appropriate abstraction layer when designing large language model apps.
 
-**Entanglement and Speed.** When designing such apps, which generally consists in chains of calls to
+**Entanglement and Speed.** When designing such apps, which generally consist in chains of calls to
 large language models, it is highly recommended to work on multiple examples at the same time (maybe
 a half-dozen) to avoid _overfitting_ your design to one particular example. Given the latency
 associated with querying large language models, when working on an app with, say, 3 chained called
 to a model, using 6 examples at the same time, testing your app already requires 18 calls to a large
-language model. The first thing most developer will do is parallelizing the execution of the app,
+language model. The first thing most developers will do is to parallelize the execution of the app,
 effectively entangling the logic of the app with language-specific execution code. In our
 experience, this has created a lot of friction while exploring the design space of an app, as each
-change of paradigm generally requires a refactor of the execution code produced so far.
+change of paradigm generally requires a refactor of the execution code already produced.
 
-**Introspection.** Additionally, large language models outputs are extremely verbose, they include
-not only the text generated but also the propabilities of each associated tokens. When iterating on
-the design of a large language model app, especially if it has chained calls, most developer will
-stop logging the output of the models (to avoid flooding their console, especially when executing in
-parallel), preventing later introspection of the behavior of each element of the app.
+**Introspection.** Additionally, large language model outputs are extremely verbose. They include
+not only the text generated but also the probabilities of each associated token. When iterating on
+the design of a large language model app, especially if it has chained calls, most developers will
+stop logging the outputs of the model to avoid flooding their console (especially when executing in
+parallel). This prevents later introspection of the behavior of each element of the app.
 
-**Versioning.** Finally, designing a large language model app, is an extremely iterative process. It
+**Versioning.** Finally, designing a large language model app is an extremely iterative process. It
 requires iterating on the prompt associated with each chained call to a large language model, as
-well as the overall orchestration logic. This iterative nature makes it very easy to forget, or fail
-to capture, the state of an app at a given point of time, preventing its recovery if the design
+well as the overall orchestration logic. This iterative nature makes it easy to forget or fail
+to capture the state of an app at a given point in time. This prevents its recovery if the design
 exploration leads to a dead-end.
 
 Dust intends to solve each of these pain points by introducing a block structure along with an
@@ -50,19 +49,19 @@ automated caching and versioning system.
   iteration. As a result, Dust apps encode their logic and nothing more, making them easier to
   understand and maintain.
 
-- **Introspection**: Dust automatically stores every block execution output and provides an UI for
-  easily introspecting them on-demand. We believe leveraging an UI to be crucial while designing large
+- **Introspection**: Dust automatically stores every block execution output and provides an UI to
+  easily introspect them on-demand. We believe leveraging a UI is crucial while designing large
   language model apps to allow, when needed and possibly retro-actively, the introspection of each
   block output.
 
 - **Versioning**: Dust automatically stores each version of your app as well as each execution of it
   allowing you to design with confidence, knowing that it is always possible recover a previous
-  version of your large language model app, which we believe is important given the highly iterative
+  version of your large language model app. We believe this is important given the highly iterative
   nature of this process.
 
 ## Blocks
 
-Dust apps are composed of blocks which are executed sequentially. Blocks don't have inputs, but they
+Dust apps are composed of blocks executed sequentially. Blocks don't have inputs, but they
 can refer to the output of any previously executed block.
 
 A block has a **type** and a **BLOCK_NAME** (uppercase, no space). Each block, when executed outputs
@@ -76,15 +75,13 @@ a JSON object that can later be accessed by subsequent blocks using their name.
   `AGGREGATE` blocks output objects._
 </Image>
 
-Each block have a set of _specification_ arguments and _configuration_ arguments. The specification
+Each block has a set of _specification_ arguments and _configuration_ arguments. The specification
 arguments are arguments that are not meant to be changed from one execution to the other. The
 configuration arguments are arguments that can be changed from one execution to the other. The
 distinction between the two is somewhat arbitrary and guided by the motivation of being able to run
-an app with various configurations, as an example, to evaluate the performance of different models.
-To illustrate the distinction, the `llm` block's _prompt_ is part of its specification whereas the
-_model_ is part of its configuration.
+an app with various configurations. As an example, this can be used to evaluate the performance of different models. To illustrate the distinction, the `llm` block's _prompt_ is part of its specification whereas the _model_ is part of its configuration.
 
-The Dust Platform UI does not explicitely expose the distinction. But you can arbitrarily change the
+The Dust Platform UI does not explicitly expose the distinction. But you can arbitrarily change the
 configuration of each blocks of an app each time you call it by API.
 
 ## Inputs
@@ -103,9 +100,9 @@ execution. After the `input` block, there is as many parallel streams of executi
 elements in the dataset associated with the `input` block.
 
 <Note>
-  The `input` block is used to parametrize an app behavior. While designing the
-  app, it is associated to a dataset of input examples. When the app is run by
-  API, it will return the inputs passed by API.
+  The `input` block is used to parametrize an app's behavior. While designing the
+  app, it is associated to a dataset of input examples. When the app is run by API, 
+  it will return the inputs passed by API.
 </Note>
 
 When run by API, an app receives an array of inputs (generally just one, but multiple is possible)
@@ -125,7 +122,7 @@ phase.
 
 ## Datasets
 
-Dust apps can also define datasets which are arrays of JSON objects. Datasets main roles are:
+Dust apps can also define datasets which are arrays of JSON objects. Datasets' main roles are to:
 
 - Store example inputs on which the app is run during its design. These datasets are pulled from
   `input` blocks.
@@ -138,7 +135,7 @@ version.
 ## Execution
 
 The Dust execution engine will run an app in parallel on each element attached to the `input` block.
-Each input's execution trace is completely independent and they cannot be cross-referenced. Previous
+Each input's execution trace is completely independent and these cannot be cross-referenced. Previous
 runs of an app are stored along with the app version and all the associated block outputs. They can
 be retrieved from the `Runs` panel.
 

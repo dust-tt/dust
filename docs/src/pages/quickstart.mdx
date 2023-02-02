@@ -1,35 +1,35 @@
 export const description =
-  'This guide will help you get started with Dust with step by step instructions to build your first Dust app.'
+  'This guide will help you get started with Dust with step-by-step instructions to build your first Dust app.'
 
 # Quickstart
 
-This guide will help you get started with Dust with step by step instructions to build your first
+This guide will help you get started with Dust with step-by-step instructions to build your first
 Dust app. {{ className: 'lead' }}
 
 <Note>
-  Before you can create your first Dust app you need to sign-in on
+  Before you can create your first Dust app you need to sign in on
   [Dust](https://dust.tt) with your GitHub account. If needed, you can create
   one [here](https://github.com).
 </Note>
 
 ## Setting up your first model provider
 
-Dust apps rely on models providers to interact with large language models. You can setup your first
+Dust apps rely on model providers to interact with large language models. You can setup your first
 model provider by clicking on the **Providers** pane and setting up the OpenAI provider. You'll need
 to create an account at [OpenAI](https://platform.openai.com) and retrieve your [API
 key](https://platform.openai.com/account/api-keys).
 
 <Image src="/quickstart_openai_provider.png" alt="OpenAI provider setup">
   _Once you have input a valid API key, you should see the OpenAI provider as
-  enabled in the **Providers** pane._
+  enabled in the **Providers** panel._
 </Image>
 
-Whenever your app will interact with an OpenAI model, it'll use the API key you provided to do so.
+Whenever your app interacts with an OpenAI model, it'll use the API key you provided to do so.
 The costs of running these models will be reported on OpenAI's dashboard.
 
 ## Creating a new app
 
-You can now create a new app by clicking on the **New App** button from your main dashboard. You'll
+You can now create a new app by clicking on **New App** from your main dashboard. You'll
 need to provide the following information:
 
 <Image src="/quickstart_newapp.png" alt="OpenAI app creation panel">
@@ -45,25 +45,25 @@ need to provide the following information:
 
 Once you click on **Create** you are redirected to your new Dust app's view. The default panel is
 the **Specification** panel where you will build your app by adding blocks. The **Datasets** panel
-let you manage datasets (for inputs or few-shot examples).
+lets you manage datasets (for inputs or few-shot examples).
 
-The **Run** button is currently disabled as you haven't added any block to your app yet.
+The **Run** button is disabled at first as you haven't added any block to your app yet.
 
 ## Add your first block
 
-You are ready to add your first block. Click on the **+ Block** button and add an `input` block. The
+You are ready to add your first block. Click on **+ Block** and add an `input` block. The
 `input` block appears in your app specification view. The `input` block needs to get attached to a
 dataset. Each time it will be executed, it'll fork your app execution on each element of the dataset
 to enable you to design your app against multiple examples to avoid overfitting your design to one
 input. You can learn more about how the `input` block works in the [Inputs](/overview#inputs)
 section of the platform overview.
 
-Click on the **Create Dataset** button inside the `input` block to create a new dataset. You are now
-redirected to the **Datasets** pane. And a new draft dataset with basic arithmetic questions has
+Click on **Create Dataset** inside the `input` block to create a new dataset. You are now
+redirected to the **Datasets** panel. And a new draft dataset with basic arithmetic questions has
 been prepared for you. Give the name _dev_ to your dataset, you can leave the description empty. Our
 example app will attempt to answer these basic arithmetic questions. The **Schema** lets you control
 the schema of your dataset's entries. The Data section lets you edit, add, or remove elements to
-your dataset. You can leave the dataset as is and click **Create**.
+your dataset. You can leave the dataset as-is and click **Create**.
 
 You can now return to your app's specification view and select the _dev_ dataset from the `input`
 block dropdown.
@@ -78,7 +78,7 @@ It is time to run your app for the first time! Click **Run** and wait for the ex
   the ones shown above._
 </Image>
 
-## Data block
+## Data blocks
 
 Before we can add our first `llm` block, we'll add a `data` block to the app to store the few-shot
 examples used to prompt the model. Go to the **Datasets** panel and create a new dataset. Name it
@@ -90,7 +90,7 @@ block **Select Dataset** button and select _examples_.
 
 <Note>
   Note that your blocks are automatically given a default name (_EXAMPLES_ for
-  your `data` block). Know that you can change the name of your blocks by
+  your `data` block). You can change the name of your blocks by
   clicking on the block name in the specification view. Let's keep the default
   name for now so that we can refer to it in the next blocks.
 </Note>
@@ -100,23 +100,23 @@ created `data` block.
 
 <Image src="/quickstart_data.png" alt="Execution of the data block">
   _This is the expected state of your Dust app. As you can see the `data` block
-  as a different behaviour than the `input` block. For each execution stream it
+  has a different behaviour than the `input` block. For each execution stream it
   returns the entire dataset as an array. This dataset is the same for each
   execution stream and will be use to few-shot prompt the model in the next
   block. The examples in your datasets might differ from the ones shown above._
 </Image>
 
-## LLM block
+## LLM blocks
 
 We're ready to interact with a large language model. Add an `llm` block, select _openai_ as provider
 and _text-davinci-003_ as model. You can leave the `temparature` and `max_tokens` unchanged.
 
-Now is time to construct our prompt. The prompt field supports [Tera](https://tera.netlify.app/)
+Now it's time to construct our prompt. The prompt field supports [Tera](https://tera.netlify.app/)
 templating to construct the prompt to the model from the outputs of the previously executed blocks.
 You can refer to the [LLM Block](core-blocks#llm-block) documentation for more details on the
 templating system.
 
-We will use the following prompt to encode to the model (using few-shot prompting) that we want it
+We will use the following prompt to encode in the model (using few-shot prompting) that we want it
 to reply with a valid numerical answer:
 
 ```
@@ -145,13 +145,13 @@ QUESTION: What is 12*4?
 ANSWER:
 ```
 
-This is called few-shot prompting, by showing a few valid examples, we encode the task to the model.
+This is called few-shot prompting, by showing a few valid examples, we encode the task in the model.
 We finish the prompt with just the question from the input we're working on. As the model will try
 to complete the prompt, it should naturally try to answer the question with a valid answer.
 
 Also add a `stop` sequence, by typing in _QUESTION_ and hitting enter. This will stop the generation
 from the model once it encounters the _QUESTION_ sequence. This may happen as the model may simply
-try to complete the prompt with more questions and answers after genreting the answer to your
+tries to complete the prompt with more questions and answers after genereting the answer to your
 question.
 
 You can now run your app. It will be a bit slower this time as we'll have to wait for the model to
@@ -159,7 +159,7 @@ generate an answer by calling into the OpenAI API.
 
 <Note>
   If you run the unmodified app again, the automatic caching mechanism of the
-  `llm` block will quick in and you won't spend any resources on OpenAI.
+  `llm` block will kick in and you won't spend any resources on OpenAI.
 </Note>
 
 You can explore the outputs of the `llm` block. It contains both a `prompt` object reprensenting
@@ -190,7 +190,7 @@ _fun = (env) => {
 ```
 
 We're simply echoing the input `question` and returning the answer generated by the model by triming
-its completion. You can now run your app and explore the 3 executions final outputs to check that
+its completion. You can now run your app and explore the 3 executions' final outputs to check that
 all answers are correct.
 
 <Image src="/quickstart_final.png" alt="Execution of the llm block">
@@ -204,7 +204,7 @@ Congrats on designing your first Dust app! You can inspect the different runs on
 ## (Advanced) Running your app by API
 
 Congrats on designing your first app! You can now return to your profile by clicking the Dust logo
-to create a new API key in the **API Keys** panel. Click the **Create new secret key** button and
+to create a new API key in the **API Keys** panel. Click **Create new secret key** and
 return to the **Apps** panel and finally to your app.
 
 As you can see the full state of the app is preserved, including block outputs.

@@ -74,9 +74,8 @@ learners**; they are capable of understanding a task with just a few examples.
 
 Intuitively, if you had read and somewhat memorized the entire Internet, and were tasked to generate
 the most likely completion to the prompt above, similarly to the model you would likely decide that
-the correct continuation is a translation of the last sentence. Large language models are
-basically the same. And in many aspects, being trained on human-generated data, they often appear as
-surprisingly _anthropomorphic_.
+the correct continuation is a translation of the last sentence. Large language models work in
+basically the same way. And in many aspects, being trained on human-generated data, they often appear as surprisingly _anthropomorphic_.
 
 ### Instruction-following
 
@@ -89,15 +88,12 @@ size. Instead you could try to provide _instructions_ to the model:
 Generate a 1-paragraph summary of the text above:
 ```
 
-While this is a good idea, for models that were solely trained on data from the Internet, this
-approach is in practice quite brittle compared to few-shot prompting. Not that often do documents
-appear on the Internet with instructions, followed by the result of applying these instructions. Not
-impossible but not common, hence the reason why it works at times but remains brittle. A naive use
-of instructions on such models will often lead to the model ignoring instructions (maybe assuming it
-was text from an ad) or failing to properly apply them.
+While a good idea, for models that were solely trained on data from the Internet, this
+approach is in practice quite brittle compared to few-shot prompting. Documents seldom
+appear on the Internet with instructions, followed by the result of applying these instructions. Its not impossible but not common, hence the reason why it works at times but remains brittle. A naive use of instructions on such models will often lead to the model ignoring the instructions (maybe assuming it was text from an ad) or failing to properly apply them.
 
 <Note>
-  Instruction-following models alleviates the need for few-shot prompting.
+  Instruction-following models alleviate the need for few-shot prompting.
 </Note>
 
 To solve this issue, large language models can be **fine-tuned** (trained for a bit longer on top of
@@ -111,13 +107,10 @@ fine-tuning paradigm called [reinforcement learning from human feedback](#).
 
 ### Fine-tuning
 
-Another way to encode a task, as well as teach the model new information is to use fine-tuning.
-Since it involves training, fine-tuning will drastically alter the _distribution_ (the behavior) of
-your model.
+Another way to encode a task or teach the model new information is to use fine-tuning.
+Since it involves training, fine-tuning will drastically alter the _distribution_ (the actual behavior) of your model.
 
-Let say you have a database of hundreds of thousands of customer support interactions in the form of
-`(question, answer)` pairs. To construct a customer-support bot, you could fine-tune a model on the
-following distribution (or dataset, the two can be used interchangeably as a dataset represents a
+Let's say you have a database of hundreds of thousands of customer support interactions in the form of `(question, answer)` pairs. To construct a customer-support bot, you could fine-tune a model on the following distribution (or dataset, the two can be used interchangeably as a dataset represents a
 distribution):
 
 ```
@@ -140,10 +133,10 @@ fine-tuning or training objective), the model would have to memoize that informa
 the task would be encoded in the new distribution of the model, and instruction-following or
 few-show prompting would not be required anymore.
 
-**Caveats.** This looks ideal but there are a few caveats one has to be careful about with
-_fine-tuning_. First given the size of typical models, a lot of data is needed for fine-tuning to
-work well in practice (think 10m-100m words). Additionally, it is unclear (it is still an open
-research question) how much fine-tuning brain-damages the model (rendering it less smart). Finally
+**Caveats.** This looks ideal but there are a few caveats to keep in mind with with
+_fine-tuning_. First, given the size of typical models, a lot of data is needed for fine-tuning to
+work well in practice (think 10m-100m words). Additionally, it is unclear—and still an open
+research question—how much fine-tuning brain-damages the model, rendering it less smart. Finally,
 one has to be careful about exactly how they encode the task. As an example, if the date of the
 question is not shown to the model in the examples above, the model might consider deprecated
 information as still relevant and answer erroneously, or maybe learn spurious statistical
@@ -155,13 +148,13 @@ leading to surprising or unexpected results.
 
 ## Large Language Model Apps
 
-A large language model app is a chain of one or multiple pompted calls to models or external
-services (such as APIs or data sources) in order to achieve a particular task. Said otherwise, a
+A large language model app is a chain of one or multiple prompted calls to models or external
+services (such as APIs or data sources) designed to perform a particular task. Said otherwise, a
 large language model app is an orchestration layer that sits on top of a model in order to
 specialize its behavior to perform a specific task.
 
 <Note>
-  A large language model app is a chain of one or multiple pompted calls to
+  A large language model app is a chain of one or multiple prompted calls to
   models or external services (such as APIs or data sources) in order to achieve
   a particular task.
 </Note>
@@ -186,7 +179,7 @@ increasing complexity with links to their implementation in Dust.
 
 ### (Easy) Translation
 
-As we have seen above, translation is a simple task that can be encoded using a few-shot prompt. A
+As seen above, translation is a simple task that can be encoded using a few-shot prompt. A
 large language model app for translation therefore mostly consists in one parametrized call to a
 large language model. In Dust, this is achievable with the following blocks (most of these blocks
 are described in greater details the following pages):
@@ -222,7 +215,7 @@ sent to the model and the completion it returned by clicking on the outputs of t
 
 ### (Medium) Recursive Summarization
 
-Recursive summarization consists in summarizing a piece of text that is too large to hold in the
+Recursive summarization consists in summarizing a piece of text that is too long to hold in the
 context of the large language model. The technique consists in splitting the text in chunks and
 summarizing each chunk separately. The output of the summarization of each chunk is then
 concatenated and used to produce a final summary.
@@ -259,7 +252,7 @@ These two prompts are just examples of how to encode the task of summarization t
 instruct-following model. They can likely be improved or modified to produce specific results.
 
 The Dust app that demonstrates this technique leverages blocks such as `map` and `reduce` that will
-be more clearly explained in the following pages. Nonetheless you can find and explore its full
+be more clearly explained in the following pages. You can find and explore its full
 implementation here: [recusive-summarization](https://dust.tt/spolu/a/eeac37ce40).
 
 ### (Advanced) Mathematics
