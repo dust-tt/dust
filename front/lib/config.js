@@ -50,6 +50,11 @@ export function extractConfig(spec) {
               ? spec[i].config.use_cache
               : false
             : false,
+          error_as_output: spec[i].config
+            ? spec[i].config.errors_as_output
+              ? spec[i].config.errors_as_output
+              : false
+            : false,
         };
         break;
     }

@@ -17,12 +17,18 @@ pub struct Error {
 pub struct Browser {
     url: String,
     selector: String,
+    timeout: usize,
+    wait_until: Option<String>,
+    wait_for: Option<String>,
 }
 
 impl Browser {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut url: Option<String> = None;
         let mut selector: Option<String> = None;
+        let mut timeout: Option<usize> = None;
+        let mut wait_until: Option<String> = None;
+        let mut wait_for: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -31,6 +37,22 @@ impl Browser {
                     match key.as_str() {
                         "url" => url = Some(value),
                         "selector" => selector = Some(value),
+                        "timeout" => match value.parse::<usize>() {
+                            Ok(t) => timeout = Some(t),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `timeout` in `browser` block, expecting unsigned integer"
+                            ))?,
+                        },
+                        "wait_until" => match value.as_str() {
+                            "load" | "domcontentloaded" | "networkidle0" | "networkidle2" => {
+                                wait_until = Some(value)
+                            }
+                            _ => Err(anyhow!(
+                                "Invalid `wait_until` in `browser` block, expecting one of \
+                                  `load`, `domcontentloaded`, `networkidle0`, `networkidle2`"
+                            ))?,
+                        },
+                        "wait_for" => wait_for = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `browser` block", key))?,
                     }
                 }
@@ -48,9 +70,16 @@ impl Browser {
             Err(anyhow!("Missing required `selector` in `browser` block"))?;
         }
 
+        if !timeout.is_some() {
+            timeout = Some(16000);
+        }
+
         Ok(Browser {
             url: url.unwrap(),
             selector: selector.unwrap(),
+            timeout: timeout.unwrap(),
+            wait_until,
+            wait_for,
         })
     }
 }
@@ -66,6 +95,13 @@ impl Block for Browser {
         hasher.update("browser".as_bytes());
         hasher.update(self.url.as_bytes());
         hasher.update(self.selector.as_bytes());
+        hasher.update(self.timeout.to_string().as_bytes());
+        if let Some(wait_until) = &self.wait_until {
+            hasher.update(wait_until.as_bytes());
+        }
+        if let Some(wait_for) = &self.wait_for {
+            hasher.update(wait_for.as_bytes());
+        }
         format!("{}", hasher.finalize().to_hex())
     }
 
@@ -111,6 +147,35 @@ impl Block for Browser {
             },
         }?;
 
+        let mut body_json = json!({
+            "url": url,
+            "elements": [ { "selector": self.selector } ],
+            "gotoOptions": {
+                "timeout": self.timeout,
+            },
+        });
+
+        if let Some(wait_for) = &self.wait_for {
+            match wait_for.parse::<usize>() {
+                Ok(t) => {
+                    body_json["waitFor"] = Value::Number(serde_json::Number::from(t));
+                }
+                _ => {
+                    body_json["waitFor"] = Value::String(wait_for.clone());
+                }
+            }
+        }
+
+        if let Some(wait_until) = &self.wait_until {
+            body_json["gotoOptions"]["waitUntil"] = Value::String(wait_until.clone());
+        }
+
+        println!(
+            "Browser running with: {} error_as_output={}",
+            body_json.to_string(),
+            error_as_output
+        );
+
         let request = HttpRequest::new(
             "POST",
             format!(
@@ -122,17 +187,7 @@ impl Block for Browser {
                 "Cache-Control": "no-cache",
                 "Content-Type": "application/json",
             }),
-            Value::String(
-                json!({
-                    "url": url,
-                    "elements": [ { "selector": self.selector } ],
-                    "gotoOptions": {
-                        "timeout": 16000,
-                        "waitUntil": "networkidle2",
-                    },
-                })
-                .to_string(),
-            ),
+            Value::String(body_json.to_string()),
         )?;
 
         let response = request
