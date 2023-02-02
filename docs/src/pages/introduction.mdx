@@ -1,9 +1,9 @@
 export const description =
-  'An introduction to large language models, prompting, and large language model apps design.'
+  'An introduction to large language models, prompting, and the design of large language model apps.'
 
 # Introduction
 
-An introduction to large language models, prompting and large language model apps design, covering,
+An introduction to large language models, prompting and large language model app design, covering,
 with no prerequesites, the core concepts required to build applications on top of large language
 models. {{ className: 'lead' }}
 
@@ -17,16 +17,14 @@ required by the transformer architecture). They are trained over internet-scale 
 list of tokens passed as input.
 
 <Note>
-  Given some text as input, the **prompt**, a large language model will generate
+  Given some text as input, called the **prompt**, a large language model will generate
   a likely completion based on its training data. It can simply be seen as a
   massive auto-complete system trained at Internet-scale.
 </Note>
 
-To generate text from a large language model, we use what is refered to as _auto-regressive
-decoding_. Given a suite of tokens as input, generally called a **prompt**, we use the model to
-predict the next token. Once this token is predicted we append it to the current prompt and
-reiterate the same process until the model emits a special `<|EndofText|>` token or runs out of
-context.
+To generate text from a large language model, we use what is referred to as _auto-regressive
+decoding_. Given a **prompt**, we use the model to predict the next token. Once this token is predicted we append it to the current prompt and reiterate the same process until the model emits 
+a special `<|EndofText|>` token or runs out of context.
 
 ### Context Size
 
@@ -34,24 +32,24 @@ To predict the next token, Transformer-based large language models will _attend_
 previous tokens, the prompt) with a processus called _Attention_. This computationally expensive
 process imposes constraints on the maximum amount of text a model can operate with. This maximum
 length is referred to as its **context size**. Each large language model has a specific
-context-size, but it generally consists of 4000 tokens (~4000 words) (some have 2000, some others
-have up to 8000).
+context size, but it generally consists of 4000 tokens (~4000 words). Some have 2000, others
+have up to 8000.
 
-When working with large language model, context size is one of the biggest limiting factor, as it
+When working with a large language model, context size is one of the main limiting factors, as it
 bounds the amount of information you can use to condition the prediction of the model.
 
 ### Prompting
 
 If you want to get a model to continue an article, you'll generally use the beginning of the article
 as prompt, providing amply enough signal for the model to _understand_ that you're interested in
-generating the rest of the article. But let say you want to translate a piece of english text to
-french? How would encode to the model the fact that you want your sentence translated?
+generating the rest of the article. But let's say you want to translate a piece of English text to
+French? How would encode for the model the fact that you want your sentence _translated_?
 
 For models that are solely trained on data extracted from the Internet, the best technique to encode
 which task you're interested in is to use **few-shot prompting**. Few-shot prompting consists in
-demonstrating to the model a few examples of the task you're interested in as a way to _encode_ that
+showing to the model a few examples of the task you're interested in as a way to _encode_ that
 task. As an example, the following prompt will successfully lead to your `<YOUR SENTENCE>` being
-translated in french:
+translated in French:
 
 ```
 EN: Good Morning.

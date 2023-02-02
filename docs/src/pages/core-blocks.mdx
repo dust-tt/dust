@@ -6,7 +6,7 @@ An overview of Dust's core blocks. You'll learn about their functionality and us
 'lead' }}
 
 Dust apps are composed of [Blocks](/overview#blocks) which are executed sequentially. Each block
-produce ouptputs and can refer to the ouptuts of previously executed blocks. We invite you to review
+produces outputs and can refer to the outputs of previously executed blocks. We invite you to review
 the sections on [Inputs](/overview#inputs) and [Execution](/overview#execution) to better
 understand the execution logic of a Dust app.
 
@@ -17,10 +17,10 @@ refer to the [Blocks](/overview#blocks) section for more detail on the differenc
 
 ## Input block
 
-The `input` block is the entry point to a Dust app and receives the arguments, in the form of JSON
-objects, on which the app is executed. During the design phase of the app it is associated to a
-[Dataset](/overview#datasets) of examples used to iterate on the app. When deployed by API, the
-`input` block receives the arguments passed to the app by API.
+The `input` block is the entry point to a Dust app and receives the arguments on which the app is executed, in the form of JSON
+objects. During the design phase of the app it is associated to a [Dataset](/overview#datasets) of 
+examples used to iterate on the app. When deployed by API, the `input` block receives the arguments passed 
+to the app by API.
 
 Refer to the [Inputs](/overview#inputs) section for more detail on how the `input` block forks the
 execution of the app in independent execution streams. When run by API, the dataset to which the
@@ -39,7 +39,7 @@ execution of the app in independent execution streams. When run by API, the data
 
 ## Data block
 
-The `data` block outputs the dataset it is associated with. Conversely to the `input` block it does
+The `data` block outputs the dataset it is associated with. Unlike the `input` block it does
 not fork the execution of the app and simply returns the entire dataset as an array of JSON objects.
 
 The `data` block is generally used in conjunction with an `llm` block to output a dataset of
@@ -93,7 +93,7 @@ outputs.
   </Property>
   <Property name="config" type="object">
     The configuration with which the app is currently run. An object whose keys
-    are block names and values are their associated configuration values.
+    are block names and values are the associated configuration values.
   </Property>
 </Properties>
 
@@ -117,17 +117,17 @@ It is used to issue completion requests to large language models as part of an a
     below for more details on templating).
   </Property>
   <Property name="temperature" type="float">
-    The temperature to use when sampling from the model. Higher _temperature_
-    (eg _1.0_) results in more diverse completions, while lower _temperature_
+    The temperature to use when sampling from the model. A higher _temperature_
+    (eg _1.0_) results in more diverse completions, while a lower _temperature_
     (eg _0.0_) results in more conservative completions.
   </Property>
   <Property name="max_tokens" type="integer">
-    The maximum number of tokens to generate from the model. A can very broadly
+    The maximum number of tokens to generate from the model. It can be very broadly
     seen as a word worth of content. The model may decide to stop generation
     before reaching `max_tokens`.
   </Property>
   <Property name="stop" type="[]string">
-    An array of strings that should interupt completion when sampled from the
+    An array of strings that should interrupt completion when sampled from the
     model.
   </Property>
   <Property name="frequency_penalty" type="float">
@@ -135,7 +135,7 @@ It is used to issue completion requests to large language models as part of an a
     on their existing frequency in the text so far, decreasing the model's
     likelihood to repeat the same line verbatim.
   </Property>
-  <Property name="presence_penalty" type="float">
+  <Property name="presence_penalty" type="float">	
     Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
     on whether they appear in the text so far, increasing the model's likelihood
     to talk about new topics.
@@ -178,7 +178,7 @@ It is used to issue completion requests to large language models as part of an a
 ### Prompt templating
 
 The `prompt` field of the `llm` block can be templated using the
-[Tera](https://tera.netlify.app/docs/#templates). This is in particular useful to construct few-shot
+[Tera](https://tera.netlify.app/docs/#templates). This is particularly useful to construct few-shot
 prompts for models. Here's an example of templated model prompt:
 
 ```
@@ -196,7 +196,7 @@ with the English sentence from the `INPUT` block output `english` field. A fully
 app relying on this prompt can be found [here](https://dust.tt/spolu/a/d903a92151).
 
 The [Tera](https://tera.netlify.app/) templating language supports a variety of constructs including
-loops and variable replacement. We refer to the [Tera
+loops and variable replacement. Please refer to the [Tera
 documentation](https://tera.netlify.app/docs/#templates) for more details.
 
 ---
@@ -204,7 +204,7 @@ documentation](https://tera.netlify.app/docs/#templates) for more details.
 ## Map Reduce blocks
 
 The `map` and `reduce` blocks are used to execute the set of blocks in between them on each elements
-of an array, in parallel. The `map` block takes as `from` specification argument a block name. If
+of an array, in parallel. The `map` block takes a block name as `from` specification argument.  If
 the output of the block referred to is an array, the execution stream will fork on each element of
 the array. If the output is an object you can use the `repeat` specification argument to map on the
 same element `repeat` times.
