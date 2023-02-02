@@ -1,5 +1,4 @@
-[![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40dust4ai&style=social&url=https%3A%2F%2Ftwitter.com-dust4ai)](https://twitter.com/dust4ai) [![](https://dcbadge.vercel.app/api/server/8NJR3zQU5X?compact=true&style=flat)](https://discord.gg/8NJR3zQU5X)
-
+[![](https://dcbadge.vercel.app/api/server/8NJR3zQU5X?compact=true&style=flat)](https://discord.gg/8NJR3zQU5X) [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40dust4ai&style=social&url=https%3A%2F%2Ftwitter.com-dust4ai)](https://twitter.com/dust4ai)
 # [Dust](https://dust.tt)
 
 Design and Deploy Large Language Model Apps
@@ -12,11 +11,13 @@ Design and Deploy Large Language Model Apps
 - [Getting started guide](https://docs.dust.tt/quickstart)
 - [Runs API Reference](https://docs.dust.tt/runs)
 
-### :thinking: Questions / Help
+### Questions / Help
 
 Join our [Discord](https://discord.gg/8NJR3zQU5X).
 
-## :laptop: Command-line Client Quick Start
+## :computer: Run Dust locally 
+
+### Command-line Client Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
@@ -29,18 +30,18 @@ Join our [Discord](https://discord.gg/8NJR3zQU5X).
 
 See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 
-## Run Dust Web App Locally Quick Start
+### Run Dust Web App Locally Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
 - [Install Node](https://nodejs.org/en/download/)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
 
-### Start core API on SQLite
+#### Start core API on SQLite
 
 1. `cd $DUST_PATH/core`
 2. `cargo run --bin dust-api`
 
-### Start front on SQLite
+#### Start front on SQLite
 
 1. `cd $DUST_PATH/front`
 2. Create `.env.local` by running the command below:
