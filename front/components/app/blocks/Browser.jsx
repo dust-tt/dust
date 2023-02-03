@@ -1,18 +1,10 @@
 import { useState } from "react";
 import Block from "./Block";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
-import TextareaAutosize from "react-textarea-autosize";
 import { useProviders } from "../../../lib/swr";
 import { filterServiceProviders } from "../../../lib/providers";
 import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import dynamic from "next/dynamic";
-import "@uiw/react-textarea-code-editor/dist.css";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 export default function Browser({
   user,
@@ -100,7 +92,6 @@ export default function Browser({
   const handleErrorAsOutputChange = (error_as_output) => {
     let b = shallowBlockClone(block);
     b.config.error_as_output = error_as_output;
-    console.log("error_as_output", b.config);
     onBlockUpdate(b);
   };
 
@@ -158,7 +149,7 @@ export default function Browser({
                         "w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-white focus:ring-2 ml-1 mr-4",
                         readOnly ? "" : "cursor-pointer"
                       )}
-                      value={block.spec.error_as_output}
+                      checked={block.config.error_as_output}
                       onClick={(e) => {
                         if (readOnly) {
                           e.preventDefault();
