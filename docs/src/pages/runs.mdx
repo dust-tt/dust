@@ -52,7 +52,7 @@ The Run model contains all the information about the execution of a Dust app.
   >
     An array tracing the execution of each block. Each element of the top-level
     array is an array whose first element is a tuple with the block type and
-    block name. The second element is an array of array of block executions. The
+    block name. The second element is an array of arrays of block executions. The
     first dimension is the input dimension (one element per input passed as
     argument to the run) the second dimension is the map dimension (only one
     element if outside of a `map` `reduce` block, otherwise one element per
@@ -79,7 +79,7 @@ The Run model contains all the information about the execution of a Dust app.
   <Col>
 
     This endpoint allows you to execute a Dust app by API by creating a new Run object. To get a
-    prefilled and ready to use curl command, click on the **Deploy** button from your app
+    prefilled and ready-to-use curl command, click **Deploy** from your app
     specification view. You can only run your own apps. If you want to run someone else's app,
     simply clone it and run the cloned version from your account.
 

@@ -1,6 +1,6 @@
 # Dust Docs
 
-Documentation for Dust
+Documentation for the Dust platform
 
 # Protocol README
 
