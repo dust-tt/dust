@@ -51,8 +51,8 @@ export function extractConfig(spec) {
               : false
             : false,
           error_as_output: spec[i].config
-            ? spec[i].config.errors_as_output
-              ? spec[i].config.errors_as_output
+            ? spec[i].config.error_as_output
+              ? spec[i].config.error_as_output
               : false
             : false,
         };

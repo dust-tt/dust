@@ -100,6 +100,7 @@ export default function Browser({
   const handleErrorAsOutputChange = (error_as_output) => {
     let b = shallowBlockClone(block);
     b.config.error_as_output = error_as_output;
+    console.log("error_as_output", b.config);
     onBlockUpdate(b);
   };
 

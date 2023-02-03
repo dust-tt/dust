@@ -170,11 +170,12 @@ impl Block for Browser {
             body_json["gotoOptions"]["waitUntil"] = Value::String(wait_until.clone());
         }
 
-        println!(
-            "Browser running with: {} error_as_output={}",
-            body_json.to_string(),
-            error_as_output
-        );
+        // println!(
+        //     "Browser running with: {} error_as_output={} config={:?}",
+        //     body_json.to_string(),
+        //     error_as_output,
+        //     config,
+        // );
 
         let request = HttpRequest::new(
             "POST",
