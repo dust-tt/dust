@@ -23,8 +23,9 @@ list of tokens passed as input.
 </Note>
 
 To generate text from a large language model, we use what is referred to as _auto-regressive
-decoding_. Given a **prompt**, we use the model to predict the next token. Once this token is predicted we append it to the current prompt and reiterate the same process until the model emits 
-a special `<|EndofText|>` token or runs out of context.
+decoding_. Given a **prompt**, we use the model to predict the next token. Once this token is
+predicted we append it to the current prompt and reiterate the same process until the model emits a
+special `<|EndofText|>` token or runs out of context.
 
 ### Context Size
 
@@ -47,8 +48,8 @@ French? How would encode for the model the fact that you want your sentence _tra
 
 For models that are solely trained on data extracted from the Internet, the best technique to encode
 which task you're interested in is to use **few-shot prompting**. Few-shot prompting consists in
-showing to the model a few examples of the task you're interested in as a way to _encode_ that
-task. As an example, the following prompt will successfully lead to your `<YOUR SENTENCE>` being
+showing to the model a few examples of the task you're interested in as a way to _encode_ that task.
+As an example, the following prompt will successfully lead to your `<YOUR SENTENCE>` being
 translated in French:
 
 ```
@@ -75,7 +76,8 @@ learners**; they are capable of understanding a task with just a few examples.
 Intuitively, if you had read and somewhat memorized the entire Internet, and were tasked to generate
 the most likely completion to the prompt above, similarly to the model you would likely decide that
 the correct continuation is a translation of the last sentence. Large language models work in
-basically the same way. And in many aspects, being trained on human-generated data, they often appear as surprisingly _anthropomorphic_.
+basically the same way. And in many aspects, being trained on human-generated data, they often
+appear as surprisingly _anthropomorphic_.
 
 ### Instruction-following
 
@@ -88,9 +90,12 @@ size. Instead you could try to provide _instructions_ to the model:
 Generate a 1-paragraph summary of the text above:
 ```
 
-While a good idea, for models that were solely trained on data from the Internet, this
-approach is in practice quite brittle compared to few-shot prompting. Documents seldom
-appear on the Internet with instructions, followed by the result of applying these instructions. Its not impossible but not common, hence the reason why it works at times but remains brittle. A naive use of instructions on such models will often lead to the model ignoring the instructions (maybe assuming it was text from an ad) or failing to properly apply them.
+While a good idea, for models that were solely trained on data from the Internet, this approach is
+in practice quite brittle compared to few-shot prompting. Documents seldom appear on the Internet
+with instructions, followed by the result of applying these instructions. Its not impossible but not
+common, hence the reason why it works at times but remains brittle. A naive use of instructions on
+such models will often lead to the model ignoring the instructions (maybe assuming it was text from
+an ad) or failing to properly apply them.
 
 <Note>
   Instruction-following models alleviate the need for few-shot prompting.
@@ -107,11 +112,14 @@ fine-tuning paradigm called [reinforcement learning from human feedback](#).
 
 ### Fine-tuning
 
-Another way to encode a task or teach the model new information is to use fine-tuning.
-Since it involves training, fine-tuning will drastically alter the _distribution_ (the actual behavior) of your model.
+Another way to encode a task or teach the model new information is to use fine-tuning.  Since it
+involves training, fine-tuning will drastically alter the _distribution_ (the actual behavior) of
+your model.
 
-Let's say you have a database of hundreds of thousands of customer support interactions in the form of `(question, answer)` pairs. To construct a customer-support bot, you could fine-tune a model on the following distribution (or dataset, the two can be used interchangeably as a dataset represents a
-distribution):
+Let's say you have a database of hundreds of thousands of customer support interactions in the form
+of `(question, answer)` pairs. To construct a customer-support bot, you could fine-tune a model on
+the following distribution (or dataset, the two can be used interchangeably as a dataset represents
+a distribution):
 
 ```
 Q: &lt;QUESTION&gt;
@@ -135,12 +143,12 @@ few-show prompting would not be required anymore.
 
 **Caveats.** This looks ideal but there are a few caveats to keep in mind with with
 _fine-tuning_. First, given the size of typical models, a lot of data is needed for fine-tuning to
-work well in practice (think 10m-100m words). Additionally, it is unclear—and still an open
-research question—how much fine-tuning brain-damages the model, rendering it less smart. Finally,
-one has to be careful about exactly how they encode the task. As an example, if the date of the
-question is not shown to the model in the examples above, the model might consider deprecated
-information as still relevant and answer erroneously, or maybe learn spurious statistical
-relationships between the type of question and the tone of the answer.
+work well in practice (think 10m-100m words). Additionally, it is unclear—and still an open research
+question—how much fine-tuning brain-damages the model, rendering it less smart. Finally, one has to
+be careful about exactly how they encode the task. As an example, if the date of the question is not
+shown to the model in the examples above, the model might consider deprecated information as still
+relevant and answer erroneously, or maybe learn spurious statistical relationships between the type
+of question and the tone of the answer.
 
 Fine-tuning is an incredibly powerful mechanism. But it is important to remember that it entangles
 the process of encoding a task and teaching new information to the model. The latter possibly
@@ -179,10 +187,10 @@ increasing complexity with links to their implementation in Dust.
 
 ### (Easy) Translation
 
-As seen above, translation is a simple task that can be encoded using a few-shot prompt. A
-large language model app for translation therefore mostly consists in one parametrized call to a
-large language model. In Dust, this is achievable with the following blocks (most of these blocks
-are described in greater details the following pages):
+As seen above, translation is a simple task that can be encoded using a few-shot prompt. A large
+language model app for translation therefore mostly consists in one parametrized call to a large
+language model. In Dust, this is achievable with the following blocks (most of these blocks are
+described in greater details the following pages):
 
 - An `input` block to receive the text to translate (see [Inputs](/overview#inputs)).
 - A `data` block that returns the few-shot examples maintained in a dataset (see
@@ -252,7 +260,7 @@ These two prompts are just examples of how to encode the task of summarization t
 instruct-following model. They can likely be improved or modified to produce specific results.
 
 The Dust app that demonstrates this technique leverages blocks such as `map` and `reduce` that will
-be more clearly explained in the following pages. You can find and explore its full
-implementation here: [recusive-summarization](https://dust.tt/spolu/a/eeac37ce40).
+be more clearly explained in the following pages. You can find and explore its full implementation
+here: [recusive-summarization](https://dust.tt/spolu/a/eeac37ce40).
 
 ### (Advanced) Mathematics

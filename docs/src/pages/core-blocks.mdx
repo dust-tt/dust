@@ -17,10 +17,10 @@ refer to the [Blocks](/overview#blocks) section for more detail on the differenc
 
 ## Input block
 
-The `input` block is the entry point to a Dust app and receives the arguments on which the app is executed, in the form of JSON
-objects. During the design phase of the app it is associated to a [Dataset](/overview#datasets) of 
-examples used to iterate on the app. When deployed by API, the `input` block receives the arguments passed 
-to the app by API.
+The `input` block is the entry point to a Dust app and receives the arguments on which the app is
+executed, in the form of JSON objects. During the design phase of the app it is associated to a
+[Dataset](/overview#datasets) of examples used to iterate on the app. When deployed by API, the
+`input` block receives the arguments passed to the app by API.
 
 Refer to the [Inputs](/overview#inputs) section for more detail on how the `input` block forks the
 execution of the app in independent execution streams. When run by API, the dataset to which the
@@ -39,8 +39,8 @@ execution of the app in independent execution streams. When run by API, the data
 
 ## Data block
 
-The `data` block outputs the dataset it is associated with. Unlike the `input` block it does
-not fork the execution of the app and simply returns the entire dataset as an array of JSON objects.
+The `data` block outputs the dataset it is associated with. Unlike the `input` block it does not
+fork the execution of the app and simply returns the entire dataset as an array of JSON objects.
 
 The `data` block is generally used in conjunction with an `llm` block to output a dataset of
 few-shot examples to prompt models.
@@ -122,9 +122,9 @@ It is used to issue completion requests to large language models as part of an a
     (eg _0.0_) results in more conservative completions.
   </Property>
   <Property name="max_tokens" type="integer">
-    The maximum number of tokens to generate from the model. It can be very broadly
-    seen as a word worth of content. The model may decide to stop generation
-    before reaching `max_tokens`.
+    The maximum number of tokens to generate from the model. It can be very
+    broadly seen as a word worth of content. The model may decide to stop
+    generation before reaching `max_tokens`.
   </Property>
   <Property name="stop" type="[]string">
     An array of strings that should interrupt completion when sampled from the
@@ -135,7 +135,7 @@ It is used to issue completion requests to large language models as part of an a
     on their existing frequency in the text so far, decreasing the model's
     likelihood to repeat the same line verbatim.
   </Property>
-  <Property name="presence_penalty" type="float">	
+  <Property name="presence_penalty" type="float">
     Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
     on whether they appear in the text so far, increasing the model's likelihood
     to talk about new topics.
@@ -204,7 +204,7 @@ documentation](https://tera.netlify.app/docs/#templates) for more details.
 ## Map Reduce blocks
 
 The `map` and `reduce` blocks are used to execute the set of blocks in between them on each elements
-of an array, in parallel. The `map` block takes a block name as `from` specification argument.  If
+of an array, in parallel. The `map` block takes a block name as `from` specification argument. If
 the output of the block referred to is an array, the execution stream will fork on each element of
 the array. If the output is an object you can use the `repeat` specification argument to map on the
 same element `repeat` times.
