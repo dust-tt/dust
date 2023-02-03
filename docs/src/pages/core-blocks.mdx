@@ -124,7 +124,11 @@ It is used to issue completion requests to large language models as part of an a
   <Property name="max_tokens" type="integer">
     The maximum number of tokens to generate from the model. It can be very
     broadly seen as a word worth of content. The model may decide to stop
-    generation before reaching `max_tokens`.
+    generation before reaching `max_tokens`. For OpenAI models, we support _-1_
+    as a special value, specifying that we want the model to generate as many
+    tokens as possible given its context size. Using _-1_ with a model of
+    context size 2048 with a prompt consuming 1024 tokens, is equivalent to
+    specifying a `max_tokens` of _1024_.
   </Property>
   <Property name="stop" type="[]string">
     An array of strings that should interrupt completion when sampled from the

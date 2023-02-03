@@ -175,6 +175,18 @@ impl LLM for AI21LLM {
         Ok(())
     }
 
+    fn context_size(&self) -> usize {
+        2048
+    }
+
+    async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
+        Err(anyhow!("Encode/Decode not implemented for provider `ai21`"))
+    }
+
+    async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
+        Err(anyhow!("Encode/Decode not implemented for provider `ai21`"))
+    }
+
     async fn generate(
         &self,
         prompt: &str,

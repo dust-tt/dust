@@ -1,6 +1,7 @@
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
+use crate::providers::tiktoken::tiktoken::{p50k_base_singleton, r50k_base_singleton, CoreBPE};
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -117,6 +118,14 @@ impl OpenAILLM {
 
     fn uri(&self) -> Result<Uri> {
         Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+    }
+
+    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+        match self.id.as_str() {
+            "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
+            "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
+            _ => r50k_base_singleton(),
+        }
     }
 
     async fn streamed_completion(
@@ -474,10 +483,29 @@ impl LLM for OpenAILLM {
         Ok(())
     }
 
+    fn context_size(&self) -> usize {
+        match self.id.as_str() {
+            "code-davinci-002" => 8000,
+            "text-davinci-002" => 4000,
+            "text-davinci-003" => 4000,
+            _ => 2048,
+        }
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
+        Ok(tokens)
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        let str = { self.tokenizer().lock().decode(tokens)? };
+        Ok(str)
+    }
+
     async fn generate(
         &self,
         prompt: &str,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
@@ -491,6 +519,14 @@ impl LLM for OpenAILLM {
         assert!(n > 0);
 
         // println!("STOP: {:?}", stop);
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self.encode(prompt).await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+                // println!("Using max_tokens = {}", max_tokens.unwrap());
+            }
+        }
 
         let c = match event_sender {
             Some(_) => {

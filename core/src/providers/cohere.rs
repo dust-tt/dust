@@ -164,6 +164,18 @@ impl LLM for CohereLLM {
         Ok(())
     }
 
+    fn context_size(&self) -> usize {
+        2048
+    }
+
+    async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
+        Err(anyhow!("Encode/Decode not implemented for provider `cohere`"))
+    }
+
+    async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
+        Err(anyhow!("Encode/Decode not implemented for provider `cohere`"))
+    }
+
     async fn generate(
         &self,
         prompt: &str,

@@ -454,15 +454,15 @@ impl CoreBPE {
     // Encoding
     // ====================
 
-    fn encode_ordinary(&self, text: &str) -> Vec<usize> {
+    pub fn encode_ordinary(&self, text: &str) -> Vec<usize> {
         self._encode_ordinary_native(text)
     }
 
-    fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize> {
+    pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize> {
         self._encode_native(text, &allowed_special).0
     }
 
-    fn encode_with_special_tokens(&self, text: &str) -> Vec<usize> {
+    pub fn encode_with_special_tokens(&self, text: &str) -> Vec<usize> {
         let allowed_special = self
             .special_tokens_encoder
             .keys()
@@ -496,6 +496,7 @@ impl CoreBPE {
         }
     }
 
+    #[allow(dead_code)]
     fn encode_with_unstable(
         &self,
         text: &str,
@@ -504,6 +505,7 @@ impl CoreBPE {
         self._encode_unstable_native(text, &allowed_special)
     }
 
+    #[allow(dead_code)]
     fn encode_single_token(&self, piece: &[u8]) -> Result<usize> {
         if let Some(token) = self.encoder.get(piece).copied() {
             return Ok(token);
@@ -516,6 +518,7 @@ impl CoreBPE {
         Err(anyhow!("Token not found in the vocabulary: {:?}", piece))
     }
 
+    #[allow(dead_code)]
     fn encode_single_piece(&self, piece: &[u8]) -> Vec<usize> {
         if let Some(token) = self.encoder.get(piece) {
             return vec![*token];
@@ -527,18 +530,18 @@ impl CoreBPE {
     // Decoding
     // ====================
 
-    fn decode_bytes(&self, tokens: Vec<usize>) -> Vec<u8> {
+    pub fn decode_bytes(&self, tokens: Vec<usize>) -> Vec<u8> {
         self._decode_native(&tokens)
     }
 
-    fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+    pub fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         match String::from_utf8(self._decode_native(&tokens)) {
             Ok(text) => Ok(text),
             Err(e) => Err(anyhow!("Unable to decode into a valid UTF-8 string: {}", e)),
         }
     }
 
-    fn decode_single_token_bytes(&self, token: usize) -> Result<Vec<u8>> {
+    pub fn decode_single_token_bytes(&self, token: usize) -> Result<Vec<u8>> {
         if let Some(bytes) = self.decoder.get(&token) {
             return Ok(bytes.clone());
         }
@@ -552,6 +555,7 @@ impl CoreBPE {
     // Miscellaneous
     // ====================
 
+    #[allow(dead_code)]
     fn token_byte_values(&self) -> Vec<Vec<u8>> {
         self.sorted_token_bytes.clone()
     }
