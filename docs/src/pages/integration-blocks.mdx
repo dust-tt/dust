@@ -109,6 +109,26 @@ account's provider settings.
     The CSS selector to use to select the content to scrape. Use _body_ to
     scrape the entire page.
   </Property>
+  <Property name="timeout" type="optional integer">
+    The timeout in ms to use for the scrape request. Defaults to _16000_. Passed
+    to underlying Puppeteer's
+    [page.goto](https://pptr.dev/api/puppeteer.page.goto) method. See
+    Browserless [scrape](https://www.browserless.io/docs/scrape) method
+    documentation for details.
+  </Property>
+  <Property name="wait_until" type="optional string">
+    One of _load_, _domcontentloaded_, _networkidle0_, _networkidle2_. Passed to
+    underlying Puppeteer's [page.goto](https://pptr.dev/api/puppeteer.page.goto)
+    method. See Browserless [scrape](https://www.browserless.io/docs/scrape)
+    method documentation for details.
+  </Property>
+  <Property name="wait_for" type="optional string">
+    Wait for an event to happen to return content. Accepts one of three options:
+    a function to be ran, a number indicating the time in ms to wait, or a valid
+    selector to wait for. See Browserless
+    [scrape](https://www.browserless.io/docs/scrape) method documentation for
+    details.
+  </Property>
 </Properties>
 
 ### Configuration

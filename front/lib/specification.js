@@ -99,10 +99,13 @@ export function addBlock(spec, idx, blockType) {
         spec: {
           url: "",
           selector: "body",
+          timeout: 16000,
+          wait_until: "networkidle2"
         },
         config: {
           provider_id: "",
           use_cache: true,
+          error_as_output: false,
         },
       });
       break;
@@ -354,6 +357,15 @@ export function dumpSpecification(spec, latestDatasets) {
         out += `browser ${block.name} {\n`;
         out += `  url: \n\`\`\`\n${block.spec.url}\n\`\`\`\n`;
         out += `  selector: \n\`\`\`\n${block.spec.selector}\n\`\`\`\n`;
+        if (block.spec.timeout) {
+          out += `  timeout: ${block.spec.timeout}\n`;
+        }
+        if (block.spec.wait_until) {
+          out += `  wait_until: ${block.spec.wait_until}\n`;
+        }
+        if (block.spec.wait_for) {
+          out += `  wait_for: \n\`\`\`\n${block.spec.wait_for}\n\`\`\`\n`;
+        }
         out += `}\n`;
         out += "\n";
         break;
