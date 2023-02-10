@@ -105,25 +105,31 @@ impl HttpRequest {
 
         let mut req = Request::builder().method(method).uri(self.url.as_str());
 
-        let headers = req.headers_mut().unwrap();
-        match &self.headers {
-            Value::Object(h) => {
-                for (key, value) in h {
-                    match value {
-                        Value::String(value) => {
-                            headers.insert(
-                                header::HeaderName::from_bytes(key.as_bytes())?,
-                                header::HeaderValue::from_bytes(value.as_bytes())?,
-                            );
+        {
+            let headers = match req.headers_mut() {
+                Some(h) => h,
+                None => Err(anyhow!("Invalid URL: {}", self.url))?,
+            };
+
+            match &self.headers {
+                Value::Object(h) => {
+                    for (key, value) in h {
+                        match value {
+                            Value::String(value) => {
+                                headers.insert(
+                                    header::HeaderName::from_bytes(key.as_bytes())?,
+                                    header::HeaderValue::from_bytes(value.as_bytes())?,
+                                );
+                            }
+                            _ => Err(anyhow!("Header value for header {} must be a string", key))?,
                         }
-                        _ => Err(anyhow!("Header value for header {} must be a string", key))?,
                     }
                 }
-            }
-            _ => Err(anyhow!(
-                "Returned headers must be an object with string values.",
-            ))?,
-        };
+                _ => Err(anyhow!(
+                    "Returned headers must be an object with string values.",
+                ))?,
+            };
+        }
 
         let req = match &self.body {
             Value::String(body) => req.body(Body::from(body.clone()))?,
