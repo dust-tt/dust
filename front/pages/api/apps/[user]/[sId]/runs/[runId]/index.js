@@ -8,6 +8,7 @@ import {
 import peg from "pegjs";
 import fs from "fs";
 import path from "path";
+import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
@@ -37,7 +38,9 @@ export default async function handler(req, res) {
         ? {
             userId: user.id,
             sId: req.query.sId,
-            visibility: "public",
+            visibility: {
+              [Op.or]: ["public", "unlisted"],
+            },
           }
         : {
             userId: user.id,

@@ -167,8 +167,8 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                             >
                               Public
                               <p className="mt-0 text-sm font-normal text-gray-500">
-                                Anyone on the Internet can see the app. You
-                                choose who can edit.
+                                Anyone on the Internet can see the app. Only you
+                                can edit.
                               </p>
                             </label>
                           </div>
@@ -192,7 +192,32 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                             >
                               Private
                               <p className="mt-0 text-sm font-normal text-gray-500">
-                                You choose who can see and edit the app.
+                                Only you can see and edit the app.
+                              </p>
+                            </label>
+                          </div>
+                          <div className="flex items-center">
+                            <input
+                              id="appVisibilityUnlisted"
+                              name="visibility"
+                              type="radio"
+                              value="unlisted"
+                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              checked={appVisibility == "unlisted"}
+                              onChange={(e) => {
+                                if (e.target.value != appVisibility) {
+                                  setAppVisibility(e.target.value);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="app-visibility-unlisted"
+                              className="ml-3 block text-sm font-medium text-gray-700"
+                            >
+                              Unlisted
+                              <p className="mt-0 text-sm font-normal text-gray-500">
+                                Anyone with the link can see the app. Only you
+                                can edit.
                               </p>
                             </label>
                           </div>

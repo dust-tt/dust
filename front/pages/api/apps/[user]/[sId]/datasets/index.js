@@ -2,6 +2,7 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../auth/[...nextauth]";
 import { User, App, Dataset } from "../../../../../../lib/models";
 import { checkDatasetData } from "../../../../../../lib/datasets";
+import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
@@ -27,7 +28,9 @@ export default async function handler(req, res) {
         ? {
             userId: user.id,
             sId: req.query.sId,
-            visibility: "public",
+            visibility: {
+              [Op.or]: ["public", "unlisted"],
+            },
           }
         : {
             userId: user.id,

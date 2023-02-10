@@ -1,4 +1,5 @@
 import { User, App, Key } from "../../../../../lib/models";
+import { Op } from "sequelize";
 
 export default async function handler(req, res) {
   if (!req.headers.authorization) {
@@ -80,7 +81,9 @@ export default async function handler(req, res) {
     where: readOnly
       ? {
           userId: reqUser.id,
-          visibility: "public",
+          visibility: {
+            [Op.or]: ["public", "unlisted"],
+          },
         }
       : {
           userId: reqUser.id,
