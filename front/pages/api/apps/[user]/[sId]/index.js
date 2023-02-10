@@ -1,6 +1,7 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../auth/[...nextauth]";
 import { User, App } from "../../../../../lib/models";
+import { Op } from "sequelize";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
@@ -23,7 +24,9 @@ export default async function handler(req, res) {
       ? {
           userId: user.id,
           sId: req.query.sId,
-          visibility: "public",
+          visibility: {
+            [Op.or]: ["public", "unlisted"],
+          },
         }
       : {
           userId: user.id,
@@ -63,7 +66,7 @@ export default async function handler(req, res) {
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
         res.status(400).end();
         break;

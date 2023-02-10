@@ -1,5 +1,6 @@
 import { User, App, Provider, Key } from "../../../../../../../lib/models";
 import { credentialsFromProviders } from "../../../../../../../lib/providers";
+import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
@@ -125,7 +126,9 @@ export default async function handler(req, res) {
         ? {
             userId: appUser.id,
             sId: req.query.sId,
-            visibility: "public",
+            visibility: {
+              [Op.or]: ["public", "unlisted"],
+            },
           }
         : {
             userId: appUser.id,

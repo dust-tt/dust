@@ -1,6 +1,7 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../auth/[...nextauth]";
 import { User, App } from "../../../../../lib/models";
+import { Op } from "sequelize";
 
 const { THUM_IO_KEY } = process.env;
 
@@ -27,7 +28,9 @@ export default async function handler(req, res) {
           ? {
               userId: user.id,
               sId: req.query.sId,
-              visibility: "public",
+              visibility: {
+                [Op.or]: ["public", "unlisted"],
+              },
             }
           : {
               userId: user.id,
@@ -52,7 +55,9 @@ export default async function handler(req, res) {
         return;
       }
 
-      res.redirect(`https://image.thum.io/get/auth/${THUM_IO_KEY}/png/wait/3/noanimate/viewportWidth/600/width/600/crop/600/https://dust.tt/${req.query.user}/a/${req.query.sId}`)
+      res.redirect(
+        `https://image.thum.io/get/auth/${THUM_IO_KEY}/png/wait/3/noanimate/viewportWidth/600/width/600/crop/600/https://dust.tt/${req.query.user}/a/${req.query.sId}`
+      );
       break;
 
     default:

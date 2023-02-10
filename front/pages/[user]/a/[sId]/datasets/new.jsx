@@ -113,8 +113,6 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  // TODO(spolu): allow public viewing of apps
-
   if (!session) {
     return {
       redirect: {

@@ -2,8 +2,8 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]";
 import { User, App } from "../../../../lib/models";
 import { new_id } from "../../../../lib/utils";
+import { Op } from "sequelize";
 
-const { Op } = require("sequelize");
 const { DUST_API } = process.env;
 
 export default async function handler(req, res) {
@@ -27,12 +27,13 @@ export default async function handler(req, res) {
       const where = readOnly
         ? {
             userId: user.id,
+            // Do not include 'unlisted' here.
             visibility: "public",
           }
         : {
             userId: user.id,
             visibility: {
-              [Op.or]: ["public", "private"],
+              [Op.or]: ["public", "private", "unlisted"],
             },
           };
       let apps = await App.findAll({
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
         res.status(400).end();
         break;

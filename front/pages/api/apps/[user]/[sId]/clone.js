@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
         res.status(400).end();
         break;
