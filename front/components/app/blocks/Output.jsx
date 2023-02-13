@@ -193,6 +193,34 @@ function Error({ error }) {
   );
 }
 
+function Execution({ block, trace }) {
+  return (
+    <div className="flex flex-auto flex-col overflow-hidden">
+      {trace.map((t, i) => {
+        return (
+          <div key={i} className="flex-auto flex-col">
+            {t.error != null ? (
+              <div className="flex flex-auto flex-row">
+                <ExclamationCircleIcon className="flex h-4 w-4 text-red-400 mt-0.5" />
+                <Error error={t.error} />
+              </div>
+            ) : (
+              <div className="flex flex-row">
+                <div className="flex flex-initial">
+                  <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
+                </div>
+                <div className="flex flex-1">
+                  <ValueViewer block={block} value={t.value} topLevel={true} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Output({ user, block, runId, status, app }) {
   let { run, isRunLoading, isRunError } = useRunBlock(
     user,
@@ -213,6 +241,8 @@ export default function Output({ user, block, runId, status, app }) {
     }
   );
 
+  const [expanded, setExpanded] = useState(false);
+
   if (
     run &&
     run.traces.length > 0 &&
@@ -231,49 +261,62 @@ export default function Output({ user, block, runId, status, app }) {
           return input;
         }
         return input[0].value.map((v) => {
-          return { value: v };
+          return { value: v, error: null };
         });
       });
     }
 
+    const successes = traces.reduce((acc, t) => {
+      return acc + t.filter((t) => t.error === null).length;
+    }, 0);
+    const errors = traces.reduce((acc, t) => {
+      return acc + t.filter((t) => t.error !== null).length;
+    }, 0);
+
     return (
       <div className="flex flex-col flex-auto">
-        {traces.map((trace, i) => {
-          return (
-            <div key={i} className="flex flex-row flex-auto ml-1">
-              <div className="flex text-sm text-gray-300 font-mono mr-2">
-                {i}:
-              </div>
-              <div className="flex flex-auto flex-col overflow-hidden">
-                {trace.map((t, i) => {
-                  return (
-                    <div key={i} className="flex-auto flex-col">
-                      {t.error != null ? (
-                        <div className="flex flex-auto flex-row">
-                          <ExclamationCircleIcon className="flex h-4 w-4 text-red-400 mt-0.5" />
-                          <Error error={t.error} />
-                        </div>
-                      ) : (
-                        <div className="flex flex-row">
-                          <div className="flex flex-initial">
-                            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
-                          </div>
-                          <div className="flex flex-1">
-                            <ValueViewer
-                              block={block}
-                              value={t.value}
-                              topLevel={true}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+        <div className="flex flex-row items-center text-sm">
+          <div className="flex-initial text-gray-400 cursor-pointer">
+            <div onClick={() => setExpanded(!expanded)}>
+              <span className="flex flex-row items-center">
+                {expanded ? (
+                  <ChevronDownIcon className="h-4 w-4 mt-0.5" />
+                ) : (
+                  <ChevronRightIcon className="h-4 w-4 mt-0.5" />
+                )}
+                <span className="text-sm text-gray-400">
+                  [{" "}
+                  <span className="text-emerald-400 font-bold">
+                    {successes} {successes === 1 ? "success" : "successes"}
+                  </span>
+                  {errors > 0 ? (
+                    <>
+                      {", "}
+                      <span className="text-red-400 font-bold">
+                        {errors} {errors === 1 ? "error" : "errors"}
+                      </span>
+                    </>
+                  ) : null}{" "}
+                  ]
+                </span>
+              </span>
             </div>
-          );
-        })}
+          </div>
+        </div>
+        {expanded ? (
+          <>
+            {traces.map((trace, i) => {
+              return (
+                <div key={i} className="flex flex-row flex-auto ml-1">
+                  <div className="flex text-sm text-gray-300 font-mono mr-2">
+                    {i}:
+                  </div>
+                  <Execution trace={trace} block={block} />
+                </div>
+              );
+            })}
+          </>
+        ) : null}
       </div>
     );
   } else {
