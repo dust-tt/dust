@@ -224,29 +224,37 @@ impl OpenAILLM {
                                         serde_json::from_str(e.data.as_str());
                                     match error {
                                         Ok(error) => {
+                                            println!("ERROR HERE1: {:?}", error);
                                             match error.retryable_streamed() && index == 0 {
-                                                true => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(100),
-                                                        factor: 2,
-                                                        retries: 3,
-                                                    }),
-                                                })?,
-                                                false => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: None,
-                                                })?,
+                                                true => {
+                                                    println!("ERROR HERE2: {:?}", error);
+                                                    Err(ModelError {
+                                                        message: error.message(),
+                                                        retryable: Some(ModelErrorRetryOptions {
+                                                            sleep: Duration::from_millis(100),
+                                                            factor: 2,
+                                                            retries: 3,
+                                                        }),
+                                                    })?
+                                                }
+                                                false => {
+                                                    println!("ERROR HERE3: {:?}", error);
+                                                    Err(ModelError {
+                                                        message: error.message(),
+                                                        retryable: None,
+                                                    })?
+                                                }
                                             }
                                             break 'stream;
                                         }
                                         Err(_) => {
+                                            println!("ERROR HERE4: {:?}", error);
                                             Err(anyhow!(
-                                            "OpenAIAPIError: failed parsing streamed completion \
-                                              from OpenAI err={} data={}",
-                                            err,
-                                            e.data.as_str(),
-                                        ))?;
+                                                "OpenAIAPIError: failed parsing streamed \
+                                                 completion from OpenAI err={} data={}",
+                                                err,
+                                                e.data.as_str(),
+                                            ))?;
                                             break 'stream;
                                         }
                                     }
@@ -313,6 +321,7 @@ impl OpenAILLM {
                     }
                 },
                 Err(e) => {
+                    println!("ERROR HERE5: {:?}", error);
                     Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
                     break 'stream;
                 }
