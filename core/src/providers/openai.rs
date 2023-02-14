@@ -202,13 +202,13 @@ impl OpenAILLM {
 
         let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
 
-        loop {
+        'stream: loop {
             match stream.try_next().await {
                 Ok(e) => match e {
                     Some(es::SSE::Comment(_)) => {}
                     Some(es::SSE::Event(e)) => match e.data.as_str() {
                         "[DONE]" => {
-                            break;
+                            break 'stream;
                         }
                         _ => {
                             let index = {
@@ -218,7 +218,7 @@ impl OpenAILLM {
 
                             let completion: Completion = match serde_json::from_str(e.data.as_str())
                             {
-                                Ok(c) => Ok(c),
+                                Ok(c) => c,
                                 Err(err) => {
                                     let error: Result<Error, _> =
                                         serde_json::from_str(e.data.as_str());
@@ -228,26 +228,30 @@ impl OpenAILLM {
                                                 true => Err(ModelError {
                                                     message: error.message(),
                                                     retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(250),
+                                                        sleep: Duration::from_millis(100),
                                                         factor: 2,
-                                                        retries: 2,
+                                                        retries: 3,
                                                     }),
-                                                }),
+                                                })?,
                                                 false => Err(ModelError {
                                                     message: error.message(),
                                                     retryable: None,
-                                                }),
+                                                })?,
                                             }
+                                            break 'stream;
                                         }
-                                        Err(_) => Err(anyhow!(
-                                            "OpenAIAPIError: failed parsing  streamed completion \
+                                        Err(_) => {
+                                            Err(anyhow!(
+                                            "OpenAIAPIError: failed parsing streamed completion \
                                               from OpenAI err={} data={}",
                                             err,
                                             e.data.as_str(),
-                                        ))?,
+                                        ))?;
+                                            break 'stream;
+                                        }
                                     }
                                 }
-                            }?;
+                            };
 
                             // UTF-8 length of the prompt (as used by the API for text_offset).
                             let prompt_len = prompt.chars().count();
@@ -305,11 +309,12 @@ impl OpenAILLM {
                         }
                     },
                     None => {
-                        break;
+                        break 'stream;
                     }
                 },
                 Err(e) => {
                     Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    break 'stream;
                 }
             }
         }
