@@ -228,9 +228,9 @@ impl OpenAILLM {
                                                 true => Err(ModelError {
                                                     message: error.message(),
                                                     retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(100),
+                                                        sleep: Duration::from_millis(250),
                                                         factor: 2,
-                                                        retries: 3,
+                                                        retries: 2,
                                                     }),
                                                 }),
                                                 false => Err(ModelError {
