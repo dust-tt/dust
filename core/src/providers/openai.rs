@@ -205,7 +205,9 @@ impl OpenAILLM {
         'stream: loop {
             match stream.try_next().await {
                 Ok(e) => match e {
-                    Some(es::SSE::Comment(_)) => {}
+                    Some(es::SSE::Comment(_)) => {
+                        println!("UNEXPECTED COMMENT");
+                    }
                     Some(es::SSE::Event(e)) => match e.data.as_str() {
                         "[DONE]" => {
                             break 'stream;
@@ -317,6 +319,7 @@ impl OpenAILLM {
                         }
                     },
                     None => {
+                        println!("UNEXPECED NONE");
                         break 'stream;
                     }
                 },
