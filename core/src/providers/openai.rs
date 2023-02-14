@@ -321,7 +321,7 @@ impl OpenAILLM {
                     }
                 },
                 Err(e) => {
-                    println!("ERROR HERE5: {:?}", error);
+                    println!("ERROR HERE5: {:?}", e);
                     Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
                     break 'stream;
                 }
