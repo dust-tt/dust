@@ -189,11 +189,11 @@ impl OpenAILLM {
         let client = builder
             .body(body.to_string())
             .reconnect(
-                es::ReconnectOptions::reconnect(false)
+                es::ReconnectOptions::reconnect(true)
                     .retry_initial(false)
                     .delay(Duration::from_secs(1))
                     .backoff_factor(2)
-                    .delay_max(Duration::from_secs(30))
+                    .delay_max(Duration::from_secs(8))
                     .build(),
             )
             .build();
