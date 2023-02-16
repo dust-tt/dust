@@ -26,7 +26,7 @@ export function ActivationView({ onActivate }) {
           <div className="flex">
             <Logo animated />
           </div>
-          <div className="flex ml-2 font-bold">XP1</div>
+          <div className="flex ml-2 font-bold">DUST</div>
         </div>
         <div className="flex">
           <input

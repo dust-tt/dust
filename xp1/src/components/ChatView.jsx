@@ -168,6 +168,22 @@ export function ChatView({ user }) {
 
     let tabGroups = s.tabGroups();
 
+    // If the tabGroups is empty, we go up the history to find the last command state with a
+    // non-empty tabGroups.
+    for (let i = log.length - 1; i >= 0 && tabGroups.length === 0; i--) {
+      let c = log[i].content;
+      for (let j = c.length - 1; j >= 0 && tabGroups.length === 0; j--) {
+        if (c[j].type === 'cmd_state') {
+          let s = new CmdState(c[j].state);
+          let tg = s.tabGroups();
+          if (tg.length > 0) {
+            tabGroups = tg;
+            break;
+          }
+        }
+      }
+    }
+
     let l = [...log];
     l.push({
       from: 'USER',
@@ -327,7 +343,7 @@ export function ChatView({ user }) {
                     <Logo animated={true} />
                   </div>
                   <div className="flex ml-2 font-bold text-base text-gray-800">
-                    XP1
+                    DUST
                   </div>
                 </div>
                 <div className="flex flex-col mt-2 items-center">
@@ -339,7 +355,7 @@ export function ChatView({ user }) {
                       [[
                     </span>{' '}
                     to search/select tabs and include their content in the
-                    context of XP1.
+                    context of the assistant.
                     <br />
                     <span className="font-mono bg-gray-100 px-1 py-1 rounded-sm">
                       {'↑↓'}
@@ -356,18 +372,18 @@ export function ChatView({ user }) {
                   <div key={i} className="flex flex-row items-start text-sm">
                     <div
                       className={classNames(
-                        'flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 rounded-sm',
-                        l.from === 'XP1' ? 'bg-emerald-100' : 'bg-indigo-50'
+                        'flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 rounded-md',
+                        l.from === 'XP1' ? 'bg-gray-100' : 'bg-gray-100'
                       )}
                     >
                       {l.from === 'XP1' ? (
                         <div className="flex pt-0.5 pl-[1px]">
-                          <Logo green={true}></Logo>
+                          <Logo></Logo>
                         </div>
                       ) : (
                         <div className="flex pt-1">
                           <UserCircleIcon
-                            className="h-5 w-5 text-gray-500 -ml-0.5 mt-0.5"
+                            className="h-5 w-5 text-gray-400 -ml-0.5 mt-0.5"
                             aria-hidden="true"
                           />
                         </div>
@@ -383,10 +399,10 @@ export function ChatView({ user }) {
               })}
               {last !== null ? (
                 <div className="flex flex-row items-start text-sm">
-                  <div className="flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 bg-orange-100 rounded-sm">
+                  <div className="flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 bg-gray-100 rounded-md">
                     {last.from === 'XP1' ? (
                       <div className="flex pt-0.5 pl-[1px]">
-                        <Logo orange={true} animated={true}></Logo>
+                        <Logo animated={true}></Logo>
                       </div>
                     ) : (
                       <div className="flex pt-1">
