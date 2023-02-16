@@ -95,3 +95,42 @@
 - [ ] edit inputs from input block?
 - [ ] block descriptions
 - [ ] block custom configs
+
+# XP1
+
+## v0.1.0
+
+- [x] ship as a real chrome extension on the Chrome Store
+  - [x] send email to manually installed users to upgrade
+- [x] send email on signup
+
+- [x] hack for gdocs
+- [x] block UI:
+  - [x] parse CSV and display as table with a toggle for raw
+  - [x] parse markdown and display as such with a toggle for raw
+  - [-] code highlight (later)
+
+## v0.2.0
+
+- [x] new /api/v0.2.x/\*
+- [x] tab selection UX
+- [x] syntax for current tab
+- [x] up-arrow to cycle through past queries when on beginning of input
+- [x] click on (closed tabs) to remove it (does not retrigger search yet)
+- [x] display log as cmd state without block appearance?
+
+## v0.2.1
+
+- [ ] repeat tab group if none have been added in follow-up question
+- [ ] display selected tabs as favicons in both the textarea and the echoed user query
+- [ ] right-click on selected text + syntax for only sending the selected text
+- [ ] dark-mode
+
+## TODO
+
+- [ ] run Dust apps
+- [ ] feedback on completion
+- [ ] find hack for sheets
+- [ ] persistence + clear?
+- [ ] history
+

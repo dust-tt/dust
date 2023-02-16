@@ -15,7 +15,7 @@ Design and Deploy Large Language Model Apps
 
 Join our [Discord](https://discord.gg/8NJR3zQU5X).
 
-## :computer: Run Dust locally 
+## :computer: Run Dust locally
 
 ### Command-line Client Quick Start
 
@@ -52,7 +52,7 @@ URL=http://localhost:3000
 NEXTAUTH_URL=$URL
 NEXTAUTH_SECRET=25da29db5485fcd27d2f671c5e28d5df8f325e9470c36cb6bf0a9d19c662255a
 
-DATABASE_URI=sqlite:front_store.sqlite
+FRONT_DATABASE_URI=sqlite:front_store.sqlite
 
 GITHUB_ID=47ec837fcbac1c6f1690
 GITHUB_SECRET=d59af0da231fc697d7dd8d3002ed1d9765e11c7f
@@ -64,5 +64,5 @@ GA_TRACKING_ID=Foo
 EOF
 ```
 3. Run `npm install`
-4. Run `DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
+4. Run `FRONT_DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
 5. Start server with `npm run dev`

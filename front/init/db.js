@@ -1,4 +1,4 @@
-import { User, App, Dataset, Provider, Clone, Key } from '../lib/models.js';
+import { User, App, Dataset, Provider, Clone, Key, XP1Run, XP1User } from '../lib/models.js';
 
 async function main() {
   await User.sync({ alter: true });
@@ -7,6 +7,10 @@ async function main() {
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
   await Key.sync({ alter: true });
+
+  await XP1User.sync({ alter: true });
+  await XP1Run.sync({ alter: true });
+
   process.exit(0);
 }
 
