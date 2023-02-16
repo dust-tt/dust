@@ -9,9 +9,11 @@ import * as ReactDOMServer from 'react-dom/server';
 function TabGroup({ group, tabs }) {
   let closedTabs = false;
   group.tabs.forEach((t) => {
-    if (!tabs.find((tab) => tab.id === t.id)) {
+    let f = tabs.find((tab) => tab.id === t.id);
+    if (!f) {
       closedTabs = true;
     }
+    // console.log('TAB', f);
   });
   let length = closedTabs ? 0 : group.tabs.length;
 
@@ -196,10 +198,11 @@ function TabList({ visible, filter, tabs }, ref) {
       setSelected((s) => {
         s = { ...s };
         if (Object.keys(s).length === 0) {
-          s[tabs[focus].id] = {
-            id: tabs[focus].id,
+          s[filteredTabs[focus].id] = {
+            id: filteredTabs[focus].id,
             selection:
-              !!tabs[focus].selection && !ignoredSelection[tabs[focus].id],
+              !!filteredTabs[focus].selection &&
+              !ignoredSelection[filteredTabs[focus].id],
           };
         }
         return s;
