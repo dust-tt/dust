@@ -25,7 +25,10 @@
     "sequelize": "^6.28.0",
     "sqlite3": "^5.1.4",
     "swr": "^2.0.2",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "micro": "^10.0.1",
+    "stripe": "^11.2.0",
+    "@sendgrid/mail": "^7.7.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.12",
