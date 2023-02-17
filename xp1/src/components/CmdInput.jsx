@@ -6,6 +6,25 @@ import { BackspaceIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { forwardRef } from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 
+// COMMAND
+
+function Command({ command }) {
+  return (
+    <div
+      className={classNames(
+        'inline-block px-1 rounded-sm text-xs py-0.5 font-bold',
+        'bg-gray-200'
+      )}
+      contentEditable={false}
+      data-command={JSON.stringify(command)}
+    >
+      /{command.name}
+    </div>
+  );
+}
+
+// TAB GROUP
+
 function TabGroup({ group, tabs }) {
   let closedTabs = false;
   group.tabs.forEach((t) => {
@@ -31,6 +50,8 @@ function TabGroup({ group, tabs }) {
     </div>
   );
 }
+
+// COMMAND STATE
 
 export class CmdState {
   // this.state is an array of objects of type text or tab_group.
@@ -62,6 +83,10 @@ export class CmdState {
     return closedTabs;
   }
 
+  commands() {
+    return this.state.filter((item) => item.type === 'command');
+  }
+
   render(tabs) {
     return (
       <>
@@ -70,6 +95,8 @@ export class CmdState {
             return item.value;
           } else if (item.type === 'tab_group') {
             return <TabGroup group={item} tabs={tabs} key={i} />;
+          } else if (item.type === 'command') {
+            return <Command command={item} key={i} />;
           }
           return null;
         })}
@@ -82,6 +109,11 @@ export class CmdState {
       .map((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
           let data = node.getAttribute('data-tab-group');
+          if (data && data.length > 0) {
+            return JSON.parse(data);
+          }
+
+          data = node.getAttribute('data-command');
           if (data && data.length > 0) {
             return JSON.parse(data);
           }
@@ -116,6 +148,8 @@ export class CmdState {
         } else if (item.type === 'tab_group') {
           tbIdx += 1;
           return `[TG_${tbIdx - 1}]`;
+        } else if (item.type === 'command') {
+          return `/${item.name}`;
         }
         return '';
       })
@@ -131,6 +165,8 @@ export class CmdState {
         } else if (item.type === 'tab_group') {
           let length = item.tabs.length;
           return `(${length} ${length > 1 ? 'tabs' : 'tab'})`;
+        } else if (item.type === 'command') {
+          return `/${item.name}`;
         }
         return '';
       })
@@ -142,6 +178,117 @@ export class CmdState {
     return this.state;
   }
 }
+
+// COMMAND LIST
+
+function CommandList({ visible, filter }, ref) {
+  const [selected, setSelected] = useState(null);
+  const [focus, setFocus] = useState(0);
+  const focusRef = useRef(null);
+
+  let commands = [{ name: 'reset', description: 'Reset the conversation.' }];
+
+  let filteredCommands = commands.filter((c) => {
+    return filter.length === 0 || c.name.startsWith(filter);
+  });
+
+  useImperativeHandle(ref, () => ({
+    prev: () => {
+      setFocus((f) => (f > 0 ? f - 1 : 0));
+    },
+    next: () => {
+      setFocus((f) =>
+        f < filteredCommands.length - 1 ? f + 1 : filteredCommands.length - 1
+      );
+    },
+    reset: () => {
+      setFocus(0);
+      setSelected(null);
+    },
+    submit: () => {
+      if (filteredCommands.length > 0) {
+        setSelected(filteredCommands[focus]);
+      }
+    },
+    selected: () => {
+      return selected;
+    },
+  }));
+
+  useEffect(() => {
+    if (focus > filteredCommands.length - 1) {
+      setFocus(filteredCommands.length - 1);
+    }
+    if (focusRef.current) {
+      focusRef.current.scrollIntoView({
+        // behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start',
+      });
+    }
+  }, [focus, visible, filter, filteredCommands]);
+
+  return (
+    <>
+      {visible ? (
+        <div className="absolute w-full top-2 bottom-24 pl-5 py-5">
+          <div className="flex flex-col absolute top-0 bottom-0 left-3 right-3">
+            <div className="flex-1"></div>
+            <div className="flex flex-col border rounded-sm overflow-auto py-1 bg-white z-10">
+              {filteredCommands.map((c, i) => (
+                <div
+                  className="flex w-full px-1"
+                  key={c.name}
+                  ref={focus === i ? focusRef : null}
+                >
+                  <div
+                    className={classNames(
+                      'flex flex-col w-full hover:bg-gray-100 rounded-sm',
+                      // 'cursor-pointer',
+                      focus === i ? 'bg-gray-100' : ''
+                    )}
+                    onClick={() => {
+                      setFocus(i);
+                    }}
+                  >
+                    <div
+                      className={classNames(
+                        'flex flex-initial justify-center py-1 items-center '
+                      )}
+                    >
+                      <div className="flex-initial pl-2 pr-2 py-1 font-mono text-gray-500">
+                        {'/'}
+                        {c.name}
+                      </div>
+                      <div className="flex-1">
+                        <p className="truncate text-xs text-gray-500 mb-0.5">
+                          <span className="text-xs text-gray-900">
+                            {c.description}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredCommands.length === 0 ? (
+                <div className="flex justify-center items-center">
+                  <div className="flex-col">
+                    <p className="text-gray-500">No match</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+CommandList = forwardRef(CommandList);
+
+// TAB LIST
 
 function TabList({ visible, filter, tabs }, ref) {
   const [selected, setSelected] = useState({});
@@ -338,6 +485,8 @@ function TabList({ visible, filter, tabs }, ref) {
 
 TabList = forwardRef(TabList);
 
+// COMMAND INPUT
+
 export function CmdInput(
   { tabs, onSubmit, onStateUpdate, onHistoryPrev, onHistoryNext },
   ref
@@ -345,7 +494,11 @@ export function CmdInput(
   const [tabListVisible, setTabListVisible] = useState(false);
   const [tabListFilter, setTabListFilter] = useState('');
 
+  const [commandListVisible, setCommandListVisible] = useState(false);
+  const [commandListFilter, setCommandListFilter] = useState('');
+
   const tabListRef = useRef(null);
+  const commandListRef = useRef(null);
   const contentEditableRef = useRef(null);
 
   useEffect(() => {
@@ -382,6 +535,12 @@ export function CmdInput(
         filter={tabListFilter}
         tabs={tabs}
       />
+      <CommandList
+        ref={commandListRef}
+        visible={commandListVisible}
+        filter={commandListFilter}
+      />
+
       <div className="flex flex-row justify-center items-center w-full">
         <div className="grow pb-0 h-16 mx-3">
           <div
@@ -433,6 +592,9 @@ export function CmdInput(
                 let node = range.endContainer;
                 let offset = range.endOffset;
                 let lastTwo = node.textContent.slice(offset - 2, offset);
+                let lastOne = node.textContent.slice(offset - 1, offset);
+
+                // TABS WIDGET
 
                 if (lastTwo === '[[') {
                   let textNode = document.createTextNode(
@@ -557,6 +719,140 @@ export function CmdInput(
 
                   inputNode.oninput = (e) => {
                     setTabListFilter(e.target.value);
+                  };
+                }
+
+                // COMMAND WIDGET
+
+                if (lastOne === '/') {
+                  let textNode = document.createTextNode(
+                    node.textContent.slice(0, offset - 1)
+                  );
+
+                  let commandSelectNode = document.createElement('div');
+                  commandSelectNode.style.display = 'inline-block';
+                  commandSelectNode.setAttribute('key', 'commandSelect');
+                  commandSelectNode.className =
+                    'bg-gray-200 px-1 rounded-sm font-bold text-xs text-gray-600 py-0.5';
+                  commandSelectNode.textContent = 'cmd: ';
+                  commandSelectNode.contentEditable = false;
+
+                  let inputNode = document.createElement('input');
+                  inputNode.setAttribute('type', 'text');
+                  inputNode.setAttribute('placeholder', 'search');
+                  inputNode.className =
+                    'bg-gray-200 w-12 border-none outline-none font-normal text-gray-900 text-xs';
+                  commandSelectNode.appendChild(inputNode);
+
+                  let textNode2 = document.createTextNode(
+                    node.textContent.slice(offset)
+                  );
+
+                  node.parentNode.replaceChild(textNode, node);
+                  textNode.parentNode.insertBefore(
+                    textNode2,
+                    textNode.nextSibling
+                  );
+                  textNode.parentNode.insertBefore(
+                    commandSelectNode,
+                    textNode2
+                  );
+
+                  setCommandListVisible(true);
+                  inputNode.focus();
+
+                  inputNode.onblur = () => {
+                    const selected = commandListRef.current?.selected();
+                    setCommandListVisible(false);
+                    setCommandListFilter('');
+                    commandListRef.current?.reset();
+
+                    console.log('SELECTED', selected);
+
+                    if (selected) {
+                      const htmlString = ReactDOMServer.renderToStaticMarkup(
+                        <Command
+                          command={{
+                            type: 'command',
+                            name: selected.name,
+                          }}
+                        />
+                      );
+                      // const htmlString = ReactDOMServer.renderToStaticMarkup(
+                      //   <span className="text-red-900 font-bold">
+                      //     /{selected.name}
+                      //   </span>
+                      // );
+                      const wrapper = document.createElement('div');
+                      wrapper.innerHTML = htmlString.trim();
+                      const commandNode = wrapper.firstChild;
+
+                      // Replace tabSelectNode with tabGroupNode.
+                      commandSelectNode.parentNode.replaceChild(
+                        commandNode,
+                        commandSelectNode
+                      );
+
+                      // Prepend a space to textNode2.
+                      textNode2.textContent = ` ${textNode2.textContent}`;
+
+                      // If textNode2 is the last node add a `\n` just because ¯\_(ツ)_/¯
+                      if (textNode2.nextSibling === null) {
+                        textNode2.textContent = `${textNode2.textContent}\n`;
+                      }
+
+                      // Restore the cursor, taking into account the added space.
+                      range.setStart(textNode2, 1);
+                      range.setEnd(textNode2, 1);
+                      selection.removeAllRanges();
+                      selection.addRange(range);
+                    } else {
+                      // Remove tabSelectNode and restore cursor.
+                      commandSelectNode.parentNode.removeChild(
+                        commandSelectNode
+                      );
+
+                      range.setStart(textNode2, 0);
+                      range.setEnd(textNode2, 0);
+                      selection.removeAllRanges();
+                      selection.addRange(range);
+                    }
+                    let s = new CmdState().updatedFromChildNodes(
+                      e.target.childNodes
+                    );
+                    onStateUpdate(s);
+                  };
+
+                  inputNode.onkeydown = (e) => {
+                    if (e.key === 'Escape') {
+                      inputNode.blur();
+                      e.preventDefault();
+                    }
+                    if (e.key === 'ArrowDown') {
+                      commandListRef.current?.next();
+                      e.preventDefault();
+                    }
+                    if (e.key === 'ArrowUp') {
+                      commandListRef.current?.prev();
+                      e.preventDefault();
+                    }
+                    if (e.key === 'Backspace') {
+                      if (inputNode.value === '') {
+                        commandListRef.current?.reset();
+                        inputNode.blur();
+                        e.preventDefault();
+                      }
+                    }
+                    if (e.key === 'Enter') {
+                      commandListRef.current?.submit();
+                      inputNode.blur();
+                      e.preventDefault();
+                    }
+                  };
+
+                  inputNode.oninput = (e) => {
+                    console.log('INPUT', e.target.value);
+                    setCommandListFilter(e.target.value);
                   };
                 }
               }

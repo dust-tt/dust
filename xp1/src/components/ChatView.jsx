@@ -179,6 +179,27 @@ export function ChatView({ user }) {
     if (s.hasClosedTabs(tabs)) {
       return;
     }
+    if (s.commands().length > 0) {
+      let hasReset = false;
+      console.log('COMMANDS', s.commands());
+      s.commands().forEach((c) => {
+        if (c.type === 'command' && c.name === 'reset') {
+          hasReset = true;
+        }
+      });
+      console.log('HAS RESET', hasReset);
+      if (hasReset) {
+        setLog([]);
+        chrome.storage.local.set({
+          log: { lastUpdated: Date.now(), data: [] },
+        });
+        setCmdStateLast(new CmdState([]));
+        setCmdStateIndex(-1);
+        chrome.storage.local.set({ cmdStateLast: [] });
+        cmdInputRef.current?.setCmdState(new CmdState([]));
+        return;
+      }
+    }
 
     let tabGroups = s.tabGroups();
 
