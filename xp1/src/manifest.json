@@ -1,5 +1,5 @@
 {
-  "description": "GPT-based Assistant with access to your Tabs",
+  "description": "Productivity Assistant with access to your Tabs",
   "manifest_version": 3,
   "background": { "service_worker": "background.bundle.js" },
   "action": {
