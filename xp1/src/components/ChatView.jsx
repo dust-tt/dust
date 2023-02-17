@@ -133,6 +133,20 @@ export function ChatView({ user }) {
       }
     });
 
+    chrome.storage.local.get(['log']).then((res) => {
+      if (res.log) {
+        // If last interaction is more than 5mn ago, clear it.
+        // console.log('LOG', res.log);
+        if (Date.now() - res.log.lastUpdated > 1000 * 60 * 5) {
+          chrome.storage.local.set({
+            log: { lastUpdated: Date.now(), data: [] },
+          });
+        } else {
+          setLog(res.log.data);
+        }
+      }
+    });
+
     chrome.runtime.getPlatformInfo((info) => {
       setOs(info.os);
     });
@@ -165,6 +179,27 @@ export function ChatView({ user }) {
     if (s.hasClosedTabs(tabs)) {
       return;
     }
+    if (s.commands().length > 0) {
+      let hasReset = false;
+      console.log('COMMANDS', s.commands());
+      s.commands().forEach((c) => {
+        if (c.type === 'command' && c.name === 'reset') {
+          hasReset = true;
+        }
+      });
+      console.log('HAS RESET', hasReset);
+      if (hasReset) {
+        setLog([]);
+        chrome.storage.local.set({
+          log: { lastUpdated: Date.now(), data: [] },
+        });
+        setCmdStateLast(new CmdState([]));
+        setCmdStateIndex(-1);
+        chrome.storage.local.set({ cmdStateLast: [] });
+        cmdInputRef.current?.setCmdState(new CmdState([]));
+        return;
+      }
+    }
 
     let tabGroups = s.tabGroups();
 
@@ -191,6 +226,9 @@ export function ChatView({ user }) {
       content: [{ type: 'cmd_state', state: s.json() }],
     });
     setLog(l);
+    chrome.storage.local.set({
+      log: { lastUpdated: Date.now(), data: l },
+    });
 
     setCmdStateLast(new CmdState([]));
     setCmdStateIndex(-1);
@@ -281,6 +319,9 @@ export function ChatView({ user }) {
           ),
         });
         setLog(l);
+        chrome.storage.local.set({
+          log: { lastUpdated: Date.now(), data: l },
+        });
         setLast(null);
         setStatus('ready');
         errored = true;
@@ -308,6 +349,9 @@ export function ChatView({ user }) {
           ),
         });
         setLog(l);
+        chrome.storage.local.set({
+          log: { lastUpdated: Date.now(), data: l },
+        });
         setLast(null);
         setStatus('ready');
         errored = true;
@@ -320,6 +364,9 @@ export function ChatView({ user }) {
             content: textToBlocks(text),
           });
           setLog(l);
+          chrome.storage.local.set({
+            log: { lastUpdated: Date.now(), data: l },
+          });
           setLast(null);
           setStatus('ready');
         }
@@ -336,7 +383,7 @@ export function ChatView({ user }) {
           className="grow overflow-auto ml-2 mr-3 mb-2 whitespace-pre-wrap space-y-2 pt-2 pl-1"
         >
           {log.length === 0 && last === null ? (
-            <div className="flex w-full mt-48">
+            <div className="flex w-full mt-36">
               <div className="flex flex-col mx-auto">
                 <div className="flex flex-row items-center mx-auto pr-2">
                   <div className="flex">
@@ -361,6 +408,11 @@ export function ChatView({ user }) {
                       {'↑↓'}
                     </span>{' '}
                     to cycle through your history of commands.
+                    <br />
+                    <span className="font-mono bg-gray-100 px-1 py-1 rounded-sm">
+                      {'/reset'}
+                    </span>{' '}
+                    to clear the chat history (auto-reset after 5mn)
                   </p>
                 </div>
               </div>
