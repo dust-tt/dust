@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Script from "next/script";
 import { ActionButton, HighlightButton } from "../../components/Button";
-import { PulseLogo } from "../../components/Logo";
+import { PulseLogo, Logo } from "../../components/Logo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -44,28 +44,21 @@ export default function Home({
       </Head>
 
       <main className="mx-4">
-        <div className="mx-8 mt-8">
-          <div className="flex">
-            <div className="flex flex-row items-center mx-auto pr-2">
-              <div className="flex">
-                <PulseLogo animated={true} />
-              </div>
-              <div className="flex ml-2 font-bold text-2xl text-gray-800">
-                XP1
-              </div>
-            </div>
-          </div>
+        <div className="mx-8">
+          <Logo />
         </div>
 
         <div className="mx-auto mt-12">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 text-center">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 text-center">
             <span className="text-gray-800">
-              GPT-based Assistant with access to your Tabs
+              <div className="text-violet-600">XP1</div>
+              <div className="leading-snug">Productivity Assistant</div>
+              <div>with access to your Tabs</div>
             </span>{" "}
           </h1>
         </div>
 
-        <div className="w-full mt-12">
+        <div className="w-full mt-16">
           <div className="w-[300px] h-[165px] sm:w-[670px] sm:h-[375px] mx-auto overflow-hidden rounded-md border border-gray-300">
             <img src="https://storage.googleapis.com/dust-xp1-extension/gifs/dust-xp1-bundled.gif"></img>
           </div>

@@ -169,6 +169,20 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                         <Menu.Item>
                           {({ active }) => (
                             <a
+                              href="https://dust.tt/xp1"
+                              target="_blank"
+                              className={classNames(
+                                active ? "bg-gray-50" : "",
+                                "block px-4 py-2 text-sm font-bold text-violet-600"
+                              )}
+                            >
+                              Discover XP1
+                            </a>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <a
                               href="#"
                               onClick={() => signOut()}
                               className={classNames(

@@ -4,7 +4,10 @@ import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightCircleIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 import { ActionButton, Button } from "../components/Button";
 import { Logo } from "../components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
@@ -27,21 +30,16 @@ const features = [
       "Avoid overfitting by iterating on your LLM app design on several inputs simultaneously.",
   },
   {
-    name: "Switch models",
+    name: "Model choice",
     built: true,
     description:
-      "Design against models served by Cohere, OpenAI, and more soon. Switch models seamlessly.",
+      "Design against models served by Cohere, OpenAI, AI21 and more soon. Switch models seamlessly.",
   },
   {
-    name: "Few-shot examples sanity",
-    built: true,
-    description: "Manage few-shot examples in isolated and versioned datasets.",
-  },
-  {
-    name: "History preserved",
+    name: "Version history",
     built: true,
     description:
-      "Iterations, model outputs and few-shot examples are saved and versioned automatically.",
+      "Have easy access to iterations, model outputs and few-shot examples saved automatically.",
   },
   {
     name: "Caching",
@@ -50,16 +48,21 @@ const features = [
       "Speed up iterations and reduce costs with cached model interactions.",
   },
   {
-    name: "Models that act",
+    name: "Apps that do things",
     built: true,
     description:
-      "Build apps that take action: search Google, curl block and more integrations to come.",
+      "Interact with Google search, code execution blocks and other action blocks to come.",
   },
   {
     name: "Easy deployment",
     built: true,
+    description: "Deploy to an API endpoint or the Dust assistant XP1.",
+  },
+  {
+    name: "Semantic search",
+    built: false,
     description:
-      "Deploy in one click. Aggregate production traffic for later testing and fine-tuning.",
+      "Add your team's Notion, Google Docs or Slack to adapt app behaviour to your own data.",
   },
 ];
 
@@ -68,12 +71,11 @@ function Features() {
     <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-          Prompt engineering, re-imagined🔥
+          Get the best out of LLMs for your team🔥
         </h2>
         <p className="mt-4 px-4 text-normal sm:text-lg text-gray-500">
-          Built on years of experience working with large language models.
-          <br />
-          With one goal, help accelerate their deployment.
+          Leveraging years of experience working with LLMs to give <br />
+          your team a profound productivity boost.
         </p>
       </div>
       <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
@@ -120,10 +122,11 @@ export default function Home({ ga_tracking_id }) {
 
         <div className="mx-auto sm:max-w-3xl lg:max-w-4xl mt-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
-            <span className="">Design and Deploy</span> <br />
-            <span className="text-violet-600">
+            <div className="">Make and Deploy</div>
+            <div className="text-violet-600 leading-snug">
               Large Language Model Apps
-            </span>{" "}
+            </div>
+            <div className="">for the workplace</div>
           </h1>
 
           <div className="flex flex-rows mt-16">
@@ -148,7 +151,18 @@ export default function Home({ ga_tracking_id }) {
           </div>
         </div>
 
-        <div className="mt-24">
+        <div className="mt-16">
+          <div className="mx-auto text-center sm:max-w-2xl lg:max-w-4xl">
+            <Link href="/xp1">
+              <div className="font-bold text-violet-600">
+                <ArrowRightIcon className="mb-0.5 mr-2 h-4 w-4 inline-block" />
+                Discover XP1, a Productivity Assistant with access to your Tabs
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-12">
           <Features />
         </div>
 
