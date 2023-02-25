@@ -3,6 +3,8 @@ import { authOptions } from "../../auth/[...nextauth]";
 import { User, App } from "../../../../lib/models";
 import { new_id } from "../../../../lib/utils";
 import { Op } from "sequelize";
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 
 const { DUST_API } = process.env;
 
