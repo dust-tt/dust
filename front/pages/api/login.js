@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     case "GET":
       let user = await User.findOne({
         where: {
-          githubId: session.github.id.toString(),
+          githubId: session.provider.id.toString(),
         },
       });
 
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       }
       if (!user) {
         user = await User.create({
-          githubId: session.github.id.toString(),
+          githubId: session.provider.id.toString(),
           username: session.user.username,
           email: session.user.email,
           name: session.user.name,

@@ -6,6 +6,12 @@ const front_sequelize = new Sequelize(FRONT_DATABASE_URI);
 export const User = front_sequelize.define(
   "user",
   {
+    // provider: {
+    //   type: DataTypes.STRING,
+    // },
+    // providerId: {
+    //   type: DataTypes.STRING,
+    // },
     githubId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -24,7 +30,11 @@ export const User = front_sequelize.define(
     },
   },
   {
-    indexes: [{ fields: ["githubId"] }, { fields: ["username"] }],
+    indexes: [
+      { fields: ["githubId"] },
+      { fields: ["username"] },
+      // { fields: ["provider", "providerId"] },
+    ],
   }
 );
 
