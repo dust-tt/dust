@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   res.status(200).json({
-    accepted_versions: ["0.2.0", "0.2.1"],
+    accepted_versions: ["0.2.1"],
     update_url: `${URL}/xp1/install`,
     download_url: XP1_CHROME_WEB_STORE_URL,
   });
