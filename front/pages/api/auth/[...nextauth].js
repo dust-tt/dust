@@ -8,10 +8,10 @@ export const authOptions = {
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
+    // GoogleProvider({
+    //   clientId: process.env.GOOGLE_CLIENT_ID,
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    // }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
@@ -47,14 +47,14 @@ export const authOptions = {
           access_token: account.access_token,
         };
       }
-      if (profile && account && account.provider === "google") {
-        token.provider = {
-          provider: "google",
-          id: account.providerAccountId,
-          username: profile.email,
-          access_token: account.access_token,
-        };
-      }
+      // if (profile && account && account.provider === "google") {
+      //   token.provider = {
+      //     provider: "google",
+      //     id: account.providerAccountId,
+      //     username: profile.email,
+      //     access_token: account.access_token,
+      //   };
+      // }
       // console.log("JTW");
       // console.log(token);
       return token;
