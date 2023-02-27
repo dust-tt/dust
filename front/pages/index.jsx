@@ -129,23 +129,27 @@ export default function Home({ ga_tracking_id }) {
             <div className="">for the workplace</div>
           </h1>
 
-          <div className="flex flex-rows mt-16">
+          <div className="flex flex-col sm:flex-row mt-16">
             <div className="flex flex-1"></div>
-            <div className="flex flex-initial mr-4">
-              <Link href="https://docs.dust.tt">
+            <div className="flex flex-initial w-full sm:w-auto sm:mr-4">
+              <Link href="https://docs.dust.tt" className="mx-auto">
                 <Button className="mr-2">
                   <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
                   View Documentation
                 </Button>
               </Link>
             </div>
-            <div className="flex flex-initial">
-              <ActionButton
-                onClick={() => signIn("github", { callbackUrl: "/api/login" })}
-              >
-                <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
-                Sign in with Github
-              </ActionButton>
+            <div className="flex flex-initial w-full sm:w-auto">
+              <div className="mx-auto mt-2 sm:mt-0">
+                <ActionButton
+                  onClick={() =>
+                    signIn("github", { callbackUrl: "/api/login" })
+                  }
+                >
+                  <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
+                  Sign in with Github
+                </ActionButton>
+              </div>
             </div>
             <div className="flex flex-1"></div>
           </div>
