@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = !(session && session.github.id.toString() === user.githubId);
+  const readOnly = !(session && session.provider.id.toString() === user.githubId);
 
   let [app] = await Promise.all([
     App.findOne({

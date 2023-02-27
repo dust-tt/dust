@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
+import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions = {
   providers: [
@@ -7,22 +8,50 @@ export const authOptions = {
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     session: async ({ session, token, user }) => {
-      // session.token = token;
-      session.github = token.github;
-      session.user.username = token.github.login;
-      // console.log("SESSION");
-      // console.log(session);
+      if (token.github && !token.provider) {
+        token.provider = {
+          provider: "github",
+          id: token.github.id,
+          username: token.github.login,
+          access_token: token.github.access_token,
+        };
+      }
+      session.provider = token.provider;
+      session.user.username = token.provider.username;
+      if (!session.user.image) {
+        session.user.image = null;
+      }
+      // console.log("TOKEN", token);
+      // console.log("SESSION", session);
       return session;
     },
     async jwt({ token, user, account, profile, isNewUser }) {
-      if (profile && account) {
-        token.github = {
-          login: profile.login,
+      // console.log("JWT", token, user, account, profile, isNewUser);
+      // console.log("JWT TOKEN", token);
+      // console.log("JWT USER", user);
+      // console.log("JWT ACCOUNT", account);
+      // console.log("JWT PROFILE", profile);
+      if (profile && account && account.provider === "github") {
+        token.provider = {
+          provider: "github",
           id: profile.id,
+          username: profile.login,
+          access_token: account.access_token,
+        };
+      }
+      if (profile && account && account.provider === "google") {
+        token.provider = {
+          provider: "google",
+          id: account.providerAccountId,
+          username: profile.email,
           access_token: account.access_token,
         };
       }
