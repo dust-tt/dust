@@ -2,6 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
+use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, SQLITE_TABLES, SQL_INDEXES};
@@ -922,6 +923,69 @@ impl Store for SQLiteStore {
         .await?
     }
 
+    async fn embedder_cache_get(
+        &self,
+        project: &Project,
+        request: &EmbedderRequest,
+    ) -> Result<Vec<EmbedderVector>> {
+        let project_id = project.project_id();
+        let hash = request.hash().to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Vec<EmbedderVector>> {
+            let c = pool.get()?;
+            // Retrieve generations.
+            let mut stmt = c.prepare_cached(
+                "SELECT created, response FROM cache WHERE project = ?1 AND hash = ?2",
+            )?;
+            let mut rows = stmt.query(params![project_id, hash])?;
+            let mut embeddings: Vec<(u64, EmbedderVector)> = vec![];
+            while let Some(row) = rows.next()? {
+                let created: u64 = row.get(0)?;
+                let embedding_data: String = row.get(1)?;
+                let embedding: EmbedderVector = serde_json::from_str(&embedding_data)?;
+                embeddings.push((created, embedding));
+            }
+            // Latest first.
+            embeddings.sort_by(|a, b| b.0.cmp(&a.0));
+
+            Ok(embeddings.into_iter().map(|(_, g)| g).collect::<Vec<_>>())
+        })
+        .await?
+    }
+
+    async fn embedder_cache_store(
+        &self,
+        project: &Project,
+        request: &EmbedderRequest,
+        embedding: &EmbedderVector,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let request = request.clone();
+        let embedding = embedding.clone();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO cache (project, created, hash, request, response)
+                   VALUES (?, ?, ?, ?, ?)",
+            )?;
+            let created = embedding.created;
+            let request_data = serde_json::to_string(&request)?;
+            let embedding_data = serde_json::to_string(&embedding)?;
+            stmt.insert(params![
+                project_id,
+                created,
+                request.hash().to_string(),
+                request_data,
+                embedding_data
+            ])?;
+            Ok(())
+        })
+        .await?
+    }
+
     async fn http_cache_get(
         &self,
         project: &Project,
@@ -1125,7 +1189,8 @@ _fun = (env) => {
         )
         .await?;
 
-        app.run(Credentials::new(), Box::new(store.clone()), None).await?;
+        app.run(Credentials::new(), Box::new(store.clone()), None)
+            .await?;
 
         let r = store
             .load_run(&project, app.run_ref().unwrap().run_id(), None)
@@ -1203,7 +1268,8 @@ _fun = (env) => {
         )
         .await?;
 
-        app.run(Credentials::new(), Box::new(store.clone()), None).await?;
+        app.run(Credentials::new(), Box::new(store.clone()), None)
+            .await?;
 
         let r = store
             .load_run(&project, app.run_ref().unwrap().run_id(), None)

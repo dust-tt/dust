@@ -19,6 +19,7 @@ pub mod utils;
 pub mod providers {
     pub mod ai21;
     pub mod cohere;
+    pub mod embedder;
     pub mod llm;
     pub mod openai;
     pub mod provider;
@@ -31,13 +32,13 @@ pub mod http {
 }
 pub mod blocks {
     pub mod block;
+    pub mod browser;
     pub mod code;
+    pub mod curl;
     pub mod data;
     pub mod input;
     pub mod llm;
     pub mod map;
     pub mod reduce;
     pub mod search;
-    pub mod curl;
-    pub mod browser;
 }

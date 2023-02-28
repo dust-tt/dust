@@ -1,5 +1,6 @@
 use crate::providers::ai21::AI21Provider;
 use crate::providers::cohere::CohereProvider;
+use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
 use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
@@ -118,6 +119,7 @@ pub trait Provider {
     async fn test(&self) -> Result<()>;
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send>;
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send>;
 }
 
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {

@@ -2,6 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
+use crate::providers::embedder::{EmbedderVector, EmbedderRequest};
 use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
@@ -83,6 +84,19 @@ pub trait Store {
         project: &Project,
         request: &LLMRequest,
         generation: &LLMGeneration,
+    ) -> Result<()>;
+
+    // Embedder Cache
+    async fn embedder_cache_get(
+        &self,
+        project: &Project,
+        request: &EmbedderRequest,
+    ) -> Result<Vec<EmbedderVector>>;
+    async fn embedder_cache_store(
+        &self,
+        project: &Project,
+        request: &EmbedderRequest,
+        embedding: &EmbedderVector,
     ) -> Result<()>;
 
     // HTTP Cache

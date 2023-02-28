@@ -54,6 +54,32 @@ pub fn p50k_base() -> Result<CoreBPE> {
     )
 }
 
+pub fn cl100k_base() -> Result<CoreBPE> {
+    let cl100k_base = include_str!("cl100k_base.tiktoken");
+
+    let mut encoder = HashMap::default();
+    for line in cl100k_base.lines() {
+        let mut parts = line.split(' ');
+        let raw = parts.next().unwrap();
+        let token = &general_purpose::STANDARD.decode(raw)?;
+        let rank: usize = parts.next().unwrap().parse().unwrap();
+        encoder.insert(token.clone(), rank);
+    }
+
+    let mut special_tokens = HashMap::default();
+    special_tokens.insert(String::from("<|endoftext|>"), 100257);
+    special_tokens.insert(String::from("<|fim_prefix|>"), 100258);
+    special_tokens.insert(String::from("<|fim_middle|>"), 100259);
+    special_tokens.insert(String::from("<|fim_suffix|>"), 100260);
+    special_tokens.insert(String::from("<|endofprompt|>"), 100276);
+
+    CoreBPE::new(
+        encoder,
+        special_tokens,
+        "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+    )
+}
+
 pub fn r50k_base_singleton() -> Arc<Mutex<CoreBPE>> {
     lazy_static! {
         static ref R50K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(r50k_base().unwrap()));
@@ -66,6 +92,13 @@ pub fn p50k_base_singleton() -> Arc<Mutex<CoreBPE>> {
         static ref P50K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(p50k_base().unwrap()));
     }
     P50K_BASE.clone()
+}
+
+pub fn cl100k_base_singleton() -> Arc<Mutex<CoreBPE>> {
+    lazy_static! {
+        static ref CL100K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(cl100k_base().unwrap()));
+    }
+    CL100K_BASE.clone()
 }
 
 fn _byte_pair_merge(piece: &[u8], ranks: &HashMap<Vec<u8>, usize>) -> Vec<std::ops::Range<usize>> {
@@ -569,6 +602,8 @@ mod tests {
     use crate::providers::tiktoken::tiktoken::p50k_base;
     use crate::providers::tiktoken::tiktoken::p50k_base_singleton;
     use crate::providers::tiktoken::tiktoken::r50k_base;
+    // use crate::providers::tiktoken::tiktoken::cl100k_base_singleton;
+    use crate::providers::tiktoken::tiktoken::cl100k_base;
 
     #[test]
     fn very_simple_test() {
@@ -605,6 +640,18 @@ mod tests {
                 1212, 318, 257, 1332, 220, 220, 220, 220, 220, 220, 220, 220, 351, 257, 1256, 286,
                 9029
             ]
+        );
+    }
+
+    #[test]
+    fn cl100k_base_test() {
+        let bpe = cl100k_base().unwrap();
+        let tokens = bpe.encode_with_special_tokens("This is a test         with a lot of spaces");
+        let decoded = bpe.decode(tokens.clone()).unwrap();
+        assert_eq!(decoded, "This is a test         with a lot of spaces");
+        assert_eq!(
+            tokens,
+            vec![2028, 374, 264, 1296, 260, 449, 264, 2763, 315, 12908]
         );
     }
 
