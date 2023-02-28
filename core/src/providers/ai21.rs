@@ -1,3 +1,4 @@
+use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
@@ -327,6 +328,43 @@ impl LLM for AI21LLM {
     }
 }
 
+pub struct AI21Embedder {
+    id: String,
+}
+
+impl AI21Embedder {
+    pub fn new(id: String) -> Self {
+        AI21Embedder { id }
+    }
+}
+
+#[async_trait]
+impl Embedder for AI21Embedder {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    async fn initialize(&mut self, _credentials: Credentials) -> Result<()> {
+        Err(anyhow!("Embeddings not available for provider `ai21`"))
+    }
+
+    fn context_size(&self) -> usize {
+        2048
+    }
+
+    async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
+        Err(anyhow!("Encode/Decode not implemented for provider `ai21`"))
+    }
+
+    async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
+        Err(anyhow!("Encode/Decode not implemented for provider `ai21`"))
+    }
+
+    async fn embed(&self, _text: &str, _extras: Option<Value>) -> Result<EmbedderVector> {
+        Err(anyhow!("Embeddings not available for provider `ai21`"))
+    }
+}
+
 pub struct AI21Provider {}
 
 impl AI21Provider {
@@ -385,5 +423,9 @@ impl Provider for AI21Provider {
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
         Box::new(AI21LLM::new(id))
+    }
+
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+        Box::new(AI21Embedder::new(id))
     }
 }

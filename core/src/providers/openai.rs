@@ -1,7 +1,10 @@
+use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{p50k_base_singleton, r50k_base_singleton, CoreBPE};
+use crate::providers::tiktoken::tiktoken::{
+    cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+};
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -695,6 +698,182 @@ impl LLM for OpenAILLM {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Embedding {
+    pub embedding: Vec<f64>,
+    pub index: u64,
+    pub object: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Usage {
+    pub prompt_tokens: u64,
+    pub total_tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Embeddings {
+    pub model: String,
+    pub usage: Usage,
+    pub object: String,
+    pub data: Vec<Embedding>,
+}
+
+pub struct OpenAIEmbedder {
+    id: String,
+    api_key: Option<String>,
+}
+
+impl OpenAIEmbedder {
+    pub fn new(id: String) -> Self {
+        OpenAIEmbedder { id, api_key: None }
+    }
+
+    fn uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
+    }
+
+    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+        match self.id.as_str() {
+            "text-embedding-ada-002" => cl100k_base_singleton(),
+            _ => r50k_base_singleton(),
+        }
+    }
+
+    async fn embed(&self, text: &str, user: Option<String>) -> Result<Embeddings> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = json!({
+            "model": self.id.clone(),
+            "input": text,
+        });
+        if user.is_some() {
+            body["user"] = json!(user);
+        }
+
+        // println!("BODY: {}", body.to_string());
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            // TODO(spolu): add support for custom organizations
+            // .header("OpenAI-Organization", "openai")
+            .body(Body::from(body.to_string()))?;
+
+        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+            Ok(Ok(res)) => res,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+        };
+        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+            Ok(Ok(body)) => body,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+        };
+
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
+
+        let embeddings: Embeddings = match serde_json::from_slice(c) {
+            Ok(c) => Ok(c),
+            Err(_) => {
+                let error: Error = serde_json::from_slice(c)?;
+                match error.retryable() {
+                    true => Err(ModelError {
+                        message: error.message(),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(2000),
+                            factor: 2,
+                            retries: 8,
+                        }),
+                    }),
+                    false => Err(ModelError {
+                        message: error.message(),
+                        retryable: None,
+                    }),
+                }
+            }
+        }?;
+
+        Ok(embeddings)
+    }
+}
+
+#[async_trait]
+impl Embedder for OpenAIEmbedder {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        match credentials.get("OPENAI_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
+                }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                ))?,
+            },
+        }
+        Ok(())
+    }
+
+    fn context_size(&self) -> usize {
+        match self.id.as_str() {
+            "text-embedding-ada-002" => 8191,
+            _ => 2046,
+        }
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
+        Ok(tokens)
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        let str = { self.tokenizer().lock().decode(tokens)? };
+        Ok(str)
+    }
+
+    async fn embed(&self, text: &str, extras: Option<Value>) -> Result<EmbedderVector> {
+        let e = self
+            .embed(
+                text,
+                match extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(u) => Some(u.to_string()),
+                        None => None,
+                    },
+                    None => None,
+                },
+            )
+            .await?;
+
+        assert!(e.data.len() > 0);
+        // println!("EMBEDDING: {:?}", e);
+
+        Ok(EmbedderVector {
+            created: utils::now(),
+            provider: ProviderID::OpenAI.to_string(),
+            model: self.id.clone(),
+            vector: e.data[0].embedding.clone(),
+        })
+    }
+}
+
 pub struct OpenAIProvider {}
 
 impl OpenAIProvider {
@@ -748,6 +927,11 @@ impl Provider for OpenAIProvider {
             )
             .await?;
 
+        let mut embedder = self.embedder(String::from("text-embedding-ada-002"));
+        embedder.initialize(Credentials::new()).await?;
+
+        embedder.embed("Hello 😊", None).await?;
+
         utils::done("Test successfully completed! OpenAI is ready to use.");
 
         Ok(())
@@ -755,5 +939,9 @@ impl Provider for OpenAIProvider {
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
         Box::new(OpenAILLM::new(id))
+    }
+
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+        Box::new(OpenAIEmbedder::new(id))
     }
 }
