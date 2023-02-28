@@ -345,10 +345,13 @@ impl Embedder for AI21Embedder {
     }
 
     async fn initialize(&mut self, _credentials: Credentials) -> Result<()> {
-        Err(anyhow!("Embeddings not available for provider `ai21`"))
+        Err(anyhow!("Embedders not available for provider `ai21`"))
     }
 
     fn context_size(&self) -> usize {
+        2048
+    }
+    fn embedding_size(&self) -> usize {
         2048
     }
 

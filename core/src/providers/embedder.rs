@@ -23,6 +23,7 @@ pub trait Embedder {
     async fn initialize(&mut self, credentials: Credentials) -> Result<()>;
 
     fn context_size(&self) -> usize;
+    fn embedding_size(&self) -> usize;
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>>;
     async fn decode(&self, tokens: Vec<usize>) -> Result<String>;

@@ -467,6 +467,14 @@ impl Embedder for CohereEmbedder {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        if !(vec!["small", "large"].contains(&self.id.as_str())) {
+            return Err(anyhow!(
+                "Unexpected embedder model id (`{}`) for provider `cohere`, \
+                  expected: `small` or `large`",
+                self.id
+            ));
+        }
+
         match credentials.get("COHERE_API_KEY") {
             Some(api_key) => {
                 self.api_key = Some(api_key.clone());
@@ -485,6 +493,14 @@ impl Embedder for CohereEmbedder {
 
     fn context_size(&self) -> usize {
         2048
+    }
+
+    fn embedding_size(&self) -> usize {
+        match self.id.as_str() {
+            "large" => 4096,
+            "small" => 1024,
+            _ => unimplemented!(),
+        }
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
@@ -574,7 +590,8 @@ impl Provider for CohereProvider {
         let mut embedder = self.embedder(String::from("large"));
         embedder.initialize(Credentials::new()).await?;
 
-        embedder.embed("Hello 😊", None).await?;
+        let _v = embedder.embed("Hello 😊", None).await?;
+        // println!("EMBEDDING SIZE: {}", v.vector.len());
 
         utils::done("Test successfully completed! Cohere is ready to use.");
 

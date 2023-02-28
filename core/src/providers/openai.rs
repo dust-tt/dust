@@ -815,6 +815,14 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        if !(vec!["text-embedding-ada-002"].contains(&self.id.as_str())) {
+            return Err(anyhow!(
+                "Unexpected embedder model id (`{}`) for provider `openai`, \
+                  expected: `text-embedding-ada-002`",
+                self.id
+            ));
+        }
+
         match credentials.get("OPENAI_API_KEY") {
             Some(api_key) => {
                 self.api_key = Some(api_key.clone());
@@ -834,7 +842,14 @@ impl Embedder for OpenAIEmbedder {
     fn context_size(&self) -> usize {
         match self.id.as_str() {
             "text-embedding-ada-002" => 8191,
-            _ => 2046,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn embedding_size(&self) -> usize {
+        match self.id.as_str() {
+            "text-embedding-ada-002" => 1536,
+            _ => unimplemented!(),
         }
     }
 
@@ -930,7 +945,8 @@ impl Provider for OpenAIProvider {
         let mut embedder = self.embedder(String::from("text-embedding-ada-002"));
         embedder.initialize(Credentials::new()).await?;
 
-        embedder.embed("Hello 😊", None).await?;
+        let _v = embedder.embed("Hello 😊", None).await?;
+        // println!("EMBEDDING SIZE: {}", v.vector.len());
 
         utils::done("Test successfully completed! OpenAI is ready to use.");
 

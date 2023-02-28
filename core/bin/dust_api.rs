@@ -989,10 +989,11 @@ async fn main() -> Result<()> {
     let app = Router::new()
         // Index
         .route("/", get(index))
+
         // Projects
         .route("/projects", post(projects_create))
         .route("/projects/:project_id/clone", post(projects_clone))
-        // Specifications
+        // Projects / Specifications
         .route(
             "/projects/:project_id/specifications/check",
             post(specifications_check),
@@ -1001,14 +1002,14 @@ async fn main() -> Result<()> {
             "/projects/:project_id/specifications/:hash",
             get(specifications_retrieve),
         )
-        // Datasets
+        // Projects / Datasets
         .route("/projects/:project_id/datasets", post(datasets_register))
         .route("/projects/:project_id/datasets", get(datasets_list))
         .route(
             "/projects/:project_id/datasets/:dataset_id/:hash",
             get(datasets_retrieve),
         )
-        // Runs
+        // Projects / Runs
         .route("/projects/:project_id/runs", post(runs_create))
         .route(
             "/projects/:project_id/runs/stream",
@@ -1024,6 +1025,7 @@ async fn main() -> Result<()> {
             "/projects/:project_id/runs/:run_id/status",
             get(runs_retrieve_status),
         )
+
         // Extensions
         .layer(extract::Extension(state.clone()));
 
