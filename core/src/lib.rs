@@ -12,6 +12,10 @@ pub mod stores {
 }
 pub mod app;
 pub mod dataset;
+pub mod datasources {
+    pub mod datasource;
+    pub mod splitter;
+}
 pub mod init;
 pub mod project;
 pub mod run;
