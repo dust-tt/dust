@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{LLMGeneration, LLM, ChatGeneration, ChatMessage};
+use crate::providers::llm::{LLMGeneration, LLM, LLMChatGeneration, ChatMessage};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -708,7 +708,7 @@ impl LLM for OpenAILLM {
         frequency_penalty: Option<f32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<ChatGeneration> {
+    ) -> Result<LLMChatGeneration> {
         unimplemented!()
     }
 }
