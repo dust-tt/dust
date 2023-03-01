@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::datasources::datasource::{DataSource, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -858,6 +859,27 @@ impl Store for SQLiteStore {
             )))
         })
         .await?
+    }
+
+    async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn load_data_source(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Option<DataSource>> {
+        unimplemented!()
+    }
+
+    async fn upsert_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document: &Document,
+    ) -> Result<()> {
+        unimplemented!()
     }
 
     async fn llm_cache_get(

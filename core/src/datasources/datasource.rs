@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::slice::Iter;
 
-// A Chunk is a subset of a document that was inserted into Pinecone. `has` covers both the chunk
-// text and the parent document metadata (inserted into pinecone on each chunk to leverage metadata
-// filters there).
+/// A Chunk is a subset of a document that was inserted into Pinecone. `has` covers both the chunk
+/// text and the parent document metadata (inserted into pinecone on each chunk to leverage metadata
+/// filters there).
 pub struct Chunk {
     pub created: u64,
     pub text: String,
@@ -18,16 +18,15 @@ pub struct Chunk {
     pub score: Option<f64>,
 }
 
-// Document is used as a data-strucutre for insertion into the SQL store and Pinecone. It is also
-// used as a result from search (only the retrieved chunks are provided in the result). `hash`
-// covers both the original document text and the document metadata and is used to no-op in case of
-// match.
+/// Document is used as a data-strucutre for insertion into the SQL store and Pinecone. It is also
+/// used as a result from search (only the retrieved chunks are provided in the result). `hash`
+/// covers both the original document text and the document metadata and is used to no-op in case of
+/// match.
 pub struct Document {
     pub created: u64,
     pub document_id: String,
     pub metadata: Value,
     pub hash: String,
-    pub splitter: String,
     pub chunks: Vec<Chunk>,
 }
 
@@ -43,8 +42,8 @@ pub struct DataSourceConfig {
 /// as well as Pinecone store.
 #[derive(Debug, Serialize)]
 pub struct DataSource {
-    data_source_id: String,
     created: u64,
+    data_source_id: String,
     config: DataSourceConfig,
 }
 

@@ -1,11 +1,11 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::datasources::datasource::{DataSource, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::providers::llm::{LLMGeneration, LLMRequest};
-use crate::providers::provider::ProviderID;
 use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -76,13 +76,18 @@ pub trait Store {
     ) -> Result<Option<Run>>;
 
     // DataSources
-    // async fn create_data_source(
-    //     &self,
-    //     provider_id: ProviderID,
-    //     model_id: String,
-    //     max_chunk_tokens_size: usize,
-    // ) -> Result<DataSource>;
-    // async fn load_data_source(&self, data_source_id: i64) -> Result<Option<DataSource>>;
+    async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;
+    async fn load_data_source(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Option<DataSource>>;
+    async fn upsert_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document: &Document,
+    ) -> Result<()>;
 
     // LLM Cache
     async fn llm_cache_get(
@@ -227,10 +232,12 @@ pub const SQLITE_TABLES: [&'static str; 12] = [
     );",
     "-- data sources
     CREATE TABLE IF NOT EXISTS data_sources (
-       id          INTEGER PRIMARY KEY,
-       project     INTEGER NOT NULL,
-       created     INTEGER NOT NULL,
-       config_json TEXT NOT NULL,
+       id                   INTEGER PRIMARY KEY,
+       project              INTEGER NOT NULL,
+       created              INTEGER NOT NULL,
+       data_source_id       TEXT NOT NULL,
+       config_json          TEXT NOT NULL,
+       FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources documents
     CREATE TABLE IF NOT EXISTS data_sources_documents (
@@ -250,7 +257,7 @@ pub const SQLITE_TABLES: [&'static str; 12] = [
        document              INTEGER NOT NULL,
        created               INTEGER NOT NULL,
        hash                  TEXT NOT NULL,
-       FOREIGN KEY(document) REFERENCES data_sources+_documents(id),
+       FOREIGN KEY(document) REFERENCES data_sources_documents(id),
     );",
 ];
 
@@ -335,28 +342,32 @@ pub const POSTGRES_TABLES: [&'static str; 12] = [
     );",
     "-- data sources
     CREATE TABLE IF NOT EXISTS data_sources (
-       id          BIGSERIAL PRIMARY KEY,
-       project     BIGINT NOT NULL,
-       created     BIGINT NOT NULL,
-       config_json TEXT NOT NULL,
+       id                   BIGSERIAL PRIMARY KEY,
+       project              BIGINT NOT NULL,
+       created              BIGINT NOT NULL,
+       data_source_id       TEXT NOT NULL,
+       config_json          TEXT NOT NULL,
+       FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources documents
     CREATE TABLE IF NOT EXISTS data_sources_documents (
-       id            BIGSERIAL PRIMARY KEY,
-       data_source   BIGINT NOT NULL,
-       created       BIGINT NOT NULL,
-       document_id   TEXT NOT NULL,
-       metadata_json TEXT NOT NULL,
-       hash          TEXT NOT NULL,
-       status        TEXT NOT NULL,
-       splitter      TEXT NOT NULL,
+       id                       BIGSERIAL PRIMARY KEY,
+       data_source              BIGINT NOT NULL,
+       created                  BIGINT NOT NULL,
+       document_id              TEXT NOT NULL,
+       metadata_json            TEXT NOT NULL,
+       hash                     TEXT NOT NULL,
+       status                   TEXT NOT NULL,
+       splitter                 TEXT NOT NULL,
+       FOREIGN KEY(data_source) REFERENCES data_sources(id),
     );",
     "-- data sources chunks
     CREATE TABLE IF NOT EXISTS data_sources_chunks (
-       id            BIGSERIAL PRIMARY KEY,
-       document      BIGINT NOT NULL,
-       created       BIGINT NOT NULL,
-       hash          TEXT NOT NULL,
+       id                    BIGSERIAL PRIMARY KEY,
+       document              BIGINT NOT NULL,
+       created               BIGINT NOT NULL,
+       hash                  TEXT NOT NULL,
+       FOREIGN KEY(document) REFERENCES data_sources_documents(id),
     );",
 ];
 
