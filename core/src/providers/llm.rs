@@ -27,6 +27,20 @@ pub struct LLMGeneration {
     pub prompt: Tokens,
 }
 
+#[derive(Debug, Serialize, PartialEq)]
+pub struct ChatMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct ChatGeneration {
+    pub created: u64,
+    pub provider: String,
+    pub model: String,
+    pub message: ChatMessage,
+}
+
 #[async_trait]
 pub trait LLM {
     fn id(&self) -> String;
@@ -52,6 +66,19 @@ pub trait LLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration>;
+
+    async fn chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<ChatGeneration>;
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

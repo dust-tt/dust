@@ -1,6 +1,6 @@
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{LLMGeneration, LLM};
+use crate::providers::llm::{ChatGeneration, ChatMessage, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils;
@@ -368,6 +368,21 @@ impl LLM for CohereLLM {
                 top_logprobs: None,
             },
         })
+    }
+
+    async fn chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<ChatGeneration> {
+        Err(anyhow!("Chat is not implemented for provider `cohere`"))
     }
 }
 
