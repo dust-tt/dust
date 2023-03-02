@@ -37,6 +37,8 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
+      var chat = req.query.chat === "true" ? true : false;
+
       switch (req.query.pId) {
         case "openai":
           let config = JSON.parse(provider.config);
@@ -64,7 +66,8 @@ export default async function handler(req, res) {
                 ) &&
                 (m.id.startsWith("text-") ||
                   m.id.startsWith("code-") ||
-                  m.id.startsWith("gpt-3.5-turbo"))
+                  m.id.startsWith("gpt-3.5-turbo")) &&
+                (!chat || m.id.startsWith("gpt-3.5-turbo"))
               );
             });
             f.sort((a, b) => {

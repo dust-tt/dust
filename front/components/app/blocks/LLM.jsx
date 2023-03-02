@@ -150,6 +150,7 @@ export default function LLM({
               onModelUpdate={(model) => {
                 handleModelChange(model);
               }}
+              chatOnly={false}
             />
           </div>
           <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">

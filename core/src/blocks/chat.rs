@@ -316,7 +316,7 @@ impl Block for Chat {
                                     let _ = sender.send(json!({
                                         "type": "tokens",
                                         "content": {
-                                            "block_type": "llm",
+                                            "block_type": "chat",
                                             "block_name": block_name,
                                             "input_index": input_index,
                                             "map": map,

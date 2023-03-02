@@ -4,30 +4,35 @@ export const modelProviders = [
     name: "OpenAI",
     built: true,
     enabled: false,
+    chat: true,
   },
   {
     providerId: "cohere",
     name: "Cohere",
     built: true,
     enabled: false,
+    chat: false,
   },
   {
     providerId: "ai21",
     name: "AI21 Studio",
     built: true,
     enabled: false,
+    chat: false,
   },
   {
     providerId: "hugging_face",
     name: "Hugging Face",
     built: false,
     enabled: false,
+    chat: false,
   },
   {
     providerId: "replicate",
     name: "Replicate",
     built: false,
     enabled: false,
+    chat: false,
   },
 ];
 
@@ -65,10 +70,13 @@ export async function checkProvider(providerId, config) {
   }
 }
 
-export function filterModelProviders(providers) {
+export function filterModelProviders(providers, chatOnly) {
   if (!providers) return [];
   return providers.filter((p) =>
-    modelProviders.map((p) => p.providerId).includes(p.providerId)
+    modelProviders
+      .filter((p) => !chatOnly || p.chat === true)
+      .map((p) => p.providerId)
+      .includes(p.providerId)
   );
 }
 
@@ -79,8 +87,10 @@ export function filterServiceProviders(providers) {
   );
 }
 
-export async function getProviderLLMModels(providerId, config) {
-  let modelsRes = await fetch(`/api/providers/${providerId}/models`);
+export async function getProviderLLMModels(providerId, config, chat) {
+  let modelsRes = await fetch(
+    `/api/providers/${providerId}/models?chat=${chat}`
+  );
   if (!modelsRes.ok) {
     let err = await modelsRes.json();
     console.log(`Error fetching models for ${providerId}:`, err);

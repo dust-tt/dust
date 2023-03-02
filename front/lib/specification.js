@@ -149,6 +149,25 @@ export function addBlock(spec, idx, blockType) {
         },
       });
       break;
+    case "chat":
+      s.splice(idx + 1, 0, {
+        type: "chat",
+        name: getNextName(spec, "MODEL"),
+        indent: 0,
+        spec: {
+          temperature: 0.7,
+          instructions: "",
+          messages_code:
+            '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
+          stop: [],
+        },
+        config: {
+          provider_id: "",
+          model_id: "",
+          use_cache: true,
+        },
+      });
+      break;
     case "code":
       s.splice(idx + 1, 0, {
         type: "code",
@@ -302,6 +321,31 @@ export function dumpSpecification(spec, latestDatasets) {
             block.spec.prompt
           )}\n\`\`\`\n`;
         }
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "chat": {
+        out += `chat ${block.name} {\n`;
+        out += `  temperature: ${block.spec.temperature}\n`;
+        if (block.spec.stop && block.spec.stop.length > 0) {
+          out += `  stop: \n\`\`\`\n${block.spec.stop.join("\n")}\n\`\`\`\n`;
+        }
+        if (block.spec.top_p) {
+          out += `  top_p: ${block.spec.top_p}\n`;
+        }
+        if (block.spec.presence_penalty) {
+          out += `  presence_penalty: ${block.spec.presence_penalty}\n`;
+        }
+        if (block.spec.frequency_penalty) {
+          out += `  frequency_penalty: ${block.spec.frequency_penalty}\n`;
+        }
+        if (block.spec.instructions) {
+          out += `  instructions: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.instructions
+          )}\n\`\`\`\n`;
+        }
+        out += `  messages_code: \n\`\`\`\n${block.spec.messages_code}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

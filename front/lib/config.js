@@ -14,6 +14,18 @@ export function extractConfig(spec) {
             : false,
         };
         break;
+      case "chat":
+        c[spec[i].name] = {
+          type: "chat",
+          provider_id: spec[i].config ? spec[i].config.provider_id : "",
+          model_id: spec[i].config ? spec[i].config.model_id : "",
+          use_cache: spec[i].config
+            ? spec[i].config.use_cache
+              ? spec[i].config.use_cache
+              : false
+            : false,
+        };
+        break;
       case "input":
         c[spec[i].name] = {
           type: "input",
