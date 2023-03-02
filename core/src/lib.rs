@@ -33,6 +33,7 @@ pub mod http {
 pub mod blocks {
     pub mod block;
     pub mod browser;
+    pub mod chat;
     pub mod code;
     pub mod curl;
     pub mod data;

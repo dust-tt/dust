@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -25,6 +25,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Usage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: u64,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Logprobs {
@@ -60,6 +67,23 @@ pub struct Completion {
     pub created: u64,
     pub model: String,
     pub choices: Vec<Choice>,
+    pub usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatChoice {
+    pub message: ChatMessage,
+    pub index: usize,
+    pub finish_reason: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatCompletion {
+    pub id: String,
+    pub object: String,
+    pub created: u64,
+    pub choices: Vec<ChatChoice>,
+    pub usage: Usage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -121,6 +145,10 @@ impl OpenAILLM {
 
     fn uri(&self) -> Result<Uri> {
         Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+    }
+
+    fn chat_uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
@@ -478,6 +506,97 @@ impl OpenAILLM {
 
         Ok(completion)
     }
+
+    async fn chat_completion(
+        &self,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: f32,
+        n: usize,
+        stop: &Vec<String>,
+        presence_penalty: f32,
+        frequency_penalty: f32,
+        user: Option<String>,
+    ) -> Result<ChatCompletion> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = json!({
+            "model": self.id.clone(),
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "n": n,
+            "stop": match stop.len() {
+                0 => None,
+                _ => Some(stop),
+            },
+            "presence_penalty": presence_penalty,
+            "frequency_penalty": frequency_penalty,
+        });
+        if user.is_some() {
+            body["user"] = json!(user);
+        }
+
+        // println!("BODY: {}", body.to_string());
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.chat_uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            // TODO(spolu): add support for custom organizations
+            // .header("OpenAI-Organization", "openai")
+            .body(Body::from(body.to_string()))?;
+
+        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+            Ok(Ok(res)) => res,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+        };
+        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+            Ok(Ok(body)) => body,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+        };
+
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
+
+        let mut completion: ChatCompletion = match serde_json::from_slice(c) {
+            Ok(c) => Ok(c),
+            Err(_) => {
+                let error: Error = serde_json::from_slice(c)?;
+                match error.retryable() {
+                    true => Err(ModelError {
+                        message: error.message(),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(2000),
+                            factor: 2,
+                            retries: 8,
+                        }),
+                    }),
+                    false => Err(ModelError {
+                        message: error.message(),
+                        retryable: None,
+                    }),
+                }
+            }
+        }?;
+
+        // for all messages, edit the content and strip leading and trailing spaces and \n
+        for m in completion.choices.iter_mut() {
+            m.message.content = m.message.content.trim().to_string();
+        }
+
+        Ok(completion)
+    }
 }
 
 #[async_trait]
@@ -696,6 +815,62 @@ impl LLM for OpenAILLM {
             prompt: prompt_tokens,
         })
     }
+
+    async fn chat(
+        &self,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMChatGeneration> {
+        let c = self
+            .chat_completion(
+                messages,
+                temperature,
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                n,
+                stop,
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(u) => Some(u.to_string()),
+                        None => None,
+                    },
+                    None => None,
+                },
+            )
+            .await?;
+
+        // println!("COMPLETION: {:?}", c);
+
+        assert!(c.choices.len() > 0);
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::OpenAI.to_string(),
+            model: self.id.clone(),
+            completions: c
+                .choices
+                .iter()
+                .map(|c| c.message.clone())
+                .collect::<Vec<_>>(),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -703,12 +878,6 @@ pub struct Embedding {
     pub embedding: Vec<f64>,
     pub index: u64,
     pub object: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Usage {
-    pub prompt_tokens: u64,
-    pub total_tokens: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -942,11 +1111,32 @@ impl Provider for OpenAIProvider {
             )
             .await?;
 
-        let mut embedder = self.embedder(String::from("text-embedding-ada-002"));
-        embedder.initialize(Credentials::new()).await?;
+        // let mut embedder = self.embedder(String::from("text-embedding-ada-002"));
+        // embedder.initialize(Credentials::new()).await?;
 
-        let _v = embedder.embed("Hello 😊", None).await?;
+        // let _v = embedder.embed("Hello 😊", None).await?;
         // println!("EMBEDDING SIZE: {}", v.vector.len());
+
+        // llm = self.llm(String::from("gpt-3.5-turbo"));
+        // llm.initialize(Credentials::new()).await?;
+
+        // let messages = vec![
+        //     // ChatMessage {
+        //     //     role: String::from("system"),
+        //     //     content: String::from(
+        //     //         "You're a an assistant. Answer as concisely and precisely as possible.",
+        //     //     ),
+        //     // },
+        //     ChatMessage {
+        //         role: String::from("user"),
+        //         content: String::from("How can I calculate the area of a circle?"),
+        //     },
+        // ];
+
+        // let c = llm
+        //     .chat(&messages, 0.7, None, 1, &vec![], None, None, None, None)
+        //     .await?;
+        // println!("CHAT COMPLETION SIZE: {:?}", c);
 
         utils::done("Test successfully completed! OpenAI is ready to use.");
 

@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils;
@@ -325,6 +325,23 @@ impl LLM for AI21LLM {
                 },
             },
         })
+    }
+
+    async fn chat(
+        &self,
+        _messages: &Vec<ChatMessage>,
+        _temperature: f32,
+        _top_p: Option<f32>,
+        _n: usize,
+        _stop: &Vec<String>,
+        _presence_penalty: Option<f32>,
+        _frequency_penalty: Option<f32>,
+        _extras: Option<Value>,
+        _event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMChatGeneration> {
+        Err(anyhow!(
+            "Chat capabilities are not implemented for provider `ai21`"
+        ))
     }
 }
 
