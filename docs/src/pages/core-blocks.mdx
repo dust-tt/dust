@@ -203,6 +203,94 @@ The [Tera](https://tera.netlify.app/) templating language supports a variety of 
 loops and variable replacement. Please refer to the [Tera
 documentation](https://tera.netlify.app/docs/#templates) for more details.
 
+### Support for chat-based models (chatGPT)
+
+We also support chat-based models such as OpenAI's `gpt-3.5-turbo` ([Chat
+API](https://platform.openai.com/docs/guides/chat)). When these models are used, as part of the
+`llm` block, `max_tokens` and `top_logprobs` are ignored, and the content of the templated prompt is
+passed as initial message with _user_ role. The block response is the content of the `assistant`
+role message returned by the model. Note that logprobs and tokens are not available with these
+models.
+
+---
+
+## Chat block
+
+The `chat` block provides a standardized interface to chat-based large language models such as
+OpenAI's `gpt-3.5-turbo` ([Chat API](https://platform.openai.com/docs/guides/chat)). It is
+similar in many respects to an LLM block except that it does not have `max_tokens`, has templated
+(see LLM block above) intstructions that serve as initial prompt and exposes a `messages` code block
+to output previous messages (generally passed to the app as input)
+
+It is used to build chat-based experiences where the model is exposed with previous interactions.
+
+### Specification
+
+<Properties>
+  <Property name="instructions" type="string">
+    The instructions are passed to the model as initial _system_ role message
+    (see OpenAI's [Chat guide](https://platform.openai.com/docs/guides/chat)).
+    The instructions can be templated using the
+    [Tera](https://tera.netlify.app/docs/#templates) templating language (see
+    above for more details on templating).
+  </Property>
+  <Property name="messages_code" type="javascript">
+    A Javascript function `_fun` which takes a single argument `env` (see the
+    [Code block](/core-blocks#code-block) documentation for details) and returns
+    an array (possibly empty) of messages (but you generally want at least one
+    _user_ role message). Messages should be objects with two fields: _role_ and
+    _content_. Values should be string. Possible values for `role` are _user_,
+    _assistant_ and _system_ (see OpenAI's [Chat
+    guide](https://platform.openai.com/docs/guides/chat)).
+  </Property>
+  <Property name="temperature" type="float">
+    The temperature to use when sampling from the model. A higher _temperature_
+    (eg _1.0_) results in more diverse completions, while a lower _temperature_
+    (eg _0.0_) results in more conservative completions.
+  </Property>
+  <Property name="stop" type="[]string">
+    An array of strings that should interrupt completion when sampled from the
+    model.
+  </Property>
+  <Property name="frequency_penalty" type="float">
+    Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
+    on their existing frequency in the text so far, decreasing the model's
+    likelihood to repeat the same line verbatim.
+  </Property>
+  <Property name="presence_penalty" type="float">
+    Number between _-2.0_ and _2.0_. Positive values penalize new tokens based
+    on whether they appear in the text so far, increasing the model's likelihood
+    to talk about new topics.
+  </Property>
+  <Property name="top_p" type="float">
+    An alternative to sampling with temperature, called nucleus sampling, where
+    the model considers the results of the tokens with `top_p` probability mass.
+    So _0.1_ means only the tokens comprising the top 10% probability mass are
+    considered.
+  </Property>
+</Properties>
+
+### Configuration
+
+<Properties>
+  <Property name="provider_id" type="string">
+    The model provider to use. One of _openai_, _cohere_, _ai21_.
+  </Property>
+  <Property name="model_id" type="string">
+    The model to use from the provider specified by `provider_id`.
+  </Property>
+  <Property name="use_cache" type="bool">
+    Whether to rely on the automated caching mechanism of the `llm` block. If
+    set to _true_ and a previous request was made with the same specification
+    and configuration parameters, then the cached response is returned.
+  </Property>
+  <Property name="use_stream" type="bool">
+    In the context of running an app by API. Whether to stream each token as
+    they are emitted by the model. Currently only supported for `provider_id`
+    set to `openai`.
+  </Property>
+</Properties>
+
 ---
 
 ## Map Reduce blocks
