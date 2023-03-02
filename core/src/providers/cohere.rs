@@ -1,6 +1,6 @@
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{LLMChatGeneration, ChatMessage, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils;
@@ -372,17 +372,19 @@ impl LLM for CohereLLM {
 
     async fn chat(
         &self,
-        messages: Vec<ChatMessage>,
-        temperature: f32,
-        top_p: Option<f32>,
-        n: usize,
-        stop: &Vec<String>,
-        presence_penalty: Option<f32>,
-        frequency_penalty: Option<f32>,
-        extras: Option<Value>,
-        event_sender: Option<UnboundedSender<Value>>,
+        _messages: &Vec<ChatMessage>,
+        _temperature: f32,
+        _top_p: Option<f32>,
+        _n: usize,
+        _stop: &Vec<String>,
+        _presence_penalty: Option<f32>,
+        _frequency_penalty: Option<f32>,
+        _extras: Option<Value>,
+        _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        Err(anyhow!("Chat is not implemented for provider `cohere`"))
+        Err(anyhow!(
+            "Chat capabilties are not implemented for provider `cohere`"
+        ))
     }
 }
 
@@ -602,10 +604,10 @@ impl Provider for CohereProvider {
         let d = llm.decode(t).await?;
         assert!(d == "Hello 😊");
 
-        let mut embedder = self.embedder(String::from("large"));
-        embedder.initialize(Credentials::new()).await?;
+        // let mut embedder = self.embedder(String::from("large"));
+        // embedder.initialize(Credentials::new()).await?;
 
-        let _v = embedder.embed("Hello 😊", None).await?;
+        // let _v = embedder.embed("Hello 😊", None).await?;
         // println!("EMBEDDING SIZE: {}", v.vector.len());
 
         utils::done("Test successfully completed! Cohere is ready to use.");

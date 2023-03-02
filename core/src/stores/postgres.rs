@@ -3,7 +3,7 @@ use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::llm::{LLMGeneration, LLMRequest};
+use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
@@ -938,6 +938,71 @@ impl Store for PostgresStore {
         project: &Project,
         request: &LLMRequest,
         generation: &LLMGeneration,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let request = request.clone();
+        let generation = generation.clone();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+        let stmt = c
+            .prepare(
+                "INSERT INTO cache (id, project, created, hash, request, response)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+            )
+            .await?;
+        let created = generation.created as i64;
+        let request_data = serde_json::to_string(&request)?;
+        let generation_data = serde_json::to_string(&generation)?;
+        c.query_one(
+            &stmt,
+            &[
+                &project_id,
+                &created,
+                &request.hash().to_string(),
+                &request_data,
+                &generation_data,
+            ],
+        )
+        .await?;
+        Ok(())
+    }
+
+    async fn llm_chat_cache_get(
+        &self,
+        project: &Project,
+        request: &LLMChatRequest,
+    ) -> Result<Vec<LLMChatGeneration>> {
+        let project_id = project.project_id();
+        let hash = request.hash().to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+        // Retrieve generations.
+        let stmt = c
+            .prepare("SELECT created, response FROM cache WHERE project = $1 AND hash = $2")
+            .await?;
+        let rows = c.query(&stmt, &[&project_id, &hash]).await?;
+        let mut generations = rows
+            .iter()
+            .map(|row| {
+                let created: i64 = row.get(0);
+                let generation_data: String = row.get(1);
+                let generation: LLMChatGeneration = serde_json::from_str(&generation_data)?;
+                Ok((created as u64, generation))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        // Latest first.
+        generations.sort_by(|a, b| b.0.cmp(&a.0));
+
+        Ok(generations.into_iter().map(|(_, g)| g).collect::<Vec<_>>())
+    }
+
+    async fn llm_chat_cache_store(
+        &self,
+        project: &Project,
+        request: &LLMChatRequest,
+        generation: &LLMChatGeneration,
     ) -> Result<()> {
         let project_id = project.project_id();
         let request = request.clone();

@@ -48,6 +48,7 @@ impl RunConfig {
             BlockType::Data => 64,
             BlockType::Code => 64,
             BlockType::LLM => 8,
+            BlockType::Chat => 8,
             BlockType::Map => 64,
             BlockType::Reduce => 64,
             BlockType::Search => 8,

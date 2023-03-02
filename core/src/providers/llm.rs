@@ -29,8 +29,8 @@ pub struct LLMGeneration {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatMessage {
-    role: String,
-    content: String,
+    pub role: String,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -38,7 +38,7 @@ pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
     pub model: String,
-    pub message: ChatMessage,
+    pub completions: Vec<ChatMessage>,
 }
 
 #[async_trait]
@@ -69,7 +69,7 @@ pub trait LLM {
 
     async fn chat(
         &self,
-        messages: Vec<ChatMessage>,
+        messages: &Vec<ChatMessage>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -262,7 +262,6 @@ impl LLMRequest {
     }
 }
 
-// TODO(spolu) LLMChatRequest
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatRequest {
     hash: String,
@@ -282,7 +281,7 @@ impl LLMChatRequest {
     pub fn new(
         provider_id: ProviderID,
         model_id: &str,
-        messages: Vec<ChatMessage>,
+        messages: &Vec<ChatMessage>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -339,22 +338,20 @@ impl LLMChatRequest {
         &self,
         credentials: Credentials,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<LLMGeneration> {
+    ) -> Result<LLMChatGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize(credentials).await?;
 
         let out = with_retryable_back_off(
             || {
-                llm.generate(
-                    self.prompt.as_str(),
-                    self.max_tokens,
+                llm.chat(
+                    &self.messages,
                     self.temperature,
+                    self.top_p,
                     self.n,
                     &self.stop,
-                    self.frequency_penalty,
                     self.presence_penalty,
-                    self.top_p,
-                    self.top_logprobs,
+                    self.frequency_penalty,
                     self.extras.clone(),
                     event_sender.clone(),
                 )
@@ -375,21 +372,15 @@ impl LLMChatRequest {
         match out {
             Ok(c) => {
                 utils::done(&format!(
-                    "Success querying `{}:{}`: \
-                     prompt_length={} max_tokens={} temperature={} \
-                     prompt_tokens={} completion_tokens={}",
+                    "Success querying `{}:{}`: messages_count={} temperature={} \
+                     completion_message_length={}",
                     self.provider_id.to_string(),
                     self.model_id,
-                    self.prompt.len(),
-                    self.max_tokens.unwrap_or(0),
+                    self.messages.len(),
                     self.temperature,
-                    match c.prompt.logprobs.as_ref() {
-                        None => 0,
-                        Some(logprobs) => logprobs.len(),
-                    },
                     c.completions
                         .iter()
-                        .map(|c| c.logprobs.as_ref().unwrap().len().to_string())
+                        .map(|c| c.content.len().to_string())
                         .collect::<Vec<_>>()
                         .join(","),
                 ));
@@ -410,12 +401,12 @@ impl LLMChatRequest {
         project: Project,
         store: Box<dyn Store + Send + Sync>,
         use_cache: bool,
-    ) -> Result<LLMGeneration> {
+    ) -> Result<LLMChatGeneration> {
         let generation = {
             match use_cache {
                 false => None,
                 true => {
-                    let mut generations = store.llm_cache_get(&project, self).await?;
+                    let mut generations = store.llm_chat_cache_get(&project, self).await?;
                     match generations.len() {
                         0 => None,
                         _ => Some(generations.remove(0)),
@@ -428,7 +419,9 @@ impl LLMChatRequest {
             Some(generation) => Ok(generation),
             None => {
                 let generation = self.execute(credentials, None).await?;
-                store.llm_cache_store(&project, self, &generation).await?;
+                store
+                    .llm_chat_cache_store(&project, self, &generation)
+                    .await?;
                 Ok(generation)
             }
         }

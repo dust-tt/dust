@@ -1,9 +1,10 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
-use crate::providers::llm::{LLMRequest, Tokens};
+use crate::providers::llm::{ChatMessage, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -108,12 +109,6 @@ impl Chat {
 
         Ok(instructions)
     }
-}
-
-#[derive(Debug, Serialize, PartialEq)]
-struct ChatMessage {
-    role: String,
-    content: String,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -242,18 +237,67 @@ impl Block for Chat {
             None => None,
         };
 
-        let request = LLMRequest::new(
+        let e = env.clone();
+        let messages_code = self.messages_code.clone();
+        let messages_value: Value = match tokio::task::spawn_blocking(move || {
+            let mut script = Script::from_string(messages_code.as_str())?
+                .with_timeout(std::time::Duration::from_secs(10));
+            script.call("_fun", (&e,))
+        })
+        .await?
+        {
+            Ok(v) => v,
+            Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
+        };
+
+        let mut messages = match messages_value {
+            Value::Array(a) => a
+                .into_iter()
+                .map(|v| match v {
+                    Value::Object(o) => match (o.get("role"), o.get("content")) {
+                        (Some(Value::String(r)), Some(Value::String(c))) => Ok(ChatMessage {
+                            role: r.clone(),
+                            content: c.clone(),
+                        }),
+                        _ => Err(anyhow!(
+                            "Invalid messages code output, expecting an array of objects with
+                             fields `role` and `content`."
+                        )),
+                    },
+                    _ => Err(anyhow!(
+                        "Invalid messages code output, expecting an array of objects with
+                         fields `role` and `content`."
+                    )),
+                })
+                .collect::<Result<Vec<ChatMessage>>>()?,
+            _ => Err(anyhow!(
+                "Invalid messages code output, expecting an array of objects with
+                 fields `role` and `content`."
+            ))?,
+        };
+
+        // If instructions are provided, inject them as the first message with role `system`.
+        let i = self.instructions(env)?;
+        if i.len() > 0 {
+            messages.insert(
+                0,
+                ChatMessage {
+                    role: String::from("system"),
+                    content: i,
+                },
+            );
+        }
+
+        let request = LLMChatRequest::new(
             provider_id,
             &model_id,
-            self.prompt(env)?.as_str(),
-            Some(self.max_tokens),
+            &messages,
             self.temperature,
+            self.top_p,
             1,
             &self.stop,
-            self.frequency_penalty,
             self.presence_penalty,
-            self.top_p,
-            self.top_logprobs,
+            self.frequency_penalty,
             extras,
         );
 
@@ -302,9 +346,8 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
-        Ok(serde_json::to_value(LLMValue {
-            prompt: g.prompt,
-            completion: g.completions[0].clone(),
+        Ok(serde_json::to_value(ChatValue {
+            message: g.completions[0].clone(),
         })?)
     }
 
