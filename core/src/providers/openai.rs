@@ -83,7 +83,23 @@ pub struct ChatCompletion {
     pub object: String,
     pub created: u64,
     pub choices: Vec<ChatChoice>,
-    pub usage: Usage,
+    // pub usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatDelta {
+    pub delta: Value,
+    pub index: usize,
+    pub finish_reason: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatChunk {
+    pub id: String,
+    pub object: String,
+    pub created: u64,
+    pub model: String,
+    pub choices: Vec<ChatDelta>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -257,31 +273,23 @@ impl OpenAILLM {
                                         serde_json::from_str(e.data.as_str());
                                     match error {
                                         Ok(error) => {
-                                            println!("ERROR HERE1: {:?}", error);
                                             match error.retryable_streamed() && index == 0 {
-                                                true => {
-                                                    println!("ERROR HERE2: {:?}", error);
-                                                    Err(ModelError {
-                                                        message: error.message(),
-                                                        retryable: Some(ModelErrorRetryOptions {
-                                                            sleep: Duration::from_millis(100),
-                                                            factor: 2,
-                                                            retries: 3,
-                                                        }),
-                                                    })?
-                                                }
-                                                false => {
-                                                    println!("ERROR HERE3: {:?}", error);
-                                                    Err(ModelError {
-                                                        message: error.message(),
-                                                        retryable: None,
-                                                    })?
-                                                }
+                                                true => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: Some(ModelErrorRetryOptions {
+                                                        sleep: Duration::from_millis(100),
+                                                        factor: 2,
+                                                        retries: 3,
+                                                    }),
+                                                })?,
+                                                false => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: None,
+                                                })?,
                                             }
                                             break 'stream;
                                         }
                                         Err(_) => {
-                                            println!("ERROR HERE4: {:?}", error);
                                             Err(anyhow!(
                                                 "OpenAIAPIError: failed parsing streamed \
                                                  completion from OpenAI err={} data={}",
@@ -355,7 +363,6 @@ impl OpenAILLM {
                     }
                 },
                 Err(e) => {
-                    println!("ERROR HERE5: {:?}", e);
                     Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
                     break 'stream;
                 }
@@ -503,6 +510,241 @@ impl OpenAILLM {
                 }
             }
         }?;
+
+        Ok(completion)
+    }
+
+    async fn streamed_chat_completion(
+        &self,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: f32,
+        n: usize,
+        stop: &Vec<String>,
+        presence_penalty: f32,
+        frequency_penalty: f32,
+        user: Option<String>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<ChatCompletion> {
+        assert!(self.api_key.is_some());
+
+        let url = self.chat_uri()?.to_string();
+
+        let builder = match es::ClientBuilder::for_url(url.as_str()) {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+        let builder = match builder.method(String::from("POST")).header(
+            "Authorization",
+            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
+        ) {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+        let builder = match builder.header("Content-Type", "application/json") {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+        };
+
+        let mut body = json!({
+            "model": self.id.clone(),
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "n": n,
+            "stop": match stop.len() {
+                0 => None,
+                _ => Some(stop),
+            },
+            "presence_penalty": presence_penalty,
+            "frequency_penalty": frequency_penalty,
+            "stream": true,
+        });
+        if user.is_some() {
+            body["user"] = json!(user);
+        }
+
+        // println!("BODY: {}", body.to_string());
+
+        let client = builder
+            .body(body.to_string())
+            .reconnect(
+                es::ReconnectOptions::reconnect(true)
+                    .retry_initial(false)
+                    .delay(Duration::from_secs(1))
+                    .backoff_factor(2)
+                    .delay_max(Duration::from_secs(8))
+                    .build(),
+            )
+            .build();
+
+        let mut stream = client.stream();
+
+        let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+
+        'stream: loop {
+            match stream.try_next().await {
+                Ok(e) => match e {
+                    Some(es::SSE::Comment(_)) => {
+                        println!("UNEXPECTED COMMENT");
+                    }
+                    Some(es::SSE::Event(e)) => match e.data.as_str() {
+                        "[DONE]" => {
+                            break 'stream;
+                        }
+                        _ => {
+                            let index = {
+                                let guard = chunks.lock();
+                                guard.len()
+                            };
+
+                            let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
+                                Ok(c) => c,
+                                Err(err) => {
+                                    let error: Result<Error, _> =
+                                        serde_json::from_str(e.data.as_str());
+                                    match error {
+                                        Ok(error) => {
+                                            match error.retryable_streamed() && index == 0 {
+                                                true => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: Some(ModelErrorRetryOptions {
+                                                        sleep: Duration::from_millis(100),
+                                                        factor: 2,
+                                                        retries: 3,
+                                                    }),
+                                                })?,
+                                                false => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: None,
+                                                })?,
+                                            }
+                                            break 'stream;
+                                        }
+                                        Err(_) => {
+                                            Err(anyhow!(
+                                                "OpenAIAPIError: failed parsing streamed \
+                                                 completion from OpenAI err={} data={}",
+                                                err,
+                                                e.data.as_str(),
+                                            ))?;
+                                            break 'stream;
+                                        }
+                                    }
+                                }
+                            };
+
+                            // println!("CHUNK: {:?}", chunk);
+
+                            // Only stream if choices is length 1 but should always be the case.
+                            match event_sender.as_ref() {
+                                Some(sender) => {
+                                    if chunk.choices.len() == 1 {
+                                        // we ignore the role for generating events
+                                        let text = match chunk.choices[0].delta.get("content") {
+                                            None => None,
+                                            Some(content) => match content.as_str() {
+                                                None => None,
+                                                Some(s) => Some(s.to_string()),
+                                            },
+                                        };
+                                        match text {
+                                            Some(t) => match t.len() {
+                                                0 => (),
+                                                _ => {
+                                                    let _ = sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": t,
+                                                        },
+                                                    }));
+                                                }
+                                            },
+                                            None => (),
+                                        }
+                                    }
+                                }
+                                None => (),
+                            };
+                            chunks.lock().push(chunk);
+                        }
+                    },
+                    None => {
+                        println!("UNEXPECED NONE");
+                        break 'stream;
+                    }
+                },
+                Err(e) => {
+                    Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    break 'stream;
+                }
+            }
+        }
+
+        let mut completion = {
+            let guard = chunks.lock();
+            let f = match guard.len() {
+                0 => Err(anyhow!("No chunks received from OpenAI")),
+                _ => Ok(guard[0].clone()),
+            }?;
+            let mut c = ChatCompletion {
+                id: f.id.clone(),
+                object: f.object.clone(),
+                created: f.created,
+                choices: f
+                    .choices
+                    .iter()
+                    .map(|c| ChatChoice {
+                        message: ChatMessage {
+                            role: "system".to_string(),
+                            content: "".to_string(),
+                        },
+                        index: c.index,
+                        finish_reason: None,
+                    })
+                    .collect::<Vec<_>>(),
+            };
+
+            for i in 0..guard.len() {
+                let a = guard[i].clone();
+                if a.choices.len() != f.choices.len() {
+                    Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
+                }
+                for j in 0..a.choices.len() {
+                    match a.choices.get(j).unwrap().finish_reason.clone() {
+                        None => (),
+                        Some(f) => c.choices[j].finish_reason = Some(f),
+                    };
+
+                    match a.choices[j].delta.get("role") {
+                        None => (),
+                        Some(role) => match role.as_str() {
+                            None => (),
+                            Some(r) => {
+                                c.choices[j].message.role = r.to_string();
+                            }
+                        },
+                    };
+
+                    match a.choices[j].delta.get("content") {
+                        None => (),
+                        Some(content) => match content.as_str() {
+                            None => (),
+                            Some(s) => {
+                                c.choices[j].message.content =
+                                    format!("{}{}", c.choices[j].message.content, s);
+                            }
+                        },
+                    };
+                }
+            }
+            c
+        };
+
+        // for all messages, edit the content and strip leading and trailing spaces and \n
+        for m in completion.choices.iter_mut() {
+            m.message.content = m.message.content.trim().to_string();
+        }
 
         Ok(completion)
     }
@@ -826,35 +1068,67 @@ impl LLM for OpenAILLM {
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
         extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        let c = self
-            .chat_completion(
-                messages,
-                temperature,
-                match top_p {
-                    Some(t) => t,
-                    None => 1.0,
-                },
-                n,
-                stop,
-                match presence_penalty {
-                    Some(p) => p,
-                    None => 0.0,
-                },
-                match frequency_penalty {
-                    Some(f) => f,
-                    None => 0.0,
-                },
-                match extras {
-                    Some(e) => match e.get("openai_user") {
-                        Some(u) => Some(u.to_string()),
+        let c = match event_sender {
+            Some(_) => {
+                self.streamed_chat_completion(
+                    messages,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
                         None => None,
                     },
-                    None => None,
-                },
-            )
-            .await?;
+                    event_sender,
+                )
+                .await?
+            }
+            None => {
+                self.chat_completion(
+                    messages,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
+                    },
+                )
+                .await?
+            }
+        };
 
         // println!("COMPLETION: {:?}", c);
 
