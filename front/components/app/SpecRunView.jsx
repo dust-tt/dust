@@ -2,6 +2,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import Input from "./blocks/Input";
 import Data from "./blocks/Data";
 import LLM from "./blocks/LLM";
+import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
 import Search from "./blocks/Search";
 import Curl from "./blocks/Curl";
@@ -95,6 +96,27 @@ export default function SpecRunView({
             case "llm":
               return (
                 <LLM
+                  key={idx}
+                  block={block}
+                  user={user}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
+              break;
+
+            case "chat":
+              return (
+                <Chat
                   key={idx}
                   block={block}
                   user={user}

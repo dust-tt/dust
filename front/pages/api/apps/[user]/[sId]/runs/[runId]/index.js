@@ -30,7 +30,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = !(session && session.provider.id.toString() === user.githubId);
+  const readOnly = !(
+    session && session.provider.id.toString() === user.githubId
+  );
 
   let [app] = await Promise.all([
     App.findOne({
@@ -117,6 +119,16 @@ export default async function handler(req, res) {
             }
             if (spec[i].spec.prompt) {
               spec[i].spec.prompt = restoreTripleBackticks(spec[i].spec.prompt);
+            }
+          }
+          if (spec[i].type === "chat") {
+            if (spec[i].spec.stop) {
+              spec[i].spec.stop = spec[i].spec.stop.split("\n");
+            }
+            if (spec[i].spec.instructions) {
+              spec[i].spec.instructions = restoreTripleBackticks(
+                spec[i].spec.instructions
+              );
             }
           }
           if (spec[i].type === "curl") {

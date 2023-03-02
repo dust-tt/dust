@@ -18,6 +18,12 @@ export default function NewBlock({
       description: "Query a Large Language Model to complete a prompt for you.",
     },
     {
+      type: "chat",
+      typeNames: ["chat"],
+      name: "Chat-based Large Language Model",
+      description: "Query a Large Language Model using a message-based interface.",
+    },
+    {
       type: "data",
       typeNames: ["data"],
       name: "Data",

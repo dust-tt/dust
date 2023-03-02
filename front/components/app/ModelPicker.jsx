@@ -10,7 +10,13 @@ import {
 } from "../../lib/providers";
 import { useState } from "react";
 
-export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
+export default function ModelPicker({
+  user,
+  model,
+  readOnly,
+  onModelUpdate,
+  chatOnly,
+}) {
   let { providers, isProvidersLoading, isProvidersError } = readOnly
     ? {
         providers: [],
@@ -18,7 +24,7 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
         isProvidersError: false,
       }
     : useProviders();
-  let modelProviders = filterModelProviders(providers);
+  let modelProviders = filterModelProviders(providers, !!chatOnly);
 
   let [models, setModels] = useState(null);
 
@@ -45,7 +51,8 @@ export default function ModelPicker({ user, model, readOnly, onModelUpdate }) {
     if (provider) {
       getProviderLLMModels(
         provider.providerId,
-        JSON.parse(provider.config)
+        JSON.parse(provider.config),
+        !!chatOnly
       ).then((m) => {
         setModels(m.models);
       });
