@@ -63,8 +63,8 @@ export default async function handler(req, res) {
                   m.id.includes("embedding")
                 ) &&
                 (m.id.startsWith("text-") ||
-                  m.id.startsWith("code-"))
-                  // || m.id.startsWith("gpt-3.5-turbo"))
+                  m.id.startsWith("code-") ||
+                  m.id.startsWith("gpt-3.5-turbo"))
               );
             });
             f.sort((a, b) => {

@@ -569,7 +569,7 @@ impl OpenAILLM {
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
-        let completion: ChatCompletion = match serde_json::from_slice(c) {
+        let mut completion: ChatCompletion = match serde_json::from_slice(c) {
             Ok(c) => Ok(c),
             Err(_) => {
                 let error: Error = serde_json::from_slice(c)?;
@@ -589,6 +589,11 @@ impl OpenAILLM {
                 }
             }
         }?;
+
+        // for all messages, edit the content and strip leading and trailing spaces and \n
+        for m in completion.choices.iter_mut() {
+            m.message.content = m.message.content.trim().to_string();
+        }
 
         Ok(completion)
     }

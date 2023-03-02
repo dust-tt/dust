@@ -1,7 +1,7 @@
 use crate::blocks::block::{
     find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env,
 };
-use crate::providers::llm::{LLMRequest, Tokens};
+use crate::providers::llm::{ChatMessage, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -389,70 +389,155 @@ impl Block for LLM {
             None => None,
         };
 
-        let request = LLMRequest::new(
-            provider_id,
-            &model_id,
-            self.prompt(env)?.as_str(),
-            Some(self.max_tokens),
-            self.temperature,
-            1,
-            &self.stop,
-            self.frequency_penalty,
-            self.presence_penalty,
-            self.top_p,
-            self.top_logprobs,
-            extras,
-        );
-
-        let g = match use_stream {
+        // if model_id contains gpt-3.5-turbo use the chat interface
+        match model_id.contains("gpt-3.5-turbo") {
             true => {
-                let (tx, mut rx) = unbounded_channel::<Value>();
-                {
-                    let map = env.map.clone();
-                    let input_index = env.input.index.clone();
-                    let block_name = String::from(name);
-                    tokio::task::spawn(async move {
-                        while let Some(v) = rx.recv().await {
-                            let t = v.get("content");
-                            match event_sender.as_ref() {
-                                Some(sender) => {
-                                    let _ = sender.send(json!({
-                                        "type": "tokens",
-                                        "content": {
-                                            "block_type": "llm",
-                                            "block_name": block_name,
-                                            "input_index": input_index,
-                                            "map": map,
-                                            "tokens": t,
-                                        },
-                                    }));
+                let prompt = self.prompt(env)?;
+                let messages = vec![ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt.clone(),
+                }];
+
+                let request = LLMChatRequest::new(
+                    provider_id,
+                    &model_id,
+                    &messages,
+                    self.temperature,
+                    self.top_p,
+                    1,
+                    &self.stop,
+                    self.presence_penalty,
+                    self.frequency_penalty,
+                    extras,
+                );
+
+                let g = match use_stream {
+                    true => {
+                        let (tx, mut rx) = unbounded_channel::<Value>();
+                        {
+                            let map = env.map.clone();
+                            let input_index = env.input.index.clone();
+                            let block_name = String::from(name);
+                            tokio::task::spawn(async move {
+                                while let Some(v) = rx.recv().await {
+                                    let t = v.get("content");
+                                    match event_sender.as_ref() {
+                                        Some(sender) => {
+                                            let _ = sender.send(json!({
+                                                "type": "tokens",
+                                                "content": {
+                                                    "block_type": "llm",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": t,
+                                                },
+                                            }));
+                                        }
+                                        None => (),
+                                    }
                                 }
-                                None => (),
-                            }
+                                // move tx to event_sender
+                            });
                         }
-                        // move tx to event_sender
-                    });
-                }
-                request.execute(env.credentials.clone(), Some(tx)).await?
+                        request.execute(env.credentials.clone(), Some(tx)).await?
+                    }
+                    false => {
+                        request
+                            .execute_with_cache(
+                                env.credentials.clone(),
+                                env.project.clone(),
+                                env.store.clone(),
+                                use_cache,
+                            )
+                            .await?
+                    }
+                };
+
+                assert!(g.completions.len() == 1);
+
+                Ok(serde_json::to_value(LLMValue {
+                    prompt: Tokens {
+                        text: prompt,
+                        tokens: None,
+                        logprobs: None,
+                        top_logprobs: None,
+                    },
+                    completion: Tokens {
+                        text: g.completions[0].content.clone(),
+                        tokens: None,
+                        logprobs: None,
+                        top_logprobs: None,
+                    },
+                })?)
             }
             false => {
-                request
-                    .execute_with_cache(
-                        env.credentials.clone(),
-                        env.project.clone(),
-                        env.store.clone(),
-                        use_cache,
-                    )
-                    .await?
+                let request = LLMRequest::new(
+                    provider_id,
+                    &model_id,
+                    self.prompt(env)?.as_str(),
+                    Some(self.max_tokens),
+                    self.temperature,
+                    1,
+                    &self.stop,
+                    self.frequency_penalty,
+                    self.presence_penalty,
+                    self.top_p,
+                    self.top_logprobs,
+                    extras,
+                );
+
+                let g = match use_stream {
+                    true => {
+                        let (tx, mut rx) = unbounded_channel::<Value>();
+                        {
+                            let map = env.map.clone();
+                            let input_index = env.input.index.clone();
+                            let block_name = String::from(name);
+                            tokio::task::spawn(async move {
+                                while let Some(v) = rx.recv().await {
+                                    let t = v.get("content");
+                                    match event_sender.as_ref() {
+                                        Some(sender) => {
+                                            let _ = sender.send(json!({
+                                                "type": "tokens",
+                                                "content": {
+                                                    "block_type": "llm",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": t,
+                                                },
+                                            }));
+                                        }
+                                        None => (),
+                                    }
+                                }
+                                // move tx to event_sender
+                            });
+                        }
+                        request.execute(env.credentials.clone(), Some(tx)).await?
+                    }
+                    false => {
+                        request
+                            .execute_with_cache(
+                                env.credentials.clone(),
+                                env.project.clone(),
+                                env.store.clone(),
+                                use_cache,
+                            )
+                            .await?
+                    }
+                };
+
+                assert!(g.completions.len() == 1);
+
+                Ok(serde_json::to_value(LLMValue {
+                    prompt: g.prompt,
+                    completion: g.completions[0].clone(),
+                })?)
             }
-        };
-
-        assert!(g.completions.len() == 1);
-
-        Ok(serde_json::to_value(LLMValue {
-            prompt: g.prompt,
-            completion: g.completions[0].clone(),
-        })?)
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
