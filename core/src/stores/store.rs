@@ -5,7 +5,6 @@ use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::providers::llm::{LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
