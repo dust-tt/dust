@@ -67,7 +67,7 @@ pub struct Completion {
     pub created: u64,
     pub model: String,
     pub choices: Vec<Choice>,
-    pub usage: Usage,
+    // pub usage: Usage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
