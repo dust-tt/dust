@@ -67,6 +67,7 @@ pub struct Completion {
     pub created: u64,
     pub model: String,
     pub choices: Vec<Choice>,
+    // Usage is not returned by the Completion endpoint when streamed.
     // pub usage: Usage,
 }
 
@@ -83,6 +84,7 @@ pub struct ChatCompletion {
     pub object: String,
     pub created: u64,
     pub choices: Vec<ChatChoice>,
+    // Usage is not returned by the Chat/Completion endpoint when streamed.
     // pub usage: Usage,
 }
 
