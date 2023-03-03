@@ -1,4 +1,5 @@
 [![](https://dcbadge.vercel.app/api/server/8NJR3zQU5X?compact=true&style=flat)](https://discord.gg/8NJR3zQU5X) [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40dust4ai&style=social&url=https%3A%2F%2Ftwitter.com-dust4ai)](https://twitter.com/dust4ai)
+
 # [Dust](https://dust.tt)
 
 Design and Deploy Large Language Model Apps
@@ -45,6 +46,7 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 
 1. `cd $DUST_PATH/front`
 2. Create `.env.local` by running the command below:
+
 ```sh
 cat <<EOF >> .env.local
 URL=http://localhost:3000
@@ -53,6 +55,7 @@ NEXTAUTH_URL=$URL
 NEXTAUTH_SECRET=25da29db5485fcd27d2f671c5e28d5df8f325e9470c36cb6bf0a9d19c662255a
 
 FRONT_DATABASE_URI=sqlite:front_store.sqlite
+XP1_DATABASE_URI=sqlite:xp1_store.sqlite
 
 GITHUB_ID=47ec837fcbac1c6f1690
 GITHUB_SECRET=d59af0da231fc697d7dd8d3002ed1d9765e11c7f
@@ -63,6 +66,7 @@ THUM_IO_KEY=0-Foo
 GA_TRACKING_ID=Foo
 EOF
 ```
+
 3. Run `npm install`
-4. Run `FRONT_DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
+4. Run `XP1_DATABASE_URI=sqlite:xp1_store.sqlite FRONT_DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
 5. Start server with `npm run dev`
