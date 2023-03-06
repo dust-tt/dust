@@ -334,6 +334,7 @@ impl LLM for AI21LLM {
         _top_p: Option<f32>,
         _n: usize,
         _stop: &Vec<String>,
+        _max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
         _extras: Option<Value>,

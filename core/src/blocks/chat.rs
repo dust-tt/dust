@@ -296,6 +296,7 @@ impl Block for Chat {
             self.top_p,
             1,
             &self.stop,
+            None,
             self.presence_penalty,
             self.frequency_penalty,
             extras,
