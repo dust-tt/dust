@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -21,6 +21,7 @@ use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::prelude::*;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
@@ -703,7 +704,8 @@ impl OpenAILLM {
                     .iter()
                     .map(|c| ChatChoice {
                         message: ChatMessage {
-                            role: "system".to_string(),
+                            role: ChatMessageRole::System,
+                            name: None,
                             content: "".to_string(),
                         },
                         index: c.index,
@@ -728,7 +730,7 @@ impl OpenAILLM {
                         Some(role) => match role.as_str() {
                             None => (),
                             Some(r) => {
-                                c.choices[j].message.role = r.to_string();
+                                c.choices[j].message.role = ChatMessageRole::from_str(r)?;
                             }
                         },
                     };
