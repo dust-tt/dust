@@ -3,11 +3,13 @@ use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
@@ -28,8 +30,40 @@ pub struct LLMGeneration {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatMessageRole {
+    System,
+    User,
+    Assistant,
+}
+
+impl ToString for ChatMessageRole {
+    fn to_string(&self) -> String {
+        match self {
+            ChatMessageRole::System => String::from("system"),
+            ChatMessageRole::User => String::from("user"),
+            ChatMessageRole::Assistant => String::from("assistant"),
+        }
+    }
+}
+
+impl FromStr for ChatMessageRole {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(ChatMessageRole::System),
+            "user" => Ok(ChatMessageRole::User),
+            "assistant" => Ok(ChatMessageRole::Assistant),
+            _ => Err(ParseError::with_message("Unknown ChatMessageRole"))?,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatMessage {
-    pub role: String,
+    pub role: ChatMessageRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub content: String,
 }
 
@@ -297,7 +331,7 @@ impl LLMChatRequest {
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
         messages.iter().for_each(|m| {
-            hasher.update(m.role.as_bytes());
+            hasher.update(m.role.to_string().as_bytes());
             hasher.update(m.content.as_bytes());
         });
         hasher.update(temperature.to_string().as_bytes());

@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
-use crate::providers::llm::{ChatMessage, LLMChatRequest};
+use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -256,23 +256,27 @@ impl Block for Chat {
                 .map(|v| match v {
                     Value::Object(o) => match (o.get("role"), o.get("content")) {
                         (Some(Value::String(r)), Some(Value::String(c))) => Ok(ChatMessage {
-                            role: r.clone(),
+                            role: ChatMessageRole::from_str(r)?,
+                            name: match o.get("name") {
+                                Some(Value::String(n)) => Some(n.clone()),
+                                _ => None,
+                            },
                             content: c.clone(),
                         }),
                         _ => Err(anyhow!(
                             "Invalid messages code output, expecting an array of objects with
-                             fields `role` and `content`."
+                             fields `role`, possibly `name`, and `content`."
                         )),
                     },
                     _ => Err(anyhow!(
                         "Invalid messages code output, expecting an array of objects with
-                         fields `role` and `content`."
+                         fields `role`, possibly `name`, and `content`."
                     )),
                 })
                 .collect::<Result<Vec<ChatMessage>>>()?,
             _ => Err(anyhow!(
                 "Invalid messages code output, expecting an array of objects with
-                 fields `role` and `content`."
+                 fields `role`, possibly `name`, and `content`."
             ))?,
         };
 
@@ -282,7 +286,8 @@ impl Block for Chat {
             messages.insert(
                 0,
                 ChatMessage {
-                    role: String::from("system"),
+                    role: ChatMessageRole::System,
+                    name: None,
                     content: i,
                 },
             );
