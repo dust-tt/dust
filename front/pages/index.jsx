@@ -71,12 +71,8 @@ function Features() {
     <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-          Get the best out of LLMs for your team🔥
+          Build powerful workflows on top of LLMs🔥
         </h2>
-        <p className="mt-4 px-4 text-normal sm:text-lg text-gray-500">
-          Leveraging years of experience working with LLMs to give <br />
-          your team a profound productivity boost.
-        </p>
       </div>
       <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
         <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 xl:grid-cols-4 xl:gap-x-8">
@@ -126,7 +122,6 @@ export default function Home({ ga_tracking_id }) {
             <div className="text-violet-600 leading-snug">
               Large Language Model Apps
             </div>
-            <div className="">for the workplace</div>
           </h1>
 
           <div className="flex flex-col sm:flex-row mt-16">
@@ -156,21 +151,22 @@ export default function Home({ ga_tracking_id }) {
         </div>
 
         <div className="mt-16">
+          <Features />
+        </div>
+
+        <div className="mt-8">
           <div className="mx-auto text-center sm:max-w-2xl lg:max-w-4xl">
             <Link href="/xp1">
               <div className="font-bold text-violet-600">
                 <ArrowRightIcon className="mb-0.5 mr-2 h-4 w-4 inline-block" />
-                Discover XP1, a Productivity Assistant with access to your Tabs
+                Discover XP1, a Productivity Assistant (built on Dust) with access to your Tabs
               </div>
             </Link>
           </div>
         </div>
 
-        <div className="mt-12">
-          <Features />
-        </div>
 
-        <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+        <div className="mx-auto mt-12 sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
           <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto mt-8">
               <h1 className="text-base font-medium text-gray-900">
