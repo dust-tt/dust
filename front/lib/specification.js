@@ -100,7 +100,7 @@ export function addBlock(spec, idx, blockType) {
           url: "",
           selector: "body",
           timeout: 16000,
-          wait_until: "networkidle2"
+          wait_until: "networkidle2",
         },
         config: {
           provider_id: "",
@@ -345,7 +345,9 @@ export function dumpSpecification(spec, latestDatasets) {
             block.spec.instructions
           )}\n\`\`\`\n`;
         }
-        out += `  messages_code: \n\`\`\`\n${block.spec.messages_code}\n\`\`\`\n`;
+        out += `  messages_code: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.messages_code
+        )}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

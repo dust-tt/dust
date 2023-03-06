@@ -238,7 +238,8 @@ impl Block for Chat {
         };
 
         let e = env.clone();
-        let messages_code = self.messages_code.clone();
+        // replace <DUST_TRIPLE_BACKTICKS> with ```
+        let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
         let messages_value: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(messages_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
