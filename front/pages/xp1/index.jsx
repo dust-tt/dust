@@ -35,7 +35,7 @@ export default function Home({
         <meta name="twitter:title" content="Dust XP1"></meta>
         <meta
           name="twitter:description"
-          content="GPT-based Assistant with access to your Tabs"
+          content="Productivity Assistant with access to your Tabs"
         ></meta>
         <meta
           name="twitter:image"
@@ -51,8 +51,9 @@ export default function Home({
         <div className="mx-auto mt-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 text-center">
             <span className="text-gray-800">
-              <div className="text-violet-600">XP1</div>
-              <div className="leading-snug">Productivity Assistant</div>
+              <div className="leading-snug">
+                <span className="text-violet-600">Productivity Assistant</span>
+              </div>
               <div>with access to your Tabs</div>
             </span>{" "}
           </h1>
@@ -85,15 +86,9 @@ export default function Home({
                     </div>
                   </div>
                   <div className="text-gray-400 text-xs mt-1 text-center">
-                    <span className="text-gray-600">$1/mo + model cost</span>
-                    <br />
-                    <a
-                      href={stripe_portal_url}
-                      className="font-bold text-violet-500"
-                    >
-                      cancel
-                    </a>{" "}
-                    anytime
+                    <span className="text-gray-600">
+                      free - no cards required
+                    </span>
                   </div>
                 </div>
               </div>
