@@ -173,7 +173,10 @@ impl OpenAILLM {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => r50k_base_singleton(),
+            _ => match self.id.starts_with("gpt-3.5-turbo") {
+                true => cl100k_base_singleton(),
+                false => r50k_base_singleton(),
+            },
         }
     }
 
@@ -523,6 +526,7 @@ impl OpenAILLM {
         top_p: f32,
         n: usize,
         stop: &Vec<String>,
+        max_tokens: Option<i32>,
         presence_penalty: f32,
         frequency_penalty: f32,
         user: Option<String>,
@@ -558,6 +562,7 @@ impl OpenAILLM {
                 0 => None,
                 _ => Some(stop),
             },
+            "max_tokens": max_tokens,
             "presence_penalty": presence_penalty,
             "frequency_penalty": frequency_penalty,
             "stream": true,
@@ -758,6 +763,7 @@ impl OpenAILLM {
         top_p: f32,
         n: usize,
         stop: &Vec<String>,
+        max_tokens: Option<i32>,
         presence_penalty: f32,
         frequency_penalty: f32,
         user: Option<String>,
@@ -777,6 +783,7 @@ impl OpenAILLM {
                 0 => None,
                 _ => Some(stop),
             },
+            "max_tokens": max_tokens,
             "presence_penalty": presence_penalty,
             "frequency_penalty": frequency_penalty,
         });
@@ -871,7 +878,10 @@ impl LLM for OpenAILLM {
             "code-davinci-002" => 8000,
             "text-davinci-002" => 4000,
             "text-davinci-003" => 4000,
-            _ => 2048,
+            _ => match self.id.starts_with("gpt-3.5-turbo") {
+                true => 4096,
+                false => 2048,
+            },
         }
     }
 
@@ -1067,11 +1077,18 @@ impl LLM for OpenAILLM {
         top_p: Option<f32>,
         n: usize,
         stop: &Vec<String>,
+        mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                max_tokens = None;
+            }
+        }
+
         let c = match event_sender {
             Some(_) => {
                 self.streamed_chat_completion(
@@ -1083,6 +1100,7 @@ impl LLM for OpenAILLM {
                     },
                     n,
                     stop,
+                    max_tokens,
                     match presence_penalty {
                         Some(p) => p,
                         None => 0.0,
@@ -1112,6 +1130,7 @@ impl LLM for OpenAILLM {
                     },
                     n,
                     stop,
+                    max_tokens,
                     match presence_penalty {
                         Some(p) => p,
                         None => 0.0,

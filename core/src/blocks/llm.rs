@@ -406,6 +406,7 @@ impl Block for LLM {
                     self.top_p,
                     1,
                     &self.stop,
+                    Some(self.max_tokens),
                     self.presence_penalty,
                     self.frequency_penalty,
                     extras,
