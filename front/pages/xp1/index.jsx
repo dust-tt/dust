@@ -136,11 +136,14 @@ export default function Home({
                   </span>
                   to submit your query.
                 </li>
+                <li>
+                  - Use
+                  <span className="font-bold font-mono text-gray-300 mx-1">
+                    /reset
+                  </span>
+                  to clear the conversation.
+                </li>
               </ul>
-              <p className="my-4">
-                Your current model usage cost for the period is displayed at all
-                time.
-              </p>
               <p className="my-2 mt-6 font-bold"># Example usage</p>
               <p className="my-1 mx-2 italic font-bold text-gray-300">
                 Reply to [[email]] based on [[knowledgebase]]
