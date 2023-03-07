@@ -7,8 +7,8 @@ sgMail.setApiKey(SENDGRID_API_KEY);
 export const sendUpgradeEmail = async (user) => {
   const msg = {
     to: user.email,
-    from: "spolu@dust.tt",
-    subject: "[XP1] Upgrade and Activation Key",
+    from: "team@dust.tt",
+    subject: "[DUST/XP1] XP1 is now Free",
     text: `Thank you for being among the first users of XP1!
 
 XP1 is now available on the Chrome Web Store[0]. To continue using XP1

@@ -37,8 +37,8 @@ export default async function handler(req, res) {
     let secret = `sk-${new_id().slice(0, 32)}`;
     user = await XP1User.create({
       secret,
-      email: customer.email || "",
-      name: customer.name || "",
+      email: req.body.email,
+      name: req.body.name,
     });
   }
 

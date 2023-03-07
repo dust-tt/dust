@@ -1,18 +1,12 @@
 import Head from "next/head";
 import Script from "next/script";
-import { PulseLogo, Logo } from "../../../components/Logo";
-import Link from "next/link";
-import { ClipboardIcon } from "@heroicons/react/20/solid";
+import { Logo } from "../../../components/Logo";
 import { HighlightButton } from "../../../components/Button";
 import { useEffect, useState } from "react";
 
-const { GA_TRACKING_ID = null, URL, XP1_CHROME_WEB_STORE_URL } = process.env;
+const { GA_TRACKING_ID = null } = process.env;
 
-export default function Activate({
-  ga_tracking_id,
-  stripe_portal_url,
-  chrome_web_store_url,
-}) {
+export default function Activate({ ga_tracking_id }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [disable, setDisabled] = useState(true);
@@ -103,6 +97,22 @@ export default function Activate({
             the extension.
           </div>
         </div>
+
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+             window.dataLayer = window.dataLayer || [];
+             function gtag(){window.dataLayer.push(arguments);}
+             gtag('js', new Date());
+
+             gtag('config', '${ga_tracking_id}');
+            `}
+          </Script>
+        </>
       </main>
     </>
   );
@@ -112,7 +122,6 @@ export async function getServerSideProps(context) {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,
-      chrome_web_store_url: XP1_CHROME_WEB_STORE_URL,
     },
   };
 }

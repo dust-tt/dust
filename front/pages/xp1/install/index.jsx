@@ -1,10 +1,11 @@
 import Head from "next/head";
 import { Logo } from "../../../components/Logo";
 import { HighlightButton } from "../../../components/Button";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export default function InstallExtension() {
+const { GA_TRACKING_ID = null } = process.env;
+
+export default function InstallExtension({ ga_tracking_id }) {
   const [version, setVersion] = useState(null);
 
   useEffect(() => {
@@ -69,7 +70,31 @@ export default function InstallExtension() {
             </div>
           </div>
         </div>
+
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+             window.dataLayer = window.dataLayer || [];
+             function gtag(){window.dataLayer.push(arguments);}
+             gtag('js', new Date());
+
+             gtag('config', '${ga_tracking_id}');
+            `}
+          </Script>
+        </>
       </main>
     </>
   );
+}
+
+export async function getServerSideProps(context) {
+  return {
+    props: {
+      ga_tracking_id: GA_TRACKING_ID,
+    },
+  };
 }
