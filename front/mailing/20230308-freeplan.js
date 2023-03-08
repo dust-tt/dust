@@ -4,46 +4,50 @@ import sgMail from "@sendgrid/mail";
 const { SENDGRID_API_KEY, LIVE = false } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
 
-export const sendUpgradeEmail = async (user) => {
+export const sendFreeplanEmail = async (user) => {
   const msg = {
     to: user.email,
     from: "team@dust.tt",
-    subject: "[DUST/XP1] XP1 is now Free",
+    subject: "[DUST] Good news: you're now on XP1's Free plan",
     text: `Thank you for being among the first users of XP1!
 
-XP1 is now available on the Chrome Web Store[0]. To continue using XP1
-you will need to upgrade your manually installed version.
+# Summary
 
-Instructions:
-- Go to chrome://extensions
-- Remove XP1
-- Install XP1 from the Chrome Web Store[0]
+We've moved XP1 to OpenAI's gpt-3.5-turbo model. Given its reduced
+cost we've decided to put you on a free plan and won't be charged
+going forward. We look forward to helping you get more done, faster,
+as we continue to build.
 
-As a reminder, your activation key is: ${user.secret}
+# You're now on a free plan. Please upgrade your Chrome extension.
 
-Bonus: the new version renders CSV as tables that can be easily copied
-to spreadsheets. Also remember that you can also remap XP1's shortcut
-at any time by visiting chrome://extensions/shortcuts.
+Last week, OpenAI released gpt-3.5-turbo[0] which is ten times
+cheaper than previous versions. We've transitioned XP1 to use this
+model and decided to move users to a new Free plan.
 
-We are working hard on making XP1 even more powerful! Here's a sneak
-peak of what's coming:
+We've canceled your Stripe subscription and you won't be charged going
+forward. Please update your extension[1] as part of the transition.
 
-- Improved tab selection experience
-- Statefulness and history
-  - Preserve state when the extension is closed / tab switched
-  - Cycle through previous queries with up-arrow
-  - Access to previous sessions
-- Ability to  run Dust apps from XP1
+Dust's vision is to deliver a “productivity OS for smart teams” for
+people working at computers to get more done, faster, and get back to
+focusing on more interesting things. We will continue to iterate on
+our product (collectively, XP1 and Dust) and build features that may
+become part of a paid plan in the future. We'll keep you updated on
+that as we progress.
 
-Have any other ideas? Don't hesitate to respond to this email directly
-with any question, feature request, or just to let us know how you
-save time with XP1.
+# We're excited to build and explore
 
-Looking forward to hearing from you.
+It's still early days. Making the default plan for XP1 free gives us a
+license to explore quickly, maybe break a few things along the way,
+and hopefully impress you with delightful features on a regular basis.
 
--stan
+That's it! Don't hesitate to reach out with questions, feature
+requests, or simply to let us know how you save time with XP1.
 
-[0] https://chrome.google.com/webstore/detail/dust-xp1/okgjeakekjeppjocmfaeeeaianominge`,
+The Dust team
+
+[0] https://openai.com/blog/introducing-chatgpt-and-whisper-apis
+[1] https://chrome.google.com/webstore/detail/dust-xp1/okgjeakekjeppjocmfaeeeaianominge
+`,
   };
 
   await sgMail.send(msg);
@@ -52,21 +56,39 @@ Looking forward to hearing from you.
 };
 
 async function main() {
-  let users = await (
-    await XP1User.findAll()
-  ).filter((u) => {
-    return u.id <= 236;
-  });
+  let users = await await XP1User.findAll();
+
+  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
 
   users.forEach((u) => {
     console.log("USER", u.id, u.email);
   });
 
-  if (LIVE && LIVE === "true") {
-    console.log("SENDING EMAILS");
+  // split users in chunks of 16
+  let chunks = [];
+  let chunk = [];
+  for (let i = 0; i < users.length; i++) {
+    chunk.push(users[i]);
+    if (chunk.length === 16) {
+      chunks.push(chunk);
+      chunk = [];
+    }
+  }
+  if (chunk.length > 0) {
+    chunks.push(chunk);
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
-      users.map((u) => {
-        return sendUpgradeEmail(u);
+      chunk.map((u) => {
+        console.log("PREPARING EMAIL", u.email);
+        if (LIVE && LIVE === "true") {
+          return sendFreeplanEmail(u);
+        } else {
+          return Promise.resolve();
+        }
       })
     );
   }

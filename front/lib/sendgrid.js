@@ -7,7 +7,7 @@ export const sendActivationKey = async (user) => {
   const msg = {
     to: user.email,
     from: "team@dust.tt",
-    subject: "[DUST/XP1] Activation Key",
+    subject: "[DUST] XP1 Activation Key",
     text: `Welcome to XP1!
 
 You activation key is: ${user.secret}
@@ -18,7 +18,7 @@ just to let us know how you save time with XP1.
 
 Looking forward to hearing from you.
 
-Dust Team
+The Dust Team
 
 [0] ${XP1_CHROME_WEB_STORE_URL}`,
   };
