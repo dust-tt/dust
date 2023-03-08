@@ -13,7 +13,7 @@ export const sendFreeplanEmail = async (user) => {
 
 # Summary
 
-We've moved XP1 to OpenAI's gpt-3.5-turbo model. Given its reduced
+We've moved XP1 to OpenAI's gpt-3.5-turbo[0] model. Given its reduced
 cost we've decided to put you on a free plan and won't be charged
 going forward. We look forward to helping you get more done, faster,
 as we continue to build.
@@ -25,7 +25,8 @@ cheaper than previous versions. We've transitioned XP1 to use this
 model and decided to move users to a new Free plan.
 
 We've canceled your Stripe subscription and you won't be charged going
-forward. Please update your extension[1] as part of the transition.
+forward. If prompted to do so, please update your extension[1] as part
+of the transition.
 
 Dust's vision is to deliver a “productivity OS for smart teams” for
 people working at computers to get more done, faster, and get back to
