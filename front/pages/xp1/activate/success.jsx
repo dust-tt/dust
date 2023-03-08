@@ -5,7 +5,7 @@ import Script from "next/script";
 
 const { GA_TRACKING_ID = null, XP1_CHROME_WEB_STORE_URL } = process.env;
 
-export default function ActivateSuccess({ chrome_web_store_url }) {
+export default function ActivateSuccess({ ga_tracking_id, chrome_web_store_url }) {
   return (
     <>
       <Head>
