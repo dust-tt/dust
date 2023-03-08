@@ -1,7 +1,9 @@
 use crate::datasources::splitter::{splitter, SplitterID};
+use crate::project::Project;
+use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
-use crate::stores::{sqlite::SQLiteStore, store::Store};
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::{Bucket, NewBucket, Object};
@@ -9,13 +11,12 @@ use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
-    prelude::{QdrantClient, QdrantClientConfig},
+    prelude::{Payload, QdrantClient, QdrantClientConfig},
     qdrant,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::slice::Iter;
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both the
 /// chunk text and the parent document metadata (inserted into pinecone on each chunk to leverage
@@ -28,10 +29,10 @@ pub struct Chunk {
     pub score: Option<f64>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store and vector search db. It
-/// is also used as a result from search (only the retrieved chunks are provided in the result).
-/// `hash` covers both the original document id and text and the document metadata and is used to
-/// no-op in case of match.
+/// Document is used as a data-strucutre for insertion into the SQL store (no chunks, they are
+/// directly inserted in the vector search db). It is also used as a result from search (only the
+/// retrieved chunks are provided in the result). `hash` covers both the original document id and
+/// text and the document metadata and is used to no-op in case of match.
 pub struct Document {
     pub created: u64,
     pub document_id: String,
@@ -65,14 +66,16 @@ pub struct DataSourceConfig {
 /// as well as vector search db. It is a generated unique ID.
 #[derive(Debug, Serialize)]
 pub struct DataSource {
+    project: Project,
     created: u64,
     data_source_id: String,
     config: DataSourceConfig,
 }
 
 impl DataSource {
-    pub fn new(config: &DataSourceConfig) -> Self {
+    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
         return DataSource {
+            project: project.clone(),
             created: utils::now(),
             data_source_id: utils::new_id(),
             config: config.clone(),
@@ -155,11 +158,13 @@ impl DataSource {
     async fn upsert(
         &self,
         credentials: Credentials,
+        store: Box<dyn Store + Sync + Send>,
         document_id: &str,
         text: &str,
         metadata: Value,
-        // add store
     ) -> Result<()> {
+        let store = store.clone();
+
         // Validate that metadata is a string to string map and flatten it.
         let flattened_metadata = match metadata.clone() {
             Value::Object(o) => o
@@ -173,7 +178,7 @@ impl DataSource {
                     }
                     _ => match o.get(k) {
                         Some(v) => match v {
-                            Value::String(s) => Ok((k.as_str(), s.clone().into())),
+                            Value::String(s) => Ok((k.clone(), s.clone().into())),
                             _ => Err(anyhow!(
                                 "Document `metadata` must be a string to string map"
                             )),
@@ -183,7 +188,7 @@ impl DataSource {
                         )),
                     },
                 })
-                .collect::<Result<HashMap<&str, qdrant::Value>>>()?,
+                .collect::<Result<HashMap<_, qdrant::Value>>>()?,
             _ => Err(anyhow!(
                 "Document `metadata` must be a string to string map"
             ))?,
@@ -258,10 +263,9 @@ impl DataSource {
                 let credentials = credentials.clone();
                 let extras = self.config.extras.clone();
                 tokio::spawn(async move {
-                    let mut embedder = provider(provider_id).embedder(model_id);
-                    embedder.initialize(credentials).await?;
-                    let v = embedder.embed(&s, extras).await?;
-                    Ok((s, v))
+                    let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
+                    let v = r.execute(credentials).await?;
+                    Ok::<(std::string::String, EmbedderVector), anyhow::Error>((s, v))
                 })
             })
             .buffer_unordered(16)
@@ -315,17 +319,20 @@ impl DataSource {
                 hasher.update(document_hash.as_bytes());
                 hasher.update(s.as_bytes());
 
-                let payload = flattened_metadata.clone();
-                payload["__data_source_id"] = self.data_source_id.into();
-                payload["__document_id_hash"] = document_id_hash.into();
-                payload["__document_id"] = document_id.into();
-                payload["__text"] = s.into();
+                let mut payload = Payload::new();
+                flattened_metadata.iter().for_each(|(k, v)| {
+                    payload.insert(k, v.clone());
+                });
+                payload.insert("__data_source_id", self.data_source_id.clone());
+                payload.insert("__document_id_hash", document_id_hash.clone());
+                payload.insert("__document_id", document_id.clone());
+                payload.insert("__text", s);
 
                 let chunk_hash = format!("{}", hasher.finalize().to_hex());
                 qdrant::PointStruct::new(
                     chunk_hash,
                     v.vector.into_iter().map(|v| v as f32).collect::<Vec<f32>>(),
-                    payload.into(),
+                    payload,
                 )
             })
             .collect::<Vec<_>>();
@@ -334,6 +341,9 @@ impl DataSource {
             .await?;
 
         // Upsert document (SQL)
+        store
+            .upsert_data_source_document(&self.project, &self.data_source_id, &document)
+            .await?;
 
         Ok(())
     }
