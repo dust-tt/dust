@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { HighlightButton } from "../../../components/Button";
 import { Logo } from "../../../components/Logo";
+import Script from "next/script";
 
 const { GA_TRACKING_ID = null, XP1_CHROME_WEB_STORE_URL } = process.env;
 
