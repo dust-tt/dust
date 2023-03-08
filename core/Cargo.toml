@@ -54,3 +54,4 @@ rustc-hash = "1.1"
 bstr = "0.2"
 base64 = "0.21"
 cloud-storage = { version = "0.11", features = ["global-client"] }
+qdrant-client = "1.0"

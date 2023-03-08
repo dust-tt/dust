@@ -248,7 +248,7 @@ pub const SQLITE_TABLES: [&'static str; 12] = [
        hash                     TEXT NOT NULL,
        status                   TEXT NOT NULL,
        splitter                 TEXT NOT NULL,
-       FOREIGN KEY(data_source) REFERENCES data_sources(id),
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
     "-- data sources chunks
     CREATE TABLE IF NOT EXISTS data_sources_chunks (
@@ -256,7 +256,7 @@ pub const SQLITE_TABLES: [&'static str; 12] = [
        document              INTEGER NOT NULL,
        created               INTEGER NOT NULL,
        hash                  TEXT NOT NULL,
-       FOREIGN KEY(document) REFERENCES data_sources_documents(id),
+       FOREIGN KEY(document) REFERENCES data_sources_documents(id)
     );",
 ];
 
@@ -358,7 +358,7 @@ pub const POSTGRES_TABLES: [&'static str; 12] = [
        hash                     TEXT NOT NULL,
        status                   TEXT NOT NULL,
        splitter                 TEXT NOT NULL,
-       FOREIGN KEY(data_source) REFERENCES data_sources(id),
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
     "-- data sources chunks
     CREATE TABLE IF NOT EXISTS data_sources_chunks (
@@ -366,7 +366,7 @@ pub const POSTGRES_TABLES: [&'static str; 12] = [
        document              BIGINT NOT NULL,
        created               BIGINT NOT NULL,
        hash                  TEXT NOT NULL,
-       FOREIGN KEY(document) REFERENCES data_sources_documents(id),
+       FOREIGN KEY(document) REFERENCES data_sources_documents(id)
     );",
 ];
 
