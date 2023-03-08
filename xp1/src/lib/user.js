@@ -32,12 +32,7 @@ export async function getUserFromAPI(secret) {
     };
   } else {
     user = await userRes.json();
-
-    if (user.stripeSubscriptionStatus === 'active') {
-      user.status = 'ready';
-    } else {
-      user.status = 'inactive';
-    }
+    user.status = 'ready';
   }
 
   // console.log('SETTING USER', user);

@@ -48,7 +48,6 @@ export function ChatView({ user }) {
   const [tabs, setTabs] = useState([]);
 
   const [os, setOs] = useState('linux');
-  const [usage, setUsage] = useState(null);
 
   const [cmdStateLast, setCmdStateLast] = useState(new CmdState([]));
   const [cmdStateHistory, setCmdStateHistory] = useState([]);
@@ -56,7 +55,7 @@ export function ChatView({ user }) {
 
   const [log, setLog] = useState([
     // {
-    //   from: 'USER',
+    //   from: 'user',
     //   text: 'Text',
     //   content: [
     //     {
@@ -70,12 +69,12 @@ export function ChatView({ user }) {
     //   ],
     // },
     // {
-    //   from: 'XP1',
+    //   from: 'assistant',
     //   text: 'Hello World',
     //   content: textToBlocks('```csv\nhello,world\nfoo,bar\nfoo,bar,acme\n```'),
     // },
     // {
-    //   from: 'XP1',
+    //   from: 'assistant',
     //   text: 'Hello World',
     //   content: textToBlocks('```markdown\n# test\n\nHello world\n## foo\n\n Fun part is `this`\ntable:\n| foo | bar |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n\n### quotes: \n > Foo\n> Bar\n- test\n- foo\n- bar\n```'),
     // },
@@ -150,25 +149,6 @@ export function ChatView({ user }) {
     chrome.runtime.getPlatformInfo((info) => {
       setOs(info.os);
     });
-
-    (async () => {
-      var usageRes = await fetch(
-        `${VARS.server}/api/xp1/${VARS.api_version}/usage`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            secret: user.secret,
-          }),
-        }
-      );
-      if (usageRes.ok) {
-        let u = await usageRes.json();
-        setUsage(`$${((u.usage.total * 0.02) / 1000).toFixed(2)}`);
-      }
-    })();
   }, [user.secret]);
 
   useEffect(() => {
@@ -221,7 +201,7 @@ export function ChatView({ user }) {
 
     let l = [...log];
     l.push({
-      from: 'USER',
+      from: 'user',
       text: s.toQuery(),
       content: [{ type: 'cmd_state', state: s.json() }],
     });
@@ -265,14 +245,9 @@ export function ChatView({ user }) {
         .filter((t) => t);
     });
 
-    let history = log
-      .map((l) => {
-        return `[${l.from}]: ${l.text}`;
-      })
-      .join('\n');
-    if (history.length > 0) {
-      history = '\n' + history;
-    }
+    let history = log.map((l) => {
+      return { role: l.from, content: l.text };
+    });
 
     let input = {
       query: s.toQuery(),
@@ -280,7 +255,9 @@ export function ChatView({ user }) {
       tab_groups: tabGroups,
     };
 
-    console.log('XP1_QUERY_INPUT', input);
+    console.log('QUERY_INPUT QUERY', JSON.stringify(input.query));
+    console.log('QUERY_INPUT HISTORY', JSON.stringify(input.history));
+    console.log('QUERY_INPUT TAG_GROUPS', JSON.stringify(input.tab_groups));
 
     var source = new SSE(`${VARS.server}/api/xp1/${VARS.api_version}/query`, {
       headers: {
@@ -294,7 +271,7 @@ export function ChatView({ user }) {
 
     let text = '';
     setLast({
-      from: 'XP1',
+      from: 'assistant',
       text,
       content: textToBlocks(text),
     });
@@ -310,7 +287,7 @@ export function ChatView({ user }) {
       } catch {
         console.log('ERROR parsing message', e);
         l.push({
-          from: 'XP1',
+          from: 'assistant',
           text: 'An error occured. Please try again. Run ID: ' + runId,
           content: textToBlocks(
             'An error occured. Please try again. Run ID:\n```run\n' +
@@ -333,14 +310,14 @@ export function ChatView({ user }) {
       if (event.type === 'tokens') {
         text += event.content.tokens.text;
         setLast({
-          from: 'XP1',
+          from: 'assistant',
           text,
           content: textToBlocks(text),
         });
       }
       if (event.type === 'run_status' && event.content.status === 'errored') {
         l.push({
-          from: 'XP1',
+          from: 'assistant',
           text: 'An error occured. Please try again. Run ID: ' + runId,
           content: textToBlocks(
             'An error occured. Please try again. Run ID:\n```run\n' +
@@ -359,7 +336,7 @@ export function ChatView({ user }) {
       if (event.type === 'final') {
         if (!errored) {
           l.push({
-            from: 'XP1',
+            from: 'assistant',
             text,
             content: textToBlocks(text),
           });
@@ -425,10 +402,10 @@ export function ChatView({ user }) {
                     <div
                       className={classNames(
                         'flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 rounded-md',
-                        l.from === 'XP1' ? 'bg-gray-100' : 'bg-gray-100'
+                        l.from === 'assistant' ? 'bg-gray-100' : 'bg-gray-100'
                       )}
                     >
-                      {l.from === 'XP1' ? (
+                      {l.from === 'assistant' ? (
                         <div className="flex pt-0.5 pl-[1px]">
                           <Logo></Logo>
                         </div>
@@ -452,7 +429,7 @@ export function ChatView({ user }) {
               {last !== null ? (
                 <div className="flex flex-row items-start text-sm">
                   <div className="flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 bg-gray-100 rounded-md">
-                    {last.from === 'XP1' ? (
+                    {last.from === 'assistant' ? (
                       <div className="flex pt-0.5 pl-[1px]">
                         <Logo animated={true}></Logo>
                       </div>
@@ -516,10 +493,6 @@ export function ChatView({ user }) {
         </div>
 
         <div className="flex flex-row w-full text-xs text-right my-1">
-          <div className="flex flex-initial text-gray-300 ml-3">
-            Usage (this period):
-            <span className="font-bold text-gray-400 ml-1">{usage}</span>
-          </div>
           <div className="flex flex-1"></div>
           <div className="flex flex-initial text-gray-300 mr-3">
             <span className="font-bold text-gray-400 mr-1">

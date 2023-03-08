@@ -179,25 +179,13 @@ export const XP1User = xp1_sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    stripeSubscription: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    stripeSubscriptionStatus: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    stripeSubscriptionItem: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     secret: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
   {
-    indexes: [{ fields: ["secret"] }, { fields: ["stripeSubscription"] }],
+    indexes: [{ fields: ["secret"] }],
   }
 );
 

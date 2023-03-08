@@ -19,8 +19,6 @@ export default async function handler(req, res) {
   return res.status(200).json({
     email: user.email,
     name: user.name,
-    stripeSubscription: user.subscription,
-    stripeSubscriptionStatus: user.stripeSubscriptionStatus,
     secret: user.secret,
   });
 }

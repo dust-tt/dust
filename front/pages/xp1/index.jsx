@@ -1,19 +1,17 @@
 import Head from "next/head";
 import Script from "next/script";
 import { ActionButton, HighlightButton } from "../../components/Button";
-import { PulseLogo, Logo } from "../../components/Logo";
+import { Logo } from "../../components/Logo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const {
   GA_TRACKING_ID = null,
-  XP1_STRIPE_PORTAL_URL,
   XP1_CHROME_WEB_STORE_URL,
 } = process.env;
 
 export default function Home({
   ga_tracking_id,
-  stripe_portal_url,
   chrome_web_store_url,
 }) {
   const [isMac, setIsMac] = useState(false);
@@ -35,7 +33,7 @@ export default function Home({
         <meta name="twitter:title" content="Dust XP1"></meta>
         <meta
           name="twitter:description"
-          content="GPT-based Assistant with access to your Tabs"
+          content="Productivity Assistant with access to your Tabs"
         ></meta>
         <meta
           name="twitter:image"
@@ -51,8 +49,9 @@ export default function Home({
         <div className="mx-auto mt-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 text-center">
             <span className="text-gray-800">
-              <div className="text-violet-600">XP1</div>
-              <div className="leading-snug">Productivity Assistant</div>
+              <div className="leading-snug">
+                <span className="text-violet-600">Productivity Assistant</span>
+              </div>
               <div>with access to your Tabs</div>
             </span>{" "}
           </h1>
@@ -85,15 +84,9 @@ export default function Home({
                     </div>
                   </div>
                   <div className="text-gray-400 text-xs mt-1 text-center">
-                    <span className="text-gray-600">$1/mo + model cost</span>
-                    <br />
-                    <a
-                      href={stripe_portal_url}
-                      className="font-bold text-violet-500"
-                    >
-                      cancel
-                    </a>{" "}
-                    anytime
+                    <span className="text-gray-600">
+                      Free - no cards required
+                    </span>
                   </div>
                 </div>
               </div>
@@ -108,7 +101,7 @@ export default function Home({
             </div>
             <div className="py-2 pl-3 pr-1 bg-gray-700 text-white rounded-b">
               <p className="mb-4">
-                <b>XP1</b> is an assistant based on GPT (text-davinci-003) with
+                <b>XP1</b> is an assistant based on GPT (gpt-3.5-turbo) with
                 access to your browser tabs content. It is geared (prompted)
                 towards productivity and can be used to help you with your daily
                 tasks (such as answering emails, summarizing documents,
@@ -143,14 +136,17 @@ export default function Home({
                   </span>
                   to submit your query.
                 </li>
+                <li>
+                  - Use
+                  <span className="font-bold font-mono text-gray-300 mx-1">
+                    /reset
+                  </span>
+                  to clear the conversation.
+                </li>
               </ul>
-              <p className="my-4">
-                Your current model usage cost for the period is displayed at all
-                time.
-              </p>
               <p className="my-2 mt-6 font-bold"># Example usage</p>
               <p className="my-1 mx-2 italic font-bold text-gray-300">
-                Reply to [[mail.google]] based on [[knowledgebase]]
+                Reply to [[email]] based on [[knowledgebase]]
               </p>
               <p className="my-1 mx-2 italic font-bold text-gray-300">
                 Summarize with bullet-points [[cnn]]
@@ -192,7 +188,7 @@ export default function Home({
               <p className="mt-6 mb-2 font-bold"># Support</p>
               <ul className="my-2">
                 <li>
-                  - Email <a href="mailto:spolu@dust.tt">spolu@dust.tt</a>
+                  - Email <a href="mailto:team@dust.tt">team@dust.tt</a>
                 </li>
                 <li>
                   - #xp1 on{" "}
@@ -229,7 +225,6 @@ export async function getServerSideProps(context) {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,
-      stripe_portal_url: XP1_STRIPE_PORTAL_URL,
       chrome_web_store_url: XP1_CHROME_WEB_STORE_URL,
     },
   };

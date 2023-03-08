@@ -49,10 +49,10 @@ export function ActivationView({ onActivate }) {
           <div
             className="text-sky-600 mx-0.5 cursor-pointer"
             onClick={() => {
-              chrome.tabs.create({ url: 'https://xp1.dust.tt/' });
+              chrome.tabs.create({ url: 'https://dust.tt/xp1' });
             }}
           >
-            xp1.dust.tt
+            dust.tt/xp1
           </div>
           to get your activation key.
         </div>

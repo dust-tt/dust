@@ -5,12 +5,9 @@ const {
   XP1_DUST_APP_ID,
   XP1_DUST_API_KEY,
   XP1_DUST_SPECIFICATION_HASH,
-  XP1_STRIPE_API_KEY,
 } = process.env;
 
 export default async function handler(req, res) {
-  const stripe = require("stripe")(XP1_STRIPE_API_KEY);
-
   if (req.method !== "POST") {
     return res.status(405).json({
       error: {
@@ -49,15 +46,6 @@ export default async function handler(req, res) {
     });
   }
 
-  if (user.stripeSubscriptionStatus !== "active") {
-    return res.status(400).json({
-      error: {
-        code: "user_not_active",
-        message: "User is no longer active (subscription cancelled).",
-      },
-    });
-  }
-
   const runRes = await fetch(
     `https://dust.tt/api/v1/apps/${XP1_DUST_USER}/${XP1_DUST_APP_ID}/runs`,
     {
@@ -71,7 +59,7 @@ export default async function handler(req, res) {
         config: {
           MODEL: {
             provider_id: "openai",
-            model_id: "text-davinci-003",
+            model_id: "gpt-3.5-turbo",
             use_cache: false,
             use_stream: true,
           },
@@ -180,23 +168,5 @@ export default async function handler(req, res) {
     completionTokens: completionTokens,
     run_status: runStatus,
     run_id: dustRunId,
-  });
-
-  const timestamp = parseInt(Date.now() / 1000);
-
-  await stripe.subscriptionItems.createUsageRecord(
-    user.stripeSubscriptionItem,
-    {
-      quantity: promptTokens + completionTokens,
-      timestamp: timestamp,
-      action: "increment",
-    }
-  );
-
-  console.log("Stripe usage updated", {
-    subscription: user.stripeSubscription,
-    item: user.stripeSubscriptionItem,
-    quantity: promptTokens + completionTokens,
-    timestamp: timestamp,
   });
 }

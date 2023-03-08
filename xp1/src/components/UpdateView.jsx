@@ -14,7 +14,9 @@ export function UpdateView({ update }) {
           <div className="flex ml-2 font-bold">DUST</div>
         </div>
         <div className="flex">
-          Update to version {update.version} is required.
+          Update to version{' '}
+          {update.accepted_versions[update.accepted_versions.length - 1]} is
+          required.
         </div>
         <div className="flex h-32 mt-4 text-gray-500">
           Visit
