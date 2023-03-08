@@ -14,6 +14,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::slice::Iter;
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both the
@@ -159,6 +160,35 @@ impl DataSource {
         metadata: Value,
         // add store
     ) -> Result<()> {
+        // Validate that metadata is a string to string map and flatten it.
+        let flattened_metadata = match metadata.clone() {
+            Value::Object(o) => o
+                .keys()
+                .map(|k| match k.as_str() {
+                    "__data_source_id" | "__document_id_hash" | "__document_id" | "__text" => {
+                        Err(anyhow!(
+                            "Document `metadata` keys cannot be any of
+                            `__data_source_id`, `__document_id_hash`, `__document_id`, `__text`"
+                        ))
+                    }
+                    _ => match o.get(k) {
+                        Some(v) => match v {
+                            Value::String(s) => Ok((k.as_str(), s.clone().into())),
+                            _ => Err(anyhow!(
+                                "Document `metadata` must be a string to string map"
+                            )),
+                        },
+                        None => Err(anyhow!(
+                            "Document `metadata` must be a string to string map"
+                        )),
+                    },
+                })
+                .collect::<Result<HashMap<&str, qdrant::Value>>>()?,
+            _ => Err(anyhow!(
+                "Document `metadata` must be a string to string map"
+            ))?,
+        };
+
         // Hash document.
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
@@ -230,7 +260,8 @@ impl DataSource {
                 tokio::spawn(async move {
                     let mut embedder = provider(provider_id).embedder(model_id);
                     embedder.initialize(credentials).await?;
-                    embedder.embed(&s, extras).await
+                    let v = embedder.embed(&s, extras).await?;
+                    Ok((s, v))
                 })
             })
             .buffer_unordered(16)
@@ -260,10 +291,10 @@ impl DataSource {
                         }
                         .into(),
                         qdrant::FieldCondition {
-                            key: "__document_id".to_string(),
+                            key: "__document_id_hash".to_string(),
                             r#match: Some(qdrant::Match {
                                 match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                    document_id.to_string(),
+                                    document_id_hash.clone(),
                                 )),
                             }),
                             ..Default::default()
@@ -277,8 +308,32 @@ impl DataSource {
             .await?;
 
         // Insert new chunks (vector search db).
+        let points = e
+            .into_iter()
+            .map(|(s, v)| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(document_hash.as_bytes());
+                hasher.update(s.as_bytes());
 
-        // Upsert new chunks (vector search db and SQL)
+                let payload = flattened_metadata.clone();
+                payload["__data_source_id"] = self.data_source_id.into();
+                payload["__document_id_hash"] = document_id_hash.into();
+                payload["__document_id"] = document_id.into();
+                payload["__text"] = s.into();
+
+                let chunk_hash = format!("{}", hasher.finalize().to_hex());
+                qdrant::PointStruct::new(
+                    chunk_hash,
+                    v.vector.into_iter().map(|v| v as f32).collect::<Vec<f32>>(),
+                    payload.into(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let _ = qdrant_client
+            .upsert_points(self.qdrant_collection(), points, None)
+            .await?;
+
+        // Upsert document (SQL)
 
         Ok(())
     }
