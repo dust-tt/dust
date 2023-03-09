@@ -235,6 +235,7 @@ pub const SQLITE_TABLES: [&'static str; 11] = [
        project              INTEGER NOT NULL,
        created              INTEGER NOT NULL,
        data_source_id       TEXT NOT NULL,
+       internal_id          TEXT NOT NULL,
        config_json          TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
@@ -244,10 +245,12 @@ pub const SQLITE_TABLES: [&'static str; 11] = [
        data_source              INTEGER NOT NULL,
        created                  INTEGER NOT NULL,
        document_id              TEXT NOT NULL,
-       metadata_json            TEXT NOT NULL,
+       timestamp                INTEGER NOT NULL,
+       tags_json                TEXT NOT NULL,
        hash                     TEXT NOT NULL,
+       text_size                INTEGER NOT NULL,
+       chunk_count              INTEGER NOT NULL,
        status                   TEXT NOT NULL,
-       splitter                 TEXT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
 ];
@@ -337,6 +340,7 @@ pub const POSTGRES_TABLES: [&'static str; 11] = [
        project              BIGINT NOT NULL,
        created              BIGINT NOT NULL,
        data_source_id       TEXT NOT NULL,
+       internal_id          TEXT NOT NULL,
        config_json          TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
@@ -346,10 +350,12 @@ pub const POSTGRES_TABLES: [&'static str; 11] = [
        data_source              BIGINT NOT NULL,
        created                  BIGINT NOT NULL,
        document_id              TEXT NOT NULL,
-       metadata_json            TEXT NOT NULL,
+       timestamp                BIGINT NOT NULL,
+       tags_json                TEXT NOT NULL,
        hash                     TEXT NOT NULL,
+       text_size                BIGINT NOT NULL,
+       chunk_count              BIGINT NOT NULL,
        status                   TEXT NOT NULL,
-       splitter                 TEXT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
 ];

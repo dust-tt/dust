@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, Document};
+use crate::datasources::datasource::{DataSource, DataSourceConfig, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -8,7 +8,7 @@ use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LL
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, SQLITE_TABLES, SQL_INDEXES};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -862,7 +862,34 @@ impl Store for SQLiteStore {
     }
 
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_created = ds.created();
+        let data_source_id = ds.data_source_id().to_string();
+        let data_source_internal_id = ds.internal_id().to_string();
+        let data_source_config = ds.config().clone();
+
+        let pool = self.pool.clone();
+        let _ = tokio::task::spawn_blocking(move || -> Result<i64> {
+            let c = pool.get()?;
+            // Create DataSource.
+            let config_data = serde_json::to_string(&data_source_config)?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO data_sources \
+                   (project, created, data_source_id, internal_id, config_json) \
+                   VALUES (?, ?, ?, ?)",
+            )?;
+            let row_id = stmt.insert(params![
+                project_id,
+                data_source_created,
+                data_source_id,
+                data_source_internal_id,
+                config_data,
+            ])?;
+            Ok(row_id)
+        })
+        .await??;
+
+        Ok(())
     }
 
     async fn load_data_source(
@@ -870,7 +897,49 @@ impl Store for SQLiteStore {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<DataSource>> {
+            let c = pool.get()?;
+            // Check that the dataset_id and hash exist
+            let d: Option<(u64, u64, String, String)> = match c.query_row(
+                "SELECT id, created, internal_id, config_json FROM data_sources
+                   WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| {
+                    Ok((
+                        row.get(0).unwrap(),
+                        row.get(1).unwrap(),
+                        row.get(2).unwrap(),
+                        row.get(3).unwrap(),
+                    ))
+                },
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok((row_id, created, internal_id, config_data)) => {
+                    Some((row_id, created, internal_id, config_data))
+                }
+            };
+            if d.is_none() {
+                return Ok(None);
+            }
+            let (_, created, internal_id, config_data) = d.unwrap();
+            let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+
+            Ok(Some(DataSource::new_from_store(
+                &Project::new_from_id(project_id),
+                created,
+                &data_source_id,
+                &internal_id,
+                &data_source_config,
+            )))
+        })
+        .await?
     }
 
     async fn upsert_data_source_document(
@@ -879,7 +948,68 @@ impl Store for SQLiteStore {
         data_source_id: &str,
         document: &Document,
     ) -> Result<()> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document.document_id.clone();
+        let document_created = document.created;
+        let document_timestamp = document.timestamp;
+        let document_tags = document.tags.clone();
+        let document_hash = document.hash.clone();
+        let document_text_size = document.text_size;
+        let document_chunk_count = document.chunks.len() as u64;
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut c = pool.get()?;
+            // Finally fill in the join values.
+            let tx = c.transaction()?;
+            {
+                let row_id: Option<i64> = match tx.query_row(
+                    "SELECT id FROM data_sources WHERE project = ? AND data_source_id = ?1",
+                    params![project_id, data_source_id],
+                    |row| Ok(row.get(0).unwrap()),
+                ) {
+                    Err(e) => match e {
+                        rusqlite::Error::QueryReturnedNoRows => None,
+                        _ => Err(e)?,
+                    },
+                    Ok(row_id) => Some(row_id),
+                };
+
+                let data_source_row_id = match row_id {
+                    Some(r) => r,
+                    None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+                };
+
+                let mut stmt = tx.prepare_cached(
+                    "UPDATE data_source_documents SET status = 'superseded' \
+                       WHERE data_source = ? AND document_id = ? AND status = 'latest'",
+                )?;
+                let _ = stmt.insert(params![data_source_row_id, document_id])?;
+
+                let mut stmt = tx.prepare_cached(
+                    "INSERT INTO data_source_documents \
+                      (data_source, created, document_id, timestamp, tags_json, hash, \
+                       text_size, chunk_count, status) \
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                )?;
+                let document_tags_data = serde_json::to_string(&document_tags)?;
+                let _ = stmt.insert(params![
+                    data_source_row_id,
+                    document_created,
+                    document_id,
+                    document_timestamp,
+                    document_tags_data,
+                    document_hash,
+                    document_text_size,
+                    document_chunk_count,
+                    "latest",
+                ])?;
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
     }
 
     async fn llm_cache_get(

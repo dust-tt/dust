@@ -3,10 +3,10 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
-use crate::stores::store::Store;
+use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use cloud_storage::{Bucket, NewBucket, Object};
+use cloud_storage::Object;
 use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -16,15 +16,14 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 
-/// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both the
-/// chunk text and the parent document metadata (inserted into pinecone on each chunk to leverage
-/// metadata filters there).
+/// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
+/// the chunk text and the parent document tags (inserted into vector db search on each chunk to
+/// leverage tags filtering there). It is used as unique ID for the chunk in vector search db.
 pub struct Chunk {
-    pub created: u64,
     pub text: String,
     pub hash: String,
+    pub offset: usize,
     pub vector: Option<Vec<f64>>,
     pub score: Option<f64>,
 }
@@ -36,18 +35,30 @@ pub struct Chunk {
 pub struct Document {
     pub created: u64,
     pub document_id: String,
-    pub metadata: Value,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
     pub hash: String,
+    pub text_size: u64,
+    pub chunk_count: usize,
     pub chunks: Vec<Chunk>,
 }
 
 impl Document {
-    pub fn new(document_id: &str, metadata: &Value, hash: &str) -> Result<Self> {
+    pub fn new(
+        document_id: &str,
+        timestamp: u64,
+        tags: &Vec<String>,
+        hash: &str,
+        text_size: u64,
+    ) -> Result<Self> {
         Ok(Document {
             created: utils::now(),
             document_id: document_id.to_string(),
-            metadata: metadata.clone(),
+            timestamp,
+            tags: tags.clone(),
             hash: hash.to_string(),
+            text_size,
+            chunk_count: 0,
             chunks: vec![],
         })
     }
@@ -60,6 +71,7 @@ pub struct DataSourceConfig {
     pub extras: Option<Value>,
     pub splitter_id: SplitterID,
     pub max_chunk_size: usize,
+    pub use_cache: bool,
 }
 
 /// The `data_source_id` is the unique identifier that allows routing to the right data in SQL store
@@ -69,21 +81,55 @@ pub struct DataSource {
     project: Project,
     created: u64,
     data_source_id: String,
+    internal_id: String,
     config: DataSourceConfig,
 }
 
 impl DataSource {
-    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
-        return DataSource {
+    pub fn new(project: &Project, data_source_id: &str, config: &DataSourceConfig) -> Self {
+        DataSource {
             project: project.clone(),
             created: utils::now(),
-            data_source_id: utils::new_id(),
+            data_source_id: data_source_id.to_string(),
+            internal_id: utils::new_id(),
             config: config.clone(),
-        };
+        }
+    }
+
+    pub fn new_from_store(
+        project: &Project,
+        created: u64,
+        data_source_id: &str,
+        internal_id: &str,
+        config: &DataSourceConfig,
+    ) -> Self {
+        DataSource {
+            project: project.clone(),
+            created,
+            data_source_id: data_source_id.to_string(),
+            internal_id: internal_id.to_string(),
+            config: config.clone(),
+        }
+    }
+
+    pub fn created(&self) -> u64 {
+        self.created
+    }
+
+    pub fn data_source_id(&self) -> &str {
+        &self.data_source_id
+    }
+
+    pub fn internal_id(&self) -> &str {
+        &self.internal_id
+    }
+
+    pub fn config(&self) -> &DataSourceConfig {
+        &self.config
     }
 
     fn qdrant_collection(&self) -> String {
-        "data_sources".to_string()
+        format!("ds_{}", self.internal_id)
     }
 
     async fn qdrant_client(&self) -> Result<QdrantClient> {
@@ -102,10 +148,35 @@ impl DataSource {
         }
     }
 
-    async fn create_qdrant_collection(&self, client: &QdrantClient) -> Result<()> {
+    async fn ensure_qdrant_collection(&self, client: &QdrantClient) -> Result<()> {
+        // Errors if the collection does not exist? Must be created manually.
+        let _ = client.collection_info(self.qdrant_collection()).await?;
+        Ok(())
+    }
+
+    async fn setup(&self) -> Result<()> {
         let embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
 
-        client
+        // GCP store created data to test GCP.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
+        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id,);
+        let data_source_created_path = format!("{}/created.txt", bucket_path);
+
+        Object::create(
+            &bucket,
+            format!("{}", self.created).as_bytes().to_vec(),
+            &data_source_created_path,
+            "application/text",
+        )
+        .await?;
+
+        // Qdrant create collection.
+        let qdrant_client = self.qdrant_client().await?;
+        qdrant_client
             .create_collection(&qdrant::CreateCollection {
                 collection_name: self.qdrant_collection(),
                 vectors_config: Some(qdrant::VectorsConfig {
@@ -117,41 +188,49 @@ impl DataSource {
                     )),
                 }),
                 hnsw_config: Some(qdrant::HnswConfigDiff {
-                    m: Some(0),
-                    payload_m: Some(16),
+                    m: Some(16),
                     ..Default::default()
                 }),
+                optimizers_config: Some(qdrant::OptimizersConfigDiff {
+                    memmap_threshold: Some(1024),
+                    ..Default::default()
+                }),
+                // We keep the entire payload on disk and index on document_id and tags.
                 on_disk_payload: Some(true),
                 ..Default::default()
             })
             .await?;
 
-        let r = client
+        let _ = qdrant_client
             .create_field_index(
                 self.qdrant_collection(),
-                "__data_source_id",
+                "document_id_hash",
                 qdrant::FieldType::Keyword,
                 None,
                 None,
             )
             .await?;
 
-        let r = client
+        let _ = qdrant_client
             .create_field_index(
                 self.qdrant_collection(),
-                "__document_id",
+                "tags",
                 qdrant::FieldType::Keyword,
                 None,
                 None,
             )
             .await?;
 
-        Ok(())
-    }
+        let _ = qdrant_client
+            .create_field_index(
+                self.qdrant_collection(),
+                "timestamp",
+                qdrant::FieldType::Keyword,
+                None,
+                None,
+            )
+            .await?;
 
-    async fn ensure_qdrant_collection(&self, client: &QdrantClient) -> Result<()> {
-        // Errors if the collection does not exist? Must be created manually.
-        let _ = client.collection_info(self.qdrant_collection()).await?;
         Ok(())
     }
 
@@ -160,64 +239,56 @@ impl DataSource {
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
+        timestamp: Option<u64>,
+        tags: &Vec<String>,
         text: &str,
-        metadata: Value,
-    ) -> Result<()> {
+    ) -> Result<Document> {
         let store = store.clone();
 
-        // Validate that metadata is a string to string map and flatten it.
-        let flattened_metadata = match metadata.clone() {
-            Value::Object(o) => o
-                .keys()
-                .map(|k| match k.as_str() {
-                    "__data_source_id" | "__document_id_hash" | "__document_id" | "__text" => {
-                        Err(anyhow!(
-                            "Document `metadata` keys cannot be any of
-                            `__data_source_id`, `__document_id_hash`, `__document_id`, `__text`"
-                        ))
-                    }
-                    _ => match o.get(k) {
-                        Some(v) => match v {
-                            Value::String(s) => Ok((k.clone(), s.clone().into())),
-                            _ => Err(anyhow!(
-                                "Document `metadata` must be a string to string map"
-                            )),
-                        },
-                        None => Err(anyhow!(
-                            "Document `metadata` must be a string to string map"
-                        )),
-                    },
-                })
-                .collect::<Result<HashMap<_, qdrant::Value>>>()?,
-            _ => Err(anyhow!(
-                "Document `metadata` must be a string to string map"
-            ))?,
+        let timestamp = match timestamp {
+            Some(timestamp) => timestamp,
+            None => utils::now(),
         };
 
         // Hash document.
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
         hasher.update(text.as_bytes());
-        hasher.update(metadata.to_string().as_bytes());
+        hasher.update(format!("{}", timestamp).as_bytes());
+        tags.iter().for_each(|tag| {
+            hasher.update(tag.as_bytes());
+        });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
-        let mut document = Document::new(document_id, &metadata, &document_hash)?;
+        let mut document = Document::new(
+            document_id,
+            timestamp,
+            tags,
+            &document_hash,
+            text.len() as u64,
+        )?;
 
-        // GCP store raw text, metadata and document_id.
+        // GCP store raw text and document_id.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
             Ok(bucket) => bucket,
             Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
         };
 
-        let bucket_path = format!("{}/{}", self.data_source_id, document_id_hash);
+        let bucket_path = format!(
+            "{}/{}/{}",
+            self.project.project_id(),
+            self.internal_id,
+            document_id_hash
+        );
 
         let document_id_path = format!("{}/document_id.txt", bucket_path);
-        let object_path = format!("{}/{}/content.txt", bucket_path, document_hash);
-        let metadata_path = format!("{}/{}/metadata.json", bucket_path, document_hash);
+        let content_path = format!("{}/{}/content.txt", bucket_path, document_hash);
+        let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
+        let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
         let _ = try_join!(
             Object::create(
@@ -229,15 +300,21 @@ impl DataSource {
             Object::create(
                 &bucket,
                 text.as_bytes().to_vec(),
-                &object_path,
+                &content_path,
                 "application/text",
             ),
             Object::create(
                 &bucket,
-                metadata.to_string().as_bytes().to_vec(),
-                &metadata_path,
+                serde_json::to_string(tags).unwrap().as_bytes().to_vec(),
+                &tags_path,
                 "application/json",
-            )
+            ),
+            Object::create(
+                &bucket,
+                format!("{}", timestamp).as_bytes().to_vec(),
+                &timestamp_path,
+                "application/text",
+            ),
         )?;
 
         // Get qdrant client and ensure collection exists.
@@ -276,6 +353,26 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
+        document.chunks = e
+            .into_iter()
+            .enumerate()
+            .map(|(i, (s, v))| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(document_hash.as_bytes());
+                hasher.update(s.as_bytes());
+                let hash = format!("{}", hasher.finalize().to_hex());
+
+                Chunk {
+                    text: s,
+                    hash,
+                    offset: i,
+                    vector: Some(v.vector),
+                    score: None,
+                }
+            })
+            .collect::<Vec<_>>();
+        document.chunk_count = document.chunks.len();
+
         // Clean-up previous document chunks (vector search db).
         let _ = qdrant_client
             .delete_points(
@@ -283,28 +380,16 @@ impl DataSource {
                 &qdrant::Filter {
                     must_not: vec![],
                     should: vec![],
-                    must: vec![
-                        qdrant::FieldCondition {
-                            key: "__data_source_id".to_string(),
-                            r#match: Some(qdrant::Match {
-                                match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                    self.data_source_id.clone(),
-                                )),
-                            }),
-                            ..Default::default()
-                        }
-                        .into(),
-                        qdrant::FieldCondition {
-                            key: "__document_id_hash".to_string(),
-                            r#match: Some(qdrant::Match {
-                                match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                    document_id_hash.clone(),
-                                )),
-                            }),
-                            ..Default::default()
-                        }
-                        .into(),
-                    ],
+                    must: vec![qdrant::FieldCondition {
+                        key: "document_id_hash".to_string(),
+                        r#match: Some(qdrant::Match {
+                            match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                                document_id_hash.clone(),
+                            )),
+                        }),
+                        ..Default::default()
+                    }
+                    .into()],
                 }
                 .into(),
                 None,
@@ -312,26 +397,28 @@ impl DataSource {
             .await?;
 
         // Insert new chunks (vector search db).
-        let points = e
-            .into_iter()
-            .map(|(s, v)| {
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(document_hash.as_bytes());
-                hasher.update(s.as_bytes());
-
+        let points = document
+            .chunks
+            .iter()
+            .map(|c| {
                 let mut payload = Payload::new();
-                flattened_metadata.iter().for_each(|(k, v)| {
-                    payload.insert(k, v.clone());
-                });
-                payload.insert("__data_source_id", self.data_source_id.clone());
-                payload.insert("__document_id_hash", document_id_hash.clone());
-                payload.insert("__document_id", document_id.clone());
-                payload.insert("__text", s);
+                payload.insert("tags", tags.clone());
+                payload.insert("timetamp", document.timestamp as i64);
+                payload.insert("chunk_offset", c.offset as i64);
+                payload.insert("data_source_id", self.data_source_id.clone());
+                payload.insert("data_source_internal_id", self.internal_id.clone());
+                payload.insert("document_id", document_id);
+                payload.insert("document_id_hash", document_id_hash.clone());
+                payload.insert("text", c.text.clone());
 
-                let chunk_hash = format!("{}", hasher.finalize().to_hex());
                 qdrant::PointStruct::new(
-                    chunk_hash,
-                    v.vector.into_iter().map(|v| v as f32).collect::<Vec<f32>>(),
+                    c.hash.clone(),
+                    c.vector
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .map(|v| *v as f32)
+                        .collect::<Vec<f32>>(),
                     payload,
                 )
             })
@@ -345,20 +432,81 @@ impl DataSource {
             .upsert_data_source_document(&self.project, &self.data_source_id, &document)
             .await?;
 
-        Ok(())
+        Ok(document)
     }
 
     async fn search(
         &self,
-        credentials: Credentials,
-        query: &str,
-        top_k: usize,
-        metadata_filter: Option<Value>,
+        _credentials: Credentials,
+        _query: &str,
+        _top_k: usize,
+        _metadata_filter: Option<Value>,
     ) -> Result<Vec<Document>> {
         unimplemented!()
     }
 
-    async fn delete(&self, document_id: &str) -> Result<()> {
+    async fn delete(&self, _document_id: &str) -> Result<()> {
         unimplemented!()
     }
+}
+
+pub async fn cmd_register(data_source_id: &str, config: &DataSourceConfig) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = DataSource::new(&project, data_source_id, config);
+
+    ds.setup().await?;
+    store.register_data_source(&project, &ds).await?;
+
+    utils::done(&format!("Registered data_source `{}`", ds.data_source_id(),));
+
+    Ok(())
+}
+
+pub async fn cmd_upsert(
+    data_source_id: &str,
+    document_id: &str,
+    timestamp: Option<u64>,
+    tags: &Vec<String>,
+    text_path: &str,
+) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = match store.load_data_source(&project, data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
+    };
+
+    let text_path = &shellexpand::tilde(text_path).into_owned();
+    let text_path = std::path::Path::new(text_path);
+
+    let contents = async_fs::read(text_path).await?;
+    let text = std::str::from_utf8(&contents)?;
+
+    let d = ds
+        .upsert(
+            Credentials::new(),
+            Box::new(store.clone()),
+            document_id,
+            timestamp,
+            tags,
+            text,
+        )
+        .await?;
+
+    utils::done(&format!(
+        "Upserted document: data_source={} document_id={} text_length={} chunk_count={}",
+        ds.data_source_id(),
+        document_id,
+        text.len(),
+        d.chunks.len(),
+    ));
+
+    Ok(())
 }
