@@ -903,7 +903,6 @@ impl Store for SQLiteStore {
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<Option<DataSource>> {
             let c = pool.get()?;
-            // Check that the dataset_id and hash exist
             let d: Option<(u64, u64, String, String)> = match c.query_row(
                 "SELECT id, created, internal_id, config_json FROM data_sources
                    WHERE project = ?1 AND data_source_id = ?2",
@@ -938,6 +937,89 @@ impl Store for SQLiteStore {
                 &internal_id,
                 &data_source_config,
             )))
+        })
+        .await?
+    }
+
+    async fn load_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Document>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<Document>> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            let d: Option<(u64, u64, u64, String, String, u64, u64)> = match c.query_row(
+                "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
+                   FROM data_sources \
+                   WHERE data_source_id = ?1 AND document_id = ?2",
+                params![data_source_id, document_id],
+                |row| {
+                    Ok((
+                        row.get(0).unwrap(),
+                        row.get(1).unwrap(),
+                        row.get(2).unwrap(),
+                        row.get(3).unwrap(),
+                        row.get(4).unwrap(),
+                        row.get(5).unwrap(),
+                        row.get(6).unwrap(),
+                    ))
+                },
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok((row_id, created, timestamp, tags_data, hash, text_size, chunk_count)) => {
+                    Some((
+                        row_id,
+                        created,
+                        timestamp,
+                        tags_data,
+                        hash,
+                        text_size,
+                        chunk_count,
+                    ))
+                }
+            };
+            if d.is_none() {
+                return Ok(None);
+            }
+            let (_, created, timestamp, tags_data, hash, text_size, chunk_count) = d.unwrap();
+            let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+            Ok(Some(Document {
+                created,
+                timestamp,
+                document_id,
+                tags,
+                hash,
+                text_size,
+                chunk_count: chunk_count as usize,
+                chunks: vec![],
+            }))
         })
         .await?
     }

@@ -5,7 +5,7 @@ use dust::{
     blocks::block::BlockType,
     dataset,
     datasources::{
-        datasource::{self, DataSource, DataSourceConfig},
+        datasource::{self, DataSourceConfig},
         splitter::SplitterID,
     },
     init,
@@ -157,6 +157,20 @@ enum DataSourceCommands {
         #[clap(value_parser, required = false)]
         tags: Vec<String>,
     },
+    /// Searches a DataSource
+    Search {
+        /// DataSource id to search from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Query
+        #[clap(value_parser, required = true)]
+        query: String,
+
+        /// Number of results to return
+        #[clap(value_parser, required = true)]
+        top_k: usize,
+    },
     /// Deletes a document
     Delete {
         /// DataSource id to delete from
@@ -234,6 +248,11 @@ fn main() -> Result<()> {
                 tags,
                 text_path,
             )),
+            DataSourceCommands::Search {
+                data_source_id,
+                query,
+                top_k,
+            } => rt.block_on(datasource::cmd_search(data_source_id, query, *top_k)),
             DataSourceCommands::Delete {
                 data_source_id,
                 document_id,

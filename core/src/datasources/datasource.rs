@@ -16,6 +16,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
@@ -323,7 +324,7 @@ impl DataSource {
             )
             .await?;
 
-        // Embed chunks with max concurrency of 8.
+        // Embed chunks with max concurrency of 16.
         let e = futures::stream::iter(splits.into_iter())
             .map(|s| {
                 let provider_id = self.config.provider_id.clone();
@@ -431,11 +432,130 @@ impl DataSource {
 
     async fn search(
         &self,
-        _credentials: Credentials,
-        _query: &str,
-        _top_k: usize,
+        credentials: Credentials,
+        store: Box<dyn Store + Sync + Send>,
+        query: &str,
+        top_k: usize,
     ) -> Result<Vec<Document>> {
-        unimplemented!()
+        let store = store.clone();
+
+        let r = EmbedderRequest::new(
+            self.config.provider_id,
+            &self.config.model_id,
+            query,
+            self.config.extras.clone(),
+        );
+        let v = r.execute(credentials).await?;
+
+        let qdrant_client = self.qdrant_client().await?;
+        let results = qdrant_client
+            .search_points(&qdrant::SearchPoints {
+                collection_name: self.qdrant_collection(),
+                vector: v.vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
+                filter: None,
+                limit: top_k as u64,
+                with_payload: Some(true.into()),
+                params: None,
+                score_threshold: None,
+                offset: None,
+                vector_name: None,
+                with_vectors: None,
+                read_consistency: None,
+            })
+            .await?;
+
+        let chunks = results
+            .result
+            .iter()
+            .map(|r| {
+                let document_id = match r.payload.get("document_id") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::StringValue(ref s)) => s.clone(),
+                        _ => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+                    },
+                    None => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+                };
+                let text = match r.payload.get("text") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                        _ => Err(anyhow!("Missing `text` in chunk payload"))?,
+                    },
+                    None => Err(anyhow!("Missing `text` in chunk payload"))?,
+                };
+                let chunk_hash = match r.payload.get("chunk_hash") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                        _ => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+                    },
+                    None => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+                };
+                let chunk_offset = match r.payload.get("chunk_offset") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::IntegerValue(i)) => i,
+                        _ => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+                    },
+                    None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+                };
+                Ok((
+                    document_id,
+                    Chunk {
+                        text: text.clone(),
+                        hash: chunk_hash.clone(),
+                        offset: chunk_offset as usize,
+                        vector: None,
+                        score: Some(r.score as f64),
+                    },
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // get a list of unique document_id
+        let document_ids = chunks
+            .iter()
+            .map(|(document_id, _)| document_id.clone())
+            .collect::<std::collections::HashSet<_>>();
+
+        // Retrieve the documents from the store.
+        let documents = futures::stream::iter(document_ids)
+            .map(|document_id| {
+                let store = store.clone();
+                let document_id = document_id.clone();
+                let data_source_id = self.data_source_id.clone();
+                let project = self.project.clone();
+                tokio::spawn(async move {
+                    let d: Document = match store
+                        .load_data_source_document(&project, &data_source_id, &document_id)
+                        .await?
+                    {
+                        Some(d) => d,
+                        None => Err(anyhow!("Document not found"))?,
+                    };
+                    Ok::<Document, anyhow::Error>(d)
+                })
+            })
+            .buffer_unordered(16)
+            .map(|r| match r {
+                Err(e) => Err(anyhow!("DataSource document retrieval error: {}", e))?,
+                Ok(r) => r,
+            })
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        // Merge the chunks with the documents.
+        let documents = documents
+            .into_iter()
+            .map(|mut d| {
+                let chunks = chunks
+                    .iter()
+                    .filter(|(document_id, _)| document_id == &d.document_id)
+                    .map(|(_, c)| c.clone())
+                    .collect::<Vec<_>>();
+                d.chunks = chunks;
+                d
+            })
+            .collect::<Vec<_>>();
+
+        Ok(vec![])
     }
 
     async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
@@ -536,6 +656,33 @@ pub async fn cmd_upsert(
         d.chunks.len(),
         tags.join(","),
     ));
+
+    Ok(())
+}
+
+pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = match store.load_data_source(&project, data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
+    };
+
+    let r = ds
+        .search(Credentials::new(), Box::new(store.clone()), query, top_k)
+        .await?;
+
+    // utils::done(&format!(
+    //     "Upserted document: data_source={} document_id={} text_length={} chunk_count={} tags={}",
+    //     ds.data_source_id(),
+    //     document_id,
+    //     text.len(),
+    //     d.chunks.len(),
+    //     tags.join(","),
+    // ));
 
     Ok(())
 }

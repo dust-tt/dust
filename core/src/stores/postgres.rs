@@ -916,6 +916,15 @@ impl Store for PostgresStore {
         unimplemented!()
     }
 
+    async fn load_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Document>> {
+        unimplemented!()
+    }
+
     async fn upsert_data_source_document(
         &self,
         project: &Project,

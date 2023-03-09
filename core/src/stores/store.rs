@@ -81,6 +81,12 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>>;
+    async fn load_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Document>>;
     async fn upsert_data_source_document(
         &self,
         project: &Project,
