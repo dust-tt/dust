@@ -157,6 +157,16 @@ enum DataSourceCommands {
         #[clap(value_parser, required = false)]
         tags: Vec<String>,
     },
+    /// Deletes a document
+    Delete {
+        /// DataSource id to delete from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Document id to delete
+        #[clap(value_parser, required = true)]
+        document_id: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -224,6 +234,10 @@ fn main() -> Result<()> {
                 tags,
                 text_path,
             )),
+            DataSourceCommands::Delete {
+                data_source_id,
+                document_id,
+            } => rt.block_on(datasource::cmd_delete(data_source_id, document_id)),
         },
     };
 

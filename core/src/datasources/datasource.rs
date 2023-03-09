@@ -149,12 +149,6 @@ impl DataSource {
         }
     }
 
-    async fn ensure_qdrant_collection(&self, client: &QdrantClient) -> Result<()> {
-        // Errors if the collection does not exist? Must be created manually.
-        let _ = client.collection_info(self.qdrant_collection()).await?;
-        Ok(())
-    }
-
     async fn setup(&self) -> Result<()> {
         let embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
 
@@ -541,6 +535,28 @@ pub async fn cmd_upsert(
         text.len(),
         d.chunks.len(),
         tags.join(","),
+    ));
+
+    Ok(())
+}
+
+pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = match store.load_data_source(&project, data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
+    };
+
+    ds.delete(Box::new(store.clone()), document_id).await?;
+
+    utils::done(&format!(
+        "Deleted document: data_source={} document_id={}",
+        ds.data_source_id(),
+        document_id,
     ));
 
     Ok(())
