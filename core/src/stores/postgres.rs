@@ -925,6 +925,15 @@ impl Store for PostgresStore {
         unimplemented!()
     }
 
+    async fn delete_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<()> {
+        unimplemented!()
+    }
+
     async fn llm_cache_get(
         &self,
         project: &Project,

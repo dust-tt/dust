@@ -16,6 +16,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
@@ -317,10 +318,6 @@ impl DataSource {
             ),
         )?;
 
-        // Get qdrant client and ensure collection exists.
-        let qdrant_client = self.qdrant_client().await?;
-        self.ensure_qdrant_collection(&qdrant_client).await?;
-
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -374,6 +371,7 @@ impl DataSource {
         document.chunk_count = document.chunks.len();
 
         // Clean-up previous document chunks (vector search db).
+        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -401,18 +399,20 @@ impl DataSource {
             .chunks
             .iter()
             .map(|c| {
+                let uid = Uuid::new_v4();
                 let mut payload = Payload::new();
-                payload.insert("tags", tags.clone());
+                payload.insert("tags", document.tags.clone());
                 payload.insert("timetamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
+                payload.insert("chunk_hash", c.hash.clone());
                 payload.insert("data_source_id", self.data_source_id.clone());
                 payload.insert("data_source_internal_id", self.internal_id.clone());
-                payload.insert("document_id", document_id);
+                payload.insert("document_id", document.document_id.clone());
                 payload.insert("document_id_hash", document_id_hash.clone());
                 payload.insert("text", c.text.clone());
 
                 qdrant::PointStruct::new(
-                    c.hash.clone(),
+                    uid.to_string(),
                     c.vector
                         .as_ref()
                         .unwrap()
@@ -440,13 +440,47 @@ impl DataSource {
         _credentials: Credentials,
         _query: &str,
         _top_k: usize,
-        _metadata_filter: Option<Value>,
     ) -> Result<Vec<Document>> {
         unimplemented!()
     }
 
-    async fn delete(&self, _document_id: &str) -> Result<()> {
-        unimplemented!()
+    async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
+        let store = store.clone();
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        // Clean-up document chunks (vector search db).
+        let qdrant_client = self.qdrant_client().await?;
+        let _ = qdrant_client
+            .delete_points(
+                self.qdrant_collection(),
+                &qdrant::Filter {
+                    must_not: vec![],
+                    should: vec![],
+                    must: vec![qdrant::FieldCondition {
+                        key: "document_id_hash".to_string(),
+                        r#match: Some(qdrant::Match {
+                            match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                                document_id_hash.clone(),
+                            )),
+                        }),
+                        ..Default::default()
+                    }
+                    .into()],
+                }
+                .into(),
+                None,
+            )
+            .await?;
+
+        // Delete document (SQL)
+        store
+            .delete_data_source_document(&self.project, &self.data_source_id, document_id)
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -501,11 +535,12 @@ pub async fn cmd_upsert(
         .await?;
 
     utils::done(&format!(
-        "Upserted document: data_source={} document_id={} text_length={} chunk_count={}",
+        "Upserted document: data_source={} document_id={} text_length={} chunk_count={} tags={}",
         ds.data_source_id(),
         document_id,
         text.len(),
         d.chunks.len(),
+        tags.join(","),
     ));
 
     Ok(())

@@ -876,7 +876,7 @@ impl Store for SQLiteStore {
             let mut stmt = c.prepare_cached(
                 "INSERT INTO data_sources \
                    (project, created, data_source_id, internal_id, config_json) \
-                   VALUES (?, ?, ?, ?)",
+                   VALUES (?, ?, ?, ?, ?)",
             )?;
             let row_id = stmt.insert(params![
                 project_id,
@@ -961,11 +961,10 @@ impl Store for SQLiteStore {
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
             let mut c = pool.get()?;
-            // Finally fill in the join values.
             let tx = c.transaction()?;
             {
                 let row_id: Option<i64> = match tx.query_row(
-                    "SELECT id FROM data_sources WHERE project = ? AND data_source_id = ?1",
+                    "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
                     params![project_id, data_source_id],
                     |row| Ok(row.get(0).unwrap()),
                 ) {
@@ -982,13 +981,19 @@ impl Store for SQLiteStore {
                 };
 
                 let mut stmt = tx.prepare_cached(
-                    "UPDATE data_source_documents SET status = 'superseded' \
-                       WHERE data_source = ? AND document_id = ? AND status = 'latest'",
+                    "UPDATE data_sources_documents SET status = 'superseded' \
+                       WHERE data_source = ?1 AND document_id = ?2 AND status = 'latest'",
                 )?;
-                let _ = stmt.insert(params![data_source_row_id, document_id])?;
+                match stmt.insert(params![data_source_row_id, document_id]) {
+                    Ok(_) => {}
+                    Err(e) => match e {
+                        rusqlite::Error::StatementChangedRows(0) => {}
+                        _ => Err(e)?,
+                    },
+                }
 
                 let mut stmt = tx.prepare_cached(
-                    "INSERT INTO data_source_documents \
+                    "INSERT INTO data_sources_documents \
                       (data_source, created, document_id, timestamp, tags_json, hash, \
                        text_size, chunk_count, status) \
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1007,6 +1012,52 @@ impl Store for SQLiteStore {
                 ])?;
             }
             tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn delete_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            let mut stmt = c.prepare_cached(
+                "UPDATE data_sources_documents SET status = 'deleted' \
+                   WHERE data_source = ?1 AND document_id = ?2 AND status = 'latest'",
+            )?;
+            match stmt.insert(params![data_source_row_id, document_id]) {
+                Ok(_) => {}
+                Err(e) => match e {
+                    rusqlite::Error::StatementChangedRows(0) => {}
+                    _ => Err(e)?,
+                },
+            }
             Ok(())
         })
         .await?
