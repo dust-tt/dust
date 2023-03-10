@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ProviderID {
     OpenAI,
     Cohere,

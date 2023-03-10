@@ -1012,7 +1012,13 @@ async fn data_sources_register(
                 StatusCode::OK,
                 Json(APIResponse {
                     error: None,
-                    response: None,
+                    response: Some(json!({
+                        "data_source": {
+                            "created": ds.created(),
+                            "data_source_id": ds.data_source_id(),
+                            "config": ds.config(),
+                        },
+                    })),
                 }),
             ),
         },
@@ -1031,8 +1037,7 @@ struct DataSourcesDocumentsUpsertPayload {
 }
 
 async fn data_sources_documents_upsert(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Path(data_source_id): extract::Path<String>,
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
     extract::Json(payload): extract::Json<DataSourcesDocumentsUpsertPayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -1114,8 +1119,7 @@ struct DataSourcesListQuery {
 }
 
 async fn data_sources_documents_list(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Path(data_source_id): extract::Path<String>,
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
     extract::Query(query): extract::Query<DataSourcesListQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -1153,9 +1157,7 @@ async fn data_sources_documents_list(
 /// Delete document from a data source.
 
 async fn data_sources_documents_delete(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Path(data_source_id): extract::Path<String>,
-    extract::Path(document_id): extract::Path<String>,
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);

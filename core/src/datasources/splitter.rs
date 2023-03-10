@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SplitterID {
     BaseV0,
 }
