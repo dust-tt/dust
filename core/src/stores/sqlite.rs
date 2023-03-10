@@ -974,7 +974,7 @@ impl Store for SQLiteStore {
             let d: Option<(u64, u64, u64, String, String, u64, u64)> = match c.query_row(
                 "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
                    FROM data_sources_documents \
-                   WHERE data_source = ?1 AND document_id = ?2",
+                   WHERE data_source = ?1 AND document_id = ?2 AND status='latest'",
                 params![data_source_row_id, document_id],
                 |row| {
                     Ok((
@@ -1131,15 +1131,15 @@ impl Store for SQLiteStore {
             // Retrieve documents.
             let mut stmt = c.prepare_cached(
                 "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
-                    chunk_count FROM data_sources_documents \
-                    WHERE data_source = ?1 AND status = 'latest' \
-                    ORDER BY timestamp DESC",
+                   chunk_count FROM data_sources_documents \
+                   WHERE data_source = ?1 AND status = 'latest' \
+                   ORDER BY timestamp DESC",
             )?;
             let mut stmt_limit_offset = c.prepare_cached(
                 "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
-                    chunk_count FROM data_sources_documents \
-                    WHERE data_source = ?1 AND status = 'latest' \
-                    ORDER BY created DESC LIMIT ?3 OFFSET ?4",
+                   chunk_count FROM data_sources_documents \
+                   WHERE data_source = ?1 AND status = 'latest' \
+                   ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3",
             )?;
             let mut rows = match limit_offset {
                 None => stmt.query(params![data_source_row_id])?,
@@ -1176,8 +1176,8 @@ impl Store for SQLiteStore {
                 None => documents.len(),
                 Some(_) => {
                     let mut stmt = c.prepare_cached(
-                        "SELECT COUNT(*) FROM data_sources_documents
-                                WHERE data_source = ?1 AND status = 'latest'",
+                        "SELECT COUNT(*) FROM data_sources_documents \
+                           WHERE data_source = ?1 AND status = 'latest'",
                     )?;
                     stmt.query_row(params![data_source_row_id], |row| row.get(0))?
                 }

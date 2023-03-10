@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, Document};
+use crate::datasources::datasource::{DataSource, DataSourceConfig, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -8,7 +8,7 @@ use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LL
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -905,7 +905,37 @@ impl Store for PostgresStore {
     }
 
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_created = ds.created();
+        let data_source_id = ds.data_source_id().to_string();
+        let data_source_internal_id = ds.internal_id().to_string();
+        let data_source_config = ds.config().clone();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Create DataSource.
+        let config_data = serde_json::to_string(&data_source_config)?;
+        let stmt = c
+            .prepare(
+                "INSERT INTO data_sources \
+                   (id, project, created, data_source_id, internal_id, config_json) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+            )
+            .await?;
+        c.query_one(
+            &stmt,
+            &[
+                &project_id,
+                &(data_source_created as i64),
+                &data_source_id,
+                &data_source_internal_id,
+                &config_data,
+            ],
+        )
+        .await?;
+
+        Ok(())
     }
 
     async fn load_data_source(
@@ -913,7 +943,39 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id, created, internal_id, config_json FROM data_sources
+                   WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let d: Option<(i64, i64, String, String)> = match r.len() {
+            0 => None,
+            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            _ => unreachable!(),
+        };
+
+        match d {
+            None => Ok(None),
+            Some((_, created, internal_id, config_data)) => {
+                let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+                Ok(Some(DataSource::new_from_store(
+                    &Project::new_from_id(project_id),
+                    created as u64,
+                    &data_source_id,
+                    &internal_id,
+                    &data_source_config,
+                )))
+            }
+        }
     }
 
     async fn load_data_source_document(
@@ -922,7 +984,66 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<Option<Document>> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let r = c
+            .query(
+                "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
+                   FROM data_sources_documents \
+                   WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
+                &[&data_source_row_id, &document_id],
+            )
+            .await?;
+
+        let d: Option<(i64, i64, i64, String, String, i64, i64)> = match r.len() {
+            0 => None,
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+                r[0].get(5),
+                r[0].get(6),
+            )),
+            _ => unreachable!(),
+        };
+
+        match d {
+            None => Ok(None),
+            Some((_, created, timestamp, tags_data, hash, text_size, chunk_count)) => {
+                let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+                Ok(Some(Document {
+                    created: created as u64,
+                    timestamp: timestamp as u64,
+                    document_id,
+                    tags,
+                    hash,
+                    text_size: text_size as u64,
+                    chunk_count: chunk_count as usize,
+                    chunks: vec![],
+                }))
+            }
+        }
     }
 
     async fn upsert_data_source_document(
@@ -931,7 +1052,73 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document: &Document,
     ) -> Result<()> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document.document_id.clone();
+        let document_created = document.created;
+        let document_timestamp = document.timestamp;
+        let document_tags = document.tags.clone();
+        let document_hash = document.hash.clone();
+        let document_text_size = document.text_size;
+        let document_chunk_count = document.chunks.len() as u64;
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        let stmt = tx
+            .prepare(
+                "UPDATE data_sources_documents SET status = 'superseded' \
+                   WHERE data_source = $1 AND document_id = $2 AND status = 'latest'",
+            )
+            .await?;
+        let _ = tx
+            .query(&stmt, &[&data_source_row_id, &document_id])
+            .await?;
+
+        let stmt = tx
+            .prepare(
+                "INSERT INTO data_sources_documents \
+                   (id, data_source, created, document_id, timestamp, tags_json, hash, \
+                    text_size, chunk_count, status) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+            )
+            .await?;
+
+        let document_tags_data = serde_json::to_string(&document_tags)?;
+        tx.query_one(
+            &stmt,
+            &[
+                &data_source_row_id,
+                &(document_created as i64),
+                &document_id,
+                &(document_timestamp as i64),
+                &document_tags_data,
+                &document_hash,
+                &(document_text_size as i64),
+                &(document_chunk_count as i64),
+                &"latest",
+            ],
+        )
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(())
     }
 
     async fn list_data_source_documents(
@@ -940,7 +1127,95 @@ impl Store for PostgresStore {
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Document>, usize)> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let rows = match limit_offset {
+            None => {
+                let stmt = c
+                    .prepare(
+                        "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                           chunk_count FROM data_sources_documents \
+                           WHERE data_source = $1 AND status = 'latest' \
+                           ORDER BY timestamp DESC",
+                    )
+                    .await?;
+                c.query(&stmt, &[&data_source_row_id]).await?
+            }
+            Some((limit, offset)) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                           chunk_count FROM data_sources_documents \
+                           WHERE data_source = $1 AND status = 'latest' \
+                           ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
+                    )
+                    .await?;
+                c.query(
+                    &stmt,
+                    &[&data_source_row_id, &(limit as i64), &(offset as i64)],
+                )
+                .await?
+            }
+        };
+
+        let documents: Vec<Document> = rows
+            .iter()
+            .map(|r| {
+                let created: i64 = r.get(1);
+                let document_id: String = r.get(2);
+                let timestamp: i64 = r.get(3);
+                let tags_data: String = r.get(4);
+                let hash: String = r.get(5);
+                let text_size: i64 = r.get(6);
+                let chunk_count: i64 = r.get(7);
+
+                let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+                Ok(Document {
+                    created: created as u64,
+                    timestamp: timestamp as u64,
+                    document_id,
+                    tags,
+                    hash,
+                    text_size: text_size as u64,
+                    chunk_count: chunk_count as usize,
+                    chunks: vec![],
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let total = match limit_offset {
+            None => documents.len(),
+            Some(_) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT COUNT(*) FROM data_sources_documents \
+                           WHERE data_source = $1 AND status = 'latest'",
+                    )
+                    .await?;
+                let t: i64 = c.query_one(&stmt, &[&data_source_row_id]).await?.get(0);
+                t as usize
+            }
+        };
+
+        Ok((documents, total))
     }
 
     async fn delete_data_source_document(
@@ -949,7 +1224,35 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()> {
-        unimplemented!()
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare(
+                "UPDATE data_sources_documents SET status = 'deleted' \
+                   WHERE data_source = $1 AND document_id = $2 AND status = 'latest'",
+            )
+            .await?;
+        let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+
+        Ok(())
     }
 
     async fn llm_cache_get(
