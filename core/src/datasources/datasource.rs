@@ -151,7 +151,7 @@ impl DataSource {
         }
     }
 
-    async fn setup(&self) -> Result<()> {
+    pub async fn setup(&self) -> Result<()> {
         let embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
 
         // GCP store created data to test GCP.
@@ -231,7 +231,7 @@ impl DataSource {
         Ok(())
     }
 
-    async fn upsert(
+    pub async fn upsert(
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
@@ -430,7 +430,7 @@ impl DataSource {
         Ok(document)
     }
 
-    async fn search(
+    pub async fn search(
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
@@ -567,7 +567,7 @@ impl DataSource {
         Ok(documents)
     }
 
-    async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
