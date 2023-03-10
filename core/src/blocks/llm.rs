@@ -212,7 +212,6 @@ impl LLM {
     }
 
     fn prompt(&self, env: &Env) -> Result<String> {
-        // Initialize a mutable prompt String.
         let mut prompt = String::new();
 
         // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.

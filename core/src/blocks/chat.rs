@@ -95,7 +95,6 @@ impl Chat {
     }
 
     fn instructions(&self, env: &Env) -> Result<String> {
-        // Initialize a mutable prompt String.
         let mut instructions = String::new();
 
         // If `instructions` is defined, replace variables in it and add it.
@@ -105,7 +104,7 @@ impl Chat {
 
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         instructions = instructions.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        // println!("INSTRUCTIONS: {}", prompt);
+        // println!("INSTRUCTIONS: {}", instructions);
 
         Ok(instructions)
     }
