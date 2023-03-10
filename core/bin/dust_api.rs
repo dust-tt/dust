@@ -5,13 +5,15 @@ use axum::{
         sse::{Event, KeepAlive, Sse},
         Json,
     },
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use dust::{
     app,
     blocks::block::BlockType,
-    dataset, project, run,
+    dataset,
+    datasources::datasource,
+    project, run,
     stores::store,
     stores::{postgres, sqlite},
     utils,
@@ -969,6 +971,250 @@ async fn runs_retrieve_status(
     }
 }
 
+/// Register a new data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesRegisterPayload {
+    data_source_id: String,
+    config: datasource::DataSourceConfig,
+}
+
+async fn data_sources_register(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Json(payload): extract::Json<DataSourcesRegisterPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let ds = datasource::DataSource::new(&project, &payload.data_source_id, &payload.config);
+    match ds.setup().await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to register data_source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(()) => match state.store.register_data_source(&project, &ds).await {
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("internal_server_error"),
+                        message: format!("Failed to register data_source: {}", e),
+                    }),
+                    response: None,
+                }),
+            ),
+            Ok(()) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: None,
+                }),
+            ),
+        },
+    }
+}
+
+/// Upsert a document in a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsUpsertPayload {
+    document_id: String,
+    timestamp: Option<u64>,
+    tags: Vec<String>,
+    text: String,
+    credentials: run::Credentials,
+}
+
+async fn data_sources_documents_upsert(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Path(data_source_id): extract::Path<String>,
+    extract::Json(payload): extract::Json<DataSourcesDocumentsUpsertPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve data_source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No data source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => {
+                match ds
+                    .upsert(
+                        payload.credentials,
+                        state.store.clone(),
+                        &payload.document_id,
+                        payload.timestamp,
+                        &payload.tags,
+                        &payload.text,
+                    )
+                    .await
+                {
+                    Err(e) => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(APIResponse {
+                            error: Some(APIError {
+                                code: String::from("internal_server_error"),
+                                message: format!("Failed to upsert document: {}", e),
+                            }),
+                            response: None,
+                        }),
+                    ),
+                    Ok(d) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "document": d,
+                                "data_source": {
+                                    "created": ds.created(),
+                                    "data_source_id": ds.data_source_id(),
+                                    "config": ds.config(),
+                                },
+                            })),
+                        }),
+                    ),
+                }
+            }
+        },
+    }
+}
+
+/// List documents from a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn data_sources_documents_list(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Path(data_source_id): extract::Path<String>,
+    extract::Query(query): extract::Query<DataSourcesListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .list_data_source_documents(&project, &data_source_id, Some((query.limit, query.offset)))
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to list data source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok((documents, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
+                    "documents": documents,
+                })),
+            }),
+        ),
+    }
+}
+
+/// Delete document from a data source.
+
+async fn data_sources_documents_delete(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Path(data_source_id): extract::Path<String>,
+    extract::Path(document_id): extract::Path<String>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve data_source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No data source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => match ds.delete(state.store.clone(), &document_id).await {
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to delete document: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "document": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "internal_id": ds.internal_id(),
+                                "config": ds.config(),
+                            }
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("DATABASE_URI") {
@@ -989,11 +1235,10 @@ async fn main() -> Result<()> {
     let app = Router::new()
         // Index
         .route("/", get(index))
-
         // Projects
         .route("/projects", post(projects_create))
         .route("/projects/:project_id/clone", post(projects_clone))
-        // Projects / Specifications
+        // Specifications
         .route(
             "/projects/:project_id/specifications/check",
             post(specifications_check),
@@ -1002,14 +1247,14 @@ async fn main() -> Result<()> {
             "/projects/:project_id/specifications/:hash",
             get(specifications_retrieve),
         )
-        // Projects / Datasets
+        // Datasets
         .route("/projects/:project_id/datasets", post(datasets_register))
         .route("/projects/:project_id/datasets", get(datasets_list))
         .route(
             "/projects/:project_id/datasets/:dataset_id/:hash",
             get(datasets_retrieve),
         )
-        // Projects / Runs
+        // Runs
         .route("/projects/:project_id/runs", post(runs_create))
         .route(
             "/projects/:project_id/runs/stream",
@@ -1025,7 +1270,28 @@ async fn main() -> Result<()> {
             "/projects/:project_id/runs/:run_id/status",
             get(runs_retrieve_status),
         )
-
+        // DataSources
+        .route(
+            "/projects/:project_id/data_sources",
+            post(data_sources_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents",
+            post(data_sources_documents_upsert),
+        )
+        // Provided by blocks.
+        // .route(
+        //     "/projects/:project_id/data_sources/:data_source_id/search",
+        //     get(data_sources_search),
+        // )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents",
+            get(data_sources_documents_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
+            delete(data_sources_documents_delete),
+        )
         // Extensions
         .layer(extract::Extension(state.clone()));
 

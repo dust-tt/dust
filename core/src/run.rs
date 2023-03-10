@@ -46,6 +46,7 @@ impl RunConfig {
         match block_type {
             BlockType::Input => 64,
             BlockType::Data => 64,
+            BlockType::DataSource => 8,
             BlockType::Code => 64,
             BlockType::LLM => 8,
             BlockType::Chat => 8,

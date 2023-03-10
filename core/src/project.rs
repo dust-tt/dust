@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Project {
     project_id: i64,
 }

@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::datasources::datasource::{DataSource, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -73,6 +74,38 @@ pub trait Store {
         block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>>;
 
+    // DataSources
+    async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;
+    async fn load_data_source(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Option<DataSource>>;
+    async fn load_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Document>>;
+    async fn upsert_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document: &Document,
+    ) -> Result<()>;
+    async fn list_data_source_documents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Document>, usize)>;
+    async fn delete_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<()>;
+
     // LLM Cache
     async fn llm_cache_get(
         &self,
@@ -135,7 +168,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const SQLITE_TABLES: [&'static str; 9] = [
+pub const SQLITE_TABLES: [&'static str; 11] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY
@@ -214,9 +247,33 @@ pub const SQLITE_TABLES: [&'static str; 9] = [
        response             TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
+    "-- data sources
+    CREATE TABLE IF NOT EXISTS data_sources (
+       id                   INTEGER PRIMARY KEY,
+       project              INTEGER NOT NULL,
+       created              INTEGER NOT NULL,
+       data_source_id       TEXT NOT NULL,
+       internal_id          TEXT NOT NULL,
+       config_json          TEXT NOT NULL,
+       FOREIGN KEY(project) REFERENCES projects(id)
+    );",
+    "-- data sources documents
+    CREATE TABLE IF NOT EXISTS data_sources_documents (
+       id                       INTEGER PRIMARY KEY,
+       data_source              INTEGER NOT NULL,
+       created                  INTEGER NOT NULL,
+       document_id              TEXT NOT NULL,
+       timestamp                INTEGER NOT NULL,
+       tags_json                TEXT NOT NULL,
+       hash                     TEXT NOT NULL,
+       text_size                INTEGER NOT NULL,
+       chunk_count              INTEGER NOT NULL,
+       status                   TEXT NOT NULL,
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+    );",
 ];
 
-pub const POSTGRES_TABLES: [&'static str; 9] = [
+pub const POSTGRES_TABLES: [&'static str; 11] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -295,9 +352,33 @@ pub const POSTGRES_TABLES: [&'static str; 9] = [
        response             TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
+    "-- data sources
+    CREATE TABLE IF NOT EXISTS data_sources (
+       id                   BIGSERIAL PRIMARY KEY,
+       project              BIGINT NOT NULL,
+       created              BIGINT NOT NULL,
+       data_source_id       TEXT NOT NULL,
+       internal_id          TEXT NOT NULL,
+       config_json          TEXT NOT NULL,
+       FOREIGN KEY(project) REFERENCES projects(id)
+    );",
+    "-- data sources documents
+    CREATE TABLE IF NOT EXISTS data_sources_documents (
+       id                       BIGSERIAL PRIMARY KEY,
+       data_source              BIGINT NOT NULL,
+       created                  BIGINT NOT NULL,
+       document_id              TEXT NOT NULL,
+       timestamp                BIGINT NOT NULL,
+       tags_json                TEXT NOT NULL,
+       hash                     TEXT NOT NULL,
+       text_size                BIGINT NOT NULL,
+       chunk_count              BIGINT NOT NULL,
+       status                   TEXT NOT NULL,
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 10] = [
+pub const SQL_INDEXES: [&'static str; 13] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -319,4 +400,12 @@ pub const SQL_INDEXES: [&'static str; 10] = [
        idx_runs_joins ON runs_joins (run, block_execution);",
     "CREATE INDEX IF NOT EXISTS
        idx_cache_project_hash ON cache (project, hash);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+       idx_data_sources_project_data_source_id ON data_sources (project, data_source_id);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_data_sources_documents_data_source_document_id
+       ON data_sources_documents (data_source, document_id);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_data_sources_documents_data_source_status_timestamp
+       ON data_sources_documents (data_source, status, timestamp);",
 ];

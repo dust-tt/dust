@@ -1,6 +1,17 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dust::{app, blocks::block::BlockType, dataset, init, providers::provider, run, utils};
+use dust::{
+    app,
+    blocks::block::BlockType,
+    dataset,
+    datasources::{
+        datasource::{self, DataSourceConfig},
+        splitter::SplitterID,
+    },
+    init,
+    providers::provider,
+    run, utils,
+};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -36,6 +47,11 @@ enum Commands {
     Run {
         #[clap(subcommand)]
         command: RunCommands,
+    },
+    /// Manage DataSources
+    DataSource {
+        #[clap(subcommand)]
+        command: DataSourceCommands,
     },
 }
 
@@ -103,6 +119,76 @@ enum RunCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum DataSourceCommands {
+    /// Registers a new DataSource
+    Register {
+        /// DataSource id to register
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Provider id
+        #[clap(value_parser, required = true)]
+        provider_id: provider::ProviderID,
+
+        /// Model id
+        #[clap(value_parser, required = true)]
+        model_id: String,
+
+        /// Maximum chunk size when embedding
+        #[clap(value_parser, required = true)]
+        max_chunk_size: usize,
+    },
+    /// Upserts a document
+    Upsert {
+        /// DataSource id to upsert to
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Document id to upsert
+        #[clap(value_parser, required = true)]
+        document_id: String,
+
+        /// Document path (text)
+        #[clap(value_parser, required = true)]
+        text_path: String,
+
+        /// Document tags
+        #[clap(value_parser, required = false)]
+        tags: Vec<String>,
+    },
+    /// Searches a DataSource
+    Search {
+        /// DataSource id to search from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Query
+        #[clap(value_parser, required = true)]
+        query: String,
+
+        /// Number of results to return
+        #[clap(value_parser, required = true)]
+        top_k: usize,
+    },
+    /// List documents
+    List {
+        /// DataSource id to list from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+    },
+    /// Deletes a document
+    Delete {
+        /// DataSource id to delete from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Document id to delete
+        #[clap(value_parser, required = true)]
+        document_id: String,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -138,6 +224,48 @@ fn main() -> Result<()> {
                 block_type,
                 block_name,
             } => rt.block_on(run::cmd_inspect(run_id, *block_type, block_name)),
+        },
+        Commands::DataSource { command } => match command {
+            DataSourceCommands::Register {
+                data_source_id,
+                provider_id,
+                model_id,
+                max_chunk_size,
+            } => rt.block_on(datasource::cmd_register(
+                data_source_id,
+                &DataSourceConfig {
+                    provider_id: *provider_id,
+                    model_id: model_id.to_string(),
+                    extras: None,
+                    splitter_id: SplitterID::BaseV0,
+                    max_chunk_size: *max_chunk_size,
+                    use_cache: false,
+                },
+            )),
+            DataSourceCommands::Upsert {
+                data_source_id,
+                document_id,
+                tags,
+                text_path,
+            } => rt.block_on(datasource::cmd_upsert(
+                data_source_id,
+                document_id,
+                None,
+                tags,
+                text_path,
+            )),
+            DataSourceCommands::Search {
+                data_source_id,
+                query,
+                top_k,
+            } => rt.block_on(datasource::cmd_search(data_source_id, query, *top_k)),
+            DataSourceCommands::List { data_source_id } => {
+                rt.block_on(datasource::cmd_list(data_source_id))
+            }
+            DataSourceCommands::Delete {
+                data_source_id,
+                document_id,
+            } => rt.block_on(datasource::cmd_delete(data_source_id, document_id)),
         },
     };
 

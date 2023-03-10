@@ -1,6 +1,6 @@
 use crate::blocks::{
     browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, input::Input, llm::LLM,
-    map::Map, reduce::Reduce, search::Search,
+    map::Map, reduce::Reduce, search::Search, datasource::DataSource,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
@@ -58,6 +58,7 @@ pub struct Env {
 pub enum BlockType {
     Input,
     Data,
+    DataSource,
     Code,
     LLM,
     Chat,
@@ -73,6 +74,7 @@ impl ToString for BlockType {
         match self {
             BlockType::Input => String::from("input"),
             BlockType::Data => String::from("data"),
+            BlockType::DataSource => String::from("data_source"),
             BlockType::Code => String::from("code"),
             BlockType::LLM => String::from("llm"),
             BlockType::Chat => String::from("chat"),
@@ -91,6 +93,7 @@ impl FromStr for BlockType {
         match s {
             "input" => Ok(BlockType::Input),
             "data" => Ok(BlockType::Data),
+            "data_source" => Ok(BlockType::DataSource),
             "code" => Ok(BlockType::Code),
             "llm" => Ok(BlockType::LLM),
             "chat" => Ok(BlockType::Chat),
@@ -162,6 +165,7 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
     match t {
         BlockType::Input => Ok(Box::new(Input::parse(block_pair)?)),
         BlockType::Data => Ok(Box::new(Data::parse(block_pair)?)),
+        BlockType::DataSource => Ok(Box::new(DataSource::parse(block_pair)?)),
         BlockType::Code => Ok(Box::new(Code::parse(block_pair)?)),
         BlockType::LLM => Ok(Box::new(LLM::parse(block_pair)?)),
         BlockType::Chat => Ok(Box::new(Chat::parse(block_pair)?)),

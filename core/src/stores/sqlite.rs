@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
+use crate::datasources::datasource::{DataSource, DataSourceConfig, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -7,7 +8,7 @@ use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LL
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::stores::store::{Store, SQLITE_TABLES, SQL_INDEXES};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -856,6 +857,379 @@ impl Store for SQLiteStore {
                 &run_status,
                 traces,
             )))
+        })
+        .await?
+    }
+
+    async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_created = ds.created();
+        let data_source_id = ds.data_source_id().to_string();
+        let data_source_internal_id = ds.internal_id().to_string();
+        let data_source_config = ds.config().clone();
+
+        let pool = self.pool.clone();
+        let _ = tokio::task::spawn_blocking(move || -> Result<i64> {
+            let c = pool.get()?;
+            // Create DataSource.
+            let config_data = serde_json::to_string(&data_source_config)?;
+            let mut stmt = c.prepare_cached(
+                "INSERT INTO data_sources \
+                   (project, created, data_source_id, internal_id, config_json) \
+                   VALUES (?, ?, ?, ?, ?)",
+            )?;
+            let row_id = stmt.insert(params![
+                project_id,
+                data_source_created,
+                data_source_id,
+                data_source_internal_id,
+                config_data,
+            ])?;
+            Ok(row_id)
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn load_data_source(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Option<DataSource>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<DataSource>> {
+            let c = pool.get()?;
+            let d: Option<(u64, u64, String, String)> = match c.query_row(
+                "SELECT id, created, internal_id, config_json FROM data_sources
+                   WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| {
+                    Ok((
+                        row.get(0).unwrap(),
+                        row.get(1).unwrap(),
+                        row.get(2).unwrap(),
+                        row.get(3).unwrap(),
+                    ))
+                },
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok((row_id, created, internal_id, config_data)) => {
+                    Some((row_id, created, internal_id, config_data))
+                }
+            };
+            if d.is_none() {
+                return Ok(None);
+            }
+            let (_, created, internal_id, config_data) = d.unwrap();
+            let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+
+            Ok(Some(DataSource::new_from_store(
+                &Project::new_from_id(project_id),
+                created,
+                &data_source_id,
+                &internal_id,
+                &data_source_config,
+            )))
+        })
+        .await?
+    }
+
+    async fn load_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Document>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<Option<Document>> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            let d: Option<(u64, u64, u64, String, String, u64, u64)> = match c.query_row(
+                "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
+                   FROM data_sources_documents \
+                   WHERE data_source = ?1 AND document_id = ?2 AND status='latest'",
+                params![data_source_row_id, document_id],
+                |row| {
+                    Ok((
+                        row.get(0).unwrap(),
+                        row.get(1).unwrap(),
+                        row.get(2).unwrap(),
+                        row.get(3).unwrap(),
+                        row.get(4).unwrap(),
+                        row.get(5).unwrap(),
+                        row.get(6).unwrap(),
+                    ))
+                },
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok((row_id, created, timestamp, tags_data, hash, text_size, chunk_count)) => {
+                    Some((
+                        row_id,
+                        created,
+                        timestamp,
+                        tags_data,
+                        hash,
+                        text_size,
+                        chunk_count,
+                    ))
+                }
+            };
+            if d.is_none() {
+                return Ok(None);
+            }
+            let (_, created, timestamp, tags_data, hash, text_size, chunk_count) = d.unwrap();
+            let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+            Ok(Some(Document {
+                created,
+                timestamp,
+                document_id,
+                tags,
+                hash,
+                text_size,
+                chunk_count: chunk_count as usize,
+                chunks: vec![],
+            }))
+        })
+        .await?
+    }
+
+    async fn upsert_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document: &Document,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document.document_id.clone();
+        let document_created = document.created;
+        let document_timestamp = document.timestamp;
+        let document_tags = document.tags.clone();
+        let document_hash = document.hash.clone();
+        let document_text_size = document.text_size;
+        let document_chunk_count = document.chunks.len() as u64;
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut c = pool.get()?;
+            let tx = c.transaction()?;
+            {
+                let row_id: Option<i64> = match tx.query_row(
+                    "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                    params![project_id, data_source_id],
+                    |row| Ok(row.get(0).unwrap()),
+                ) {
+                    Err(e) => match e {
+                        rusqlite::Error::QueryReturnedNoRows => None,
+                        _ => Err(e)?,
+                    },
+                    Ok(row_id) => Some(row_id),
+                };
+
+                let data_source_row_id = match row_id {
+                    Some(r) => r,
+                    None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+                };
+
+                let mut stmt = tx.prepare_cached(
+                    "UPDATE data_sources_documents SET status = 'superseded' \
+                       WHERE data_source = ?1 AND document_id = ?2 AND status = 'latest'",
+                )?;
+                match stmt.insert(params![data_source_row_id, document_id]) {
+                    Ok(_) => {}
+                    Err(e) => match e {
+                        rusqlite::Error::StatementChangedRows(0) => {}
+                        _ => Err(e)?,
+                    },
+                }
+
+                let mut stmt = tx.prepare_cached(
+                    "INSERT INTO data_sources_documents \
+                      (data_source, created, document_id, timestamp, tags_json, hash, \
+                       text_size, chunk_count, status) \
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                )?;
+                let document_tags_data = serde_json::to_string(&document_tags)?;
+                let _ = stmt.insert(params![
+                    data_source_row_id,
+                    document_created,
+                    document_id,
+                    document_timestamp,
+                    document_tags_data,
+                    document_hash,
+                    document_text_size,
+                    document_chunk_count,
+                    "latest",
+                ])?;
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn list_data_source_documents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Document>, usize)> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<(Vec<Document>, usize)> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            // Retrieve documents.
+            let mut stmt = c.prepare_cached(
+                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                   chunk_count FROM data_sources_documents \
+                   WHERE data_source = ?1 AND status = 'latest' \
+                   ORDER BY timestamp DESC",
+            )?;
+            let mut stmt_limit_offset = c.prepare_cached(
+                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                   chunk_count FROM data_sources_documents \
+                   WHERE data_source = ?1 AND status = 'latest' \
+                   ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3",
+            )?;
+            let mut rows = match limit_offset {
+                None => stmt.query(params![data_source_row_id])?,
+                Some((limit, offset)) => {
+                    stmt_limit_offset.query(params![data_source_row_id, limit, offset])?
+                }
+            };
+
+            let mut documents: Vec<Document> = vec![];
+            while let Some(row) = rows.next()? {
+                let created: u64 = row.get(1)?;
+                let document_id: String = row.get(2)?;
+                let timestamp: u64 = row.get(3)?;
+                let tags_data: String = row.get(4)?;
+                let hash: String = row.get(5)?;
+                let text_size: u64 = row.get(6)?;
+                let chunk_count: u64 = row.get(7)?;
+
+                let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+                documents.push(Document {
+                    created,
+                    timestamp,
+                    document_id,
+                    tags,
+                    hash,
+                    text_size,
+                    chunk_count: chunk_count as usize,
+                    chunks: vec![],
+                });
+            }
+
+            let total = match limit_offset {
+                None => documents.len(),
+                Some(_) => {
+                    let mut stmt = c.prepare_cached(
+                        "SELECT COUNT(*) FROM data_sources_documents \
+                           WHERE data_source = ?1 AND status = 'latest'",
+                    )?;
+                    stmt.query_row(params![data_source_row_id], |row| row.get(0))?
+                }
+            };
+
+            Ok((documents, total))
+        })
+        .await?
+    }
+
+    async fn delete_data_source_document(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            let mut stmt = c.prepare_cached(
+                "UPDATE data_sources_documents SET status = 'deleted' \
+                   WHERE data_source = ?1 AND document_id = ?2 AND status = 'latest'",
+            )?;
+            match stmt.insert(params![data_source_row_id, document_id]) {
+                Ok(_) => {}
+                Err(e) => match e {
+                    rusqlite::Error::StatementChangedRows(0) => {}
+                    _ => Err(e)?,
+                },
+            }
+            Ok(())
         })
         .await?
     }
