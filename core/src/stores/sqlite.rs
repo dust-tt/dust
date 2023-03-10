@@ -973,9 +973,9 @@ impl Store for SQLiteStore {
 
             let d: Option<(u64, u64, u64, String, String, u64, u64)> = match c.query_row(
                 "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
-                   FROM data_sources \
-                   WHERE data_source_id = ?1 AND document_id = ?2",
-                params![data_source_id, document_id],
+                   FROM data_sources_documents \
+                   WHERE data_source = ?1 AND document_id = ?2",
+                params![data_source_row_id, document_id],
                 |row| {
                     Ok((
                         row.get(0).unwrap(),
@@ -1095,6 +1095,96 @@ impl Store for SQLiteStore {
             }
             tx.commit()?;
             Ok(())
+        })
+        .await?
+    }
+
+    async fn list_data_source_documents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Document>, usize)> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<(Vec<Document>, usize)> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            // Retrieve documents.
+            let mut stmt = c.prepare_cached(
+                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                    chunk_count FROM data_sources_documents \
+                    WHERE data_source = ?1 AND status = 'latest' \
+                    ORDER BY timestamp DESC",
+            )?;
+            let mut stmt_limit_offset = c.prepare_cached(
+                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                    chunk_count FROM data_sources_documents \
+                    WHERE data_source = ?1 AND status = 'latest' \
+                    ORDER BY created DESC LIMIT ?3 OFFSET ?4",
+            )?;
+            let mut rows = match limit_offset {
+                None => stmt.query(params![data_source_row_id])?,
+                Some((limit, offset)) => {
+                    stmt_limit_offset.query(params![data_source_row_id, limit, offset])?
+                }
+            };
+
+            let mut documents: Vec<Document> = vec![];
+            while let Some(row) = rows.next()? {
+                let row_id: u64 = row.get(0)?;
+                let created: u64 = row.get(1)?;
+                let document_id: String = row.get(2)?;
+                let timestamp: u64 = row.get(3)?;
+                let tags_data: String = row.get(4)?;
+                let hash: String = row.get(5)?;
+                let text_size: u64 = row.get(6)?;
+                let chunk_count: u64 = row.get(7)?;
+
+                let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
+                documents.push(Document {
+                    created,
+                    timestamp,
+                    document_id,
+                    tags,
+                    hash,
+                    text_size,
+                    chunk_count: chunk_count as usize,
+                    chunks: vec![],
+                });
+            }
+
+            let total = match limit_offset {
+                None => documents.len(),
+                Some(_) => {
+                    let mut stmt = c.prepare_cached(
+                        "SELECT COUNT(*) FROM data_sources_documents
+                                WHERE data_source = ?1 AND status = 'latest'",
+                    )?;
+                    stmt.query_row(params![data_source_row_id], |row| row.get(0))?
+                }
+            };
+
+            Ok((documents, total))
         })
         .await?
     }

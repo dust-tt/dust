@@ -16,12 +16,12 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
 /// leverage tags filtering there). It is used as unique ID for the chunk in vector search db.
+#[derive(Debug, Serialize, Clone)]
 pub struct Chunk {
     pub text: String,
     pub hash: String,
@@ -34,6 +34,7 @@ pub struct Chunk {
 /// directly inserted in the vector search db). It is also used as a result from search (only the
 /// retrieved chunks are provided in the result). `hash` covers both the original document id and
 /// text and the document metadata and is used to no-op in case of match.
+#[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub created: u64,
     pub document_id: String,
@@ -325,8 +326,8 @@ impl DataSource {
             .await?;
 
         // Embed chunks with max concurrency of 16.
-        let e = futures::stream::iter(splits.into_iter())
-            .map(|s| {
+        let e = futures::stream::iter(splits.into_iter().enumerate())
+            .map(|(i, s)| {
                 let provider_id = self.config.provider_id.clone();
                 let model_id = self.config.model_id.clone();
                 let credentials = credentials.clone();
@@ -334,7 +335,7 @@ impl DataSource {
                 tokio::spawn(async move {
                     let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
                     let v = r.execute(credentials).await?;
-                    Ok::<(std::string::String, EmbedderVector), anyhow::Error>((s, v))
+                    Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
                 })
             })
             .buffer_unordered(16)
@@ -347,8 +348,7 @@ impl DataSource {
 
         document.chunks = e
             .into_iter()
-            .enumerate()
-            .map(|(i, (s, v))| {
+            .map(|(i, s, v)| {
                 let mut hasher = blake3::Hasher::new();
                 hasher.update(document_hash.as_bytes());
                 hasher.update(s.as_bytes());
@@ -542,20 +542,29 @@ impl DataSource {
             .await?;
 
         // Merge the chunks with the documents.
-        let documents = documents
+        let mut documents = documents
             .into_iter()
             .map(|mut d| {
                 let chunks = chunks
                     .iter()
                     .filter(|(document_id, _)| document_id == &d.document_id)
                     .map(|(_, c)| c.clone())
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<Chunk>>();
                 d.chunks = chunks;
                 d
             })
             .collect::<Vec<_>>();
 
-        Ok(vec![])
+        // Sort the documents by the score of the first chunk (guaranteed ordered).
+        documents.sort_by(|a, b| {
+            let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
+            let a_score = a.chunks.first().unwrap().score.unwrap_or(0.0);
+            b_score
+                .partial_cmp(&a_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        Ok(documents)
     }
 
     async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
@@ -675,14 +684,25 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
         .search(Credentials::new(), Box::new(store.clone()), query, top_k)
         .await?;
 
-    // utils::done(&format!(
-    //     "Upserted document: data_source={} document_id={} text_length={} chunk_count={} tags={}",
-    //     ds.data_source_id(),
-    //     document_id,
-    //     text.len(),
-    //     d.chunks.len(),
-    //     tags.join(","),
-    // ));
+    utils::info(&format!(
+        "{} documents, {} chunks total",
+        r.len(),
+        r.iter().map(|d| d.chunks.len()).sum::<usize>(),
+    ));
+    r.iter().for_each(|d| {
+        utils::info(&format!(
+            "- Document: document_id={} text_size={} chunk_count={}",
+            d.document_id, d.text_size, d.chunk_count,
+        ));
+        d.chunks.iter().for_each(|c| {
+            utils::info(&format!(
+                "  > Chunk: offset={} score={}",
+                c.offset,
+                c.score.unwrap_or(0.0),
+            ));
+            println!("```\n{}\n```", c.text);
+        });
+    });
 
     Ok(())
 }

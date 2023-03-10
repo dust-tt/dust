@@ -93,6 +93,12 @@ pub trait Store {
         data_source_id: &str,
         document: &Document,
     ) -> Result<()>;
+    async fn list_data_source_documents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Document>, usize)>;
     async fn delete_data_source_document(
         &self,
         project: &Project,
