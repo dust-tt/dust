@@ -728,3 +728,24 @@ pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub async fn cmd_list(data_source_id: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let r = store
+        .list_data_source_documents(&project, data_source_id, None)
+        .await?;
+
+    utils::info(&format!("{} documents", r.0.len(),));
+    r.0.iter().for_each(|d| {
+        utils::info(&format!(
+            "- Document: document_id={} text_size={} chunk_count={}",
+            d.document_id, d.text_size, d.chunk_count,
+        ));
+    });
+
+    Ok(())
+}

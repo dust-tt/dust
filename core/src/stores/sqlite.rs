@@ -1150,7 +1150,6 @@ impl Store for SQLiteStore {
 
             let mut documents: Vec<Document> = vec![];
             while let Some(row) = rows.next()? {
-                let row_id: u64 = row.get(0)?;
                 let created: u64 = row.get(1)?;
                 let document_id: String = row.get(2)?;
                 let timestamp: u64 = row.get(3)?;

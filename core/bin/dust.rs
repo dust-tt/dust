@@ -171,6 +171,12 @@ enum DataSourceCommands {
         #[clap(value_parser, required = true)]
         top_k: usize,
     },
+    /// List documents
+    List {
+        /// DataSource id to list from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+    },
     /// Deletes a document
     Delete {
         /// DataSource id to delete from
@@ -253,6 +259,9 @@ fn main() -> Result<()> {
                 query,
                 top_k,
             } => rt.block_on(datasource::cmd_search(data_source_id, query, *top_k)),
+            DataSourceCommands::List { data_source_id } => {
+                rt.block_on(datasource::cmd_list(data_source_id))
+            }
             DataSourceCommands::Delete {
                 data_source_id,
                 document_id,
