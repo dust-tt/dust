@@ -163,6 +163,37 @@ export const Key = front_sequelize.define(
 );
 User.hasMany(Key);
 
+export const DataSource = front_sequelize.define(
+  "data_source",
+  {
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+    },
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    config: {
+      type: DataTypes.TEXT,
+    },
+    dustAPIProjectId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    indexes: [
+      { fields: ["userId", "visibility"] },
+      { fields: ["userId", "name", "visibility"] },
+    ],
+  }
+);
+User.hasMany(DataSource);
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;

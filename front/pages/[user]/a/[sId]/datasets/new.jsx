@@ -79,6 +79,7 @@ export default function NewDatasetView({
             user={user}
           />
         </div>
+
         <div className="flex flex-1">
           <div className="w-full px-4 sm:px-6 mb-8">
             <div className="space-y-6 divide-y divide-gray-200 mt-4">

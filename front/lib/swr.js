@@ -80,3 +80,17 @@ export function useRuns(user, app, limit, offset, runType) {
     isRunsError: error,
   };
 }
+
+export function useDocuments(user, dataSource, limit, offset) {
+  const { data, error } = useSWR(
+    `/api/data_sources/${user}/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,
+    fetcher
+  );
+
+  return {
+    documents: data ? data.documents : [],
+    total: data ? data.total : 0,
+    isRunsLoading: !error && !data,
+    isRunsError: error,
+  };
+}

@@ -171,6 +171,11 @@ impl DataSource {
         )
         .await?;
 
+        utils::done(&format!(
+            "Created GCP bucket for data_source `{}`",
+            self.data_source_id
+        ));
+
         // Qdrant create collection.
         let qdrant_client = self.qdrant_client().await?;
         qdrant_client
@@ -227,6 +232,11 @@ impl DataSource {
                 None,
             )
             .await?;
+
+        utils::done(&format!(
+            "Created Qdrant collection and indexes for data_source `{}`",
+            self.data_source_id
+        ));
 
         Ok(())
     }
@@ -314,6 +324,11 @@ impl DataSource {
             ),
         )?;
 
+        utils::done(&format!(
+            "Created document blob: data_source_id={} document_id={}",
+            self.data_source_id, document_id,
+        ));
+
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -345,6 +360,13 @@ impl DataSource {
             })
             .try_collect::<Vec<_>>()
             .await?;
+
+        utils::done(&format!(
+            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={}",
+            self.data_source_id,
+            document_id,
+            e.len(),
+        ));
 
         document.chunks = e
             .into_iter()
@@ -421,6 +443,11 @@ impl DataSource {
         let _ = qdrant_client
             .upsert_points(self.qdrant_collection(), points, None)
             .await?;
+
+        utils::done(&format!(
+            "Inserted vectors in Qdrant: data_source_id={} document_id={}",
+            self.data_source_id, document_id,
+        ));
 
         // Upsert document (SQL)
         store
@@ -564,10 +591,21 @@ impl DataSource {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
+        utils::done(&format!(
+            "Searched data source: data_source_id={} document_count={} chunk_count={}",
+            self.data_source_id,
+            documents.len(),
+            documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
+        ));
+
         Ok(documents)
     }
 
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
+    pub async fn delete(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<()> {
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();

@@ -127,7 +127,7 @@ export default function DatasetView({
     });
     if (exists) {
       setDatasetNameError(
-        "Dataset name must only contain letters, numbers, and the characters `._-`"
+        "A dataset with the same name already exists"
       );
       valid = false;
     } else if (datasetName.length == 0) {

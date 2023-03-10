@@ -3,7 +3,7 @@ import { classNames } from "../../lib/utils";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 import { CodeBracketIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
-import { LinkIcon, KeyIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassCircleIcon, LinkIcon, KeyIcon } from "@heroicons/react/24/outline";
 
 export default function MainTab({ current_tab, user, readOnly }) {
   const { data: session } = useSession();
@@ -20,6 +20,16 @@ export default function MainTab({ current_tab, user, readOnly }) {
             />
           ),
         },
+        {
+          name: "DataSources",
+          href: `/${user}/data_souces`,
+          icon: (
+            <MagnifyingGlassCircleIcon
+              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              aria-hidden="true"
+            />
+          ),
+        },
       ]
     : [
         {
@@ -27,6 +37,16 @@ export default function MainTab({ current_tab, user, readOnly }) {
           href: `/${session.user.username}/apps`,
           icon: (
             <CodeBracketIcon
+              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              aria-hidden="true"
+            />
+          ),
+        },
+        {
+          name: "DataSources",
+          href: `/${session.user.username}/data_sources`,
+          icon: (
+            <MagnifyingGlassCircleIcon
               className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
               aria-hidden="true"
             />
