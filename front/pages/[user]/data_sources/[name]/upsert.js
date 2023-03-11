@@ -36,6 +36,7 @@ export default function DataSourceUpsert({
 
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setDisabled(!documentId || !text);
@@ -44,11 +45,15 @@ export default function DataSourceUpsert({
   useEffect(() => {
     if (loadDocumentId) {
       setDocumentId(loadDocumentId);
+      setDownloading(true);
+      setDisabled(true);
       fetch(
         `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${loadDocumentId}`
       ).then(async (res) => {
         if (res.ok) {
           const document = await res.json();
+          setDisabled(false);
+          setDownloading(false);
           setText(document.text);
         }
       });
@@ -116,7 +121,7 @@ export default function DataSourceUpsert({
                         name="document"
                         id="document"
                         className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md sm:text-sm",
+                          "block w-full min-w-0 flex-1 rounded-md text-sm",
                           "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                         )}
                         value={documentId}
@@ -150,10 +155,11 @@ export default function DataSourceUpsert({
                       id="text"
                       rows="20"
                       className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-md sm:text-sm",
+                        "block w-full min-w-0 flex-1 rounded-md text-sm",
                         "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                       )}
-                      value={text}
+                      disabled={downloading}
+                      value={downloading ? "Downloading..." : text}
                       onChange={(e) => setText(e.target.value)}
                     />
                   </div>

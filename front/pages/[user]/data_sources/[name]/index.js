@@ -1,5 +1,6 @@
 import AppLayout from "../../../../components/app/AppLayout";
 import MainTab from "../../../../components/profile/MainTab";
+import { classNames, timeAgoFrom } from "../../../../lib/utils";
 import { Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
@@ -43,6 +44,7 @@ export default function DataSourceView({
         <div className="">
           <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 mt-8">
             <div className="flex flex-row">
+
               <div className="flex flex-1"></div>
               {readOnly ? null : (
                 <div className="sm:flex sm:items-center">
@@ -107,24 +109,30 @@ export default function DataSourceView({
                 {documents.map((d) => (
                   <li key={d.document_id} className="px-2">
                     <div className="py-4">
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href={`/${user}/data_sources/${dataSource.name}/upsert?documentId=${d.document_id}`}
-                          className="block"
-                        >
-                          <p className="truncate text-base font-bold text-violet-600">
-                            {d.document_id}
-                          </p>
-                        </Link>
-                      </div>
-                      <div className="mt-2 sm:flex sm:justify-between">
-                        <div className="sm:flex">
-                          <p className="flex items-center text-sm text-gray-700">
-                            descripiontasd ak
+                      <div className="grid grid-cols-5 items-center justify-between">
+                        <div className="col-span-4">
+                          <Link
+                            href={`/${user}/data_sources/${dataSource.name}/upsert?documentId=${d.document_id}`}
+                            className="block"
+                          >
+                            <p className="truncate text-base font-bold text-violet-600">
+                              {d.document_id}
+                            </p>
+                          </Link>
+                        </div>
+                        <div className="col-span-1 text-right text-sm text-gray-300 ">
+                          <p>
+                            {Math.floor(d.text_size / 1024)} kb /{" "}
+                            {d.chunk_count} chunks{" "}
                           </p>
                         </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                          <p></p>
+                      </div>
+                      <div className="mt-2 flex justify-between">
+                        <div className="flex"></div>
+                        <div className="flex items-center mt-0">
+                          <p className="text-sm text-gray-500">
+                            {timeAgoFrom(d.timestamp)} ago
+                          </p>
                         </div>
                       </div>
                     </div>
