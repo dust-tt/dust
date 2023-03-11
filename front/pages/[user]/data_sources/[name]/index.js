@@ -109,7 +109,7 @@ export default function DataSourceView({
                     <div className="py-4">
                       <div className="flex items-center justify-between">
                         <Link
-                          href={`/${user}/data_sources/${d.document_id}`}
+                          href={`/${user}/data_sources/${dataSource.name}/upsert?documentId=${d.document_id}`}
                           className="block"
                         >
                           <p className="truncate text-base font-bold text-violet-600">

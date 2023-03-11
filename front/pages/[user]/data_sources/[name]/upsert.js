@@ -15,11 +15,19 @@ import {
 import { classNames } from "../../../../lib/utils";
 import { useRef } from "react";
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function DataSourceUpsert({ dataSource, user, ga_tracking_id }) {
+export default function DataSourceUpsert({
+  dataSource,
+  loadDocumentId,
+  user,
+  ga_tracking_id,
+}) {
   const { data: session } = useSession();
+
+  console.log("USER", user);
 
   const fileInputRef = useRef(null);
 
@@ -32,6 +40,20 @@ export default function DataSourceUpsert({ dataSource, user, ga_tracking_id }) {
   useEffect(() => {
     setDisabled(!documentId || !text);
   }, [documentId, text]);
+
+  useEffect(() => {
+    if (loadDocumentId) {
+      setDocumentId(loadDocumentId);
+      fetch(
+        `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${loadDocumentId}`
+      ).then(async (res) => {
+        if (res.ok) {
+          const document = await res.json();
+          setText(document.text);
+        }
+      });
+    }
+  }, [loadDocumentId]);
 
   const handleFileLoadedEnded = (e) => {
     const content = e.target.result;
@@ -48,6 +70,25 @@ export default function DataSourceUpsert({ dataSource, user, ga_tracking_id }) {
     fileData.readAsText(file);
   };
 
+  const router = useRouter();
+
+  const handleUpsert = async () => {
+    setLoading(true);
+    const res = await fetch(
+      `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${documentId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+        }),
+      }
+    );
+    router.push(`/${session.user.username}/data_sources/${dataSource.name}`);
+  };
+
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
@@ -55,11 +96,7 @@ export default function DataSourceUpsert({ dataSource, user, ga_tracking_id }) {
           <MainTab current_tab="DataSources" user={user} readOnly={false} />
         </div>
 
-        <form
-          action={`/api/data_sources/${session.user.username}/${dataSource.name}/documents`}
-          method="POST"
-          className="px-4 sm:px-6 space-y-6 divide-y divide-gray-200"
-        >
+        <div className="px-4 sm:px-6 space-y-6 divide-y divide-gray-200">
           <div>
             <div className="flex flex-1">
               <div className="w-full mb-8">
@@ -152,17 +189,15 @@ export default function DataSourceUpsert({ dataSource, user, ga_tracking_id }) {
             <div className="flex-initial">
               <ActionButton
                 disabled={disabled || loading}
-                type="submit"
-                onMouseDown={() => {
-                  // TODO(spolu): not working need to move back to a handler instead of a form
-                  setLoading(true);
+                onClick={() => {
+                  handleUpsert();
                 }}
               >
                 {loading ? "Embeding..." : "Upsert"}
               </ActionButton>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </AppLayout>
   );
@@ -219,6 +254,7 @@ export async function getServerSideProps(context) {
       session,
       dataSource: dataSource.dataSource,
       user: context.query.user,
+      loadDocumentId: context.query.documentId || null,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

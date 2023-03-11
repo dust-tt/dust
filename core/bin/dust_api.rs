@@ -1262,7 +1262,7 @@ async fn data_sources_documents_delete(
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
-                            "document": {
+                            "data_source": {
                                 "created": ds.created(),
                                 "data_source_id": ds.data_source_id(),
                                 "internal_id": ds.internal_id(),

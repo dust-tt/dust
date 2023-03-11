@@ -54,59 +54,6 @@ export default async function handler(req, res) {
   }
 
   switch (req.method) {
-    case "POST":
-      if (readOnly) {
-        res.status(401).end();
-        break;
-      }
-
-      let [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            userId: user.id,
-          },
-        }),
-      ]);
-
-      if (
-        !req.body ||
-        !(typeof req.body.document == "string") ||
-        !(typeof req.body.text == "string")
-      ) {
-        res.status(400).end();
-        break;
-      }
-
-      let credentials = credentialsFromProviders(providers);
-
-      // Register dataset with the Dust internal API.
-      const r = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            document_id: req.body.document,
-            tags: [],
-            text: req.body.text,
-            credentials,
-          }),
-        }
-      );
-
-      const d = await r.json();
-
-      if (d.error) {
-        res.status(500).end();
-        break;
-      }
-
-      res.redirect(`/${session.user.username}/data_sources/${dataSource.name}`);
-
-      break;
-
     case "GET":
       let limit = req.query.limit ? parseInt(req.query.limit) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset) : 0;
