@@ -156,7 +156,8 @@ export default function DataSourceUpsert({
                       rows="20"
                       className={classNames(
                         "block w-full min-w-0 flex-1 rounded-md text-sm",
-                        "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                        "border-gray-300 focus:border-violet-500 focus:ring-violet-500",
+                        downloading ? "text-gray-300" : ""
                       )}
                       disabled={downloading}
                       value={downloading ? "Downloading..." : text}
