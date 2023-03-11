@@ -177,6 +177,16 @@ enum DataSourceCommands {
         #[clap(value_parser, required = true)]
         data_source_id: String,
     },
+    /// Retrieved a document
+    Retrieve {
+        /// DataSource id to retrieve from
+        #[clap(value_parser, required = true)]
+        data_source_id: String,
+
+        /// Document id to retrieve
+        #[clap(value_parser, required = true)]
+        document_id: String,
+    },
     /// Deletes a document
     Delete {
         /// DataSource id to delete from
@@ -262,6 +272,10 @@ fn main() -> Result<()> {
             DataSourceCommands::List { data_source_id } => {
                 rt.block_on(datasource::cmd_list(data_source_id))
             }
+            DataSourceCommands::Retrieve {
+                data_source_id,
+                document_id,
+            } => rt.block_on(datasource::cmd_retrieve(data_source_id, document_id)),
             DataSourceCommands::Delete {
                 data_source_id,
                 document_id,

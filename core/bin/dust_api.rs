@@ -1154,6 +1154,65 @@ async fn data_sources_documents_list(
     }
 }
 
+/// Retrieve document from a data source.
+
+async fn data_sources_documents_retrieve(
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve data_source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No data source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => match ds.retrieve(state.store.clone(), &document_id).await {
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to retrieve document: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok((d, text)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "document": d,
+                            "text": text,
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 /// Delete document from a data source.
 
 async fn data_sources_documents_delete(
@@ -1281,7 +1340,7 @@ async fn main() -> Result<()> {
             "/projects/:project_id/data_sources/:data_source_id/documents",
             post(data_sources_documents_upsert),
         )
-        // Provided by blocks.
+        // Provided by the data_source block.
         // .route(
         //     "/projects/:project_id/data_sources/:data_source_id/search",
         //     get(data_sources_search),
@@ -1289,6 +1348,10 @@ async fn main() -> Result<()> {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
             get(data_sources_documents_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
+            get(data_sources_documents_retrieve),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",

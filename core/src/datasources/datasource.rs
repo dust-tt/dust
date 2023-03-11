@@ -601,6 +601,43 @@ impl DataSource {
         Ok(documents)
     }
 
+    pub async fn retrieve(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<(Document, String)> {
+        let store = store.clone();
+
+        let d = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
+            .await?
+        {
+            Some(d) => d,
+            None => Err(anyhow!("Document not found: document_id={}", document_id))?,
+        };
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        // GCP store raw text and document_id.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
+        let bucket_path = format!(
+            "{}/{}/{}",
+            self.project.project_id(),
+            self.internal_id,
+            document_id_hash
+        );
+        let content_path = format!("{}/{}/content.txt", bucket_path, d.hash);
+        let bytes = Object::download(&bucket, &content_path).await?;
+        let text = String::from_utf8(bytes)?;
+
+        Ok((d, text))
+    }
+
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -741,6 +778,34 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             println!("```\n{}\n```", c.text);
         });
     });
+
+    Ok(())
+}
+
+pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = match store.load_data_source(&project, data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
+    };
+
+    let (d, text) = ds.retrieve(Box::new(store.clone()), document_id).await?;
+
+    utils::done(&format!(
+        "Retrieved document: data_source={} document_id={}",
+        ds.data_source_id(),
+        document_id,
+    ));
+
+    utils::info(&format!(
+        "- Document: document_id={} text_size={} chunk_count={}",
+        d.document_id, d.text_size, d.chunk_count,
+    ));
+    println!("```\n{}\n```", text);
 
     Ok(())
 }
