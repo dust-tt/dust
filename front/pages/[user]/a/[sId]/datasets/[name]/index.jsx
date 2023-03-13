@@ -90,29 +90,31 @@ export default function ViewDatasetView({
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-1">
-          <div className="w-full px-4 sm:px-6 mb-8">
-            <div className="space-y-6 divide-y divide-gray-200 mt-4">
-              <DatasetView
-                readOnly={readOnly}
-                datasets={datasets}
-                dataset={updatedDataset}
-                onUpdate={readOnly ? () => {} : onUpdate}
-                nameDisabled={true}
-              />
+        <div className="w-full max-w-5xl mt-4 mx-auto">
+          <div className="flex flex-1">
+            <div className="w-full px-4 sm:px-6 mb-8">
+              <div className="space-y-6 divide-y divide-gray-200 mt-4">
+                <DatasetView
+                  readOnly={readOnly}
+                  datasets={datasets}
+                  dataset={updatedDataset}
+                  onUpdate={readOnly ? () => {} : onUpdate}
+                  nameDisabled={true}
+                />
 
-              {readOnly ? null : (
-                <div className="pt-6 flex flex-row">
-                  <div className="flex-initial">
-                    <ActionButton
-                      disabled={disable || loading}
-                      onClick={() => handleSubmit()}
-                    >
-                      Update
-                    </ActionButton>
+                {readOnly ? null : (
+                  <div className="pt-6 flex flex-row">
+                    <div className="flex-initial">
+                      <ActionButton
+                        disabled={disable || loading}
+                        onClick={() => handleSubmit()}
+                      >
+                        Update
+                      </ActionButton>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

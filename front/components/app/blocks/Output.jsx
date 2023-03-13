@@ -308,7 +308,7 @@ export default function Output({ user, block, runId, status, app }) {
             {traces.map((trace, i) => {
               return (
                 <div key={i} className="flex flex-row flex-auto ml-1">
-                  <div className="flex text-sm text-gray-300 font-mono mr-2">
+                  <div className="flex text-gray-300 text-sm font-mono mr-2">
                     {i}:
                   </div>
                   <Execution trace={trace} block={block} />

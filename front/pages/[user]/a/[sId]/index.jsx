@@ -240,7 +240,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-auto">
+        <div className="w-full max-w-5xl mt-4 mx-auto flex flex-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
             <div className="flex flex-row flex-auto my-4 space-x-2 items-center">
               <div className="flex-initial">

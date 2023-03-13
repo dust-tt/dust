@@ -101,7 +101,7 @@ export default function DataSourceUpsert({
           <MainTab current_tab="DataSources" user={user} readOnly={false} />
         </div>
 
-        <div className="px-4 sm:px-6 space-y-6 divide-y divide-gray-200">
+        <div className="px-4 sm:px-6 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
           <div>
             <div className="flex flex-1">
               <div className="w-full mb-8">

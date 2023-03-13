@@ -32,7 +32,7 @@ export default function AppRun({
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-auto">
+        <div className="w-full max-w-5xl mt-4 mx-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
             <div className="flex flex-row mb-4 mt-6 space-x-2 items-center text-sm">
               <span>

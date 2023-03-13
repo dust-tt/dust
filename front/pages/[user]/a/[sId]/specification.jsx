@@ -26,10 +26,12 @@ export default function Specification({
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-auto">
-          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-8">
-            <div className="whitespace-pre font-mono text-sm text-gray-700">
-              {specification}
+        <div className="mx-auto w-max-4xl">
+          <div className="flex flex-auto">
+            <div className="flex flex-auto flex-col my-8">
+              <div className="whitespace-pre text-[13px] font-mono text-gray-700">
+                {specification}
+              </div>
             </div>
           </div>
         </div>

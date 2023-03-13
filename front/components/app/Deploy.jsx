@@ -116,9 +116,9 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         value={`$ ${cURLRequest(false)}`}
                         language="shell"
                         padding={15}
-                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 text-sm text-white font-mono"
+                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] font-mono text-white"
                         style={{
-                          fontSize: 14,
+                          fontSize: 13,
                           fontFamily:
                             "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                           backgroundColor: "rgb(241 245 249)",
