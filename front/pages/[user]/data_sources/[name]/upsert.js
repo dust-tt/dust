@@ -27,8 +27,6 @@ export default function DataSourceUpsert({
 }) {
   const { data: session } = useSession();
 
-  console.log("USER", user);
-
   const fileInputRef = useRef(null);
 
   const [documentId, setDocumentId] = useState("");

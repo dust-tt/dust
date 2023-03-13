@@ -21,17 +21,19 @@ export default function DatasetsView({
   const { data: session } = useSession();
 
   const handleDelete = async (datasetName) => {
-    const res = await fetch(
-      `/api/apps/${session.user.username}/${app.sId}/datasets/${datasetName}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    const data = await res.json();
-    Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    if (confirm("Are you sure you want to delete this dataset entirely?")) {
+      const res = await fetch(
+        `/api/apps/${session.user.username}/${app.sId}/datasets/${datasetName}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+    }
   };
 
   return (
