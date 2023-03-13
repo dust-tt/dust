@@ -126,9 +126,7 @@ export default function DatasetView({
       }
     });
     if (exists) {
-      setDatasetNameError(
-        "A dataset with the same name already exists"
-      );
+      setDatasetNameError("A dataset with the same name already exists");
       valid = false;
     } else if (datasetName.length == 0) {
       setDatasetNameError(null);
@@ -578,10 +576,12 @@ export default function DatasetView({
                                 handleValueChange(i, k, e.target.value);
                               }}
                               padding={4}
+                              className="bg-slate-100"
                               style={{
                                 fontSize: 13,
                                 fontFamily:
                                   "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                                backgroundColor: "rgb(241 245 249)",
                               }}
                             />
                           ) : (
