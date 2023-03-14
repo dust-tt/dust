@@ -10,7 +10,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import {
   ArrowUpOnSquareStackIcon,
-  ArrowDownOnSquareIcon,
+  ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "../../../../lib/utils";
 import { useRef } from "react";
@@ -64,8 +64,11 @@ export default function DataSourceUpsert({
   };
 
   const handleFileUpload = (file) => {
+    // Enforce FreePlan limit: 1MB per document.
     if (file.size > 1024 * 1024) {
-      window.alert("Upload size is currently limited to 1MB");
+      window.alert(
+        "DataSource document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase it."
+      );
       return;
     }
     let fileData = new FileReader();
@@ -99,7 +102,28 @@ export default function DataSourceUpsert({
           <MainTab current_tab="DataSources" user={user} readOnly={false} />
         </div>
 
-        <div className="px-4 sm:px-6 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
+        <div className="px-4 mt-4 w-full max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
+          <div className="flex w-full flex-col mt-4">
+            <div className="flex flex-row">
+              <div className="flex flex-initial">
+                <div className="flex">
+                  <Button
+                    onClick={() => {
+                      router.push(
+                        `/${session.user.username}/data_sources/${dataSource.name}`
+                      );
+                    }}
+                  >
+                    <ArrowUturnLeftIcon className="-ml-1 mr-1 h-3 w-3" />
+                    Back to Documents
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 mt-2 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
           <div>
             <div className="flex flex-1">
               <div className="w-full mb-8">

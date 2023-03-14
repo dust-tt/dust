@@ -24,34 +24,34 @@ export default async function handler(req, res) {
     session && session.provider.id.toString() === user.githubId
   );
 
+  const where = readOnly
+    ? {
+        userId: user.id,
+        // Do not include 'unlisted' here.
+        visibility: "public",
+      }
+    : {
+        userId: user.id,
+        visibility: {
+          [Op.or]: ["public", "private"],
+        },
+      };
+  let dataSources = await DataSource.findAll({
+    where,
+    order: [["updatedAt", "DESC"]],
+    attributes: [
+      "id",
+      "name",
+      "description",
+      "visibility",
+      "config",
+      "dustAPIProjectId",
+      "updatedAt",
+    ],
+  });
+
   switch (req.method) {
     case "GET":
-      const where = readOnly
-        ? {
-            userId: user.id,
-            // Do not include 'unlisted' here.
-            visibility: "public",
-          }
-        : {
-            userId: user.id,
-            visibility: {
-              [Op.or]: ["public", "private"],
-            },
-          };
-      let dataSources = await DataSource.findAll({
-        where,
-        order: [["updatedAt", "DESC"]],
-        attributes: [
-          "id",
-          "name",
-          "description",
-          "visibility",
-          "config",
-          "dustAPIProjectId",
-          "updatedAt",
-        ],
-      });
-
       res.status(200).json({ dataSources });
       break;
 
@@ -60,8 +60,6 @@ export default async function handler(req, res) {
         res.status(401).end();
         return;
       }
-
-      console.log("BODY", req.body);
 
       if (
         !req.body ||
@@ -72,6 +70,12 @@ export default async function handler(req, res) {
         !(typeof req.body.max_chunk_size == "string") ||
         !["public", "private"].includes(req.body.visibility)
       ) {
+        res.status(400).end();
+        break;
+      }
+
+      // Enforce FreePlan limit: 1 DataSource.
+      if (dataSources.length >= 1) {
         res.status(400).end();
         break;
       }

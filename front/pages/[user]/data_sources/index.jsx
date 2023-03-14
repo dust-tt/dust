@@ -10,7 +10,12 @@ import { classNames } from "../../../lib/utils";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function DataSourcesView({ dataSources, readOnly, user, ga_tracking_id }) {
+export default function DataSourcesView({
+  dataSources,
+  readOnly,
+  user,
+  ga_tracking_id,
+}) {
   const { data: session } = useSession();
 
   return (
@@ -26,7 +31,19 @@ export default function DataSourcesView({ dataSources, readOnly, user, ga_tracki
                 <div className="sm:flex sm:items-center">
                   <div className="sm:flex-auto"></div>
                   <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link href={`/${session.user.username}/data_sources/new`}>
+                    <Link
+                      href={`/${session.user.username}/data_sources/new`}
+                      onClick={(e) => {
+                        // Enforce FreePlan limit: 1 DataSource.
+                        if (dataSources.length >= 1) {
+                          e.preventDefault();
+                          window.alert(
+                            "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                          );
+                          return;
+                        }
+                      }}
+                    >
                       <Button>
                         <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
                         New DataSource

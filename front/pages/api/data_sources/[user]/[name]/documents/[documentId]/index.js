@@ -79,9 +79,33 @@ export default async function handler(req, res) {
         break;
       }
 
+      // Enforce FreePlan limit: 32 documents per DataSource.
+      const documentsRes = await fetch(
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
+        {
+          method: "GET",
+        }
+      );
+      if (!documentsRes.ok) {
+        const error = await documentsRes.json();
+        res.status(400).json(error.error);
+        break;
+      }
+      const documents = await documentsRes.json();
+      if (documents.response.total >= 3) {
+        res.status(400).end();
+        break;
+      }
+
+      // Enforce FreePlan limit: 1MB per document.
+      if (req.body.text.length > 1024 * 1024) {
+        res.status(400).end();
+        break;
+      }
+
       let credentials = credentialsFromProviders(providers);
 
-      // Register dataset with the Dust internal API.
+      // Create document with the Dust internal API.
       const r = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents`,
         {
