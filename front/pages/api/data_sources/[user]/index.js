@@ -1,7 +1,6 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]";
 import { User, DataSource } from "../../../../lib/models";
-import { new_id } from "../../../../lib/utils";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
@@ -16,7 +15,7 @@ export default async function handler(req, res) {
   });
 
   if (!user) {
-    res.status(404).end();
+    res.status(200).json({ dataSources: [] });
     return;
   }
 
