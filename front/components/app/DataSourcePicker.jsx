@@ -137,47 +137,60 @@ export default function DataSourcePicker({
                   </>
                 ) : dataSources && dataSources.length > 0 ? (
                   "Select DataSource"
+                ) : currentUser === user ? (
+                  <Link
+                    href={`/${user}/data_sources/`}
+                    className={classNames(
+                      readOnly
+                        ? "text-gray-300 border-white"
+                        : "text-gray-700 border-orange-400"
+                    )}
+                  >
+                    Create DataSource
+                  </Link>
                 ) : (
                   "No DataSource"
                 )}
               </Menu.Button>
             </div>
 
-            <Menu.Items
-              className={classNames(
-                "absolute w-max shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
-                name && name.length > 0 ? "-left-4" : "left-1"
-              )}
-            >
-              <div className="py-1">
-                {(dataSources || []).map((ds) => {
-                  return (
-                    <Menu.Item
-                      key={ds.id}
-                      onClick={() =>
-                        onDataSourceUpdate({
-                          project_id: ds.dustAPIProjectId,
-                          data_source_id: ds.name,
-                        })
-                      }
-                    >
-                      {({ active }) => (
-                        <span
-                          className={classNames(
-                            active
-                              ? "bg-gray-50 text-gray-900"
-                              : "text-gray-700",
-                            "block px-4 py-2 text-sm cursor-pointer"
-                          )}
-                        >
-                          {ds.name}
-                        </span>
-                      )}
-                    </Menu.Item>
-                  );
-                })}
-              </div>
-            </Menu.Items>
+            {(dataSources || []).length > 0 ? (
+              <Menu.Items
+                className={classNames(
+                  "absolute w-max shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  name && name.length > 0 ? "-left-4" : "left-1"
+                )}
+              >
+                <div className="py-1">
+                  {(dataSources || []).map((ds) => {
+                    return (
+                      <Menu.Item
+                        key={ds.id}
+                        onClick={() =>
+                          onDataSourceUpdate({
+                            project_id: ds.dustAPIProjectId,
+                            data_source_id: ds.name,
+                          })
+                        }
+                      >
+                        {({ active }) => (
+                          <span
+                            className={classNames(
+                              active
+                                ? "bg-gray-50 text-gray-900"
+                                : "text-gray-700",
+                              "block px-4 py-2 text-sm cursor-pointer"
+                            )}
+                          >
+                            {ds.name}
+                          </span>
+                        )}
+                      </Menu.Item>
+                    );
+                  })}
+                </div>
+              </Menu.Items>
+            ) : null}
           </Menu>
         )}
       </div>
