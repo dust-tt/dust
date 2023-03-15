@@ -75,15 +75,20 @@ export default function DataSourcePicker({
             value={user}
             onChange={(e) => setUser(e.target.value)}
             onKeyDown={(e) => {
-              if (
-                (e.key === "Tab" || e.key == "Enter") &&
-                e.target.value.length > 0
-              ) {
-                setUserEditing(false);
+              if (e.key === "Tab" || e.key == "Enter") {
+                if (e.target.value.length > 0) {
+                  setUserEditing(false);
+                } else {
+                  setUser(currentUser);
+                  setUserEditing(false);
+                }
               }
             }}
             onBlur={() => {
               if (user.length > 0) {
+                setUserEditing(false);
+              } else {
+                setUser(currentUser);
                 setUserEditing(false);
               }
             }}
