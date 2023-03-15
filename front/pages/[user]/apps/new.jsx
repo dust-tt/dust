@@ -1,4 +1,4 @@
-import AppLayout from "../../../components/app/AppLayout";
+import AppLayout from "../../../components/AppLayout";
 import MainTab from "../../../components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../api/auth/[...nextauth]";
@@ -44,7 +44,7 @@ export default function New({ apps, ga_tracking_id }) {
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="Apps" />
+          <MainTab currentTab="Apps" />
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">

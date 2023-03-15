@@ -114,7 +114,7 @@ export default function DataSourcePicker({
 
       <div className="flex items-center">
         {readOnly ? (
-          <Link href={`/${user}/data_sources/${name}`}>
+          <Link href={`/${user}/ds/${name}`}>
             <div className="font-bold text-violet-600 text-sm">{name}</div>
           </Link>
         ) : (
@@ -133,7 +133,7 @@ export default function DataSourcePicker({
               >
                 {name && name.length > 0 ? (
                   <>
-                    <Link href={`/${user}/data_sources/${name}`}>
+                    <Link href={`/${user}/ds/${name}`}>
                       <div className="font-bold text-violet-600 text-sm mr-1">
                         {name}
                       </div>
@@ -144,7 +144,7 @@ export default function DataSourcePicker({
                   "Select DataSource"
                 ) : currentUser === user ? (
                   <Link
-                    href={`/${user}/data_sources/`}
+                    href={`/${user}/data_sources`}
                     className={classNames(
                       readOnly
                         ? "text-gray-300 border-white"

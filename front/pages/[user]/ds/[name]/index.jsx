@@ -1,7 +1,7 @@
-import AppLayout from "../../../../components/app/AppLayout";
-import MainTab from "../../../../components/profile/MainTab";
+import AppLayout from "../../../../components/AppLayout";
+import MainTab from "../../../../components/data_source/MainTab";
 import { timeAgoFrom } from "../../../../lib/utils";
-import { Button } from "../../../../components/Button";
+import { ActionButton, Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
@@ -56,10 +56,18 @@ export default function DataSourceView({
   };
 
   return (
-    <AppLayout ga_tracking_id={ga_tracking_id}>
+    <AppLayout
+      ga_tracking_id={ga_tracking_id}
+      dataSource={{ name: dataSource.name }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="DataSources" user={user} readOnly={readOnly} />
+          <MainTab
+            currentTab="Documents"
+            user={user}
+            readOnly={readOnly}
+            dataSource={dataSource}
+          />
         </div>
         <div className="">
           <div className="mx-auto max-w-4xl px-2 mt-8">
@@ -110,7 +118,7 @@ export default function DataSourceView({
                 <div className="">
                   <div className="mt-0 flex-none">
                     <Link
-                      href={`/${session.user.username}/data_sources/${dataSource.name}/upsert`}
+                      href={`/${session.user.username}/ds/${dataSource.name}/upsert`}
                       onClick={(e) => {
                         // Enforce FreePlan limit: 32 documents per DataSource.
                         if (total >= 32) {
@@ -122,10 +130,10 @@ export default function DataSourceView({
                         }
                       }}
                     >
-                      <Button>
-                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                      <ActionButton>
+                        <PlusIcon className="-ml-1 mr-1 h-4 w-4" />
                         Upload Document
-                      </Button>
+                      </ActionButton>
                     </Link>
                   </div>
                 </div>
@@ -142,7 +150,7 @@ export default function DataSourceView({
                     className="px-2 px-4 rounded border border-gray-300 group"
                   >
                     <Link
-                      href={`/${user}/data_sources/${dataSource.name}/upsert?documentId=${d.document_id}`}
+                      href={`/${user}/ds/${dataSource.name}/upsert?documentId=${d.document_id}`}
                       className="block"
                     >
                       <div className="py-4 mx-2">

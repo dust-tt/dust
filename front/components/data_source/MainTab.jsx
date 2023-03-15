@@ -1,41 +1,16 @@
 import { classNames } from "../../lib/utils";
 import Link from "next/link";
-import { CodeBracketIcon } from "@heroicons/react/24/solid";
 import { Menu } from "@headlessui/react";
-import {
-  DocumentIcon,
-  Cog6ToothIcon,
-  BoltIcon,
-} from "@heroicons/react/24/outline";
+import { DocumentIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
-export default function MainTab({ app, currentTab, user, readOnly }) {
+export default function MainTab({ dataSource, currentTab, user, readOnly }) {
   let tabs = [
     {
-      name: "Specification",
-      href: `/${user}/a/${app.sId}`,
-      icon: (
-        <CodeBracketIcon
-          className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
-      name: "Datasets",
-      href: `/${user}/a/${app.sId}/datasets`,
+      name: "Documents",
+      href: `/${user}/ds/${dataSource.name}`,
       icon: (
         <DocumentIcon
-          className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
-      name: "Runs",
-      href: `/${user}/a/${app.sId}/runs`,
-      icon: (
-        <BoltIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
           aria-hidden="true"
         />
@@ -46,7 +21,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
   if (!readOnly) {
     tabs.push({
       name: "Settings",
-      href: `/${user}/a/${app.sId}/settings`,
+      href: `/${user}/ds/${dataSource.name}/settings`,
       icon: (
         <Cog6ToothIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"

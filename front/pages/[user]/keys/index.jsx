@@ -1,4 +1,4 @@
-import AppLayout from "../../../components/app/AppLayout";
+import AppLayout from "../../../components/AppLayout";
 import MainTab from "../../../components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../api/auth/[...nextauth]";
@@ -44,7 +44,7 @@ export default function KeysProviders({ ga_tracking_id }) {
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="API keys" />
+          <MainTab currentTab="API keys" />
         </div>
 
         <div className="">

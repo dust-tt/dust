@@ -1,4 +1,4 @@
-import AppLayout from "../../../components/app/AppLayout";
+import AppLayout from "../../../components/AppLayout";
 import MainTab from "../../../components/profile/MainTab";
 import { Button } from "../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
@@ -22,7 +22,7 @@ export default function DataSourcesView({
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="DataSources" user={user} readOnly={readOnly} />
+          <MainTab currentTab="DataSources" user={user} readOnly={readOnly} />
         </div>
         <div className="">
           <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">
@@ -60,7 +60,7 @@ export default function DataSourcesView({
                       <div className="py-4">
                         <div className="flex items-center justify-between">
                           <Link
-                            href={`/${user}/data_sources/${ds.name}`}
+                            href={`/${user}/ds/${ds.name}`}
                             className="block"
                           >
                             <p className="truncate text-base font-bold text-violet-600">

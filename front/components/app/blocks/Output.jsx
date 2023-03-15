@@ -252,8 +252,6 @@ export default function Output({ user, block, runId, status, app }) {
   ) {
     let traces = run.traces[0][1];
 
-    console.log("RUN", run);
-
     // For `map` blocks, chirurgically transform the outputs when there is no error so that it looks
     // like the map has taken place. The map block applies the map after it is executed as the
     // execution guarantees to return an error or an array that is valid for mapping.

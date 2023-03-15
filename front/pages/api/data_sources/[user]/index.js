@@ -129,7 +129,7 @@ export default async function handler(req, res) {
         userId: user.id,
       });
 
-      res.redirect(`/${session.user.username}/data_sources/${req.body.name}`);
+      res.redirect(`/${session.user.username}/ds/${req.body.name}`);
       break;
 
     default:

@@ -1,11 +1,9 @@
-import AppLayout from "../../../../components/app/AppLayout";
-import MainTab from "../../../../components/profile/MainTab";
+import AppLayout from "../../../../components/AppLayout";
+import MainTab from "../../../../components/data_source/MainTab";
 import { Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
 import { ActionButton } from "../../../../components/Button";
 import { authOptions } from "../../../api/auth/[...nextauth]";
-import { PlusIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import {
@@ -93,35 +91,22 @@ export default function DataSourceUpsert({
         }),
       }
     );
-    router.push(`/${session.user.username}/data_sources/${dataSource.name}`);
+    router.push(`/${session.user.username}/ds/${dataSource.name}`);
   };
 
   return (
-    <AppLayout ga_tracking_id={ga_tracking_id}>
+    <AppLayout
+      ga_tracking_id={ga_tracking_id}
+      dataSource={{ name: dataSource.name }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="DataSources" user={user} readOnly={false} />
-        </div>
-
-        <div className="px-4 mt-4 w-full max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
-          <div className="flex w-full flex-col mt-4">
-            <div className="flex flex-row">
-              <div className="flex flex-initial">
-                <div className="flex">
-                  <Button
-                    onClick={() => {
-                      router.push(
-                        `/${user}/data_sources/${dataSource.name}`
-                      );
-                    }}
-                  >
-                    <ArrowUturnLeftIcon className="-ml-1 mr-1 h-3 w-3" />
-                    Back to Documents
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <MainTab
+            currentTab="Documents"
+            user={user}
+            readOnly={false}
+            dataSource={dataSource}
+          />
         </div>
 
         <div className="px-4 mt-2 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">

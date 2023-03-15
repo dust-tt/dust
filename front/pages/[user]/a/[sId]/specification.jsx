@@ -1,4 +1,4 @@
-import AppLayout from "../../../../components/app/AppLayout";
+import AppLayout from "../../../../components/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
@@ -21,7 +21,7 @@ export default function Specification({
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Specification"
+            currentTab="Specification"
             user={user}
             readOnly={readOnly}
           />

@@ -1,4 +1,4 @@
-import AppLayout from "../../../../../../components/app/AppLayout";
+import AppLayout from "../../../../../../components/AppLayout";
 import MainTab from "../../../../../../components/app/MainTab";
 import { ActionButton } from "../../../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
@@ -85,7 +85,7 @@ export default function ViewDatasetView({
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Datasets"
+            currentTab="Datasets"
             user={user}
             readOnly={readOnly}
           />

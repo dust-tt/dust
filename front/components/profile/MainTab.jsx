@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CodeBracketIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassCircleIcon, LinkIcon, KeyIcon } from "@heroicons/react/24/outline";
 
-export default function MainTab({ current_tab, user, readOnly }) {
+export default function MainTab({ currentTab, user, readOnly }) {
   const { data: session } = useSession();
 
   const tabs = readOnly
@@ -74,7 +74,7 @@ export default function MainTab({ current_tab, user, readOnly }) {
         },
       ];
 
-  let currTab = tabs.find((tab) => tab.name == current_tab);
+  let currTab = tabs.find((tab) => tab.name == currentTab);
 
   return (
     <div className="w-full">
@@ -125,7 +125,7 @@ export default function MainTab({ current_tab, user, readOnly }) {
                   foo={tab.name}
                   className={classNames(
                     "whitespace-nowrap flex py-3 px-4 border-b-2 text-sm flex items-center",
-                    tab.name == current_tab
+                    tab.name == currentTab
                       ? "border-gray-500 text-gray-700 font-bold"
                       : "font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
                   )}
