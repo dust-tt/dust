@@ -1,89 +1,64 @@
-import AppLayout from "../../../components/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
+import AppLayout from "../../../../components/AppLayout";
+import MainTab from "../../../../components/data_source/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
-import { Button } from "../../../components/Button";
+import { authOptions } from "../../../api/auth/[...nextauth]";
+import { Button } from "../../../../components/Button";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
-import { classNames } from "../../../lib/utils";
+import { classNames } from "../../../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import ModelPicker from "../../../components/app/ModelPicker";
+import ModelPicker from "../../../../components/app/ModelPicker";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function New({ dataSources, user, ga_tracking_id }) {
+export default function New({ dataSource, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
-  const [disable, setDisabled] = useState(true);
+  let dataSourceConfig = JSON.parse(dataSource.config);
 
-  const [dataSourceName, setDataSourceName] = useState("");
-  const [dataSourceNameError, setDataSourceNameError] = useState(null);
+  const [dataSourceDescription, setDataSourceDescription] = useState(
+    dataSource.description
+  );
+  const [dataSourceVisibility, setDataSourceVisibility] = useState(
+    dataSource.visibility
+  );
 
-  const [dataSourceDescription, setDataSourceDescription] = useState("");
-  const [dataSourceVisibility, setDataSourceVisibility] = useState("public");
-  const [dataSourceModel, setDataSourceModel] = useState({
-    provider_id: "",
-    model_id: "",
-  });
-  const [dataSourceMaxChunkSize, setDataSourceMaxChunkSize] = useState(256);
-
-  const formValidation = () => {
-    let exists = false;
-    dataSources.forEach((d) => {
-      if (d.name == dataSourceName) {
-        exists = true;
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this DataSource?")) {
+      let res = await fetch(`/api/data_sources/${user}/${dataSource.name}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        window.location = "/";
       }
-    });
-    if (exists) {
-      setDataSourceNameError("A DataSource with the same name already exists");
-      return false;
-    } else if (dataSourceName.length == 0) {
-      setDataSourceNameError(null);
-      return false;
-    } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
-      setDataSourceNameError(
-        "DataSource name must only contain letters, numbers, and the characters `._-`"
-      );
-      return false;
-    } else {
-      setDataSourceNameError(null);
       return true;
+    } else {
+      return false;
     }
   };
 
-  useEffect(() => {
-    setDisabled(
-      !formValidation() ||
-        !dataSourceModel.provider_id ||
-        !dataSourceModel.model_id
-    );
-  }, [dataSourceName, dataSourceModel]);
-
   return (
-    <AppLayout ga_tracking_id={ga_tracking_id}>
+    <AppLayout
+      ga_tracking_id={ga_tracking_id}
+      dataSource={{ name: dataSource.name }}
+    >
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab currentTab="DataSources" />
+          <MainTab
+            currentTab="Settings"
+            user={user}
+            readOnly={false}
+            dataSource={dataSource}
+          />
         </div>
-        <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="">
+          <div className="mx-auto max-w-4xl px-2 mt-8">
             <form
-              action={`/api/data_sources/${session.user.username}`}
+              action={`/api/data_sources/${session.user.username}/${dataSource.name}`}
               method="POST"
               className="space-y-8 divide-y divide-gray-200 mt-8"
             >
               <div className="space-y-8 divide-y divide-gray-200">
-                <div>
-                  <h3 className="text-base font-medium leading-6 text-gray-900">
-                    Create a new DataSource
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    A data source enables you to upload text documents (by API
-                    or manually) to perform semantic search on them. The
-                    documents are automatically chunked and embedded using the
-                    model you specify here.
-                  </p>
-                </div>
                 <div>
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-3">
@@ -107,12 +82,10 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                           id="dataSourceName"
                           className={classNames(
                             "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
-                            dataSourceNameError
-                              ? "border-gray-300 focus:border-red-500 border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                            "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                           )}
-                          value={dataSourceName}
-                          onChange={(e) => setDataSourceName(e.target.value)}
+                          value={dataSource.name}
+                          readOnly={true}
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
@@ -223,31 +196,16 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                       <div className="mt-1 flex">
                         <ModelPicker
                           user={user}
-                          readOnly={false}
-                          model={dataSourceModel}
-                          onModelUpdate={(model) => {
-                            setDataSourceModel(model);
+                          readOnly={true}
+                          model={{
+                            provider_id: dataSourceConfig.provider_id || "",
+                            model_id: dataSourceConfig.model_id || "",
                           }}
+                          onModelUpdate={(model) => {}}
                           chatOnly={false}
                           embedOnly={true}
                         />
-                        <input
-                          type="hidden"
-                          id="dataSourceProviderId"
-                          name="provider_id"
-                          value={dataSourceModel.provider_id}
-                        />
-                        <input
-                          type="hidden"
-                          id="dataSourceModelId"
-                          name="model_id"
-                          value={dataSourceModel.model_id}
-                        />
                       </div>
-                      <p className="mt-2 text-sm text-gray-500">
-                        The embedder is the model that will be used by the data
-                        source to embed documents' chunks and search queries.
-                      </p>
                     </div>
 
                     <div className="sm:col-span-6">
@@ -265,26 +223,22 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                           name="max_chunk_size"
                           id="dataSourceMaxChunkSize"
                           className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 text-sm"
-                          value={dataSourceMaxChunkSize}
-                          onChange={(e) =>
-                            setDataSourceMaxChunkSize(e.target.value)
-                          }
+                          value={dataSourceConfig.max_chunk_size}
+                          readOnly={true}
                         />
                       </div>
-                      <p className="mt-2 text-sm text-gray-500">
-                        The (maximum) number of tokens used to chunk the
-                        documents. 256 tokens is recommended.
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6">
+              <div className="pt-6 flex">
                 <div className="flex">
-                  <Button disabled={disable} type="submit">
-                    Create
-                  </Button>
+                  <Button type="submit">Update</Button>
+                </div>
+                <div className="flex-1"></div>
+                <div className="flex ml-2">
+                  <Button onClick={handleDelete}>Delete</Button>
                 </div>
               </div>
             </form>
@@ -320,29 +274,32 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const [dataSourcesRes] = await Promise.all([
-    fetch(`${URL}/api/data_sources/${context.query.user}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }),
+  const [res] = await Promise.all([
+    fetch(
+      `${URL}/api/data_sources/${context.query.user}/${context.query.name}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    ),
   ]);
 
-  if (dataSourcesRes.status === 404) {
+  if (res.status === 404) {
     return {
       notFound: true,
     };
   }
 
-  const [dataSources] = await Promise.all([dataSourcesRes.json()]);
+  const [dataSource] = await Promise.all([res.json()]);
 
   return {
     props: {
       session,
       user: context.query.user,
-      dataSources: dataSources.dataSources,
+      dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

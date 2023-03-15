@@ -11,9 +11,8 @@ use axum::{
 use dust::{
     app,
     blocks::block::BlockType,
-    dataset,
     data_sources::data_source,
-    project, run,
+    dataset, project, run,
     stores::store,
     stores::{postgres, sqlite},
     utils,
@@ -992,7 +991,7 @@ async fn data_sources_register(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to register data_source: {}", e),
+                    message: format!("Failed to register data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1003,7 +1002,7 @@ async fn data_sources_register(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to register data_source: {}", e),
+                        message: format!("Failed to register data source: {}", e),
                     }),
                     response: None,
                 }),
@@ -1052,7 +1051,7 @@ async fn data_sources_documents_upsert(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data_source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1171,7 +1170,7 @@ async fn data_sources_documents_retrieve(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data_source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1230,7 +1229,7 @@ async fn data_sources_documents_delete(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data_source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1246,13 +1245,77 @@ async fn data_sources_documents_delete(
                     response: None,
                 }),
             ),
-            Some(ds) => match ds.delete(state.store.clone(), &document_id).await {
+            Some(ds) => match ds.delete_document(state.store.clone(), &document_id).await {
                 Err(e) => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(APIResponse {
                         error: Some(APIError {
                             code: String::from("internal_server_error"),
                             message: format!("Failed to delete document: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_source": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "internal_id": ds.internal_id(),
+                                "config": ds.config(),
+                            }
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
+/// Delete a data source.
+
+async fn data_sources_delete(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    println!("IN DELETE");
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve data source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No data source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => match ds.delete(state.store.clone()).await {
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to delete data source: {}", e),
                         }),
                         response: None,
                     }),
@@ -1356,6 +1419,10 @@ async fn main() -> Result<()> {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
             delete(data_sources_documents_delete),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id",
+            delete(data_sources_delete),
         )
         // Extensions
         .layer(extract::Extension(state.clone()));

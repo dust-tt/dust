@@ -160,7 +160,7 @@ impl DataSource {
             Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
         };
 
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id,);
+        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
         let data_source_created_path = format!("{}/created.txt", bucket_path);
 
         Object::create(
@@ -638,7 +638,7 @@ impl DataSource {
         Ok((d, text))
     }
 
-    pub async fn delete(
+    pub async fn delete_document(
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
@@ -677,6 +677,33 @@ impl DataSource {
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        let store = store.clone();
+
+        // Delete collection (vector search db).
+        let qdrant_client = self.qdrant_client().await?;
+        qdrant_client
+            .delete_collection(self.qdrant_collection())
+            .await?;
+
+        utils::done(&format!(
+            "Deleted QDrant collection: data_source_id={}",
+            self.data_source_id,
+        ));
+
+        // Delete data source and documents (SQL)
+        store
+            .delete_data_source(&self.project, &self.data_source_id)
+            .await?;
+
+        utils::done(&format!(
+            "Deleted data source records: data_source_id={}",
+            self.data_source_id,
+        ));
 
         Ok(())
     }
@@ -821,7 +848,8 @@ pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
         None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
     };
 
-    ds.delete(Box::new(store.clone()), document_id).await?;
+    ds.delete_document(Box::new(store.clone()), document_id)
+        .await?;
 
     utils::done(&format!(
         "Deleted document: data_source={} document_id={}",

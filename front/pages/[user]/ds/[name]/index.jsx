@@ -231,7 +231,7 @@ export async function getServerSideProps(context) {
 
   let readOnly = !session || context.query.user !== session.user.username;
 
-  const [dataSourceRes] = await Promise.all([
+  const [res] = await Promise.all([
     fetch(
       `${URL}/api/data_sources/${context.query.user}/${context.query.name}`,
       {
@@ -244,13 +244,13 @@ export async function getServerSideProps(context) {
     ),
   ]);
 
-  if (dataSourceRes.status === 404) {
+  if (res.status === 404) {
     return {
       notFound: true,
     };
   }
 
-  const [dataSource] = await Promise.all([dataSourceRes.json()]);
+  const [dataSource] = await Promise.all([res.json()]);
 
   return {
     props: {

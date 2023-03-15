@@ -238,10 +238,12 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                   <Button disabled={disable} type="submit">
                     Update
                   </Button>
-                  <span className="flex-1"></span>
-                  <Link href={`/${user}/a/${app.sId}/clone`}>
-                    <Button>Clone</Button>
-                  </Link>
+                  <div className="flex-1"></div>
+                  <div className="flex">
+                    <Link href={`/${user}/a/${app.sId}/clone`}>
+                      <Button>Clone</Button>
+                    </Link>
+                  </div>
                   <div className="flex ml-2">
                     <Button onClick={handleDelete}>Delete</Button>
                   </div>

@@ -3,6 +3,8 @@ import { authOptions } from "../../../auth/[...nextauth]";
 import { User, DataSource } from "../../../../../lib/models";
 import { Op } from "sequelize";
 
+const { DUST_API } = process.env;
+
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
@@ -53,6 +55,65 @@ export default async function handler(req, res) {
   switch (req.method) {
     case "GET":
       res.status(200).json({ dataSource });
+      break;
+
+    case "POST":
+      if (readOnly) {
+        res.status(401).end();
+        break;
+      }
+
+      if (
+        !req.body ||
+        !(typeof req.body.description == "string") ||
+        !["public", "private"].includes(req.body.visibility)
+      ) {
+        res.status(400).end();
+        break;
+      }
+
+      let description = req.body.description ? req.body.description : null;
+
+      await dataSource.update({
+        description,
+        visibility: req.body.visibility,
+      });
+
+      res.redirect(`/${session.user.username}/ds/${dataSource.name}`);
+      break;
+
+    case "DELETE":
+      console.log("DELETEING");
+      if (readOnly) {
+        res.status(401).end();
+        break;
+      }
+      console.log(
+        "GOING TO CORE",
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`
+      );
+
+      const dsRes = await fetch(
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      console.log(dsRes);
+
+      const dustDataSource = await dsRes.json();
+      if (dustDataSource.error) {
+        console.log(dustDataSource);
+        res.status(500).end();
+        break;
+      }
+
+      console.log("REMOVING LOCAL");
+      await dataSource.destroy();
+      console.log("DONE");
+
+      res.status(200).end();
       break;
 
     default:
