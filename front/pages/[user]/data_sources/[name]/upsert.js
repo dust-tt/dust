@@ -21,6 +21,7 @@ const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceUpsert({
   dataSource,
+  readOnly,
   loadDocumentId,
   user,
   ga_tracking_id,
@@ -46,7 +47,7 @@ export default function DataSourceUpsert({
       setDownloading(true);
       setDisabled(true);
       fetch(
-        `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${loadDocumentId}`
+        `/api/data_sources/${user}/${dataSource.name}/documents/${loadDocumentId}`
       ).then(async (res) => {
         if (res.ok) {
           const document = await res.json();
@@ -110,7 +111,7 @@ export default function DataSourceUpsert({
                   <Button
                     onClick={() => {
                       router.push(
-                        `/${session.user.username}/data_sources/${dataSource.name}`
+                        `/${user}/data_sources/${dataSource.name}`
                       );
                     }}
                   >
@@ -142,6 +143,7 @@ export default function DataSourceUpsert({
                         type="text"
                         name="document"
                         id="document"
+                        readOnly={readOnly}
                         className={classNames(
                           "block w-full min-w-0 flex-1 rounded-md text-sm",
                           "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
@@ -181,6 +183,7 @@ export default function DataSourceUpsert({
                         "border-gray-300 focus:border-violet-500 focus:ring-violet-500",
                         downloading ? "text-gray-300" : ""
                       )}
+                      readOnly={readOnly}
                       disabled={downloading}
                       value={downloading ? "Downloading..." : text}
                       onChange={(e) => setText(e.target.value)}
@@ -203,6 +206,7 @@ export default function DataSourceUpsert({
                           onClick={() => {
                             fileInputRef.current?.click();
                           }}
+                          disabled={readOnly}
                         >
                           <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
                           Upload
@@ -217,7 +221,7 @@ export default function DataSourceUpsert({
           <div className="pt-6 flex flex-row">
             <div className="flex-initial">
               <ActionButton
-                disabled={disabled || loading}
+                disabled={disabled || loading || readOnly}
                 onClick={() => {
                   handleUpsert();
                 }}
@@ -248,14 +252,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly = !session || context.query.user !== session.user.username;
 
   const [dataSourceRes] = await Promise.all([
     fetch(
@@ -281,6 +278,7 @@ export async function getServerSideProps(context) {
   return {
     props: {
       session,
+      readOnly,
       dataSource: dataSource.dataSource,
       user: context.query.user,
       loadDocumentId: context.query.documentId || null,

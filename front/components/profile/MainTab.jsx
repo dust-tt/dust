@@ -22,7 +22,7 @@ export default function MainTab({ current_tab, user, readOnly }) {
         },
         {
           name: "DataSources",
-          href: `/${user}/data_souces`,
+          href: `/${user}/data_sources`,
           icon: (
             <MagnifyingGlassCircleIcon
               className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
