@@ -451,7 +451,7 @@ export default function DatasetView({
               <div key={j} className="grid sm:grid-cols-10">
                 <div className="sm:col-span-3">
                   <div className="flex group items-center bg-slate-300">
-                    <div class="flex flex-1">
+                    <div className="flex flex-1">
                       <input
                         className={classNames(
                           "px-1 py-1 font-normal text-sm font-mono bg-slate-300 border-0 outline-none focus:outline-none w-full",

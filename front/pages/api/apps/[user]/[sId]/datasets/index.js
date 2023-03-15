@@ -20,7 +20,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = !(session && session.provider.id.toString() === user.githubId);
+  const readOnly = !(
+    session && session.provider.id.toString() === user.githubId
+  );
 
   let [app] = await Promise.all([
     App.findOne({
@@ -115,7 +117,12 @@ export default async function handler(req, res) {
 
       // Reorder all keys as Dust API expects them ordered.
       let data = req.body.data.map((d) => {
-        return JSON.parse(JSON.stringify(d, Object.keys(d).sort()));
+        return Object.keys(d)
+          .sort()
+          .reduce((obj, key) => {
+            obj[key] = d[key];
+            return obj;
+          }, {});
       });
       //console.log("DATASET UPLOAD", data);
 

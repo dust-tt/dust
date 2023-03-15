@@ -88,14 +88,12 @@ export default async function handler(req, res) {
 
       // Reorder all keys as Dust API expects them ordered.
       let data = req.body.data.map((d) => {
-        return Object.keys(d).sort().reduce(
-          (obj, key) => {
+        return Object.keys(d)
+          .sort()
+          .reduce((obj, key) => {
             obj[key] = d[key];
             return obj;
-          },
-          {}
-        );
-        // return JSON.parse(JSON.stringify(d, Object.keys(d).sort()));
+          }, {});
       });
       // console.log("DATASET UPLOAD", data);
 
