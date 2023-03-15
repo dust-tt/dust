@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, Document};
+use crate::data_sources::data_source::{DataSource, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};

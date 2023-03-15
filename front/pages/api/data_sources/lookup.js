@@ -5,7 +5,6 @@ import { User, DataSource } from "../../../lib/models";
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
-  console.log("QUERY", req.query);
   let dataSource = await DataSource.findOne({
     where: {
       name: req.query.data_source_id,

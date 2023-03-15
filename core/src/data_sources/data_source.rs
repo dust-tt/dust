@@ -1,4 +1,4 @@
-use crate::datasources::splitter::{splitter, SplitterID};
+use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};

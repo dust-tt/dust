@@ -42,7 +42,7 @@ export default function NewBlock({
       typeNames: ["data_source"],
       name: "DataSource",
       description:
-        "Perform semantic search against a DataSource.",
+        "Perform semantic search against chunked documents from a DataSource.",
     },
     {
       type: "curl",

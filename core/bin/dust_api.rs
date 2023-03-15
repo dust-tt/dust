@@ -12,7 +12,7 @@ use dust::{
     app,
     blocks::block::BlockType,
     dataset,
-    datasources::datasource,
+    data_sources::data_source,
     project, run,
     stores::store,
     stores::{postgres, sqlite},
@@ -976,7 +976,7 @@ async fn runs_retrieve_status(
 #[derive(serde::Deserialize)]
 struct DataSourcesRegisterPayload {
     data_source_id: String,
-    config: datasource::DataSourceConfig,
+    config: data_source::DataSourceConfig,
 }
 
 async fn data_sources_register(
@@ -985,7 +985,7 @@ async fn data_sources_register(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let ds = datasource::DataSource::new(&project, &payload.data_source_id, &payload.config);
+    let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
     match ds.setup().await {
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1278,7 +1278,7 @@ async fn data_sources_documents_delete(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("DATABASE_URI") {
+    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
             let store = postgres::PostgresStore::new(&db_uri).await?;
             store.init().await?;

@@ -29,7 +29,6 @@ export default function DataSource({
   onBlockNew,
 }) {
   const handleDataSourceChange = (dataSource) => {
-    console.log("DATASOURCE", dataSource);
     let b = shallowBlockClone(block);
     b.spec.project_id = dataSource.project_id;
     b.spec.data_source_id = dataSource.data_source_id;
@@ -74,7 +73,7 @@ export default function DataSource({
       status={status}
       running={running}
       readOnly={readOnly}
-      canUseCache={true}
+      canUseCache={false}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
@@ -109,7 +108,7 @@ export default function DataSource({
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
-                value={block.spec.top_k || "8"}
+                value={block.spec.top_k}
                 onChange={(e) => handleTopKChange(e.target.value)}
               />
             </div>

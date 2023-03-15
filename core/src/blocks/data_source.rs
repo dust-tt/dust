@@ -4,7 +4,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
@@ -130,9 +130,7 @@ impl Block for DataSource {
             .search(env.credentials.clone(), env.store.clone(), &q, self.top_k)
             .await?;
 
-        Ok(json!({
-            "documents": documents,
-        }))
+        Ok(serde_json::to_value(documents)?)
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

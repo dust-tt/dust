@@ -32,6 +32,16 @@ export function extractConfig(spec) {
           dataset: spec[i].config ? spec[i].config.dataset : "",
         };
         break;
+      case "data_source":
+        c[spec[i].name] = {
+          type: "data_source",
+          use_cache: spec[i].config
+            ? spec[i].config.use_cache
+              ? spec[i].config.use_cache
+              : false
+            : false,
+        };
+        break;
       case "search":
         c[spec[i].name] = {
           type: "search",

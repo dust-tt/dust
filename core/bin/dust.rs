@@ -4,8 +4,8 @@ use dust::{
     app,
     blocks::block::BlockType,
     dataset,
-    datasources::{
-        datasource::{self, DataSourceConfig},
+    data_sources::{
+        data_source::{self, DataSourceConfig},
         splitter::SplitterID,
     },
     init,
@@ -241,7 +241,7 @@ fn main() -> Result<()> {
                 provider_id,
                 model_id,
                 max_chunk_size,
-            } => rt.block_on(datasource::cmd_register(
+            } => rt.block_on(data_source::cmd_register(
                 data_source_id,
                 &DataSourceConfig {
                     provider_id: *provider_id,
@@ -257,7 +257,7 @@ fn main() -> Result<()> {
                 document_id,
                 tags,
                 text_path,
-            } => rt.block_on(datasource::cmd_upsert(
+            } => rt.block_on(data_source::cmd_upsert(
                 data_source_id,
                 document_id,
                 None,
@@ -268,18 +268,18 @@ fn main() -> Result<()> {
                 data_source_id,
                 query,
                 top_k,
-            } => rt.block_on(datasource::cmd_search(data_source_id, query, *top_k)),
+            } => rt.block_on(data_source::cmd_search(data_source_id, query, *top_k)),
             DataSourceCommands::List { data_source_id } => {
-                rt.block_on(datasource::cmd_list(data_source_id))
+                rt.block_on(data_source::cmd_list(data_source_id))
             }
             DataSourceCommands::Retrieve {
                 data_source_id,
                 document_id,
-            } => rt.block_on(datasource::cmd_retrieve(data_source_id, document_id)),
+            } => rt.block_on(data_source::cmd_retrieve(data_source_id, document_id)),
             DataSourceCommands::Delete {
                 data_source_id,
                 document_id,
-            } => rt.block_on(datasource::cmd_delete(data_source_id, document_id)),
+            } => rt.block_on(data_source::cmd_delete(data_source_id, document_id)),
         },
     };
 
