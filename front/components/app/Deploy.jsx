@@ -7,7 +7,6 @@ import { DocumentDuplicateIcon, CubeIcon } from "@heroicons/react/20/solid";
 import { HighlightButton, ActionButton, Button } from "../Button";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
-import copyToClipboard from "@uiw/copy-to-clipboard";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
 
@@ -60,7 +59,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
 
   // Copy the cURL request to the clipboard
   const handleCopyClick = () => {
-    copyToClipboard(cURLRequest(true));
+    navigator.clipboard.writeText(cURLRequest(true));
     setCopyButtonText("Copied!");
   };
 
