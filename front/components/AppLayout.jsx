@@ -4,13 +4,21 @@ import Link from "next/link";
 import { Disclosure, Menu } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
-import { classNames } from "../../lib/utils";
-import { ChevronRightIcon, ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import { ActionButton, Button } from "../Button";
+import { classNames } from "../lib/utils";
+import {
+  ChevronRightIcon,
+  ComputerDesktopIcon,
+} from "@heroicons/react/20/solid";
+import { ActionButton, Button } from "./Button";
 import { signIn } from "next-auth/react";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
-export default function AppLayout({ app, ga_tracking_id, children }) {
+export default function AppLayout({
+  app,
+  dataSource,
+  ga_tracking_id,
+  children,
+}) {
   const { data: session } = useSession();
 
   const router = useRouter();
@@ -21,6 +29,8 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
       <Head>
         {app ? (
           <title>{`Dust - ${route_user} > ${app.name}`}</title>
+        ) : dataSource ? (
+          <title>{`Dust - ${route_user} > ${dataSource.name}`}</title>
         ) : (
           <title>{`Dust - ${route_user}`}</title>
         )}
@@ -75,7 +85,11 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           aria-hidden="true"
                         />
                         <Link
-                          href={`/${route_user}/apps`}
+                          href={
+                            dataSource
+                              ? `/${route_user}/data_sources`
+                              : `/${route_user}/apps`
+                          }
                           className="text-base font-bold text-gray-800"
                         >
                           {route_user}
@@ -98,9 +112,23 @@ export default function AppLayout({ app, ga_tracking_id, children }) {
                           </Link>
                         </div>
                       </li>
-                    ) : (
-                      <></>
-                    )}
+                    ) : null}
+                    {dataSource ? (
+                      <li>
+                        <div className="flex items-center">
+                          <ChevronRightIcon
+                            className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+                            aria-hidden="true"
+                          />
+                          <Link
+                            href={`/${route_user}/ds/${dataSource.name}`}
+                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
+                          >
+                            {dataSource.name}
+                          </Link>
+                        </div>
+                      </li>
+                    ) : null}
                   </ol>
                 </nav>
                 <div className="static inset-auto hidden md:flex flex-initial items-center pr-4">

@@ -1,4 +1,4 @@
-import AppLayout from "../../../../components/app/AppLayout";
+import AppLayout from "../../../../components/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
 import { ActionButton, Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
@@ -235,12 +235,12 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Specification"
+            currentTab="Specification"
             user={user}
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-auto">
+        <div className="w-full max-w-5xl mt-4 mx-auto flex flex-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
             <div className="flex flex-row flex-auto my-4 space-x-2 items-center">
               <div className="flex-initial">

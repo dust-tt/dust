@@ -230,6 +230,12 @@ impl App {
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
 
+        utils::info(&format!(
+            "Starting run: project_id=`{}` run=`{}`",
+            project.project_id(),
+            &run_id,
+        ));
+
         // Send an event for the initial run status.
         match event_sender.as_ref() {
             Some(sender) => {

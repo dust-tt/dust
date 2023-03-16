@@ -12,8 +12,8 @@ pub mod stores {
 }
 pub mod app;
 pub mod dataset;
-pub mod datasources {
-    pub mod datasource;
+pub mod data_sources {
+    pub mod data_source;
     pub mod splitter;
 }
 pub mod init;
@@ -41,7 +41,7 @@ pub mod blocks {
     pub mod code;
     pub mod curl;
     pub mod data;
-    pub mod datasource;
+    pub mod data_source;
     pub mod input;
     pub mod llm;
     pub mod map;

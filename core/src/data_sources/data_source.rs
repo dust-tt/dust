@@ -1,4 +1,4 @@
-use crate::datasources::splitter::{splitter, SplitterID};
+use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
@@ -160,7 +160,7 @@ impl DataSource {
             Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
         };
 
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id,);
+        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
         let data_source_created_path = format!("{}/created.txt", bucket_path);
 
         Object::create(
@@ -170,6 +170,11 @@ impl DataSource {
             "application/text",
         )
         .await?;
+
+        utils::done(&format!(
+            "Created GCP bucket for data_source `{}`",
+            self.data_source_id
+        ));
 
         // Qdrant create collection.
         let qdrant_client = self.qdrant_client().await?;
@@ -227,6 +232,11 @@ impl DataSource {
                 None,
             )
             .await?;
+
+        utils::done(&format!(
+            "Created Qdrant collection and indexes for data_source `{}`",
+            self.data_source_id
+        ));
 
         Ok(())
     }
@@ -314,6 +324,11 @@ impl DataSource {
             ),
         )?;
 
+        utils::done(&format!(
+            "Created document blob: data_source_id={} document_id={}",
+            self.data_source_id, document_id,
+        ));
+
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -345,6 +360,13 @@ impl DataSource {
             })
             .try_collect::<Vec<_>>()
             .await?;
+
+        utils::done(&format!(
+            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={}",
+            self.data_source_id,
+            document_id,
+            e.len(),
+        ));
 
         document.chunks = e
             .into_iter()
@@ -421,6 +443,11 @@ impl DataSource {
         let _ = qdrant_client
             .upsert_points(self.qdrant_collection(), points, None)
             .await?;
+
+        utils::done(&format!(
+            "Inserted vectors in Qdrant: data_source_id={} document_id={}",
+            self.data_source_id, document_id,
+        ));
 
         // Upsert document (SQL)
         store
@@ -564,10 +591,60 @@ impl DataSource {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
+        utils::done(&format!(
+            "Searched data source: data_source_id={} document_count={} chunk_count={}",
+            self.data_source_id,
+            documents.len(),
+            documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
+        ));
+
         Ok(documents)
     }
 
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>, document_id: &str) -> Result<()> {
+    pub async fn retrieve(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Option<(Document, String)>> {
+        let store = store.clone();
+
+        let d = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
+            .await?
+        {
+            Some(d) => d,
+            None => {
+                return Ok(None);
+            }
+        };
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        // GCP retrieve raw text and document_id.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
+        let bucket_path = format!(
+            "{}/{}/{}",
+            self.project.project_id(),
+            self.internal_id,
+            document_id_hash
+        );
+        let content_path = format!("{}/{}/content.txt", bucket_path, d.hash);
+        let bytes = Object::download(&bucket, &content_path).await?;
+        let text = String::from_utf8(bytes)?;
+
+        Ok(Some((d, text)))
+    }
+
+    pub async fn delete_document(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<()> {
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
@@ -602,6 +679,33 @@ impl DataSource {
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        let store = store.clone();
+
+        // Delete collection (vector search db).
+        let qdrant_client = self.qdrant_client().await?;
+        qdrant_client
+            .delete_collection(self.qdrant_collection())
+            .await?;
+
+        utils::done(&format!(
+            "Deleted QDrant collection: data_source_id={}",
+            self.data_source_id,
+        ));
+
+        // Delete data source and documents (SQL)
+        store
+            .delete_data_source(&self.project, &self.data_source_id)
+            .await?;
+
+        utils::done(&format!(
+            "Deleted data source records: data_source_id={}",
+            self.data_source_id,
+        ));
 
         Ok(())
     }
@@ -707,6 +811,37 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
     Ok(())
 }
 
+pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let ds = match store.load_data_source(&project, data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
+    };
+
+    let (d, text) = match ds.retrieve(Box::new(store.clone()), document_id).await? {
+        Some((d, text)) => (d, text),
+        None => Err(anyhow!("Document not found: document_id={}", document_id))?,
+    };
+
+    utils::done(&format!(
+        "Retrieved document: data_source={} document_id={}",
+        ds.data_source_id(),
+        document_id,
+    ));
+
+    utils::info(&format!(
+        "- Document: document_id={} text_size={} chunk_count={}",
+        d.document_id, d.text_size, d.chunk_count,
+    ));
+    println!("```\n{}\n```", text);
+
+    Ok(())
+}
+
 pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
     let root_path = utils::init_check().await?;
     let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
@@ -718,7 +853,8 @@ pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
         None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
     };
 
-    ds.delete(Box::new(store.clone()), document_id).await?;
+    ds.delete_document(Box::new(store.clone()), document_id)
+        .await?;
 
     utils::done(&format!(
         "Deleted document: data_source={} document_id={}",

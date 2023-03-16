@@ -136,6 +136,11 @@ export default async function handler(req, res) {
               }
             }
           }
+          if (spec[i].type === "data_source") {
+            if (spec[i].spec.query) {
+              spec[i].spec.query = restoreTripleBackticks(spec[i].spec.query);
+            }
+          }
           if (spec[i].type === "curl") {
             if (spec[i].spec.url && spec[i].spec.url.includes("://")) {
               spec[i].spec.scheme = spec[i].spec.url.split("://")[0];

@@ -38,6 +38,13 @@ export default function NewBlock({
         "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
     },
     {
+      type: "data_source",
+      typeNames: ["data_source"],
+      name: "DataSource",
+      description:
+        "Perform semantic search against chunked documents from a DataSource.",
+    },
+    {
       type: "curl",
       typeNames: ["curl"],
       name: "Curl Request",

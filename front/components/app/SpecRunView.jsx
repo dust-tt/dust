@@ -4,6 +4,7 @@ import Data from "./blocks/Data";
 import LLM from "./blocks/LLM";
 import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
+import DataSource from "./blocks/DataSource";
 import Search from "./blocks/Search";
 import Curl from "./blocks/Curl";
 import Browser from "./blocks/Browser";
@@ -156,6 +157,27 @@ export default function SpecRunView({
               );
               break;
 
+            case "data_source":
+              return (
+                <DataSource
+                  key={idx}
+                  block={block}
+                  user={user}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
+              break;
+
             case "map":
               return (
                 <Map
@@ -261,7 +283,7 @@ export default function SpecRunView({
 
             default:
               return (
-                <div key={idx} className="flex flex-row px-4 py-4">
+                <div key={idx} className="flex flex-row px-4 py-4 text-sm">
                   Unknown block type: {block.type}
                 </div>
               );

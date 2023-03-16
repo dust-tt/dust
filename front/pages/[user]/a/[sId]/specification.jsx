@@ -1,4 +1,4 @@
-import AppLayout from "../../../../components/app/AppLayout";
+import AppLayout from "../../../../components/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../api/auth/[...nextauth]";
@@ -21,15 +21,17 @@ export default function Specification({
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Specification"
+            currentTab="Specification"
             user={user}
             readOnly={readOnly}
           />
         </div>
-        <div className="flex flex-auto">
-          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-8">
-            <div className="whitespace-pre font-mono text-sm text-gray-700">
-              {specification}
+        <div className="mx-auto w-max-4xl">
+          <div className="flex flex-auto">
+            <div className="flex flex-auto flex-col my-8">
+              <div className="whitespace-pre text-[13px] font-mono text-gray-700">
+                {specification}
+              </div>
             </div>
           </div>
         </div>

@@ -38,6 +38,7 @@ export default async function handler(req, res) {
   switch (req.method) {
     case "GET":
       var chat = req.query.chat === "true" ? true : false;
+      var embed = req.query.embed === "true" ? true : false;
 
       switch (req.query.pId) {
         case "openai":
@@ -53,23 +54,28 @@ export default async function handler(req, res) {
             res.status(400).json({ error: err.error });
           } else {
             let models = await modelsRes.json();
-            let f = models.data.filter((m) => {
-              return (
-                !(
-                  m.id.includes("search") ||
-                  m.id.includes("similarity") ||
-                  m.id.includes("edit") ||
-                  m.id.includes("insert") ||
-                  m.id.includes("audio") ||
-                  m.id.includes(":") ||
-                  m.id.includes("embedding")
-                ) &&
-                (m.id.startsWith("text-") ||
-                  m.id.startsWith("code-") ||
-                  m.id.startsWith("gpt-3.5-turbo")) &&
-                (!chat || m.id.startsWith("gpt-3.5-turbo"))
-              );
-            });
+            let f = [];
+            if (embed) {
+              f = models.data.filter((m) => m.id === "text-embedding-ada-002");
+            } else {
+              f = models.data.filter((m) => {
+                return (
+                  !(
+                    m.id.includes("search") ||
+                    m.id.includes("similarity") ||
+                    m.id.includes("edit") ||
+                    m.id.includes("insert") ||
+                    m.id.includes("audio") ||
+                    m.id.includes(":") ||
+                    m.id.includes("embedding")
+                  ) &&
+                  (m.id.startsWith("text-") ||
+                    m.id.startsWith("code-") ||
+                    m.id.startsWith("gpt-3.5-turbo")) &&
+                  (!chat || m.id.startsWith("gpt-3.5-turbo"))
+                );
+              });
+            }
             f.sort((a, b) => {
               if (a.id < b.id) {
                 return -1;

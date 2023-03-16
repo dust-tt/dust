@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document};
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, DataSourceConfig, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -1229,6 +1229,58 @@ impl Store for SQLiteStore {
                     _ => Err(e)?,
                 },
             }
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                params![project_id, data_source_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let data_source_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            };
+
+            let mut c = pool.get()?;
+            let tx = c.transaction()?;
+            {
+                let mut stmt =
+                    tx.prepare_cached("DELETE FROM data_sources_documents WHERE data_source = ?1")?;
+                match stmt.insert(params![data_source_row_id]) {
+                    Ok(_) => {}
+                    Err(e) => match e {
+                        rusqlite::Error::StatementChangedRows(0) => {}
+                        _ => Err(e)?,
+                    },
+                }
+
+                let mut stmt = tx.prepare_cached("DELETE FROM data_sources WHERE id = ?1")?;
+                match stmt.insert(params![data_source_row_id]) {
+                    Ok(_) => {}
+                    Err(e) => match e {
+                        rusqlite::Error::StatementChangedRows(0) => {}
+                        _ => Err(e)?,
+                    },
+                }
+            }
+            tx.commit()?;
             Ok(())
         })
         .await?

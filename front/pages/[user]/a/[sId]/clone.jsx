@@ -1,4 +1,4 @@
-import AppLayout from "../../../../components/app/AppLayout";
+import AppLayout from "../../../../components/AppLayout";
 import MainTab from "../../../../components/app/MainTab";
 import { Button } from "../../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
@@ -51,7 +51,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            current_tab="Specification"
+            currentTab="Specification"
             user={user}
             readOnly={true}
           />

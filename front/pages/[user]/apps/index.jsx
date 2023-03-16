@@ -1,4 +1,4 @@
-import AppLayout from "../../../components/app/AppLayout";
+import AppLayout from "../../../components/AppLayout";
 import MainTab from "../../../components/profile/MainTab";
 import { Button } from "../../../components/Button";
 import { unstable_getServerSession } from "next-auth/next";
@@ -17,7 +17,7 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="flex flex-initial mt-2">
-          <MainTab current_tab="Apps" user={user} readOnly={readOnly} />
+          <MainTab currentTab="Apps" user={user} readOnly={readOnly} />
         </div>
         <div className="">
           <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">

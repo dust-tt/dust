@@ -1,6 +1,6 @@
 use crate::blocks::{
-    browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, input::Input, llm::LLM,
-    map::Map, reduce::Reduce, search::Search, datasource::DataSource,
+    browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, data_source::DataSource,
+    input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
@@ -58,6 +58,7 @@ pub struct Env {
 pub enum BlockType {
     Input,
     Data,
+    #[serde(rename = "data_source")]
     DataSource,
     Code,
     LLM,

@@ -5,6 +5,7 @@ export const modelProviders = [
     built: true,
     enabled: false,
     chat: true,
+    embed: true,
   },
   {
     providerId: "cohere",
@@ -12,6 +13,7 @@ export const modelProviders = [
     built: true,
     enabled: false,
     chat: false,
+    embed: false,
   },
   {
     providerId: "ai21",
@@ -19,6 +21,7 @@ export const modelProviders = [
     built: true,
     enabled: false,
     chat: false,
+    embed: false,
   },
   {
     providerId: "hugging_face",
@@ -26,6 +29,7 @@ export const modelProviders = [
     built: false,
     enabled: false,
     chat: false,
+    embed: false,
   },
   {
     providerId: "replicate",
@@ -33,6 +37,7 @@ export const modelProviders = [
     built: false,
     enabled: false,
     chat: false,
+    embed: false,
   },
 ];
 
@@ -70,11 +75,12 @@ export async function checkProvider(providerId, config) {
   }
 }
 
-export function filterModelProviders(providers, chatOnly) {
+export function filterModelProviders(providers, chatOnly, embedOnly) {
   if (!providers) return [];
   return providers.filter((p) =>
     modelProviders
       .filter((p) => !chatOnly || p.chat === true)
+      .filter((p) => !embedOnly || p.embed === true)
       .map((p) => p.providerId)
       .includes(p.providerId)
   );
@@ -87,9 +93,9 @@ export function filterServiceProviders(providers) {
   );
 }
 
-export async function getProviderLLMModels(providerId, config, chat) {
+export async function getProviderLLMModels(providerId, config, chat, embed) {
   let modelsRes = await fetch(
-    `/api/providers/${providerId}/models?chat=${chat}`
+    `/api/providers/${providerId}/models?chat=${chat}&embed=${embed}`
   );
   if (!modelsRes.ok) {
     let err = await modelsRes.json();

@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
+use crate::data_sources::data_source::{DataSource, Document};
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -105,6 +105,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()>;
+    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
 
     // LLM Cache
     async fn llm_cache_get(

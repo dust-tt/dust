@@ -1,7 +1,6 @@
 import Block from "./Block";
 import { classNames, shallowBlockClone } from "../../../lib/utils";
 import dynamic from "next/dynamic";
-import TextareaAutosize from "react-textarea-autosize";
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import "@uiw/react-textarea-code-editor/dist.css";
@@ -284,7 +283,7 @@ export default function Chat({
             <div className="w-full leading-5">
               <div
                 className={classNames(
-                  "border bg-slate-100 rounded-md border-slate-100"
+                  "border bg-slate-100 border-slate-100"
                 )}
                 style={{
                   minHeight: "48px",
@@ -299,7 +298,7 @@ export default function Chat({
                   padding={3}
                   style={{
                     color: "rgb(55 65 81)",
-                    fontSize: 14,
+                    fontSize: 13,
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                     backgroundColor: "rgb(241 245 249)",

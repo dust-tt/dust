@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document};
 use crate::dataset::Dataset;
-use crate::datasources::datasource::{DataSource, DataSourceConfig, Document};
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -1251,6 +1251,41 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+
+        Ok(())
+    }
+
+    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_documents WHERE data_source = $1")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id]).await?;
+
+        let stmt = tx.prepare("DELETE FROM data_sources WHERE id = $1").await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id]).await?;
+
+        tx.commit().await?;
 
         Ok(())
     }

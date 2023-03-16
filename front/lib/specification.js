@@ -179,6 +179,22 @@ export function addBlock(spec, idx, blockType) {
         config: {},
       });
       break;
+    case "data_source":
+      s.splice(idx + 1, 0, {
+        type: "data_source",
+        name: getNextName(spec, "DATASOURCE"),
+        indent: 0,
+        spec: {
+          project_id: "",
+          data_source_id: "",
+          top_k: 8,
+          query: "",
+        },
+        config: {
+          use_cache: false,
+        },
+      });
+      break;
     default:
       s.splice(idx + 1, 0, {
         type: blockType,
@@ -224,6 +240,7 @@ export function moveBlockUp(spec, index) {
   let s = spec.map((b) => b);
   if (index > 0 && index < spec.length) {
     switch (s[index].type) {
+      case "input":
       case "map":
       case "reduce":
         if (["map", "reduce"].includes(s[index - 1].type)) {
@@ -243,6 +260,7 @@ export function moveBlockDown(spec, index) {
   let s = spec.map((b) => b);
   if (index > -1 && index < spec.length - 1) {
     switch (s[index].type) {
+      case "input":
       case "map":
       case "reduce":
         if (["map", "reduce"].includes(s[index + 1].type)) {
@@ -355,6 +373,18 @@ export function dumpSpecification(spec, latestDatasets) {
       case "code": {
         out += `code ${block.name} {\n`;
         out += `  code: \n\`\`\`\n${block.spec.code}\n\`\`\`\n`;
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "data_source": {
+        out += `data_source ${block.name} {\n`;
+        out += `  project_id: ${block.spec.project_id}\n`;
+        out += `  data_source_id: ${block.spec.data_source_id}\n`;
+        out += `  top_k: ${block.spec.top_k}\n`;
+        out += `  query: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.query
+        )}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

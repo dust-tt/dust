@@ -379,7 +379,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md  px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                        "block w-full resize-none rounded-md px-1 font-normal py-1 text-[13px] font-mono bg-slate-100",
                         readOnly
                           ? "border-white ring-0 focus:ring-0 focus:border-white"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -401,7 +401,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md px-1 font-normal text-sm py-1 font-mono bg-slate-100",
+                        "block w-full resize-none rounded-md px-1 font-normal py-1 text-[13px] font-mono bg-slate-100",
                         readOnly
                           ? "border-white ring-0 focus:ring-0 focus:border-white"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -444,7 +444,7 @@ export default function LLM({
             <div className="w-full leading-5">
               <div
                 className={classNames(
-                  "border bg-slate-100 rounded-md border-slate-100"
+                  "border bg-slate-100 border-slate-100"
                 )}
                 style={{
                   minHeight: "48px",
@@ -459,7 +459,7 @@ export default function LLM({
                   padding={3}
                   style={{
                     color: "rgb(55 65 81)",
-                    fontSize: 14,
+                    fontSize: 13,
                     fontFamily:
                       "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                     backgroundColor: "rgb(241 245 249)",

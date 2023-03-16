@@ -16,6 +16,7 @@ export default function ModelPicker({
   readOnly,
   onModelUpdate,
   chatOnly,
+  embedOnly,
 }) {
   let { providers, isProvidersLoading, isProvidersError } = readOnly
     ? {
@@ -24,7 +25,7 @@ export default function ModelPicker({
         isProvidersError: false,
       }
     : useProviders();
-  let modelProviders = filterModelProviders(providers, !!chatOnly);
+  let modelProviders = filterModelProviders(providers, !!chatOnly, !!embedOnly);
 
   let [models, setModels] = useState(null);
 
@@ -52,7 +53,8 @@ export default function ModelPicker({
       getProviderLLMModels(
         provider.providerId,
         JSON.parse(provider.config),
-        !!chatOnly
+        !!chatOnly,
+        !!embedOnly
       ).then((m) => {
         setModels(m.models);
       });

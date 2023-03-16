@@ -7,7 +7,6 @@ import { DocumentDuplicateIcon, CubeIcon } from "@heroicons/react/20/solid";
 import { HighlightButton, ActionButton, Button } from "../Button";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
-import copyToClipboard from "@uiw/copy-to-clipboard";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
 
@@ -60,7 +59,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
 
   // Copy the cURL request to the clipboard
   const handleCopyClick = () => {
-    copyToClipboard(cURLRequest(true));
+    navigator.clipboard.writeText(cURLRequest(true));
     setCopyButtonText("Copied!");
   };
 
@@ -116,9 +115,9 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         value={`$ ${cURLRequest(false)}`}
                         language="shell"
                         padding={15}
-                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 text-sm text-white font-mono"
+                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] font-mono text-white"
                         style={{
-                          fontSize: 14,
+                          fontSize: 13,
                           fontFamily:
                             "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                           backgroundColor: "rgb(241 245 249)",
