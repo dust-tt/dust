@@ -1,4 +1,9 @@
-import { User, DataSource, Key, Provider } from "../../../../../../../../lib/models";
+import {
+  User,
+  DataSource,
+  Key,
+  Provider,
+} from "../../../../../../../../lib/models";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "../../../../../../../../lib/providers";
 
@@ -16,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse) {
+  if (!parse || !parse[1]) {
     res.status(401).json({
       error: {
         type: "malformed_authorization_header_error",
