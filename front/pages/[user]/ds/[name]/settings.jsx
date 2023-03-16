@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../../../../components/app/ModelPicker";
+import { useRouter } from "next/router";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -23,13 +24,15 @@ export default function New({ dataSource, user, ga_tracking_id }) {
     dataSource.visibility
   );
 
+  const router = useRouter();
+
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this DataSource?")) {
       let res = await fetch(`/api/data_sources/${user}/${dataSource.name}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        window.location = "/";
+        router.push(`/${session.user.username}/data_sources`);
       }
       return true;
     } else {

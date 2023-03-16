@@ -9,6 +9,7 @@ import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -38,13 +39,15 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
     }
   };
 
+  const router = useRouter();
+
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this app?")) {
       let res = await fetch(`/api/apps/${user}/${app.sId}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        window.location = "/";
+        router.push(`/${session.user.username}/`);
       }
       return true;
     } else {

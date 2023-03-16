@@ -6,10 +6,7 @@ import { ActionButton } from "../../../../components/Button";
 import { authOptions } from "../../../api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import {
-  ArrowUpOnSquareStackIcon,
-  ArrowUturnLeftIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowUpOnSquareStackIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../../../../lib/utils";
 import { useRef } from "react";
 import { useEffect } from "react";

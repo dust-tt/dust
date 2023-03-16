@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "../../../lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "../../../components/app/ModelPicker";
+import { useRouter } from "next/router";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -15,7 +16,7 @@ export default function New({ dataSources, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
   const [disabled, setDisabled] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState(null);
@@ -60,6 +61,26 @@ export default function New({ dataSources, user, ga_tracking_id }) {
     );
   }, [dataSourceName, dataSourceModel]);
 
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    const res = await fetch(`/api/data_sources/${session.user.username}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: dataSourceName,
+        description: dataSourceDescription,
+        visibility: dataSourceVisibility,
+        provider_id: dataSourceModel.provider_id,
+        model_id: dataSourceModel.model_id,
+        max_chunk_size: `${dataSourceMaxChunkSize}`,
+      }),
+    });
+    router.push(`/${session.user.username}/ds/${dataSourceName}`);
+  };
+
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
@@ -68,11 +89,7 @@ export default function New({ dataSources, user, ga_tracking_id }) {
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <form
-              action={`/api/data_sources/${session.user.username}`}
-              method="POST"
-              className="space-y-8 divide-y divide-gray-200 mt-8"
-            >
+            <div className="space-y-8 divide-y divide-gray-200 mt-8">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   <h3 className="text-base font-medium leading-6 text-gray-900">
@@ -232,18 +249,6 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                           chatOnly={false}
                           embedOnly={true}
                         />
-                        <input
-                          type="hidden"
-                          id="dataSourceProviderId"
-                          name="provider_id"
-                          value={dataSourceModel.provider_id}
-                        />
-                        <input
-                          type="hidden"
-                          id="dataSourceModelId"
-                          name="model_id"
-                          value={dataSourceModel.model_id}
-                        />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
                         The embedder is the model that will be used by the data
@@ -284,17 +289,17 @@ export default function New({ dataSources, user, ga_tracking_id }) {
               <div className="pt-6">
                 <div className="flex">
                   <Button
-                    disabled={disabled || submitting}
-                    type="submit"
+                    disabled={disabled || creating}
                     onClick={() => {
-                      setSubmitting(true);
+                      setCreating(true);
+                      handleCreate();
                     }}
                   >
-                    Create
+                    {creating ? "Creating..." : "Create"}
                   </Button>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>

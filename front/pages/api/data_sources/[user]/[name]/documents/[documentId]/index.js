@@ -122,9 +122,9 @@ export default async function handler(req, res) {
         }
       );
 
-      const d = await upsertRes.json();
+      const data = await upsertRes.json();
 
-      if (d.error) {
+      if (data.error) {
         res.status(500).end();
         break;
       }
@@ -156,15 +156,15 @@ export default async function handler(req, res) {
       break;
 
     case "DELETE":
-      const dRes = await fetch(
+      const delRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents/${documentId}`,
         {
           method: "DELETE",
         }
       );
 
-      if (!dRes.ok) {
-        const error = await dRes.json();
+      if (!delRes.ok) {
+        const error = await delRes.json();
         res.status(400).json(error.error);
         break;
       }
