@@ -35,7 +35,7 @@ export default function DataSourcesView({
                       href={`/${session.user.username}/data_sources/new`}
                       onClick={(e) => {
                         // Enforce FreePlan limit: 1 DataSource.
-                        if (dataSources.length >= 2) {
+                        if (dataSources.length >= 1) {
                           e.preventDefault();
                           window.alert(
                             "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."

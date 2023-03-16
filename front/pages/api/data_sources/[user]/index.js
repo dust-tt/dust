@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       }
 
       // Enforce FreePlan limit: 1 DataSource.
-      if (dataSources.length >= 2) {
+      if (dataSources.length >= 1) {
         res.status(400).end();
         break;
       }
