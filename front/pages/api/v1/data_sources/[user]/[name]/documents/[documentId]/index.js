@@ -1,5 +1,6 @@
-import { User, DataSource } from "../../../../../../../../lib/models";
+import { User, DataSource, Key, Provider } from "../../../../../../../../lib/models";
 import { Op } from "sequelize";
+import { credentialsFromProviders } from "../../../../../../../../lib/providers";
 
 const { DUST_API } = process.env;
 
