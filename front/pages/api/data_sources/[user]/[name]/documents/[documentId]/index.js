@@ -92,7 +92,7 @@ export default async function handler(req, res) {
         break;
       }
       const documents = await documentsRes.json();
-      if (documents.response.total >= 3) {
+      if (documents.response.total >= 32) {
         res.status(400).end();
         break;
       }
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
       let credentials = credentialsFromProviders(providers);
 
       // Create document with the Dust internal API.
-      const r = await fetch(
+      const upsertRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents`,
         {
           method: "POST",
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
         }
       );
 
-      const d = await r.json();
+      const d = await upsertRes.json();
 
       if (d.error) {
         res.status(500).end();

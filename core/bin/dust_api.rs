@@ -1197,7 +1197,17 @@ async fn data_sources_documents_retrieve(
                         response: None,
                     }),
                 ),
-                Ok((d, text)) => (
+                Ok(None) => (
+                    StatusCode::NOT_FOUND,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("data_source_document_not_found"),
+                            message: format!("No document found for id `{}`", document_id),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok(Some((d, text))) => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
