@@ -36,7 +36,6 @@ export default function DataSourcePicker({
       dataSource.data_source_id.length > 0
     ) {
       (async () => {
-        setIsLoading(true);
         // retrieve user for project_id
         let ds = await lookUpDataSource(
           dataSource.project_id,
