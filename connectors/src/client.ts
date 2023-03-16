@@ -1,5 +1,5 @@
 import { Connection, Client } from '@temporalio/client';
-import { example } from './workflows';
+import { slack_workflow } from './workflows';
 import { nanoid } from 'nanoid';
 
 async function run() {
@@ -15,10 +15,13 @@ async function run() {
     connection,
     // namespace: 'foo.bar', // connects to 'default' namespace if not specified
   });
+  if (!process.env.SLACK_TOKEN) {
+    throw new Error('Var env SLACK_TOKEN must be defined. You can set it to a oauth access token or a bot token')
+  }
 
-  const handle = await client.workflow.start(example, {
+  const handle = await client.workflow.start(slack_workflow, {
     // type inference works! args: [name: string]
-    args: ['Temporal'],
+    args: [process.env.SLACK_TOKEN],
     taskQueue: 'hello-world',
     // in practice, use a meaningful business ID, like customerId or transactionId
     workflowId: 'workflow-' + nanoid(),

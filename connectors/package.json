@@ -20,6 +20,7 @@
     ]
   },
   "dependencies": {
+    "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "^1.6.0",
     "@temporalio/client": "^1.6.0",
     "@temporalio/worker": "^1.6.0",
