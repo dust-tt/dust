@@ -85,7 +85,11 @@ export default function AppLayout({
                           aria-hidden="true"
                         />
                         <Link
-                          href={`/${route_user}/apps`}
+                          href={
+                            dataSource
+                              ? `/${route_user}/data_sources`
+                              : `/${route_user}/apps`
+                          }
                           className="text-base font-bold text-gray-800"
                         >
                           {route_user}

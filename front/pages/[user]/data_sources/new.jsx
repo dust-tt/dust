@@ -14,7 +14,8 @@ const { URL, GA_TRACKING_ID = null } = process.env;
 export default function New({ dataSources, user, ga_tracking_id }) {
   const { data: session } = useSession();
 
-  const [disable, setDisabled] = useState(true);
+  const [disabled, setDisabled] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState(null);
@@ -282,7 +283,13 @@ export default function New({ dataSources, user, ga_tracking_id }) {
 
               <div className="pt-6">
                 <div className="flex">
-                  <Button disabled={disable} type="submit">
+                  <Button
+                    disabled={disabled || submitting}
+                    type="submit"
+                    onClick={() => {
+                      setSubmitting(true);
+                    }}
+                  >
                     Create
                   </Button>
                 </div>

@@ -88,10 +88,6 @@ export default async function handler(req, res) {
         res.status(401).end();
         break;
       }
-      console.log(
-        "GOING TO CORE",
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`
-      );
 
       const dsRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`,
@@ -100,8 +96,6 @@ export default async function handler(req, res) {
         }
       );
 
-      console.log(dsRes);
-
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
         console.log(dustDataSource);
@@ -109,9 +103,7 @@ export default async function handler(req, res) {
         break;
       }
 
-      console.log("REMOVING LOCAL");
       await dataSource.destroy();
-      console.log("DONE");
 
       res.status(200).end();
       break;

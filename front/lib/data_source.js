@@ -1,15 +1,3 @@
-export async function getDataSources(user) {
-  const [res] = await Promise.all([fetch(`/api/data_sources/${user}`)]);
-
-  if (!res.ok) {
-    return { dataSources: [] };
-  }
-
-  const [dataSources] = await Promise.all([res.json()]);
-
-  return dataSources;
-}
-
 export async function lookUpDataSource(project_id, data_source_id) {
   const [res] = await Promise.all([
     fetch(

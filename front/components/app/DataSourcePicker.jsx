@@ -7,6 +7,7 @@ import { getDataSources, lookUpDataSource } from "../../lib/data_source";
 import { useState } from "react";
 import { Button } from "../Button";
 import TextareaAutosize from "react-textarea-autosize";
+import { useDataSources } from "../../lib/swr";
 
 export default function DataSourcePicker({
   currentUser,
@@ -16,16 +17,16 @@ export default function DataSourcePicker({
 }) {
   let [user, setUser] = useState(currentUser);
   let [name, setName] = useState(null);
-  let [dataSources, setDataSources] = useState(null);
   let [userEditing, setUserEditing] = useState(false);
+  let [isLoading, setIsLoading] = useState(true);
 
-  const refreshDataSources = async () => {
-    if (user) {
-      let ds = await getDataSources(user);
-      setDataSources(ds.dataSources);
-      setName(null);
-    }
-  };
+  let { dataSources, isDataSourcesLoading, isDataSourcesError } = readOnly
+    ? {
+        dataSources: [],
+        isDataSourcesLoading: false,
+        isDataSourcesError: false,
+      }
+    : useDataSources(user);
 
   useEffect(() => {
     if (
@@ -35,11 +36,13 @@ export default function DataSourcePicker({
       dataSource.data_source_id.length > 0
     ) {
       (async () => {
+        setIsLoading(true);
         // retrieve user for project_id
         let ds = await lookUpDataSource(
           dataSource.project_id,
           dataSource.data_source_id
         );
+        setIsLoading(false);
         if (ds) {
           setUser(ds.user.username);
           setName(ds.dataSource.name);
@@ -47,13 +50,14 @@ export default function DataSourcePicker({
           setName(null);
         }
       })();
+    } else {
+      setIsLoading(false);
     }
   }, [dataSource]);
 
   useEffect(() => {
     if (!readOnly && user && user.length > 0) {
-      // throtle requests
-      refreshDataSources();
+      setName(null);
     }
   }, [user]);
 
@@ -113,7 +117,7 @@ export default function DataSourcePicker({
       </div>
 
       <div className="flex items-center">
-        {readOnly ? (
+        {readOnly || isLoading ? (
           <Link href={`/${user}/ds/${name}`}>
             <div className="font-bold text-violet-600 text-sm">{name}</div>
           </Link>
@@ -122,7 +126,7 @@ export default function DataSourcePicker({
             <div>
               <Menu.Button
                 className={classNames(
-                  "inline-flex items-center rounded-md py-1 font-bold text-gray-700 text-sm",
+                  "inline-flex items-center rounded-md py-1 text-gray-700 text-sm font-normal",
                   name && name.length > 0 ? "px-0" : "border px-3",
                   readOnly
                     ? "text-gray-300 border-white"

@@ -94,3 +94,13 @@ export function useDocuments(user, dataSource, limit, offset) {
     isRunsError: error,
   };
 }
+
+export function useDataSources(user) {
+  const { data, error } = useSWR(`/api/data_sources/${user}`, fetcher);
+
+  return {
+    dataSources: data ? data.dataSources : [],
+    isDataSourcesLoading: !error && !data,
+    isDataSourcesError: error,
+  };
+}
