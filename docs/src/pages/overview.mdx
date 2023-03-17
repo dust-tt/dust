@@ -145,3 +145,21 @@ be retrieved from the `Runs` panel.
 Other [core blocks](#) allow the further parallelization of the execution such as the `map` and
 `reduce` blocks. Dust's execution engine will also take care of automatically parallelizing
 execution eagearly when they are used.
+
+## Data sources
+
+[Data sources](/data-sources) are fully managged semantically searchable databases of documents. You
+can easily create data sources and add documents to them manually in the Dust interface or using our
+API. Data sources enable apps to perform semantic searches over large collections of documents, only
+retrieving the chunks of information that are the most relevant to the app's task.
+
+Semantic search, generally based on [embedding models](/introduction#embedding-models), is important
+to large language model apps because of the limited context size of large language models. It
+enables the retrieval of chunks of valuable information that fit in context to perform a particular
+task. This is called _retrieval-augmented generation_.
+
+Typically, to perform semantic search, one has to chunk, embed and index the documents they desire
+to make searchable in a vector database. When answering a query they then have to embed the query,
+perform a search in the vector database and retrieve the associated documents and relevant chunks of
+text. Dust abstracts this process by providing a data source abstraction that allows you to simply
+upload documents and query them from the associated `data_source` block.

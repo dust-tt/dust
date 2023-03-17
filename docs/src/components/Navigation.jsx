@@ -192,6 +192,7 @@ export const navigation = [
       { title: 'Platform overview', href: '/overview' },
       { title: 'Core Blocks', href: '/core-blocks' },
       { title: 'Integration Blocks', href: '/integration-blocks' },
+      { title: 'Data Sources', href: '/data-sources' },
     ],
   },
   {
