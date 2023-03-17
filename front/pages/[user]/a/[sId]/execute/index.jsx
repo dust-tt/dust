@@ -373,18 +373,16 @@ export async function getServerSideProps(context) {
     inputDataset = await inputDatasetRes.json();
   }
 
-  const [specRes] = await Promise.all([
-    fetch(
-      `${URL}/api/apps/${context.query.user}/${context.query.sId}/specification`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: context.req.headers.cookie,
-        },
-      }
-    ),
-  ]);
+  const specRes = await fetch(
+    `${URL}/api/apps/${context.query.user}/${context.query.sId}/specification`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: context.req.headers.cookie,
+      },
+    }
+  );
 
   if (specRes.status === 404) {
     return {
