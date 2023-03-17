@@ -132,6 +132,7 @@ impl HttpRequest {
         }
 
         let req = match &self.body {
+            Value::Object(body) => req.body(Body::from(serde_json::to_string(body)?))?,
             Value::String(body) => req.body(Body::from(body.clone()))?,
             Value::Null => req.body(Body::empty())?,
             _ => Err(anyhow!("Returned body must be either a string or null."))?,
