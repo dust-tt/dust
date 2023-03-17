@@ -388,8 +388,8 @@ impl Block for LLM {
             None => None,
         };
 
-        // if model_id contains gpt-3.5-turbo use the chat interface
-        match model_id.contains("gpt-3.5-turbo") {
+        // if model_id starts with gpt-3.5-turbo or gpt-4 use the chat interface
+        match model_id.starts_with("gpt-3.5-turbo") || model_id.starts_with("gpt-4") {
             true => {
                 let prompt = self.prompt(env)?;
                 let messages = vec![ChatMessage {

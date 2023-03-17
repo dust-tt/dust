@@ -206,23 +206,24 @@ documentation](https://tera.netlify.app/docs/#templates) for more details.
 ### Support for chat-based models (chatGPT)
 
 We also support chat-based models such as OpenAI's `gpt-3.5-turbo` ([Chat
-API](https://platform.openai.com/docs/guides/chat)). When these models are used, as part of the
-`llm` block, `max_tokens` and `top_logprobs` are ignored, and the content of the templated prompt is
-passed as initial message with _user_ role. The block response is the content of the `assistant`
-role message returned by the model. Note that logprobs and tokens are not available with these
-models.
+API](https://platform.openai.com/docs/guides/chat)) and `gpt-4`. When these models are used, as part
+of the `llm` block, `max_tokens` and `top_logprobs` are ignored, and the content of the templated
+prompt is passed as initial message with _user_ role. The block response is the content of the
+`assistant` role message returned by the model. Note that logprobs and tokens are not available with
+these models.
 
 ---
 
 ## Chat block
 
 The `chat` block provides a standardized interface to chat-based large language models such as
-OpenAI's `gpt-3.5-turbo` ([Chat API](https://platform.openai.com/docs/guides/chat)). It is
-similar in many respects to an LLM block except that it does not have `max_tokens`, has templated
-(see LLM block above) intstructions that serve as initial prompt and exposes a `messages` code block
-to output previous messages (generally passed to the app as input)
+OpenAI's `gpt-3.5-turbo` ([Chat API](https://platform.openai.com/docs/guides/chat)) and `gpt-4`. It
+is similar in many respects to an LLM block, it has templated (see LLM block above) intstructions
+that serve as initial prompt and exposes a `messages` code block to output previous messages
+(generally passed to the app as input)
 
-It is used to build chat-based experiences where the model is exposed with previous interactions.
+It is used to build chat-based experiences where the model is exposed with previous interactions and
+generates a new message in response.
 
 ### Specification
 
@@ -251,6 +252,11 @@ It is used to build chat-based experiences where the model is exposed with previ
   <Property name="stop" type="[]string">
     An array of strings that should interrupt completion when sampled from the
     model.
+  </Property>
+  <Property name="max_tokens" type="integer">
+    The maximum number of tokens to generate from the model for the next
+    message. It can be very broadly seen as a word worth of content. The model
+    may decide to stop generation before reaching `max_tokens`.
   </Property>
   <Property name="frequency_penalty" type="float">
     Number between _-2.0_ and _2.0_. Positive values penalize new tokens based

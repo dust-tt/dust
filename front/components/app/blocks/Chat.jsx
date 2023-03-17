@@ -39,6 +39,12 @@ export default function Chat({
     onBlockUpdate(b);
   };
 
+  const handleMaxTokensChange = (max_tokens) => {
+    let b = shallowBlockClone(block);
+    b.spec.max_tokens = max_tokens;
+    onBlockUpdate(b);
+  };
+
   const handleAddStop = (stop) => {
     let b = shallowBlockClone(block);
     b.spec.stop.push(stop);
@@ -134,6 +140,24 @@ export default function Chat({
                 readOnly={readOnly}
                 value={block.spec.temperature}
                 onChange={(e) => handleTemperatureChange(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+            <div className="flex flex-initial">max tokens:</div>
+            <div className="flex flex-initial font-normal">
+              <input
+                type="text"
+                className={classNames(
+                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-12",
+                  readOnly
+                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    : "border-white focus:border-gray-300 focus:ring-0"
+                )}
+                spellCheck={false}
+                readOnly={readOnly}
+                value={block.spec.max_tokens || ""}
+                onChange={(e) => handleMaxTokensChange(e.target.value)}
               />
             </div>
           </div>

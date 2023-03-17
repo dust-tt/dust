@@ -18,6 +18,7 @@ pub struct Chat {
     temperature: f32,
     top_p: Option<f32>,
     stop: Vec<String>,
+    max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
 }
@@ -29,6 +30,7 @@ impl Chat {
         let mut temperature: Option<f32> = None;
         let mut top_p: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
+        let mut max_tokens: Option<i32> = None;
         let mut frequency_penalty: Option<f32> = None;
         let mut presence_penalty: Option<f32> = None;
 
@@ -50,6 +52,12 @@ impl Chat {
                             Err(_) => {
                                 Err(anyhow!("Invalid `top_p` in `chat` block, expecting float"))?
                             }
+                        },
+                        "max_tokens" => match value.parse::<i32>() {
+                            Ok(n) => max_tokens = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `max_tokens` in `chat` block, expecting integer"
+                            ))?,
                         },
                         "stop" => stop = value.split("\n").map(|s| String::from(s)).collect(),
                         "presence_penalty" => match value.parse::<f32>() {
@@ -85,6 +93,7 @@ impl Chat {
             temperature: temperature.unwrap(),
             top_p,
             stop,
+            max_tokens,
             presence_penalty,
             frequency_penalty,
         })
@@ -134,6 +143,9 @@ impl Block for Chat {
         }
         for s in self.stop.iter() {
             hasher.update(s.as_bytes());
+        }
+        if let Some(max_tokens) = &self.max_tokens {
+            hasher.update(max_tokens.to_string().as_bytes());
         }
         if let Some(presence_penalty) = &self.presence_penalty {
             hasher.update(presence_penalty.to_string().as_bytes());
@@ -301,7 +313,7 @@ impl Block for Chat {
             self.top_p,
             1,
             &self.stop,
-            None,
+            self.max_tokens,
             self.presence_penalty,
             self.frequency_penalty,
             extras,

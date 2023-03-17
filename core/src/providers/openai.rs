@@ -174,7 +174,7 @@ impl OpenAILLM {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => match self.id.starts_with("gpt-3.5-turbo") {
+            _ => match self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
                 true => cl100k_base_singleton(),
                 false => r50k_base_singleton(),
             },
@@ -876,14 +876,20 @@ impl LLM for OpenAILLM {
     }
 
     fn context_size(&self) -> usize {
+        if self.id.starts_with("gpt-3.5-turbo") {
+            return 4096;
+        }
+        if self.id.starts_with("gpt-4-32k") {
+            return 32768;
+        }
+        if self.id.starts_with("gpt-4") {
+            return 8192;
+        }
         match self.id.as_str() {
             "code-davinci-002" => 8000,
             "text-davinci-002" => 4000,
             "text-davinci-003" => 4000,
-            _ => match self.id.starts_with("gpt-3.5-turbo") {
-                true => 4096,
-                false => 2048,
-            },
+            _ => 2048,
         }
     }
 

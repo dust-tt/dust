@@ -342,6 +342,9 @@ impl LLMChatRequest {
         stop.iter().for_each(|s| {
             hasher.update(s.as_bytes());
         });
+        if !max_tokens.is_none() {
+            hasher.update(max_tokens.unwrap().to_string().as_bytes());
+        }
         if !presence_penalty.is_none() {
             hasher.update(presence_penalty.unwrap().to_string().as_bytes());
         }

@@ -157,6 +157,7 @@ export function addBlock(spec, idx, blockType) {
         spec: {
           temperature: 0.7,
           instructions: "",
+          max_tokens: "",
           messages_code:
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
           stop: [],
@@ -346,6 +347,9 @@ export function dumpSpecification(spec, latestDatasets) {
       case "chat": {
         out += `chat ${block.name} {\n`;
         out += `  temperature: ${block.spec.temperature}\n`;
+        if (block.spec.max_tokens) {
+          out += `  max_tokens: ${block.spec.max_tokens}\n`;
+        }
         if (block.spec.stop && block.spec.stop.length > 0) {
           out += `  stop: \n\`\`\`\n${block.spec.stop.join("\n")}\n\`\`\`\n`;
         }
