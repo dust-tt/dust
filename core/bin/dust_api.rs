@@ -636,17 +636,6 @@ async fn run_helper(
     }
 
     if payload.inputs.is_some() {
-        if payload.run_type != run::RunType::Deploy {
-            Err((
-                StatusCode::BAD_REQUEST,
-                APIError {
-                    code: String::from("invalid_run_type_error"),
-                    message: String::from(
-                        "RunType `deploy` is expected when `inputs` are provided",
-                    ),
-                },
-            ))?
-        }
 
         d = match dataset::Dataset::new_from_jsonl("inputs", payload.inputs.unwrap()).await {
             Err(e) => Err((
