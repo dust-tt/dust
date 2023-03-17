@@ -43,7 +43,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
       ),
     },
     {
-      name: "Execute",
+      name: "Run",
       href: `/${user}/a/${app.sId}/execute`,
       icon: (
         <BoltIcon

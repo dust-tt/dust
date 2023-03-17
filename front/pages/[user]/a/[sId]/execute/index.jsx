@@ -283,7 +283,7 @@ export default function ExecuteView({
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            currentTab="Execute"
+            currentTab="Run"
             user={user}
           />
         </div>
