@@ -114,7 +114,7 @@ export default async function handler(req, res) {
         run_type: "local",
         specification: spec,
         dataset_id: inputDataset ? inputDataset : null,
-        inputs: req.body.inputData ? req.body.inputData : null,
+        inputs: req.body.inputs ? req.body.inputs : null,
         config: { blocks: config },
         credentials,
       };

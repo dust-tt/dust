@@ -226,7 +226,7 @@ export default function ExecuteView({
       const requestBody = {
         specification: JSON.stringify(spec),
         config: JSON.stringify(config),
-        inputData: [inputData],
+        inputs: [inputData],
         isExecuteMode: true,
         stream: true,
       };
