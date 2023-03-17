@@ -135,7 +135,9 @@ export default async function handler(req, res) {
 
     case "GET":
       const documentRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents/${documentId}`,
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "GET",
         }
@@ -157,7 +159,9 @@ export default async function handler(req, res) {
 
     case "DELETE":
       const delRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents/${documentId}`,
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "DELETE",
         }

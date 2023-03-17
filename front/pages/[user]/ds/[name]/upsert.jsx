@@ -42,7 +42,9 @@ export default function DataSourceUpsert({
       setDownloading(true);
       setDisabled(true);
       fetch(
-        `/api/data_sources/${user}/${dataSource.name}/documents/${loadDocumentId}`
+        `/api/data_sources/${user}/${
+          dataSource.name
+        }/documents/${encodeURIComponent(loadDocumentId)}`
       ).then(async (res) => {
         if (res.ok) {
           const document = await res.json();
@@ -77,7 +79,9 @@ export default function DataSourceUpsert({
   const handleUpsert = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${documentId}`,
+      `/api/data_sources/${session.user.username}/${
+        dataSource.name
+      }/documents/${encodeURIComponent(documentId)}`,
       {
         method: "POST",
         headers: {

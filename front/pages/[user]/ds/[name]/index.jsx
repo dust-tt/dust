@@ -44,7 +44,9 @@ export default function DataSourceView({
       )
     ) {
       let r = await fetch(
-        `/api/data_sources/${session.user.username}/${dataSource.name}/documents/${documentId}`,
+        `/api/data_sources/${session.user.username}/${
+          dataSource.name
+        }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "DELETE",
         }
@@ -150,7 +152,9 @@ export default function DataSourceView({
                     className="px-2 px-4 rounded border border-gray-300 group"
                   >
                     <Link
-                      href={`/${user}/ds/${dataSource.name}/upsert?documentId=${d.document_id}`}
+                      href={`/${user}/ds/${
+                        dataSource.name
+                      }/upsert?documentId=${encodeURIComponent(d.document_id)}`}
                       className="block"
                     >
                       <div className="py-4 mx-2">
