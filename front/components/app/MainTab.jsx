@@ -42,6 +42,10 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
         />
       ),
     },
+    {
+      name: "Execute",
+      href: `/${user}/a/${app.sId}/execute`,
+      icon: (
         <BoltIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
           aria-hidden="true"
