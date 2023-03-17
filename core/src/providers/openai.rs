@@ -481,15 +481,15 @@ impl OpenAILLM {
             // .header("OpenAI-Organization", "openai")
             .body(Body::from(body.to_string()))?;
 
-        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+        let res = match timeout(Duration::new(120, 0), cli.request(req)).await {
             Ok(Ok(res)) => res,
             Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 120s"))?,
         };
-        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+        let body = match timeout(Duration::new(120, 0), hyper::body::aggregate(res)).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 120s"))?,
         };
 
         let mut b: Vec<u8> = vec![];
@@ -807,15 +807,15 @@ impl OpenAILLM {
             // .header("OpenAI-Organization", "openai")
             .body(Body::from(body.to_string()))?;
 
-        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+        let res = match timeout(Duration::new(120, 0), cli.request(req)).await {
             Ok(Ok(res)) => res,
             Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 120s"))?,
         };
-        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+        let body = match timeout(Duration::new(120, 0), hyper::body::aggregate(res)).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 120s"))?,
         };
 
         let mut b: Vec<u8> = vec![];
