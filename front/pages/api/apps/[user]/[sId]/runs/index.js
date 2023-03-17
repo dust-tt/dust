@@ -119,7 +119,7 @@ export default async function handler(req, res) {
         credentials,
       };
 
-      if (req.body.stream) {
+      if (req.body.mode === "execute") {
         const runRes = await fetch(
           `${DUST_API}/projects/${app.dustAPIProjectId}/runs/stream`,
           {
@@ -152,41 +152,39 @@ export default async function handler(req, res) {
           console.log("ERROR streaming from Dust API", e);
         }
         res.end();
-        break;
-      }
+        return;
+      } else if (req.body.mode === "design") {
+        const runRes = await fetch(
+          `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(runRequestParams),
+          }
+        );
 
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(runRequestParams),
+        if (!runRes.ok) {
+          const error = await runRes.json();
+          res.status(400).json(error.error);
+          break;
         }
-      );
 
-      if (!runRes.ok) {
-        const error = await runRes.json();
-        res.status(400).json(error.error);
-        break;
+        const run = await runRes.json();
+
+        await app.update({
+          savedSpecification: req.body.specification,
+          savedConfig: req.body.config,
+          savedRun: run.response.run.run_id,
+        });
+
+        res.status(200).json({ run: run.response.run });
+
+        return;
       }
-
-      const run = await runRes.json();
-
-      const updateParams = {
-        savedSpecification: req.body.specification,
-        savedConfig: req.body.config,
-      };
-
-      if (!req.body.isExecuteMode) {
-        updateParams.savedRun = run.response.run.run_id;
-      }
-
-      await app.update(updateParams);
-
-      res.status(200).json({ run: run.response.run });
-      break;
+      res.status(400).end();
+      return;
 
     case "GET":
       let limit = req.query.limit ? parseInt(req.query.limit) : 10;

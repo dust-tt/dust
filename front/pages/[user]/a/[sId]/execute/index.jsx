@@ -227,8 +227,7 @@ export default function ExecuteView({
         specification: JSON.stringify(spec),
         config: JSON.stringify(config),
         inputs: [inputData],
-        isExecuteMode: true,
-        stream: true,
+        mode: "execute",
       };
       const source = new SSE(
         `/api/apps/${session.user.username}/${app.sId}/runs`,

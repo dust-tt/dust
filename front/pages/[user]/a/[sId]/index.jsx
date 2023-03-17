@@ -200,6 +200,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
           body: JSON.stringify({
             specification: JSON.stringify(spec),
             config: JSON.stringify(config),
+            mode: "design",
           }),
         }),
       ]);
