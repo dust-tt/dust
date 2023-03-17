@@ -243,7 +243,6 @@ export default function ExecuteView({
       source.onmessage = (event) => {
         const parsedEvent = JSON.parse(event.data);
 
-        console.log({ event_type: parsedEvent.type });
         if (["block_status", "block_execution"].includes(parsedEvent.type)) {
           setExecutionLogs(
             ({ blockOrder, lastEventByBlockName, outputByBlockName }) => {
