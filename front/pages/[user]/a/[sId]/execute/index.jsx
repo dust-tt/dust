@@ -173,7 +173,7 @@ export default function ExecuteView({
   const [spec, _setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
   const [config, __setConfig] = useState(extractConfig(spec));
   const [inputDatasetKeys, _setInputDatasetKeys] = useState(
-    checkDatasetData(inputDataset.dataset.data, false)
+    inputDataset ? checkDatasetData(inputDataset.dataset.data, false) : []
   );
 
   const [inputData, setInputData] = useState({});
@@ -354,19 +354,24 @@ export async function getServerSideProps(context) {
 
   const savedSpecification = JSON.parse(app.app.savedSpecification || "[]");
   const inputBlock = savedSpecification.find((block) => block.type === "input");
-  const inputDatasetName = inputBlock.config.dataset;
 
-  const inputDatasetRes = await fetch(
-    `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets/${inputDatasetName}/latest`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }
-  );
-  const inputDataset = await inputDatasetRes.json();
+  let inputDataset = null;
+
+  if (inputBlock) {
+    const inputDatasetName = inputBlock.config.dataset;
+
+    const inputDatasetRes = await fetch(
+      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets/${inputDatasetName}/latest`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: context.req.headers.cookie,
+        },
+      }
+    );
+    inputDataset = await inputDatasetRes.json();
+  }
 
   const [specRes] = await Promise.all([
     fetch(
@@ -387,7 +392,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const [specData] = await Promise.all([specRes.json()]);
+  const specData = await specRes.json();
 
   return {
     props: {
