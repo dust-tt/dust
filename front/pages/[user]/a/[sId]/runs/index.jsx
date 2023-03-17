@@ -58,7 +58,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            currentTab="Runs"
+            currentTab="Logs"
             user={user}
             readOnly={readOnly}
           />
