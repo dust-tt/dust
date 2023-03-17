@@ -6,7 +6,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 
