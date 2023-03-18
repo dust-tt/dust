@@ -64,6 +64,10 @@ function Spinner() {
   );
 }
 
+function VerticalSpacer({ size = 1 }) {
+  return <div className={`mb-${size}`} />;
+}
+
 function ExecuteOutputLine({
   blockName,
   outputForBlock,
@@ -124,7 +128,6 @@ function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
           />
         );
       })}
-      <br /> {/*TODO: no br*/}
     </>
   ) : null;
 }
@@ -323,22 +326,26 @@ export default function ExecuteView({
                 </li>
               ))}
             </ul>
-            <br /> {/* TODO: no br */}
+
             {executionLogs.blockOrder.length ? (
-              <ExecuteOutput
-                executionLogs={executionLogs}
-                expandedByBlockName={outputExpandedByBlockName}
-                onToggleExpand={(blockName) => {
-                  setOutputExpandedByBlockName((prev) => {
-                    const newExpanded = { ...prev };
-                    newExpanded[blockName] = !newExpanded[blockName];
-                    return newExpanded;
-                  });
-                }}
-              />
+              <>
+                <VerticalSpacer size={4} />
+                <ExecuteOutput
+                  executionLogs={executionLogs}
+                  expandedByBlockName={outputExpandedByBlockName}
+                  onToggleExpand={(blockName) => {
+                    setOutputExpandedByBlockName((prev) => {
+                      const newExpanded = { ...prev };
+                      newExpanded[blockName] = !newExpanded[blockName];
+                      return newExpanded;
+                    });
+                  }}
+                />
+              </>
             ) : null}
+            <VerticalSpacer size={4} />
             <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
-              <div className="-mr-2 sm:mr-0">
+              <div className="mt-100">
                 <ActionButton
                   disabled={isRunning || !isInputDataValid()}
                   onClick={() => handleRun()}
