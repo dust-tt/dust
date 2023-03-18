@@ -20,6 +20,7 @@ import { ActionButton, Button } from "../../../../../components/Button";
 import { extractConfig } from "../../../../../lib/config";
 import { checkDatasetData } from "../../../../../lib/datasets";
 import { classNames } from "../../../../../lib/utils";
+import { useSavedRunStatus } from "../../../../../lib/swr";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -192,6 +193,23 @@ export default function ExecuteView({
   const [outputExpandedByBlockName, setOutputExpandedByBlockName] = useState(
     {}
   );
+
+  const {
+    run: savedRun,
+    _isRunLoading,
+    _isRunError,
+  } = useSavedRunStatus(user, app, (data) => {
+    if (data && data.run) {
+      switch (data?.run.status.run) {
+        case "running":
+          return 100;
+        default:
+          return 0;
+      }
+    }
+    return 0;
+  });
+
   const expandLastBlockOutput = () => {
     const lastBlockName =
       executionLogs.blockOrder[executionLogs.blockOrder.length - 1];
@@ -223,12 +241,16 @@ export default function ExecuteView({
     setOutputExpandedByBlockName({});
 
     setTimeout(async () => {
+      const specificationHash = savedRun?.app_hash;
+
       const requestBody = {
-        specification: JSON.stringify(spec),
+        specification: specificationHash ? null : JSON.stringify(spec),
+        specificationHash,
         config: JSON.stringify(config),
         inputs: [inputData],
         mode: "execute",
       };
+
       const source = new SSE(
         `/api/apps/${session.user.username}/${app.sId}/runs`,
         {

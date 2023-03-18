@@ -64,8 +64,11 @@ export default async function handler(req, res) {
 
       if (
         !req.body ||
-        !(typeof req.body.specification == "string") ||
-        !(typeof req.body.config == "string")
+        !(typeof req.body.config == "string") ||
+        !(
+          typeof req.body.specification === "string" ||
+          typeof req.body.specificationHash === "string"
+        )
       ) {
         res.status(400).end();
         break;
@@ -87,10 +90,12 @@ export default async function handler(req, res) {
       for (const d in datasets.response.datasets) {
         latestDatasets[d] = datasets.response.datasets[d][0].hash;
       }
-      let spec = dumpSpecification(
-        JSON.parse(req.body.specification),
-        latestDatasets
-      );
+
+      const spec = !req.body.specificationHash
+        ? dumpSpecification(JSON.parse(req.body.specification), latestDatasets)
+        : null;
+
+      const specHash = req.body.specificationHash;
 
       let config = JSON.parse(req.body.config);
       let inputDataset = null;
@@ -112,7 +117,8 @@ export default async function handler(req, res) {
 
       const runRequestParams = {
         run_type: "local",
-        specification: spec,
+        specification: !specHash ? spec : null,
+        specification_hash: specHash || null,
         dataset_id: inputDataset ? inputDataset : null,
         inputs: req.body.inputs ? req.body.inputs : null,
         config: { blocks: config },
