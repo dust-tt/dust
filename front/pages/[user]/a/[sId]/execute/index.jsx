@@ -167,12 +167,11 @@ export default function ExecuteView({
   user,
   ga_tracking_id,
   inputDataset,
+  savedSpecification,
+  config,
 }) {
   const { data: session } = useSession();
 
-  // TODO: check idiomatic way to do this
-  const [spec, _setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
-  const [config, __setConfig] = useState(extractConfig(spec));
   const [inputDatasetKeys, _setInputDatasetKeys] = useState(
     inputDataset ? checkDatasetData(inputDataset.dataset.data, false) : []
   );
@@ -244,7 +243,9 @@ export default function ExecuteView({
       const specificationHash = savedRun?.app_hash;
 
       const requestBody = {
-        specification: specificationHash ? null : JSON.stringify(spec),
+        specification: specificationHash
+          ? null
+          : JSON.stringify(savedSpecification),
         specificationHash,
         config: JSON.stringify(config),
         inputs: [inputData],
@@ -375,6 +376,7 @@ export async function getServerSideProps(context) {
   const app = await appRes.json();
 
   const savedSpecification = JSON.parse(app.app.savedSpecification || "[]");
+  const config = extractConfig(savedSpecification);
   const inputBlock = savedSpecification.find((block) => block.type === "input");
 
   let inputDataset = null;
@@ -395,31 +397,13 @@ export async function getServerSideProps(context) {
     inputDataset = await inputDatasetRes.json();
   }
 
-  const specRes = await fetch(
-    `${URL}/api/apps/${context.query.user}/${context.query.sId}/specification`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }
-  );
-
-  if (specRes.status === 404) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const specData = await specRes.json();
-
   return {
     props: {
       app: app.app,
       user: context.query.user,
       ga_tracking_id: GA_TRACKING_ID,
-      specification: specData.specification,
+      savedSpecification,
+      config,
       inputDataset: inputDataset,
     },
   };
