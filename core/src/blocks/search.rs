@@ -1,17 +1,49 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
 use crate::http::request::HttpRequest;
+use crate::utils::ParseError;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 use urlencoding::encode;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
     pub error: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchProviderID {
+    SerpAPI,
+    Serper,
+}
+
+impl ToString for SearchProviderID {
+    fn to_string(&self) -> String {
+        match self {
+            SearchProviderID::SerpAPI => String::from("serpapi"),
+            SearchProviderID::Serper => String::from("serper"),
+        }
+    }
+}
+
+impl FromStr for SearchProviderID {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "serpapi" => Ok(SearchProviderID::SerpAPI),
+            "serper" => Ok(SearchProviderID::Serper),
+            _ => Err(ParseError::with_message(
+                "Unknown search provider ID (possible values: serpapi, serper)",
+            )),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -100,6 +132,41 @@ impl Block for Search {
     ) -> Result<Value> {
         let config = env.config.config_for_block(name);
 
+        let provider_id = match config {
+            Some(v) => {
+                let provider_id = match v.get("provider_id") {
+                    Some(v) => match v {
+                        Value::String(s) => match SearchProviderID::from_str(s) {
+                            Ok(p) => p,
+                            Err(e) => Err(anyhow!(
+                                "Invalid `provider_id` `{}` in configuration \
+                                 for search block `{}`: {}",
+                                s,
+                                name,
+                                e
+                            ))?,
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `provider_id` in configuration for search block `{}`: \
+                             string expected",
+                            name
+                        ))?,
+                    },
+                    _ => Err(anyhow!(
+                        "Missing `provider_id` in configuration for search block `{}`",
+                        name
+                    ))?,
+                };
+
+                provider_id
+            }
+            _ => Err(anyhow!(
+                "Missing configuration for search block `{}`, \
+                 expecting `{{ \"provider_id\": ... }}`",
+                name
+            ))?,
+        };
+
         let use_cache = match config {
             Some(v) => match v.get("use_cache") {
                 Some(v) => match v {
@@ -113,33 +180,62 @@ impl Block for Search {
 
         let query = replace_variables_in_string(&self.query, "query", env)?;
 
-        let serp_api_key = match env.credentials.get("SERP_API_KEY") {
+        let credential_key = match provider_id {
+            SearchProviderID::SerpAPI => "SERP_API_KEY",
+            SearchProviderID::Serper => "SERPER_API_KEY",
+        };
+
+        let provider_api_key = match env.credentials.get(credential_key) {
             Some(api_key) => Ok(api_key.clone()),
-            None => match std::env::var("SERP_API_KEY") {
+            None => match std::env::var(credential_key) {
                 Ok(key) => Ok(key),
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `SERP_API_KEY` is not set."
-                )),
+                Err(_) => Err(anyhow!(format!(
+                    "Credentials or environment variable `{}` is not set.",
+                    credential_key
+                ))),
             },
         }?;
 
-        let url = match self.num {
-            None => format!(
-                "https://serpapi.com/search?q={}&engine={}&api_key={}",
-                encode(&query),
-                self.engine,
-                serp_api_key
-            ),
-            Some(n) => format!(
-                "https://serpapi.com/search?q={}&num={}&engine={}&api_key={}",
-                encode(&query),
-                n,
-                self.engine,
-                serp_api_key,
-            ),
-        };
+        let request = match provider_id {
+            SearchProviderID::SerpAPI => {
+                let url = match self.num {
+                    None => format!(
+                        "https://serpapi.com/search?q={}&engine={}&api_key={}",
+                        encode(&query),
+                        self.engine,
+                        provider_api_key
+                    ),
+                    Some(n) => format!(
+                        "https://serpapi.com/search?q={}&num={}&engine={}&api_key={}",
+                        encode(&query),
+                        n,
+                        self.engine,
+                        provider_api_key,
+                    ),
+                };
 
-        let request = HttpRequest::new("GET", url.as_str(), json!({}), Value::Null)?;
+                let request = HttpRequest::new("GET", url.as_str(), json!({}), Value::Null)?;
+
+                request
+            }
+            SearchProviderID::Serper => {
+                let url = "https://google.serper.dev/search";
+
+                let headers = json!({
+                    "X-API-KEY": provider_api_key,
+                    "Content-Type": "application/json"
+                });
+
+                let body = json!({
+                    "q": query,
+                    "num": self.num.unwrap_or(10),
+                });
+
+                let request = HttpRequest::new("POST", url, headers, body)?;
+
+                request
+            }
+        };
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
@@ -148,7 +244,7 @@ impl Block for Search {
         match response.status {
             200 => Ok(response.body),
             s => Err(anyhow!(
-                "SerpAPIError: Unexpected error with HTTP status {}.",
+                "SearchError: Unexpected error with HTTP status {}.",
                 s
             )),
         }

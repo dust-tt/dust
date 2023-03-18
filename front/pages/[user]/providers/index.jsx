@@ -9,6 +9,7 @@ import OpenAISetup from "../../../components/providers/OpenAISetup";
 import CohereSetup from "../../../components/providers/CohereSetup";
 import AI21Setup from "../../../components/providers/AI21Setup";
 import SerpAPISetup from "../../../components/providers/SerpAPISetup";
+import SerperSetup from "../../../components/providers/SerperSetup";
 import BrowserlessAPISetup from "../../../components/providers/BrowserlessAPISetup";
 
 import { useState } from "react";
@@ -24,6 +25,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
   const [cohereOpen, setCohereOpen] = useState(false);
   const [ai21Open, setAI21Open] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
+  const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
   let { providers, isProvidersLoading, isProvidersError } = useProviders();
@@ -67,6 +69,12 @@ export default function ProfileProviders({ ga_tracking_id }) {
           enabled={configs["serpapi"] ? true : false}
           config={configs["serpapi"] ? configs["serpapi"] : null}
         />
+        <SerperSetup
+          open={serperOpen}
+          setOpen={setSerperOpen}
+          enabled={configs["serper"] ? true : false}
+          config={configs["serper"] ? configs["serper"] : null}
+        />
         <BrowserlessAPISetup
           open={browserlessapiOpen}
           setOpen={setBrowserlessapiOpen}
@@ -75,9 +83,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
         />
 
         <div className="">
-          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="px-6 mx-auto space-y-4 divide-y divide-gray-200 sm:max-w-2xl lg:max-w-4xl">
             <div className="sm:flex sm:items-center">
-              <div className="sm:flex-auto mt-8">
+              <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
                   Model Providers
                 </h1>
@@ -149,9 +157,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
             </ul>
           </div>
 
-          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="px-6 mx-auto space-y-4 divide-y divide-gray-200 sm:max-w-2xl lg:max-w-4xl">
             <div className="sm:flex sm:items-center">
-              <div className="sm:flex-auto mt-8">
+              <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
                   Service Providers
                 </h1>
@@ -200,6 +208,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
                           switch (provider.providerId) {
                             case "serpapi":
                               setSerpapiOpen(true);
+                              break;
+                            case "serper":
+                              setSerperOpen(true);
                               break;
                             case "browserlessapi":
                               setBrowserlessapiOpen(true);

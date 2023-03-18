@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug dust-api",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=dust-api",
+                    "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+                ],
+                "filter": {
+                    "name": "dust-api",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+        }
+    ]
+}
