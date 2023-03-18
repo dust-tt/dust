@@ -1,12 +1,12 @@
-import AppLayout from "../../../components/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
-import { classNames } from "../../../lib/utils";
-import { Button } from "../../../components/Button";
+import { classNames } from "@app/lib/utils";
+import { Button } from "@app/components/Button";
 import { useState } from "react";
-import { useKeys } from "../../../lib/swr";
+import { useKeys } from "@app/lib/swr";
 import { mutate } from "swr";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 

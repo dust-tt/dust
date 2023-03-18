@@ -1,6 +1,6 @@
-import { classNames } from "../../lib/utils";
-import { Button } from "../Button";
-import { checkDatasetData } from "../../lib/datasets";
+import { classNames } from "@app/lib/utils";
+import { Button } from "@app/components/Button";
+import { checkDatasetData } from "@app/lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";

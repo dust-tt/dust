@@ -1,4 +1,4 @@
-import { classNames } from "../lib/utils";
+import { classNames } from "@app/lib/utils";
 
 export function Button({ type, onClick, disabled, children }) {
   return (

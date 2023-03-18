@@ -1,5 +1,5 @@
 import Block from "./Block";
-import { classNames, shallowBlockClone } from "../../../lib/utils";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 export function Map({
   user,

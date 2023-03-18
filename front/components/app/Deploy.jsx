@@ -1,10 +1,10 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { useKeys } from "../../lib/swr";
-import { classNames } from "../../lib/utils";
+import { useKeys } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import { Dialog, Transition } from "@headlessui/react";
 import { DocumentDuplicateIcon, CubeIcon } from "@heroicons/react/20/solid";
-import { HighlightButton, ActionButton, Button } from "../Button";
+import { HighlightButton, ActionButton, Button } from "@app/components/Button";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
 import dynamic from "next/dynamic";

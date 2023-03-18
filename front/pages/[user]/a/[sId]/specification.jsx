@@ -1,7 +1,7 @@
-import AppLayout from "../../../../components/AppLayout";
-import MainTab from "../../../../components/app/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 
 const { URL, DUST_API, GA_TRACKING_ID = null } = process.env;
 

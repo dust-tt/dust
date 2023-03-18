@@ -1,8 +1,8 @@
 import { useState } from "react";
 import Block from "./Block";
-import { classNames, shallowBlockClone } from "../../../lib/utils";
-import { useProviders } from "../../../lib/swr";
-import { filterServiceProviders } from "../../../lib/providers";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { useProviders } from "@app/lib/swr";
+import { filterServiceProviders } from "@app/lib/providers";
 import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 

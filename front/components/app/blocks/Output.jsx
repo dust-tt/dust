@@ -1,5 +1,5 @@
-import { classNames } from "../../../lib/utils";
-import { useRunBlock } from "../../../lib/swr";
+import { classNames } from "@app/lib/utils";
+import { useRunBlock } from "@app/lib/swr";
 import {
   ExclamationCircleIcon,
   CheckCircleIcon,

@@ -1,20 +1,20 @@
-import AppLayout from "../../../components/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
-import { classNames } from "../../../lib/utils";
-import { Button } from "../../../components/Button";
-import OpenAISetup from "../../../components/providers/OpenAISetup";
-import CohereSetup from "../../../components/providers/CohereSetup";
-import AI21Setup from "../../../components/providers/AI21Setup";
-import SerpAPISetup from "../../../components/providers/SerpAPISetup";
-import SerperSetup from "../../../components/providers/SerperSetup";
-import BrowserlessAPISetup from "../../../components/providers/BrowserlessAPISetup";
+import { classNames } from "@app/lib/utils";
+import { Button } from "@app/components/Button";
+import OpenAISetup from "@app/components/providers/OpenAISetup";
+import CohereSetup from "@app/components/providers/CohereSetup";
+import AI21Setup from "@app/components/providers/AI21Setup";
+import SerpAPISetup from "@app/components/providers/SerpAPISetup";
+import SerperSetup from "@app/components/providers/SerperSetup";
+import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
 
 import { useState } from "react";
-import { useProviders } from "../../../lib/swr";
-import { modelProviders, serviceProviders } from "../../../lib/providers";
+import { useProviders } from "@app/lib/swr";
+import { modelProviders, serviceProviders } from "@app/lib/providers";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 

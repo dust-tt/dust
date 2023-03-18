@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Disclosure, Menu } from "@headlessui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
-import { classNames } from "../lib/utils";
+import { classNames } from "@app/lib/utils";
 import {
   ChevronRightIcon,
   ComputerDesktopIcon,

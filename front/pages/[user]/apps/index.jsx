@@ -1,12 +1,12 @@
-import AppLayout from "../../../components/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
-import { Button } from "../../../components/Button";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/profile/MainTab";
+import { Button } from "@app/components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { classNames, communityApps } from "../../../lib/utils";
+import { classNames, communityApps } from "@app/lib/utils";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 

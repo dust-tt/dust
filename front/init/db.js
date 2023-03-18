@@ -8,7 +8,7 @@ import {
   DataSource,
   XP1Run,
   XP1User,
-} from "../lib/models.js";
+} from '@app/lib/models.js';
 
 async function main() {
   await User.sync({ alter: true });

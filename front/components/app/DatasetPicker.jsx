@@ -1,6 +1,6 @@
 import { Menu } from "@headlessui/react";
-import { classNames } from "../../lib/utils";
-import { useDatasets } from "../../lib/swr";
+import { classNames } from "@app/lib/utils";
+import { useDatasets } from "@app/lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 
