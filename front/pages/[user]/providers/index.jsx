@@ -208,7 +208,6 @@ export default function ProfileProviders({ ga_tracking_id }) {
                           switch (provider.providerId) {
                             case "serpapi":
                               setSerpapiOpen(true);
-                              setSerpapiOpen(true);
                               break;
                             case "serper":
                               setSerperOpen(true);

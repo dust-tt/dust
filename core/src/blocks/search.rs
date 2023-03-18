@@ -132,7 +132,7 @@ impl Block for Search {
     ) -> Result<Value> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id) = match config {
+        let provider_id = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -140,29 +140,29 @@ impl Block for Search {
                             Ok(p) => p,
                             Err(e) => Err(anyhow!(
                                 "Invalid `provider_id` `{}` in configuration \
-                                 for llm block `{}`: {}",
+                                 for search block `{}`: {}",
                                 s,
                                 name,
                                 e
                             ))?,
                         },
                         _ => Err(anyhow!(
-                            "Invalid `provider_id` in configuration for llm block `{}`: \
+                            "Invalid `provider_id` in configuration for search block `{}`: \
                              string expected",
                             name
                         ))?,
                     },
                     _ => Err(anyhow!(
-                        "Missing `provider_id` in configuration for llm block `{}`",
+                        "Missing `provider_id` in configuration for search block `{}`",
                         name
                     ))?,
                 };
 
-                (provider_id)
+                provider_id
             }
             _ => Err(anyhow!(
-                "Missing configuration for llm block `{}`, \
-                 expecting `{{ \"provider_id\": ..., \"model_id\": ... }}`",
+                "Missing configuration for search block `{}`, \
+                 expecting `{{ \"provider_id\": ... }}`",
                 name
             ))?,
         };
@@ -196,7 +196,7 @@ impl Block for Search {
             },
         }?;
 
-        let (request) = match provider_id {
+        let request = match provider_id {
             SearchProviderID::SerpAPI => {
                 let url = match self.num {
                     None => format!(
