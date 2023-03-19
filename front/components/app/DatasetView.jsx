@@ -1,6 +1,6 @@
 import { classNames } from "../../lib/utils";
 import { Button } from "../Button";
-import { checkDatasetData } from "../../lib/datasets";
+import { checkDatasetData } from "@app/lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -107,7 +107,7 @@ export default function DatasetView({
   if (!dataset.keys) {
     dataset.keys = [];
     try {
-      dataset.keys = checkDatasetData(datasetData, false);
+      dataset.keys = checkDatasetData(datasetData);
     } catch (e) {
       // no-op
     }
@@ -341,7 +341,7 @@ export default function DatasetView({
     }
     let keys = [];
     try {
-      keys = checkDatasetData(data, false);
+      keys = checkDatasetData(data);
     } catch (e) {
       window.alert(`${e}`);
     }

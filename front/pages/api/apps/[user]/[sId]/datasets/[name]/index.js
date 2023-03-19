@@ -1,7 +1,7 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../auth/[...nextauth]";
 import { User, App, Dataset } from "../../../../../../../lib/models";
-import { checkDatasetData } from "../../../../../../../lib/datasets";
+import { checkDatasetData } from "@app/lib/datasets";
 
 const { DUST_API } = process.env;
 
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
       // Check data validity.
       try {
-        checkDatasetData(req.body.data, false);
+        checkDatasetData(req.body.data);
       } catch (e) {
         res.status(400).end();
         break;
