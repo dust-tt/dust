@@ -1,5 +1,5 @@
 import { useSession } from "next-auth/react";
-import { classNames } from "../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 import { CodeBracketIcon, ChevronDownIcon } from "@heroicons/react/24/solid";

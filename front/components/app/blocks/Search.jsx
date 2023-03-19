@@ -1,9 +1,9 @@
 import Block from './Block';
 import { Menu } from '@headlessui/react';
-import { classNames, shallowBlockClone } from '../../../lib/utils';
+import { classNames, shallowBlockClone } from '@app/lib/utils';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
-import { useProviders } from '../../../lib/swr';
-import { filterServiceProviders } from '../../../lib/providers';
+import { useProviders } from '@app/lib/swr';
+import { filterServiceProviders } from '@app/lib/providers';
 import Link from 'next/link';
 
 export default function Search({

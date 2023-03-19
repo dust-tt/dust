@@ -1,5 +1,5 @@
 import { PlusIcon } from "@heroicons/react/20/solid";
-import { classNames } from "../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import { Menu } from "@headlessui/react";
 
 export default function NewBlock({

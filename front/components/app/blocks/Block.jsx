@@ -1,4 +1,4 @@
-import { classNames } from "../../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import {
   TrashIcon,
   ChevronUpIcon,
@@ -10,7 +10,7 @@ import {
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import Output from "./Output";
-import NewBlock from "../NewBlock";
+import NewBlock from "@app/components/app/NewBlock";
 
 export default function Block({
   user,

@@ -1,14 +1,14 @@
-import AppLayout from "../../../../../components/AppLayout";
-import MainTab from "../../../../../components/app/MainTab";
-import { ActionButton } from "../../../../../components/Button";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
+import { ActionButton } from "@app/components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
-import DatasetView from "../../../../../components/app/DatasetView";
-import { useRegisterUnloadHandlers } from "../../../../../lib/front";
+import DatasetView from "@app/components/app/DatasetView";
+import { useRegisterUnloadHandlers } from "@app/lib/front";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 

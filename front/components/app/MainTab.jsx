@@ -1,4 +1,4 @@
-import { classNames } from "../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import Link from "next/link";
 import { CodeBracketIcon } from "@heroicons/react/24/solid";
 import { Menu } from "@headlessui/react";

@@ -1,5 +1,5 @@
-import { classNames } from "../../lib/utils";
-import { Button } from "../Button";
+import { classNames } from "@app/lib/utils";
+import { Button } from "@app/components/Button";
 import { checkDatasetData } from "@app/lib/datasets";
 import TextareaAutosize from "react-textarea-autosize";
 import { useState, useEffect, useRef } from "react";

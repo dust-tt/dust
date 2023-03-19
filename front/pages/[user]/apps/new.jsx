@@ -1,11 +1,11 @@
-import AppLayout from "../../../components/AppLayout";
-import MainTab from "../../../components/profile/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/profile/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../api/auth/[...nextauth]";
-import { Button } from "../../../components/Button";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { Button } from "@app/components/Button";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
-import { classNames } from "../../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
 const { URL, GA_TRACKING_ID = null } = process.env;

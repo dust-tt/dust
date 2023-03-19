@@ -1,15 +1,15 @@
-import AppLayout from "../../../../components/AppLayout";
-import MainTab from "../../../../components/data_source/MainTab";
-import { timeAgoFrom } from "../../../../lib/utils";
-import { ActionButton, Button } from "../../../../components/Button";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/data_source/MainTab";
+import { timeAgoFrom } from "@app/lib/utils";
+import { ActionButton, Button } from "@app/components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useSWRConfig } from "swr";
 import { useState } from "react";
-import { useDocuments } from "../../../../lib/swr";
+import { useDocuments } from "@app/lib/swr";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 

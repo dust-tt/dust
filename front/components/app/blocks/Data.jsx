@@ -1,5 +1,5 @@
 import Block from "./Block";
-import DatasetPicker from "../DatasetPicker";
+import DatasetPicker from "@app/components/app/DatasetPicker";
 
 export default function Data({
   user,

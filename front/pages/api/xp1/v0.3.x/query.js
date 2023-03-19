@@ -1,4 +1,4 @@
-import { XP1Run, XP1User } from "../../../../lib/models";
+import { XP1Run, XP1User } from '@app/lib/models';
 
 const {
   XP1_DUST_USER,

@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Script from "next/script";
-import { ActionButton, HighlightButton } from "../../components/Button";
-import { Logo } from "../../components/Logo";
+import { ActionButton, HighlightButton } from "@app/components/Button";
+import { Logo } from "@app/components/Logo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
