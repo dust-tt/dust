@@ -322,15 +322,13 @@ export default function ExecuteView({
             ) : null}
             <VerticalSpacer size={4} />
             <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
-              <div className="mt-100">
-                <ActionButton
-                  disabled={isRunning || !isInputDataValid()}
-                  onClick={() => handleRun()}
-                >
-                  <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-                  Run
-                </ActionButton>
-              </div>
+              <ActionButton
+                disabled={isRunning || !isInputDataValid()}
+                onClick={() => handleRun()}
+              >
+                <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                Run
+              </ActionButton>
             </div>
           </div>
         </div>
