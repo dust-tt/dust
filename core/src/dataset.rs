@@ -199,3 +199,24 @@ pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub async fn cmd_list() -> Result<()> {
+    let root_path = utils::init_check().await?;
+    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
+    store.init().await?;
+    let project = Project::new_from_id(1);
+
+    let d = store.list_datasets(&project).await?;
+
+    for (dataset_name, dataset_values) in d {
+        for (hash, created) in dataset_values {
+            utils::info(&format!(
+                "Dataset: {} hash={} created={}",
+                dataset_name,
+                hash,
+                utils::utc_date_from(created)
+            ));
+        }
+    }
+    Ok(())
+}
