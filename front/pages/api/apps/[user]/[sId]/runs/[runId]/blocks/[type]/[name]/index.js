@@ -1,6 +1,6 @@
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../../../../../auth/[...nextauth]";
-import { User, App } from "../../../../../../../../../../lib/models";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { User, App } from "@app/lib/models";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;

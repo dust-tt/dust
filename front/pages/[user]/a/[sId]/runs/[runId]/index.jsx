@@ -1,8 +1,8 @@
-import AppLayout from "../../../../../../components/AppLayout";
-import MainTab from "../../../../../../components/app/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../../api/auth/[...nextauth]";
-import SpecRunView from "../../../../../../components/app/SpecRunView";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import SpecRunView from "@app/components/app/SpecRunView";
 import { useSession } from "next-auth/react";
 
 const { URL, GA_TRACKING_ID = null } = process.env;

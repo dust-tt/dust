@@ -1,10 +1,10 @@
-import AppLayout from "../../../../components/AppLayout";
-import MainTab from "../../../../components/app/MainTab";
-import { Button } from "../../../../components/Button";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
+import { Button } from "@app/components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { classNames } from "../../../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";

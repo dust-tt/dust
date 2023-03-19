@@ -8,11 +8,11 @@ import {
   ArrowRightCircleIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
-import { ActionButton, Button } from "../components/Button";
-import { Logo } from "../components/Logo";
+import { ActionButton, Button } from "@app/components/Button";
+import { Logo } from "@app/components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { classNames, communityApps } from "../lib/utils";
+import { classNames, communityApps } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = null } = process.env;
 

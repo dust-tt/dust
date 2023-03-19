@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { classNames } from "../lib/utils";
+import { classNames } from "@app/lib/utils";
 
 export function Logo() {
   return (

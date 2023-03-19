@@ -1,27 +1,27 @@
-import AppLayout from "../../../../components/AppLayout";
-import MainTab from "../../../../components/app/MainTab";
-import { ActionButton, Button } from "../../../../components/Button";
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
+import { ActionButton, Button } from "@app/components/Button";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "../../../api/auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import {
   PlayCircleIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/20/solid";
-import NewBlock from "../../../../components/app/NewBlock";
+import NewBlock from "@app/components/app/NewBlock";
 import {
   addBlock,
   deleteBlock,
   moveBlockDown,
   moveBlockUp,
-} from "../../../../lib/specification";
+} from "@app/lib/specification";
 import { useState, useRef } from "react";
-import SpecRunView from "../../../../components/app/SpecRunView";
-import { extractConfig } from "../../../../lib/config";
-import { useSavedRunStatus } from "../../../../lib/swr";
+import SpecRunView from "@app/components/app/SpecRunView";
+import { extractConfig } from "@app/lib/config";
+import { useSavedRunStatus } from "@app/lib/swr";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import Deploy from "../../../../components/app/Deploy";
+import Deploy from "@app/components/app/Deploy";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 
 const { URL, GA_TRACKING_ID = null } = process.env;

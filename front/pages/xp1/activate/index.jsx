@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Script from "next/script";
-import { Logo } from "../../../components/Logo";
-import { HighlightButton } from "../../../components/Button";
+import { Logo } from "@app/components/Logo";
+import { HighlightButton } from "@app/components/Button";
 import { useEffect, useState } from "react";
 
 const { GA_TRACKING_ID = null } = process.env;

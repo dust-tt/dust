@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import "@uiw/react-textarea-code-editor/dist.css";
-import { classNames, shallowBlockClone } from "../../../lib/utils";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

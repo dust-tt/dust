@@ -1,6 +1,6 @@
 import Block from "./Block";
-import { shallowBlockClone } from "../../../lib/utils";
-import DatasetPicker from "../DatasetPicker";
+import { shallowBlockClone } from "@app/lib/utils";
+import DatasetPicker from "@app/components/app/DatasetPicker";
 
 export default function Input({
   user,

@@ -1,13 +1,13 @@
 import { Menu } from "@headlessui/react";
-import { classNames } from "../../lib/utils";
+import { classNames } from "@app/lib/utils";
 import { useEffect } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { getDataSources, lookUpDataSource } from "../../lib/data_source";
+import { getDataSources, lookUpDataSource } from "@app/lib/data_source";
 import { useState } from "react";
-import { Button } from "../Button";
+import { Button } from "@app/components/Button";
 import TextareaAutosize from "react-textarea-autosize";
-import { useDataSources } from "../../lib/swr";
+import { useDataSources } from "@app/lib/swr";
 
 export default function DataSourcePicker({
   currentUser,

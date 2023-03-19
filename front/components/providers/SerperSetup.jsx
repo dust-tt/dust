@@ -1,8 +1,8 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { ActionButton, Button } from "../Button";
+import { ActionButton, Button } from "@app/components/Button";
 import { useSWRConfig } from "swr";
-import { checkProvider } from "../../lib/providers";
+import { checkProvider } from "@app/lib/providers";
 
 export default function SerperSetup({ open, setOpen, config, enabled }) {
   const { mutate } = useSWRConfig();
