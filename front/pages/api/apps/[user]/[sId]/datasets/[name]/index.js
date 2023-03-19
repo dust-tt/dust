@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
       // Check data validity.
       try {
-        checkDatasetData(req.body.data, false);
+        checkDatasetData(req.body.data);
       } catch (e) {
         res.status(400).end();
         break;
