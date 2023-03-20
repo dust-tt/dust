@@ -18,7 +18,11 @@ import MainTab from "../../../../../components/app/MainTab";
 import AppLayout from "../../../../../components/AppLayout";
 import { ActionButton, Button } from "../../../../../components/Button";
 import { extractConfig } from "../../../../../lib/config";
-import { checkDatasetData, getDatasetTypes } from "../../../../../lib/datasets";
+import {
+  checkDatasetData,
+  getDatasetTypes,
+  getValueType,
+} from "../../../../../lib/datasets";
 import { classNames } from "../../../../../lib/utils";
 import { useSavedRunStatus } from "../../../../../lib/swr";
 import { Spinner } from "../../../../../components/Spinner";
@@ -131,7 +135,9 @@ function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
       <div
         className={classNames(
           "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
-          "border-slate-100"
+          getValueType(inputValue) === inputType
+            ? "border-slate-100"
+            : "border-red-500"
         )}
       >
         {inputType === "object" ? (
@@ -192,7 +198,11 @@ export default function ExecuteView({
 
   const [inputData, setInputData] = useState({});
   const isInputDataValid = () =>
-    inputDatasetKeys.every((k) => (inputData[k] || "").length > 0);
+    inputDatasetKeys.every(
+      (k) =>
+        (inputData[k] || "").length > 0 &&
+        getValueType(inputData[k]) === datasetTypes[k]
+    );
 
   const [isRunning, setIsRunning] = useState(false);
   const [isRunComplete, setIsRunComplete] = useState(false);
