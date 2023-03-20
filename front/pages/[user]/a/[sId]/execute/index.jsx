@@ -55,9 +55,7 @@ function preProcessOutput(output) {
   ) {
     return null;
   }
-  if (output.completion?.text) {
-    return output.completion.text;
-  }
+
   return output;
 }
 
