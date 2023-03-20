@@ -18,12 +18,18 @@ import MainTab from "../../../../../components/app/MainTab";
 import AppLayout from "../../../../../components/AppLayout";
 import { ActionButton, Button } from "../../../../../components/Button";
 import { extractConfig } from "../../../../../lib/config";
-import { checkDatasetData } from "../../../../../lib/datasets";
+import { checkDatasetData, getDatasetTypes } from "../../../../../lib/datasets";
 import { classNames } from "../../../../../lib/utils";
 import { useSavedRunStatus } from "../../../../../lib/swr";
 import { Spinner } from "../../../../../components/Spinner";
+import dynamic from "next/dynamic";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
+
+const CodeEditor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 function preProcessOutput(output) {
   if (Array.isArray(output) && output.length === 1) {
@@ -109,7 +115,7 @@ function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
   ) : null;
 }
 
-function ExecuteInput({ inputName, inputValue, onChange }) {
+function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
   return (
     <div key={inputName} className="grid grid-cols-10">
       <div className="flex group items-center bg-slate-300">
@@ -128,15 +134,35 @@ function ExecuteInput({ inputName, inputValue, onChange }) {
           "border-slate-100"
         )}
       >
-        <TextareaAutosize
-          minRows={1}
-          className={classNames(
-            "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
-            "text-gray-700"
-          )}
-          value={inputValue || ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        {inputType === "object" ? (
+          <CodeEditor
+            value={
+              typeof inputValue === "string"
+                ? inputValue
+                : JSON.stringify(inputValue, null, 2)
+            }
+            language="json"
+            onChange={(e) => onChange(e.target.value)}
+            padding={4}
+            className="bg-slate-100"
+            style={{
+              fontSize: 13,
+              fontFamily:
+                "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              backgroundColor: "rgb(241 245 249)",
+            }}
+          />
+        ) : (
+          <TextareaAutosize
+            minRows={1}
+            className={classNames(
+              "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
+              "text-gray-700"
+            )}
+            value={inputValue || ""}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
       </div>
     </div>
   );
@@ -153,7 +179,15 @@ export default function ExecuteView({
   const { data: session } = useSession();
 
   const [inputDatasetKeys, _setInputDatasetKeys] = useState(
-    inputDataset ? checkDatasetData(inputDataset.dataset.data, false) : []
+    inputDataset ? checkDatasetData(inputDataset.dataset.data) : []
+  );
+  const [datasetTypes, _setDatasetTypes] = useState(
+    inputDatasetKeys.length
+      ? getDatasetTypes(inputDatasetKeys, inputDataset.dataset.data[0]).reduce(
+          (acc, curr, i) => ({ ...acc, [inputDatasetKeys[i]]: curr }),
+          {}
+        )
+      : {}
   );
 
   const [inputData, setInputData] = useState({});
@@ -299,6 +333,7 @@ export default function ExecuteView({
                     inputName={k}
                     inputValue={inputData[k]}
                     onChange={(value) => handleValueChange(k, value)}
+                    inputType={datasetTypes[k]}
                   />
                 </li>
               ))}
