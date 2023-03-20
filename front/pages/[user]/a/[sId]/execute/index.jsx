@@ -218,7 +218,6 @@ export default function ExecuteView({
   user,
   ga_tracking_id,
   inputDataset,
-  savedSpecification,
   config,
 }) {
   const { data: session } = useSession();
@@ -310,9 +309,6 @@ export default function ExecuteView({
       const specificationHash = savedRun?.app_hash;
 
       const requestBody = {
-        specification: specificationHash
-          ? null
-          : JSON.stringify(savedSpecification),
         specificationHash,
         config: JSON.stringify(config),
         inputs: [
@@ -428,7 +424,6 @@ export default function ExecuteView({
                 </li>
               ))}
             </ul>
-
             {executionLogs.blockOrder.length ? (
               <>
                 <VerticalSpacer size={4} />
@@ -446,7 +441,6 @@ export default function ExecuteView({
               </>
             ) : null}
             <VerticalSpacer size={4} />
-
             {finalOutputBlockName && (
               <>
                 <ExecuteFinalOutput
@@ -459,9 +453,16 @@ export default function ExecuteView({
                 <VerticalSpacer size={4} />
               </>
             )}
+            <div className="text-sm text-gray-400 py-2">
+              {savedRun?.app_hash
+                ? `App hash: ${savedRun?.app_hash}`
+                : "Please run the app from the specification tab first"}
+            </div>
             <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
               <ActionButton
-                disabled={isRunning || !isInputDataValid()}
+                disabled={
+                  isRunning || !isInputDataValid() || !savedRun?.app_hash
+                }
                 onClick={() => handleRun()}
               >
                 <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
@@ -522,7 +523,6 @@ export async function getServerSideProps(context) {
       app: app.app,
       user: context.query.user,
       ga_tracking_id: GA_TRACKING_ID,
-      savedSpecification,
       config,
       inputDataset: inputDataset,
     },
