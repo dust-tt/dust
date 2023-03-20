@@ -409,6 +409,7 @@ export default function ExecuteView({
         </div>
         <div className="w-full max-w-5xl mt-4 mx-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
+            <div className="font-bold text-gray-700 pr-2 mb-2">Input:</div>
             <ul className="space-y-2">
               {inputDatasetKeys.map((k) => (
                 <li key={k} className="space-y-[1px]">
@@ -424,6 +425,9 @@ export default function ExecuteView({
             {executionLogs.blockOrder.length ? (
               <>
                 <VerticalSpacer size={4} />
+                <div className="font-bold text-gray-700 pr-2 mb-2">
+                  Progress:
+                </div>
                 <ExecuteOutput
                   executionLogs={executionLogs}
                   expandedByBlockName={outputExpandedByBlockName}
@@ -440,6 +444,7 @@ export default function ExecuteView({
             <VerticalSpacer size={4} />
             {finalOutputBlockName && (
               <>
+                <div className="font-bold text-gray-700 pr-2 mb-2">Output:</div>
                 <ExecuteFinalOutput
                   value={preProcessOutput(
                     executionLogs.outputByBlockName[finalOutputBlockName]
