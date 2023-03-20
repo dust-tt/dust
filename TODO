@@ -137,6 +137,6 @@
 
 # Dust Next
 
-- [ ] update documentation to include new search provider
+- [x] update documentation to include new search provider
 - [ ] empty string in data source description exception react
 - [ ] add timestamp and tags interface / API
