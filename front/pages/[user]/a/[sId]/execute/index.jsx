@@ -82,7 +82,9 @@ function ExecuteOutputLine({
       >
         <div className="flex flex-row items-center">
           {lastEventForBlock.content.status === "running" ? (
-            <Spinner />
+            <div className="mr-1">
+              <Spinner />
+            </div>
           ) : (
             <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
           )}
@@ -448,7 +450,10 @@ export default function ExecuteView({
             {finalOutputBlockName && (
               <>
                 <ExecuteFinalOutput
-                  value={executionLogs.outputByBlockName[finalOutputBlockName]}
+                  value={preProcessOutput(
+                    executionLogs.outputByBlockName[finalOutputBlockName]
+                      .content.execution[0]
+                  )}
                   errored={isErrored}
                 />
                 <VerticalSpacer size={4} />
