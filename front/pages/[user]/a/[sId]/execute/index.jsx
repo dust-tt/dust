@@ -457,7 +457,7 @@ export default function ExecuteView({
             )}
             <div className="text-sm text-gray-400 py-2">
               {savedRun?.app_hash
-                ? `App hash: ${savedRun?.app_hash}`
+                ? `App hash: ${savedRun?.app_hash.slice(0, 7)}`
                 : "Please run the app from the specification tab first"}
             </div>
             <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
