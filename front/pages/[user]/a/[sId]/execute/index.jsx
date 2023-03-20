@@ -78,7 +78,10 @@ function ExecuteOutputLine({
       <button
         disabled={!preprocessedOutput}
         onClick={() => onToggleExpand()}
-        className="border-none"
+        className={classNames(
+          "border-none",
+          preprocessedOutput ? null : "text-gray-400"
+        )}
       >
         <div className="flex flex-row items-center">
           {lastEventForBlock.content.status === "running" ? (
@@ -97,7 +100,7 @@ function ExecuteOutputLine({
         </div>
       </button>
       {expanded ? (
-        <div className="flex ml-4">
+        <div className="flex ml-4 text-sm text-gray-600">
           {Array.isArray(preprocessedOutput) ? (
             <ArrayViewer value={preprocessedOutput} />
           ) : typeof preprocessedOutput == "string" ? (
@@ -171,7 +174,7 @@ function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
       <div
         className={classNames(
           "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100 w-3/4",
-          getValueType(inputValue) === inputType
+          getValueType(inputValue) === inputType && inputValue?.length > 0
             ? "border-slate-100"
             : "border-red-500"
         )}
