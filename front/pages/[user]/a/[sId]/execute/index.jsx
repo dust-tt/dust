@@ -39,11 +39,21 @@ function preProcessOutput(output) {
   if (Array.isArray(output) && output.length === 1) {
     return preProcessOutput(output[0]);
   }
+  if (Array.isArray(output)) {
+    return output.map(preProcessOutput);
+  }
   if (output.value && output.error === null) {
     return preProcessOutput(output.value);
   }
   if (output.error) {
     return preProcessOutput(output.error);
+  }
+  if (
+    Object.keys(output).length === 2 &&
+    output.value === null &&
+    output.error === null
+  ) {
+    return null;
   }
   if (output.completion?.text) {
     return output.completion.text;
@@ -234,8 +244,11 @@ export default function ExecuteView({
   });
 
   const expandLastBlockOutput = () => {
-    const lastBlockName =
-      executionLogs.blockOrder[executionLogs.blockOrder.length - 1];
+    const candidates = executionLogs.blockOrder.filter(
+      // Don't expand reduce blocks as they don't have output
+      (blockName) => executionLogs.blockTypeByName[blockName] !== "reduce"
+    );
+    const lastBlockName = candidates[candidates.length - 1];
     setOutputExpandedByBlockName({
       ...outputExpandedByBlockName,
       [lastBlockName]: true,
@@ -258,6 +271,7 @@ export default function ExecuteView({
       blockOrder: [],
       lastEventByBlockName: {},
       outputByBlockName: {},
+      blockTypeByName: {},
     });
     setIsRunning(true);
     setIsRunComplete(false);
@@ -272,7 +286,16 @@ export default function ExecuteView({
           : JSON.stringify(savedSpecification),
         specificationHash,
         config: JSON.stringify(config),
-        inputs: [inputData],
+        inputs: [
+          // Send inputs with their correct types
+          Object.entries(inputData).reduce(
+            (acc, [k, v]) => ({
+              ...acc,
+              [k]: datasetTypes[k] !== "string" ? JSON.parse(v) : v,
+            }),
+            {}
+          ),
+        ],
         mode: "execute",
       };
 
@@ -291,16 +314,28 @@ export default function ExecuteView({
 
         if (["block_status", "block_execution"].includes(parsedEvent.type)) {
           setExecutionLogs(
-            ({ blockOrder, lastEventByBlockName, outputByBlockName }) => {
+            ({
+              blockOrder,
+              lastEventByBlockName,
+              outputByBlockName,
+              blockTypeByName,
+            }) => {
+              const blockType = parsedEvent.content.block_type;
+
               let blockName = parsedEvent.content.name;
               if (!blockName) {
                 blockName = parsedEvent.content.block_name;
               }
+              if (["map", "reduce"].includes(blockType)) {
+                blockName = `${blockName}[${blockType}]`;
+              }
+
               if (parsedEvent.type === "block_status") {
                 if (blockOrder[blockOrder.length - 1] !== blockName) {
                   blockOrder.push(blockName);
                 }
                 lastEventByBlockName[blockName] = parsedEvent;
+                blockTypeByName[blockName] = blockType;
               } else {
                 outputByBlockName[blockName] = parsedEvent;
               }
@@ -308,6 +343,7 @@ export default function ExecuteView({
                 blockOrder,
                 lastEventByBlockName,
                 outputByBlockName,
+                blockTypeByName,
               };
             }
           );
