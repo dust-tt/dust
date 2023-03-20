@@ -333,18 +333,20 @@ contain an array of 4 `{ "foo": "bar" }` objects.
   </Property>
 </Properties>
 
+---
+
 ## DataSource block
 
-The `data_source` block provides an interface to query a data source and semantically similar chunks
-to the query provided. When executed, the query is embedded using the embedding model configured on
-the data source and the resulting enmbedding vector is used to perform semantic search on the data
-source's chunks.
+The `data_source` block provides an interface to query a [data source](/data-sources-overview) and
+return chunks that are semantically similar to the query provided. When executed, the query is
+embedded using the embedding model configured on the data source and the resulting enmbedding vector
+is used to perform semantic search on the data source's chunks.
 
-The output of the `data_source` block is a list of _Document_ objects. Each document may include one
-or more _Chunks_ (only the ones that were returned from the search). The _Documents_ are ordered by
-the max of their retrieved chunks score. Please refer to the [Data Sources
-overview](/data-sources-overview#querying-a-data-source) for more details on the properties of the
-_Document_ and _Chunk_ objects.
+The output of the `data_source` block is a list of [Document](/documents#the-document-model)
+objects. Each document may include one or more [Chunks](/documents#the-chunk-model) (only the ones
+that were returned from the search). The documents are ordered by the max of their retrieved chunks
+score. Please refer to the [data sources overview](/data-sources-overview) for more details about
+how documents are chunked to enable semantic search.
 
 ### Specification
 

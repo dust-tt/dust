@@ -201,7 +201,10 @@ export const navigation = [
   },
   {
     title: 'API Reference',
-    links: [{ title: 'Runs', href: '/runs' }],
+    links: [
+      { title: 'Runs', href: '/runs' },
+      { title: 'Documents', href: '/documents' },
+    ],
   },
 ]
 

@@ -1,0 +1,444 @@
+export const description =
+  'On this page, we’ll dive into the Documents endpoints you can use to manage data sources programmatically.'
+
+# Documents
+
+On this page we'll dive into the DataSources endpoint you can use to manage data sources
+programmatically. We'll look at how to insert, retrieve, list and delete documents from a [data
+source](/data-sources-overview). {{ className: 'lead' }}
+
+## Authentication
+
+All requests to the Dust API must be authenticated using an `Authentication` header. The value of
+this header must be the string _Bearer_ followed by a space and your API key. You can find your API
+key in your account's **API keys** panel.
+
+## The Chunk model
+
+The Chunk model represents a chunk from a document. See the [data sources
+overview](/data-sources-overview) to better understand how documents are chunked as part of a data
+source to enable semantic search.
+
+### Properties
+
+<Properties>
+  <Property name="hash" type="string">
+    A hash of the chunk text as well parent document information.
+  </Property>
+  <Property name="text" type="string">
+    The text of the chunk as it was embedded.
+  </Property>
+  <Property name="offset" type="integer">
+    The offset of the chunk in the parent document.
+  </Property>
+  <Property name="score" type="float">
+    The similarity score of the chunk as returned by the semantic search.
+  </Property>
+  <Property name="vector" type="[]float">
+    The embedding vector associated with the chunk.
+  </Property>
+</Properties>
+
+## The Document model
+
+The Document model represents a [data source](/data-sources-overview) document.
+
+### Properties
+
+<Properties>
+  <Property name="document_id" type="string">
+    The document ID as specified at insertion.
+  </Property>
+  <Property name="created" type="integer">
+    Epoch in ms at which the document was inserted.
+  </Property>
+  <Property name="timestamp" type="integer">
+    User specified timestamp (epoch in ms) for the document (for future
+    purposes, such as timestamp based filtering of searches). If not specified,
+    defaults to the value of _created_.
+  </Property>
+  <Property name="tags" type="[]string">
+    User specified list of string tags (for future purposes, such as tag-based
+    serach filtering). If not specified, defaults to the empty list.
+  </Property>
+  <Property name="text_size" type="integer">
+    Size in bytes of the document's text.
+  </Property>
+  <Property name="chunk_count" type="integer">
+    Number of chunks that were generated from the document's original text for
+    embedding.
+  </Property>
+  <Property name="chunks" type="[]Chunk">
+    Document's chunks. When searching only includes relevant chunks. When
+    creating a document, all the chunks that were generated.
+  </Property>
+</Properties>
+
+---
+
+## Create a Document {{ tag: 'POST', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to insert a new document to a data source. The semantic of this
+    endpoint is an _upsert_: if the `document_id` does not exists it gets replaced, otherwise it
+    gets replaced. You can only insert documents to the data sources you own.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="user" type="string">
+        Your Dust username.
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the data source you want to insert a document to.
+      </Property>
+      <Property name="document_id" type="string">
+        The ID of the document you want to insert or replace (upsert). This can be anything, make
+        sure to use `encodeURIComponent` or similar.
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+    Attributes are passed as a JSON object in the request body.
+
+    <Properties>
+      <Property name="text" type="string">
+        The text content of the document to upsert.
+      </Property>
+    </Properties>
+
+    ### Optional JSON body attributes
+
+    <Properties>
+      <Property name="timestamp" type="integer">
+        A user-specified timestamp or the document. If not specified, defaults to the current time.
+      </Property>
+      <Property name="tags" type="[]string">
+        A list of user-specified tags to associate with the documents.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "text": "Top secret content...",
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "run": {
+        "run_id": "5be2f49d42d19...097cd573",
+        "created": 1675247061982,
+        "run_type": "deploy",
+        "config": {
+          "blocks": {
+            "MODEL":{
+              "provider_id": "openai",
+              "model_id": "text-davinci-003",
+              "use_cache": false,
+              "use_stream": false
+            }
+          }
+        },
+        "status":{
+          "run": "succeeded",
+          "blocks": [
+            {
+              "block_type": "llm",
+              "name": "MODEL",
+              "status": "succeeded",
+              "success_count": 1,
+              "error_count": 0
+            }
+          ]
+        },
+        "traces": [
+          [
+            ["input","INPUT"],
+            [[{"value": {...}, "error": null}]]
+          ],
+          [
+            ["llm","MODEL"],
+            [[{"value": {...}, "error": null}]]
+          ]
+        ],
+        "specification_hash": "ac26d350409be...bebb25013f",
+        "results": [[{"value": {...}, "error": null}]]
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Retrieve a Document {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to retrieve a document by ID.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="user" type="string">
+        Your Dust username.
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the data source you want to insert a document to.
+      </Property>
+      <Property name="document_id" type="string">
+        The ID of the document you want to insert or replace (upsert). This can be anything, make
+        sure to use `encodeURIComponent` or similar.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "run": {
+        "run_id": "5be2f49d42d19...097cd573",
+        "created": 1675247061982,
+        "run_type": "deploy",
+        "config": {
+          "blocks": {
+            "MODEL":{
+              "provider_id": "openai",
+              "model_id": "text-davinci-003",
+              "use_cache": false,
+              "use_stream": false
+            }
+          }
+        },
+        "status":{
+          "run": "succeeded",
+          "blocks": [
+            {
+              "block_type": "llm",
+              "name": "MODEL",
+              "status": "succeeded",
+              "success_count": 1,
+              "error_count": 0
+            }
+          ]
+        },
+        "traces": [
+          [
+            ["input","INPUT"],
+            [[{"value": {...}, "error": null}]]
+          ],
+          [
+            ["llm","MODEL"],
+            [[{"value": {...}, "error": null}]]
+          ]
+        ],
+        "specification_hash": "ac26d350409be...bebb25013f",
+        "results": [[{"value": {...}, "error": null}]]
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Delete a Document {{ tag: 'DELETE', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to delete a document by ID. All data relative to the document will be
+    deleted (and associated chunks removed from the data source vector search database).
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="user" type="string">
+        Your Dust username.
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the data source you want to insert a document to.
+      </Property>
+      <Property name="document_id" type="string">
+        The ID of the document you want to insert or replace (upsert). This can be anything, make
+        sure to use `encodeURIComponent` or similar.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="DELETE" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl -XDELETE https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "run": {
+        "run_id": "5be2f49d42d19...097cd573",
+        "created": 1675247061982,
+        "run_type": "deploy",
+        "config": {
+          "blocks": {
+            "MODEL":{
+              "provider_id": "openai",
+              "model_id": "text-davinci-003",
+              "use_cache": false,
+              "use_stream": false
+            }
+          }
+        },
+        "status":{
+          "run": "succeeded",
+          "blocks": [
+            {
+              "block_type": "llm",
+              "name": "MODEL",
+              "status": "succeeded",
+              "success_count": 1,
+              "error_count": 0
+            }
+          ]
+        },
+        "traces": [
+          [
+            ["input","INPUT"],
+            [[{"value": {...}, "error": null}]]
+          ],
+          [
+            ["llm","MODEL"],
+            [[{"value": {...}, "error": null}]]
+          ]
+        ],
+        "specification_hash": "ac26d350409be...bebb25013f",
+        "results": [[{"value": {...}, "error": null}]]
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## List Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to list the documents of a data source.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="user" type="string">
+        Your Dust username.
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the data source you want to insert a document to.
+      </Property>
+    </Properties>
+
+    ### Query parameters
+
+    Query attributes are passed as GET parameters.
+
+    <Properties>
+      <Property name="offset" type="integer">
+        The offset to use to retrieve the documents from the data source, for paging.
+      </Property>
+      <Property name="limit" type="integer">
+        The maximum number of documents to retrieve from the data source, for paging.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10 \
+      -H "Authorization: Bearer sk-..." \
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "run": {
+        "run_id": "5be2f49d42d19...097cd573",
+        "created": 1675247061982,
+        "run_type": "deploy",
+        "config": {
+          "blocks": {
+            "MODEL":{
+              "provider_id": "openai",
+              "model_id": "text-davinci-003",
+              "use_cache": false,
+              "use_stream": false
+            }
+          }
+        },
+        "status":{
+          "run": "succeeded",
+          "blocks": [
+            {
+              "block_type": "llm",
+              "name": "MODEL",
+              "status": "succeeded",
+              "success_count": 1,
+              "error_count": 0
+            }
+          ]
+        },
+        "traces": [
+          [
+            ["input","INPUT"],
+            [[{"value": {...}, "error": null}]]
+          ],
+          [
+            ["llm","MODEL"],
+            [[{"value": {...}, "error": null}]]
+          ]
+        ],
+        "specification_hash": "ac26d350409be...bebb25013f",
+        "results": [[{"value": {...}, "error": null}]]
+      }
+    }
+    ```
+
+  </Col>
+</Row>

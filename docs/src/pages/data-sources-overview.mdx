@@ -10,9 +10,9 @@ store of documents on which semantic searches can be performed. Documents can be
 uploaded manually from the Dust interface.
 
 Once uploaded, documents are automatically chunked, embedded and indexed. Searches can be performed
-against the documents of a data source using the `data_source` block which, given a query,
-automatically embeds it and performs a vector search operation to retrieve the most semantically
-relevant documents and associated chunks.
+against the documents of a data source using the [`data_source`
+block](core-blocks#data-source-block) which, given a query, automatically embeds it and performs a
+vector search operation to retrieve the most semantically relevant documents and associated chunks.
 
 <Note>
   Semantic search, generally based on [embedding
@@ -65,17 +65,35 @@ embedding documents chunks and serach quries must be consistent).
 Data sources are created empty. Their description can be edited from the Settings panel. They cannot
 be renamed but they can be deleted from the same panel.
 
+### Choosing a chunk size
+
+Choosing a chunk size depends on the usage you will have of the retrieved chunks.
+
+If the goal is to present these chunks to a model to do _retrieval-augmented generation_ then you'll
+want to choose a chunk size in tokens that is not too high: imagine a model with ~4k tokens of
+context and that you want at least 1k of context to generate a completion. Then you have ~3k of
+context left for retrieval. If you want some amount of diversity in the information retrieved you'll
+want maybe a half-dozen or a dozen chunks returned, meaning a chunk size between **256** and
+**512**.
+
+Conversely, if you plan to process the retrieved documents with subsequent calls to models (let say
+using recursive summarization or such) then you want to pick a higher chunk size such that the
+semantic retrieval step covers as much information as possible.
+
+These decisions really depend on the quality and speed constraint you have to design your app and we
+advise that you experiment with various approach to find the one that suits your use-case the most.
+
 ## Document insertion
 
 Once a data source is created, documents can be inserted from the Dust interface or by API. When
 a document is inserted, the following happens automatically:
 
-- The document is pre-processed to remove repeated whitespaces (helps semantic search) and chunked
-  using `max_chunk_size` tokens per chunks.
-- Each chunk is embedded (in parallel, with retries) using the embedding model parametered on the
-  data source.
-- Each resulting embedding vector is inserted in a vector search database along with metadata about
-  the document and the original chunk text.
+- **Chunking**: The document is pre-processed to remove repeated whitespaces (helps semantic search)
+  and chunked using `max_chunk_size` tokens per chunks.
+- **Embedding**: Each chunk is embedded (in parallel, with retries) using the embedding model
+  parametered on the data source.
+- **Indexing**: Each resulting embedding vector is inserted in a vector search database along with
+  metadata about the document and the original chunk text.
 
 The following parameters are accepted when inserting a document:
 
@@ -94,7 +112,7 @@ The following parameters are accepted when inserting a document:
   </Property>
 </Properties>
 
-See the [DataSource](/data-sources) API reference to learn how to insert documents by API. Data
+See the [Documents](/documents) API reference to learn how to insert documents by API. Data
 sources need to be created from the Dust interface.
 
 ## Document deletion
@@ -108,61 +126,19 @@ database of the data source. Documents can be deleted from the Dust interface or
   systems.
 </Note>
 
-See the [DataSource](/data-sources) API reference to learn how to deltete documents by API.
+See the [Documents](/documents) API reference to learn how to delete documents by API.
 
 ## Querying a Data Source
 
 Querying a data source is done using the [`data_source` block](core-blocks#data-source-block). The
-`data_source` block returns a list of _Document_ objects. Each document may include one or more
-_Chunks_ (the chunks returned by the semantic search are aggregated per document).
+`data_source` block returns a list of [Document](/data-sources#the-document-model) objects. Each
+document may include one or more [Chunks](/data-sources#the-chunk-model) (the chunks returned by
+the semantic search are aggregated per document).
 
-### Chunk Object properties
+When a query is run the following happens automatically:
 
-<Properties>
-  <Property name="hash" type="string">
-    A hash of the chunk text as well parent document information.
-  </Property>
-  <Property name="text" type="string">
-    The text of the chunk as it was embedded.
-  </Property>
-  <Property name="offset" type="integer">
-    The offset of the chunk in the parent document.
-  </Property>
-  <Property name="score" type="float">
-    The similarity score of the chunk as returned by the semantic search.
-  </Property>
-  <Property name="vector" type="[]float">
-    The embedding vector associated with the chunk.
-  </Property>
-</Properties>
-
-### Document Object properties
-
-<Properties>
-  <Property name="document_id" type="string">
-    The document ID as specified at insertion.
-  </Property>
-  <Property name="created" type="integer">
-    Epoch at which the document was inserted.
-  </Property>
-  <Property name="timestamp" type="integer">
-    User specified timestamp for the document (for future purposes, such as
-    timestamp based filtering of searches). If not specified, defaults to the
-    value of _created_.
-  </Property>
-  <Property name="tags" type="[]string">
-    User specified list of string tags (for future purposes, such as tag-based
-    serach filtering). If not specified, defaults to the empty list.
-  </Property>
-  <Property name="text_size" type="integer">
-    Size in bytes of the document's text.
-  </Property>
-  <Property name="chunk_count" type="integer">
-    Number of chunks that were generated from the document's original text for
-    embedding.
-  </Property>
-  <Property name="chunks" type="[]Chunk">
-    Document's chunks. When searching only includes relevant chunks. When
-    creating a document, all the chunks that were generated.
-  </Property>
-</Properties>
+- **Embedding**: The query is embedded using the embedding model configured on the data source.
+- **Search**: A vector search query is run against the embedding vectors of the data source's
+  documents' chunks.
+- **Union**: Most relevant chunks' documents are retrieved and chunks are associated to their
+  original document object.
