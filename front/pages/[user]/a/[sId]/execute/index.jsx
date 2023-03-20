@@ -1,32 +1,31 @@
 import {
+  ArrayViewer,
+  ObjectViewer,
+  StringViewer,
+} from "@app/components/app/blocks/Output";
+import MainTab from "@app/components/app/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import { ActionButton } from "@app/components/Button";
+import { Spinner } from "@app/components/Spinner";
+import { extractConfig } from "@app/lib/config";
+import {
+  checkDatasetData,
+  getDatasetTypes,
+  getValueType,
+} from "@app/lib/datasets";
+import { useSavedRunStatus } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
+import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   PlayCircleIcon,
 } from "@heroicons/react/20/solid";
-import { unstable_getServerSession } from "next-auth/next";
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SSE } from "sse.js";
-import {
-  ArrayViewer,
-  ObjectViewer,
-  StringViewer,
-} from "../../../../../components/app/blocks/Output";
-import MainTab from "../../../../../components/app/MainTab";
-import AppLayout from "../../../../../components/AppLayout";
-import { ActionButton, Button } from "../../../../../components/Button";
-import { extractConfig } from "../../../../../lib/config";
-import {
-  checkDatasetData,
-  getDatasetTypes,
-  getValueType,
-} from "../../../../../lib/datasets";
-import { classNames } from "../../../../../lib/utils";
-import { useSavedRunStatus } from "../../../../../lib/swr";
-import { Spinner } from "../../../../../components/Spinner";
-import dynamic from "next/dynamic";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -76,21 +75,25 @@ function ExecuteOutputLine({
 
   return (
     <>
-      <Button disabled={!preprocessedOutput} onClick={() => onToggleExpand()}>
+      <button
+        disabled={!preprocessedOutput}
+        onClick={() => onToggleExpand()}
+        className="border-none"
+      >
         <div className="flex flex-row items-center">
+          {lastEventForBlock.content.status === "running" ? (
+            <Spinner />
+          ) : (
+            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
+          )}
           {!expanded ? (
             <ChevronRightIcon className="h-4 w-4 mt-0.5" />
           ) : (
             <ChevronDownIcon className="h-4 w-4 mt-0.5" />
           )}{" "}
           {blockName}{" "}
-          {lastEventForBlock.content.status === "running" ? (
-            <Spinner />
-          ) : (
-            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
-          )}
         </div>
-      </Button>
+      </button>
       {expanded ? (
         <div className="flex ml-4">
           {Array.isArray(preprocessedOutput) ? (
@@ -125,6 +128,32 @@ function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
       })}
     </>
   ) : null;
+}
+
+function ExecuteFinalOutput({ value, errored }) {
+  return (
+    <div className="grid grid-cols-15">
+      <div
+        className={classNames(
+          "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
+          !errored ? "border-slate-100" : "border-red-500"
+        )}
+      >
+        <TextareaAutosize
+          minRows={1}
+          className={classNames(
+            "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
+            "text-gray-700"
+          )}
+          value={
+            typeof value === "string" ? value : JSON.stringify(value, null, 2)
+          }
+          readOnly={true}
+          onChange={() => {}}
+        />
+      </div>
+    </div>
+  );
 }
 
 function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
@@ -213,7 +242,10 @@ export default function ExecuteView({
     );
 
   const [isRunning, setIsRunning] = useState(false);
-  const [isRunComplete, setIsRunComplete] = useState(false);
+  const [isDoneRunning, setIsDoneRunning] = useState(false);
+  const [isErrored, setIsErrored] = useState(false);
+
+  const [finalOutputBlockName, setFinalOutputBlockName] = useState(null);
 
   const [executionLogs, setExecutionLogs] = useState({
     blockOrder: [],
@@ -241,23 +273,18 @@ export default function ExecuteView({
     return 0;
   });
 
-  const expandLastBlockOutput = () => {
-    const candidates = executionLogs.blockOrder.filter(
-      // Don't expand reduce blocks as they don't have output
-      (blockName) => executionLogs.blockTypeByName[blockName] !== "reduce"
-    );
-    const lastBlockName = candidates[candidates.length - 1];
-    setOutputExpandedByBlockName({
-      ...outputExpandedByBlockName,
-      [lastBlockName]: true,
-    });
-  };
-
   useEffect(() => {
-    if (isRunComplete) {
-      expandLastBlockOutput();
+    if (isDoneRunning) {
+      setIsRunning(false);
+      const candidates = executionLogs.blockOrder.filter(
+        // Don't expand reduce blocks as they don't have output
+        (blockName) => executionLogs.blockTypeByName[blockName] !== "reduce"
+      );
+      const lastBlockName = candidates[candidates.length - 1];
+
+      setFinalOutputBlockName(lastBlockName);
     }
-  }, [isRunComplete]);
+  }, [isDoneRunning]);
 
   const handleValueChange = (k, value) => {
     const newInputData = { [k]: value };
@@ -272,7 +299,9 @@ export default function ExecuteView({
       blockTypeByName: {},
     });
     setIsRunning(true);
-    setIsRunComplete(false);
+    setIsDoneRunning(false);
+    setIsErrored(false);
+    setFinalOutputBlockName(null);
     setOutputExpandedByBlockName({});
 
     setTimeout(async () => {
@@ -307,7 +336,19 @@ export default function ExecuteView({
           payload: JSON.stringify(requestBody),
         }
       );
+
+      source.onerror = (_event) => {
+        setIsErrored(true);
+        setIsRunning(false);
+      };
+
       source.onmessage = (event) => {
+        if (event.data === "") {
+          console.error("Received empty event");
+          // ignore empty events
+          return;
+        }
+
         const parsedEvent = JSON.parse(event.data);
 
         if (["block_status", "block_execution"].includes(parsedEvent.type)) {
@@ -334,6 +375,10 @@ export default function ExecuteView({
                 }
                 lastEventByBlockName[blockName] = parsedEvent;
                 blockTypeByName[blockName] = blockType;
+                if (parsedEvent.content.status === "errored") {
+                  console.error("Block errored", parsedEvent);
+                  setIsErrored(true);
+                }
               } else {
                 outputByBlockName[blockName] = parsedEvent;
               }
@@ -346,8 +391,7 @@ export default function ExecuteView({
             }
           );
         } else if (parsedEvent.type === "final") {
-          setIsRunning(false);
-          setIsRunComplete(true);
+          setIsDoneRunning(true);
         }
       };
 
@@ -400,6 +444,16 @@ export default function ExecuteView({
               </>
             ) : null}
             <VerticalSpacer size={4} />
+
+            {finalOutputBlockName && (
+              <>
+                <ExecuteFinalOutput
+                  value={executionLogs.outputByBlockName[finalOutputBlockName]}
+                  errored={isErrored}
+                />
+                <VerticalSpacer size={4} />
+              </>
+            )}
             <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
               <ActionButton
                 disabled={isRunning || !isInputDataValid()}

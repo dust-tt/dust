@@ -171,7 +171,9 @@ export default function Block({
         status.status == "running" &&
         !["map", "reduce"].includes(block.type) ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
-            <Spinner />
+            <div className="mr-2 ml-2">
+              <Spinner />
+            </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
         ) : running && !(status && status.status != "running") ? (
