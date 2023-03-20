@@ -1,0 +1,168 @@
+export const description = "An overview of Dust's data sources."
+
+# Data Sources
+
+An overview of Dust's data sources. You'll learn how to create data sources, upload documents and
+leverage them to build more context-aware apps. {{ className: 'lead' }}
+
+Dust's data sources provide a fully managed semantic search solution. A data source is a managed
+store of documents on which semantic searches can be performed. Documents can be ingested by API or
+uploaded manually from the Dust interface.
+
+Once uploaded, documents are automatically chunked, embedded and indexed. Searches can be performed
+against the documents of a data source using the `data_source` block which, given a query,
+automatically embeds it and performs a vector search operation to retrieve the most semantically
+relevant documents and associated chunks.
+
+<Note>
+  Semantic search, generally based on [embedding
+  models](/introduction#embedding-models), is important to large language model
+  apps because of the limited context size of models. It enables the retrieval
+  of chunks of valuable information that fit in context to perform a particular
+  task. This is called _retrieval-augmented generation_.
+</Note>
+
+Data sources enable apps to perform semantic searches over large collections of documents, only
+retrieving the chunks of information that are the most relevant to the app's task, without having to
+manage the complexity of setting up vector search database, chunking docouments and embedding chunks
+and finally performing vector search queries.
+
+## Data Source creation
+
+Creating a data source consists in providing a name, description, an embedding model to use as well
+as `max_chunk_size`, the targeted number of tokens for each chunks. The embedding model must be
+provided at data source creation and cannot be changed in the future (since the model used when
+embedding documents chunks and serach quries must be consistent).
+
+### Parameters
+
+<Properties>
+  <Property name="name" type="string">
+    The name of the new data source. It should be short and can only contain
+    lowercase alphanumerical characters as well as `-`.
+  </Property>
+  <Property name="description" type="optional string">
+    A description of the content of the data source.
+  </Property>
+  <Property name="visibility" type="string">
+    One of _public_ or _private_. Only you can edit your own data sources. If
+    _public_ other users can view the data source and query from it.
+  </Property>
+  <Property name="embedded" type="model">
+    The model to use for the data source. This is set at creation and cannot be
+    changed later (as it would require re-embedding the entire data source).
+    This is the model used to embed document chunks when they are ingested as
+    well as queries when searches are peformed (the same model must be used for
+    both).
+  </Property>
+  <Property name="max_chunk_size" type="integer">
+    The number of tokens to use when chunking documents before embedding the
+    resulting chunks. Note that chunks at the end of documents may be shorter
+    then the provided value.
+  </Property>
+</Properties>
+
+Data sources are created empty. Their description can be edited from the Settings panel. They cannot
+be renamed but they can be deleted from the same panel.
+
+## Document insertion
+
+Once a data source is created, documents can be inserted from the Dust interface or by API. When
+a document is inserted, the following happens automatically:
+
+- The document is pre-processed to remove repeated whitespaces (helps semantic search) and chunked
+  using `max_chunk_size` tokens per chunks.
+- Each chunk is embedded (in parallel, with retries) using the embedding model parametered on the
+  data source.
+- Each resulting embedding vector is inserted in a vector search database along with metadata about
+  the document and the original chunk text.
+
+The following parameters are accepted when inserting a document:
+
+### Parameters
+
+<Properties>
+  <Property name="document_id" type="string">
+    A unique ID for the document. The semantics of the insertion really is an
+    upsertion. Inserting with a `document_id` that does not exist will create
+    that document, it will otherwise replace the previous document version
+    (removing previous chunks from the vector serach db and replacing by the
+    updated document's).
+  </Property>
+  <Property name="text" type="string">
+    The text content of the document.
+  </Property>
+</Properties>
+
+See the [DataSource](/data-sources) API reference to learn how to insert documents by API. Data
+sources need to be created from the Dust interface.
+
+## Document deletion
+
+When deleting a document, all associated chunks are automatically removed from the vector search
+database of the data source. Documents can be deleted from the Dust interface or by API.
+
+<Note>
+  Data sources can be deleted from the Dust interface. When deleted, all
+  associated data (all documents and associaed chunks) are deleted from our
+  systems.
+</Note>
+
+See the [DataSource](/data-sources) API reference to learn how to deltete documents by API.
+
+## Querying a Data Source
+
+Querying a data source is done using the [`data_source` block](core-blocks#data-source-block). The
+`data_source` block returns a list of _Document_ objects. Each document may include one or more
+_Chunks_ (the chunks returned by the semantic search are aggregated per document).
+
+### Chunk Object properties
+
+<Properties>
+  <Property name="hash" type="string">
+    A hash of the chunk text as well parent document information.
+  </Property>
+  <Property name="text" type="string">
+    The text of the chunk as it was embedded.
+  </Property>
+  <Property name="offset" type="integer">
+    The offset of the chunk in the parent document.
+  </Property>
+  <Property name="score" type="float">
+    The similarity score of the chunk as returned by the semantic search.
+  </Property>
+  <Property name="vector" type="[]float">
+    The embedding vector associated with the chunk.
+  </Property>
+</Properties>
+
+### Document Object properties
+
+<Properties>
+  <Property name="document_id" type="string">
+    The document ID as specified at insertion.
+  </Property>
+  <Property name="created" type="integer">
+    Epoch at which the document was inserted.
+  </Property>
+  <Property name="timestamp" type="integer">
+    User specified timestamp for the document (for future purposes, such as
+    timestamp based filtering of searches). If not specified, defaults to the
+    value of _created_.
+  </Property>
+  <Property name="tags" type="[]string">
+    User specified list of string tags (for future purposes, such as tag-based
+    serach filtering). If not specified, defaults to the empty list.
+  </Property>
+  <Property name="text_size" type="integer">
+    Size in bytes of the document's text.
+  </Property>
+  <Property name="chunk_count" type="integer">
+    Number of chunks that were generated from the document's original text for
+    embedding.
+  </Property>
+  <Property name="chunks" type="[]Chunk">
+    Document's chunks. When searching only includes relevant chunks. When
+    creating a document, all the chunks that were generated.
+  </Property>
+</Properties>

@@ -159,7 +159,7 @@ leading to surprising or unexpected results.
 
 These models that are trained to embed text into a vector space. Their input is a piece of text and
 their output is a high-dimensional vector of floats (hundreds to thousands). The resulting
-embeddings represent the text semantically and can be used to perform search.
+embeddings represent the associated text semantically and can be used to perform search.
 
 Modern embedding models are based on the same Transformer architecture. Therefore, they also have a
 limited context-size. They are generally trained, on similar datasets as large language models, by
@@ -181,10 +181,10 @@ relevant to the query. The power of this approach is that it works even if diffe
 to discuss the same concept (say "dog" and "canine").
 
 The process of retrieving highly similar vectors and their associated chunks given a query (and its
-vector) is called vector search.
+vector) is called (embedding) _vector search_ or _semantic search_.
 
-See [data sources](/data-sources) to learn more about how Dust provide fully-managed solutions to
-automatically embed documents and perform vector search on the resulting database.
+See [data sources](/data-sources-overview) to learn more about how Dust provides fully-managed
+solutions to automatically embed documents and perform vector search on the resulting database.
 
 ## Large Language Model Apps
 

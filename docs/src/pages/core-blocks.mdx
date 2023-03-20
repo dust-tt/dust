@@ -332,3 +332,46 @@ contain an array of 4 `{ "foo": "bar" }` objects.
     `reduce` blocks on the same object.
   </Property>
 </Properties>
+
+## DataSource block
+
+The `data_source` block provides an interface to query a data source and semantically similar chunks
+to the query provided. When executed, the query is embedded using the embedding model configured on
+the data source and the resulting enmbedding vector is used to perform semantic search on the data
+source's chunks.
+
+The output of the `data_source` block is a list of _Document_ objects. Each document may include one
+or more _Chunks_ (only the ones that were returned from the search). The _Documents_ are ordered by
+the max of their retrieved chunks score. Please refer to the [Data Sources
+overview](/data-sources-overview#querying-a-data-source) for more details on the properties of the
+_Document_ and _Chunk_ objects.
+
+### Specification
+
+<Properties>
+  <Property name="query" type="string">
+    The query to embed and use to perform semantic seach against the data
+    source. The query can be templated using the
+    [Tera](https://tera.netlify.app/docs/#templates) templating language (see
+    the [LLM block](/core-blocks#llm-block) documentation for more detail on
+    templating).
+  </Property>
+  <Property name="top_k" type="integer">
+    The number of chunks to return. The resulting number of document objects may
+    be smaller if multiple chunks from the same document are among the `top_k`
+    retrieved chunks.
+  </Property>
+</Properties>
+
+### Configuration
+
+<Properties>
+  <Property name="project_id" type="string">
+    Internal `project_id` associated with the data source. The Dust's interface
+    presents a data source picker that lets you select your own or other users'
+    data sources without having to explecitely know the associated `project_id`.
+  </Property>
+  <Property name="data_source_id" type="string">
+    The name of the data source to use in the `project_id` above.
+  </Property>
+</Properties>
