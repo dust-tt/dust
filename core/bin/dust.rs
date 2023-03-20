@@ -67,6 +67,7 @@ enum DatasetCommands {
         #[clap(value_parser, required = true)]
         jsonl_path: String,
     },
+    List {},
 }
 
 #[derive(Subcommand)]
@@ -214,6 +215,7 @@ fn main() -> Result<()> {
                 dataset_id,
                 jsonl_path,
             } => rt.block_on(dataset::cmd_register(dataset_id, jsonl_path)),
+            DatasetCommands::List {} => rt.block_on(dataset::cmd_list()),
         },
         Commands::Provider { command } => match command {
             ProviderCommands::Setup { provider_id } => {
