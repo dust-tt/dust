@@ -151,7 +151,6 @@ function ExecuteFinalOutput({ value, errored }) {
             typeof value === "string" ? value : JSON.stringify(value, null, 2)
           }
           readOnly={true}
-          onChange={() => {}}
         />
       </div>
     </div>
@@ -278,7 +277,7 @@ export default function ExecuteView({
     if (isDoneRunning) {
       setIsRunning(false);
       const candidates = executionLogs.blockOrder.filter(
-        // Don't expand reduce blocks as they don't have output
+        // Don't treat reduce blocks as output as they don't have output
         (blockName) => executionLogs.blockTypeByName[blockName] !== "reduce"
       );
       const lastBlockName = candidates[candidates.length - 1];
