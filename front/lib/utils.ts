@@ -31,6 +31,14 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   let minutes = Math.floor(seconds / 60);
   let hours = Math.floor(minutes / 60);
   let days = Math.floor(hours / 24);
+  let months = Math.floor(days / 30);
+  let years = Math.floor(days / 365);
+  if (years > 0) {
+    return years + 'y';
+  }
+  if (months > 0) {
+    return months + 'm';
+  }
   if (days > 0) {
     return days + 'd';
   }

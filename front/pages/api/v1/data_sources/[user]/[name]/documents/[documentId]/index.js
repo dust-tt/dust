@@ -1,6 +1,6 @@
-import { User, DataSource, Key, Provider } from '@app/lib/models';
-import { Op } from 'sequelize';
-import { credentialsFromProviders } from '@app/lib/providers';
+import { User, DataSource, Key, Provider } from "@app/lib/models";
+import { Op } from "sequelize";
+import { credentialsFromProviders } from "@app/lib/providers";
 
 const { DUST_API } = process.env;
 
@@ -183,34 +183,66 @@ export default async function handler(req, res) {
         break;
       }
 
-      // Enforce FreePlan limit: 32 documents per DataSource.
-      const documentsRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
-        {
-          method: "GET",
+      let timestamp = null;
+      if (req.body.timestamp) {
+        if (typeof req.body.timestamp !== "number") {
+          res.status(400).json({
+            error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `timestamp` if provided must be a number.",
+            },
+          });
+          break;
         }
-      );
-      if (!documentsRes.ok) {
-        const error = await documentsRes.json();
-        res.status(400).json({
-          error: {
-            type: "data_source_error",
-            message: "There was an error retrieving the data source.",
-            data_source_error: error.error,
-          },
-        });
-        break;
+        timestamp = req.body.timestamp;
       }
-      const documents = await documentsRes.json();
-      if (documents.response.total >= 32) {
-        res.status(401).json({
-          error: {
-            type: "data_source_quota_error",
-            message:
-              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
-          },
-        });
-        break;
+
+      let tags = [];
+      if (req.body.tags) {
+        if (!Array.isArray(req.body.tags)) {
+          res.status(400).json({
+            error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `tags` if provided must be an array of strings.",
+            },
+          });
+          break;
+        }
+        tags = req.body.tags;
+      }
+
+      // Enforce FreePlan limit: 32 documents per DataSource.
+      if (reqUser.username !== "spolu") {
+        const documentsRes = await fetch(
+          `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
+          {
+            method: "GET",
+          }
+        );
+        if (!documentsRes.ok) {
+          const error = await documentsRes.json();
+          res.status(400).json({
+            error: {
+              type: "data_source_error",
+              message: "There was an error retrieving the data source.",
+              data_source_error: error.error,
+            },
+          });
+          break;
+        }
+        const documents = await documentsRes.json();
+        if (documents.response.total >= 32) {
+          res.status(401).json({
+            error: {
+              type: "data_source_quota_error",
+              message:
+                "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
+            },
+          });
+          break;
+        }
       }
 
       // Enforce FreePlan limit: 1MB per document.
@@ -237,7 +269,8 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             document_id: req.query.documentId,
-            tags: [],
+            timestamp,
+            tags,
             text: req.body.text,
             credentials,
           }),
