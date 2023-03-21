@@ -58,10 +58,6 @@ function preProcessOutput(output) {
   return output;
 }
 
-function VerticalSpacer({ size = 1 }) {
-  return <div className={`mb-${size}`} />;
-}
-
 function ExecuteOutputLine({
   blockName,
   outputForBlock,
@@ -427,8 +423,7 @@ export default function ExecuteView({
             </ul>
             {executionLogs.blockOrder.length ? (
               <>
-                <VerticalSpacer size={4} />
-                <div className="font-bold text-gray-700 pr-2 mb-2">
+                <div className="font-bold text-gray-700 pr-2 mb-2 mt-4">
                   Progress:
                 </div>
                 <ExecuteOutput
@@ -444,9 +439,8 @@ export default function ExecuteView({
                 />
               </>
             ) : null}
-            <VerticalSpacer size={4} />
             {finalOutputBlockName && (
-              <>
+              <div className="mt-4">
                 <div className="font-bold text-gray-700 pr-2 mb-2">Output:</div>
                 <ExecuteFinalOutput
                   value={preProcessOutput(
@@ -455,8 +449,7 @@ export default function ExecuteView({
                   )}
                   errored={isErrored}
                 />
-                <VerticalSpacer size={4} />
-              </>
+              </div>
             )}
             <div className="text-sm text-gray-400 py-2">
               {savedRun?.app_hash
