@@ -229,15 +229,6 @@ export async function getServerSideProps(context) {
     authOptions
   );
 
-  if (!session) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
-
   let readOnly = !session || context.query.user !== session.user.username;
 
   const [dataSourceRes] = await Promise.all([
