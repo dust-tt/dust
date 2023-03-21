@@ -196,9 +196,9 @@ async function designModeHandler(req, res, app, user) {
   }
 
   const config = JSON.parse(req.body.config);
-  const { dataset: inputDataset } = Object.values(config).find(
-    (configValue) => configValue.type == "input"
-  );
+  const { dataset: inputDataset } =
+    Object.values(config).find((configValue) => configValue.type == "input") ||
+    {};
 
   const runRes = await fetch(
     `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
