@@ -408,7 +408,9 @@ export default function ExecuteView({
         </div>
         <div className="w-full max-w-5xl mt-4 mx-auto">
           <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
-            <div className="font-bold text-gray-700 pr-2 mb-2">Input:</div>
+            {inputDatasetKeys.length ? (
+              <div className="font-bold text-gray-700 pr-2 mb-2">Input:</div>
+            ) : null}
             <ul className="space-y-2">
               {inputDatasetKeys.map((k) => (
                 <li key={k} className="space-y-[1px]">
@@ -451,12 +453,7 @@ export default function ExecuteView({
                 />
               </div>
             )}
-            <div className="text-sm text-gray-400 py-2">
-              {savedRun?.app_hash
-                ? `App hash: ${savedRun?.app_hash.slice(0, 7)}`
-                : "Please run the app from the specification tab first"}
-            </div>
-            <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
+            <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0 mt-4">
               <ActionButton
                 disabled={
                   isRunning || !isInputDataValid() || !savedRun?.app_hash
@@ -466,6 +463,11 @@ export default function ExecuteView({
                 <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
                 Run
               </ActionButton>
+            </div>
+            <div className="text-sm text-gray-400 mt-1 mb-1">
+              {savedRun?.app_hash
+                ? `App hash: ${savedRun?.app_hash.slice(0, 7)}`
+                : "Please run the app from the specification tab first"}
             </div>
           </div>
         </div>
