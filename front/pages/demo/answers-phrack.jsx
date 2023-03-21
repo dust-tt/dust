@@ -118,7 +118,7 @@ export default function DemoQA({ run }) {
       r.sort((a, b) => b.timestamp - a.timestamp);
     }
     setSortedResults(r);
-  }, [results, sort]);
+  }, [sort]);
 
   return (
     <main data-color-mode="light">
