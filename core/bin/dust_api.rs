@@ -1441,7 +1441,7 @@ async fn main() -> Result<()> {
     let state = state.clone();
     tokio::task::spawn(async move { state.run_loop().await });
 
-    axum::Server::bind(&"0.0.0.0:3001".parse().unwrap())
+    axum::Server::bind(&"[::]:3001".parse().unwrap())
         .serve(app.into_make_service())
         .await?;
 
