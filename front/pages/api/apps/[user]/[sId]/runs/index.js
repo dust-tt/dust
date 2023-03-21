@@ -49,54 +49,40 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "POST":
-      if (readOnly) {
-        res.status(401).end();
+      if (req.body.mode === "execute") {
+        return executeModeHandler(req, res, app, user);
+      } else if (req.body.mode === "design") {
+        return designModeHandler(req, res, app, user);
+      } else {
+        res.status(400).end();
         return;
       }
-      return postHandler(req, res, app, user);
-
     case "GET":
-      return getHandler(req, res, app);
+      let limit = req.query.limit ? parseInt(req.query.limit) : 10;
+      let offset = req.query.offset ? parseInt(req.query.offset) : 0;
+      let runType = req.query.runType ? req.query.runType : "local";
+
+      const runsRes = await fetch(
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!runsRes.ok) {
+        const error = await runsRes.json();
+        res.status(400).json(error.error);
+        return;
+      }
+
+      const runs = await runsRes.json();
+
+      res
+        .status(200)
+        .json({ runs: runs.response.runs, total: runs.response.total });
 
     default:
       res.status(405).end();
-      return;
-  }
-}
-
-async function getHandler(req, res, app) {
-  let limit = req.query.limit ? parseInt(req.query.limit) : 10;
-  let offset = req.query.offset ? parseInt(req.query.offset) : 0;
-  let runType = req.query.runType ? req.query.runType : "local";
-
-  const runsRes = await fetch(
-    `${DUST_API}/projects/${app.dustAPIProjectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
-    {
-      method: "GET",
-    }
-  );
-
-  if (!runsRes.ok) {
-    const error = await runsRes.json();
-    res.status(400).json(error.error);
-    return;
-  }
-
-  const runs = await runsRes.json();
-
-  res
-    .status(200)
-    .json({ runs: runs.response.runs, total: runs.response.total });
-}
-
-async function postHandler(req, res, app, user) {
-  switch (req.body.mode) {
-    case "execute":
-      return executeModeHandler(req, res, app, user);
-    case "design":
-      return designModeHandler(req, res, app, user);
-    default:
-      res.status(400).end();
       return;
   }
 }
