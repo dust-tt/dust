@@ -65,8 +65,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     The size in bytes of the document's text.
   </Property>
   <Property name="chunk_count" type="integer">
-    The number of chunks that were generated from the document's original text for
-    embedding.
+    The number of chunks that were generated from the document's original text
+    for embedding.
   </Property>
   <Property name="chunks" type="[]Chunk">
     The document's chunks. When searching, only includes relevant chunks. When
@@ -131,7 +131,7 @@ The Document model represents a [data source](/data-sources-overview) document.
       -H "Authorization: Bearer sk-..." \
       -H "Content-Type: application/json" \
       -d '{
-        "text": "Top secret content...",
+        "text": "Top secret content..."
       }'
     ```
 
@@ -139,44 +139,33 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     ```json {{ title: 'Response' }}
     {
-      "run": {
-        "run_id": "5be2f49d42d19...097cd573",
-        "created": 1675247061982,
-        "run_type": "deploy",
+      "document": {
+        "created": 1679447275024,
+        "document_id": "top-secret-document",
+        "timestamp": 1679447275024,
+        "tags": [],
+        "hash": "1eebbe66ac93c...47548fcd",
+        "text_size": 21,
+        "chunk_count": 1,
+        "chunks": [{
+          "text": "Top secret content...",
+          "hash": "db3c24dfa326c...6bd4e1ce",
+          "offset": 0,
+          "vector": [ 0.0027032278, ... ],
+          "score":null
+        }]
+      },
+      "data_source": {
+        "created": 1679447230117,
+        "data_source_id": "foo",
         "config": {
-          "blocks": {
-            "MODEL":{
-              "provider_id": "openai",
-              "model_id": "text-davinci-003",
-              "use_cache": false,
-              "use_stream": false
-            }
-          }
-        },
-        "status":{
-          "run": "succeeded",
-          "blocks": [
-            {
-              "block_type": "llm",
-              "name": "MODEL",
-              "status": "succeeded",
-              "success_count": 1,
-              "error_count": 0
-            }
-          ]
-        },
-        "traces": [
-          [
-            ["input","INPUT"],
-            [[{"value": {...}, "error": null}]]
-          ],
-          [
-            ["llm","MODEL"],
-            [[{"value": {...}, "error": null}]]
-          ]
-        ],
-        "specification_hash": "ac26d350409be...bebb25013f",
-        "results": [[{"value": {...}, "error": null}]]
+          "provider_id": "openai",
+          "model_id": "text-embedding-ada-002",
+          "extras": null,
+          "splitter_id": "base_v0",
+          "max_chunk_size": 256,
+          "use_cache":false
+        }
       }
     }
     ```
@@ -222,45 +211,17 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     ```json {{ title: 'Response' }}
     {
-      "run": {
-        "run_id": "5be2f49d42d19...097cd573",
-        "created": 1675247061982,
-        "run_type": "deploy",
-        "config": {
-          "blocks": {
-            "MODEL":{
-              "provider_id": "openai",
-              "model_id": "text-davinci-003",
-              "use_cache": false,
-              "use_stream": false
-            }
-          }
-        },
-        "status":{
-          "run": "succeeded",
-          "blocks": [
-            {
-              "block_type": "llm",
-              "name": "MODEL",
-              "status": "succeeded",
-              "success_count": 1,
-              "error_count": 0
-            }
-          ]
-        },
-        "traces": [
-          [
-            ["input","INPUT"],
-            [[{"value": {...}, "error": null}]]
-          ],
-          [
-            ["llm","MODEL"],
-            [[{"value": {...}, "error": null}]]
-          ]
-        ],
-        "specification_hash": "ac26d350409be...bebb25013f",
-        "results": [[{"value": {...}, "error": null}]]
-      }
+      "document": {
+        "created": 1679447275024,
+        "document_id": "top-secret-document",
+        "timestamp": 1679447275024,
+        "tags": [],
+        "hash": "1eebbe66ac93c...47548fcd",
+        "text_size": 21,
+        "chunk_count": 1,
+        "chunks": []
+      },
+      "text": "Top secret content..."
     }
     ```
 
@@ -306,44 +267,8 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     ```json {{ title: 'Response' }}
     {
-      "run": {
-        "run_id": "5be2f49d42d19...097cd573",
-        "created": 1675247061982,
-        "run_type": "deploy",
-        "config": {
-          "blocks": {
-            "MODEL":{
-              "provider_id": "openai",
-              "model_id": "text-davinci-003",
-              "use_cache": false,
-              "use_stream": false
-            }
-          }
-        },
-        "status":{
-          "run": "succeeded",
-          "blocks": [
-            {
-              "block_type": "llm",
-              "name": "MODEL",
-              "status": "succeeded",
-              "success_count": 1,
-              "error_count": 0
-            }
-          ]
-        },
-        "traces": [
-          [
-            ["input","INPUT"],
-            [[{"value": {...}, "error": null}]]
-          ],
-          [
-            ["llm","MODEL"],
-            [[{"value": {...}, "error": null}]]
-          ]
-        ],
-        "specification_hash": "ac26d350409be...bebb25013f",
-        "results": [[{"value": {...}, "error": null}]]
+      "document": {
+        "document_id": "top-secret-document"
       }
     }
     ```
@@ -390,53 +315,35 @@ The Document model represents a [data source](/data-sources-overview) document.
     <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10 \
-      -H "Authorization: Bearer sk-..." \
+    curl "https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10" \
+      -H "Authorization: Bearer sk-..."
     ```
 
     </CodeGroup>
 
     ```json {{ title: 'Response' }}
     {
-      "run": {
-        "run_id": "5be2f49d42d19...097cd573",
-        "created": 1675247061982,
-        "run_type": "deploy",
-        "config": {
-          "blocks": {
-            "MODEL":{
-              "provider_id": "openai",
-              "model_id": "text-davinci-003",
-              "use_cache": false,
-              "use_stream": false
-            }
-          }
-        },
-        "status":{
-          "run": "succeeded",
-          "blocks": [
-            {
-              "block_type": "llm",
-              "name": "MODEL",
-              "status": "succeeded",
-              "success_count": 1,
-              "error_count": 0
-            }
-          ]
-        },
-        "traces": [
-          [
-            ["input","INPUT"],
-            [[{"value": {...}, "error": null}]]
-          ],
-          [
-            ["llm","MODEL"],
-            [[{"value": {...}, "error": null}]]
-          ]
-        ],
-        "specification_hash": "ac26d350409be...bebb25013f",
-        "results": [[{"value": {...}, "error": null}]]
-      }
+      "documents":[
+        {
+          "created": 1679447719555,
+          "document_id": "acme-report",
+          "timestamp": 1679447719555,
+          "tags": [],
+          "hash": "1651c5e63b6d6...2ae3acd0",
+          "text_size": 13,
+          "chunk_count": 1,
+          "chunks": []
+        }, {
+          "created": 1679447275024,
+          "document_id": "top-secret-document",
+          "timestamp": 1679447275024,
+          "tags": [],
+          "hash": "1eebbe66ac93c...47548fcd",
+          "text_size": 21,
+          "chunk_count": 1,
+          "chunks": []
+      }],
+      "total":2
     }
     ```
 
