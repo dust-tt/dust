@@ -59,6 +59,7 @@ function preProcessOutput(output) {
 }
 
 function ExecuteOutputLine({
+  blockType,
   blockName,
   outputForBlock,
   lastEventForBlock,
@@ -70,7 +71,7 @@ function ExecuteOutputLine({
     : null;
 
   return (
-    <>
+    <div className="leading-none">
       <button
         disabled={!preprocessedOutput}
         onClick={() => onToggleExpand()}
@@ -85,18 +86,23 @@ function ExecuteOutputLine({
               <Spinner />
             </div>
           ) : (
-            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
+            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4" />
           )}
           {!expanded ? (
-            <ChevronRightIcon className="h-4 w-4 mt-0.5" />
+            <ChevronRightIcon className="text-gray-400 h-4 w-4" />
           ) : (
-            <ChevronDownIcon className="h-4 w-4 mt-0.5" />
+            <ChevronDownIcon className="text-gray-400 h-4 w-4" />
           )}{" "}
-          {blockName}{" "}
+          <div className="inline">
+            <span class="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
+              {blockType}
+            </span>
+            <span className="ml-1 font-bold text-gray-700">{blockName}</span>
+          </div>
         </div>
       </button>
       {expanded ? (
-        <div className="flex ml-4 text-sm text-gray-600">
+        <div className="flex ml-8 text-sm text-gray-600 mb-2">
           {Array.isArray(preprocessedOutput) ? (
             <ArrayViewer value={preprocessedOutput} />
           ) : typeof preprocessedOutput == "string" ? (
@@ -106,7 +112,7 @@ function ExecuteOutputLine({
           ) : null}
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -119,6 +125,7 @@ function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
         return (
           <ExecuteOutputLine
             key={blockName}
+            blockType={executionLogs.blockTypeByName[blockName]}
             blockName={blockName}
             outputForBlock={outputForBlock}
             lastEventForBlock={lastEventForBlock}
@@ -133,10 +140,10 @@ function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
 
 function ExecuteFinalOutput({ value, errored }) {
   return (
-    <div className="grid grid-cols-15">
+    <div className="flex w-full">
       <div
         className={classNames(
-          "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
+          "flex-1 leading-none text-[13px] px-0 py-0 border bg-slate-100",
           !errored ? "border-slate-100" : "border-red-500"
         )}
       >
@@ -158,18 +165,24 @@ function ExecuteFinalOutput({ value, errored }) {
 
 function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
   return (
-    <div key={inputName} className="flex">
-      <input
-        className={classNames(
-          "px-1 py-1 font-normal text-[13px] font-mono bg-slate-300 border-0 outline-none focus:outline-none w-1/4",
-          "border-white ring-0 focus:ring-0 focus:border-white"
-        )}
-        readOnly={true}
-        value={inputName}
-      />
+    <div key={inputName} className="grid grid-cols-10">
+      <div className="col-span-3">
+        <div className="flex group items-center bg-slate-300">
+          <div
+            className={classNames(
+              "flex flex-1 px-1 py-1 font-normal text-[13px] font-mono bg-slate-300 border-0 outline-none focus:outline-none w-1/4",
+              "border-white ring-0 focus:ring-0 focus:border-white"
+            )}
+            readOnly={true}
+            value={inputName + " (" + inputType + ")"}
+          >
+            {inputName} (<span className="font-semibold">{inputType}</span>)
+          </div>
+        </div>
+      </div>
       <div
         className={classNames(
-          "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100 w-3/4",
+          "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
           getValueType(inputValue) === inputType && inputValue?.length > 0
             ? "border-slate-100"
             : "border-red-500"
@@ -402,32 +415,74 @@ export default function ExecuteView({
         <div className="flex flex-initial mt-2">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
-            currentTab="Run"
+            currentTab="Use"
             user={user}
           />
         </div>
-        <div className="w-full max-w-5xl mt-4 mx-auto">
-          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
-            {inputDatasetKeys.length ? (
-              <div className="font-bold text-gray-700 pr-2 mb-2">Input:</div>
-            ) : null}
-            <ul className="space-y-2">
-              {inputDatasetKeys.map((k) => (
-                <li key={k} className="space-y-[1px]">
-                  <ExecuteInput
-                    inputName={k}
-                    inputValue={inputData[k]}
-                    onChange={(value) => handleValueChange(k, value)}
-                    inputType={datasetTypes[k]}
-                  />
-                </li>
-              ))}
-            </ul>
-            {executionLogs.blockOrder.length ? (
-              <>
-                <div className="font-bold text-gray-700 pr-2 mb-2 mt-4">
-                  Progress:
+        <div className="w-full max-w-5xl mt-6 mx-auto">
+          <div className="max-w-4xl mx-8"></div>
+          <div className="flex flex-col mx-8 mt-2">
+            <div className="flex w-full flex-row mb-6">
+              <div className="flex flex-initial text-sm text-gray-400 items-center leading-snug">
+                <div>
+                  This panel lets you use your app on custom{" "}
+                  <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
+                    input
+                  </span>{" "}
+                  values once finalized.{" "}
+                  {savedRun?.app_hash ? null : (
+                    <>
+                      You must run your app at least once from the Specification
+                      panel to be able to execute it here with custom values.
+                    </>
+                  )}
                 </div>
+              </div>
+              <div className="flex flex-1"></div>
+              <div className="flex flex-initial">
+                <div className="">
+                  <ActionButton
+                    disabled={
+                      isRunning || !isInputDataValid() || !savedRun?.app_hash
+                    }
+                    onClick={() => handleRun()}
+                  >
+                    <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                    Execute
+                  </ActionButton>
+                </div>
+              </div>
+            </div>
+            {inputDatasetKeys.length ? (
+              <>
+                <h3 className="text-sm font-medium text-gray-700">Input</h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  The input fields are inferred from the Dataset attached to
+                  your app's{" "}
+                  <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
+                    input
+                  </span>{" "}
+                  block.
+                </p>
+                <ul className="space-y-1 mt-4 mb-6">
+                  {inputDatasetKeys.map((k) => (
+                    <li key={k}>
+                      <ExecuteInput
+                        inputName={k}
+                        inputValue={inputData[k]}
+                        onChange={(value) => handleValueChange(k, value)}
+                        inputType={datasetTypes[k]}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {executionLogs.blockOrder.length ? (
+              <div className="">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Execution Trace
+                </h3>
                 <ExecuteOutput
                   executionLogs={executionLogs}
                   expandedByBlockName={outputExpandedByBlockName}
@@ -439,11 +494,13 @@ export default function ExecuteView({
                     });
                   }}
                 />
-              </>
+              </div>
             ) : null}
             {finalOutputBlockName && (
-              <div className="mt-4">
-                <div className="font-bold text-gray-700 pr-2 mb-2">Output:</div>
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Output
+                </h3>
                 <ExecuteFinalOutput
                   value={preProcessOutput(
                     executionLogs.outputByBlockName[finalOutputBlockName]
@@ -453,22 +510,6 @@ export default function ExecuteView({
                 />
               </div>
             )}
-            <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0 mt-4">
-              <ActionButton
-                disabled={
-                  isRunning || !isInputDataValid() || !savedRun?.app_hash
-                }
-                onClick={() => handleRun()}
-              >
-                <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
-                Run
-              </ActionButton>
-            </div>
-            <div className="text-sm text-gray-400 mt-1 mb-1">
-              {savedRun?.app_hash
-                ? `App hash: ${savedRun?.app_hash.slice(0, 7)}`
-                : "Please run the app from the specification tab first"}
-            </div>
           </div>
         </div>
       </div>
