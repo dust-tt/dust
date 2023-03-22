@@ -138,5 +138,8 @@
 # Dust Next
 
 - [x] update documentation to include new search provider
-- [ ] empty string in data source description exception react
+- [x] empty string in data source description exception react
 - [ ] add timestamp and tags interface / API
+- [ ] multiple ds per ds block
+- [ ] option to return full doc content in ds block
+- [ ] search ds per API

@@ -18,7 +18,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
   let dataSourceConfig = JSON.parse(dataSource.config);
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
-    dataSource.description
+    dataSource.description || ""
   );
   const [dataSourceVisibility, setDataSourceVisibility] = useState(
     dataSource.visibility
