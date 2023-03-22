@@ -1,8 +1,8 @@
-import { unstable_getServerSession } from 'next-auth/next';
-import { authOptions } from '@app/pages/api/auth/[...nextauth]';
-import { User, DataSource, Provider } from '@app/lib/models';
-import { Op } from 'sequelize';
-import { credentialsFromProviders } from '@app/lib/providers';
+import { unstable_getServerSession } from "next-auth/next";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { User, DataSource, Provider } from "@app/lib/models";
+import { Op } from "sequelize";
+import { credentialsFromProviders } from "@app/lib/providers";
 
 const { DUST_API } = process.env;
 
@@ -79,6 +79,15 @@ export default async function handler(req, res) {
         break;
       }
 
+      let tags = [];
+      if (req.body.tags) {
+        if (!Array.isArray(req.body.tags)) {
+          res.status(400).end();
+          break;
+        }
+        tags = req.body.tags;
+      }
+
       // Enforce FreePlan limit: 32 documents per DataSource.
       const documentsRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
@@ -115,7 +124,7 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             document_id: documentId,
-            tags: [],
+            tags: tags,
             text: req.body.text,
             credentials,
           }),

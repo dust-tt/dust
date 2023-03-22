@@ -111,6 +111,10 @@ The following parameters are accepted when inserting a document:
   <Property name="text" type="string">
     The text content of the document.
   </Property>
+  <Property name="tags" type="optional []string">
+    User specified list of string tags (for future purposes, such as tag-based
+    serach filtering). If not specified, defaults to the empty list.
+  </Property>
 </Properties>
 
 See the [Documents](/documents) API reference to learn how to insert documents by API. Data

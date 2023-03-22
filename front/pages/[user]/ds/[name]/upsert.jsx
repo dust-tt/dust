@@ -6,7 +6,11 @@ import { ActionButton } from "@app/components/Button";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import { ArrowUpOnSquareStackIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpOnSquareStackIcon,
+  MinusCircleIcon,
+  PlusSmallIcon,
+} from "@heroicons/react/24/outline";
 import { classNames } from "@app/lib/utils";
 import { useRef } from "react";
 import { useEffect } from "react";
@@ -27,6 +31,7 @@ export default function DataSourceUpsert({
 
   const [documentId, setDocumentId] = useState("");
   const [text, setText] = useState("");
+  const [tags, setTags] = useState([]);
 
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,6 +56,7 @@ export default function DataSourceUpsert({
           setDisabled(false);
           setDownloading(false);
           setText(document.text);
+          setTags(document.document.tags);
         }
       });
     }
@@ -89,10 +95,27 @@ export default function DataSourceUpsert({
         },
         body: JSON.stringify({
           text,
+          tags: tags.filter((tag) => tag),
         }),
       }
     );
     router.push(`/${session.user.username}/ds/${dataSource.name}`);
+  };
+
+  const handleTagUpdate = (index, value) => {
+    const newTags = [...tags];
+    newTags[index] = value;
+    setTags(newTags);
+  };
+
+  const handleAddTag = () => {
+    setTags([...tags, ""]);
+  };
+
+  const handleTagDelete = (index) => {
+    const newTags = [...tags];
+    newTags.splice(index, 1);
+    setTags(newTags);
   };
 
   return (
@@ -113,7 +136,7 @@ export default function DataSourceUpsert({
         <div className="px-4 mt-2 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
           <div>
             <div className="flex flex-1">
-              <div className="w-full mb-8">
+              <div className="w-full">
                 <div className="space-y-6 divide-y divide-gray-200 mt-4"></div>
 
                 <div className="mt-2 grid gap-y-4 gap-x-4 sm:grid-cols-5">
@@ -143,6 +166,63 @@ export default function DataSourceUpsert({
                       name or title). Upserting with the ID of a document that
                       already exists will replace it.
                     </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-1">
+              <div className="w-full mb-8">
+                <div className="space-y-6 divide-y divide-gray-200"></div>
+
+                <div className="mt-2 grid gap-y-4 gap-x-4 grid-cols-5">
+                  <div className="col-span-3">
+                    <label
+                      htmlFor="tags"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Tags
+                    </label>
+                    {tags.map((tag, index) => (
+                      <div
+                        key={index}
+                        className="mt-1 flex rounded-md shadow-sm group"
+                      >
+                        <input
+                          type="text"
+                          name="document"
+                          id="document"
+                          readOnly={readOnly}
+                          className={classNames(
+                            "block w-full min-w-0 flex-1 rounded-md text-sm",
+                            "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                          )}
+                          value={tag}
+                          onChange={(e) =>
+                            handleTagUpdate(index, e.target.value)
+                          }
+                        />
+                        <div
+                          className="cursor-pointer group-hover:visible pt-2 pl-1"
+                          onClick={() => {
+                            handleTagDelete(index);
+                          }}
+                        >
+                          <MinusCircleIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex flex-row mt-2">
+                      <div
+                        className="rounded bg-gray-700 cursor-pointer"
+                        onClick={() => {
+                          handleAddTag();
+                        }}
+                      >
+                        <PlusSmallIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex flex-1"></div>
+                    </div>
                   </div>
                 </div>
               </div>
