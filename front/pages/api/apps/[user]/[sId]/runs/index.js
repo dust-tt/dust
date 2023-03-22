@@ -49,14 +49,25 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "POST":
-      if (req.body.mode === "execute") {
-        return executeModeHandler(req, res, app, user);
-      } else if (req.body.mode === "design") {
-        return designModeHandler(req, res, app, user);
-      } else {
-        res.status(400).end();
-        return;
+      // Super important check as this would allow other users to run public app with the owner
+      // credentials. We will allow that in the future but the how the credentials are pulled will
+      // nede to be updated.
+      if (readOnly) {
+        res.status(401).end();
+        break;
       }
+
+      switch (req.body.mode) {
+        case "execute":
+          return executeModeHandler(req, res, app, user);
+        case "design":
+          return designModeHandler(req, res, app, user);
+        default:
+          res.status(400).end();
+          break;
+      }
+      break;
+
     case "GET":
       let limit = req.query.limit ? parseInt(req.query.limit) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset) : 0;
@@ -80,6 +91,7 @@ export default async function handler(req, res) {
       res
         .status(200)
         .json({ runs: runs.response.runs, total: runs.response.total });
+      break;
 
     default:
       res.status(405).end();
@@ -143,6 +155,7 @@ async function executeModeHandler(req, res, app, user) {
     console.log("ERROR streaming from Dust API", e);
   }
   res.end();
+
   return;
 }
 
@@ -182,9 +195,9 @@ async function designModeHandler(req, res, app, user) {
   }
 
   const config = JSON.parse(req.body.config);
-  const { dataset: inputDataset } =
-    Object.values(config).find((configValue) => configValue.type == "input") ||
-    {};
+  const { dataset: inputDataset } = Object.values(config).find(
+    (configValue) => configValue.type == "input"
+  ) || { dataset: null };
 
   const runRes = await fetch(
     `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
