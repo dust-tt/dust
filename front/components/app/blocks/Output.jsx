@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 
-function ObjectViewer({ block, value }) {
+export function ObjectViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {Object.keys(value).map((key, index) => (
@@ -26,7 +26,7 @@ function ObjectViewer({ block, value }) {
   );
 }
 
-function ArrayViewer({ block, value }) {
+export function ArrayViewer({ block, value }) {
   return (
     <div className="flex flex-col">
       {value.map((item, index) => (
@@ -136,7 +136,7 @@ const STRING_SHOW_MORE_LINK_LENGTH = 400;
 // This viewer just truncates very long strings with a show all link for
 // seeing the full value. It does not currently allow you to hide the
 // text again.
-function StringViewer({ value }) {
+export function StringViewer({ value }) {
   const [expanded, setExpanded] = useState(false);
 
   if (expanded) {

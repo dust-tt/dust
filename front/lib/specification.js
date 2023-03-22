@@ -285,6 +285,7 @@ export function restoreTripleBackticks(s) {
 
 export function dumpSpecification(spec, latestDatasets) {
   var out = "";
+
   for (var i = 0; i < spec.length; i++) {
     let block = spec[i];
     switch (block.type) {

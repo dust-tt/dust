@@ -1,4 +1,4 @@
-import { checkDatasetData } from "@app/lib/datasets";
+import { checkDatasetData, getDatasetTypes } from "@app/lib/datasets";
 
 describe("checkDatasetData", function () {
   test("returns dataset keys if there are no key mismatch", function () {
@@ -26,5 +26,20 @@ describe("checkDatasetData", function () {
     expect(() => checkDatasetData(dataset)).toThrow(
       "Keys mismatch between data entries: hello != hello,foo"
     );
+  });
+});
+
+describe("getDatasetTypes", function () {
+  test("returns the types of the dataset keys", function () {
+    const datasetKeys = ["hello", "world", "dust", "foo", "bar"];
+    const entry = {
+      hello: "world",
+      world: 1,
+      dust: true,
+      foo: null,
+      bar: { whats: "up" },
+    };
+    const types = getDatasetTypes(datasetKeys, entry);
+    expect(types).toEqual(["string", "number", "boolean", "object", "object"]);
   });
 });

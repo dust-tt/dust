@@ -5,6 +5,7 @@ import { Menu } from "@headlessui/react";
 import {
   DocumentIcon,
   Cog6ToothIcon,
+  ArchiveBoxIcon,
   BoltIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -32,10 +33,20 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
       ),
     },
     {
-      name: "Runs",
-      href: `/${user}/a/${app.sId}/runs`,
+      name: "Run",
+      href: `/${user}/a/${app.sId}/execute`,
       icon: (
         <BoltIcon
+          className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+          aria-hidden="true"
+        />
+      ),
+    },
+    {
+      name: "Logs",
+      href: `/${user}/a/${app.sId}/runs`,
+      icon: (
+        <ArchiveBoxIcon
           className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
           aria-hidden="true"
         />

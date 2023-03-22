@@ -30,3 +30,32 @@ export function checkDatasetData(data: Array<object>): string[] {
 
   return Object.keys(data[0]);
 }
+
+export function getDatasetTypes(
+  datasetKeys: string[],
+  entry: { [key: string]: any }
+): string[] {
+  return datasetKeys.map((key) => getValueType(entry[key]));
+}
+
+export function getValueType(value: any): string {
+  const type = typeof value;
+
+  if (type === "object") {
+    return type;
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(value);
+  } catch (e) {
+    return "string";
+  }
+
+  const parsedType = typeof parsed;
+  if (["number", "boolean", "object"].includes(parsedType)) {
+    return parsedType;
+  }
+
+  return "string";
+}

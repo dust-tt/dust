@@ -14,6 +14,7 @@ import {
   ArrowDownOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import "@uiw/react-textarea-code-editor/dist.css";
+import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -186,38 +187,8 @@ export default function DatasetView({
     return finalDataset;
   };
 
-  const getValueType = (value) => {
-    let type = typeof value;
-    if (type === "object") {
-      return type;
-    }
-    try {
-      let parsed = JSON.parse(value);
-      if (typeof parsed === "number") {
-        type = "number";
-      } else if (typeof parsed === "boolean") {
-        type = "boolean";
-      } else if (typeof parsed === "object") {
-        type = "object";
-      } else {
-        type = "string";
-      }
-    } catch (err) {
-      type = "string";
-    }
-    return type;
-  };
-
   const inferDatasetTypes = () => {
-    let datasetTypes = [];
-    // Infer the dataset types based on the first entry
-    for (let i = 0; i < datasetKeys.length; i++) {
-      let key = datasetKeys[i];
-      let firstEntry = datasetData[0][key];
-      let type = getValueType(firstEntry);
-      datasetTypes.push(type);
-    }
-    setDatasetTypes(datasetTypes);
+    setDatasetTypes(getDatasetTypes(datasetKeys, datasetData[0]));
     if (datasetInitializing) {
       setTimeout(() => {
         setDatasetInitializing(false);
