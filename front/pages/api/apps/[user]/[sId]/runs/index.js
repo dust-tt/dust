@@ -57,14 +57,138 @@ export default async function handler(req, res) {
         break;
       }
 
+      const [providers] = await Promise.all([
+        Provider.findAll({
+          where: {
+            userId: user.id,
+          },
+        }),
+      ]);
+
       switch (req.body.mode) {
+        // Run creation as part of the app execution process (Use pane).
         case "execute":
-          return executeModeHandler(req, res, app, user);
+          if (
+            !req.body ||
+            !(typeof req.body.config == "string") ||
+            !(typeof req.body.specificationHash === "string")
+          ) {
+            res.status(400).end();
+            return;
+          }
+
+          const streamRes = await fetch(
+            `${DUST_API}/projects/${app.dustAPIProjectId}/runs/stream`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                run_type: "local",
+                specification_hash: req.body.specificationHash,
+                inputs: req.body.inputs,
+                config: { blocks: JSON.parse(req.body.config) },
+                credentials: credentialsFromProviders(providers),
+              }),
+            }
+          );
+
+          if (!streamRes.ok) {
+            const error = await streamRes.json();
+            res.status(400).json(error.error);
+            return;
+          }
+
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          });
+
+          try {
+            for await (const chunk of streamRes.body) {
+              res.write(chunk);
+              res.flush();
+            }
+          } catch (e) {
+            console.log("ERROR streaming from Dust API", e);
+          }
+          res.end();
+          return;
+
+        // Run creation as part of the app design process (Specification pane).
         case "design":
-          return designModeHandler(req, res, app, user);
+          if (
+            !req.body ||
+            !(typeof req.body.config == "string") ||
+            !(typeof req.body.specification === "string")
+          ) {
+            res.status(400).end();
+            return;
+          }
+
+          const datasetsRes = await fetch(
+            `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
+            {
+              method: "GET",
+            }
+          );
+          const datasets = await datasetsRes.json();
+          if (datasets.error) {
+            res.status(500).end();
+            return;
+          }
+
+          let latestDatasets = {};
+          for (const d in datasets.response.datasets) {
+            latestDatasets[d] = datasets.response.datasets[d][0].hash;
+          }
+
+          const config = JSON.parse(req.body.config);
+          const { dataset: inputDataset } = Object.values(config).find(
+            (configValue) => configValue.type == "input"
+          ) || { dataset: null };
+
+          const runRes = await fetch(
+            `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                run_type: "local",
+                specification: dumpSpecification(
+                  JSON.parse(req.body.specification),
+                  latestDatasets
+                ),
+                dataset_id: inputDataset,
+                config: { blocks: config },
+                credentials: credentialsFromProviders(providers),
+              }),
+            }
+          );
+
+          if (!runRes.ok) {
+            const error = await runRes.json();
+            res.status(400).json(error.error);
+            return;
+          }
+
+          const run = await runRes.json();
+
+          await app.update({
+            savedSpecification: req.body.specification,
+            savedConfig: req.body.config,
+            savedRun: run.response.run.run_id,
+          });
+
+          res.status(200).json({ run: run.response.run });
+          return;
         default:
           res.status(400).end();
-          break;
+          return;
       }
       break;
 
@@ -97,143 +221,4 @@ export default async function handler(req, res) {
       res.status(405).end();
       return;
   }
-}
-
-async function executeModeHandler(req, res, app, user) {
-  if (
-    !req.body ||
-    !(typeof req.body.config == "string") ||
-    !(typeof req.body.specificationHash === "string")
-  ) {
-    res.status(400).end();
-    return;
-  }
-
-  const [providers] = await Promise.all([
-    Provider.findAll({
-      where: {
-        userId: user.id,
-      },
-    }),
-  ]);
-
-  const runRes = await fetch(
-    `${DUST_API}/projects/${app.dustAPIProjectId}/runs/stream`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        run_type: "local",
-        specification_hash: req.body.specificationHash,
-        inputs: req.body.inputs,
-        config: { blocks: JSON.parse(req.body.config) },
-        credentials: credentialsFromProviders(providers),
-      }),
-    }
-  );
-
-  if (!runRes.ok) {
-    const error = await runRes.json();
-    res.status(400).json(error.error);
-    return;
-  }
-
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-
-  try {
-    for await (const chunk of runRes.body) {
-      res.write(chunk);
-      res.flush();
-    }
-  } catch (e) {
-    console.log("ERROR streaming from Dust API", e);
-  }
-  res.end();
-
-  return;
-}
-
-async function designModeHandler(req, res, app, user) {
-  let [providers] = await Promise.all([
-    Provider.findAll({
-      where: {
-        userId: user.id,
-      },
-    }),
-  ]);
-
-  if (
-    !req.body ||
-    !(typeof req.body.config == "string") ||
-    !(typeof req.body.specification === "string")
-  ) {
-    res.status(400).end();
-    return;
-  }
-
-  const datasetsRes = await fetch(
-    `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
-    {
-      method: "GET",
-    }
-  );
-  const datasets = await datasetsRes.json();
-  if (datasets.error) {
-    res.status(500).end();
-    return;
-  }
-
-  let latestDatasets = {};
-  for (const d in datasets.response.datasets) {
-    latestDatasets[d] = datasets.response.datasets[d][0].hash;
-  }
-
-  const config = JSON.parse(req.body.config);
-  const { dataset: inputDataset } = Object.values(config).find(
-    (configValue) => configValue.type == "input"
-  ) || { dataset: null };
-
-  const runRes = await fetch(
-    `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        run_type: "local",
-        specification: dumpSpecification(
-          JSON.parse(req.body.specification),
-          latestDatasets
-        ),
-        dataset_id: inputDataset,
-        config: { blocks: config },
-        credentials: credentialsFromProviders(providers),
-      }),
-    }
-  );
-
-  if (!runRes.ok) {
-    const error = await runRes.json();
-    res.status(400).json(error.error);
-    return;
-  }
-
-  const run = await runRes.json();
-
-  await app.update({
-    savedSpecification: req.body.specification,
-    savedConfig: req.body.config,
-    savedRun: run.response.run.run_id,
-  });
-
-  res.status(200).json({ run: run.response.run });
-
-  return;
 }
