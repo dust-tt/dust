@@ -241,7 +241,6 @@ export function moveBlockUp(spec, index) {
   let s = spec.map((b) => b);
   if (index > 0 && index < spec.length) {
     switch (s[index].type) {
-      case "input":
       case "map":
       case "reduce":
         if (["map", "reduce"].includes(s[index - 1].type)) {
@@ -261,7 +260,6 @@ export function moveBlockDown(spec, index) {
   let s = spec.map((b) => b);
   if (index > -1 && index < spec.length - 1) {
     switch (s[index].type) {
-      case "input":
       case "map":
       case "reduce":
         if (["map", "reduce"].includes(s[index + 1].type)) {
