@@ -54,7 +54,7 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Property>
   <Property name="timestamp" type="integer">
     User specified timestamp (epoch in ms) for the document (for future
-    purposes, such as timestamp based filtering of searches). If not specified,
+    purposes, such as timestamp-based filtering of searches). If not specified,
     defaults to the value of _created_.
   </Property>
   <Property name="tags" type="[]string">
@@ -62,15 +62,15 @@ The Document model represents a [data source](/data-sources-overview) document.
     serach filtering). If not specified, defaults to the empty list.
   </Property>
   <Property name="text_size" type="integer">
-    Size in bytes of the document's text.
+    The size in bytes of the document's text.
   </Property>
   <Property name="chunk_count" type="integer">
-    Number of chunks that were generated from the document's original text for
+    The number of chunks that were generated from the document's original text for
     embedding.
   </Property>
   <Property name="chunks" type="[]Chunk">
-    Document's chunks. When searching only includes relevant chunks. When
-    creating a document, all the chunks that were generated.
+    The document's chunks. When searching, only includes relevant chunks. When
+    creating a document, includes all the chunks that were generated.
   </Property>
 </Properties>
 

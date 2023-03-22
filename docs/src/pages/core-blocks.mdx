@@ -11,7 +11,7 @@ the sections on [Inputs](/overview#inputs) and [Execution](/overview#execution) 
 understand the execution logic of a Dust app.
 
 For each block we describe its _specification_ parameters and _configuration_ parameters. Please
-refer to the [Blocks](/overview#blocks) section for more detail on the difference between the two.
+refer to the [Blocks](/overview#blocks) section for more details on the difference between the two.
 
 ---
 
@@ -22,7 +22,7 @@ executed, in the form of JSON objects. During the design phase of the app it is 
 [Dataset](/overview#datasets) of examples used to iterate on the app. When deployed by API, the
 `input` block receives the arguments passed to the app by API.
 
-Refer to the [Inputs](/overview#inputs) section for more detail on how the `input` block forks the
+Refer to the [Inputs](/overview#inputs) section for more details on how the `input` block forks the
 execution of the app in independent execution streams. When run by API, the dataset to which the
 `input` block is associated is ignored and replaced by the arguments passed by API.
 
@@ -339,14 +339,14 @@ contain an array of 4 `{ "foo": "bar" }` objects.
 
 The `data_source` block provides an interface to query a [data source](/data-sources-overview) and
 return chunks that are semantically similar to the query provided. When executed, the query is
-embedded using the embedding model configured on the data source and the resulting enmbedding vector
+embedded using the embedding model set on the data source and the resulting enmbedding vector
 is used to perform semantic search on the data source's chunks.
 
 The output of the `data_source` block is a list of [Document](/documents#the-document-model)
-objects. Each document may include one or more [Chunks](/documents#the-chunk-model) (only the ones
-that were returned from the search). The documents are ordered by the max of their retrieved chunks
-score. Please refer to the [data sources overview](/data-sources-overview) for more details about
-how documents are chunked to enable semantic search.
+objects. Each document may include one or more [Chunks](/documents#the-chunk-model) (only those
+that were returned from the search). The documents are sorted by decreasing order of the max of
+their retrieved chunks score. Please refer to the [data sources overview](/data-sources-overview)
+for more details about how documents are chunked to enable semantic search.
 
 ### Specification
 
@@ -355,7 +355,7 @@ how documents are chunked to enable semantic search.
     The query to embed and use to perform semantic seach against the data
     source. The query can be templated using the
     [Tera](https://tera.netlify.app/docs/#templates) templating language (see
-    the [LLM block](/core-blocks#llm-block) documentation for more detail on
+    the [LLM block](/core-blocks#llm-block) documentation for more details on
     templating).
   </Property>
   <Property name="top_k" type="integer">
@@ -369,9 +369,9 @@ how documents are chunked to enable semantic search.
 
 <Properties>
   <Property name="project_id" type="string">
-    Internal `project_id` associated with the data source. The Dust's interface
+    The internal `project_id` associated with the data source. Dust's interface
     presents a data source picker that lets you select your own or other users'
-    data sources without having to explecitely know the associated `project_id`.
+    data sources without having to explicitly know the associated `project_id`.
   </Property>
   <Property name="data_source_id" type="string">
     The name of the data source to use in the `project_id` above.

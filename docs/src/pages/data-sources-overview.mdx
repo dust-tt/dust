@@ -76,12 +76,13 @@ context left for retrieval. If you want some amount of diversity in the informat
 want maybe a half-dozen or a dozen chunks returned, meaning a chunk size between **256** and
 **512**.
 
-Conversely, if you plan to process the retrieved documents with subsequent calls to models (let say
-using recursive summarization or such) then you want to pick a higher chunk size such that the
-semantic retrieval step covers as much information as possible.
+Conversely, if you plan to process the retrieved documents with subsequent calls to models (for
+example using recursive summarization) then you want to pick a higher chunk size such that
+the semantic retrieval step covers as much information as possible.
 
-These decisions really depend on the quality and speed constraint you have to design your app and we
-advise that you experiment with various approach to find the one that suits your use-case the most.
+These decisions really depend on the quality and speed constraints you have to design your app and
+we advise that you experiment with various approaches to find the one that suits your use case the
+best.
 
 ## Document insertion
 
@@ -137,7 +138,7 @@ the semantic search are aggregated per document).
 
 When a query is run the following happens automatically:
 
-- **Embedding**: The query is embedded using the embedding model configured on the data source.
+- **Embedding**: The query is embedded using the embedding model set on the data source.
 - **Search**: A vector search query is run against the embedding vectors of the data source's
   documents' chunks.
 - **Union**: Most relevant chunks' documents are retrieved and chunks are associated to their
