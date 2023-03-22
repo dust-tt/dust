@@ -192,6 +192,7 @@ export const navigation = [
       { title: 'Platform overview', href: '/overview' },
       { title: 'Core Blocks', href: '/core-blocks' },
       { title: 'Integration Blocks', href: '/integration-blocks' },
+      { title: 'Data Sources', href: '/data-sources-overview' },
     ],
   },
   {
@@ -200,7 +201,10 @@ export const navigation = [
   },
   {
     title: 'API Reference',
-    links: [{ title: 'Runs', href: '/runs' }],
+    links: [
+      { title: 'Runs', href: '/runs' },
+      { title: 'Documents', href: '/documents' },
+    ],
   },
 ]
 

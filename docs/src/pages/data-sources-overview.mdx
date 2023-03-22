@@ -1,0 +1,145 @@
+export const description = "An overview of Dust's data sources."
+
+# Data Sources
+
+An overview of Dust's data sources. You'll learn how to create data sources, upload documents and
+leverage them to build more context-aware apps. {{ className: 'lead' }}
+
+Dust's data sources provide a fully managed semantic search solution. A data source is a managed
+store of documents on which semantic searches can be performed. Documents can be ingested by API or
+uploaded manually from the Dust interface.
+
+Once uploaded, documents are automatically chunked, embedded and indexed. Searches can be performed
+against the documents of a data source using the [`data_source`
+block](core-blocks#data-source-block) which, given a query, automatically embeds it and performs a
+vector search operation to retrieve the most semantically relevant documents and associated chunks.
+
+<Note>
+  Semantic search, generally based on [embedding
+  models](/introduction#embedding-models), is important to large language model
+  apps because of the limited context size of models. It enables the retrieval
+  of chunks of valuable information that fit in context to perform a particular
+  task. This is called _retrieval-augmented generation_.
+</Note>
+
+Data sources enable apps to perform semantic searches over large collections of documents, only
+retrieving the chunks of information that are the most relevant to the app's task, without having to
+manage the complexity of setting up vector search database, chunking docouments and embedding chunks
+and finally performing vector search queries.
+
+## Data Source creation
+
+Creating a data source consists in providing a name, description, an embedding model to use as well
+as `max_chunk_size`, the targeted number of tokens for each chunks. The embedding model must be
+provided at data source creation and cannot be changed in the future (since the model used when
+embedding documents chunks and serach quries must be consistent).
+
+### Parameters
+
+<Properties>
+  <Property name="name" type="string">
+    The name of the new data source. It should be short and can only contain
+    lowercase alphanumerical characters as well as `-`.
+  </Property>
+  <Property name="description" type="optional string">
+    A description of the content of the data source.
+  </Property>
+  <Property name="visibility" type="string">
+    One of _public_ or _private_. Only you can edit your own data sources. If
+    _public_ other users can view the data source and query from it.
+  </Property>
+  <Property name="embedded" type="model">
+    The model to use for the data source. This is set at creation and cannot be
+    changed later (as it would require re-embedding the entire data source).
+    This is the model used to embed document chunks when they are ingested as
+    well as queries when searches are peformed (the same model must be used for
+    both).
+  </Property>
+  <Property name="max_chunk_size" type="integer">
+    The number of tokens to use when chunking documents before embedding the
+    resulting chunks. Note that chunks at the end of documents may be shorter
+    then the provided value.
+  </Property>
+</Properties>
+
+Data sources are created empty. Their description can be edited from the Settings panel. They cannot
+be renamed but they can be deleted from the same panel.
+
+### Choosing a chunk size
+
+Choosing a chunk size depends on the usage you will have of the retrieved chunks.
+
+If the goal is to present these chunks to a model to do _retrieval-augmented generation_ then you'll
+want to choose a chunk size in tokens that is not too high: imagine a model with ~4k tokens of
+context and that you want at least 1k of context to generate a completion. Then you have ~3k of
+context left for retrieval. If you want some amount of diversity in the information retrieved you'll
+want maybe a half-dozen or a dozen chunks returned, meaning a chunk size between **256** and
+**512**.
+
+Conversely, if you plan to process the retrieved documents with subsequent calls to models (for
+example using recursive summarization) then you want to pick a higher chunk size such that
+the semantic retrieval step covers as much information as possible.
+
+These decisions really depend on the quality and speed constraints you have to design your app and
+we advise that you experiment with various approaches to find the one that suits your use case the
+best.
+
+## Document insertion
+
+Once a data source is created, documents can be inserted from the Dust interface or by API. When
+a document is inserted, the following happens automatically:
+
+- **Chunking**: The document is pre-processed to remove repeated whitespaces (helps semantic search)
+  and chunked using `max_chunk_size` tokens per chunks.
+- **Embedding**: Each chunk is embedded (in parallel, with retries) using the embedding model
+  parametered on the data source.
+- **Indexing**: Each resulting embedding vector is inserted in a vector search database along with
+  metadata about the document and the original chunk text.
+
+The following parameters are accepted when inserting a document:
+
+### Parameters
+
+<Properties>
+  <Property name="document_id" type="string">
+    A unique ID for the document. The semantics of the insertion really is an
+    upsertion. Inserting with a `document_id` that does not exist will create
+    that document, it will otherwise replace the previous document version
+    (removing previous chunks from the vector serach db and replacing by the
+    updated document's).
+  </Property>
+  <Property name="text" type="string">
+    The text content of the document.
+  </Property>
+</Properties>
+
+See the [Documents](/documents) API reference to learn how to insert documents by API. Data
+sources need to be created from the Dust interface.
+
+## Document deletion
+
+When deleting a document, all associated chunks are automatically removed from the vector search
+database of the data source. Documents can be deleted from the Dust interface or by API.
+
+<Note>
+  Data sources can be deleted from the Dust interface. When deleted, all
+  associated data (all documents and associaed chunks) are deleted from our
+  systems.
+</Note>
+
+See the [Documents](/documents) API reference to learn how to delete documents by API.
+
+## Querying a Data Source
+
+Querying a data source is done using the [`data_source` block](core-blocks#data-source-block). The
+`data_source` block returns a list of [Document](/data-sources#the-document-model) objects. Each
+document may include one or more [Chunks](/data-sources#the-chunk-model) (the chunks returned by
+the semantic search are aggregated per document).
+
+When a query is run the following happens automatically:
+
+- **Embedding**: The query is embedded using the embedding model set on the data source.
+- **Search**: A vector search query is run against the embedding vectors of the data source's
+  documents' chunks.
+- **Union**: Most relevant chunks' documents are retrieved and chunks are associated to their
+  original document object.
