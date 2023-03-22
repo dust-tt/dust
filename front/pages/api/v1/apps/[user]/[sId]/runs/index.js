@@ -1,6 +1,6 @@
-import { User, App, Provider, Key } from '@app/lib/models';
-import { credentialsFromProviders } from '@app/lib/providers';
-import { Op } from 'sequelize';
+import { User, App, Provider, Key } from "@app/lib/models";
+import { credentialsFromProviders } from "@app/lib/providers";
+import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
@@ -118,22 +118,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = appUser.id !== reqUser.id;
-
   let [app, providers] = await Promise.all([
     App.findOne({
-      where: readOnly
-        ? {
-            userId: appUser.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: appUser.id,
-            sId: req.query.sId,
-          },
+      where: {
+        userId: reqUser.id,
+        sId: req.query.sId,
+      },
     }),
     Provider.findAll({
       where: {
