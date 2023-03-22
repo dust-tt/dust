@@ -108,6 +108,13 @@ impl App {
                         name
                     ))?;
                 }
+                if current_map.is_some() {
+                    Err(anyhow!(
+                        "Block `input {}` is nested in `map {}` which is invalid.",
+                        name,
+                        current_map.as_ref().unwrap()
+                    ))?;
+                }
                 input_found = true;
             }
             if block.block_type() == BlockType::Map {
