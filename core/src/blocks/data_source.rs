@@ -9,8 +9,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct DataSource {
-    project_id: usize,
-    data_source_id: String,
+    data_sources: Vec<String>,
     query: String,
     top_k: usize,
 }
@@ -19,6 +18,7 @@ impl DataSource {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut project_id: Option<usize> = None;
         let mut data_source_id: Option<String> = None;
+        let mut data_sources: Vec<(usize, String)> = vec![];
         let mut query: Option<String> = None;
         let mut top_k: Option<usize> = None;
 
@@ -35,6 +35,36 @@ impl DataSource {
                             ))?,
                         },
                         "data_source_id" => data_source_id = Some(value),
+                        "data_sources" => {
+                            data_sources = value
+                                .split("\n")
+                                .map(|s| String::from(s.trim()))
+                                .map(|ds| {
+                                    let err_msg = "Invalid `data_sources` in `data_source` block, \
+                                      expecting a list of data sources (one per line) with format: \
+                                      `project_id:data_source_id`";
+                                    let re = regex::Regex::new(r"(\d+):(.+)")?;
+                                    let caps = match re.captures(&ds) {
+                                        Some(caps) => caps,
+                                        None => Err(anyhow!(err_msg))?,
+                                    };
+                                    let project_id = match caps.get(1) {
+                                        Some(c) => match c.as_str().parse::<usize>() {
+                                            Ok(n) => n,
+                                            Err(_) => Err(anyhow!(err_msg))?,
+                                        },
+                                        None => Err(anyhow!(err_msg))?,
+                                    };
+
+                                    let data_source_id = match caps.get(2) {
+                                        Some(c) => c.as_str().to_string(),
+                                        None => Err(anyhow!(err_msg))?,
+                                    };
+
+                                    Ok((project_id, data_source_id))
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                        }
                         "query" => query = Some(value),
                         "top_k" => match value.parse::<usize>() {
                             Ok(n) => top_k = Some(n),
@@ -52,16 +82,16 @@ impl DataSource {
             }
         }
 
-        if !project_id.is_some() {
-            Err(anyhow!(
-                "Missing required `project_id` in `data_source` block"
-            ))?;
+        match (project_id, data_source_id) {
+            (Some(p), Some(d)) => {
+                data_sources.push((p, d));
+            }
+            (None, None) => (),
+            _ => Err(anyhow!(
+                "Missing required `project_id` and/or `data_source_id` in `data_source` block"
+            ))?,
         }
-        if !data_source_id.is_some() {
-            Err(anyhow!(
-                "Missing required `data_source_id` in `data_source` block"
-            ))?;
-        }
+
         if !query.is_some() {
             Err(anyhow!("Missing required `query` in `data_source` block"))?;
         }
