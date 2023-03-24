@@ -14,7 +14,8 @@ import { useRuns } from "@app/lib/swr";
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 const tabs = [
-  { name: "Local", runType: "local" },
+  { name: "Design", runType: "local" },
+  { name: "Execute", runType: "execute" },
   { name: "API", runType: "deploy" },
 ];
 
