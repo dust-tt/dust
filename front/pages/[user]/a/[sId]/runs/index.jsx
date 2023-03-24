@@ -16,6 +16,7 @@ const { URL, GA_TRACKING_ID = null } = process.env;
 const tabs = [
   { name: "Local", runType: "local" },
   { name: "API", runType: "deploy" },
+  { name: "Use", runType: "execute" },
 ];
 
 const inputCount = (status) => {

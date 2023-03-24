@@ -134,6 +134,7 @@ impl RunStatus {
 pub enum RunType {
     Deploy,
     Local,
+    Execute,
 }
 
 impl ToString for RunType {
@@ -141,6 +142,7 @@ impl ToString for RunType {
         match self {
             RunType::Deploy => "deploy".to_string(),
             RunType::Local => "local".to_string(),
+            RunType::Execute => "execute".to_string(),
         }
     }
 }
@@ -151,6 +153,7 @@ impl FromStr for RunType {
         match s {
             "deploy" => Ok(RunType::Deploy),
             "local" => Ok(RunType::Local),
+            "execute" => Ok(RunType::Execute),
             _ => Err(utils::ParseError::with_message("Unknown RunType"))?,
         }
     }

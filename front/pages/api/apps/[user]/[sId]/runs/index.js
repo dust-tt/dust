@@ -85,7 +85,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                run_type: "local",
+                run_type: "execute",
                 specification_hash: req.body.specificationHash,
                 inputs: req.body.inputs,
                 config: { blocks: JSON.parse(req.body.config) },
@@ -190,7 +190,6 @@ export default async function handler(req, res) {
           res.status(400).end();
           return;
       }
-      break;
 
     case "GET":
       let limit = req.query.limit ? parseInt(req.query.limit) : 10;
