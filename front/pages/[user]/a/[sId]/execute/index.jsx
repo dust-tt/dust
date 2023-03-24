@@ -94,7 +94,7 @@ function ExecuteOutputLine({
             <ChevronDownIcon className="text-gray-400 h-4 w-4" />
           )}{" "}
           <div className="inline">
-            <span class="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
+            <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
               {blockType}
             </span>
             <span className="ml-1 font-bold text-gray-700">{blockName}</span>
@@ -116,21 +116,28 @@ function ExecuteOutputLine({
   );
 }
 
-function ExecuteOutput({ executionLogs, expandedByBlockName, onToggleExpand }) {
+function ExecuteOutput({
+  executionLogs,
+  expandedByBlockTypeName,
+  onToggleExpand,
+}) {
   return executionLogs.blockOrder.length ? (
     <>
-      {executionLogs.blockOrder.map((blockName, index) => {
-        const lastEventForBlock = executionLogs.lastEventByBlockName[blockName];
-        const outputForBlock = executionLogs.outputByBlockName[blockName];
+      {executionLogs.blockOrder.map(({ name: blockName, type: blockType }) => {
+        const blockTypeName = `${blockType}-${blockName}`;
+        const lastEventForBlock =
+          executionLogs.lastEventByBlockTypeName[blockTypeName];
+        const outputForBlock =
+          executionLogs.outputByBlockTypeName[blockTypeName];
         return (
           <ExecuteOutputLine
-            key={blockName}
-            blockType={executionLogs.blockTypeByName[blockName]}
+            key={blockTypeName}
+            blockType={blockType}
             blockName={blockName}
             outputForBlock={outputForBlock}
             lastEventForBlock={lastEventForBlock}
-            expanded={expandedByBlockName[blockName]}
-            onToggleExpand={() => onToggleExpand(blockName)}
+            expanded={expandedByBlockTypeName[blockTypeName]}
+            onToggleExpand={() => onToggleExpand(blockTypeName)}
           />
         );
       })}
@@ -263,17 +270,17 @@ export default function ExecuteView({
   const [isDoneRunning, setIsDoneRunning] = useState(false);
   const [isErrored, setIsErrored] = useState(false);
 
-  const [finalOutputBlockName, setFinalOutputBlockName] = useState(null);
+  const [finalOutputBlockTypeName, setFinalOutputBlockTypeName] =
+    useState(null);
 
   const [executionLogs, setExecutionLogs] = useState({
     blockOrder: [],
-    lastEventByBlockName: {},
-    outputByBlockName: {},
+    lastEventByBlockTypeName: {},
+    outputByBlockTypeName: {},
   });
 
-  const [outputExpandedByBlockName, setOutputExpandedByBlockName] = useState(
-    {}
-  );
+  const [outputExpandedByBlockTypeName, setOutputExpandedByBlockTypeName] =
+    useState({});
 
   const {
     run: savedRun,
@@ -298,11 +305,11 @@ export default function ExecuteView({
       setIsRunning(false);
       const candidates = executionLogs.blockOrder.filter(
         // Don't treat reduce blocks as output as they don't have output
-        (blockName) => executionLogs.blockTypeByName[blockName] !== "reduce"
+        ({ type: blockType }) => blockType !== "reduce"
       );
-      const lastBlockName = candidates[candidates.length - 1];
+      const lastBlock = candidates[candidates.length - 1];
 
-      setFinalOutputBlockName(lastBlockName);
+      setFinalOutputBlockTypeName(`${lastBlock.type}-${lastBlock.name}`);
     }
   }, [isDoneRunning]);
 
@@ -314,15 +321,14 @@ export default function ExecuteView({
   const handleRun = () => {
     setExecutionLogs({
       blockOrder: [],
-      lastEventByBlockName: {},
-      outputByBlockName: {},
-      blockTypeByName: {},
+      lastEventByBlockTypeName: {},
+      outputByBlockTypeName: {},
     });
     setIsRunning(true);
     setIsDoneRunning(false);
     setIsErrored(false);
-    setFinalOutputBlockName(null);
-    setOutputExpandedByBlockName({});
+    setFinalOutputBlockTypeName(null);
+    setOutputExpandedByBlockTypeName({});
 
     setTimeout(async () => {
       const specificationHash = savedRun?.app_hash;
@@ -372,9 +378,8 @@ export default function ExecuteView({
           setExecutionLogs(
             ({
               blockOrder,
-              lastEventByBlockName,
-              outputByBlockName,
-              blockTypeByName,
+              lastEventByBlockTypeName,
+              outputByBlockTypeName,
             }) => {
               const blockType = parsedEvent.content.block_type;
 
@@ -382,28 +387,31 @@ export default function ExecuteView({
               if (!blockName) {
                 blockName = parsedEvent.content.block_name;
               }
-              if (["map", "reduce"].includes(blockType)) {
-                blockName = `${blockName}[${blockType}]`;
-              }
+
+              const blockTypeName = `${blockType}-${blockName}`;
 
               if (parsedEvent.type === "block_status") {
-                if (blockOrder[blockOrder.length - 1] !== blockName) {
-                  blockOrder.push(blockName);
+                const lastBlock = blockOrder[blockOrder.length - 1];
+                if (
+                  !lastBlock ||
+                  lastBlock.name !== blockName ||
+                  lastBlock.type !== blockType
+                ) {
+                  blockOrder.push({ name: blockName, type: blockType });
                 }
-                lastEventByBlockName[blockName] = parsedEvent;
-                blockTypeByName[blockName] = blockType;
+                lastEventByBlockTypeName[blockTypeName] = parsedEvent;
+
                 if (parsedEvent.content.status === "errored") {
                   console.error("Block errored", parsedEvent);
                   setIsErrored(true);
                 }
               } else {
-                outputByBlockName[blockName] = parsedEvent;
+                outputByBlockTypeName[blockTypeName] = parsedEvent;
               }
               return {
                 blockOrder,
-                lastEventByBlockName,
-                outputByBlockName,
-                blockTypeByName,
+                lastEventByBlockTypeName,
+                outputByBlockTypeName,
               };
             }
           );
@@ -509,9 +517,9 @@ export default function ExecuteView({
                 </h3>
                 <ExecuteOutput
                   executionLogs={executionLogs}
-                  expandedByBlockName={outputExpandedByBlockName}
+                  expandedByBlockTypeName={outputExpandedByBlockTypeName}
                   onToggleExpand={(blockName) => {
-                    setOutputExpandedByBlockName((prev) => {
+                    setOutputExpandedByBlockTypeName((prev) => {
                       const newExpanded = { ...prev };
                       newExpanded[blockName] = !newExpanded[blockName];
                       return newExpanded;
@@ -520,15 +528,16 @@ export default function ExecuteView({
                 />
               </div>
             ) : null}
-            {finalOutputBlockName && (
+            {finalOutputBlockTypeName && (
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">
                   Output
                 </h3>
                 <ExecuteFinalOutput
                   value={preProcessOutput(
-                    executionLogs.outputByBlockName[finalOutputBlockName]
-                      .content.execution[0]
+                    executionLogs.outputByBlockTypeName[
+                      finalOutputBlockTypeName
+                    ].content.execution[0]
                   )}
                   errored={isErrored}
                 />
