@@ -16,6 +16,7 @@ import {
 import { useSavedRunStatus } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import {
+  ExclamationCircleIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -45,7 +46,7 @@ function preProcessOutput(output) {
     return preProcessOutput(output.value);
   }
   if (output.error) {
-    return preProcessOutput(output.error);
+    return { error: output.error };
   }
   if (
     Object.keys(output).length === 2 &&
@@ -85,6 +86,8 @@ function ExecuteOutputLine({
             <div className="mr-1">
               <Spinner />
             </div>
+          ) : lastEventForBlock.content.status === 'errored' ? (
+            <ExclamationCircleIcon className="text-red-500 h-4 w-4" />
           ) : (
             <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4" />
           )}
