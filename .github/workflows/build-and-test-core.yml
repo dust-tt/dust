@@ -10,14 +10,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
       - name: Install minimal stable
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
+
+      - name: checkout
+        uses: actions/checkout@v3
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -27,6 +27,10 @@ jobs:
         with:
           workspaces: core
 
-      - name: Build and Test
+      - name: Lint
         working-directory: core
-        run: ./ci/build_and_test.sh
+        run: cargo fmt --all -- --check
+
+      - name: Test
+        working-directory: core
+        run: cargo test --all
