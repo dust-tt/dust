@@ -13,11 +13,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
-      - name: install rustup
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
-          sh rustup-init.sh -y --default-toolchain none
-          rustup target add x86_64-unknown-linux-gnu
+      - name: Install minimal stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
