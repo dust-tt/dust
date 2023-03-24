@@ -9,6 +9,6 @@ rustc -Vv
 cargo -V
 
 # Build and test
-cargo build
+cargo build --locked
 cargo test
 cargo fmt --all -- --check

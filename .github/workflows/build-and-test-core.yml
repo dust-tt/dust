@@ -22,6 +22,11 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
 
+      - name: Setup Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
       - name: Build and Test
         working-directory: core
         run: ./ci/build_and_test.sh
