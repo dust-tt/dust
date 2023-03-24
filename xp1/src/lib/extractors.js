@@ -106,7 +106,9 @@ const gdocsExtractor = () => {
           return s.innerHTML;
         }
         return null;
-      } catch (e) {}
+      } catch (e) {
+        return null;
+      }
     })
     .filter(Boolean);
 
@@ -130,6 +132,7 @@ const gdocsExtractor = () => {
   return document.body.innerText;
 };
 
+// eslint-disable-next-line no-unused-vars
 const gsheetsExtractor = () => {
   // Another fantastic hack.
   // I don't quite follow their schema but managed to

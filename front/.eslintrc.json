@@ -6,5 +6,11 @@
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
     "jsx-a11y/alt-text": 0
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es6": true,
+    "jest": true
   }
 }

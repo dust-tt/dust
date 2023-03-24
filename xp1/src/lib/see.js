@@ -111,7 +111,7 @@ var SSE = function (url, options) {
       return;
     }
 
-    if (this.readyState == this.CONNECTING) {
+    if (this.readyState === this.CONNECTING) {
       this.dispatchEvent(new CustomEvent('open'));
       this._setReadyState(this.OPEN);
     }

@@ -1,10 +1,11 @@
 {
-  "name": "Dust XP1",
+  "name": "dust-xp1",
   "version": "0.3.0",
   "scripts": {
     "build": "node utils/build.js",
     "start": "node utils/webserver.js",
-    "prettier": "prettier --write '**/*.{js,jsx,ts,tsx,json,css,scss,md}'"
+    "prettier": "prettier --write '**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hot-loader/react-dom": "^17.0.2",
@@ -34,7 +35,7 @@
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^7.0.0",
     "css-loader": "^6.7.2",
-    "eslint": "^8.28.0",
+    "eslint": "^8.36.0",
     "eslint-config-react-app": "^7.0.1",
     "eslint-plugin-flowtype": "^8.0.3",
     "eslint-plugin-import": "^2.25.4",

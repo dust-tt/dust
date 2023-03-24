@@ -1,5 +1,5 @@
 {
-  "extends": "next/core-web-vitals",
+  "extends": ["react-app", "react-app/jest"],
   "rules": {
     "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": 0,
@@ -12,5 +12,8 @@
     "node": true,
     "es6": true,
     "jest": true
+  },
+  "globals": {
+    "chrome": "readonly"
   }
 }
