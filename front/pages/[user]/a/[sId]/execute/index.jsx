@@ -163,7 +163,13 @@ function ExecuteFinalOutput({ value, errored }) {
   );
 }
 
-function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
+function ExecuteInput({
+  inputName,
+  inputValue,
+  onChange,
+  inputType,
+  onKeyDown,
+}) {
   return (
     <div key={inputName} className="grid grid-cols-10">
       <div className="col-span-3">
@@ -205,6 +211,7 @@ function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
                 "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
               backgroundColor: "rgb(241 245 249)",
             }}
+            onKeyDown={onKeyDown}
           />
         ) : (
           <TextareaAutosize
@@ -215,6 +222,7 @@ function ExecuteInput({ inputName, inputValue, onChange, inputType }) {
             )}
             value={inputValue || ""}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
           />
         )}
       </div>
@@ -282,6 +290,8 @@ export default function ExecuteView({
     }
     return 0;
   });
+
+  const canRun = () => !isRunning && isInputDataValid() && savedRun?.app_hash;
 
   useEffect(() => {
     if (isDoneRunning) {
@@ -406,6 +416,21 @@ export default function ExecuteView({
     }, 0);
   };
 
+  const handleKeyPress = (event) => {
+    if (event.metaKey === true && event.key === "Enter" && canRun()) {
+      handleRun();
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyPress);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleKeyPress]);
+
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
@@ -442,9 +467,7 @@ export default function ExecuteView({
               <div className="flex flex-initial">
                 <div className="">
                   <ActionButton
-                    disabled={
-                      isRunning || !isInputDataValid() || !savedRun?.app_hash
-                    }
+                    disabled={!canRun()}
                     onClick={() => handleRun()}
                   >
                     <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
@@ -472,6 +495,7 @@ export default function ExecuteView({
                         inputValue={inputData[k]}
                         onChange={(value) => handleValueChange(k, value)}
                         inputType={datasetTypes[k]}
+                        onKeyDown={handleKeyPress}
                       />
                     </li>
                   ))}
