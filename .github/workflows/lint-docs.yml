@@ -1,0 +1,19 @@
+name: Lint (docs)
+
+on:
+  push:
+    paths:
+      - docs/**
+
+jobs:
+  check-eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: "npm"
+          cache-dependency-path: ./docs/package-lock.json
+      - working-directory: docs
+        run: npm install && npm run lint
