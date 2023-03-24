@@ -71,18 +71,18 @@ export default function SerperSetup({ open, setOpen, config, enabled }) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 transition-opacity bg-gray-800 bg-opacity-75" />
+          <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex items-center items-end justify-center min-h-full p-4">
+          <div className="flex min-h-full items-end items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
               leave="ease-in duration-200"
               leaveTo="opacity-0"
             >
-              <Dialog.Panel className="relative px-4 pt-5 pb-4 overflow-hidden text-left transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:w-full sm:max-w-sm lg:max-w-lg sm:p-6">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                 <div>
                   <div className="mt-3">
                     <Dialog.Title
@@ -112,7 +112,7 @@ export default function SerperSetup({ open, setOpen, config, enabled }) {
                     <div className="mt-6">
                       <input
                         type="text"
-                        className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                         placeholder="Serper API Key"
                         value={apiKey}
                         onChange={(e) => {
@@ -123,7 +123,7 @@ export default function SerperSetup({ open, setOpen, config, enabled }) {
                     </div>
                   </div>
                 </div>
-                <div className="px-2 mt-1 text-sm">
+                <div className="mt-1 px-2 text-sm">
                   {testError.length > 0 ? (
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
@@ -134,10 +134,10 @@ export default function SerperSetup({ open, setOpen, config, enabled }) {
                     <span>&nbsp;</span>
                   )}
                 </div>
-                <div className="flex flex-row items-center mt-5 space-x-2 sm:mt-6">
+                <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
                   {enabled ? (
                     <div
-                      className="flex-initial text-sm font-bold text-red-500 cursor-pointer"
+                      className="flex-initial cursor-pointer text-sm font-bold text-red-500"
                       onClick={() => handleDisable()}
                     >
                       Disable

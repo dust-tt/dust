@@ -60,14 +60,14 @@ export default function AppLayout({
             <div className="mx-auto px-4">
               <div className="relative flex h-12 items-center">
                 <div className="flex flex-initial items-center justify-center sm:items-stretch sm:justify-start">
-                  <div className="flex flex-shrink-0 items-center pl-2 py-1">
+                  <div className="flex flex-shrink-0 items-center py-1 pl-2">
                     <div className="flex rotate-[30deg]">
-                      <div className="bg-gray-400 w-[4px] h-2 rounded-md"></div>
-                      <div className="bg-white w-[1px] h-2"></div>
-                      <div className="bg-gray-400 w-[4px] h-3 rounded-md"></div>
+                      <div className="h-2 w-[4px] rounded-md bg-gray-400"></div>
+                      <div className="h-2 w-[1px] bg-white"></div>
+                      <div className="h-3 w-[4px] rounded-md bg-gray-400"></div>
                     </div>
-                    <div className="bg-white w-[4px] h-2"></div>
-                    <div className="text-gray-800 font-bold text-base tracking-tight select-none">
+                    <div className="h-2 w-[4px] bg-white"></div>
+                    <div className="select-none text-base font-bold tracking-tight text-gray-800">
                       <Link
                         href={session ? `/${session.user.username}/apps` : `/`}
                       >
@@ -76,12 +76,12 @@ export default function AppLayout({
                     </div>
                   </div>
                 </div>
-                <nav className="flex flex-1 ml-1 h-12">
+                <nav className="ml-1 flex h-12 flex-1">
                   <ol role="list" className="flex items-center space-x-2">
                     <li>
                       <div className="flex items-center">
                         <ChevronRightIcon
-                          className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+                          className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
                           aria-hidden="true"
                         />
                         <Link
@@ -101,12 +101,12 @@ export default function AppLayout({
                       <li>
                         <div className="flex items-center">
                           <ChevronRightIcon
-                            className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+                            className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
                             aria-hidden="true"
                           />
                           <Link
                             href={`/${route_user}/a/${app.sId}`}
-                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
+                            className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {app.name}
                           </Link>
@@ -117,12 +117,12 @@ export default function AppLayout({
                       <li>
                         <div className="flex items-center">
                           <ChevronRightIcon
-                            className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+                            className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
                             aria-hidden="true"
                           />
                           <Link
                             href={`/${route_user}/ds/${dataSource.name}`}
-                            className="text-base font-bold w-22 sm:w-auto truncate text-violet-600"
+                            className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {dataSource.name}
                           </Link>
@@ -131,7 +131,7 @@ export default function AppLayout({
                     ) : null}
                   </ol>
                 </nav>
-                <div className="static inset-auto hidden md:flex flex-initial items-center pr-4">
+                <div className="static inset-auto hidden flex-initial items-center pr-4 md:flex">
                   <Link href="https://docs.dust.tt">
                     <Button className="mr-2">
                       <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
@@ -143,7 +143,7 @@ export default function AppLayout({
                   <div className="static inset-auto right-0 flex flex-initial items-center pr-2">
                     <Menu as="div" className="relative">
                       <div>
-                        <Menu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-nonek">
+                        <Menu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
                           <span className="sr-only">Open user menu</span>
                           <img
                             className="h-8 w-8 rounded-full"
@@ -226,14 +226,14 @@ export default function AppLayout({
                     </Menu>
                   </div>
                 ) : (
-                  <div className="static inset-auto static inset-auto right-0 hidden sm:flex flex-initial items-center pr-2 sm:pr-0">
+                  <div className="static static inset-auto inset-auto right-0 hidden flex-initial items-center pr-2 sm:flex sm:pr-0">
                     <div className="-mr-2 sm:mr-0">
                       <ActionButton
                         onClick={() =>
                           signIn("github", { callbackUrl: "/api/login" })
                         }
                       >
-                        <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
+                        <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
                         Sign in with Github
                       </ActionButton>
                     </div>

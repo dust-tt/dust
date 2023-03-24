@@ -39,8 +39,8 @@ export default function Input({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col sm:flex-row sm:space-x-2 mx-4">
-        <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
+      <div className="mx-4 flex flex-col sm:flex-row sm:space-x-2">
+        <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
           {!((!block.config || !block.config.dataset) && readOnly) ? (
             <>
               <div className="flex flex-initial">dataset:</div>

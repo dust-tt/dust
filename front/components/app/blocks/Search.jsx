@@ -1,10 +1,10 @@
-import Block from './Block';
-import { Menu } from '@headlessui/react';
-import { classNames, shallowBlockClone } from '@app/lib/utils';
-import { ChevronDownIcon } from '@heroicons/react/20/solid';
-import { useProviders } from '@app/lib/swr';
-import { filterServiceProviders } from '@app/lib/providers';
-import Link from 'next/link';
+import Block from "./Block";
+import { Menu } from "@headlessui/react";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { useProviders } from "@app/lib/swr";
+import { filterServiceProviders } from "@app/lib/providers";
+import Link from "next/link";
 
 export default function Search({
   user,
@@ -30,7 +30,7 @@ export default function Search({
     : useProviders();
   const serviceProviders = filterServiceProviders(providers);
   const searchProviders = serviceProviders?.filter?.(
-    (p) => p.providerId === 'serpapi' || p.providerId === 'serper'
+    (p) => p.providerId === "serpapi" || p.providerId === "serper"
   );
 
   const currentProvider = searchProviders?.find?.(
@@ -42,7 +42,7 @@ export default function Search({
     if (!!block.config.provider_id && !currentProvider) {
       setTimeout(() => {
         let b = shallowBlockClone(block);
-        b.config.provider_id = '';
+        b.config.provider_id = "";
         onBlockUpdate(b);
       });
     }
@@ -83,101 +83,99 @@ export default function Search({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col w-full mx-4">
-      <div className="flex flex-row items-center flex-initial space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="flex flex-initial">provider:</div>
-            {/* User has zero search providers */}
-            {!isProvidersLoading &&
-              !readOnly &&
-              searchProviders?.length === 0 && (
-                <div className="px-2">
-                  {searchProviders?.length === 0 && (
-                    <Link
-                      href={`/${user}/providers`}
-                      className={classNames(
-                        'inline-flex items-center rounded-md py-1 text-sm font-normal',
-                        'border px-3',
-                        readOnly
-                          ? 'text-gray-300 border-white'
-                          : 'text-gray-700 border-orange-400',
-                        'focus:outline-none focus:ring-0'
-                      )}
-                    >
-                      Setup provider
-                    </Link>
-                  )}
-                </div>
-              )}
-
-            {!isProvidersLoading &&
-              !readOnly &&
-              searchProviders?.length > 0 && (
-                <Menu as="div" className="relative inline-block text-left">
-                  <Menu.Button
+      <div className="mx-4 flex w-full flex-col">
+        <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial">provider:</div>
+          {/* User has zero search providers */}
+          {!isProvidersLoading &&
+            !readOnly &&
+            searchProviders?.length === 0 && (
+              <div className="px-2">
+                {searchProviders?.length === 0 && (
+                  <Link
+                    href={`/${user}/providers`}
                     className={classNames(
-                      'inline-flex items-center rounded-md py-1 text-sm font-bold',
-                      !!currentProvider?.providerId ? 'px-0' : 'border px-3',
+                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                      "border px-3",
                       readOnly
-                        ? 'text-gray-300 border-white'
-                        : 'text-gray-700 border-orange-400',
-                      'focus:outline-none focus:ring-0'
+                        ? "border-white text-gray-300"
+                        : "border-orange-400 text-gray-700",
+                      "focus:outline-none focus:ring-0"
                     )}
-                    readOnly={readOnly}
                   >
-                    {!!currentProvider?.providerId ? (
-                      <>
-                        {currentProvider.providerId}&nbsp;
-                        <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
-                      </>
-                    ) : (
-                      'Select provider'
-                    )}
-                  </Menu.Button>
+                    Setup provider
+                  </Link>
+                )}
+              </div>
+            )}
 
-                  <Menu.Items
-                    className={classNames(
-                      'absolute w-max shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none',
-                      !!currentProvider?.providerId > 0 ? '-left-4' : 'left-1'
-                    )}
-                  >
-                    <div className="py-1">
-                      {(searchProviders || []).map((p) => {
-                        return (
-                          <Menu.Item
-                            key={p.id}
-                            onClick={() => handleSelectProvider(p.providerId)}
-                          >
-                            {({ active }) => (
-                              <span
-                                className={classNames(
-                                  active
-                                    ? 'bg-gray-50 text-gray-900'
-                                    : 'text-gray-700',
-                                  'block px-4 py-2 text-sm cursor-pointer'
-                                )}
-                              >
-                                {p.providerId}
-                              </span>
+          {!isProvidersLoading && !readOnly && searchProviders?.length > 0 && (
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button
+                className={classNames(
+                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                  !!currentProvider?.providerId ? "px-0" : "border px-3",
+                  readOnly
+                    ? "border-white text-gray-300"
+                    : "border-orange-400 text-gray-700",
+                  "focus:outline-none focus:ring-0"
+                )}
+                readOnly={readOnly}
+              >
+                {!!currentProvider?.providerId ? (
+                  <>
+                    {currentProvider.providerId}&nbsp;
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  </>
+                ) : (
+                  "Select provider"
+                )}
+              </Menu.Button>
+
+              <Menu.Items
+                className={classNames(
+                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  !!currentProvider?.providerId > 0 ? "-left-4" : "left-1"
+                )}
+              >
+                <div className="py-1">
+                  {(searchProviders || []).map((p) => {
+                    return (
+                      <Menu.Item
+                        key={p.id}
+                        onClick={() => handleSelectProvider(p.providerId)}
+                      >
+                        {({ active }) => (
+                          <span
+                            className={classNames(
+                              active
+                                ? "bg-gray-50 text-gray-900"
+                                : "text-gray-700",
+                              "block cursor-pointer px-4 py-2 text-sm"
                             )}
-                          </Menu.Item>
-                        );
-                      })}
-                    </div>
-                  </Menu.Items>
-                </Menu>
-              )}
-          </div>
+                          >
+                            {p.providerId}
+                          </span>
+                        )}
+                      </Menu.Item>
+                    );
+                  })}
+                </div>
+              </Menu.Items>
+            </Menu>
+          )}
+        </div>
         <div className="flex flex-col xl:flex-row xl:space-x-2">
-          <div className="flex flex-row items-center flex-initial space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">num:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  'block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8',
+                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
-                    ? 'border-white ring-0 focus:ring-0 focus:border-white'
-                    : 'border-white focus:border-gray-300 focus:ring-0'
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
+                    : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
                 value={block.spec.num}
@@ -187,8 +185,8 @@ export default function Search({
           </div>
         </div>
         <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-row items-center flex-initial space-x-1">
-            <div className="flex items-center flex-initial">query:</div>
+          <div className="flex flex-initial flex-row items-center space-x-1">
+            <div className="flex flex-initial items-center">query:</div>
           </div>
 
           <div className="flex w-full font-normal">
@@ -196,10 +194,10 @@ export default function Search({
               type="text"
               placeholder=""
               className={classNames(
-                'block w-full resize-none px-1 font-normal py-1 text-[13px] font-mono bg-slate-100',
+                "block w-full resize-none bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
                 readOnly
-                  ? 'border-white ring-0 focus:ring-0 focus:border-white'
-                  : 'border-white focus:border-white focus:ring-0'
+                  ? "border-white ring-0 focus:border-white focus:ring-0"
+                  : "border-white focus:border-white focus:ring-0"
               )}
               readOnly={readOnly}
               value={block.spec.query}

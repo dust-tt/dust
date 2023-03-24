@@ -233,7 +233,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
       ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
@@ -241,9 +241,9 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
             readOnly={readOnly}
           />
         </div>
-        <div className="w-full max-w-5xl mt-4 mx-auto flex flex-auto">
-          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
-            <div className="flex flex-row flex-auto my-4 space-x-2 items-center">
+        <div className="mx-auto mt-4 flex w-full max-w-5xl flex-auto">
+          <div className="mx-2 flex flex-auto flex-col sm:mx-4 lg:mx-8">
+            <div className="my-4 flex flex-auto flex-row items-center space-x-2">
               <div className="flex-initial">
                 <NewBlock
                   disabled={readOnly}
@@ -262,14 +262,14 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
                   }
                   onClick={() => handleRun()}
                 >
-                  <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                  <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                   {runRequested || run?.status.run == "running"
                     ? "Running"
                     : "Run"}
                 </ActionButton>
               </div>
               {runError ? (
-                <div className="flex-initial text-sm font-bold text-red-400 text-sm px-2">
+                <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
                   {(() => {
                     switch (runError.code) {
                       case "invalid_specification_error":
@@ -284,7 +284,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
                 <div className="flex-initial">
                   <Link href={`/${user}/a/${app.sId}/clone`}>
                     <ActionButton>
-                      <DocumentDuplicateIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                      <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                       Clone
                     </ActionButton>
                   </Link>
@@ -344,7 +344,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
             ) : null}
 
             {spec.length > 2 && !readOnly ? (
-              <div className="flex flex-row my-4 space-x-2 items-center">
+              <div className="my-4 flex flex-row items-center space-x-2">
                 <div className="flex">
                   <NewBlock
                     disabled={readOnly}
@@ -363,14 +363,14 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
                     }
                     onClick={() => handleRun()}
                   >
-                    <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                    <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                     {runRequested || run?.status.run == "running"
                       ? "Running"
                       : "Run"}
                   </ActionButton>
                 </div>
                 {runError ? (
-                  <div className="flex text-sm font-bold text-red-400 text-sm px-2">
+                  <div className="flex px-2 text-sm text-sm font-bold text-red-400">
                     {(() => {
                       switch (runError.code) {
                         case "invalid_specification_error":

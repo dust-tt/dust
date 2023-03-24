@@ -1,10 +1,10 @@
-import React, { useImperativeHandle } from 'react';
-import { classNames } from '../lib/utils';
-import { useState, useRef } from 'react';
-import { useEffect } from 'react';
-import { BackspaceIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { forwardRef } from 'react';
-import * as ReactDOMServer from 'react-dom/server';
+import React, { useImperativeHandle } from "react";
+import { classNames } from "../lib/utils";
+import { useState, useRef } from "react";
+import { useEffect } from "react";
+import { BackspaceIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { forwardRef } from "react";
+import * as ReactDOMServer from "react-dom/server";
 
 // COMMAND
 
@@ -12,8 +12,8 @@ function Command({ command }) {
   return (
     <div
       className={classNames(
-        'inline-block px-1 rounded-sm text-xs py-0.5 font-bold',
-        'bg-gray-200'
+        "inline-block rounded-sm px-1 py-0.5 text-xs font-bold",
+        "bg-gray-200"
       )}
       contentEditable={false}
       data-command={JSON.stringify(command)}
@@ -39,14 +39,14 @@ function TabGroup({ group, tabs }) {
   return (
     <div
       className={classNames(
-        'inline-block px-1 rounded-sm text-xs font-bold py-0.5',
-        closedTabs ? 'bg-red-200' : 'bg-gray-200'
+        "inline-block rounded-sm px-1 py-0.5 text-xs font-bold",
+        closedTabs ? "bg-red-200" : "bg-gray-200"
       )}
       contentEditable={false}
       data-tab-group={JSON.stringify(group)}
-      closed-tabs={closedTabs ? 'true' : 'false'}
+      closed-tabs={closedTabs ? "true" : "false"}
     >
-      {closedTabs ? 'closed tabs' : `${length} ${length > 1 ? 'tabs' : 'tab'}`}
+      {closedTabs ? "closed tabs" : `${length} ${length > 1 ? "tabs" : "tab"}`}
     </div>
   );
 }
@@ -72,7 +72,7 @@ export class CmdState {
   hasClosedTabs(tabs) {
     let closedTabs = false;
     this.state.forEach((item) => {
-      if (item.type === 'tab_group') {
+      if (item.type === "tab_group") {
         item.tabs.forEach((t) => {
           if (!tabs.find((tab) => tab.id === t.id)) {
             closedTabs = true;
@@ -84,18 +84,18 @@ export class CmdState {
   }
 
   commands() {
-    return this.state.filter((item) => item.type === 'command');
+    return this.state.filter((item) => item.type === "command");
   }
 
   render(tabs) {
     return (
       <>
         {this.state.map((item, i) => {
-          if (item.type === 'text') {
+          if (item.type === "text") {
             return item.value;
-          } else if (item.type === 'tab_group') {
+          } else if (item.type === "tab_group") {
             return <TabGroup group={item} tabs={tabs} key={i} />;
-          } else if (item.type === 'command') {
+          } else if (item.type === "command") {
             return <Command command={item} key={i} />;
           }
           return null;
@@ -108,18 +108,18 @@ export class CmdState {
     let s = Array.from(childNodes)
       .map((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
-          let data = node.getAttribute('data-tab-group');
+          let data = node.getAttribute("data-tab-group");
           if (data && data.length > 0) {
             return JSON.parse(data);
           }
 
-          data = node.getAttribute('data-command');
+          data = node.getAttribute("data-command");
           if (data && data.length > 0) {
             return JSON.parse(data);
           }
         }
         if (node.nodeType === Node.TEXT_NODE) {
-          return { type: 'text', value: node.textContent };
+          return { type: "text", value: node.textContent };
         }
         return null;
       })
@@ -130,7 +130,7 @@ export class CmdState {
 
   tabGroups = () => {
     return this.state
-      .filter((item) => item.type === 'tab_group')
+      .filter((item) => item.type === "tab_group")
       .map((item, i) => {
         return {
           search: `TG_${i}`,
@@ -143,34 +143,34 @@ export class CmdState {
     var tbIdx = 0;
     return this.state
       .map((item) => {
-        if (item.type === 'text') {
+        if (item.type === "text") {
           return item.value;
-        } else if (item.type === 'tab_group') {
+        } else if (item.type === "tab_group") {
           tbIdx += 1;
           return `[TG_${tbIdx - 1}]`;
-        } else if (item.type === 'command') {
+        } else if (item.type === "command") {
           return `/${item.name}`;
         }
-        return '';
+        return "";
       })
-      .join('')
+      .join("")
       .trim();
   };
 
   toText = () => {
     return this.state
       .map((item) => {
-        if (item.type === 'text') {
+        if (item.type === "text") {
           return item.value;
-        } else if (item.type === 'tab_group') {
+        } else if (item.type === "tab_group") {
           let length = item.tabs.length;
-          return `(${length} ${length > 1 ? 'tabs' : 'tab'})`;
-        } else if (item.type === 'command') {
+          return `(${length} ${length > 1 ? "tabs" : "tab"})`;
+        } else if (item.type === "command") {
           return `/${item.name}`;
         }
-        return '';
+        return "";
       })
-      .join('')
+      .join("")
       .trim();
   };
 
@@ -186,7 +186,7 @@ function CommandList({ visible, filter }, ref) {
   const [focus, setFocus] = useState(0);
   const focusRef = useRef(null);
 
-  let commands = [{ name: 'reset', description: 'Reset the conversation.' }];
+  let commands = [{ name: "reset", description: "Reset the conversation." }];
 
   let filteredCommands = commands.filter((c) => {
     return filter.length === 0 || c.name.startsWith(filter);
@@ -222,8 +222,8 @@ function CommandList({ visible, filter }, ref) {
     if (focusRef.current) {
       focusRef.current.scrollIntoView({
         // behavior: 'smooth',
-        block: 'nearest',
-        inline: 'start',
+        block: "nearest",
+        inline: "start",
       });
     }
   }, [focus, visible, filter, filteredCommands]);
@@ -231,10 +231,10 @@ function CommandList({ visible, filter }, ref) {
   return (
     <>
       {visible ? (
-        <div className="absolute w-full top-2 bottom-24 pl-5 py-5">
-          <div className="flex flex-col absolute top-0 bottom-0 left-3 right-3">
+        <div className="absolute top-2 bottom-24 w-full py-5 pl-5">
+          <div className="absolute top-0 bottom-0 left-3 right-3 flex flex-col">
             <div className="flex-1"></div>
-            <div className="flex flex-col border rounded-sm overflow-auto py-1 bg-white z-10">
+            <div className="z-10 flex flex-col overflow-auto rounded-sm border bg-white py-1">
               {filteredCommands.map((c, i) => (
                 <div
                   className="flex w-full px-1"
@@ -243,9 +243,9 @@ function CommandList({ visible, filter }, ref) {
                 >
                   <div
                     className={classNames(
-                      'flex flex-col w-full hover:bg-gray-100 rounded-sm',
+                      "flex w-full flex-col rounded-sm hover:bg-gray-100",
                       // 'cursor-pointer',
-                      focus === i ? 'bg-gray-100' : ''
+                      focus === i ? "bg-gray-100" : ""
                     )}
                     onClick={() => {
                       setFocus(i);
@@ -253,15 +253,15 @@ function CommandList({ visible, filter }, ref) {
                   >
                     <div
                       className={classNames(
-                        'flex flex-initial justify-center py-1 items-center '
+                        "flex flex-initial items-center justify-center py-1 "
                       )}
                     >
-                      <div className="flex-initial pl-2 pr-2 py-1 font-mono text-gray-500">
-                        {'/'}
+                      <div className="flex-initial py-1 pl-2 pr-2 font-mono text-gray-500">
+                        {"/"}
                         {c.name}
                       </div>
                       <div className="flex-1">
-                        <p className="truncate text-xs text-gray-500 mb-0.5">
+                        <p className="mb-0.5 truncate text-xs text-gray-500">
                           <span className="text-xs text-gray-900">
                             {c.description}
                           </span>
@@ -272,7 +272,7 @@ function CommandList({ visible, filter }, ref) {
                 </div>
               ))}
               {filteredCommands.length === 0 ? (
-                <div className="flex justify-center items-center">
+                <div className="flex items-center justify-center">
                   <div className="flex-col">
                     <p className="text-gray-500">No match</p>
                   </div>
@@ -367,8 +367,8 @@ function TabList({ visible, filter, tabs }, ref) {
     if (focusRef.current) {
       focusRef.current.scrollIntoView({
         // behavior: 'smooth',
-        block: 'nearest',
-        inline: 'start',
+        block: "nearest",
+        inline: "start",
       });
     }
   }, [focus, visible, filter, filteredTabs]);
@@ -380,10 +380,10 @@ function TabList({ visible, filter, tabs }, ref) {
   return (
     <>
       {visible ? (
-        <div className="absolute w-full top-2 bottom-24 pl-5 py-5">
-          <div className="flex flex-col absolute top-0 bottom-0 left-3 right-3">
+        <div className="absolute top-2 bottom-24 w-full py-5 pl-5">
+          <div className="absolute top-0 bottom-0 left-3 right-3 flex flex-col">
             <div className="flex-1"></div>
-            <div className="flex flex-col border rounded-sm overflow-auto py-1 bg-white z-10">
+            <div className="z-10 flex flex-col overflow-auto rounded-sm border bg-white py-1">
               {filteredTabs.map((t, i) => (
                 <div
                   className="flex w-full px-1"
@@ -397,27 +397,27 @@ function TabList({ visible, filter, tabs }, ref) {
                 >
                   <div
                     className={classNames(
-                      'flex flex-col w-full cursor-pointer hover:bg-gray-200 rounded-sm',
-                      focus === i ? 'bg-gray-200' : ''
+                      "flex w-full cursor-pointer flex-col rounded-sm hover:bg-gray-200",
+                      focus === i ? "bg-gray-200" : ""
                     )}
                   >
                     <div
                       className={classNames(
-                        'flex flex-initial justify-center py-1 items-center '
+                        "flex flex-initial items-center justify-center py-1 "
                       )}
                     >
-                      <div className="flex-initial pl-2 pr-1 py-1">
+                      <div className="flex-initial py-1 pl-2 pr-1">
                         {!(t.id in selected) ? (
-                          <div className="w-4 h-4 border border-gray-300 rounded-sm"></div>
+                          <div className="h-4 w-4 rounded-sm border border-gray-300"></div>
                         ) : (
-                          <div className="w-4 h-4 bg-gray-900 rounded-sm">
-                            <CheckIcon className="w-4 h-4 text-white" />
+                          <div className="h-4 w-4 rounded-sm bg-gray-900">
+                            <CheckIcon className="h-4 w-4 text-white" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-initial pl-1 pr-2 py-1">
+                      <div className="flex-initial py-1 pl-1 pr-2">
                         <div
-                          className="w-4 h-4 bg-contain opacity-80"
+                          className="h-4 w-4 bg-contain opacity-80"
                           style={{
                             backgroundImage: `url(${t.favIconUrl})`,
                           }}
@@ -425,26 +425,26 @@ function TabList({ visible, filter, tabs }, ref) {
                         />
                       </div>
                       <div className="flex-1">
-                        <div className="flex-col w-[695px]">
+                        <div className="w-[695px] flex-col">
                           <p className="truncate text-xs text-gray-500">
                             <span className="text-sm text-gray-900">
                               {t.title}
                             </span>
-                            <span className="text-xs text-gray-500 px-1">
+                            <span className="px-1 text-xs text-gray-500">
                               {t.domain}
                             </span>
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-initial justify-center items-center">
+                    <div className="flex flex-initial items-center justify-center">
                       {t.selection && !ignoredSelection[t.id] ? (
-                        <div className="flex-1 flex flex-row pb-1">
-                          <div className="flex-initial ml-8 text-xs">
-                            <span className="bg-yellow-100 text-gray-500 rounded px-1 py-0.5">
+                        <div className="flex flex-1 flex-row pb-1">
+                          <div className="ml-8 flex-initial text-xs">
+                            <span className="rounded bg-yellow-100 px-1 py-0.5 text-gray-500">
                               selection
                               <BackspaceIcon
-                                className="inline ml-0.5 mb-0.5 w-3 h-3 text-gray-500 hover:text-gray-800"
+                                className="ml-0.5 mb-0.5 inline h-3 w-3 text-gray-500 hover:text-gray-800"
                                 onMouseDown={(e) => {
                                   setIgnoredSelection((s) => {
                                     s = { ...s };
@@ -457,8 +457,8 @@ function TabList({ visible, filter, tabs }, ref) {
                               />
                             </span>
                           </div>
-                          <div className="flex-1 border-l-4 ml-2 border-slate-400 mr-4">
-                            <p className="text-xs text-gray-500 pl-1 line-clamp-2 italic">
+                          <div className="ml-2 mr-4 flex-1 border-l-4 border-slate-400">
+                            <p className="pl-1 text-xs italic text-gray-500 line-clamp-2">
                               {t.selection}
                             </p>
                           </div>
@@ -469,7 +469,7 @@ function TabList({ visible, filter, tabs }, ref) {
                 </div>
               ))}
               {filteredTabs.length === 0 ? (
-                <div className="flex justify-center items-center">
+                <div className="flex items-center justify-center">
                   <div className="flex-col">
                     <p className="text-gray-500">No match</p>
                   </div>
@@ -492,10 +492,10 @@ export function CmdInput(
   ref
 ) {
   const [tabListVisible, setTabListVisible] = useState(false);
-  const [tabListFilter, setTabListFilter] = useState('');
+  const [tabListFilter, setTabListFilter] = useState("");
 
   const [commandListVisible, setCommandListVisible] = useState(false);
-  const [commandListFilter, setCommandListFilter] = useState('');
+  const [commandListFilter, setCommandListFilter] = useState("");
 
   const tabListRef = useRef(null);
   const commandListRef = useRef(null);
@@ -516,9 +516,9 @@ export function CmdInput(
       const htmlString = ReactDOMServer.renderToStaticMarkup(s.render(tabs));
       contentEditableRef.current.innerHTML = htmlString;
       for (const child of contentEditableRef.current.children) {
-        if (child.getAttribute('closed-tabs') === 'true') {
-          child.style.cursor = 'pointer';
-          child.addEventListener('click', (e) => {
+        if (child.getAttribute("closed-tabs") === "true") {
+          child.style.cursor = "pointer";
+          child.addEventListener("click", (e) => {
             let parent = child.parentNode;
             parent.removeChild(e.target);
           });
@@ -541,28 +541,28 @@ export function CmdInput(
         filter={commandListFilter}
       />
 
-      <div className="flex flex-row justify-center items-center w-full">
-        <div className="grow pb-0 h-16 mx-3">
+      <div className="flex w-full flex-row items-center justify-center">
+        <div className="mx-3 h-16 grow pb-0">
           <div
-            className="w-full border border-gray-300 bg-gray-50 rounded-sm h-16 outline-0 focus:outline-0 resize-none px-1 py-1 whitespace-pre-wrap inline-block overflow-auto"
+            className="inline-block h-16 w-full resize-none overflow-auto whitespace-pre-wrap rounded-sm border border-gray-300 bg-gray-50 px-1 py-1 outline-0 focus:outline-0"
             contentEditable={true}
             ref={contentEditableRef}
             onPaste={(e) => {
               e.preventDefault();
-              var text = e.clipboardData.getData('text/plain');
-              document.execCommand('insertText', false, text);
+              var text = e.clipboardData.getData("text/plain");
+              document.execCommand("insertText", false, text);
             }}
             onKeyDown={(e) => {
               if (e.ctrlKey || e.metaKey) {
-                if (e.key === 'u' || e.key === 'b' || e.key === 'i') {
+                if (e.key === "u" || e.key === "b" || e.key === "i") {
                   e.preventDefault();
                 }
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   e.preventDefault();
                   onSubmit();
                 }
               }
-              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                 const selection = window.getSelection();
                 if (selection.rangeCount !== 0 && selection.isCollapsed) {
                   const range = window.getSelection().getRangeAt(0);
@@ -575,10 +575,10 @@ export function CmdInput(
                   );
                   if (index === 0 && offset === 0) {
                     e.preventDefault();
-                    if (e.key === 'ArrowUp') {
+                    if (e.key === "ArrowUp") {
                       onHistoryNext();
                     }
-                    if (e.key === 'ArrowDown') {
+                    if (e.key === "ArrowDown") {
                       onHistoryPrev();
                     }
                   }
@@ -596,24 +596,24 @@ export function CmdInput(
 
                 // TABS WIDGET
 
-                if (lastTwo === '[[') {
+                if (lastTwo === "[[") {
                   let textNode = document.createTextNode(
                     node.textContent.slice(0, offset - 2)
                   );
 
-                  let tabSelectNode = document.createElement('div');
-                  tabSelectNode.style.display = 'inline-block';
-                  tabSelectNode.setAttribute('key', 'tabselect');
+                  let tabSelectNode = document.createElement("div");
+                  tabSelectNode.style.display = "inline-block";
+                  tabSelectNode.setAttribute("key", "tabselect");
                   tabSelectNode.className =
-                    'bg-gray-200 px-1 rounded-sm font-bold text-xs text-gray-600 py-0.5';
-                  tabSelectNode.textContent = 'tabs: ';
+                    "bg-gray-200 px-1 rounded-sm font-bold text-xs text-gray-600 py-0.5";
+                  tabSelectNode.textContent = "tabs: ";
                   tabSelectNode.contentEditable = false;
 
-                  let inputNode = document.createElement('input');
-                  inputNode.setAttribute('type', 'text');
-                  inputNode.setAttribute('placeholder', 'search');
+                  let inputNode = document.createElement("input");
+                  inputNode.setAttribute("type", "text");
+                  inputNode.setAttribute("placeholder", "search");
                   inputNode.className =
-                    'bg-gray-200 w-12 border-none outline-none font-normal text-gray-900 text-xs';
+                    "bg-gray-200 w-12 border-none outline-none font-normal text-gray-900 text-xs";
                   tabSelectNode.appendChild(inputNode);
 
                   let textNode2 = document.createTextNode(
@@ -633,14 +633,14 @@ export function CmdInput(
                   inputNode.onblur = () => {
                     const selected = tabListRef.current?.selected();
                     setTabListVisible(false);
-                    setTabListFilter('');
+                    setTabListFilter("");
                     tabListRef.current?.reset();
 
                     if (selected && Object.keys(selected).length > 0) {
                       const htmlString = ReactDOMServer.renderToStaticMarkup(
                         <TabGroup
                           group={{
-                            type: 'tab_group',
+                            type: "tab_group",
                             tabs: Object.keys(selected).map((id) => {
                               return selected[id];
                             }),
@@ -648,7 +648,7 @@ export function CmdInput(
                           tabs={tabs}
                         />
                       );
-                      const wrapper = document.createElement('div');
+                      const wrapper = document.createElement("div");
                       wrapper.innerHTML = htmlString.trim();
                       const tabGroupNode = wrapper.firstChild;
 
@@ -687,30 +687,30 @@ export function CmdInput(
                   };
 
                   inputNode.onkeydown = (e) => {
-                    if (e.key === 'Escape') {
+                    if (e.key === "Escape") {
                       inputNode.blur();
                       e.preventDefault();
                     }
-                    if (e.key === 'ArrowDown') {
+                    if (e.key === "ArrowDown") {
                       tabListRef.current?.next();
                       e.preventDefault();
                     }
-                    if (e.key === 'ArrowUp') {
+                    if (e.key === "ArrowUp") {
                       tabListRef.current?.prev();
                       e.preventDefault();
                     }
-                    if (e.key === ' ') {
+                    if (e.key === " ") {
                       tabListRef.current?.select();
                       e.preventDefault();
                     }
-                    if (e.key === 'Backspace') {
-                      if (inputNode.value === '') {
+                    if (e.key === "Backspace") {
+                      if (inputNode.value === "") {
                         tabListRef.current?.reset();
                         inputNode.blur();
                         e.preventDefault();
                       }
                     }
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       tabListRef.current?.submit();
                       inputNode.blur();
                       e.preventDefault();
@@ -724,24 +724,24 @@ export function CmdInput(
 
                 // COMMAND WIDGET
 
-                if (lastOne === '/') {
+                if (lastOne === "/") {
                   let textNode = document.createTextNode(
                     node.textContent.slice(0, offset - 1)
                   );
 
-                  let commandSelectNode = document.createElement('div');
-                  commandSelectNode.style.display = 'inline-block';
-                  commandSelectNode.setAttribute('key', 'commandSelect');
+                  let commandSelectNode = document.createElement("div");
+                  commandSelectNode.style.display = "inline-block";
+                  commandSelectNode.setAttribute("key", "commandSelect");
                   commandSelectNode.className =
-                    'bg-gray-200 px-1 rounded-sm font-bold text-xs text-gray-600 py-0.5';
-                  commandSelectNode.textContent = 'cmd: ';
+                    "bg-gray-200 px-1 rounded-sm font-bold text-xs text-gray-600 py-0.5";
+                  commandSelectNode.textContent = "cmd: ";
                   commandSelectNode.contentEditable = false;
 
-                  let inputNode = document.createElement('input');
-                  inputNode.setAttribute('type', 'text');
-                  inputNode.setAttribute('placeholder', 'search');
+                  let inputNode = document.createElement("input");
+                  inputNode.setAttribute("type", "text");
+                  inputNode.setAttribute("placeholder", "search");
                   inputNode.className =
-                    'bg-gray-200 w-12 border-none outline-none font-normal text-gray-900 text-xs';
+                    "bg-gray-200 w-12 border-none outline-none font-normal text-gray-900 text-xs";
                   commandSelectNode.appendChild(inputNode);
 
                   let textNode2 = document.createTextNode(
@@ -764,16 +764,16 @@ export function CmdInput(
                   inputNode.onblur = () => {
                     const selected = commandListRef.current?.selected();
                     setCommandListVisible(false);
-                    setCommandListFilter('');
+                    setCommandListFilter("");
                     commandListRef.current?.reset();
 
-                    console.log('SELECTED', selected);
+                    console.log("SELECTED", selected);
 
                     if (selected) {
                       const htmlString = ReactDOMServer.renderToStaticMarkup(
                         <Command
                           command={{
-                            type: 'command',
+                            type: "command",
                             name: selected.name,
                           }}
                         />
@@ -783,7 +783,7 @@ export function CmdInput(
                       //     /{selected.name}
                       //   </span>
                       // );
-                      const wrapper = document.createElement('div');
+                      const wrapper = document.createElement("div");
                       wrapper.innerHTML = htmlString.trim();
                       const commandNode = wrapper.firstChild;
 
@@ -824,26 +824,26 @@ export function CmdInput(
                   };
 
                   inputNode.onkeydown = (e) => {
-                    if (e.key === 'Escape') {
+                    if (e.key === "Escape") {
                       inputNode.blur();
                       e.preventDefault();
                     }
-                    if (e.key === 'ArrowDown') {
+                    if (e.key === "ArrowDown") {
                       commandListRef.current?.next();
                       e.preventDefault();
                     }
-                    if (e.key === 'ArrowUp') {
+                    if (e.key === "ArrowUp") {
                       commandListRef.current?.prev();
                       e.preventDefault();
                     }
-                    if (e.key === 'Backspace') {
-                      if (inputNode.value === '') {
+                    if (e.key === "Backspace") {
+                      if (inputNode.value === "") {
                         commandListRef.current?.reset();
                         inputNode.blur();
                         e.preventDefault();
                       }
                     }
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       commandListRef.current?.submit();
                       inputNode.blur();
                       e.preventDefault();
@@ -851,7 +851,7 @@ export function CmdInput(
                   };
 
                   inputNode.oninput = (e) => {
-                    console.log('INPUT', e.target.value);
+                    console.log("INPUT", e.target.value);
                     setCommandListFilter(e.target.value);
                   };
                 }

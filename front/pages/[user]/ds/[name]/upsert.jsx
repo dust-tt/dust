@@ -124,7 +124,7 @@ export default function DataSourceUpsert({
       dataSource={{ name: dataSource.name }}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Documents"
             user={user}
@@ -133,11 +133,11 @@ export default function DataSourceUpsert({
           />
         </div>
 
-        <div className="px-4 mt-2 max-w-4xl mx-auto space-y-6 divide-y divide-gray-200">
+        <div className="mx-auto mt-2 max-w-4xl space-y-6 divide-y divide-gray-200 px-4">
           <div>
             <div className="flex flex-1">
               <div className="w-full">
-                <div className="space-y-6 divide-y divide-gray-200 mt-4"></div>
+                <div className="mt-4 space-y-6 divide-y divide-gray-200"></div>
 
                 <div className="mt-2 grid gap-y-4 gap-x-4 sm:grid-cols-5">
                   <div className="sm:col-span-5">
@@ -172,10 +172,10 @@ export default function DataSourceUpsert({
             </div>
 
             <div className="flex flex-1">
-              <div className="w-full mb-8">
+              <div className="mb-8 w-full">
                 <div className="space-y-6 divide-y divide-gray-200"></div>
 
-                <div className="mt-2 grid gap-y-4 gap-x-4 grid-cols-5">
+                <div className="mt-2 grid grid-cols-5 gap-y-4 gap-x-4">
                   <div className="col-span-3">
                     <label
                       htmlFor="tags"
@@ -186,7 +186,7 @@ export default function DataSourceUpsert({
                     {tags.map((tag, index) => (
                       <div
                         key={index}
-                        className="mt-1 flex rounded-md shadow-sm group"
+                        className="group mt-1 flex rounded-md shadow-sm"
                       >
                         <input
                           type="text"
@@ -203,7 +203,7 @@ export default function DataSourceUpsert({
                           }
                         />
                         <div
-                          className="cursor-pointer group-hover:visible pt-2 pl-1"
+                          className="cursor-pointer pt-2 pl-1 group-hover:visible"
                           onClick={() => {
                             handleTagDelete(index);
                           }}
@@ -212,9 +212,9 @@ export default function DataSourceUpsert({
                         </div>
                       </div>
                     ))}
-                    <div className="flex flex-row mt-2">
+                    <div className="mt-2 flex flex-row">
                       <div
-                        className="rounded bg-gray-700 cursor-pointer"
+                        className="cursor-pointer rounded bg-gray-700"
                         onClick={() => {
                           handleAddTag();
                         }}
@@ -245,7 +245,7 @@ export default function DataSourceUpsert({
                       id="text"
                       rows="20"
                       className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-md text-xs font-mono",
+                        "block w-full min-w-0 flex-1 rounded-md font-mono text-xs",
                         "border-gray-300 focus:border-violet-500 focus:ring-violet-500",
                         downloading ? "text-gray-300" : ""
                       )}
@@ -259,7 +259,7 @@ export default function DataSourceUpsert({
                     <div className=""></div>
                     <div className="mt-6 flex flex-row">
                       <div className="flex-1"></div>
-                      <div className="flex-initial ml-2">
+                      <div className="ml-2 flex-initial">
                         <input
                           className="hidden"
                           type="file"
@@ -284,7 +284,7 @@ export default function DataSourceUpsert({
               </div>
             </div>
           </div>
-          <div className="pt-6 flex flex-row">
+          <div className="flex flex-row pt-6">
             <div className="flex-initial">
               <ActionButton
                 disabled={disabled || loading || readOnly}

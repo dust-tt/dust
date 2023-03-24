@@ -43,14 +43,14 @@ export default function KeysProviders({ ga_tracking_id }) {
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="API keys" />
         </div>
 
         <div className="">
-          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div className="sm:flex sm:items-center">
-              <div className="sm:flex-auto mt-8">
+              <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
                   API keys
                 </h1>
@@ -63,7 +63,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                   keys with others, or expose it in the browser or client-side
                   code.
                 </p>
-                <div className="sm:flex sm:items-center mt-4 mb-2">
+                <div className="mt-4 mb-2 sm:flex sm:items-center">
                   <Button
                     onClick={() => {
                       handleGenerate();
@@ -82,7 +82,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                     <div className="flex items-center">
                       <p
                         className={classNames(
-                          "truncate text-sm text-slate-700 font-mono"
+                          "truncate font-mono text-sm text-slate-700"
                         )}
                       >
                         {isRevealed[key.id] ? (
@@ -90,7 +90,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                             {key.secret}
                             {key.status == "active" ? (
                               <EyeSlashIcon
-                                className="inline ml-2 h-4 w-4 text-gray-400 cursor-pointer"
+                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
                                 onClick={() => {
                                   setIsRevealed({
                                     ...isRevealed,
@@ -105,7 +105,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                             sk-...{key.secret.slice(-5)}
                             {key.status == "active" ? (
                               <EyeIcon
-                                className="inline ml-2 h-4 w-4 text-gray-400 cursor-pointer"
+                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
                                 onClick={() => {
                                   setIsRevealed({
                                     ...isRevealed,
@@ -117,10 +117,10 @@ export default function KeysProviders({ ga_tracking_id }) {
                           </>
                         )}
                       </p>
-                      <div className="ml-2 flex flex-shrink-0 mt-0.5">
+                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
                         <p
                           className={classNames(
-                            "inline-flex rounded-full px-2 mb-0.5 text-xs font-semibold leading-5",
+                            "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                             key.status === "active"
                               ? "bg-green-100 text-green-800"
                               : "ml-6 bg-gray-100 text-gray-800"

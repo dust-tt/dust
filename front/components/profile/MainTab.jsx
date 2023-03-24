@@ -3,7 +3,11 @@ import { classNames } from "@app/lib/utils";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 import { CodeBracketIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
-import { MagnifyingGlassCircleIcon, LinkIcon, KeyIcon } from "@heroicons/react/24/outline";
+import {
+  MagnifyingGlassCircleIcon,
+  LinkIcon,
+  KeyIcon,
+} from "@heroicons/react/24/outline";
 
 export default function MainTab({ currentTab, user, readOnly }) {
   const { data: session } = useSession();
@@ -15,7 +19,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${user}/apps`,
           icon: (
             <CodeBracketIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -25,7 +29,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${user}/data_sources`,
           icon: (
             <MagnifyingGlassCircleIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -37,7 +41,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${session.user.username}/apps`,
           icon: (
             <CodeBracketIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -47,7 +51,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${session.user.username}/data_sources`,
           icon: (
             <MagnifyingGlassCircleIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -57,7 +61,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${session.user.username}/providers`,
           icon: (
             <LinkIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -67,7 +71,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
           href: `/${session.user.username}/keys`,
           icon: (
             <KeyIcon
-              className="h-4 w-4 flex-shrink-0 mr-2 mt-0.5"
+              className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
           ),
@@ -78,16 +82,16 @@ export default function MainTab({ currentTab, user, readOnly }) {
 
   return (
     <div className="w-full">
-      <div className="sm:hidden border-b border-gray-200 px-2">
+      <div className="border-b border-gray-200 px-2 sm:hidden">
         <Menu as="div" className="relative">
           <div>
-            <Menu.Button className="flex w-full text-sm focus:outline-none text-gray-700 font-bold items-center">
+            <Menu.Button className="flex w-full items-center text-sm font-bold text-gray-700 focus:outline-none">
               <div className="flex flex-initial px-4 py-3">
                 {currTab.icon}
                 {currTab.name}
               </div>
               <div className="flex">
-                <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
               </div>
             </Menu.Button>
           </div>
@@ -99,7 +103,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
                     href={tab.href}
                     key={tab.name}
                     className={classNames(
-                      "whitespace-nowrap flex font-medium",
+                      "flex whitespace-nowrap font-medium",
                       active ? "bg-gray-50" : "",
                       "block px-4 py-3 text-sm text-gray-500"
                     )}
@@ -124,10 +128,10 @@ export default function MainTab({ currentTab, user, readOnly }) {
                   key={tab.name}
                   foo={tab.name}
                   className={classNames(
-                    "whitespace-nowrap flex py-3 px-4 border-b-2 text-sm flex items-center",
+                    "flex flex items-center whitespace-nowrap border-b-2 py-3 px-4 text-sm",
                     tab.name == currentTab
-                      ? "border-gray-500 text-gray-700 font-bold"
-                      : "font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
+                      ? "border-gray-500 font-bold text-gray-700"
+                      : "border-transparent font-medium text-gray-500 hover:border-gray-200 hover:text-gray-700"
                   )}
                   aria-current={tab.current ? "page" : undefined}
                 >

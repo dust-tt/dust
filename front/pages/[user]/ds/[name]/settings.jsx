@@ -46,7 +46,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
       dataSource={{ name: dataSource.name }}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Settings"
             user={user}
@@ -55,11 +55,11 @@ export default function New({ dataSource, user, ga_tracking_id }) {
           />
         </div>
         <div className="">
-          <div className="mx-auto max-w-4xl px-2 mt-8">
+          <div className="mx-auto mt-8 max-w-4xl px-2">
             <form
               action={`/api/data_sources/${session.user.username}/${dataSource.name}`}
               method="POST"
-              className="space-y-8 divide-y divide-gray-200 mt-8"
+              className="mt-8 space-y-8 divide-y divide-gray-200"
             >
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
@@ -72,10 +72,10 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                         DataSource Name
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
-                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 text-sm">
+                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
                           {session.user.username}
                           <ChevronRightIcon
-                            className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
+                            className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
                           />
                         </span>
@@ -104,7 +104,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                         >
                           Description
                         </label>
-                        <div className="font-normal text-gray-400 text-sm">
+                        <div className="text-sm font-normal text-gray-400">
                           optional
                         </div>
                       </div>
@@ -113,7 +113,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                           type="text"
                           name="description"
                           id="dataSourceDescription"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 text-sm"
+                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                           value={dataSourceDescription}
                           onChange={(e) =>
                             setDataSourceDescription(e.target.value)
@@ -137,7 +137,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                               id="dataSourceVisibilityPublic"
                               name="visibility"
                               type="radio"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               value="public"
                               checked={dataSourceVisibility == "public"}
                               onChange={(e) => {
@@ -163,7 +163,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                               name="visibility"
                               type="radio"
                               value="private"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               checked={dataSourceVisibility == "private"}
                               onChange={(e) => {
                                 if (e.target.value != dataSourceVisibility) {
@@ -220,12 +220,12 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                           Max Chunk Size
                         </label>
                       </div>
-                      <div className="mt-1 flex rounded-md shadow-sm w-32">
+                      <div className="mt-1 flex w-32 rounded-md shadow-sm">
                         <input
                           type="number"
                           name="max_chunk_size"
                           id="dataSourceMaxChunkSize"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 text-sm"
+                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                           value={dataSourceConfig.max_chunk_size}
                           readOnly={true}
                         />
@@ -235,12 +235,12 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                 </div>
               </div>
 
-              <div className="pt-6 flex">
+              <div className="flex pt-6">
                 <div className="flex">
                   <Button type="submit">Update</Button>
                 </div>
                 <div className="flex-1"></div>
-                <div className="flex ml-2">
+                <div className="ml-2 flex">
                   <Button onClick={handleDelete}>Delete</Button>
                 </div>
               </div>

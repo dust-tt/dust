@@ -69,26 +69,26 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "flex flex-auto flex-col group rounded border border-gray-300 px-4 pt-1 pb-3"
+          "group flex flex-auto flex-col rounded border border-gray-300 px-4 pt-1 pb-3"
         )}
       >
         <div className="flex flex-row items-center">
-          <div className="flex-initial mr-2">
+          <div className="mr-2 flex-initial">
             <div className="">
-              <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
+              <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
                 {block.type}
               </span>
             </div>
           </div>
 
-          <div className="flex flex-auto font-bold text-gray-700 pr-2">
+          <div className="flex flex-auto pr-2 font-bold text-gray-700">
             <input
               type="text"
               placeholder="BLOCK_NAME"
               className={classNames(
-                "block w-full rounded-md py-1 px-1 placeholder-gray-200 uppercase",
+                "block w-full rounded-md py-1 px-1 uppercase placeholder-gray-200",
                 readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
+                  ? "border-white ring-0 focus:border-white focus:ring-0"
                   : nameError != null
                   ? "border-orange-400 focus:border-orange-400 focus:ring-0"
                   : "border-white focus:border-gray-300 focus:ring-0"
@@ -103,12 +103,12 @@ export default function Block({
             className={classNames(
               readOnly || !canUseCache
                 ? "hidden"
-                : "flex flex-initial flex-row space-x-1 ml-1 mr-2"
+                : "ml-1 mr-2 flex flex-initial flex-row space-x-1"
             )}
           >
             {block.config && block.config.use_cache ? (
               <div
-                className="flex-initial text-gray-400 flex cursor-pointer"
+                className="flex flex-initial cursor-pointer text-gray-400"
                 onClick={() => {
                   handleUseCacheChange(false);
                 }}
@@ -117,7 +117,7 @@ export default function Block({
               </div>
             ) : (
               <div
-                className="flex-initial text-gray-400 flex cursor-pointer"
+                className="flex flex-initial cursor-pointer text-gray-400"
                 onClick={() => {
                   handleUseCacheChange(true);
                 }}
@@ -131,10 +131,10 @@ export default function Block({
             className={classNames(
               readOnly
                 ? "hidden"
-                : "flex flex-initial flex-row space-x-1 items-center"
+                : "flex flex-initial flex-row items-center space-x-1"
             )}
           >
-            <div className="flex-initial text-gray-400 mr-1 mt-1">
+            <div className="mr-1 mt-1 flex-initial text-gray-400">
               <NewBlock
                 disabled={readOnly}
                 onClick={onBlockNew}
@@ -144,19 +144,19 @@ export default function Block({
               />
             </div>
             <div
-              className="flex-initial text-gray-400 cursor-pointer"
+              className="flex-initial cursor-pointer text-gray-400"
               onClick={onBlockUp}
             >
               <ChevronUpIcon className="h-4 w-4 hover:text-gray-700" />
             </div>
             <div
-              className="flex-initial text-gray-400 cursor-pointer"
+              className="flex-initial cursor-pointer text-gray-400"
               onClick={onBlockDown}
             >
               <ChevronDownIcon className="h-4 w-4 hover:text-gray-700" />
             </div>
             <div
-              className="flex-initial text-gray-400 cursor-pointer"
+              className="flex-initial cursor-pointer text-gray-400"
               onClick={onBlockDelete}
             >
               <TrashIcon className="ml-2 h-4 w-4 hover:text-red-700" />
@@ -181,7 +181,7 @@ export default function Block({
             <div role="status">
               <svg
                 aria-hidden="true"
-                className="ml-2 mr-2 w-3 h-3 text-gray-200 animate-spin dark:text-gray-300 fill-violet-600"
+                className="ml-2 mr-2 h-3 w-3 animate-spin fill-violet-600 text-gray-200 dark:text-gray-300"
                 viewBox="0 0 100 101"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"

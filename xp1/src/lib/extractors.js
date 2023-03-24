@@ -14,7 +14,7 @@ const discordExtractor = () => {
   let chats = document.querySelectorAll("[class^='chatContent']");
   if (chats.length > 0) {
     let text = chats[chats.length - 1].innerText;
-    text = text.replaceAll(/\n\[\n\s*\d+:\d+\s*\n\]\n/g, '\n');
+    text = text.replaceAll(/\n\[\n\s*\d+:\d+\s*\n\]\n/g, "\n");
     return text;
   }
   return document.body.innerText;
@@ -29,10 +29,10 @@ const gmailExtractor = () => {
 };
 
 const stackOverflowExtractor = () => {
-  let content = '';
+  let content = "";
   let questionHeaders = document.querySelectorAll("[id='question-header']");
   if (questionHeaders.length === 1) {
-    content += questionHeaders[0].innerText + '\n';
+    content += questionHeaders[0].innerText + "\n";
   }
   let mainBars = document.querySelectorAll("[id='mainbar']");
   if (mainBars.length === 1) {
@@ -50,7 +50,7 @@ const notionExractor = () => {
       "[class*='notion-update-sidebar-tab-comments-comments-scroller']"
     );
     if (comments.length === 1) {
-      content += '\nCOMMENTS:\n';
+      content += "\nCOMMENTS:\n";
       content += comments[0].innerText;
     }
     return content;
@@ -102,7 +102,7 @@ const gdocsExtractor = () => {
   let contents = Array.from(document.scripts)
     .map((s) => {
       try {
-        if (s.innerHTML.toString().startsWith('DOCS_modelChunk =')) {
+        if (s.innerHTML.toString().startsWith("DOCS_modelChunk =")) {
           return s.innerHTML;
         }
         return null;
@@ -116,14 +116,14 @@ const gdocsExtractor = () => {
     .map((c) => {
       try {
         const arr = JSON.parse(
-          c.split('=', 2)[1].trim().split('},{')[0] + '}]'
+          c.split("=", 2)[1].trim().split("},{")[0] + "}]"
         );
         return arr[0].s;
       } catch (e) {}
       return null;
     })
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 
   if (content.length > 0) {
     return content;
@@ -158,15 +158,15 @@ const gsheetsExtractor = () => {
     }
 
     render() {
-      return this.rows.map((r) => r.join('\t')).join('\n');
+      return this.rows.map((r) => r.join("\t")).join("\n");
     }
 
     parseGoogle(document) {
       let data = Array.from(document.scripts).find((s) =>
-        s.innerHTML.includes('bootstrapData')
+        s.innerHTML.includes("bootstrapData")
       );
       let parsedData = JSON.parse(
-        data.innerHTML.split('bootstrapData = ')[1].split('}}; ')[0] + '}}'
+        data.innerHTML.split("bootstrapData = ")[1].split("}}; ")[0] + "}}"
       );
       let sections = parsedData.changes.firstchunk.map((x) => JSON.parse(x[1]));
       for (var section of sections) {
@@ -184,9 +184,9 @@ const gsheetsExtractor = () => {
       var newIndex = 0;
 
       for (var cell of section[3]) {
-        if ((text = cell[0]?.['3']?.[1])) {
+        if ((text = cell[0]?.["3"]?.[1])) {
           this.appendCell(text);
-          if ((newIndex = cell[0]['6']) > index) {
+          if ((newIndex = cell[0]["6"]) > index) {
             this.pushRow();
           }
           index = newIndex;
@@ -211,28 +211,28 @@ export function scriptForURL(url) {
   // console.log('URL', u);
 
   switch (u.host) {
-    case 'web.whatsapp.com':
+    case "web.whatsapp.com":
       return whatsappExtractor;
-    case 'discord.com':
+    case "discord.com":
       return discordExtractor;
-    case 'mail.google.com':
+    case "mail.google.com":
       return gmailExtractor;
-    case 'stackoverflow.com':
+    case "stackoverflow.com":
       return stackOverflowExtractor;
-    case 'www.notion.so':
+    case "www.notion.so":
       return notionExractor;
-    case 'www.linkedin.com':
+    case "www.linkedin.com":
       return linkedInExtractor;
-    case 'twitter.com':
+    case "twitter.com":
       return twitterExtractor;
-    case 'app.slack.com':
+    case "app.slack.com":
       return slackExtractor;
-    case 'docs.google.com':
+    case "docs.google.com":
       // TODO(spolu): test this
       // if (u.pathname.startsWith('/spreadsheets')) {
       //   return gsheetsExtractor;
       // }
-      if (u.pathname.startsWith('/document')) {
+      if (u.pathname.startsWith("/document")) {
         return gdocsExtractor;
       }
       return defaultExtractor;

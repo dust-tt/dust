@@ -94,14 +94,14 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
           </Transition.Child>
 
           <div className="fixed inset-0 z-10 overflow-y-auto">
-            <div className="flex min-h-full items-end justify-center p-4 items-center">
+            <div className="flex min-h-full items-end items-center justify-center p-4">
               <Transition.Child
                 as={Fragment}
                 enter="ease-out duration-300"
                 leave="ease-in duration-200"
                 leaveTo="opacity-0"
               >
-                <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl lg:max-w-4xl sm:p-6">
+                <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 lg:max-w-4xl">
                   <div data-color-mode="light">
                     <div className="mt-3">
                       <Dialog.Title
@@ -115,7 +115,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         value={`$ ${cURLRequest(false)}`}
                         language="shell"
                         padding={15}
-                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] font-mono text-white"
+                        className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                         style={{
                           fontSize: 13,
                           fontFamily:
@@ -123,7 +123,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                           backgroundColor: "rgb(241 245 249)",
                         }}
                       />
-                      <div className="flex flex-initial mt-5">
+                      <div className="mt-5 flex flex-initial">
                         <div className="">
                           {activeKey ? (
                             <p className="text-sm text-gray-500">
@@ -163,7 +163,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                         <div className="flex-1"></div>
                         <div className="mt-1">
                           <ActionButton onClick={handleCopyClick}>
-                            <DocumentDuplicateIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                            <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                             {copyButtonText}
                           </ActionButton>
                         </div>
@@ -182,7 +182,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-row mt-5 sm:mt-6 space-x-2 items-center">
+                  <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
                     <div className="flex-1"></div>
                     <div className="flex flex-initial">
                       <Button onClick={() => setOpen(false)}>Close</Button>

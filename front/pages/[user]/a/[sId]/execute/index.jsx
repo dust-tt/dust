@@ -89,15 +89,15 @@ function ExecuteOutputLine({
           ) : lastEventForBlock.content.status === 'errored' ? (
             <ExclamationCircleIcon className="text-red-500 h-4 w-4" />
           ) : (
-            <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4" />
+            <CheckCircleIcon className="min-w-4 h-4 w-4 text-emerald-300" />
           )}
           {!expanded ? (
-            <ChevronRightIcon className="text-gray-400 h-4 w-4" />
+            <ChevronRightIcon className="h-4 w-4 text-gray-400" />
           ) : (
-            <ChevronDownIcon className="text-gray-400 h-4 w-4" />
+            <ChevronDownIcon className="h-4 w-4 text-gray-400" />
           )}{" "}
           <div className="inline">
-            <span className="rounded-md px-1 py-0.5 bg-gray-200 font-medium text-sm">
+            <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
               {blockType}
             </span>
             <span className="ml-1 font-bold text-gray-700">{blockName}</span>
@@ -105,7 +105,7 @@ function ExecuteOutputLine({
         </div>
       </button>
       {expanded ? (
-        <div className="flex ml-8 text-sm text-gray-600 mb-2">
+        <div className="ml-8 mb-2 flex text-sm text-gray-600">
           {Array.isArray(preprocessedOutput) ? (
             <ArrayViewer value={preprocessedOutput} />
           ) : typeof preprocessedOutput == "string" ? (
@@ -153,14 +153,14 @@ function ExecuteFinalOutput({ value, errored }) {
     <div className="flex w-full">
       <div
         className={classNames(
-          "flex-1 leading-none text-[13px] px-0 py-0 border bg-slate-100",
+          "flex-1 border bg-slate-100 px-0 py-0 text-[13px] leading-none",
           !errored ? "border-slate-100" : "border-red-500"
         )}
       >
         <TextareaAutosize
           minRows={1}
           className={classNames(
-            "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
+            "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
             "text-gray-700"
           )}
           value={
@@ -183,11 +183,11 @@ function ExecuteInput({
   return (
     <div key={inputName} className="grid grid-cols-10">
       <div className="col-span-3">
-        <div className="flex group items-center bg-slate-300">
+        <div className="group flex items-center bg-slate-300">
           <div
             className={classNames(
-              "flex flex-1 px-1 py-1 font-normal text-[13px] font-mono bg-slate-300 border-0 outline-none focus:outline-none w-1/4",
-              "border-white ring-0 focus:ring-0 focus:border-white"
+              "flex w-1/4 flex-1 border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] font-normal outline-none focus:outline-none",
+              "border-white ring-0 focus:border-white focus:ring-0"
             )}
             readOnly={true}
             value={inputName + " (" + inputType + ")"}
@@ -198,7 +198,7 @@ function ExecuteInput({
       </div>
       <div
         className={classNames(
-          "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
+          "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px]",
           getValueType(inputValue) === inputType && inputValue?.length > 0
             ? "border-slate-100"
             : "border-red-500"
@@ -227,7 +227,7 @@ function ExecuteInput({
           <TextareaAutosize
             minRows={1}
             className={classNames(
-              "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
+              "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
               "text-gray-700"
             )}
             value={inputValue || ""}
@@ -448,21 +448,21 @@ export default function ExecuteView({
       ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Use"
             user={user}
           />
         </div>
-        <div className="w-full max-w-5xl mt-6 mx-auto">
-          <div className="max-w-4xl mx-8"></div>
-          <div className="flex flex-col mx-8 mt-2">
-            <div className="flex w-full flex-row mb-6">
-              <div className="flex flex-initial text-sm text-gray-400 items-center leading-snug">
+        <div className="mx-auto mt-6 w-full max-w-5xl">
+          <div className="mx-8 max-w-4xl"></div>
+          <div className="mx-8 mt-2 flex flex-col">
+            <div className="mb-6 flex w-full flex-row">
+              <div className="flex flex-initial items-center text-sm leading-snug text-gray-400">
                 <div>
                   This panel lets you use your app on custom{" "}
-                  <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
+                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
                     input
                   </span>{" "}
                   values once finalized.{" "}
@@ -481,7 +481,7 @@ export default function ExecuteView({
                     disabled={!canRun()}
                     onClick={() => handleRun()}
                   >
-                    <PlayCircleIcon className="-ml-1 mr-1 h-5 w-5 mt-0.5" />
+                    <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                     Execute
                   </ActionButton>
                 </div>
@@ -493,12 +493,12 @@ export default function ExecuteView({
                 <p className="mt-2 text-sm text-gray-500">
                   The input fields are inferred from the Dataset attached to
                   your app's{" "}
-                  <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
+                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
                     input
                   </span>{" "}
                   block.
                 </p>
-                <ul className="space-y-1 mt-4 mb-6">
+                <ul className="mt-4 mb-6 space-y-1">
                   {inputDatasetKeys.map((k) => (
                     <li key={k}>
                       <ExecuteInput
@@ -515,7 +515,7 @@ export default function ExecuteView({
             ) : null}
             {executionLogs.blockOrder.length ? (
               <div className="">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
                   Execution Trace
                 </h3>
                 <ExecuteOutput
@@ -533,7 +533,7 @@ export default function ExecuteView({
             ) : null}
             {finalOutputBlockTypeName && (
               <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
                   Output
                 </h3>
                 <ExecuteFinalOutput

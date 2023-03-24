@@ -114,25 +114,25 @@ export default function Browser({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+      <div className="mx-4 flex w-full flex-col">
+        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
           {advancedExpanded ? (
             <div
               onClick={() => setAdvancedExpanded(false)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
+                <ChevronDownIcon className="mt-0.5 mr-1 h-4 w-4" />
               </span>
               advanced
             </div>
           ) : (
             <div
               onClick={() => setAdvancedExpanded(true)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
+                <ChevronRightIcon className="mt-0.5 mr-1 h-4 w-4" />
               </span>
               advanced
             </div>
@@ -140,13 +140,13 @@ export default function Browser({
           {advancedExpanded ? (
             <div className="flex flex-col">
               <div className="flex flex-col xl:flex-row xl:space-x-2">
-                <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">error as output:</div>
                   <div className="flex flex-initial font-normal">
                     <input
                       type="checkbox"
                       className={classNames(
-                        "w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-white focus:ring-2 ml-1 mr-4",
+                        "ml-1 mr-4 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
                         readOnly ? "" : "cursor-pointer"
                       )}
                       checked={block.config.error_as_output}
@@ -161,15 +161,15 @@ export default function Browser({
                     />
                   </div>
                 </div>
-                <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">timeout:</div>
                   <div className="flex flex-initial font-normal">
                     <input
                       type="text"
                       className={classNames(
-                        "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-16",
+                        "block w-16 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       spellCheck={false}
@@ -179,15 +179,15 @@ export default function Browser({
                     />
                   </div>
                 </div>
-                <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">wait until:</div>
                   <div className="flex flex-initial font-normal">
                     <input
                       type="text"
                       className={classNames(
-                        "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-32",
+                        "block w-32 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       spellCheck={false}
@@ -197,16 +197,16 @@ export default function Browser({
                     />
                   </div>
                 </div>
-                <div className="flex-1 flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">wait for:</div>
                   <div className="flex flex-1 font-normal">
                     <input
                       type="text"
                       placeholder=""
                       className={classNames(
-                        "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-32",
+                        "block w-32 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       spellCheck={false}
@@ -221,8 +221,8 @@ export default function Browser({
           ) : null}
         </div>
 
-        <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
-          <div className="flex-initial flex flex-row items-center space-x-1">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1">
             <div className="flex flex-initial items-center">
               URL (with scheme):
             </div>
@@ -234,8 +234,8 @@ export default function Browser({
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
                     "border px-3",
                     readOnly
-                      ? "text-gray-300 border-white"
-                      : "text-gray-700 border-orange-400",
+                      ? "border-white text-gray-300"
+                      : "border-orange-400 text-gray-700",
                     "focus:outline-none focus:ring-0"
                   )}
                 >
@@ -249,9 +249,9 @@ export default function Browser({
               type="text"
               placeholder=""
               className={classNames(
-                "block w-full resize-none px-1 font-normal py-1 text-[13px] font-mono bg-slate-100",
+                "block w-full resize-none bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
                 readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
+                  ? "border-white ring-0 focus:border-white focus:ring-0"
                   : "border-white focus:border-white focus:ring-0"
               )}
               spellCheck={false}
@@ -261,7 +261,7 @@ export default function Browser({
             />
           </div>
 
-          <div className="flex-initial flex flex-row items-center space-x-1">
+          <div className="flex flex-initial flex-row items-center space-x-1">
             <div className="flex flex-initial items-center">CSS selector:</div>
           </div>
           <div className="flex w-full font-normal">
@@ -269,9 +269,9 @@ export default function Browser({
               type="text"
               placeholder=""
               className={classNames(
-                "block w-full resize-none px-1 font-normal text-[13px] font-mono py-1 bg-slate-100",
+                "block w-full resize-none bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
                 readOnly
-                  ? "border-white ring-0 focus:ring-0 focus:border-white"
+                  ? "border-white ring-0 focus:border-white focus:ring-0"
                   : "border-white focus:border-white focus:ring-0"
               )}
               readOnly={readOnly}

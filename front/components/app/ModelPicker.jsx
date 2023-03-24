@@ -4,10 +4,7 @@ import { useEffect } from "react";
 import { useProviders } from "@app/lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import {
-  filterModelProviders,
-  getProviderLLMModels,
-} from "@app/lib/providers";
+import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
 import { useState } from "react";
 
 export default function ModelPicker({
@@ -91,15 +88,15 @@ export default function ModelPicker({
                     ? "px-1"
                     : "border px-3",
                   readOnly
-                    ? "text-gray-300 border-white"
-                    : "text-gray-700 border-orange-400",
+                    ? "border-white text-gray-300"
+                    : "border-orange-400 text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
               >
                 {isProvidersLoading ? "Loading..." : "Setup provider"}
               </Link>
             ) : readOnly ? (
-              <div className="font-bold text-gray-700 text-sm">
+              <div className="text-sm font-bold text-gray-700">
                 {model.provider_id && model.provider_id.length > 0
                   ? model.provider_id
                   : ""}
@@ -112,8 +109,8 @@ export default function ModelPicker({
                     ? "px-0"
                     : "border px-3",
                   readOnly
-                    ? "text-gray-300 border-white"
-                    : "text-gray-700 border-orange-400",
+                    ? "border-white text-gray-300"
+                    : "border-orange-400 text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -121,7 +118,7 @@ export default function ModelPicker({
                 {model.provider_id && model.provider_id.length > 0 ? (
                   <>
                     {model.provider_id}&nbsp;
-                    <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
                 ) : (
                   "Select provider"
@@ -133,7 +130,7 @@ export default function ModelPicker({
           {readOnly ? null : (
             <Menu.Items
               className={classNames(
-                "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
                 model.provider_id && model.provider_id.length > 0
                   ? "-left-4"
                   : "left-1"
@@ -158,7 +155,7 @@ export default function ModelPicker({
                             active
                               ? "bg-gray-50 text-gray-900"
                               : "text-gray-700",
-                            "block px-4 py-2 text-sm cursor-pointer"
+                            "block cursor-pointer px-4 py-2 text-sm"
                           )}
                         >
                           {p.providerId}
@@ -174,9 +171,9 @@ export default function ModelPicker({
       </div>
 
       {model.provider_id && model.provider_id.length > 0 ? (
-        <div className="flex items-center ml-2">
+        <div className="ml-2 flex items-center">
           {readOnly ? (
-            <div className="font-bold text-gray-700 text-sm">
+            <div className="text-sm font-bold text-gray-700">
               {(model.model_id && model.model_id.length) > 0
                 ? model.model_id
                 : ""}
@@ -186,13 +183,13 @@ export default function ModelPicker({
               <div>
                 <Menu.Button
                   className={classNames(
-                    "inline-flex items-center rounded-md py-1 font-bold text-gray-700 text-sm",
+                    "inline-flex items-center rounded-md py-1 text-sm font-bold text-gray-700",
                     model.model_id && model.model_id.length > 0
                       ? "px-0"
                       : "border px-3",
                     readOnly
-                      ? "text-gray-300 border-white"
-                      : "text-gray-700 border-orange-400",
+                      ? "border-white text-gray-300"
+                      : "border-orange-400 text-gray-700",
                     "focus:outline-none focus:ring-0"
                   )}
                   readOnly={readOnly}
@@ -200,7 +197,7 @@ export default function ModelPicker({
                   {model.model_id && model.model_id.length > 0 ? (
                     <>
                       {model.model_id}&nbsp;
-                      <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                      <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                     </>
                   ) : (
                     "Select model"
@@ -210,7 +207,7 @@ export default function ModelPicker({
 
               <Menu.Items
                 className={classNames(
-                  "absolute w-max shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
                   model.model_id && model.model_id.length > 0
                     ? "-left-4"
                     : "left-1"
@@ -234,7 +231,7 @@ export default function ModelPicker({
                               active
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
-                              "block px-4 py-2 text-sm cursor-pointer"
+                              "block cursor-pointer px-4 py-2 text-sm"
                             )}
                           >
                             {m.id}

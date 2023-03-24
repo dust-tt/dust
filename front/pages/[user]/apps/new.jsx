@@ -43,7 +43,7 @@ export default function New({ apps, ga_tracking_id }) {
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Apps" />
         </div>
         <div className="flex flex-1">
@@ -51,7 +51,7 @@ export default function New({ apps, ga_tracking_id }) {
             <form
               action={`/api/apps/${session.user.username}`}
               method="POST"
-              className="space-y-8 divide-y divide-gray-200 mt-8"
+              className="mt-8 space-y-8 divide-y divide-gray-200"
             >
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
@@ -75,10 +75,10 @@ export default function New({ apps, ga_tracking_id }) {
                         App Name
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
-                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 text-sm">
+                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
                           {session.user.username}
                           <ChevronRightIcon
-                            className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
+                            className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
                           />
                         </span>
@@ -89,7 +89,7 @@ export default function New({ apps, ga_tracking_id }) {
                           className={classNames(
                             "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
                             appNameError
-                              ? "border-gray-300 focus:border-red-500 border-red-500 focus:ring-red-500"
+                              ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                               : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                           )}
                           value={appName}
@@ -109,7 +109,7 @@ export default function New({ apps, ga_tracking_id }) {
                         >
                           Description
                         </label>
-                        <div className="font-normal text-gray-400 text-sm">
+                        <div className="text-sm font-normal text-gray-400">
                           optional
                         </div>
                       </div>
@@ -118,7 +118,7 @@ export default function New({ apps, ga_tracking_id }) {
                           type="text"
                           name="description"
                           id="appDescription"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 text-sm"
+                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                           value={appDescription}
                           onChange={(e) => setAppDescription(e.target.value)}
                         />
@@ -141,7 +141,7 @@ export default function New({ apps, ga_tracking_id }) {
                               id="appVisibilityPublic"
                               name="visibility"
                               type="radio"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               value="public"
                               checked={appVisibility == "public"}
                               onChange={(e) => {
@@ -167,7 +167,7 @@ export default function New({ apps, ga_tracking_id }) {
                               name="visibility"
                               type="radio"
                               value="private"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               checked={appVisibility == "private"}
                               onChange={(e) => {
                                 if (e.target.value != appVisibility) {
@@ -191,7 +191,7 @@ export default function New({ apps, ga_tracking_id }) {
                               name="visibility"
                               type="radio"
                               value="unlisted"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               checked={appVisibility == "unlisted"}
                               onChange={(e) => {
                                 if (e.target.value != appVisibility) {

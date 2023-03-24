@@ -1,7 +1,7 @@
-import { unstable_getServerSession } from 'next-auth/next';
-import { authOptions } from '@app/pages/api/auth/[...nextauth]';
-import { User, App } from '@app/lib/models';
-import { Op } from 'sequelize';
+import { unstable_getServerSession } from "next-auth/next";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { User, App } from "@app/lib/models";
+import { Op } from "sequelize";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
@@ -17,7 +17,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = !(session && session.provider.id.toString() === user.githubId);
+  const readOnly = !(
+    session && session.provider.id.toString() === user.githubId
+  );
 
   let app = await App.findOne({
     where: readOnly

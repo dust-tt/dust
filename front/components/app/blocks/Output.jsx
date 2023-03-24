@@ -83,13 +83,13 @@ function ValueViewer({ block, value, k, topLevel }) {
       {isExpandable(value) ? (
         <>
           <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial text-gray-400 cursor-pointer">
+            <div className="flex-initial cursor-pointer text-gray-400">
               {expanded ? (
                 <div onClick={() => setExpanded(false)}>
                   <span className="flex flex-row items-center">
-                    <ChevronDownIcon className="h-4 w-4 mt-0.5" />
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
                     ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
                   </span>
@@ -97,9 +97,9 @@ function ValueViewer({ block, value, k, topLevel }) {
               ) : (
                 <div onClick={() => setExpanded(true)}>
                   <span className="flex flex-row items-center">
-                    <ChevronRightIcon className="h-4 w-4 mt-0.5" />
+                    <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
                     ) : null}
                     <span className="text-gray-400">{summary(value)}</span>
                   </span>
@@ -108,7 +108,7 @@ function ValueViewer({ block, value, k, topLevel }) {
             </div>
           </div>
           {expanded ? (
-            <div className="flex ml-4">
+            <div className="ml-4 flex">
               {Array.isArray(value) ? (
                 <ArrayViewer value={value} block={block} />
               ) : typeof value == "object" ? (
@@ -118,9 +118,9 @@ function ValueViewer({ block, value, k, topLevel }) {
           ) : null}
         </>
       ) : (
-        <div className="flex text-sm text-gray-600 ml-4">
+        <div className="ml-4 flex text-sm text-gray-600">
           {k != null ? (
-            <span className="text-gray-700 mr-1 font-bold">{k}:</span>
+            <span className="mr-1 font-bold text-gray-700">{k}:</span>
           ) : null}
           <span className="whitespace-pre-wrap">
             {typeof value === "string" ? <StringViewer value={value} /> : value}
@@ -150,7 +150,7 @@ export function StringViewer({ value }) {
       <span>
         {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
         <span
-          className="text-violet-600 hover:text-violet-500 font-bold cursor-pointer"
+          className="cursor-pointer font-bold text-violet-600 hover:text-violet-500"
           onClick={(e) => setExpanded(!expanded)}
         >
           show all
@@ -166,26 +166,26 @@ function Error({ error }) {
   return (
     <div>
       <div className="flex flex-row items-center text-sm">
-        <div className="flex-initial text-gray-400 cursor-pointer">
+        <div className="flex-initial cursor-pointer text-gray-400">
           {expanded ? (
             <div onClick={() => setExpanded(false)}>
               <span className="flex flex-row items-center">
-                <ChevronDownIcon className="h-4 w-4 mt-0.5" />
-                <span className="text-sm text-gray-400 italic">error</span>
+                <ChevronDownIcon className="mt-0.5 h-4 w-4" />
+                <span className="text-sm italic text-gray-400">error</span>
               </span>
             </div>
           ) : (
             <div onClick={() => setExpanded(true)}>
               <span className="flex flex-row items-center">
-                <ChevronRightIcon className="h-4 w-4 mt-0.5" />
-                <span className="text-sm text-gray-400 italic">error</span>
+                <ChevronRightIcon className="mt-0.5 h-4 w-4" />
+                <span className="text-sm italic text-gray-400">error</span>
               </span>
             </div>
           )}
         </div>
       </div>
       {expanded ? (
-        <div className="flex text-sm text-red-400 ml-4">
+        <div className="ml-4 flex text-sm text-red-400">
           <div className="flex-auto">{error.split(" (sandboxed.js")[0]}</div>
         </div>
       ) : null}
@@ -201,13 +201,13 @@ function Execution({ block, trace }) {
           <div key={i} className="flex-auto flex-col">
             {t.error != null ? (
               <div className="flex flex-auto flex-row">
-                <ExclamationCircleIcon className="flex h-4 w-4 text-red-400 mt-0.5" />
+                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
                 <Error error={t.error} />
               </div>
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="text-emerald-300 h-4 w-4 min-w-4 mt-0.5" />
+                  <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer block={block} value={t.value} topLevel={true} />
@@ -274,25 +274,25 @@ export default function Output({ user, block, runId, status, app }) {
     }, 0);
 
     return (
-      <div className="flex flex-col flex-auto">
+      <div className="flex flex-auto flex-col">
         <div className="flex flex-row items-center text-sm">
-          <div className="flex-initial text-gray-400 cursor-pointer">
+          <div className="flex-initial cursor-pointer text-gray-400">
             <div onClick={() => setExpanded(!expanded)}>
               <span className="flex flex-row items-center">
                 {expanded ? (
-                  <ChevronDownIcon className="h-4 w-4 mt-0.5" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                 ) : (
-                  <ChevronRightIcon className="h-4 w-4 mt-0.5" />
+                  <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                 )}
                 <span className="text-sm text-gray-400">
                   [{" "}
-                  <span className="text-emerald-400 font-bold">
+                  <span className="font-bold text-emerald-400">
                     {successes} {successes === 1 ? "success" : "successes"}
                   </span>
                   {errors > 0 ? (
                     <>
                       {", "}
-                      <span className="text-red-400 font-bold">
+                      <span className="font-bold text-red-400">
                         {errors} {errors === 1 ? "error" : "errors"}
                       </span>
                     </>
@@ -307,8 +307,8 @@ export default function Output({ user, block, runId, status, app }) {
           <>
             {traces.map((trace, i) => {
               return (
-                <div key={i} className="flex flex-row flex-auto ml-1">
-                  <div className="flex text-gray-300 text-sm font-mono mr-2">
+                <div key={i} className="ml-1 flex flex-auto flex-row">
+                  <div className="mr-2 flex font-mono text-sm text-gray-300">
                     {i}:
                   </div>
                   <Execution trace={trace} block={block} />

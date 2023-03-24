@@ -1,6 +1,6 @@
-import { unstable_getServerSession } from 'next-auth/next';
-import { authOptions } from '@app/pages/api/auth/[...nextauth]';
-import { User } from '@app/lib/models';
+import { unstable_getServerSession } from "next-auth/next";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { User } from "@app/lib/models";
 
 export default async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
@@ -22,13 +22,13 @@ export default async function handler(req, res) {
   }
 
   switch (req.method) {
-    case 'GET':
+    case "GET":
       const config = JSON.parse(req.query.config);
 
       switch (req.query.pId) {
-        case 'openai':
-          let modelsRes = await fetch('https://api.openai.com/v1/models', {
-            method: 'GET',
+        case "openai":
+          let modelsRes = await fetch("https://api.openai.com/v1/models", {
+            method: "GET",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
             },
@@ -42,14 +42,14 @@ export default async function handler(req, res) {
           }
           break;
 
-        case 'cohere':
-          let testRes = await fetch('https://api.cohere.ai/tokenize', {
-            method: 'POST',
+        case "cohere":
+          let testRes = await fetch("https://api.cohere.ai/tokenize", {
+            method: "POST",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ text: 'Hello World' }),
+            body: JSON.stringify({ text: "Hello World" }),
           });
           if (!testRes.ok) {
             let err = await testRes.json();
@@ -60,16 +60,16 @@ export default async function handler(req, res) {
           }
           break;
 
-        case 'ai21':
+        case "ai21":
           let testTokenize = await fetch(
-            'https://api.ai21.com/studio/v1/tokenize',
+            "https://api.ai21.com/studio/v1/tokenize",
             {
-              method: 'POST',
+              method: "POST",
               headers: {
                 Authorization: `Bearer ${config.api_key}`,
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
-              body: JSON.stringify({ text: 'Hello World' }),
+              body: JSON.stringify({ text: "Hello World" }),
             }
           );
           if (!testTokenize.ok) {
@@ -81,11 +81,11 @@ export default async function handler(req, res) {
           }
           break;
 
-        case 'serpapi':
+        case "serpapi":
           let testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
             {
-              method: 'GET',
+              method: "GET",
             }
           );
           if (!testSearch.ok) {
@@ -96,17 +96,17 @@ export default async function handler(req, res) {
             res.status(200).json({ ok: true });
           }
           break;
-        case 'serper':
+        case "serper":
           let testSearchSerper = await fetch(
             `https://google.serper.dev/search`,
             {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'X-API-KEY': config.api_key,
-                'Content-Type': 'application/json',
+                "X-API-KEY": config.api_key,
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                q: 'Coffee',
+                q: "Coffee",
               }),
             }
           );
@@ -119,18 +119,18 @@ export default async function handler(req, res) {
           }
           break;
 
-        case 'browserlessapi':
+        case "browserlessapi":
           let testScrape = await fetch(
             `https://chrome.browserless.io/scrape?token=${config.api_key}`,
             {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Cache-Control': 'no-cache',
-                'Content-Type': 'application/json',
+                "Cache-Control": "no-cache",
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                url: 'https://example.com/',
-                elements: [{ selector: 'body' }],
+                url: "https://example.com/",
+                elements: [{ selector: "body" }],
               }),
             }
           );
@@ -145,7 +145,7 @@ export default async function handler(req, res) {
           break;
 
         default:
-          res.status(404).json({ ok: false, error: 'Provider not built' });
+          res.status(404).json({ ok: false, error: "Provider not built" });
           break;
       }
 

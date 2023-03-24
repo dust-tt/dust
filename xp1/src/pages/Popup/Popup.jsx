@@ -1,10 +1,10 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
-import { ChatView } from '../../components/ChatView';
-import { ActivationView } from '../../components/ActivationView';
-import { UpdateView } from '../../components/UpdateView';
-import { VARS } from 'variables';
-import { getSecretAndUser } from '../../lib/user';
+import React from "react";
+import { useState, useEffect } from "react";
+import { ChatView } from "../../components/ChatView";
+import { ActivationView } from "../../components/ActivationView";
+import { UpdateView } from "../../components/UpdateView";
+import { VARS } from "variables";
+import { getSecretAndUser } from "../../lib/user";
 
 const Popup = () => {
   const [user, setUser] = useState(null);
@@ -37,7 +37,7 @@ const Popup = () => {
     <div>
       {update ? (
         <UpdateView update={update} />
-      ) : user && user.status === 'ready' ? (
+      ) : user && user.status === "ready" ? (
         <ChatView user={user} />
       ) : (
         <ActivationView

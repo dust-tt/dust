@@ -44,17 +44,17 @@ export function Map({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
+      <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col lg:flex-row lg:space-x-4">
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">from:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-bold text-gray-700 uppercase text-sm py-1 w-48",
+                  "block w-48 flex-1 rounded-md px-1 py-1 text-sm font-bold uppercase text-gray-700",
                   readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -63,15 +63,15 @@ export function Map({
               />
             </div>
           </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">repeat:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 spellCheck={false}

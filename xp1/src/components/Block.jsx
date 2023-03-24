@@ -1,13 +1,13 @@
-import React from 'react';
-import { ClipboardIcon } from '@heroicons/react/24/outline';
-import { classNames } from '../lib/utils';
-import { useState, useRef } from 'react';
-import { ArrowDownTrayIcon } from '@heroicons/react/20/solid';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { CmdState } from './CmdInput';
+import React from "react";
+import { ClipboardIcon } from "@heroicons/react/24/outline";
+import { classNames } from "../lib/utils";
+import { useState, useRef } from "react";
+import { ArrowDownTrayIcon } from "@heroicons/react/20/solid";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { CmdState } from "./CmdInput";
 
-const RENDER_TYPES = ['markdown', 'csv'];
+const RENDER_TYPES = ["markdown", "csv"];
 
 export function cmdStateToBlocks(cmdState) {}
 
@@ -15,42 +15,42 @@ export function textToBlocks(raw) {
   let blocks = [];
   let block = null;
   let text = null;
-  let lines = raw.split('\n');
+  let lines = raw.split("\n");
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
-    if (line.trimRight().endsWith('```') || line.trimLeft().startsWith('```')) {
+    if (line.trimRight().endsWith("```") || line.trimLeft().startsWith("```")) {
       if (block) {
-        if (!line.trimLeft().startsWith('```') && line.length > 3) {
+        if (!line.trimLeft().startsWith("```") && line.length > 3) {
           block.content += line.trimRight().slice(0, -3);
         }
         blocks.push(block);
         block = null;
       } else {
         if (text) {
-          if (!line.trimLeft().startsWith('```') && line.length > 3) {
+          if (!line.trimLeft().startsWith("```") && line.length > 3) {
             text.content += line.trimRight().slice(0, -3);
           }
           blocks.push(text);
           text = null;
         }
         let block_type = null;
-        if (line.trimLeft().startsWith('```')) {
+        if (line.trimLeft().startsWith("```")) {
           block_type = line.trimLeft().slice(3);
         }
         block = {
-          type: 'block',
+          type: "block",
           block_type,
-          content: '',
+          content: "",
         };
       }
     } else if (block) {
-      block.content += line + '\n';
+      block.content += line + "\n";
     } else if (text) {
-      text.content += line + '\n';
+      text.content += line + "\n";
     } else {
       text = {
-        type: 'text',
-        content: line + '\n',
+        type: "text",
+        content: line + "\n",
       };
     }
   }
@@ -64,8 +64,8 @@ export function textToBlocks(raw) {
 }
 
 function csvToArray(text) {
-  let p = '',
-    row = [''],
+  let p = "",
+    row = [""],
     ret = [row],
     i = 0,
     r = 0,
@@ -75,10 +75,10 @@ function csvToArray(text) {
     if ('"' === l) {
       if (s && l === p) row[i] += l;
       s = !s;
-    } else if (',' === l && s) l = row[++i] = '';
-    else if ('\n' === l && s) {
-      if ('\r' === p) row[i] = row[i].slice(0, -1);
-      row = ret[++r] = [(l = '')];
+    } else if ("," === l && s) l = row[++i] = "";
+    else if ("\n" === l && s) {
+      if ("\r" === p) row[i] = row[i].slice(0, -1);
+      row = ret[++r] = [(l = "")];
       i = 0;
     } else row[i] += l;
     p = l;
@@ -94,51 +94,51 @@ function csvToArray(text) {
   }
   for (let i = 0; i < ret.length; i++) {
     while (ret[i].length < max) {
-      ret[i].push('');
+      ret[i].push("");
     }
   }
   return ret;
 }
 
 export function Block({ i, c, tabs }) {
-  const [copy, setCopy] = useState('Copy');
-  const [raw, setRaw] = useState(c.block_type === 'csv' ? false : true);
+  const [copy, setCopy] = useState("Copy");
+  const [raw, setRaw] = useState(c.block_type === "csv" ? false : true);
 
   let copyTarget = useRef(null);
 
-  if (c.type === 'cmd_state') {
+  if (c.type === "cmd_state") {
     let s = new CmdState(c.state);
     return (
-      <div key={i} className="mt-1 text-gray-700 py-1">
+      <div key={i} className="mt-1 py-1 text-gray-700">
         {s.render(tabs)}
       </div>
     );
   }
-  if (c.type === 'text') {
+  if (c.type === "text") {
     return (
-      <div key={i} className="mt-1 text-gray-700 py-1">
+      <div key={i} className="mt-1 py-1 text-gray-700">
         {c.content.trim()}
       </div>
     );
   }
-  if (c.type === 'block') {
+  if (c.type === "block") {
     return (
       <div
         key={i}
-        className="flex flex-col bg-gray-700 text-gray-100 rounded-sm mt-0.5"
+        className="mt-0.5 flex flex-col rounded-sm bg-gray-700 text-gray-100"
       >
-        <div className="flex flex-row py-1 text-xs px-2">
+        <div className="flex flex-row py-1 px-2 text-xs">
           <div className="flex flex-initial font-bold text-indigo-300">
-            {c.block_type ? c.block_type : ''}
+            {c.block_type ? c.block_type : ""}
           </div>
 
-          {c.block_type === 'csv' ? (
+          {c.block_type === "csv" ? (
             <>
               <div className="ml-3"></div>
               <div
                 className={classNames(
-                  'flex flex-initial cursor-pointer',
-                  raw ? '' : 'text-gray-400'
+                  "flex flex-initial cursor-pointer",
+                  raw ? "" : "text-gray-400"
                 )}
                 onClick={() => {
                   setRaw(true);
@@ -148,8 +148,8 @@ export function Block({ i, c, tabs }) {
               </div>
               <div
                 className={classNames(
-                  'flex flex-initial ml-1 cursor-pointer',
-                  raw ? 'text-gray-400' : ''
+                  "ml-1 flex flex-initial cursor-pointer",
+                  raw ? "text-gray-400" : ""
                 )}
                 onClick={() => {
                   setRaw(false);
@@ -160,13 +160,13 @@ export function Block({ i, c, tabs }) {
             </>
           ) : null}
 
-          {c.block_type === 'markdown' ? (
+          {c.block_type === "markdown" ? (
             <>
               <div className="ml-3"></div>
               <div
                 className={classNames(
-                  'flex flex-initial cursor-pointer',
-                  raw ? '' : 'text-gray-400'
+                  "flex flex-initial cursor-pointer",
+                  raw ? "" : "text-gray-400"
                 )}
                 onClick={() => {
                   setRaw(true);
@@ -176,8 +176,8 @@ export function Block({ i, c, tabs }) {
               </div>
               <div
                 className={classNames(
-                  'flex flex-initial ml-1 cursor-pointer',
-                  raw ? 'text-gray-400' : ''
+                  "ml-1 flex flex-initial cursor-pointer",
+                  raw ? "text-gray-400" : ""
                 )}
                 onClick={() => {
                   setRaw(false);
@@ -189,21 +189,21 @@ export function Block({ i, c, tabs }) {
           ) : null}
 
           <div className="flex flex-1 items-center"></div>
-          {c.block_type === 'csv' ? (
+          {c.block_type === "csv" ? (
             <div
-              className="flex flex-initial items-center cursor-pointer"
+              className="flex flex-initial cursor-pointer items-center"
               onClick={() => {}}
             >
               <ArrowDownTrayIcon className="h-3 w-3" />
               <div
-                className="flex ml-1"
+                className="ml-1 flex"
                 onClick={() => {
                   var dataStr =
-                    'data:text/csv;charset=utf-8,' +
+                    "data:text/csv;charset=utf-8," +
                     encodeURIComponent(c.content);
-                  var downloadAnchorNode = document.createElement('a');
-                  downloadAnchorNode.setAttribute('href', dataStr);
-                  downloadAnchorNode.setAttribute('download', `xp1-ouput.csv`);
+                  var downloadAnchorNode = document.createElement("a");
+                  downloadAnchorNode.setAttribute("href", dataStr);
+                  downloadAnchorNode.setAttribute("download", `xp1-ouput.csv`);
                   document.body.appendChild(downloadAnchorNode); // required for firefox
                   downloadAnchorNode.click();
                   downloadAnchorNode.remove();
@@ -214,7 +214,7 @@ export function Block({ i, c, tabs }) {
             </div>
           ) : null}
           <div
-            className="flex flex-initial items-center cursor-pointer ml-2"
+            className="ml-2 flex flex-initial cursor-pointer items-center"
             onClick={() => {
               if (
                 RENDER_TYPES.includes(c.block_type) &&
@@ -223,26 +223,26 @@ export function Block({ i, c, tabs }) {
               ) {
                 const copy = copyTarget.current.cloneNode(true);
                 const blob = new Blob([copy.outerHTML], {
-                  type: 'text/html',
+                  type: "text/html",
                 });
                 navigator.clipboard.write([
-                  new ClipboardItem({ 'text/html': blob }),
+                  new ClipboardItem({ "text/html": blob }),
                 ]);
               } else {
                 navigator.clipboard.writeText(c.content);
               }
-              setCopy('Copied!');
+              setCopy("Copied!");
               setTimeout(() => {
-                setCopy('Copy');
+                setCopy("Copy");
               }, 750);
             }}
           >
             <ClipboardIcon className="h-3 w-3" />
-            <div className="flex ml-1">{copy}</div>
+            <div className="ml-1 flex">{copy}</div>
           </div>
         </div>
-        <div className="flex flex-row bg-gray-800 text-gray-50 px-2 py-2 rounded-b-md">
-          {c.block_type === 'csv' && !raw ? (
+        <div className="flex flex-row rounded-b-md bg-gray-800 px-2 py-2 text-gray-50">
+          {c.block_type === "csv" && !raw ? (
             <div className="flex flex-1">
               <table ref={copyTarget} className="border border-gray-500">
                 <tbody>
@@ -251,7 +251,7 @@ export function Block({ i, c, tabs }) {
                       <tr
                         key={i}
                         className={classNames(
-                          i !== 0 ? 'border-t border-gray-500' : ''
+                          i !== 0 ? "border-t border-gray-500" : ""
                         )}
                       >
                         {l.map((c, j) => {
@@ -259,8 +259,8 @@ export function Block({ i, c, tabs }) {
                             <td
                               key={j}
                               className={classNames(
-                                j !== 0 ? 'border-l border-gray-500' : '',
-                                'px-1 py-0.5'
+                                j !== 0 ? "border-l border-gray-500" : "",
+                                "px-1 py-0.5"
                               )}
                             >
                               {c}
@@ -273,13 +273,13 @@ export function Block({ i, c, tabs }) {
                 </tbody>
               </table>
             </div>
-          ) : c.block_type === 'markdown' && !raw ? (
+          ) : c.block_type === "markdown" && !raw ? (
             <div className="flex flex-1">
               <div
                 className={classNames(
-                  'prose prose-invert prose-sm',
-                  'prose-headings:my-0 prose-p:my-0 prose-tabe:my-0 space-y-0 prose-blockquote:my-0',
-                  'prose-ol:my-0 prose-ul:my-0 prose-li:my-0 prose-ul:space-y-0'
+                  "prose prose-sm prose-invert",
+                  "prose-tabe:my-0 space-y-0 prose-headings:my-0 prose-p:my-0 prose-blockquote:my-0",
+                  "prose-ol:my-0 prose-ul:my-0 prose-ul:space-y-0 prose-li:my-0"
                 )}
                 ref={copyTarget}
               >

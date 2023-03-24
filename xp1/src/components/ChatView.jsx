@@ -1,18 +1,18 @@
-import React from 'react';
-import { useRef } from 'react';
-import { useState, useEffect } from 'react';
-import { SSE } from '../lib/see';
-import { UserCircleIcon } from '@heroicons/react/20/solid';
-import { classNames } from '../lib/utils';
-import { Logo } from './Logo';
-import { VARS } from 'variables';
-import { scriptForURL } from '../lib/extractors';
-import { textToBlocks, Block } from './Block';
-import { CmdInput, CmdState } from './CmdInput';
+import React from "react";
+import { useRef } from "react";
+import { useState, useEffect } from "react";
+import { SSE } from "../lib/see";
+import { UserCircleIcon } from "@heroicons/react/20/solid";
+import { classNames } from "../lib/utils";
+import { Logo } from "./Logo";
+import { VARS } from "variables";
+import { scriptForURL } from "../lib/extractors";
+import { textToBlocks, Block } from "./Block";
+import { CmdInput, CmdState } from "./CmdInput";
 
 const getTextFromTab = async (tab) => {
-  if (!tab.url.startsWith('http')) {
-    return '';
+  if (!tab.url.startsWith("http")) {
+    return "";
   }
   let res = await chrome.scripting.executeScript({
     injectImmediately: true,
@@ -33,7 +33,7 @@ const processTab = async (t, tabs) => {
     } else {
       t.text = await getTextFromTab(tab);
     }
-    t.text = t.text.replace(/[ \t]+/g, ' ');
+    t.text = t.text.replace(/[ \t]+/g, " ");
     t.title = tab.title;
     t.url = tab.url;
   } else {
@@ -47,7 +47,7 @@ export function ChatView({ user }) {
 
   const [tabs, setTabs] = useState([]);
 
-  const [os, setOs] = useState('linux');
+  const [os, setOs] = useState("linux");
 
   const [cmdStateLast, setCmdStateLast] = useState(new CmdState([]));
   const [cmdStateHistory, setCmdStateHistory] = useState([]);
@@ -80,7 +80,7 @@ export function ChatView({ user }) {
     // },
   ]);
   const [last, setLast] = useState(null);
-  const [status, setStatus] = useState('ready');
+  const [status, setStatus] = useState("ready");
 
   useEffect(() => {
     chrome.tabs &&
@@ -88,13 +88,13 @@ export function ChatView({ user }) {
         setTabs(tabs);
         tabs.forEach((t) => {
           let u = new URL(t.url);
-          if (u.protocol.startsWith('http')) {
+          if (u.protocol.startsWith("http")) {
             t.domain = u.hostname;
           } else {
             t.domain = u.protocol;
           }
 
-          if (t.url.startsWith('http')) {
+          if (t.url.startsWith("http")) {
             chrome.scripting
               .executeScript({
                 injectImmediately: true,
@@ -119,20 +119,20 @@ export function ChatView({ user }) {
         });
       });
 
-    chrome.storage.local.get(['cmdStateLast']).then((res) => {
+    chrome.storage.local.get(["cmdStateLast"]).then((res) => {
       if (res.cmdStateLast) {
         setCmdStateLast(new CmdState(res.cmdStateLast));
         cmdInputRef.current?.setCmdState(new CmdState(res.cmdStateLast));
       }
     });
 
-    chrome.storage.local.get(['cmdStateHistory']).then((res) => {
+    chrome.storage.local.get(["cmdStateHistory"]).then((res) => {
       if (res.cmdStateHistory && Array.isArray(res.cmdStateHistory)) {
         setCmdStateHistory(res.cmdStateHistory.map((s) => new CmdState(s)));
       }
     });
 
-    chrome.storage.local.get(['log']).then((res) => {
+    chrome.storage.local.get(["log"]).then((res) => {
       if (res.log) {
         // If last interaction is more than 5mn ago, clear it.
         // console.log('LOG', res.log);
@@ -161,13 +161,13 @@ export function ChatView({ user }) {
     }
     if (s.commands().length > 0) {
       let hasReset = false;
-      console.log('COMMANDS', s.commands());
+      console.log("COMMANDS", s.commands());
       s.commands().forEach((c) => {
-        if (c.type === 'command' && c.name === 'reset') {
+        if (c.type === "command" && c.name === "reset") {
           hasReset = true;
         }
       });
-      console.log('HAS RESET', hasReset);
+      console.log("HAS RESET", hasReset);
       if (hasReset) {
         setLog([]);
         chrome.storage.local.set({
@@ -188,7 +188,7 @@ export function ChatView({ user }) {
     for (let i = log.length - 1; i >= 0 && tabGroups.length === 0; i--) {
       let c = log[i].content;
       for (let j = c.length - 1; j >= 0 && tabGroups.length === 0; j--) {
-        if (c[j].type === 'cmd_state') {
+        if (c[j].type === "cmd_state") {
           let s = new CmdState(c[j].state);
           let tg = s.tabGroups();
           if (tg.length > 0) {
@@ -201,9 +201,9 @@ export function ChatView({ user }) {
 
     let l = [...log];
     l.push({
-      from: 'user',
+      from: "user",
       text: s.toQuery(),
-      content: [{ type: 'cmd_state', state: s.json() }],
+      content: [{ type: "cmd_state", state: s.json() }],
     });
     setLog(l);
     chrome.storage.local.set({
@@ -255,13 +255,13 @@ export function ChatView({ user }) {
       tab_groups: tabGroups,
     };
 
-    console.log('QUERY_INPUT QUERY', JSON.stringify(input.query));
-    console.log('QUERY_INPUT HISTORY', JSON.stringify(input.history));
-    console.log('QUERY_INPUT TAG_GROUPS', JSON.stringify(input.tab_groups));
+    console.log("QUERY_INPUT QUERY", JSON.stringify(input.query));
+    console.log("QUERY_INPUT HISTORY", JSON.stringify(input.history));
+    console.log("QUERY_INPUT TAG_GROUPS", JSON.stringify(input.tab_groups));
 
     var source = new SSE(`${VARS.server}/api/xp1/${VARS.api_version}/query`, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       payload: JSON.stringify({
         secret: user.secret,
@@ -269,13 +269,13 @@ export function ChatView({ user }) {
       }),
     });
 
-    let text = '';
+    let text = "";
     setLast({
-      from: 'assistant',
+      from: "assistant",
       text,
       content: textToBlocks(text),
     });
-    setStatus('loading');
+    setStatus("loading");
 
     let runId = null;
     let errored = false;
@@ -285,14 +285,14 @@ export function ChatView({ user }) {
       try {
         event = JSON.parse(e.data);
       } catch {
-        console.log('ERROR parsing message', e);
+        console.log("ERROR parsing message", e);
         l.push({
-          from: 'assistant',
-          text: 'An error occured. Please try again. Run ID: ' + runId,
+          from: "assistant",
+          text: "An error occured. Please try again. Run ID: " + runId,
           content: textToBlocks(
-            'An error occured. Please try again. Run ID:\n```run\n' +
+            "An error occured. Please try again. Run ID:\n```run\n" +
               runId +
-              '\n```'
+              "\n```"
           ),
         });
         setLog(l);
@@ -300,29 +300,29 @@ export function ChatView({ user }) {
           log: { lastUpdated: Date.now(), data: l },
         });
         setLast(null);
-        setStatus('ready');
+        setStatus("ready");
         errored = true;
         return;
       }
-      if (event.type === 'run_status') {
+      if (event.type === "run_status") {
         runId = event.content.run_id;
       }
-      if (event.type === 'tokens') {
+      if (event.type === "tokens") {
         text += event.content.tokens.text;
         setLast({
-          from: 'assistant',
+          from: "assistant",
           text,
           content: textToBlocks(text),
         });
       }
-      if (event.type === 'run_status' && event.content.status === 'errored') {
+      if (event.type === "run_status" && event.content.status === "errored") {
         l.push({
-          from: 'assistant',
-          text: 'An error occured. Please try again. Run ID: ' + runId,
+          from: "assistant",
+          text: "An error occured. Please try again. Run ID: " + runId,
           content: textToBlocks(
-            'An error occured. Please try again. Run ID:\n```run\n' +
+            "An error occured. Please try again. Run ID:\n```run\n" +
               runId +
-              '\n```'
+              "\n```"
           ),
         });
         setLog(l);
@@ -330,13 +330,13 @@ export function ChatView({ user }) {
           log: { lastUpdated: Date.now(), data: l },
         });
         setLast(null);
-        setStatus('ready');
+        setStatus("ready");
         errored = true;
       }
-      if (event.type === 'final') {
+      if (event.type === "final") {
         if (!errored) {
           l.push({
-            from: 'assistant',
+            from: "assistant",
             text,
             content: textToBlocks(text),
           });
@@ -345,7 +345,7 @@ export function ChatView({ user }) {
             log: { lastUpdated: Date.now(), data: l },
           });
           setLast(null);
-          setStatus('ready');
+          setStatus("ready");
         }
       }
     };
@@ -353,42 +353,42 @@ export function ChatView({ user }) {
   };
 
   return (
-    <div className="absolute bg-white w-full h-screen overflow-hidden text-sm">
-      <div className="flex flex-col justify-center h-screen w-full font-sans pt-1">
+    <div className="absolute h-screen w-full overflow-hidden bg-white text-sm">
+      <div className="flex h-screen w-full flex-col justify-center pt-1 font-sans">
         <div
           ref={chatRef}
-          className="grow overflow-auto ml-2 mr-3 mb-2 whitespace-pre-wrap space-y-2 pt-2 pl-1"
+          className="ml-2 mr-3 mb-2 grow space-y-2 overflow-auto whitespace-pre-wrap pt-2 pl-1"
         >
           {log.length === 0 && last === null ? (
-            <div className="flex w-full mt-36">
-              <div className="flex flex-col mx-auto">
-                <div className="flex flex-row items-center mx-auto pr-2">
+            <div className="mt-36 flex w-full">
+              <div className="mx-auto flex flex-col">
+                <div className="mx-auto flex flex-row items-center pr-2">
                   <div className="flex">
                     <Logo animated={true} />
                   </div>
-                  <div className="flex ml-2 font-bold text-base text-gray-800">
+                  <div className="ml-2 flex text-base font-bold text-gray-800">
                     DUST
                   </div>
                 </div>
-                <div className="flex flex-col mt-2 items-center">
-                  <p className="text-gray-500 text-sm">
+                <div className="mt-2 flex flex-col items-center">
+                  <p className="text-sm text-gray-500">
                     Awaiting instructions...
                   </p>
-                  <p className="text-gray-400 mt-16 text-xs">
-                    <span className="font-mono bg-gray-100 px-1 py-1 rounded-sm">
+                  <p className="mt-16 text-xs text-gray-400">
+                    <span className="rounded-sm bg-gray-100 px-1 py-1 font-mono">
                       [[
-                    </span>{' '}
+                    </span>{" "}
                     to search/select tabs and include their content in the
                     context of the assistant.
                     <br />
-                    <span className="font-mono bg-gray-100 px-1 py-1 rounded-sm">
-                      {'↑↓'}
-                    </span>{' '}
+                    <span className="rounded-sm bg-gray-100 px-1 py-1 font-mono">
+                      {"↑↓"}
+                    </span>{" "}
                     to cycle through your history of commands.
                     <br />
-                    <span className="font-mono bg-gray-100 px-1 py-1 rounded-sm">
-                      {'/reset'}
-                    </span>{' '}
+                    <span className="rounded-sm bg-gray-100 px-1 py-1 font-mono">
+                      {"/reset"}
+                    </span>{" "}
                     to clear the chat history (auto-reset after 5mn)
                   </p>
                 </div>
@@ -401,24 +401,24 @@ export function ChatView({ user }) {
                   <div key={i} className="flex flex-row items-start text-sm">
                     <div
                       className={classNames(
-                        'flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 rounded-md',
-                        l.from === 'assistant' ? 'bg-gray-100' : 'bg-gray-100'
+                        "min-w-8 mr-1 mt-0.5 flex h-8 w-8 flex-initial rounded-md pl-2",
+                        l.from === "assistant" ? "bg-gray-100" : "bg-gray-100"
                       )}
                     >
-                      {l.from === 'assistant' ? (
+                      {l.from === "assistant" ? (
                         <div className="flex pt-0.5 pl-[1px]">
                           <Logo></Logo>
                         </div>
                       ) : (
                         <div className="flex pt-1">
                           <UserCircleIcon
-                            className="h-5 w-5 text-gray-400 -ml-0.5 mt-0.5"
+                            className="-ml-0.5 mt-0.5 h-5 w-5 text-gray-400"
                             aria-hidden="true"
                           />
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col ml-2 text-gray-700">
+                    <div className="ml-2 flex flex-1 flex-col text-gray-700">
                       {l.content.map((c, i) => {
                         return <Block key={i} c={c} i={i} tabs={tabs} />;
                       })}
@@ -428,21 +428,21 @@ export function ChatView({ user }) {
               })}
               {last !== null ? (
                 <div className="flex flex-row items-start text-sm">
-                  <div className="flex flex-initial min-w-8 w-8 h-8 pl-2 mr-1 mt-0.5 bg-gray-100 rounded-md">
-                    {last.from === 'assistant' ? (
+                  <div className="min-w-8 mr-1 mt-0.5 flex h-8 w-8 flex-initial rounded-md bg-gray-100 pl-2">
+                    {last.from === "assistant" ? (
                       <div className="flex pt-0.5 pl-[1px]">
                         <Logo animated={true}></Logo>
                       </div>
                     ) : (
                       <div className="flex pt-1">
                         <UserCircleIcon
-                          className="h-5 w-5 text-gray-400 -ml-0.5 mt-0.5"
+                          className="-ml-0.5 mt-0.5 h-5 w-5 text-gray-400"
                           aria-hidden="true"
                         />
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-1 flex-col ml-2 text-gray-700">
+                  <div className="ml-2 flex flex-1 flex-col text-gray-700">
                     {last.content.map((c, i) => {
                       return <Block key={i} c={c} i={i} tabs={tabs} />;
                     })}
@@ -453,12 +453,12 @@ export function ChatView({ user }) {
           )}
         </div>
 
-        <div className="flex-none w-full">
+        <div className="w-full flex-none">
           <CmdInput
             ref={cmdInputRef}
             tabs={tabs}
             onSubmit={() => {
-              if (status === 'ready') {
+              if (status === "ready") {
                 if (cmdStateIndex !== -1) {
                   handleCmdStateSubmit(cmdStateHistory[cmdStateIndex]);
                 } else {
@@ -492,11 +492,11 @@ export function ChatView({ user }) {
           />
         </div>
 
-        <div className="flex flex-row w-full text-xs text-right my-1">
+        <div className="my-1 flex w-full flex-row text-right text-xs">
           <div className="flex flex-1"></div>
-          <div className="flex flex-initial text-gray-300 mr-3">
-            <span className="font-bold text-gray-400 mr-1">
-              {os === 'mac' ? '⌘' : 'ctrl'}+⏎
+          <div className="mr-3 flex flex-initial text-gray-300">
+            <span className="mr-1 font-bold text-gray-400">
+              {os === "mac" ? "⌘" : "ctrl"}+⏎
             </span>
             to Run
           </div>

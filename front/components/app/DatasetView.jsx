@@ -372,7 +372,7 @@ export default function DatasetView({
               className={classNames(
                 "block w-full min-w-0 flex-1 rounded-md sm:text-sm",
                 datasetNameError
-                  ? "border-gray-300 focus:border-red-500 border-red-500 focus:ring-red-500"
+                  ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                   : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
               )}
               value={datasetName}
@@ -389,7 +389,7 @@ export default function DatasetView({
             >
               Description
             </label>
-            <div className="font-normal text-gray-400 text-sm">optional</div>
+            <div className="text-sm font-normal text-gray-400">optional</div>
           </div>
           <div className="mt-1 flex rounded-md shadow-sm">
             <input
@@ -419,13 +419,13 @@ export default function DatasetView({
             {datasetKeys.map((k, j) => (
               <div key={j} className="grid sm:grid-cols-10">
                 <div className="sm:col-span-3">
-                  <div className="flex group items-center bg-slate-300">
+                  <div className="group flex items-center bg-slate-300">
                     <div className="flex flex-1">
                       <input
                         className={classNames(
-                          "px-1 py-1 font-normal text-[13px] font-mono bg-slate-300 border-0 outline-none focus:outline-none w-full",
+                          "w-full border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] font-normal outline-none focus:outline-none",
                           readOnly
-                            ? "border-white ring-0 focus:ring-0 focus:border-white"
+                            ? "border-white ring-0 focus:border-white focus:ring-0"
                             : "border-white ring-0 focus:border-gray-300 focus:ring-0"
                         )}
                         readOnly={readOnly}
@@ -438,18 +438,18 @@ export default function DatasetView({
                     {!readOnly ? (
                       <>
                         {datasetKeys.length > 1 ? (
-                          <div className="flex flex-initial w-4">
+                          <div className="flex w-4 flex-initial">
                             <XCircleIcon
-                              className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-red-500 cursor-pointer"
+                              className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
                               onClick={(e) => {
                                 handleDeleteKey(j);
                               }}
                             />
                           </div>
                         ) : null}
-                        <div className="flex flex-initial w-4 mr-2">
+                        <div className="mr-2 flex w-4 flex-initial">
                           <PlusCircleIcon
-                            className="h-4 w-4 hidden group-hover:block text-gray-400 hover:text-emerald-500 cursor-pointer"
+                            className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
                             onClick={(e) => {
                               handleNewKey(j);
                             }}
@@ -459,9 +459,9 @@ export default function DatasetView({
                     ) : null}
                   </div>
                 </div>
-                <div className="sm:col-span-7 bg-slate-100">
+                <div className="bg-slate-100 sm:col-span-7">
                   {readOnly ? (
-                    <span className="text-gray-700 block px-4 py-2 text-sm cursor-pointer whitespace-nowrap">
+                    <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                       {datasetTypes[j] ? datasetTypes[j] : "string"}
                     </span>
                   ) : (
@@ -473,9 +473,9 @@ export default function DatasetView({
                           disabled={readOnly}
                           className={classNames(
                             datasetTypes && datasetTypes[j] == type
-                              ? "text-gray-900 font-semibold underline underline-offset-4"
-                              : "text-gray-700 font-normal hover:text-gray-900",
-                            "px-1 py-1 text-[13px] font-mono"
+                              ? "font-semibold text-gray-900 underline underline-offset-4"
+                              : "font-normal text-gray-700 hover:text-gray-900",
+                            "px-1 py-1 font-mono text-[13px]"
                           )}
                           onClick={(e) => {
                             let types = [...datasetTypes];
@@ -510,12 +510,12 @@ export default function DatasetView({
                     {datasetKeys.map((k, j) => (
                       <div key={j} className="grid grid-cols-10">
                         <div className="col-span-3">
-                          <div className="flex group items-center bg-slate-300">
+                          <div className="group flex items-center bg-slate-300">
                             <input
                               className={classNames(
-                                "flex-1 px-1 py-1 text-[13px] font-mono bg-slate-300 border-0 outline-none focus:outline-none",
+                                "flex-1 border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] outline-none focus:outline-none",
                                 readOnly
-                                  ? "border-white ring-0 focus:ring-0 focus:border-white"
+                                  ? "border-white ring-0 focus:border-white focus:ring-0"
                                   : "border-white ring-0 focus:border-gray-300 focus:ring-0"
                               )}
                               readOnly={true}
@@ -525,7 +525,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "col-span-7 inline-grid space-y-0 resize-none text-[13px] font-mono px-0 py-0 border bg-slate-100",
+                            "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px]",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               getValueType(d[k]) ===
@@ -559,7 +559,7 @@ export default function DatasetView({
                             <TextareaAutosize
                               minRows={1}
                               className={classNames(
-                                "w-full resize-none font-normal text-[13px] font-mono px-1 py-0 bg-transparent border-0 ring-0 focus:ring-0",
+                                "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
                                 readOnly ? "text-gray-500" : "text-gray-700"
                               )}
                               readOnly={readOnly}
@@ -573,11 +573,11 @@ export default function DatasetView({
                       </div>
                     ))}
                     {!readOnly ? (
-                      <div className="flex justify-end items-center text-xs">
+                      <div className="flex items-center justify-end text-xs">
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="h-4 w-4 text-gray-300 hover:text-red-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
                               onClick={(e) => {
                                 handleDeleteEntry(i);
                               }}
@@ -586,7 +586,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="h-5 w-5 text-gray-300 hover:text-emerald-500 cursor-pointer"
+                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
                             onClick={(e) => {
                               handleNewEntry(i);
                             }}
@@ -608,7 +608,7 @@ export default function DatasetView({
                 New Entry
               </Button>
               <div className="flex-1"></div>
-              <div className="flex-initial ml-2">
+              <div className="ml-2 flex-initial">
                 <Button
                   onClick={() => {
                     var dataStr =
@@ -633,7 +633,7 @@ export default function DatasetView({
                   Download
                 </Button>
               </div>
-              <div className="flex-initial ml-2">
+              <div className="ml-2 flex-initial">
                 <input
                   className="hidden"
                   type="file"

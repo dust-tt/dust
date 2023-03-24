@@ -67,9 +67,9 @@ export default function DataSourcePicker({
           <input
             type="text"
             className={classNames(
-              "block flex-1 rounded-md px-1 font-bold text-sm py-1 w-32",
+              "block w-32 flex-1 rounded-md px-1 py-1 text-sm font-bold",
               readOnly
-                ? "border-white ring-0 focus:ring-0 focus:border-white"
+                ? "border-white ring-0 focus:border-white focus:ring-0"
                 : "border-white focus:border-gray-300 focus:ring-0"
             )}
             autoFocus={true}
@@ -98,7 +98,7 @@ export default function DataSourcePicker({
           />
         ) : (
           <div
-            className="block font-bold text-sm"
+            className="block text-sm font-bold"
             onClick={() => {
               setUserEditing(true);
             }}
@@ -108,9 +108,9 @@ export default function DataSourcePicker({
         )}
       </div>
 
-      <div className="flex ml-1">
+      <div className="ml-1 flex">
         <ChevronRightIcon
-          className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+          className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
           aria-hidden="true"
         />
       </div>
@@ -118,18 +118,18 @@ export default function DataSourcePicker({
       <div className="flex items-center">
         {readOnly || isLoading ? (
           <Link href={`/${user}/ds/${name}`}>
-            <div className="font-bold text-violet-600 text-sm">{name}</div>
+            <div className="text-sm font-bold text-violet-600">{name}</div>
           </Link>
         ) : (
           <Menu as="div" className="relative inline-block text-left">
             <div>
               <Menu.Button
                 className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-gray-700 text-sm font-normal",
+                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
                   name && name.length > 0 ? "px-0" : "border px-3",
                   readOnly
-                    ? "text-gray-300 border-white"
-                    : "text-gray-700 border-orange-400",
+                    ? "border-white text-gray-300"
+                    : "border-orange-400 text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -137,11 +137,11 @@ export default function DataSourcePicker({
                 {name && name.length > 0 ? (
                   <>
                     <Link href={`/${user}/ds/${name}`}>
-                      <div className="font-bold text-violet-600 text-sm mr-1">
+                      <div className="mr-1 text-sm font-bold text-violet-600">
                         {name}
                       </div>
                     </Link>
-                    <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
                 ) : dataSources && dataSources.length > 0 ? (
                   "Select DataSource"
@@ -150,8 +150,8 @@ export default function DataSourcePicker({
                     href={`/${user}/data_sources`}
                     className={classNames(
                       readOnly
-                        ? "text-gray-300 border-white"
-                        : "text-gray-700 border-orange-400"
+                        ? "border-white text-gray-300"
+                        : "border-orange-400 text-gray-700"
                     )}
                   >
                     Create DataSource
@@ -165,7 +165,7 @@ export default function DataSourcePicker({
             {(dataSources || []).length > 0 ? (
               <Menu.Items
                 className={classNames(
-                  "absolute w-max shadow z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
                   name && name.length > 0 ? "-left-4" : "left-1"
                 )}
               >
@@ -187,7 +187,7 @@ export default function DataSourcePicker({
                               active
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
-                              "block px-4 py-2 text-sm cursor-pointer"
+                              "block cursor-pointer px-4 py-2 text-sm"
                             )}
                           >
                             {ds.name}

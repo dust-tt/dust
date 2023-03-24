@@ -13,5 +13,5 @@ export function DocumentIcon(props) {
         d="m11.5 2.5 5 5"
       />
     </svg>
-  )
+  );
 }
