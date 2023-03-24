@@ -636,7 +636,6 @@ async fn run_helper(
     }
 
     if payload.inputs.is_some() {
-
         d = match dataset::Dataset::new_from_jsonl("inputs", payload.inputs.unwrap()).await {
             Err(e) => Err((
                 StatusCode::BAD_REQUEST,
