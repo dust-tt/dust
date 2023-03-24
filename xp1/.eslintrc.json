@@ -1,11 +1,13 @@
 {
-  "extends": ["react-app", "react-app/jest"],
+  "extends": ["react-app", "react-app/jest", "plugin:prettier/recommended"],
+  "plugins": ["prettier"],
   "rules": {
     "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
-    "jsx-a11y/alt-text": 0
+    "jsx-a11y/alt-text": 0,
+    "prettier/prettier": "error"
   },
   "env": {
     "browser": true,
