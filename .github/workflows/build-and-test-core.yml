@@ -1,0 +1,27 @@
+name: Build and Test (core)
+
+on:
+  push:
+    paths:
+      - core/**
+      - .github/workflows/build-and-test-core.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+          sh rustup-init.sh -y --default-toolchain none
+          rustup target add x86_64-unknown-linux-gnu
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+
+      - name: Build and Test
+        working-directory: core
+        run: ./ci/build_and_test.sh
