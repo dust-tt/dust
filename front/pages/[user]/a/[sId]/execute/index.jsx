@@ -86,8 +86,8 @@ function ExecuteOutputLine({
             <div className="mr-1">
               <Spinner />
             </div>
-          ) : lastEventForBlock.content.status === 'errored' ? (
-            <ExclamationCircleIcon className="text-red-500 h-4 w-4" />
+          ) : lastEventForBlock.content.status === "errored" ? (
+            <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
           ) : (
             <CheckCircleIcon className="min-w-4 h-4 w-4 text-emerald-300" />
           )}
