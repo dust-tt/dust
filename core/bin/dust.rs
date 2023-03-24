@@ -3,12 +3,11 @@ use clap::{Parser, Subcommand};
 use dust::{
     app,
     blocks::block::BlockType,
-    dataset,
     data_sources::{
         data_source::{self, DataSourceConfig},
         splitter::SplitterID,
     },
-    init,
+    dataset, init,
     providers::provider,
     run, utils,
 };
