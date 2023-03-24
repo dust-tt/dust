@@ -70,7 +70,7 @@ function Features() {
   return (
     <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
           Build powerful workflows on top of LLMs🔥
         </h2>
       </div>
@@ -83,10 +83,10 @@ function Features() {
                   className="absolute h-6 w-6 text-green-500"
                   aria-hidden="true"
                 />
-                <p className="flex flex-row ml-9 text-lg font-medium leading-6 text-gray-900 items-center">
+                <p className="ml-9 flex flex-row items-center text-lg font-medium leading-6 text-gray-900">
                   <span>{feature.name}</span>
                   {feature.built ? null : (
-                    <span className="text-xs font-normal bg-gray-400 text-white rounded-md px-2 py-0.5 ml-2">
+                    <span className="ml-2 rounded-md bg-gray-400 px-2 py-0.5 text-xs font-normal text-white">
                       coming soon
                     </span>
                   )}
@@ -116,17 +116,17 @@ export default function Home({ ga_tracking_id }) {
           <Logo />
         </div>
 
-        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl mt-12">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-gray-900">
+        <div className="mx-auto mt-12 sm:max-w-3xl lg:max-w-4xl">
+          <h1 className="text-center text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
             <div className="">Make and Deploy</div>
-            <div className="text-violet-600 leading-snug">
+            <div className="leading-snug text-violet-600">
               Large Language Model Apps
             </div>
           </h1>
 
-          <div className="flex flex-col sm:flex-row mt-16">
+          <div className="mt-16 flex flex-col sm:flex-row">
             <div className="flex flex-1"></div>
-            <div className="flex flex-initial w-full sm:w-auto sm:mr-4">
+            <div className="flex w-full flex-initial sm:mr-4 sm:w-auto">
               <Link href="https://docs.dust.tt" className="mx-auto">
                 <Button className="mr-2">
                   <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
@@ -134,14 +134,14 @@ export default function Home({ ga_tracking_id }) {
                 </Button>
               </Link>
             </div>
-            <div className="flex flex-initial w-full sm:w-auto">
+            <div className="flex w-full flex-initial sm:w-auto">
               <div className="mx-auto mt-2 sm:mt-0">
                 <ActionButton
                   onClick={() =>
                     signIn("github", { callbackUrl: "/api/login" })
                   }
                 >
-                  <ComputerDesktopIcon className="-ml-1 mr-2 h-5 w-5 mt-0.5" />
+                  <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
                   Sign in with Github
                 </ActionButton>
               </div>
@@ -158,17 +158,17 @@ export default function Home({ ga_tracking_id }) {
           <div className="mx-auto text-center sm:max-w-2xl lg:max-w-4xl">
             <Link href="/xp1">
               <div className="font-bold text-violet-600">
-                <ArrowRightIcon className="mb-0.5 mr-2 h-4 w-4 inline-block" />
-                Discover XP1, a Productivity Assistant (built on Dust) with access to your Tabs
+                <ArrowRightIcon className="mb-0.5 mr-2 inline-block h-4 w-4" />
+                Discover XP1, a Productivity Assistant (built on Dust) with
+                access to your Tabs
               </div>
             </Link>
           </div>
         </div>
 
-
-        <div className="mx-auto mt-12 sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+        <div className="mx-auto mt-12 space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
           <div className="sm:flex sm:items-center">
-            <div className="sm:flex-auto mt-8">
+            <div className="mt-8 sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">
                 Community Example Apps
               </h1>
@@ -180,7 +180,7 @@ export default function Home({ ga_tracking_id }) {
             </div>
           </div>
 
-          <div className="overflow-hidden mt-8">
+          <div className="mt-8 overflow-hidden">
             <ul role="list" className="mb-8">
               {communityApps.map((app) => (
                 <li key={app.sId} className="px-2">

@@ -3,14 +3,14 @@ import { classNames } from "@app/lib/utils";
 
 export function Logo() {
   return (
-    <div className="flex flex-row items-center mt-8 mx-4">
+    <div className="mx-4 mt-8 flex flex-row items-center">
       <div className="flex rotate-[30deg]">
-        <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
-        <div className="bg-white w-[2px] h-4"></div>
-        <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
+        <div className="h-4 w-[8px] rounded-xl bg-gray-400"></div>
+        <div className="h-4 w-[2px] bg-white"></div>
+        <div className="h-6 w-[8px] rounded-xl bg-gray-400"></div>
       </div>
-      <div className="flex bg-white w-[8px] h-4"></div>
-      <div className="flex text-gray-800 font-bold text-2xl tracking-tight">
+      <div className="flex h-4 w-[8px] bg-white"></div>
+      <div className="flex text-2xl font-bold tracking-tight text-gray-800">
         <Link href="/">DUST</Link>
       </div>
     </div>
@@ -26,9 +26,9 @@ export function PulseLogo({ animated }) {
       )}
     >
       <div className="flex rotate-[30deg]">
-        <div className="bg-gray-400 w-[8px] h-4 rounded-xl"></div>
-        <div className="bg-white w-[2px] h-4"></div>
-        <div className="bg-gray-400 w-[8px] h-6 rounded-xl"></div>
+        <div className="h-4 w-[8px] rounded-xl bg-gray-400"></div>
+        <div className="h-4 w-[2px] bg-white"></div>
+        <div className="h-6 w-[8px] rounded-xl bg-gray-400"></div>
       </div>
     </div>
   );

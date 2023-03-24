@@ -48,7 +48,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
       ga_tracking_id={ga_tracking_id}
     >
       <div className="leadingflex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
@@ -62,21 +62,21 @@ export default function CloneView({ app, user, ga_tracking_id }) {
             <form
               action={`/api/apps/${user}/${app.sId}/clone`}
               method="POST"
-              className="space-y-8 divide-y divide-gray-200 mt-8"
+              className="mt-8 space-y-8 divide-y divide-gray-200"
             >
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   {user !== session.user.username ? (
                     <div>
                       <h3 className="text-base font-medium leading-6 text-gray-900">
-                        Clone <span className="font-bold ml-1">{user}</span>
+                        Clone <span className="ml-1 font-bold">{user}</span>
                         <ChevronRightIcon
-                          className="inline h-5 w-5 text-gray-500 pt-0.5 ml-0.5"
+                          className="ml-0.5 inline h-5 w-5 pt-0.5 text-gray-500"
                           aria-hidden="true"
                         />
                         <Link
                           href={`/${user}/a/${app.sId}`}
-                          className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                          className="w-22 mr-1 truncate text-base font-bold text-violet-600 sm:w-auto"
                         >
                           {app.name}
                         </Link>{" "}
@@ -94,7 +94,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                         Clone your app{" "}
                         <Link
                           href={`/${user}/a/${app.sId}`}
-                          className="text-base font-bold w-22 sm:w-auto truncate text-violet-600 mr-1"
+                          className="w-22 mr-1 truncate text-base font-bold text-violet-600 sm:w-auto"
                         >
                           {app.name}
                         </Link>
@@ -118,10 +118,10 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                         App Name
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
-                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-gray-500 text-sm">
+                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
                           {session.user.username}
                           <ChevronRightIcon
-                            className="h-5 w-5 flex-shrink-0 text-gray-400 pt-0.5"
+                            className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
                           />
                         </span>
@@ -132,7 +132,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                           className={classNames(
                             "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
                             appNameError
-                              ? "border-gray-300 focus:border-red-500 border-red-500 focus:ring-red-500"
+                              ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                               : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
                           )}
                           value={appName}
@@ -150,7 +150,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                         >
                           Description
                         </label>
-                        <div className="font-normal text-gray-400 text-sm">
+                        <div className="text-sm font-normal text-gray-400">
                           optional
                         </div>
                       </div>
@@ -159,7 +159,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                           type="text"
                           name="description"
                           id="appDescription"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 text-sm"
+                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                           value={appDescription}
                           onChange={(e) => setAppDescription(e.target.value)}
                         />
@@ -182,7 +182,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                               id="appVisibilityPublic"
                               name="visibility"
                               type="radio"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               value="public"
                               checked={appVisibility == "public"}
                               onChange={(e) => {
@@ -208,7 +208,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                               name="visibility"
                               type="radio"
                               value="private"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               checked={appVisibility == "private"}
                               onChange={(e) => {
                                 if (e.target.value != appVisibility) {
@@ -232,7 +232,7 @@ export default function CloneView({ app, user, ga_tracking_id }) {
                               name="visibility"
                               type="radio"
                               value="unlisted"
-                              className="h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
                               checked={appVisibility == "unlisted"}
                               onChange={(e) => {
                                 if (e.target.value != appVisibility) {

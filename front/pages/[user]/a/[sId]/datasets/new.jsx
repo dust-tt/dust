@@ -72,7 +72,7 @@ export default function NewDatasetView({
       ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Datasets"
@@ -80,17 +80,17 @@ export default function NewDatasetView({
           />
         </div>
 
-        <div className="w-full max-w-5xl mt-4 mx-auto">
+        <div className="mx-auto mt-4 w-full max-w-5xl">
           <div className="flex flex-1">
-            <div className="w-full px-4 sm:px-6 mb-8">
-              <div className="space-y-6 divide-y divide-gray-200 mt-4">
+            <div className="mb-8 w-full px-4 sm:px-6">
+              <div className="mt-4 space-y-6 divide-y divide-gray-200">
                 <DatasetView
                   datasets={datasets}
                   dataset={dataset}
                   onUpdate={onUpdate}
                 />
 
-                <div className="pt-6 flex flex-row">
+                <div className="flex flex-row pt-6">
                   <div className="flex-initial">
                     <ActionButton
                       disabled={disable || loading}

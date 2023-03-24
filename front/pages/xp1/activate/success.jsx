@@ -5,7 +5,10 @@ import Script from "next/script";
 
 const { GA_TRACKING_ID = null, XP1_CHROME_WEB_STORE_URL } = process.env;
 
-export default function ActivateSuccess({ ga_tracking_id, chrome_web_store_url }) {
+export default function ActivateSuccess({
+  ga_tracking_id,
+  chrome_web_store_url,
+}) {
   return (
     <>
       <Head>
@@ -19,11 +22,11 @@ export default function ActivateSuccess({ ga_tracking_id, chrome_web_store_url }
         </div>
 
         <div className="mx-auto mt-12">
-          <div className="text-gray-900 font-bold text-center">Thank you!</div>
+          <div className="text-center font-bold text-gray-900">Thank you!</div>
         </div>
 
         <div className="mx-auto mt-8">
-          <div className="text-sm text-gray-500 text-center">
+          <div className="text-center text-sm text-gray-500">
             <span className="font-bold">
               This activation key was sent to your email address.
             </span>
@@ -32,7 +35,7 @@ export default function ActivateSuccess({ ga_tracking_id, chrome_web_store_url }
 
         <div className="mt-12">
           <div className="flex flex-row items-center">
-            <div className="flex flex-row mx-auto">
+            <div className="mx-auto flex flex-row">
               <div className="flex">
                 <div className="">
                   <a href={chrome_web_store_url}>

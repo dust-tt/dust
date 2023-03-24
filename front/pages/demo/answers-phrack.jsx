@@ -25,8 +25,8 @@ function Result({ documentId, summary, facts, timestamp, score }) {
   const [factExpanded, setFactExpanded] = useState(false);
 
   return (
-    <div className="flex flex-col w-full pt-2">
-      <div className="flex flex-initial flex-row text-sm w-full">
+    <div className="flex w-full flex-col pt-2">
+      <div className="flex w-full flex-initial flex-row text-sm">
         <div className="flex flex-initial font-bold text-violet-600">
           <Link
             href={`http://www.phrack.org/issues/${issue}/${article}.html#article`}
@@ -34,40 +34,40 @@ function Result({ documentId, summary, facts, timestamp, score }) {
           >
             {documentId}
           </Link>
-          <span className="text-gray-400 font-normal ml-2">
+          <span className="ml-2 font-normal text-gray-400">
             (score: {score.toFixed(2)})
           </span>
         </div>
-        <div className="flex-initial text-gray-600 ml-2 font-bold">
+        <div className="ml-2 flex-initial font-bold text-gray-600">
           {timeAgoFrom(timestamp)}
         </div>
       </div>
-      <div className="flex flex-initial flex-row text-sm w-full mt-2 text-gray-600 max-w-2xl">
+      <div className="mt-2 flex w-full max-w-2xl flex-initial flex-row text-sm text-gray-600">
         {summary}
       </div>
-      <div className="flex flex-initial flex-col text-sm w-full mt-1 text-gray-600 max-w-3xl">
+      <div className="mt-1 flex w-full max-w-3xl flex-initial flex-col text-sm text-gray-600">
         <div
-          className="flex flex-initial font-bold text-gray-700 cursor-pointer"
+          className="flex flex-initial cursor-pointer font-bold text-gray-700"
           onClick={() => {
             setFactExpanded(!factExpanded);
           }}
         >
           {factExpanded ? (
             <ChevronDownIcon
-              className="h-4 w-4 mt-0.5 text-gray-600 cursor-pointer"
+              className="mt-0.5 h-4 w-4 cursor-pointer text-gray-600"
               onClick={() => {
                 setFactExpanded(false);
               }}
             />
           ) : (
             <ChevronRightIcon
-              className="h-4 w-4 mt-0.5 text-gray-600 cursor-pointer"
+              className="mt-0.5 h-4 w-4 cursor-pointer text-gray-600"
               onClick={() => {
                 setFactExpanded(true);
               }}
             />
           )}
-          <span className="text-sm font-normal text-gray-400 italic">
+          <span className="text-sm font-normal italic text-gray-400">
             {facts.length} facts
           </span>
         </div>
@@ -77,7 +77,7 @@ function Result({ documentId, summary, facts, timestamp, score }) {
               <li key={i} className="ml-4">
                 <span
                   className={classNames(
-                    "flex italic w-full mt-2 text-gray-600 bg-blue-50 rounded-sm p-1"
+                    "mt-2 flex w-full rounded-sm bg-blue-50 p-1 italic text-gray-600"
                   )}
                 >
                   {fact}
@@ -132,24 +132,24 @@ export default function DemoQA({ run }) {
             <div className="mx-auto px-4">
               <div className="relative flex h-12 items-center">
                 <div className="flex flex-initial items-center justify-center sm:items-stretch sm:justify-start">
-                  <div className="flex flex-shrink-0 items-center pl-2 py-1">
+                  <div className="flex flex-shrink-0 items-center py-1 pl-2">
                     <div className="flex rotate-[30deg]">
-                      <div className="bg-gray-400 w-[4px] h-2 rounded-md"></div>
-                      <div className="bg-white w-[1px] h-2"></div>
-                      <div className="bg-gray-400 w-[4px] h-3 rounded-md"></div>
+                      <div className="h-2 w-[4px] rounded-md bg-gray-400"></div>
+                      <div className="h-2 w-[1px] bg-white"></div>
+                      <div className="h-3 w-[4px] rounded-md bg-gray-400"></div>
                     </div>
-                    <div className="bg-white w-[4px] h-2"></div>
-                    <div className="text-gray-800 font-bold text-base tracking-tight select-none">
+                    <div className="h-2 w-[4px] bg-white"></div>
+                    <div className="select-none text-base font-bold tracking-tight text-gray-800">
                       <Link href={`/`}>DUST</Link>
                     </div>
                   </div>
                 </div>
-                <nav className="flex flex-1 ml-1 h-12">
+                <nav className="ml-1 flex h-12 flex-1">
                   <ol role="list" className="flex items-center space-x-2">
                     <li>
                       <div className="flex items-center">
                         <ChevronRightIcon
-                          className="h-5 w-5 shrink text-gray-400 mr-1 pt-0.5"
+                          className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
                           aria-hidden="true"
                         />
                         <Link
@@ -167,32 +167,32 @@ export default function DemoQA({ run }) {
           </>
         )}
       </Disclosure>
-      <div className="flex flex-col mt-0 max-w-4xl mx-auto mt-4">
+      <div className="mx-auto mt-0 mt-4 flex max-w-4xl flex-col">
         <div className="flex flex-initial text-sm">
           <span className="text-gray-600">dataSource:</span>
-          <span className="ml-1 text-violet-600 font-bold">phrack</span>
+          <span className="ml-1 font-bold text-violet-600">phrack</span>
           <span className="ml-2 text-gray-600">numResults:</span>
-          <span className="ml-1 text-violet-600 font-bold">16</span>
+          <span className="ml-1 font-bold text-violet-600">16</span>
         </div>
-        <div className="flex flex-initial flex-row mt-2">
+        <div className="mt-2 flex flex-initial flex-row">
           <input
             type="text"
             name="query"
-            className="flex flex-1 shadow-sm focus:ring-violet-500 focus:border-violet-500 block w-full text-sm border-gray-300 rounded-md text-gray-700"
+            className="block flex w-full flex-1 rounded-md border-gray-300 text-sm text-gray-700 shadow-sm focus:border-violet-500 focus:ring-violet-500"
             value={query}
             readOnly={true}
           ></input>
-          <div className="shadow-sm ml-4 flex flex-initial bg-black text-white px-4 rounded-md py-2 cursor-pointer">
-            <ArrowRightIcon className="h-4 w-4 mt-1"></ArrowRightIcon>
+          <div className="ml-4 flex flex-initial cursor-pointer rounded-md bg-black px-4 py-2 text-white shadow-sm">
+            <ArrowRightIcon className="mt-1 h-4 w-4"></ArrowRightIcon>
           </div>
         </div>
-        <div className="flex flex-initial text-sm mt-8">
-          <div className="flex flex-row w-full">
-            <div className="flex-initial text-gray-800 font-bold">Answer</div>
+        <div className="mt-8 flex flex-initial text-sm">
+          <div className="flex w-full flex-row">
+            <div className="flex-initial font-bold text-gray-800">Answer</div>
             <div className="flex-1"></div>
             <div
               className={classNames(
-                "flex-initial ml-1 font-bold cursor-pointer",
+                "ml-1 flex-initial cursor-pointer font-bold",
                 answer === "short" ? "text-violet-600" : "text-gray-400"
               )}
               onClick={() => setAnswer("short")}
@@ -201,7 +201,7 @@ export default function DemoQA({ run }) {
             </div>
             <div
               className={classNames(
-                "flex-initial ml-1 font-bold cursor-pointer",
+                "ml-1 flex-initial cursor-pointer font-bold",
                 answer === "1-pager" ? "text-violet-600" : "text-gray-400"
               )}
               onClick={() => setAnswer("1-pager")}
@@ -210,21 +210,21 @@ export default function DemoQA({ run }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-initial text-sm mt-4 whitespace-pre-wrap text-gray-800 font-mono">
+        <div className="mt-4 flex flex-initial whitespace-pre-wrap font-mono text-sm text-gray-800">
           {(answer === "short" ? short : onePager).split("References:")[0]}
         </div>
 
-        <div className="flex flex-initial text-gray-400 text-sm"></div>
-        <div className="flex flex-initial text-sm mt-8">
-          <div className="flex flex-row w-full">
-            <div className="flex-initial text-gray-800 font-bold">
+        <div className="flex flex-initial text-sm text-gray-400"></div>
+        <div className="mt-8 flex flex-initial text-sm">
+          <div className="flex w-full flex-row">
+            <div className="flex-initial font-bold text-gray-800">
               References
             </div>
             <div className="flex-1"></div>
             <div className="flex-initial text-gray-600">sortBy:</div>
             <div
               className={classNames(
-                "flex-initial ml-1 font-bold cursor-pointer",
+                "ml-1 flex-initial cursor-pointer font-bold",
                 sort === "score" ? "text-violet-600" : "text-gray-400"
               )}
               onClick={() => setSort("score")}
@@ -233,7 +233,7 @@ export default function DemoQA({ run }) {
             </div>
             <div
               className={classNames(
-                "flex flex-initial ml-1 font-bold cursor-pointer",
+                "ml-1 flex flex-initial cursor-pointer font-bold",
                 sort === "timestamp" ? "text-violet-600" : "text-gray-400"
               )}
               onClick={() => setSort("timestamp")}
@@ -242,7 +242,7 @@ export default function DemoQA({ run }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-initial mb-16">
+        <div className="mb-16 flex flex-initial">
           <ul className="w-full">
             {sortedResults.map((r) => (
               <li key={r.documentId} className="mt-4 w-full">

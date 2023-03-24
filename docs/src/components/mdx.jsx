@@ -1,15 +1,15 @@
-import Link from 'next/link'
-import clsx from 'clsx'
+import Link from "next/link";
+import clsx from "clsx";
 
-import { Heading } from '@/components/Heading'
+import { Heading } from "@/components/Heading";
 
-export const a = Link
-export { Button } from '@/components/Button'
-export { CodeGroup, Code as code, Pre as pre } from '@/components/Code'
+export const a = Link;
+export { Button } from "@/components/Button";
+export { CodeGroup, Code as code, Pre as pre } from "@/components/Code";
 
 export const h2 = function H2(props) {
-  return <Heading level={2} {...props} />
-}
+  return <Heading level={2} {...props} />;
+};
 
 function InfoIcon(props) {
   return (
@@ -24,7 +24,7 @@ function InfoIcon(props) {
       />
       <circle cx="8" cy="4" r=".5" fill="none" />
     </svg>
-  )
+  );
 }
 
 export function Note({ children }) {
@@ -35,7 +35,7 @@ export function Note({ children }) {
         {children}
       </div>
     </div>
-  )
+  );
 }
 
 export function Row({ children }) {
@@ -43,20 +43,20 @@ export function Row({ children }) {
     <div className="grid grid-cols-1 items-start gap-x-16 gap-y-10 xl:max-w-none xl:grid-cols-2">
       {children}
     </div>
-  )
+  );
 }
 
 export function Col({ children, sticky = false }) {
   return (
     <div
       className={clsx(
-        '[&>:first-child]:mt-0 [&>:last-child]:mb-0',
-        sticky && 'xl:sticky xl:top-24'
+        "[&>:first-child]:mt-0 [&>:last-child]:mb-0",
+        sticky && "xl:sticky xl:top-24"
       )}
     >
       {children}
     </div>
-  )
+  );
 }
 
 export function Properties({ children }) {
@@ -69,7 +69,7 @@ export function Properties({ children }) {
         {children}
       </ul>
     </div>
-  )
+  );
 }
 
 export function Image({ src, alt, children }) {
@@ -78,7 +78,7 @@ export function Image({ src, alt, children }) {
       <img src={src} alt={alt} />
       <div className="mx-6">{children}</div>
     </div>
-  )
+  );
 }
 
 export function Property({ name, type, children }) {
@@ -99,5 +99,5 @@ export function Property({ name, type, children }) {
         </dd>
       </dl>
     </li>
-  )
+  );
 }

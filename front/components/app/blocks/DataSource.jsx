@@ -80,10 +80,10 @@ export default function DataSource({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
+      <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8 mr-2">
-            <div className="flex flex-initial mr-1">data source:</div>
+          <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+            <div className="mr-1 flex flex-initial">data source:</div>
             <DataSourcePicker
               currentUser={user}
               readOnly={readOnly}
@@ -96,15 +96,15 @@ export default function DataSource({
               }}
             />
           </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">top_k:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -115,12 +115,12 @@ export default function DataSource({
           </div>
         </div>
 
-        <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial items-center">query:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <div
-                className={classNames("border bg-slate-100 border-slate-100")}
+                className={classNames("border border-slate-100 bg-slate-100")}
                 style={{
                   minHeight: "48px",
                 }}

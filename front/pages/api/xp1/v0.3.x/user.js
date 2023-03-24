@@ -1,4 +1,4 @@
-import { XP1User } from '@app/lib/models';
+import { XP1User } from "@app/lib/models";
 
 export default async function handler(req, res) {
   let user = await XP1User.findOne({

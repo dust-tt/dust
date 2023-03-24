@@ -41,7 +41,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Providers" />
         </div>
 
@@ -83,7 +83,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
         />
 
         <div className="">
-          <div className="px-6 mx-auto space-y-4 divide-y divide-gray-200 sm:max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div className="sm:flex sm:items-center">
               <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
@@ -112,7 +112,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
                       >
                         {provider.name}
                       </p>
-                      <div className="ml-2 flex flex-shrink-0 mt-0.5">
+                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
@@ -157,7 +157,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
             </ul>
           </div>
 
-          <div className="px-6 mx-auto space-y-4 divide-y divide-gray-200 sm:max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div className="sm:flex sm:items-center">
               <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
@@ -186,7 +186,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
                       >
                         {provider.name}
                       </p>
-                      <div className="ml-2 flex flex-shrink-0 mt-0.5">
+                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",

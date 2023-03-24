@@ -1,5 +1,5 @@
-import { User, App, Key } from '@app/lib/models';
-import { Op } from 'sequelize';
+import { User, App, Key } from "@app/lib/models";
+import { Op } from "sequelize";
 
 export default async function handler(req, res) {
   if (!req.headers.authorization) {

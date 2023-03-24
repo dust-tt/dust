@@ -16,11 +16,11 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Apps" user={user} readOnly={readOnly} />
         </div>
         <div className="">
-          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">
+          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div>
               {readOnly ? null : (
                 <div className="sm:flex sm:items-center">
@@ -36,7 +36,7 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                 </div>
               )}
 
-              <div className="overflow-hidden mt-8">
+              <div className="mt-8 overflow-hidden">
                 <ul role="list" className="">
                   {apps.map((app) => (
                     <li key={app.id} className="px-2">
@@ -77,7 +77,7 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                     </li>
                   ))}
                   {apps.length == 0 ? (
-                    <div className="flex flex-col items-center justify-center text-sm text-gray-500 mt-10">
+                    <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                       {readOnly ? (
                         <>
                           <p>
@@ -106,9 +106,9 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
           </div>
 
           {!readOnly ? (
-            <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 space-y-4">
+            <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
               <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto mt-16">
+                <div className="mt-16 sm:flex-auto">
                   <h1 className="text-base font-medium text-gray-900">
                     Community Example Apps
                   </h1>
@@ -122,7 +122,7 @@ export default function Home({ apps, readOnly, user, ga_tracking_id }) {
                 </div>
               </div>
 
-              <div className="overflow-hidden mt-8">
+              <div className="mt-8 overflow-hidden">
                 <ul role="list" className="mb-8">
                   {communityApps.map((app) => (
                     <li key={app.sId} className="px-2">

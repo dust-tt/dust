@@ -45,8 +45,8 @@ export default function Code({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+      <div className="mx-4 flex w-full flex-col">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial items-center">code :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">

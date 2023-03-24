@@ -24,7 +24,7 @@ export default function AppRun({
       ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
@@ -32,15 +32,15 @@ export default function AppRun({
             readOnly={readOnly}
           />
         </div>
-        <div className="w-full max-w-5xl mt-4 mx-auto">
-          <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8">
-            <div className="flex flex-row mb-4 mt-6 space-x-2 items-center text-sm">
+        <div className="mx-auto mt-4 w-full max-w-5xl">
+          <div className="mx-2 flex flex-auto flex-col sm:mx-4 lg:mx-8">
+            <div className="mb-4 mt-6 flex flex-row items-center space-x-2 text-sm">
               <span>
                 Viewing run:{" "}
-                <span className="hidden sm:inline font-mono text-gray-600 ml-1">
+                <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
                   {run.run_id}
                 </span>
-                <span className="sm:hidden font-mono text-gray-600 ml-1">
+                <span className="ml-1 font-mono text-gray-600 sm:hidden">
                   {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                 </span>
               </span>

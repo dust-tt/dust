@@ -36,7 +36,7 @@ export default function DatasetPicker({
     <div className="flex items-center">
       {dataset ? (
         <Link href={`/${user}/a/${app.sId}/datasets/${dataset}`}>
-          <div className="font-bold text-violet-600 text-sm">{dataset}</div>
+          <div className="text-sm font-bold text-violet-600">{dataset}</div>
         </Link>
       ) : (
         ""
@@ -50,8 +50,8 @@ export default function DatasetPicker({
                 "inline-flex items-center rounded-md py-1 text-sm font-normal",
                 dataset ? "px-1" : "border px-3",
                 readOnly
-                  ? "text-gray-300 border-white"
-                  : "text-gray-700 border-orange-400",
+                  ? "border-white text-gray-300"
+                  : "border-orange-400 text-gray-700",
                 "focus:outline-none focus:ring-0"
               )}
             >
@@ -63,8 +63,8 @@ export default function DatasetPicker({
                 "inline-flex items-center rounded-md py-1 text-sm font-normal",
                 dataset ? "px-0" : "border px-3",
                 readOnly
-                  ? "text-gray-300 border-white"
-                  : "text-gray-700 border-orange-400",
+                  ? "border-white text-gray-300"
+                  : "border-orange-400 text-gray-700",
                 "focus:outline-none focus:ring-0"
               )}
               readOnly={readOnly}
@@ -72,7 +72,7 @@ export default function DatasetPicker({
               {dataset ? (
                 <>
                   &nbsp;
-                  <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </>
               ) : (
                 "Select dataset"
@@ -84,7 +84,7 @@ export default function DatasetPicker({
         {readOnly ? null : (
           <Menu.Items
             className={classNames(
-              "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+              "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
               dataset ? "-left-8" : "left-1"
             )}
           >
@@ -99,7 +99,7 @@ export default function DatasetPicker({
                       <span
                         className={classNames(
                           active ? "bg-gray-50 text-gray-900" : "text-gray-700",
-                          "block px-4 py-2 text-sm cursor-pointer whitespace-nowrap"
+                          "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm"
                         )}
                       >
                         {d.name}
@@ -114,7 +114,7 @@ export default function DatasetPicker({
                     <div
                       className={classNames(
                         active ? "bg-gray-50 text-gray-500" : "text-gray-400",
-                        "block px-4 py-2 text-sm font-normal cursor-pointer whitespace-nowrap"
+                        "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm font-normal"
                       )}
                     >
                       Create new dataset

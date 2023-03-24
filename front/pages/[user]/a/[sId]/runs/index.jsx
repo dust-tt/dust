@@ -55,7 +55,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
       ga_tracking_id={ga_tracking_id}
     >
       <div className="leadingflex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Logs"
@@ -63,9 +63,9 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
             readOnly={readOnly}
           />
         </div>
-        <div className="w-full max-w-5xl mt-4 mx-auto">
+        <div className="mx-auto mt-4 w-full max-w-5xl">
           <div className="flex flex-1">
-            <div className="flex flex-auto flex-col mx-2 sm:mx-4 lg:mx-8 my-4">
+            <div className="mx-2 my-4 flex flex-auto flex-col sm:mx-4 lg:mx-8">
               <div className="flex w-full">
                 <nav className="flex" aria-label="Tabs">
                   {tabs.map((tab, tabIdx) => (
@@ -73,11 +73,11 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                       key={tab.name}
                       className={classNames(
                         tab.runType == runType
-                          ? "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white"
-                          : "border-gray-300 hover:bg-gray-50 bg-white text-gray-700 hover:text-gray-700",
+                          ? "border-gray-700 bg-gray-700 text-white hover:bg-gray-800"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-700",
                         tabIdx === 0 ? "rounded-l-md" : "",
                         tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
-                        "flex-1 py-1 px-3 text-sm border font-medium text-center focus:z-10 cursor-pointer shadow-sm"
+                        "flex-1 cursor-pointer border py-1 px-3 text-center text-sm font-medium shadow-sm focus:z-10"
                       )}
                       aria-current={tab.current ? "page" : undefined}
                       onClick={() => setRunType(tab.runType)}
@@ -103,7 +103,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                       Previous
                     </Button>
                   </div>
-                  <div className="flex ml-2">
+                  <div className="ml-2 flex">
                     <Button
                       disabled={offset + limit >= total}
                       onClick={() => {
@@ -119,7 +119,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
               </div>
 
               {runs.length > 0 ? (
-                <div className="flex flex-auto text-gray-700 text-sm mt-3 pl-1">
+                <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
                   Showing runs {offset + 1} - {last} of {total} runs
                 </div>
               ) : null}
@@ -128,14 +128,14 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                 <ul role="list" className="space-y-4">
                   {runs.map((run) => (
                     <li key={run.run_id} className="px-0">
-                      <div className="py-4 rounded border border-gray-300 px-4 py-4">
+                      <div className="rounded border border-gray-300 py-4 py-4 px-4">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-initial">
                             <Link
                               href={`/${user}/a/${app.sId}/runs/${run.run_id}`}
                               className="block"
                             >
-                              <p className="truncate text-base font-mono text-violet-600">
+                              <p className="truncate font-mono text-base text-violet-600">
                                 {run.run_id.slice(0, 8)}...
                                 {run.run_id.slice(-8)}
                               </p>
@@ -155,7 +155,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                           </div>
                         </div>
                         <div className="mt-2 flex justify-between">
-                          <div className="flex flex-1 flex-wrap items-center text-sm text-gray-700 space-x-1">
+                          <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-gray-700">
                             {run.status.blocks.map((block) => (
                               <span
                                 key={`${block.block_type}-${block.name}`}
@@ -169,11 +169,11 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                                 {block.name}
                               </span>
                             ))}
-                            <span className="text-xs font-mono text-gray-700 ml-2 pt-1">
+                            <span className="ml-2 pt-1 font-mono text-xs text-gray-700">
                               ({inputCount(run.status)} inputs)
                             </span>
                           </div>
-                          <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 pr-1">
+                          <div className="mt-2 flex items-center pr-1 text-sm text-gray-500 sm:mt-0">
                             <p>{timeAgoFrom(run.created)} ago</p>
                           </div>
                         </div>
@@ -181,7 +181,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                     </li>
                   ))}
                   {runs.length == 0 ? (
-                    <div className="flex flex-col items-center justify-center text-sm text-gray-500 mt-10">
+                    <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                       <p>No runs found 🔎</p>
                       {runType == "local" ? (
                         <p className="mt-2">

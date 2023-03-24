@@ -1,21 +1,21 @@
-import { Button } from '@/components/Button'
-import { Heading } from '@/components/Heading'
+import { Button } from "@/components/Button";
+import { Heading } from "@/components/Heading";
 
 const guides = [
   {
-    href: '/introduction',
-    name: 'Introduction',
-    description: 'Understand the concept of Large Language Model App.',
+    href: "/introduction",
+    name: "Introduction",
+    description: "Understand the concept of Large Language Model App.",
   },
   {
-    href: '/overview',
-    name: 'Overview',
-    description: 'Get an overview of the Dust Platform.',
+    href: "/overview",
+    name: "Overview",
+    description: "Get an overview of the Dust Platform.",
   },
   {
-    href: '/quickstart',
-    name: 'Quickstart',
-    description: 'Step-by-step guide to creating your first Dust app.',
+    href: "/quickstart",
+    name: "Quickstart",
+    description: "Step-by-step guide to creating your first Dust app.",
   },
   // {
   //   href: '/errors',
@@ -29,7 +29,7 @@ const guides = [
   //   description:
   //     'Learn how to programmatically configure webhooks for your app.',
   // },
-]
+];
 
 export function Guides() {
   return (
@@ -55,5 +55,5 @@ export function Guides() {
         ))}
       </div>
     </div>
-  )
+  );
 }

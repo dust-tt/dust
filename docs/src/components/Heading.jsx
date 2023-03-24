@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
-import Link from 'next/link'
-import { useInView } from 'framer-motion'
+import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { useInView } from "framer-motion";
 
-import { useSectionStore } from '@/components/SectionProvider'
-import { Tag } from '@/components/Tag'
-import { remToPx } from '@/lib/remToPx'
+import { useSectionStore } from "@/components/SectionProvider";
+import { Tag } from "@/components/Tag";
+import { remToPx } from "@/lib/remToPx";
 
 function AnchorIcon(props) {
   return (
@@ -17,12 +17,12 @@ function AnchorIcon(props) {
     >
       <path d="m6.5 11.5-.964-.964a3.535 3.535 0 1 1 5-5l.964.964m2 2 .964.964a3.536 3.536 0 0 1-5 5L8.5 13.5m0-5 3 3" />
     </svg>
-  )
+  );
 }
 
 function Eyebrow({ tag, label }) {
   if (!tag && !label) {
-    return null
+    return null;
   }
 
   return (
@@ -35,7 +35,7 @@ function Eyebrow({ tag, label }) {
         <span className="font-mono text-xs text-zinc-400">{label}</span>
       )}
     </div>
-  )
+  );
 }
 
 function Anchor({ id, inView, children }) {
@@ -53,7 +53,7 @@ function Anchor({ id, inView, children }) {
       )}
       {children}
     </Link>
-  )
+  );
 }
 
 export function Heading({
@@ -65,20 +65,20 @@ export function Heading({
   anchor = true,
   ...props
 }) {
-  let Component = `h${level}`
-  let ref = useRef()
-  let registerHeading = useSectionStore((s) => s.registerHeading)
+  let Component = `h${level}`;
+  let ref = useRef();
+  let registerHeading = useSectionStore((s) => s.registerHeading);
 
   let inView = useInView(ref, {
     margin: `${remToPx(-3.5)}px 0px 0px 0px`,
-    amount: 'all',
-  })
+    amount: "all",
+  });
 
   useEffect(() => {
     if (level === 2) {
-      registerHeading({ id, ref, offsetRem: tag || label ? 8 : 6 })
+      registerHeading({ id, ref, offsetRem: tag || label ? 8 : 6 });
     }
-  })
+  });
 
   return (
     <>
@@ -86,7 +86,7 @@ export function Heading({
       <Component
         ref={ref}
         id={anchor ? id : undefined}
-        className={tag || label ? 'mt-2 scroll-mt-32' : 'scroll-mt-24'}
+        className={tag || label ? "mt-2 scroll-mt-32" : "scroll-mt-24"}
         {...props}
       >
         {anchor ? (
@@ -98,5 +98,5 @@ export function Heading({
         )}
       </Component>
     </>
-  )
+  );
 }

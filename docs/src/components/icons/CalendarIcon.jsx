@@ -19,5 +19,5 @@ export function CalendarIcon(props) {
         d="M5.5 5.5v-3M14.5 5.5v-3"
       />
     </svg>
-  )
+  );
 }

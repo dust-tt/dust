@@ -1,6 +1,6 @@
 export function Logo(props) {
   return (
-    <div className="flex -ml-3 flex-row items-center scale-[75%]">
+    <div className="-ml-3 flex scale-[75%] flex-row items-center">
       <div className="flex rotate-[30deg]">
         <div className="h-4 w-[8px] rounded-xl bg-gray-400"></div>
         <div className="h-4 w-[2px] bg-transparent"></div>
@@ -11,7 +11,7 @@ export function Logo(props) {
         DUST
       </div>
     </div>
-  )
+  );
   // return (
   //   <svg viewBox="0 0 99 24" aria-hidden="true" {...props}>
   //     <path

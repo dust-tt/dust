@@ -75,14 +75,14 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 items-center">
+          <div className="flex min-h-full items-end items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
               leave="ease-in duration-200"
               leaveTo="opacity-0"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm lg:max-w-lg sm:p-6">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                 <div>
                   <div className="mt-3">
                     <Dialog.Title
@@ -97,14 +97,14 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
                         engines). To use SerpAPI you must provide your API key.
                         It can be found{" "}
                         <a
-                          className="text-violet-600 hover:text-violet-500 font-bold"
+                          className="font-bold text-violet-600 hover:text-violet-500"
                           href="https://serpapi.com/manage-api-key"
                           target="_blank"
                         >
                           here
                         </a>
                       </p>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="mt-2 text-sm text-gray-500">
                         We'll never use your API key for anything other than to
                         run your apps.
                       </p>
@@ -112,7 +112,7 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
                     <div className="mt-6">
                       <input
                         type="text"
-                        className="shadow-sm focus:ring-violet-500 focus:border-violet-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                         placeholder="SerpAPI API Key"
                         value={apiKey}
                         onChange={(e) => {
@@ -123,7 +123,7 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
                     </div>
                   </div>
                 </div>
-                <div className="text-sm mt-1 px-2">
+                <div className="mt-1 px-2 text-sm">
                   {testError.length > 0 ? (
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
@@ -134,10 +134,10 @@ export default function SerpAPISetup({ open, setOpen, config, enabled }) {
                     <span>&nbsp;</span>
                   )}
                 </div>
-                <div className="flex flex-row mt-5 sm:mt-6 space-x-2 items-center">
+                <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
                   {enabled ? (
                     <div
-                      className="flex-initial text-red-500 text-sm font-bold cursor-pointer"
+                      className="flex-initial cursor-pointer text-sm font-bold text-red-500"
                       onClick={() => handleDisable()}
                     >
                       Disable

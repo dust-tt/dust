@@ -18,7 +18,7 @@ export default function Specification({
       ga_tracking_id={ga_tracking_id}
     >
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
@@ -26,10 +26,10 @@ export default function Specification({
             readOnly={readOnly}
           />
         </div>
-        <div className="mx-auto w-max-4xl">
+        <div className="w-max-4xl mx-auto">
           <div className="flex flex-auto">
-            <div className="flex flex-auto flex-col my-8">
-              <div className="whitespace-pre text-[13px] font-mono text-gray-700">
+            <div className="my-8 flex flex-auto flex-col">
+              <div className="whitespace-pre font-mono text-[13px] text-gray-700">
                 {specification}
               </div>
             </div>

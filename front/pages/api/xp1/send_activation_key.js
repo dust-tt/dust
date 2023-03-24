@@ -1,6 +1,6 @@
-import { XP1User } from '@app/lib/models';
-import { new_id } from '@app/lib/utils';
-import { sendActivationKey } from '@app/lib/sendgrid';
+import { XP1User } from "@app/lib/models";
+import { new_id } from "@app/lib/utils";
+import { sendActivationKey } from "@app/lib/sendgrid";
 
 const {} = process.env;
 

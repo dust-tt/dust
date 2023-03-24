@@ -30,7 +30,7 @@ export default function InstallExtension({ ga_tracking_id }) {
 
         <div className="mt-12">
           <div className="flex flex-row items-center">
-            <div className="flex flex-row mx-auto">
+            <div className="mx-auto flex flex-row">
               <div className="flex">
                 <a href={version ? version.download_url : "#"}>
                   <HighlightButton>Install Extension</HighlightButton>
@@ -41,17 +41,17 @@ export default function InstallExtension({ ga_tracking_id }) {
         </div>
 
         <div className="mx-auto mt-2">
-          <div className="text-sm text-gray-500 text-center">
+          <div className="text-center text-sm text-gray-500">
             {version ? version.version : ""}
           </div>
         </div>
 
-        <div className="mx-auto mt-12 leading-16">
-          <div className="text-gray-900 text-sm max-w-xl mx-auto">
-            <div className="bg-gray-800 text-gray-200 rounded-t py-2 px-3">
+        <div className="leading-16 mx-auto mt-12">
+          <div className="mx-auto max-w-xl text-sm text-gray-900">
+            <div className="rounded-t bg-gray-800 py-2 px-3 text-gray-200">
               Instructions:
             </div>
-            <div className="py-2 pl-3 pr-1 bg-gray-700 text-white rounded-b">
+            <div className="rounded-b bg-gray-700 py-2 pl-3 pr-1 text-white">
               <ul>
                 <li>
                   1.{" "}

@@ -21,7 +21,8 @@ export default function NewBlock({
       type: "chat",
       typeNames: ["chat"],
       name: "Chat-based Large Language Model",
-      description: "Query a Large Language Model using a message-based interface.",
+      description:
+        "Query a Large Language Model using a message-based interface.",
     },
     {
       type: "data",
@@ -90,7 +91,7 @@ export default function NewBlock({
         {small ? (
           <Menu.Button
             className={classNames(
-              "inline-flex items-center text-sm font-medium leading-6 bg-transparent text-gray-400 border-1 border-red-200 px-0 py-0",
+              "border-1 inline-flex items-center border-red-200 bg-transparent px-0 py-0 text-sm font-medium leading-6 text-gray-400",
               disabled ? "text-gray-300" : "hover:text-gray-700",
               "focus:outline-none focus:ring-0"
             )}
@@ -104,7 +105,7 @@ export default function NewBlock({
               "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
               disabled
                 ? "border-gray-200 bg-white text-gray-300"
-                : "border-gray-700 hover:bg-gray-800 bg-gray-700 text-white",
+                : "border-gray-700 bg-gray-700 text-white hover:bg-gray-800",
               "shadow-sm focus:outline-none focus:ring-2 focus:ring-0"
             )}
             disabled={disabled}
@@ -116,7 +117,7 @@ export default function NewBlock({
       </div>
       <Menu.Items
         className={classNames(
-          "absolute w-max block shadow z-10 my-2 rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none",
+          "absolute z-10 my-2 block w-max rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
           small ? "-right-16" : "",
           direction === "up" ? "bottom-9" : ""
         )}
@@ -130,23 +131,23 @@ export default function NewBlock({
                 onClick(block.type);
               }
             }}
-            className="flex flex-row my-1 flex-nowrap gap-4 bg-white py-1 px-0 hover:bg-gray-100 hover:text-gray-500 text-gray-400 cursor-pointer"
+            className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white py-1 px-0 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
           >
             {({ active }) => (
-              <div className="grid grid-cols-12 ml-4 max-w-md items-center">
+              <div className="ml-4 grid max-w-md grid-cols-12 items-center">
                 <div className="col-span-4 sm:col-span-3">
                   <div className="flex text-base font-medium text-gray-900">
                     {block.typeNames.map((type) => (
                       <div
                         key={type}
-                        className="rounded-md px-1 py-0.5 bg-gray-200 text-sm font-bold mr-1"
+                        className="mr-1 rounded-md bg-gray-200 px-1 py-0.5 text-sm font-bold"
                       >
                         {type}
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="col-span-8 sm:col-span-9 text-sm text-gray-700 sm:pl-3 pr-2">
+                <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-3">
                   {block.description}
                 </div>
               </div>

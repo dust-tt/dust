@@ -17,17 +17,17 @@ var SSE = function (url, options) {
 
   options = options || {};
   this.headers = options.headers || {};
-  this.payload = options.payload !== undefined ? options.payload : '';
-  this.method = options.method || (this.payload && 'POST') || 'GET';
+  this.payload = options.payload !== undefined ? options.payload : "";
+  this.method = options.method || (this.payload && "POST") || "GET";
   this.withCredentials = !!options.withCredentials;
 
-  this.FIELD_SEPARATOR = ':';
+  this.FIELD_SEPARATOR = ":";
   this.listeners = {};
 
   this.xhr = null;
   this.readyState = this.INITIALIZING;
   this.progress = 0;
-  this.chunk = '';
+  this.chunk = "";
 
   this.addEventListener = function (type, listener) {
     if (this.listeners[type] === undefined) {
@@ -64,7 +64,7 @@ var SSE = function (url, options) {
 
     e.source = this;
 
-    var onHandler = 'on' + e.type;
+    var onHandler = "on" + e.type;
     if (this.hasOwnProperty(onHandler)) {
       this[onHandler].call(this, e);
       if (e.defaultPrevented) {
@@ -83,21 +83,21 @@ var SSE = function (url, options) {
   };
 
   this._setReadyState = function (state) {
-    var event = new CustomEvent('readystatechange');
+    var event = new CustomEvent("readystatechange");
     event.readyState = state;
     this.readyState = state;
     this.dispatchEvent(event);
   };
 
   this._onStreamFailure = function (e) {
-    var event = new CustomEvent('error');
+    var event = new CustomEvent("error");
     event.data = e.currentTarget.response;
     this.dispatchEvent(event);
     this.close();
   };
 
   this._onStreamAbort = function (e) {
-    this.dispatchEvent(new CustomEvent('abort'));
+    this.dispatchEvent(new CustomEvent("abort"));
     this.close();
   };
 
@@ -112,7 +112,7 @@ var SSE = function (url, options) {
     }
 
     if (this.readyState === this.CONNECTING) {
-      this.dispatchEvent(new CustomEvent('open'));
+      this.dispatchEvent(new CustomEvent("open"));
       this._setReadyState(this.OPEN);
     }
 
@@ -122,7 +122,7 @@ var SSE = function (url, options) {
       function (part) {
         if (part.trim().length === 0) {
           this.dispatchEvent(this._parseEventChunk(this.chunk.trim()));
-          this.chunk = '';
+          this.chunk = "";
         } else {
           this.chunk += part;
         }
@@ -135,7 +135,7 @@ var SSE = function (url, options) {
 
     // Parse the last chunk.
     this.dispatchEvent(this._parseEventChunk(this.chunk));
-    this.chunk = '';
+    this.chunk = "";
   };
 
   /**
@@ -146,7 +146,7 @@ var SSE = function (url, options) {
       return null;
     }
 
-    var e = { id: null, retry: null, data: '', event: 'message' };
+    var e = { id: null, retry: null, data: "", event: "message" };
     chunk.split(/\n|\r\n|\r/).forEach(
       function (line) {
         line = line.trimRight();
@@ -163,7 +163,7 @@ var SSE = function (url, options) {
         }
 
         var value = line.substring(index + 1).trimLeft();
-        if (field === 'data') {
+        if (field === "data") {
           e[field] += value;
         } else {
           e[field] = value;
@@ -192,14 +192,14 @@ var SSE = function (url, options) {
 
     this.xhr = new XMLHttpRequest();
     this.xhr.timeout = 60000;
-    this.xhr.addEventListener('progress', this._onStreamProgress.bind(this));
-    this.xhr.addEventListener('load', this._onStreamLoaded.bind(this));
+    this.xhr.addEventListener("progress", this._onStreamProgress.bind(this));
+    this.xhr.addEventListener("load", this._onStreamLoaded.bind(this));
     this.xhr.addEventListener(
-      'readystatechange',
+      "readystatechange",
       this._checkStreamClosed.bind(this)
     );
-    this.xhr.addEventListener('error', this._onStreamFailure.bind(this));
-    this.xhr.addEventListener('abort', this._onStreamAbort.bind(this));
+    this.xhr.addEventListener("error", this._onStreamFailure.bind(this));
+    this.xhr.addEventListener("abort", this._onStreamAbort.bind(this));
     this.xhr.open(this.method, this.url);
     for (var header in this.headers) {
       this.xhr.setRequestHeader(header, this.headers[header]);
@@ -220,6 +220,6 @@ var SSE = function (url, options) {
 };
 
 // Export our SSE module for npm.js
-if (typeof exports !== 'undefined') {
+if (typeof exports !== "undefined") {
   exports.SSE = SSE;
 }

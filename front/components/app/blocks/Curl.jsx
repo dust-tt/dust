@@ -90,9 +90,9 @@ export default function Curl({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
-        <div className="flex flex-row space-x-2 mt-1">
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+      <div className="mx-4 flex w-full flex-col">
+        <div className="mt-1 flex flex-row space-x-2">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <Menu as="div" className="relative inline-block text-left">
               <div>
                 <Menu.Button
@@ -104,14 +104,14 @@ export default function Curl({
                   readOnly={readOnly}
                 >
                   {block.spec.method}
-                  <ChevronDownIcon className="h-4 w-4 hover:text-gray-700 mt-0.5" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </Menu.Button>
               </div>
 
               {readOnly ? null : (
                 <Menu.Items
                   className={classNames(
-                    "absolute shadow left-1 z-10 mt-1 origin-top-left rounded-md bg-white ring-1 ring-black ring-opacity-5 focus:outline-none left-1"
+                    "absolute left-1 left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none"
                   )}
                 >
                   <div className="py-1">
@@ -127,7 +127,7 @@ export default function Curl({
                                 active
                                   ? "bg-gray-50 text-gray-900"
                                   : "text-gray-700",
-                                "block px-4 py-1 text-sm cursor-pointer whitespace-nowrap"
+                                "block cursor-pointer whitespace-nowrap px-4 py-1 text-sm"
                               )}
                             >
                               {method}
@@ -141,13 +141,13 @@ export default function Curl({
               )}
             </Menu>
           </div>
-          <div className="flex-initial flex flex-row flex-1 items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-1 font-normal">
-              <div className="flex rounded-md flex-1">
+              <div className="flex flex-1 rounded-md">
                 <span
                   className={classNames(
                     readOnly ? "cursor-default" : "cursor-pointer",
-                    "inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-gray-500 text-sm"
+                    "inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-sm text-gray-500"
                   )}
                   onClick={() => {
                     if (!readOnly) {
@@ -164,7 +164,7 @@ export default function Curl({
                 <input
                   type="text"
                   className={classNames(
-                    "block flex-1 rounded-none rounded-r-md font-normal text-sm py-1 pl-1",
+                    "block flex-1 rounded-none rounded-r-md py-1 pl-1 text-sm font-normal",
                     "border-gray-300 focus:border-gray-300 focus:ring-0"
                   )}
                   readOnly={readOnly}
@@ -175,7 +175,7 @@ export default function Curl({
             </div>
           </div>
         </div>
-        <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial items-center">headers :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
@@ -203,7 +203,7 @@ export default function Curl({
             </div>
           </div>
         </div>
-        <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
           <div className="flex flex-initial items-center">body :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">

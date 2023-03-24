@@ -21,11 +21,11 @@ export default function DataSourcesView({
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
-        <div className="flex flex-initial mt-2">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="DataSources" user={user} readOnly={readOnly} />
         </div>
         <div className="">
-          <div className="mx-auto sm:max-w-2xl lg:max-w-4xl px-6 divide-y divide-gray-200 mt-8">
+          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div>
               {readOnly ? null : (
                 <div className="sm:flex sm:items-center">
@@ -53,7 +53,7 @@ export default function DataSourcesView({
                 </div>
               )}
 
-              <div className="overflow-hidden mt-8">
+              <div className="mt-8 overflow-hidden">
                 <ul role="list" className="">
                   {dataSources.map((ds) => (
                     <li key={ds.id} className="px-2">
@@ -94,7 +94,7 @@ export default function DataSourcesView({
                     </li>
                   ))}
                   {dataSources.length == 0 ? (
-                    <div className="flex flex-col items-center justify-center text-sm text-gray-500 mt-10">
+                    <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                       {readOnly ? (
                         <>
                           <p>
@@ -112,7 +112,7 @@ export default function DataSourcesView({
                           <p className="mt-2">
                             Data sources let you upload documents to perform
                             semantic searches on them (
-                            <span className="rounded-md px-1 py-0.5 bg-gray-200 font-bold">
+                            <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
                               data_source
                             </span>{" "}
                             block).

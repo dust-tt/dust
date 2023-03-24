@@ -137,10 +137,10 @@ export default function LLM({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="flex flex-col mx-4 w-full">
+      <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8 mr-2">
-            <div className="flex flex-initial mr-1">model:</div>
+          <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+            <div className="mr-1 flex flex-initial">model:</div>
             <ModelPicker
               user={user}
               readOnly={readOnly}
@@ -153,15 +153,15 @@ export default function LLM({
               chatOnly={false}
             />
           </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">temperature:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
@@ -170,15 +170,15 @@ export default function LLM({
               />
             </div>
           </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">max tokens:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
                 className={classNames(
-                  "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-12",
+                  "block w-12 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
-                    ? "border-white ring-0 focus:ring-0 focus:border-white"
+                    ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 spellCheck={false}
@@ -188,17 +188,17 @@ export default function LLM({
               />
             </div>
           </div>
-          <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">stop:</div>
             <div className="flex w-full font-normal">
               <div
                 className={classNames(
-                  "flex flex-row items-center font-normal text-sm"
+                  "flex flex-row items-center text-sm font-normal"
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
                   {(block.spec.stop || []).map((stop, i) => (
-                    <div key={i} className="flex bg-slate-100 rounded-md px-1">
+                    <div key={i} className="flex rounded-md bg-slate-100 px-1">
                       {stop}
                     </div>
                   ))}
@@ -210,10 +210,10 @@ export default function LLM({
                     value={newStop}
                     onChange={(e) => setNewStop(e.target.value)}
                     className={classNames(
-                      "flex flex-1 rounded-md ring-0 px-1 font-normal text-sm py-1 w-20 ml-1",
+                      "ml-1 flex w-20 flex-1 rounded-md px-1 py-1 text-sm font-normal ring-0",
                       "placeholder-gray-300",
                       readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     readOnly={readOnly}
@@ -242,39 +242,39 @@ export default function LLM({
           </div>
         </div>
 
-        <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
           {advancedExpanded ? (
             <div
               onClick={() => setAdvancedExpanded(false)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
+                <ChevronDownIcon className="mt-0.5 mr-1 h-4 w-4" />
               </span>
               advanced
             </div>
           ) : (
             <div
               onClick={() => setAdvancedExpanded(true)}
-              className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
+                <ChevronRightIcon className="mt-0.5 mr-1 h-4 w-4" />
               </span>
               advanced
             </div>
           )}
           {advancedExpanded ? (
             <div className="flex flex-col xl:flex-row xl:space-x-2">
-              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">frequency_penalty:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
                     className={classNames(
-                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                       readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     spellCheck={false}
@@ -286,15 +286,15 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">presence_penalty:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
                     className={classNames(
-                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                       readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     spellCheck={false}
@@ -306,15 +306,15 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">top_p:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
                     className={classNames(
-                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                       readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     spellCheck={false}
@@ -324,15 +324,15 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">top_logprobs:</div>
                 <div className="flex flex-initial font-normal">
                   <input
                     type="text"
                     className={classNames(
-                      "block flex-1 rounded-md px-1 font-normal text-sm py-1 w-8",
+                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                       readOnly
-                        ? "border-white ring-0 focus:ring-0 focus:border-white"
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
                         : "border-white focus:border-gray-300 focus:ring-0"
                     )}
                     spellCheck={false}
@@ -347,31 +347,31 @@ export default function LLM({
         </div>
 
         {fewShotPresent ? (
-          <div className="flex flex-col text-sm font-medium text-gray-500 leading-8">
+          <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
             {fewShotExpanded ? (
               <div
                 onClick={() => setFewShotExpanded(false)}
-                className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+                className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
               >
                 <span>
-                  <ChevronDownIcon className="h-4 w-4 mt-0.5 mr-1" />
+                  <ChevronDownIcon className="mt-0.5 mr-1 h-4 w-4" />
                 </span>
                 few-shot
               </div>
             ) : (
               <div
                 onClick={() => setFewShotExpanded(true)}
-                className="flex flex-initial items-center font-bold -ml-5 cursor-pointer w-24"
+                className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
               >
                 <span>
-                  <ChevronRightIcon className="h-4 w-4 mt-0.5 mr-1" />
+                  <ChevronRightIcon className="mt-0.5 mr-1 h-4 w-4" />
                 </span>
                 few-shot
               </div>
             )}
             {fewShotExpanded ? (
               <div className="ml-6 flex flex-col">
-                <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial items-center">
                     introduction:
                   </div>
@@ -379,9 +379,9 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md px-1 font-normal py-1 text-[13px] font-mono bg-slate-100",
+                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       readOnly={readOnly}
@@ -393,7 +393,7 @@ export default function LLM({
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial items-center">
                     examples:
                   </div>
@@ -401,9 +401,9 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md px-1 font-normal py-1 text-[13px] font-mono bg-slate-100",
+                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       readOnly={readOnly}
@@ -415,15 +415,15 @@ export default function LLM({
                   </div>
                 </div>
 
-                <div className="flex-initial flex flex-row items-center space-x-1 text-sm font-medium text-gray-700 leading-8">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">count:</div>
                   <div className="flex flex-initial font-normal">
                     <input
                       type="text"
                       className={classNames(
-                        "block flex-1 px-1 font-normal text-sm py-1 w-8",
+                        "block w-8 flex-1 px-1 py-1 text-sm font-normal",
                         readOnly
-                          ? "border-white ring-0 focus:ring-0 focus:border-white"
+                          ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
                       )}
                       spellCheck={false}
@@ -438,14 +438,12 @@ export default function LLM({
           </div>
         ) : null}
 
-        <div className="flex flex-col space-y-1 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <div
-                className={classNames(
-                  "border bg-slate-100 border-slate-100"
-                )}
+                className={classNames("border border-slate-100 bg-slate-100")}
                 style={{
                   minHeight: "48px",
                 }}

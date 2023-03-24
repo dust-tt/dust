@@ -5,15 +5,9 @@ import { Logo } from "@app/components/Logo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const {
-  GA_TRACKING_ID = null,
-  XP1_CHROME_WEB_STORE_URL,
-} = process.env;
+const { GA_TRACKING_ID = null, XP1_CHROME_WEB_STORE_URL } = process.env;
 
-export default function Home({
-  ga_tracking_id,
-  chrome_web_store_url,
-}) {
+export default function Home({ ga_tracking_id, chrome_web_store_url }) {
   const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
@@ -47,7 +41,7 @@ export default function Home({
         </div>
 
         <div className="mx-auto mt-12">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 text-center">
+          <h1 className="text-center text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
             <span className="text-gray-800">
               <div className="leading-snug">
                 <span className="text-violet-600">Productivity Assistant</span>
@@ -57,16 +51,16 @@ export default function Home({
           </h1>
         </div>
 
-        <div className="w-full mt-16">
-          <div className="w-[300px] h-[165px] sm:w-[670px] sm:h-[375px] mx-auto overflow-hidden rounded-md border border-gray-300">
+        <div className="mt-16 w-full">
+          <div className="mx-auto h-[165px] w-[300px] overflow-hidden rounded-md border border-gray-300 sm:h-[375px] sm:w-[670px]">
             <img src="https://storage.googleapis.com/dust-xp1-extension/gifs/dust-xp1-bundled.gif"></img>
           </div>
         </div>
 
         <div className="mt-16">
           <div className="flex flex-row items-center">
-            <div className="flex flex-row mx-auto">
-              <div className="flex ml-2">
+            <div className="mx-auto flex flex-row">
+              <div className="ml-2 flex">
                 <div className="">
                   <a href={chrome_web_store_url} target="_blank">
                     <HighlightButton>Install Extension</HighlightButton>
@@ -74,7 +68,7 @@ export default function Home({
                 </div>
               </div>
 
-              <div className="flex ml-2">
+              <div className="ml-2 flex">
                 <div className="">
                   <div className="text-center">
                     <div className="">
@@ -83,7 +77,7 @@ export default function Home({
                       </Link>
                     </div>
                   </div>
-                  <div className="text-gray-400 text-xs mt-1 text-center">
+                  <div className="mt-1 text-center text-xs text-gray-400">
                     <span className="text-gray-600">
                       Free - no cards required
                     </span>
@@ -94,12 +88,12 @@ export default function Home({
           </div>
         </div>
 
-        <div className="mx-auto mt-16 my-8 leading-16">
-          <div className="text-gray-900 text-sm max-w-2xl mx-auto">
-            <div className="bg-gray-800 text-gray-200 rounded-t py-2 px-3">
+        <div className="leading-16 mx-auto my-8 mt-16">
+          <div className="mx-auto max-w-2xl text-sm text-gray-900">
+            <div className="rounded-t bg-gray-800 py-2 px-3 text-gray-200">
               User guide
             </div>
-            <div className="py-2 pl-3 pr-1 bg-gray-700 text-white rounded-b">
+            <div className="rounded-b bg-gray-700 py-2 pl-3 pr-1 text-white">
               <p className="mb-4">
                 <b>XP1</b> is an assistant based on GPT (gpt-3.5-turbo) with
                 access to your browser tabs content. It is geared (prompted)
@@ -110,7 +104,7 @@ export default function Home({
               <ul className="my-4">
                 <li>
                   - Use
-                  <span className="font-bold font-mono text-gray-300 mx-1">
+                  <span className="mx-1 font-mono font-bold text-gray-300">
                     {isMac ? "⌘" : "Ctrl"}
                     +↑
                   </span>
@@ -122,7 +116,7 @@ export default function Home({
                 </li>
                 <li>
                   - Use{" "}
-                  <span className="font-bold font-mono text-gray-300 mx-1">
+                  <span className="mx-1 font-mono font-bold text-gray-300">
                     `[[`
                   </span>{" "}
                   to select tabs content to include in the context of your
@@ -130,7 +124,7 @@ export default function Home({
                 </li>
                 <li>
                   - Use
-                  <span className="font-bold font-mono text-gray-300 mx-1">
+                  <span className="mx-1 font-mono font-bold text-gray-300">
                     {isMac ? "⌘" : "Ctrl"}
                     +⏎
                   </span>
@@ -138,33 +132,33 @@ export default function Home({
                 </li>
                 <li>
                   - Use
-                  <span className="font-bold font-mono text-gray-300 mx-1">
+                  <span className="mx-1 font-mono font-bold text-gray-300">
                     /reset
                   </span>
                   to clear the conversation.
                 </li>
               </ul>
               <p className="my-2 mt-6 font-bold"># Example usage</p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Reply to [[email]] based on [[knowledgebase]]
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Summarize with bullet-points [[cnn]]
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Extract [[linkedin]] experience as CSV
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Generate a twitter thread with emoji to sell [[product]]
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Generate a 5 sentence bio about [[linkedin]]
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 Generate a personalized email to [[linkedin]] offering to try
                 [[xp1]]
               </p>
-              <p className="my-1 mx-2 italic font-bold text-gray-300">
+              <p className="my-1 mx-2 font-bold italic text-gray-300">
                 JSON from [[email]] and [[linkedin]] of the form {"{"}name,
                 email, job_title, feedback, date {"}"}
               </p>
