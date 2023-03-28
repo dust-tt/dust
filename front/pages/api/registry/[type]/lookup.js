@@ -1,6 +1,8 @@
 import { User, DataSource, Key } from "@app/lib/models";
 import { Op } from "sequelize";
 
+const { DUST_REGISTRY_SECRET } = process.env;
+
 // Notes about the registry lookup service:
 //
 // For DataSources, we could proxy and modify on the fly the config before going to core and replace
@@ -17,8 +19,6 @@ import { Op } from "sequelize";
 //
 // Note: there is also a problem with private DataSources on public apps, the use of the registry
 // here will prevent leaking them.
-
-const { DUST_API, DUST_REGISTRY_SECRET } = process.env;
 
 export default async function handler(req, res) {
   if (!req.headers.authorization) {
@@ -117,23 +117,12 @@ export default async function handler(req, res) {
           return;
 
         default:
-          res.status(405).json({
-            error: {
-              type: "invalid_type_error",
-              message:
-                "The type you're attempting to lookup is invalid, possible values are `data_sources`",
-            },
-          });
+          res.status(405).end();
           return;
       }
       break;
     default:
-      res.status(405).json({
-        error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
+      res.status(405).end();
       break;
   }
 }
