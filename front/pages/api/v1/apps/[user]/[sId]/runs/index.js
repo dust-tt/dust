@@ -190,6 +190,7 @@ export default async function handler(req, res) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "X-Dust-User-Id": appUser.id,
             },
             body: JSON.stringify({
               run_type: "deploy",
@@ -236,6 +237,7 @@ export default async function handler(req, res) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-Dust-User-Id": appUser.id,
           },
           body: JSON.stringify({
             run_type: "deploy",

@@ -28,29 +28,15 @@ export default function DataSource({
   onBlockDown,
   onBlockNew,
 }) {
-  const handleDataSourceChange = (dataSource) => {
+  const handleDataSourcesChange = (dataSources) => {
     let b = shallowBlockClone(block);
-    b.spec.project_id = dataSource.project_id;
-    b.spec.data_source_id = dataSource.data_source_id;
+    b.config.data_sources = dataSources;
     onBlockUpdate(b);
-  };
-
-  const handleTemperatureChange = (temperature) => {
-    let b = shallowBlockClone(block);
-    b.spec.temperature = temperature;
-    onBlockUpdate(b);
-  };
-
-  const handleAddStop = (stop) => {
-    let b = shallowBlockClone(block);
-    b.spec.stop.push(stop);
-    onBlockUpdate(b);
-    setNewStop("");
   };
 
   const handleTopKChange = (top_k) => {
     let b = shallowBlockClone(block);
-    b.spec.top_k = top_k;
+    b.config.top_k = top_k;
     onBlockUpdate(b);
   };
 
@@ -87,12 +73,9 @@ export default function DataSource({
             <DataSourcePicker
               currentUser={user}
               readOnly={readOnly}
-              dataSource={{
-                project_id: block.spec.project_id || "",
-                data_source_id: block.spec.data_source_id || "",
-              }}
-              onDataSourceUpdate={(dataSource) => {
-                handleDataSourceChange(dataSource);
+              currentDataSources={block.config.data_sources || []}
+              onDataSourcesUpdate={(dataSources) => {
+                handleDataSourcesChange(dataSources);
               }}
             />
           </div>
@@ -108,7 +91,7 @@ export default function DataSource({
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
-                value={block.spec.top_k}
+                value={block.config.top_k}
                 onChange={(e) => handleTopKChange(e.target.value)}
               />
             </div>

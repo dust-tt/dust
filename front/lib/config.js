@@ -33,8 +33,11 @@ export function extractConfig(spec) {
         };
         break;
       case "data_source":
+        let top_k = parseInt(spec[i].config ? spec[i].config.top_k : "");
         c[spec[i].name] = {
           type: "data_source",
+          data_sources: spec[i].config ? spec[i].config.data_sources : [],
+          top_k: isNaN(top_k) ? 8 : top_k,
           use_cache: spec[i].config
             ? spec[i].config.use_cache
               ? spec[i].config.use_cache

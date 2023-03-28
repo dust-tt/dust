@@ -83,6 +83,7 @@ export default async function handler(req, res) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "X-Dust-User-Id": user.id,
               },
               body: JSON.stringify({
                 run_type: "execute",
@@ -156,6 +157,7 @@ export default async function handler(req, res) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "X-Dust-User-Id": user.id,
               },
               body: JSON.stringify({
                 run_type: "local",

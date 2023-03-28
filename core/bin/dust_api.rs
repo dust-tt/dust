@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use axum::{
     extract,
+    http::header::HeaderMap,
     response::{
         sse::{Event, KeepAlive, Sse},
         Json,
@@ -694,13 +695,26 @@ async fn run_helper(
 async fn runs_create(
     extract::Path(project_id): extract::Path<i64>,
     extract::Json(payload): extract::Json<RunsCreatePayload>,
+    headers: HeaderMap,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let mut credentials = payload.credentials.clone();
+
+    match headers.get("X-Dust-User-Id") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match run_helper(project_id, payload.clone(), state.clone()).await {
         Ok(app) => {
             // The run is empty for now, we can clone it for the response.
             let run = app.run_ref().unwrap().clone();
-            state.run_app(app, payload.credentials.clone());
+            state.run_app(app, credentials);
             (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -724,8 +738,21 @@ async fn runs_create(
 async fn runs_create_stream(
     extract::Path(project_id): extract::Path<i64>,
     extract::Json(payload): extract::Json<RunsCreatePayload>,
+    headers: HeaderMap,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let mut credentials = payload.credentials.clone();
+
+    match headers.get("X-Dust-User-Id") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     // create unbounded channel to pass as stream to Sse::new
     let (tx, mut rx) = unbounded_channel::<Value>();
 
@@ -733,7 +760,6 @@ async fn runs_create_stream(
         Ok(mut app) => {
             // The run is empty for now, we can clone it for the response.
             // let run = app.run_ref().unwrap().clone();
-            let credentials = payload.credentials.clone();
             let store = state.store.clone();
 
             // Start a task that will run the app in the background.

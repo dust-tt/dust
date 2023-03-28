@@ -186,12 +186,16 @@ export function addBlock(spec, idx, blockType) {
         name: getNextName(spec, "DATASOURCE"),
         indent: 0,
         spec: {
-          project_id: "",
-          data_source_id: "",
-          top_k: 8,
           query: "",
         },
         config: {
+          data_sources: [
+            {
+              username: "",
+              data_source_id: "",
+            },
+          ],
+          top_k: 8,
           use_cache: false,
         },
       });
@@ -382,9 +386,6 @@ export function dumpSpecification(spec, latestDatasets) {
       }
       case "data_source": {
         out += `data_source ${block.name} {\n`;
-        out += `  project_id: ${block.spec.project_id}\n`;
-        out += `  data_source_id: ${block.spec.data_source_id}\n`;
-        out += `  top_k: ${block.spec.top_k}\n`;
         out += `  query: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.query
         )}\n\`\`\`\n`;

@@ -1,4 +1,4 @@
-export const description = "An overview of Dust's core blocks."
+export const description = "An overview of Dust's core blocks.";
 
 # Core Blocks
 
@@ -358,22 +358,21 @@ for more details about how documents are chunked to enable semantic search.
     the [LLM block](/core-blocks#llm-block) documentation for more details on
     templating).
   </Property>
-  <Property name="top_k" type="integer">
-    The number of chunks to return. The resulting number of document objects may
-    be smaller if multiple chunks from the same document are among the `top_k`
-    retrieved chunks.
-  </Property>
 </Properties>
 
 ### Configuration
 
 <Properties>
-  <Property name="project_id" type="string">
-    The internal `project_id` associated with the data source. Dust's interface
-    presents a data source picker that lets you select your own or other users'
-    data sources without having to explicitly know the associated `project_id`.
+  <Property name="top_k" type="integer">
+    The number of chunks to return. The resulting number of document objects may
+    be smaller if multiple chunks from the same document are among the `top_k`
+    retrieved chunks.
   </Property>
-  <Property name="data_source_id" type="string">
-    The name of the data source to use in the `project_id` above.
+  <Property name="data_sources" type="[]{username, data_source_id}">
+    An array of objects representing the data sources to query. Note that the
+    Dust interface currently only supports adding one data source to a block,
+    but you can pass many by API. The objects must have the following
+    properties: `username`, the username of the user who owns the data source,
+    and, `data_source_id`, The name of the data source.
   </Property>
 </Properties>
