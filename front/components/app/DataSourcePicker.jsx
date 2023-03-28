@@ -3,22 +3,29 @@ import { classNames } from "@app/lib/utils";
 import { useEffect } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { getDataSources, lookUpDataSource } from "@app/lib/data_source";
 import { useState } from "react";
-import { Button } from "@app/components/Button";
-import TextareaAutosize from "react-textarea-autosize";
 import { useDataSources } from "@app/lib/swr";
 
 export default function DataSourcePicker({
   currentUser,
-  dataSource, // { project_id, data_source_id }
+  currentDataSources, // [{ username, data_source_id }]
   readOnly,
-  onDataSourceUpdate,
+  onDataSourcesUpdate,
 }) {
-  let [user, setUser] = useState(currentUser);
-  let [name, setName] = useState(null);
+  let hasDataSource =
+    currentDataSources.length > 0 &&
+    currentDataSources[0].username &&
+    currentDataSources[0].username.length > 0 &&
+    currentDataSources[0].data_source_id &&
+    currentDataSources[0].data_source_id.length > 0;
+
+  let [user, setUser] = useState(
+    hasDataSource ? currentDataSources[0].username : currentUser
+  );
+  let [name, setName] = useState(
+    hasDataSource ? currentDataSources[0].data_source_id : null
+  );
   let [userEditing, setUserEditing] = useState(false);
-  let [isLoading, setIsLoading] = useState(true);
 
   let { dataSources, isDataSourcesLoading, isDataSourcesError } = readOnly
     ? {
@@ -29,36 +36,23 @@ export default function DataSourcePicker({
     : useDataSources(user);
 
   useEffect(() => {
-    if (
-      dataSource.project_id &&
-      dataSource.project_id.length > 0 &&
-      dataSource.data_source_id &&
-      dataSource.data_source_id.length > 0
-    ) {
-      (async () => {
-        // retrieve user for project_id
-        let ds = await lookUpDataSource(
-          dataSource.project_id,
-          dataSource.data_source_id
-        );
-        setIsLoading(false);
-        if (ds) {
-          setUser(ds.user.username);
-          setName(ds.dataSource.name);
-        } else {
-          setName(null);
-        }
-      })();
-    } else {
-      setIsLoading(false);
-    }
-  }, [dataSource]);
-
-  useEffect(() => {
     if (!readOnly && user && user.length > 0) {
       setName(null);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (
+      currentDataSources.length > 0 &&
+      currentDataSources[0].username &&
+      currentDataSources[0].username.length > 0 &&
+      currentDataSources[0].data_source_id &&
+      currentDataSources[0].data_source_id.length > 0
+    ) {
+      setUser(currentDataSources[0].username);
+      setName(currentDataSources[0].data_source_id);
+    }
+  }, [currentDataSources]);
 
   return (
     <div className="flex items-center">
@@ -116,7 +110,7 @@ export default function DataSourcePicker({
       </div>
 
       <div className="flex items-center">
-        {readOnly || isLoading ? (
+        {readOnly ? (
           <Link href={`/${user}/ds/${name}`}>
             <div className="text-sm font-bold text-violet-600">{name}</div>
           </Link>
@@ -175,10 +169,12 @@ export default function DataSourcePicker({
                       <Menu.Item
                         key={ds.id}
                         onClick={() =>
-                          onDataSourceUpdate({
-                            project_id: ds.dustAPIProjectId,
-                            data_source_id: ds.name,
-                          })
+                          onDataSourcesUpdate([
+                            {
+                              username: user,
+                              data_source_id: ds.name,
+                            },
+                          ])
                         }
                       >
                         {({ active }) => (
