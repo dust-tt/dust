@@ -1,5 +1,5 @@
 export const description =
-  'On this page, we’ll dive into the Documents endpoints you can use to manage data sources programmatically.'
+  "On this page, we’ll dive into the Documents endpoints you can use to manage data sources programmatically.";
 
 # Documents
 
@@ -53,13 +53,15 @@ The Document model represents a [data source](/data-sources-overview) document.
     Epoch in ms at which the document was inserted.
   </Property>
   <Property name="timestamp" type="integer">
-    User specified timestamp (epoch in ms) for the document (for future
-    purposes, such as timestamp-based filtering of searches). If not specified,
-    defaults to the value of _created_.
+    User specified timestamp (epoch in ms) for the document. Can be used to
+    filter documents when querying the data source based on their timestamp. If
+    not specified, defaults to the value of _created_.
   </Property>
   <Property name="tags" type="[]string">
-    User specified list of string tags (for future purposes, such as tag-based
-    serach filtering). If not specified, defaults to the empty list.
+    User specified list of string tags. Can be used to filter the results by
+    tags when querying the data source. See the
+    [`data_source`](core-blocks#data-source-block) block for more details. If
+    not specified, defaults to the empty list.{" "}
   </Property>
   <Property name="text_size" type="integer">
     The size in bytes of the document's text.

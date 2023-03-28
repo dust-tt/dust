@@ -375,4 +375,24 @@ for more details about how documents are chunked to enable semantic search.
     properties: `username`, the username of the user who owns the data source,
     and, `data_source_id`, The name of the data source.
   </Property>
+  <Property
+    name="filter"
+    type="optional {tags: {in, not}, timestamp: {gt, lt}}"
+  >
+    An object representing the filters to apply to the query. The `tags` field
+    is an object with properties `in` and `not`, both arrays of strings (the
+    tags to filter on). The documents' tags must match at least one of the tags
+    specified in `in` and none of the ones specified in `not`. The `timestamp`
+    field is an object with properties `lg` and `gt`. The query will only return
+    chunks from documents whose timestamp is greater than `gt` and lower than
+    `lt`. The timestamp values are represented as epoch in ms. The filter
+    configuration is optional. And each of the fields in `tags` or `timestamp`
+    are also optional. Example filter:
+    ```
+    {
+      "tags": {"in": ["tag1", "tag2"], "not": null},
+      "timestamp": {"gt": 1675215950729, "lt": 1680012404017}
+    }
+    ```
+  </Property>
 </Properties>

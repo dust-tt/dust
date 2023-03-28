@@ -1,4 +1,4 @@
-export const description = "An overview of Dust's data sources."
+export const description = "An overview of Dust's data sources.";
 
 # Data Sources
 
@@ -10,9 +10,9 @@ store of documents on which semantic searches can be performed. Documents can be
 uploaded manually from the Dust interface.
 
 Once uploaded, documents are automatically chunked, embedded and indexed. Searches can be performed
-against the documents of a data source using the [`data_source`
-block](core-blocks#data-source-block) which, given a query, automatically embeds it and performs a
-vector search operation to retrieve the most semantically relevant documents and associated chunks.
+against the documents of a data source using the [`data_source`](core-blocks#data-source-block)
+block which, given a query, automatically embeds it and performs a vector search operation to
+retrieve the most semantically relevant documents and associated chunks.
 
 <Note>
   Semantic search, generally based on [embedding
@@ -111,9 +111,16 @@ The following parameters are accepted when inserting a document:
   <Property name="text" type="string">
     The text content of the document.
   </Property>
+  <Property name="timestamp" type="optional integer">
+    User specified timestamp (epoch in ms) for the document. Can be used to
+    filter documents when querying the data source based on their timestamp. If not specified,
+    defaults to the time at insertion.
+  </Property>
   <Property name="tags" type="optional []string">
-    User specified list of string tags (for future purposes, such as tag-based
-    serach filtering). If not specified, defaults to the empty list.
+    User specified list of string tags. Can be used to filter the results by
+    tags when querying the data source. See the
+    [`data_source`](core-blocks#data-source-block) block for more details. If
+    not specified, defaults to the empty list.
   </Property>
 </Properties>
 
@@ -135,7 +142,7 @@ See the [Documents](/documents) API reference to learn how to delete documents b
 
 ## Querying a Data Source
 
-Querying a data source is done using the [`data_source` block](core-blocks#data-source-block). The
+Querying a data source is done using the [`data_source`](core-blocks#data-source-block) block. The
 `data_source` block returns a list of [Document](/data-sources#the-document-model) objects. Each
 document may include one or more [Chunks](/data-sources#the-chunk-model) (the chunks returned by
 the semantic search are aggregated per document).

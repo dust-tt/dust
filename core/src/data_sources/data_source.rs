@@ -18,6 +18,39 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+/// A filter to apply to the search query based on `tags`. All documents returned must have at list
+/// one tag in `is_in` and none of the tags in `is_not`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TagsFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
+/// A filter to apply to the search query based on `timestamp`. All documents returned must have a
+/// timestamp greater than `gt` and less than `lt`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TimestampFilter {
+    pub gt: Option<u64>,
+    pub lt: Option<u64>,
+}
+
+/// Filter argument to perform semantic search. It is used to filter the search results based on the
+/// presence of tags or time spans for timestamps.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchFilter {
+    pub tags: Option<TagsFilter>,
+    pub timestamp: Option<TimestampFilter>,
+}
+
+impl SearchFilter {
+    pub fn from_json_str(json: &str) -> Result<Self> {
+        let filter: SearchFilter = serde_json::from_str(json)?;
+        Ok(filter)
+    }
+}
+
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
 /// leverage tags filtering there). It is used as unique ID for the chunk in vector search db.
@@ -227,7 +260,7 @@ impl DataSource {
             .create_field_index(
                 self.qdrant_collection(),
                 "timestamp",
-                qdrant::FieldType::Keyword,
+                qdrant::FieldType::Integer,
                 None,
                 None,
             )
@@ -463,6 +496,7 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         query: &str,
         top_k: usize,
+        filter: Option<SearchFilter>,
     ) -> Result<Vec<Document>> {
         let store = store.clone();
 
@@ -474,12 +508,97 @@ impl DataSource {
         );
         let v = r.execute(credentials).await?;
 
+        // Construct the filters for the search query if specified.
+        let f = match filter {
+            Some(f) => {
+                let mut must_filter: Vec<qdrant::Condition> = vec![];
+                let mut must_not_filter: Vec<qdrant::Condition> = vec![];
+
+                match f.tags {
+                    Some(tags) => {
+                        match tags.is_in.clone() {
+                            Some(v) => must_filter.push(
+                                qdrant::FieldCondition {
+                                    key: "tags".to_string(),
+                                    r#match: Some(qdrant::Match {
+                                        match_value: Some(qdrant::r#match::MatchValue::Keywords(
+                                            qdrant::RepeatedStrings { strings: v },
+                                        )),
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            None => (),
+                        };
+                        match tags.is_not.clone() {
+                            Some(v) => must_not_filter.push(
+                                qdrant::FieldCondition {
+                                    key: "tags".to_string(),
+                                    r#match: Some(qdrant::Match {
+                                        match_value: Some(qdrant::r#match::MatchValue::Keywords(
+                                            qdrant::RepeatedStrings { strings: v },
+                                        )),
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            None => (),
+                        };
+                    }
+                    None => (),
+                };
+
+                match f.timestamp {
+                    Some(timestamp) => {
+                        match timestamp.gt.clone() {
+                            Some(v) => must_filter.push(
+                                qdrant::FieldCondition {
+                                    key: "timestamp".to_string(),
+                                    range: Some(qdrant::Range {
+                                        gte: Some(v as f64),
+                                        ..Default::default()
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            None => (),
+                        };
+                        match timestamp.lt.clone() {
+                            Some(v) => must_filter.push(
+                                qdrant::FieldCondition {
+                                    key: "timestamp".to_string(),
+                                    range: Some(qdrant::Range {
+                                        lte: Some(v as f64),
+                                        ..Default::default()
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            None => (),
+                        };
+                    }
+                    None => (),
+                };
+
+                Some(qdrant::Filter {
+                    must: must_filter,
+                    must_not: must_not_filter,
+                    ..Default::default()
+                })
+            }
+            None => None,
+        };
+
         let qdrant_client = self.qdrant_client().await?;
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
                 vector: v.vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
-                filter: None,
+                filter: f,
                 limit: top_k as u64,
                 with_payload: Some(true.into()),
                 params: None,
@@ -785,7 +904,13 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
     };
 
     let r = ds
-        .search(Credentials::new(), Box::new(store.clone()), query, top_k)
+        .search(
+            Credentials::new(),
+            Box::new(store.clone()),
+            query,
+            top_k,
+            None,
+        )
         .await?;
 
     utils::info(&format!(

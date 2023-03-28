@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
-use crate::data_sources::data_source::Document;
+use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -68,12 +68,8 @@ impl DataSource {
         username: Option<String>,
         data_source_id: String,
         top_k: usize,
+        filter: Option<SearchFilter>,
     ) -> Result<Vec<Document>> {
-        // println!("USERNAME: {:?}", username);
-        // println!("DATA_SOURCE_ID: {:?}", data_source_id);
-        // println!("TOP_K: {:?}", top_k);
-        // println!("CREDENTIALS: {:?}", env.credentials);
-
         let data_source_project = match username {
             Some(username) => {
                 let dust_user_id = match env.credentials.get("DUST_USER_ID") {
@@ -102,15 +98,9 @@ impl DataSource {
                 );
                 let parsed_url = Url::parse(url.as_str())?;
 
-                // println!(
-                //     "Running DataSource retrieval {:?} / {} ({} {})",
-                //     username,
-                //     data_source_id,
-                //     registry_secret.as_str(),
-                //     url.as_str()
-                // );
-
-                // GET DUST_FRONT_API/api/registry/data_sources/lookup?data_source_id=&username=
+                // GET $DUST_FRONT_API/api/registry/data_sources/lookup
+                //       ?data_source_id=
+                //       &username=
                 let mut req = Request::builder().method(Method::GET).uri(url.as_str());
 
                 {
@@ -161,9 +151,6 @@ impl DataSource {
 
                 let response_body = String::from_utf8_lossy(&b).into_owned();
 
-                // println!("response_body: {}", response_body);
-                // parse response_body to JSON
-
                 let body = match serde_json::from_str::<serde_json::Value>(&response_body) {
                     Ok(body) => body,
                     Err(_) => Err(anyhow!("Failed to parse registry response"))?,
@@ -192,7 +179,13 @@ impl DataSource {
         let q = self.query(env)?;
 
         let documents = ds
-            .search(env.credentials.clone(), env.store.clone(), &q, top_k)
+            .search(
+                env.credentials.clone(),
+                env.store.clone(),
+                &q,
+                top_k,
+                filter,
+            )
             .await?;
 
         Ok(documents)
@@ -262,10 +255,24 @@ impl Block for DataSource {
             _ => 10,
         };
 
-        // For each data_sources, retrieve documents.
+        let filter = match config {
+            Some(v) => match v.get("filter") {
+                Some(v) => Some(SearchFilter::from_json_str(v.to_string().as_str())?),
+                _ => None,
+            },
+            _ => None,
+        };
+
+        // For each data_sources, retrieve documents concurrently.
         let mut futures = Vec::new();
         for (u, ds) in data_sources {
-            futures.push(self.search_data_source(env, u.clone(), ds.clone(), top_k));
+            futures.push(self.search_data_source(
+                env,
+                u.clone(),
+                ds.clone(),
+                top_k,
+                filter.clone(),
+            ));
         }
 
         let results = futures::future::try_join_all(futures).await?;

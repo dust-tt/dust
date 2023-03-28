@@ -28,6 +28,92 @@ export default function DataSource({
   onBlockDown,
   onBlockNew,
 }) {
+  const [newTagsIn, setNewTagsIn] = useState("");
+  const [newTagsNot, setNewTagsNot] = useState("");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  const handleAddTagsIn = (tag) => {
+    let b = shallowBlockClone(block);
+    if (!b.config.filter) {
+      b.config.filter = {};
+    }
+    if (!b.config.filter.tags) {
+      b.config.filter.tags = {
+        in: null,
+        not: null,
+      };
+    }
+    if (!b.config.filter.tags.in) {
+      b.config.filter.tags.in = [];
+    }
+    b.config.filter.tags.in.push(tag);
+    onBlockUpdate(b);
+    setNewTagsIn("");
+  };
+
+  const handleRemoveTagsIn = () => {
+    let b = shallowBlockClone(block);
+    if (!b.config.filter) {
+      b.config.filter = {};
+    }
+    if (!b.config.filter.tags) {
+      b.config.filter.tags = {
+        in: null,
+        not: null,
+      };
+    }
+    if (!b.config.filter.tags.in) {
+      b.config.filter.tags.in = [];
+    }
+    b.config.filter.tags.in.splice(b.config.filter.tags.in.length - 1, 1);
+    if (b.config.filter.tags.in.length === 0) {
+      b.config.filter.tags.in = null;
+    }
+    onBlockUpdate(b);
+    setNewTagsIn("");
+  };
+
+  const handleAddTagsNot = (tag) => {
+    let b = shallowBlockClone(block);
+    if (!b.config.filter) {
+      b.config.filter = {};
+    }
+    if (!b.config.filter.tags) {
+      b.config.filter.tags = {
+        in: null,
+        not: null,
+      };
+    }
+    if (!b.config.filter.tags.not) {
+      b.config.filter.tags.not = [];
+    }
+    b.config.filter.tags.not.push(tag);
+    onBlockUpdate(b);
+    setNewTagsNot("");
+  };
+
+  const handleRemoveTagsNot = () => {
+    let b = shallowBlockClone(block);
+    if (!b.config.filter) {
+      b.config.filter = {};
+    }
+    if (!b.config.filter.tags) {
+      b.config.filter.tags = {
+        in: null,
+        not: null,
+      };
+    }
+    if (!b.config.filter.tags.not) {
+      b.config.filter.tags.not = [];
+    }
+    b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
+    if (b.config.filter.tags.not.length === 0) {
+      b.config.filter.tags.not = null;
+    }
+    onBlockUpdate(b);
+    setNewTagsNot("");
+  };
+
   const handleDataSourcesChange = (dataSources) => {
     let b = shallowBlockClone(block);
     b.config.data_sources = dataSources;
@@ -45,9 +131,6 @@ export default function DataSource({
     b.spec.query = query;
     onBlockUpdate(b);
   };
-
-  const [advancedExpanded, setAdvancedExpanded] = useState(false);
-  const [newStop, setNewStop] = useState("");
 
   return (
     <Block
@@ -96,6 +179,155 @@ export default function DataSource({
               />
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
+          {filtersExpanded ? (
+            <div
+              onClick={() => setFiltersExpanded(false)}
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
+            >
+              <span>
+                <ChevronDownIcon className="mt-0.5 mr-1 h-4 w-4" />
+              </span>
+              filters
+            </div>
+          ) : (
+            <div
+              onClick={() => setFiltersExpanded(true)}
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
+            >
+              <span>
+                <ChevronRightIcon className="mt-0.5 mr-1 h-4 w-4" />
+              </span>
+              filters
+            </div>
+          )}
+          {filtersExpanded ? (
+            <>
+              <div className="flex flex-col xl:flex-row xl:space-x-2">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                  <div className="flex flex-initial">tags.in:</div>
+                  <div className="flex w-full font-normal">
+                    <div
+                      className={classNames(
+                        "flex flex-row items-center text-sm font-normal"
+                      )}
+                    >
+                      <div className="flex flex-row items-center space-x-1">
+                        {(block.config.filter?.tags?.in || []).map((tag, i) => (
+                          <div
+                            key={i}
+                            className="flex rounded-md bg-slate-100 px-1"
+                          >
+                            {tag}
+                          </div>
+                        ))}
+                      </div>
+                      {readOnly ? null : (
+                        <input
+                          type="text"
+                          placeholder="add"
+                          value={newTagsIn}
+                          onChange={(e) => setNewTagsIn(e.target.value)}
+                          className={classNames(
+                            "ml-1 flex w-20 flex-1 rounded-md px-1 py-1 text-sm font-normal ring-0",
+                            "placeholder-gray-300",
+                            readOnly
+                              ? "border-white ring-0 focus:border-white focus:ring-0"
+                              : "border-white focus:border-gray-300 focus:ring-0"
+                          )}
+                          readOnly={readOnly}
+                          onBlur={(e) => {
+                            if (e.target.value.trim().length > 0) {
+                              handleAddTagsIn(e.target.value);
+                              e.preventDefault();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (
+                              (e.key === "Tab" || e.key == "Enter") &&
+                              e.target.value.length > 0
+                            ) {
+                              handleAddTagsIn(e.target.value);
+                              e.preventDefault();
+                            }
+                            if (
+                              e.key === "Backspace" &&
+                              newTagsIn.length === 0
+                            ) {
+                              handleRemoveTagsIn();
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                  <div className="flex flex-initial">tags.not:</div>
+                  <div className="flex w-full font-normal">
+                    <div
+                      className={classNames(
+                        "flex flex-row items-center text-sm font-normal"
+                      )}
+                    >
+                      <div className="flex flex-row items-center space-x-1">
+                        {(block.config.filter?.tags?.not || []).map(
+                          (tag, i) => (
+                            <div
+                              key={i}
+                              className="flex rounded-md bg-slate-100 px-1"
+                            >
+                              {tag}
+                            </div>
+                          )
+                        )}
+                      </div>
+                      {readOnly ? null : (
+                        <input
+                          type="text"
+                          placeholder="add"
+                          value={newTagsNot}
+                          onChange={(e) => setNewTagsNot(e.target.value)}
+                          className={classNames(
+                            "ml-1 flex w-20 flex-1 rounded-md px-1 py-1 text-sm font-normal ring-0",
+                            "placeholder-gray-300",
+                            readOnly
+                              ? "border-white ring-0 focus:border-white focus:ring-0"
+                              : "border-white focus:border-gray-300 focus:ring-0"
+                          )}
+                          readOnly={readOnly}
+                          onBlur={(e) => {
+                            if (e.target.value.trim().length > 0) {
+                              handleAddTagsNot(e.target.value);
+                              e.preventDefault();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (
+                              (e.key === "Tab" || e.key == "Enter") &&
+                              e.target.value.length > 0
+                            ) {
+                              handleAddTagsNot(e.target.value);
+                              e.preventDefault();
+                            }
+                            if (
+                              e.key === "Backspace" &&
+                              newTagsNot.length === 0
+                            ) {
+                              handleRemoveTagsNot();
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
