@@ -38,6 +38,7 @@ export function extractConfig(spec) {
           type: "data_source",
           data_sources: spec[i].config ? spec[i].config.data_sources : [],
           top_k: isNaN(top_k) ? 8 : top_k,
+          filter: spec[i].config ? spec[i].config.filter : null,
           use_cache: spec[i].config
             ? spec[i].config.use_cache
               ? spec[i].config.use_cache
