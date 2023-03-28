@@ -189,13 +189,9 @@ export function addBlock(spec, idx, blockType) {
           query: "",
         },
         config: {
-          data_sources: [
-            {
-              username: "",
-              data_source_id: "",
-            },
-          ],
+          data_sources: null,
           top_k: 8,
+          filter: { tags: null, timestamp: null },
           use_cache: false,
         },
       });
