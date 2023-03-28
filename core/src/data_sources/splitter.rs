@@ -1,4 +1,7 @@
-use crate::providers::provider::{provider, ProviderID};
+use crate::providers::{provider::{provider, ProviderID}};
+use crate::providers::embedder::{Embedder};
+use futures::executor::block_on;
+
 use crate::run::Credentials;
 use crate::utils::ParseError;
 use anyhow::Result;
@@ -79,7 +82,6 @@ impl Splitter for BaseV0Splitter {
         let re = Regex::new(r"\s+").unwrap();
         let clean = re.replace_all(text, " ");
         let clean = clean.trim();
-
         // Get the embedder and initialize.
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
@@ -103,13 +105,86 @@ impl Splitter for BaseV0Splitter {
         if chunk.len() > 0 {
             chunks.push(chunk);
         }
+        let mut decoded = Vec::new();
+        let mut remaining : Vec<usize> = Vec::new();
 
-        // Decode the chunks in parallel.
-        let mut futures = Vec::new();
-        for chunk in chunks {
-            futures.push(embedder.decode(chunk));
+        fn decode_chunk_with_remainder(embedder: &Box<dyn Embedder + Sync + Send>, chunk: Vec<usize>) -> Result<(String, Vec<usize>)> {
+            let mut result : String = String::new();
+            let mut remaining : Vec<usize> = Vec::new();
+
+            let mut end = chunk.len();
+            
+            while end > 0 {
+                let decoded_future = embedder.decode(chunk.clone()[0..end].to_vec());
+                let decoded_result = block_on(decoded_future);
+                if decoded_result.is_err() {
+                    // Do we need a warning log here?
+                    end -= 1;
+                    continue
+                } else {
+                    result = decoded_result.unwrap();
+                    remaining = chunk.clone()[end..].to_vec();
+                    break
+                }
+                
+            }
+
+            Ok((result, remaining))
         }
 
-        futures::future::try_join_all(futures).await
+        for chunk in chunks {
+            
+            let mut chunk_with_remaining: Vec<usize> = Vec::new();
+            chunk_with_remaining.append(&mut remaining);
+            chunk_with_remaining.append(&mut chunk.clone());
+
+            let (chunk_decoded, chunk_remainder) = decode_chunk_with_remainder(&embedder, chunk_with_remaining)?;
+            if chunk_decoded.len() > 0 {
+                decoded.push(chunk_decoded);
+            }
+            if chunk_remainder.len() > 0 {
+                // If you have failure on multiple chunks in a row, this won't work :/
+                remaining = chunk_remainder;
+            }
+        }
+        if remaining.len() > 0 {
+            let (chunk_decoded, _chunk_remainder) = decode_chunk_with_remainder(&embedder, remaining)?;
+            if chunk_decoded.len() > 0 {
+                decoded.push(chunk_decoded);
+            }
+        }
+
+        Ok(decoded)
+    }
+}
+
+mod tests {
+    use rstest::rstest;
+    use super::*;
+    
+
+    
+    #[rstest]
+    #[case("◦  ◦", "◦ ◦")]
+    #[case("a random document string with no double space", "a random document string with no double space")]
+    #[case("a  random  document  string  WITH  double  space", "a random document string WITH double space")]
+    #[tokio::test]
+    async fn test_splitter(#[case] input: String, #[case] expected: String) -> Result<()> {
+        
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let max_chunk_size = 3;
+
+            let credentials = Credentials::new();
+
+            
+            
+            let text = input;
+            let splitted = splitter(SplitterID::BaseV0)
+                .split(credentials, provider_id, model_id, max_chunk_size, &text)
+                .await?;
+
+            assert_eq!(splitted.join(""), expected);
+        Ok(())
     }
 }
