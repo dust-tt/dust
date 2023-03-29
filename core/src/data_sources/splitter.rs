@@ -1,11 +1,13 @@
+use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
+
 use crate::run::Credentials;
 use crate::utils::ParseError;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{cmp, str::FromStr};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -59,6 +61,38 @@ impl BaseV0Splitter {
     pub fn new() -> Self {
         BaseV0Splitter {}
     }
+
+    async fn decode_chunk_with_remainder(
+        &self,
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        chunk: &[usize],
+    ) -> Result<(Option<String>, Option<Vec<usize>>)> {
+        // The maximum number of tokens to slide the window by when decoding fails.
+        const MAX_ERROR_SLIDE: usize = 4;
+
+        let mut end = chunk.len();
+
+        while end > 0 {
+            if chunk.len() - end > MAX_ERROR_SLIDE {
+                return Err(anyhow!("Could not tokenize the provided document"));
+            }
+            match embedder.decode(chunk[0..end].to_vec()).await {
+                Ok(decoded_string) => {
+                    let mut remaining: Option<Vec<usize>> = None;
+                    if end != chunk.len() {
+                        remaining = Some(chunk[end..].to_vec());
+                    }
+                    return Ok((Some(decoded_string), remaining));
+                }
+                Err(_) => {
+                    end -= 1;
+                    continue;
+                }
+            }
+        }
+
+        return Err(anyhow!("Could not tokenize the provided document."));
+    }
 }
 
 #[async_trait]
@@ -79,37 +113,97 @@ impl Splitter for BaseV0Splitter {
         let re = Regex::new(r"\s+").unwrap();
         let clean = re.replace_all(text, " ");
         let clean = clean.trim();
-
         // Get the embedder and initialize.
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
 
         // Encode the clean text.
-        let encoded = embedder.encode(clean).await?;
+        let mut encoded = embedder.encode(clean).await?;
 
-        // Split the encoded text into chunks of size max_chunk_size.
-        let mut chunks = Vec::new();
-        let mut chunk = Vec::new();
-        let mut chunk_size = 0;
-        for token in encoded {
-            chunk.push(token);
-            chunk_size += 1;
-            if chunk_size >= max_chunk_size {
-                chunks.push(chunk);
-                chunk = Vec::new();
-                chunk_size = 0;
+        let mut decoded = vec![];
+
+        while encoded.len() > 0 {
+            let mut current_chunk_size = cmp::min(max_chunk_size, encoded.len());
+            let tokenized_chunk = &encoded[0..current_chunk_size];
+
+            match self
+                .decode_chunk_with_remainder(&embedder, tokenized_chunk)
+                .await
+            {
+                Ok((Some(chunk), Some(remainder))) => {
+                    current_chunk_size = current_chunk_size - remainder.len();
+                    decoded.push(chunk);
+                }
+                Ok((Some(chunk), None)) => {
+                    decoded.push(chunk);
+                }
+                Ok((None, Some(_remainder))) => {
+                    return Err(anyhow!("Could not tokenize the provided document"));
+                }
+                Ok((None, None)) => {
+                    return Err(anyhow!("Could not tokenize the provided document"));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
-        }
-        if chunk.len() > 0 {
-            chunks.push(chunk);
-        }
-
-        // Decode the chunks in parallel.
-        let mut futures = Vec::new();
-        for chunk in chunks {
-            futures.push(embedder.decode(chunk));
+            if current_chunk_size <= 0 {
+                return Err(anyhow!("Could not tokenize the provided document"));
+            }
+            encoded = encoded[current_chunk_size..].to_vec();
         }
 
-        futures::future::try_join_all(futures).await
+        Ok(decoded)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn test_splitter(input: &String, expected: &String, max_chunk_size: usize) -> Result<()> {
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let text = input;
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, max_chunk_size, &text)
+            .await?;
+
+        assert_eq!(&splitted.join(""), expected);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_splitter_one_utf8_char_maps_to_multiple_tokens() {
+        let max_chunk_size: usize = 4;
+
+        // A single '🔥' emoji gets tokenized as : [9468, 242, 98].
+        // So the string '🔥🔥' gets tokenized as : [9468, 242, 98, 9468, 242, 98]
+        // With max_chunk_size=4, we end up with two chunks : [9468, 242, 98, 9468] and [242, 98].
+        // Without proper handling, the decoding of the first chunk would fail because the token "9468" alone is incomplete.
+        // We test that the splitter() function is properly handling this case.
+        let input = "🔥🔥".to_string();
+
+        test_splitter(&input, &input, max_chunk_size).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_splitter_basic_text() {
+        let cases: [String; 2] = [
+            "a random document string with no double space".repeat(10),
+            "a  random  document string WITH double spaces".repeat(10),
+        ];
+        let re = Regex::new(r"\s+").unwrap();
+
+        let max_chunk_size = 8;
+
+        for case in cases {
+            let expected = re.replace_all(&case, " ");
+            test_splitter(&case, &expected.to_string(), max_chunk_size)
+                .await
+                .unwrap();
+        }
     }
 }
