@@ -39,12 +39,6 @@ impl FromStr for SplitterID {
 pub trait Splitter {
     fn id(&self) -> SplitterID;
 
-    async fn decode_chunk_with_remainder(
-        &self,
-        embedder: &Box<dyn Embedder + Sync + Send>,
-        chunk: &[usize],
-    ) -> Result<(Option<String>, Option<Vec<usize>>)>;   
-
     async fn split(
         &self,
         credentials: Credentials,
@@ -66,13 +60,6 @@ pub struct BaseV0Splitter {}
 impl BaseV0Splitter {
     pub fn new() -> Self {
         BaseV0Splitter {}
-    }
-}
-
-#[async_trait]
-impl Splitter for BaseV0Splitter {
-    fn id(&self) -> SplitterID {
-        SplitterID::BaseV0
     }
 
     async fn decode_chunk_with_remainder(
@@ -109,7 +96,13 @@ impl Splitter for BaseV0Splitter {
             "Could not tokenize the provided document."
         ));
     }
+}
 
+#[async_trait]
+impl Splitter for BaseV0Splitter {
+    fn id(&self) -> SplitterID {
+        SplitterID::BaseV0
+    }
 
     async fn split(
         &self,
@@ -137,22 +130,25 @@ impl Splitter for BaseV0Splitter {
             let tokenized_chunk = &encoded[0..current_chunk_size];
 
             match self.decode_chunk_with_remainder(&embedder, tokenized_chunk).await {
-                Ok((chunk_decoded, chunk_remainder)) => {
-                    if chunk_remainder.is_some() {
-                        let chunk_remainder_value = chunk_remainder.unwrap();
-                        if chunk_remainder_value.len() >= max_chunk_size {
-                            return Err(anyhow!("Could not tokenize the provided document.."));
-                        }
-                        current_chunk_size = current_chunk_size - chunk_remainder_value.len();
-                    }
-
-                    if chunk_decoded.is_some() {
-                        decoded.push(chunk_decoded.unwrap());
-                    }
-                }
+                Ok((Some(chunk), Some(remainder))) => {
+                    current_chunk_size = current_chunk_size - remainder.len();
+                    decoded.push(chunk);
+                },
+                Ok((Some(chunk), None)) => {
+                    decoded.push(chunk);
+                },
+                Ok((None, Some(_remainder))) => {
+                    return Err(anyhow!("Could not tokenize the provided document"));
+                },                
+                Ok((None, None)) => {
+                    return Err(anyhow!("Could not tokenize the provided document"));
+                },                                
                 Err(e) => {
                     return Err(e);
                 }
+            }
+            if current_chunk_size <= 0 {
+                return Err(anyhow!("Could not tokenize the provided document"));
             }
             encoded = encoded[current_chunk_size..].to_vec();
         }
