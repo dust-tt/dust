@@ -187,6 +187,7 @@ export function addBlock(spec, idx, blockType) {
         indent: 0,
         spec: {
           query: "",
+          full_text: false,
         },
         config: {
           data_sources: null,
@@ -385,6 +386,7 @@ export function dumpSpecification(spec, latestDatasets) {
         out += `  query: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.query
         )}\n\`\`\`\n`;
+        out += `  full_text: ${block.spec.full_text ? "true" : "false"}\n`;
         out += `}\n`;
         out += "\n";
         break;

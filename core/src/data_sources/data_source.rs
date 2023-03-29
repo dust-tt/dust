@@ -78,6 +78,7 @@ pub struct Document {
     pub text_size: u64,
     pub chunk_count: usize,
     pub chunks: Vec<Chunk>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
 }
 
@@ -503,6 +504,7 @@ impl DataSource {
         query: &str,
         top_k: usize,
         filter: Option<SearchFilter>,
+        full_text: bool,
     ) -> Result<Vec<Document>> {
         let store = store.clone();
 
@@ -667,6 +669,12 @@ impl DataSource {
             .map(|(document_id, _)| document_id.clone())
             .collect::<std::collections::HashSet<_>>();
 
+        // GCP retrieve raw text and document_id.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
         // Retrieve the documents from the store.
         let documents = futures::stream::iter(document_ids)
             .map(|document_id| {
@@ -674,14 +682,34 @@ impl DataSource {
                 let document_id = document_id.clone();
                 let data_source_id = self.data_source_id.clone();
                 let project = self.project.clone();
+                let bucket = bucket.clone();
+                let internal_id = self.internal_id.clone();
                 tokio::spawn(async move {
-                    let d: Document = match store
+                    let mut d: Document = match store
                         .load_data_source_document(&project, &data_source_id, &document_id)
                         .await?
                     {
                         Some(d) => d,
                         None => Err(anyhow!("Document not found"))?,
                     };
+
+                    if full_text {
+                        let mut hasher = blake3::Hasher::new();
+                        hasher.update(document_id.as_bytes());
+                        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+                        let bucket_path = format!(
+                            "{}/{}/{}",
+                            project.project_id(),
+                            internal_id,
+                            document_id_hash
+                        );
+                        let content_path = format!("{}/{}/content.txt", bucket_path, d.hash);
+                        let bytes = Object::download(&bucket, &content_path).await?;
+                        let text = String::from_utf8(bytes)?;
+
+                        d.text = Some(text.clone());
+                    }
                     Ok::<Document, anyhow::Error>(d)
                 })
             })
@@ -742,6 +770,7 @@ impl DataSource {
                 return Ok(None);
             }
         };
+
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
@@ -918,6 +947,7 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             query,
             top_k,
             None,
+            false,
         )
         .await?;
 

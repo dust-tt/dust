@@ -358,6 +358,12 @@ for more details about how documents are chunked to enable semantic search.
     the [LLM block](/core-blocks#llm-block) documentation for more details on
     templating).
   </Property>
+  <Property name="full_text" type="boolean">
+    Whether to return the full text of the retrieved documents (in addition to
+    each chunk text). If true, each returned
+    [Document](/documents#the-document-model) object will have a `text` property
+    containing the full text of the document.
+  </Property>
 </Properties>
 
 ### Configuration
