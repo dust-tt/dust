@@ -32,7 +32,7 @@ and finally performing vector search queries.
 Creating a data source consists in providing a name, description, an embedding model to use as well
 as `max_chunk_size`, the targeted number of tokens for each chunks. The embedding model must be
 provided at data source creation and cannot be changed in the future (since the model used when
-embedding documents chunks and serach quries must be consistent).
+embedding documents chunks and search quries must be consistent).
 
 ### Parameters
 
@@ -105,7 +105,7 @@ The following parameters are accepted when inserting a document:
     A unique ID for the document. The semantics of the insertion really is an
     upsertion. Inserting with a `document_id` that does not exist will create
     that document, it will otherwise replace the previous document version
-    (removing previous chunks from the vector serach db and replacing by the
+    (removing previous chunks from the vector search db and replacing by the
     updated document's).
   </Property>
   <Property name="text" type="string">
