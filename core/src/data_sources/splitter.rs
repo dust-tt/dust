@@ -39,6 +39,12 @@ impl FromStr for SplitterID {
 pub trait Splitter {
     fn id(&self) -> SplitterID;
 
+    async fn decode_chunk_with_remainder(
+        &self,
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        chunk: &[usize],
+    ) -> Result<(Option<String>, Option<Vec<usize>>)>;   
+
     async fn split(
         &self,
         credentials: Credentials,
@@ -69,6 +75,42 @@ impl Splitter for BaseV0Splitter {
         SplitterID::BaseV0
     }
 
+    async fn decode_chunk_with_remainder(
+        &self,
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        chunk: &[usize],
+    ) -> Result<(Option<String>, Option<Vec<usize>>)> {
+        
+        // The maximum number of tokens to slide the window by when decoding fails.
+        const MAX_ERROR_SLIDE: usize = 4;
+
+        let mut end = chunk.len();
+
+        while end > 0 {
+            if chunk.len() - end > MAX_ERROR_SLIDE {
+                return Err(anyhow!("Could not tokenize the provided document"));
+            }
+            match embedder.decode(chunk[0..end].to_vec()).await {
+                Ok(decoded_string) => {
+                    let mut remaining: Option<Vec<usize>> = None;
+                    if end != chunk.len() {
+                        remaining = Some(chunk[end..].to_vec());
+                    }
+                    return Ok((Some(decoded_string), remaining));
+                }
+                Err(_) => {
+                    end -= 1;
+                    continue;
+                }
+            }
+        }
+
+        return Err(anyhow!(
+            "Could not tokenize the provided document."
+        ));
+    }
+
+
     async fn split(
         &self,
         credentials: Credentials,
@@ -86,67 +128,35 @@ impl Splitter for BaseV0Splitter {
         embedder.initialize(credentials).await?;
 
         // Encode the clean text.
-        let encoded = embedder.encode(clean).await?;
+        let mut encoded = embedder.encode(clean).await?;
+
         let mut decoded = vec![];
 
-        let mut start = 0;
-        while start < encoded.len() {
-            let end = cmp::min(start + max_chunk_size - 1, encoded.len() - 1);
+        while encoded.len() > 0 {
+            let mut current_chunk_size = cmp::min(max_chunk_size, encoded.len());
+            let tokenized_chunk = &encoded[0..current_chunk_size];
 
-            match decode_chunk_with_remainder(&embedder, &encoded[start..=end]).await {
+            match self.decode_chunk_with_remainder(&embedder, tokenized_chunk).await {
                 Ok((chunk_decoded, chunk_remainder)) => {
-                    
                     if chunk_remainder.is_some() {
                         let chunk_remainder_value = chunk_remainder.unwrap();
-                        if chunk_remainder_value.len() == max_chunk_size {
-                            return Err(anyhow!("The remainder chunk is the same size as the max chunk size - can't keep decoding. max_chunk_size: {}", max_chunk_size));
+                        if chunk_remainder_value.len() >= max_chunk_size {
+                            return Err(anyhow!("Could not tokenize the provided document.."));
                         }
-                        start += (end - start) + 1 - chunk_remainder_value.len();
-                    } else {
-                        start += (end - start) + 1;
+                        current_chunk_size = current_chunk_size - chunk_remainder_value.len();
                     }
-                    
+
                     if chunk_decoded.is_some() {
                         decoded.push(chunk_decoded.unwrap());
                     }
-                },
+                }
                 Err(e) => {
                     return Err(e);
                 }
             }
+            encoded = encoded[current_chunk_size..].to_vec();
         }
 
-        async fn decode_chunk_with_remainder(
-            embedder: &Box<dyn Embedder + Sync + Send>,
-            chunk: &[usize],
-        ) -> Result<(Option<String>, Option<Vec<usize>>), anyhow::Error> {
-            let mut remaining: Option<Vec<usize>> = None;
-            // The maximum number of tokens to slide the window by when decoding fails.
-            const MAX_ERROR_SLIDE : usize = 4;
-
-            let mut end = chunk.len();
-
-            while end > 0 {
-                if chunk.len() - end > MAX_ERROR_SLIDE {
-                    return Err(anyhow!("Failed to decode chunk after moving the sliding window one {} times by one.", MAX_ERROR_SLIDE));
-                }
-                match embedder.decode(chunk[0..end].to_vec()).await {
-                    Ok(decoded_token) => {
-
-                        if end != chunk.len() {
-                            remaining = Some(chunk[end..].to_vec());
-                        }
-                        return Ok((Some(decoded_token), remaining));       
-                    },
-                    Err(_) => {
-                        end -= 1;
-                        continue;
-                    }
-                }
-            }
-
-            return Err(anyhow!("Failed to decode chunk. Chunk size: {}", chunk.len()));
-        }
 
         Ok(decoded)
     }
@@ -155,7 +165,7 @@ impl Splitter for BaseV0Splitter {
 mod tests {
     use super::*;
 
-    async fn test_splitter(input: String, expected: String, max_chunk_size: usize) -> Result<()> {
+    async fn test_splitter(input: &String, expected: &String, max_chunk_size: usize) -> Result<()> {
         let provider_id = ProviderID::OpenAI;
         let model_id = "text-embedding-ada-002";
 
@@ -166,26 +176,36 @@ mod tests {
             .split(credentials, provider_id, model_id, max_chunk_size, &text)
             .await?;
 
-        assert_eq!(splitted.join(""), expected);
+        assert_eq!(&splitted.join(""), expected);
         Ok(())
     }
     #[tokio::test]
-    async fn test_splitter_all() {
-        let cases = [
-        "◦ ◦".to_string(), 
-        "a random document string with no double space".to_string(),
-        "a  random  document  string  WITH  double  space".to_string()
-        ];
-        let max_chunk_size: usize = 3;
+    async fn test_splitter_one_utf8_char_maps_to_multiple_tokens() {
+        let max_chunk_size: usize = 4;
 
-        for case in cases {
-            let input = case.to_string();
-            let re = Regex::new(r"\s+").unwrap();
-            let expected = re.replace_all(&input, " ");
-            test_splitter(input.clone(), expected.to_string(), max_chunk_size).await.unwrap();
-        }
-        
+        // A single '🔥' emoji gets tokenized as : [9468, 242, 98].
+        // So the string '🔥🔥' gets tokenized as : [9468, 242, 98, 9468, 242, 98]
+        // With max_chunk_size=4, we end up with two chunks : [9468, 242, 98, 9468] and [242, 98].
+        // Without proper handling, the decoding of the first chunk would fail because the token "9468" alone is incomplete.
+        // We test that the splitter() function is properly handling this case.
+        let input = "🔥🔥".to_string();
+
+        test_splitter(&input, &input, max_chunk_size).await.unwrap();
     }
 
+    #[tokio::test]
+    async fn test_splitter_basic_text() {
+        let cases : [String; 2] = [
+            "a random document string with no double space".repeat(10),
+            "a  random  document string WITH double spaces".repeat(10),
+        ];
+        let re = Regex::new(r"\s+").unwrap();
+        
+        let max_chunk_size = 8;
 
+        for case in cases {
+            let expected = re.replace_all(&case, " ");
+            test_splitter(&case, &expected.to_string(), max_chunk_size).await.unwrap();
+        }
+    }
 }
