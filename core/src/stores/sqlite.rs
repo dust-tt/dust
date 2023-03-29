@@ -1011,6 +1011,7 @@ impl Store for SQLiteStore {
             let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
             Ok(Some(Document {
+                data_source_id: data_source_id.clone(),
                 created,
                 timestamp,
                 document_id,
@@ -1019,6 +1020,7 @@ impl Store for SQLiteStore {
                 text_size,
                 chunk_count: chunk_count as usize,
                 chunks: vec![],
+                text: None,
             }))
         })
         .await?
@@ -1161,6 +1163,7 @@ impl Store for SQLiteStore {
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
                 documents.push(Document {
+                    data_source_id: data_source_id.clone(),
                     created,
                     timestamp,
                     document_id,
@@ -1169,6 +1172,7 @@ impl Store for SQLiteStore {
                     text_size,
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
+                    text: None,
                 });
             }
 

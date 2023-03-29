@@ -55,7 +55,7 @@ export default function DataSourceUpsert({
           const document = await res.json();
           setDisabled(false);
           setDownloading(false);
-          setText(document.text);
+          setText(document.document.text);
           setTags(document.document.tags);
         }
       });

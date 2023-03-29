@@ -69,6 +69,7 @@ pub struct Chunk {
 /// text and the document metadata and is used to no-op in case of match.
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
+    pub data_source_id: String,
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
@@ -77,10 +78,12 @@ pub struct Document {
     pub text_size: u64,
     pub chunk_count: usize,
     pub chunks: Vec<Chunk>,
+    pub text: Option<String>,
 }
 
 impl Document {
     pub fn new(
+        data_source_id: &str,
         document_id: &str,
         timestamp: u64,
         tags: &Vec<String>,
@@ -88,6 +91,7 @@ impl Document {
         text_size: u64,
     ) -> Result<Self> {
         Ok(Document {
+            data_source_id: data_source_id.to_string(),
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
@@ -96,6 +100,7 @@ impl Document {
             text_size,
             chunk_count: 0,
             chunks: vec![],
+            text: None,
         })
     }
 }
@@ -305,6 +310,7 @@ impl DataSource {
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
         let mut document = Document::new(
+            &self.data_source_id,
             document_id,
             timestamp,
             tags,
@@ -724,10 +730,10 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
-    ) -> Result<Option<(Document, String)>> {
+    ) -> Result<Option<Document>> {
         let store = store.clone();
 
-        let d = match store
+        let mut d = match store
             .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
@@ -756,7 +762,9 @@ impl DataSource {
         let bytes = Object::download(&bucket, &content_path).await?;
         let text = String::from_utf8(bytes)?;
 
-        Ok(Some((d, text)))
+        d.text = Some(text.clone());
+
+        Ok(Some(d))
     }
 
     pub async fn delete_document(
@@ -947,8 +955,8 @@ pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()>
         None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
     };
 
-    let (d, text) = match ds.retrieve(Box::new(store.clone()), document_id).await? {
-        Some((d, text)) => (d, text),
+    let d = match ds.retrieve(Box::new(store.clone()), document_id).await? {
+        Some(d) => d,
         None => Err(anyhow!("Document not found: document_id={}", document_id))?,
     };
 
@@ -962,7 +970,13 @@ pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()>
         "- Document: document_id={} text_size={} chunk_count={}",
         d.document_id, d.text_size, d.chunk_count,
     ));
-    println!("```\n{}\n```", text);
+
+    match d.text {
+        Some(text) => {
+            println!("```\n{}\n```", text);
+        }
+        None => (),
+    }
 
     Ok(())
 }

@@ -162,7 +162,6 @@ export default async function handler(req, res) {
 
       res.status(200).json({
         document: document.response.document,
-        text: document.response.text,
       });
       break;
 

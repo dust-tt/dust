@@ -1221,13 +1221,17 @@ async fn data_sources_documents_retrieve(
                         response: None,
                     }),
                 ),
-                Ok(Some((d, text))) => (
+                Ok(Some(d)) => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
                             "document": d,
-                            "text": text,
+                            "data_source": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "config": ds.config(),
+                            },
                         })),
                     }),
                 ),
@@ -1288,9 +1292,8 @@ async fn data_sources_documents_delete(
                             "data_source": {
                                 "created": ds.created(),
                                 "data_source_id": ds.data_source_id(),
-                                "internal_id": ds.internal_id(),
                                 "config": ds.config(),
-                            }
+                            },
                         })),
                     }),
                 ),
@@ -1352,7 +1355,6 @@ async fn data_sources_delete(
                             "data_source": {
                                 "created": ds.created(),
                                 "data_source_id": ds.data_source_id(),
-                                "internal_id": ds.internal_id(),
                                 "config": ds.config(),
                             }
                         })),
