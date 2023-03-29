@@ -67,7 +67,6 @@ impl BaseV0Splitter {
         embedder: &Box<dyn Embedder + Sync + Send>,
         chunk: &[usize],
     ) -> Result<(Option<String>, Option<Vec<usize>>)> {
-        
         // The maximum number of tokens to slide the window by when decoding fails.
         const MAX_ERROR_SLIDE: usize = 4;
 
@@ -92,9 +91,7 @@ impl BaseV0Splitter {
             }
         }
 
-        return Err(anyhow!(
-            "Could not tokenize the provided document."
-        ));
+        return Err(anyhow!("Could not tokenize the provided document."));
     }
 }
 
@@ -129,20 +126,23 @@ impl Splitter for BaseV0Splitter {
             let mut current_chunk_size = cmp::min(max_chunk_size, encoded.len());
             let tokenized_chunk = &encoded[0..current_chunk_size];
 
-            match self.decode_chunk_with_remainder(&embedder, tokenized_chunk).await {
+            match self
+                .decode_chunk_with_remainder(&embedder, tokenized_chunk)
+                .await
+            {
                 Ok((Some(chunk), Some(remainder))) => {
                     current_chunk_size = current_chunk_size - remainder.len();
                     decoded.push(chunk);
-                },
+                }
                 Ok((Some(chunk), None)) => {
                     decoded.push(chunk);
-                },
+                }
                 Ok((None, Some(_remainder))) => {
                     return Err(anyhow!("Could not tokenize the provided document"));
-                },                
+                }
                 Ok((None, None)) => {
                     return Err(anyhow!("Could not tokenize the provided document"));
-                },                                
+                }
                 Err(e) => {
                     return Err(e);
                 }
@@ -152,7 +152,6 @@ impl Splitter for BaseV0Splitter {
             }
             encoded = encoded[current_chunk_size..].to_vec();
         }
-
 
         Ok(decoded)
     }
@@ -191,17 +190,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_splitter_basic_text() {
-        let cases : [String; 2] = [
+        let cases: [String; 2] = [
             "a random document string with no double space".repeat(10),
             "a  random  document string WITH double spaces".repeat(10),
         ];
         let re = Regex::new(r"\s+").unwrap();
-        
+
         let max_chunk_size = 8;
 
         for case in cases {
             let expected = re.replace_all(&case, " ");
-            test_splitter(&case, &expected.to_string(), max_chunk_size).await.unwrap();
+            test_splitter(&case, &expected.to_string(), max_chunk_size)
+                .await
+                .unwrap();
         }
     }
 }
