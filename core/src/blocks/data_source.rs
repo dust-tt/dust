@@ -17,11 +17,13 @@ use urlencoding::encode;
 #[derive(Clone)]
 pub struct DataSource {
     query: String,
+    full_text: bool,
 }
 
 impl DataSource {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut query: Option<String> = None;
+        let mut full_text: bool = false;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -29,6 +31,13 @@ impl DataSource {
                     let (key, value) = parse_pair(pair)?;
                     match key.as_str() {
                         "query" => query = Some(value),
+                        "full_text" => match value.as_str() {
+                            "true" => full_text = true,
+                            "false" => full_text = false,
+                            _ => Err(anyhow!(
+                                "Invalid value for `full_text`, must be `true` or `false`"
+                            ))?,
+                        },
                         _ => Err(anyhow!("Unexpected `{}` in `data_source` block", key))?,
                     }
                 }
@@ -45,6 +54,7 @@ impl DataSource {
 
         Ok(DataSource {
             query: query.unwrap(),
+            full_text,
         })
     }
 
@@ -185,6 +195,7 @@ impl DataSource {
                 &q,
                 top_k,
                 filter,
+                self.full_text,
             )
             .await?;
 

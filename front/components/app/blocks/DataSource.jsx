@@ -126,6 +126,12 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
+  const handleFullTextChange = (full_text) => {
+    let b = shallowBlockClone(block);
+    b.spec.full_text = full_text;
+    onBlockUpdate(b);
+  };
+
   const handleQueryChange = (query) => {
     let b = shallowBlockClone(block);
     b.spec.query = query;
@@ -163,7 +169,7 @@ export default function DataSource({
             />
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="flex flex-initial">top_k:</div>
+            <div className="flex flex-initial">top k:</div>
             <div className="flex flex-initial font-normal">
               <input
                 type="text"
@@ -176,6 +182,27 @@ export default function DataSource({
                 readOnly={readOnly}
                 value={block.config.top_k}
                 onChange={(e) => handleTopKChange(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+            <div className="flex flex-initial">full text:</div>
+            <div className="flex flex-initial font-normal">
+              <input
+                type="checkbox"
+                className={classNames(
+                  "ml-1 mr-4 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
+                  readOnly ? "" : "cursor-pointer"
+                )}
+                checked={block.spec.full_text || false}
+                onClick={(e) => {
+                  if (readOnly) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  handleFullTextChange(e.target.checked);
+                }}
               />
             </div>
           </div>

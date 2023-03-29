@@ -140,6 +140,10 @@ export default async function handler(req, res) {
             if (spec[i].spec.query) {
               spec[i].spec.query = restoreTripleBackticks(spec[i].spec.query);
             }
+            if (spec[i].spec.full_text) {
+              spec[i].spec.full_text =
+                spec[i].spec.full_text === "true" ? true : false;
+            }
           }
           if (spec[i].type === "curl") {
             if (spec[i].spec.url && spec[i].spec.url.includes("://")) {

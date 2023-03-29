@@ -74,6 +74,10 @@ The Document model represents a [data source](/data-sources-overview) document.
     The document's chunks. When searching, only includes relevant chunks. When
     creating a document, includes all the chunks that were generated.
   </Property>
+  <Property name="text" type="string">
+    The document's full text. When searching, only preset if the `full_text` is
+    *true*. Always set when retrieving a document by API.
+  </Property>
 </Properties>
 
 ---
