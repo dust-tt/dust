@@ -51,7 +51,7 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 cat <<EOF >> .env.local
 URL=http://localhost:3000
 
-NEXTAUTH_URL=$URL
+NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=25da29db5485fcd27d2f671c5e28d5df8f325e9470c36cb6bf0a9d19c662255a
 
 FRONT_DATABASE_URI=sqlite:front_store.sqlite
