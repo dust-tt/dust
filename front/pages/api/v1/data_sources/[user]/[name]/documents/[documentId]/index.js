@@ -117,7 +117,9 @@ export default async function handler(req, res) {
   switch (req.method) {
     case "GET":
       const docRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents/${req.query.documentId}`,
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(req.query.documentId)}`,
         {
           method: "GET",
         }
@@ -150,7 +152,6 @@ export default async function handler(req, res) {
 
       res.status(200).json({
         document: document.response.document,
-        text: document.response.text,
       });
       break;
 
@@ -309,7 +310,9 @@ export default async function handler(req, res) {
       }
 
       const delRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents/${req.query.documentId}`,
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(req.query.documentId)}`,
         {
           method: "DELETE",
         }

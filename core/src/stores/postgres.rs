@@ -1033,6 +1033,7 @@ impl Store for PostgresStore {
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
                 Ok(Some(Document {
+                    data_source_id: data_source_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
                     document_id,
@@ -1041,6 +1042,7 @@ impl Store for PostgresStore {
                     text_size: text_size as u64,
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
+                    text: None,
                 }))
             }
         }
@@ -1189,6 +1191,7 @@ impl Store for PostgresStore {
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
                 Ok(Document {
+                    data_source_id: data_source_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
                     document_id,
@@ -1197,6 +1200,7 @@ impl Store for PostgresStore {
                     text_size: text_size as u64,
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
+                    text: None,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
