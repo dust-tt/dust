@@ -157,6 +157,7 @@ impl Splitter for BaseV0Splitter {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -164,7 +165,7 @@ mod tests {
         let provider_id = ProviderID::OpenAI;
         let model_id = "text-embedding-ada-002";
 
-        let credentials = Credentials::new();
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let text = input;
         let splitted = splitter(SplitterID::BaseV0)
