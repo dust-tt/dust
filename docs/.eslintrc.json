@@ -1,13 +1,11 @@
 {
-  "extends": ["next/core-web-vitals", "plugin:prettier/recommended"],
-  "plugins": ["prettier"],
+  "extends": ["next/core-web-vitals", "prettier"],
   "rules": {
     "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
-    "jsx-a11y/alt-text": 0,
-    "prettier/prettier": "error"
+    "jsx-a11y/alt-text": 0
   },
   "env": {
     "browser": true,

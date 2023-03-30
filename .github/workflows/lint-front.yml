@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - front/**
+      - .github/workflows/lint-front.yml
 
 jobs:
   check-eslint:
@@ -16,4 +17,4 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
       - working-directory: front
-        run: npm install && npm run lint
+        run: npm install && npm run lint && npm run format:check

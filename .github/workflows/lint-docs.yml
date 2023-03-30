@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - docs/**
+      - .github/workflows/lint-docs.yml
 
 jobs:
   check-eslint:
@@ -16,4 +17,4 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./docs/package-lock.json
       - working-directory: docs
-        run: npm install && npm run lint
+        run: npm install && npm run lint && npm run format:check
