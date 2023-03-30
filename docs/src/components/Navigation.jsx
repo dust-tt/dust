@@ -197,7 +197,10 @@ export const navigation = [
   },
   {
     title: "Guides",
-    links: [{ title: "Quickstart", href: "/quickstart" }],
+    links: [
+      { title: "Quickstart", href: "/quickstart" },
+      { title: "Document Q&A", href: "/guide-document-qa" },
+    ],
   },
   {
     title: "API Reference",
