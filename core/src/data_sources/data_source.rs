@@ -497,6 +497,8 @@ impl DataSource {
         Ok(document)
     }
 
+    const MAX_TOP_K_SEARCH: usize = 128;
+
     pub async fn search(
         &self,
         credentials: Credentials,
@@ -506,6 +508,9 @@ impl DataSource {
         filter: Option<SearchFilter>,
         full_text: bool,
     ) -> Result<Vec<Document>> {
+        if top_k > DataSource::MAX_TOP_K_SEARCH {
+            return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
+        }
         let store = store.clone();
 
         let r = EmbedderRequest::new(
