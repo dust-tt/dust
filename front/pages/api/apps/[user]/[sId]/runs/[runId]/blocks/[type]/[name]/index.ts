@@ -1,11 +1,20 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { App, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, App } from "@app/lib/models";
+import { Run } from "@app/types/run";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+export type GetRunBlockResponseBody = {
+  run: Run | null;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetRunBlockResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -58,7 +67,7 @@ export default async function handler(req, res) {
       }
 
       const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
+        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/blocks/${req.query.type}/${req.query.name}`,
         {
           method: "GET",
         }
