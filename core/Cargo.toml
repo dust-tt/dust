@@ -55,3 +55,6 @@ bstr = "0.2"
 base64 = "0.21"
 cloud-storage = { version = "0.11", features = ["global-client"] }
 qdrant-client = "1.0"
+tower-http = {version = "0.4.0", features = ["full"]}
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
