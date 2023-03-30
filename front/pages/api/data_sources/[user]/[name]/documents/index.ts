@@ -1,12 +1,37 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { DataSource, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, DataSource, Provider } from "@app/lib/models";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
-import { credentialsFromProviders } from "@app/lib/providers";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+type Document = {
+  created: number;
+  document_id: string;
+  timestamp: number;
+  tags: Array<string>;
+  hash: string;
+  text_size: number;
+  chunk_count: number;
+  chunks: Array<{
+    text: string;
+    hash: string;
+    offset: number;
+    vector: Array<number> | null;
+    score: number | null;
+  }>;
+};
+
+export type GetDocumentsResponseBody = {
+  documents: Array<Document>;
+  total: number;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetDocumentsResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -55,8 +80,8 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      let limit = req.query.limit ? parseInt(req.query.limit) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset) : 0;
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
       const documentsRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,

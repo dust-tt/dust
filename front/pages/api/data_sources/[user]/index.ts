@@ -1,11 +1,27 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { DataSource, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, DataSource } from "@app/lib/models";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+export type GetDataSourcesResponseBody = {
+  dataSources: Array<{
+    id: number;
+    name: string;
+    description?: string;
+    visibility: string;
+    config?: string;
+    dustAPIProjectId: string;
+    updatedAt: Date;
+  }>;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetDataSourcesResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
