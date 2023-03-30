@@ -1,12 +1,30 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, App, Dataset } from "@app/lib/models";
 import { checkDatasetData } from "@app/lib/datasets";
+import { App, Dataset, User } from "@app/lib/models";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+type DatasetObject = {
+  id: number;
+  name: string;
+  description: string;
+};
+
+export type GetDatasetResponseBody = {
+  datasets: DatasetObject[];
+};
+
+export type PostDatasetResponseBody = {
+  dataset: DatasetObject;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetDatasetResponseBody | PostDatasetResponseBody>
+): Promise<void> {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -68,8 +86,8 @@ export default async function handler(req, res) {
         attributes: ["id", "name", "description"],
       });
 
-      res.status(200).json({ datasets });
-      break;
+      res.status(200).json({ datasets } as GetDatasetResponseBody);
+      return;
 
     case "POST":
       if (readOnly) {
@@ -84,7 +102,7 @@ export default async function handler(req, res) {
         !Array.isArray(req.body.data)
       ) {
         res.status(400).end();
-        break;
+        return;
       }
 
       // Check that dataset does not already exist.
@@ -104,7 +122,7 @@ export default async function handler(req, res) {
       });
       if (exists) {
         res.status(400).end();
-        break;
+        return;
       }
 
       // Check data validity.
@@ -112,14 +130,14 @@ export default async function handler(req, res) {
         checkDatasetData(req.body.data);
       } catch (e) {
         res.status(400).end();
-        break;
+        return;
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      let data = req.body.data.map((d) => {
+      let data = req.body.data.map((d: any) => {
         return Object.keys(d)
           .sort()
-          .reduce((obj, key) => {
+          .reduce((obj: { [key: string]: any }, key) => {
             obj[key] = d[key];
             return obj;
           }, {});
@@ -143,12 +161,12 @@ export default async function handler(req, res) {
       const d = await r.json();
       if (d.error) {
         res.status(500).end();
-        break;
+        return;
       }
 
       let description = req.body.description ? req.body.description : null;
 
-      let dataset = await Dataset.create({
+      const { id: datasetId } = await Dataset.create({
         name: req.body.name,
         description,
         userId: user.id,
@@ -157,11 +175,12 @@ export default async function handler(req, res) {
 
       res.status(201).json({
         dataset: {
+          id: datasetId,
           name: req.body.name,
           description,
         },
       });
-      break;
+      return;
 
     default:
       res.status(405).end();
