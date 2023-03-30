@@ -1,8 +1,20 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { Provider, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, Provider } from "@app/lib/models";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 
-export default async function handler(req, res) {
+export type GetProvidersResponseBody = {
+  providers: {
+    id: number;
+    providerId: string;
+    config: string;
+  }[];
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetProvidersResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
   if (!session) {
     res.status(401).end();
