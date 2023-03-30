@@ -12,7 +12,7 @@ use axum::{
 use dust::{
     app,
     blocks::block::BlockType,
-    data_sources::data_source,
+    data_sources::data_source::{self, SearchFilter},
     dataset, project, run,
     stores::store,
     stores::{postgres, sqlite},
@@ -1038,6 +1038,84 @@ async fn data_sources_register(
     }
 }
 
+// Perform a search on a data source.
+
+#[derive(serde::Deserialize)]
+struct DatasourceSearchPayload {
+    query: String,
+    top_k: usize,
+    filter: Option<SearchFilter>,
+    full_text: bool,
+    credentials: run::Credentials,
+}
+
+async fn data_sources_search(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Json(payload): extract::Json<DatasourceSearchPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve data source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No data source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => match ds
+                .search(
+                    payload.credentials,
+                    state.store.clone(),
+                    &payload.query,
+                    payload.top_k,
+                    payload.filter,
+                    payload.full_text,
+                )
+                .await
+            {
+                Ok(documents) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "documents": documents,
+                        })),
+                    }),
+                ),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to perform the search: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 /// Upsert a document in a data source.
 
 #[derive(serde::Deserialize)]
@@ -1430,10 +1508,10 @@ async fn main() -> Result<()> {
             post(data_sources_documents_upsert),
         )
         // Provided by the data_source block.
-        // .route(
-        //     "/projects/:project_id/data_sources/:data_source_id/search",
-        //     get(data_sources_search),
-        // )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/search",
+            post(data_sources_search),
+        )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
             get(data_sources_documents_list),
