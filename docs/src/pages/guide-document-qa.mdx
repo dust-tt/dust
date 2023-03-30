@@ -123,7 +123,7 @@ data source:
 Once the `input` block points to your new dataset you can add a `data_source` block and select your
 data source. If you want to use the publicly available data source
 [ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6), edit the user name to `spolu` and then select
-`ipcc-ar6`. You should set `top_k` to 12 meaning that we'll consume 3072 tokens of context to
+`ipcc-ar6`. You should set `top_k` to 12, meaning that we'll consume 3072 tokens of context to
 present chunks to the model.
 
 The query can be set directly to the question from the input using templating with the following
@@ -147,7 +147,7 @@ We will use `gpt-3.5-turbo` to process the chunks and generate an answer to the 
 We use the following instruciton in the context of [ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6):
 
 ```txt
-You are an helpful assistant. For each user question, you'll receive 8 additional system
+You are an helpful assistant. For each user question, you'll receive 12 additional system
 messages with chunks of text retrieved by semantic search (based on the question) from IPCC
 AR6 technical reports SYR, WG1, WG2, and WG3.  You should reply to the user with a concise
 but precise answer that is only based on the chunks of text that were presented to you.
