@@ -287,12 +287,12 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## List Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents' }}
+## Search Documents {{ tag: 'POST', label: '/v1/data_sources/:user/:data_source_name/search' }}
 
 <Row>
   <Col>
 
-    This endpoint enables you to list the documents of a data source.
+    This endpoint enables you to perform a semantic search on your data source's documents.
 
     ### URL attributes
 
@@ -301,30 +301,44 @@ The Document model represents a [data source](/data-sources-overview) document.
         Your Dust username.
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to insert a document to.
+        The name of the data source you want to perform your search against.
       </Property>
     </Properties>
 
-    ### Query parameters
-
-    Query attributes are passed as GET parameters.
+    ### JSON body attributes
 
     <Properties>
-      <Property name="offset" type="integer">
-        The offset to use to retrieve the documents from the data source, for paging.
+      <Property name="query" type="string">
+        The search query
       </Property>
-      <Property name="limit" type="integer">
-        The maximum number of documents to retrieve from the data source, for paging.
+      <Property name="top_k" type="integer">
+        The maximum number of search elements to return
+      </Property>
+      <Property name="full_text" type="boolean">
+        Whether or not ot return the full text associated with the matching chunk
+      </Property>
+
+
+      ### Optional JSON body attributes
+      <Property name="filter" type="object">
+      All fields in the following filter data structure are optionals
+      ```json
+      {
+        "timestamp":{"gt":1679447275021, "lt":1679437275024},
+        "tags":{"in":["tag1", "tag2"], "not":["tagx", "tagy"]}
+      }
+      ```
+
       </Property>
     </Properties>
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents">
+    <CodeGroup title="Request" tag="POST" label="/v1/data_sources/:user/:data_source_name/search">
 
     ```bash {{ title: 'cURL' }}
-    curl "https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10" \
+    curl "https://dust.tt/api/v1/data_sources/spolu/foo/search" \
       -H "Authorization: Bearer sk-..."
     ```
 
@@ -332,30 +346,32 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     ```json {{ title: 'Response' }}
     {
-      "documents":[
-        {
-          "data_source_id": "foo",
-          "created": 1679447719555,
-          "document_id": "acme-report",
-          "timestamp": 1679447719555,
-          "tags": [],
-          "hash": "1651c5e63b6d6...2ae3acd0",
-          "text_size": 13,
-          "chunk_count": 1,
-          "chunks": []
-        }, {
-          "data_source_id": "foo",
-          "created": 1679447275024,
-          "document_id": "top-secret-document",
-          "timestamp": 1679447275024,
-          "tags": [],
-          "hash": "1eebbe66ac93c...47548fcd",
-          "text_size": 21,
-          "chunk_count": 1,
-          "chunks": []
-      }],
-      "total":2
-    }
+  "error": null,
+  "response": {
+    "documents": [
+      {
+        "data_source_id": "fulltext-test",
+        "created": 1680101106398,
+        "document_id": "5",
+        "timestamp": 1680101106398,
+        "tags": [],
+        "hash": "9933f078502b24e11cef7f3ef7c5921652d1314c887328442258d2aee8b849da",
+        "text_size": 17,
+        "chunk_count": 1,
+        "chunks": [
+          {
+            "text": "with strawberries",
+            "hash": "39e28bdc52f7b4f94f877db09d94d2e24a17f0fc0ad2155d6ae8234f20638967",
+            "offset": 0,
+            "vector": null,
+            "score": 0.7754930853843689
+          }
+        ],
+        "text": "with strawberries"
+      }
+    ]
+  }
+}
     ```
 
   </Col>
