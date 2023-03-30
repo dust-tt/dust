@@ -6,7 +6,9 @@
     "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start -p 3003",
-    "lint": "next lint"
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "browserslist": "defaults, not ie <= 11",
   "dependencies": {
@@ -42,8 +44,7 @@
     "eslint": "^8.26.0",
     "eslint-config-next": "13.0.2",
     "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.8.7",
-    "prettier-plugin-tailwindcss": "^0.1.13"
+    "prettier-plugin-tailwindcss": "^0.2.5"
   }
 }
