@@ -202,27 +202,31 @@ export default function DataSourceUpsert({
                             handleTagUpdate(index, e.target.value)
                           }
                         />
-                        <div
-                          className="cursor-pointer pt-2 pl-1 group-hover:visible"
-                          onClick={() => {
-                            handleTagDelete(index);
-                          }}
-                        >
-                          <MinusCircleIcon className="h-5 w-5 text-gray-400" />
-                        </div>
+                        {!readOnly ? (
+                          <div
+                            className="cursor-pointer pt-2 pl-1 group-hover:visible"
+                            onClick={() => {
+                              handleTagDelete(index);
+                            }}
+                          >
+                            <MinusCircleIcon className="h-5 w-5 text-gray-400" />
+                          </div>
+                        ) : null}
                       </div>
                     ))}
-                    <div className="mt-2 flex flex-row">
-                      <div
-                        className="cursor-pointer rounded bg-gray-700"
-                        onClick={() => {
-                          handleAddTag();
-                        }}
-                      >
-                        <PlusSmallIcon className="h-5 w-5 text-white" />
+                    {!readOnly ? (
+                      <div className="mt-2 flex flex-row">
+                        <div
+                          className="cursor-pointer rounded bg-gray-700"
+                          onClick={() => {
+                            handleAddTag();
+                          }}
+                        >
+                          <PlusSmallIcon className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex flex-1"></div>
                       </div>
-                      <div className="flex flex-1"></div>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -255,47 +259,51 @@ export default function DataSourceUpsert({
                       onChange={(e) => setText(e.target.value)}
                     />
                   </div>
-                  <div className="mt-4 w-full leading-4">
-                    <div className=""></div>
-                    <div className="mt-6 flex flex-row">
-                      <div className="flex-1"></div>
-                      <div className="ml-2 flex-initial">
-                        <input
-                          className="hidden"
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={(e) => {
-                            handleFileUpload(e.target.files[0]);
-                          }}
-                        ></input>
-                        <Button
-                          onClick={() => {
-                            fileInputRef.current?.click();
-                          }}
-                          disabled={readOnly}
-                        >
-                          <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
-                          Upload
-                        </Button>
+                  {!readOnly ? (
+                    <div className="mt-4 w-full leading-4">
+                      <div className=""></div>
+                      <div className="mt-6 flex flex-row">
+                        <div className="flex-1"></div>
+                        <div className="ml-2 flex-initial">
+                          <input
+                            className="hidden"
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={(e) => {
+                              handleFileUpload(e.target.files[0]);
+                            }}
+                          ></input>
+                          <Button
+                            onClick={() => {
+                              fileInputRef.current?.click();
+                            }}
+                            disabled={readOnly}
+                          >
+                            <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
+                            Upload
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex flex-row pt-6">
-            <div className="flex-initial">
-              <ActionButton
-                disabled={disabled || loading || readOnly}
-                onClick={() => {
-                  handleUpsert();
-                }}
-              >
-                {loading ? "Embeding..." : "Upsert"}
-              </ActionButton>
+          {!readOnly ? (
+            <div className="flex flex-row pt-6">
+              <div className="flex-initial">
+                <ActionButton
+                  disabled={disabled || loading || readOnly}
+                  onClick={() => {
+                    handleUpsert();
+                  }}
+                >
+                  {loading ? "Embeding..." : "Upsert"}
+                </ActionButton>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </AppLayout>
