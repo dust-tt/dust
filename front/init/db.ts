@@ -1,14 +1,14 @@
 import {
-  User,
   App,
-  Dataset,
-  Provider,
   Clone,
-  Key,
+  Dataset,
   DataSource,
+  Key,
+  Provider,
+  User,
   XP1Run,
   XP1User,
-} from "../lib/models.js";
+} from "@app/lib/models";
 
 async function main() {
   await User.sync({ alter: true });
@@ -24,4 +24,11 @@ async function main() {
   process.exit(0);
 }
 
-await main();
+main()
+  .then(() => {
+    console.log("Done");
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
