@@ -4,10 +4,7 @@ import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import {
-  ArrowRightCircleIcon,
-  ArrowRightIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { ActionButton, Button } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
@@ -21,7 +18,7 @@ const features = [
     name: "Chained LLM apps",
     built: true,
     description:
-      "Chain arbitrarily between calls to models and code execution.",
+      "Chain arbitrarily between calls to models, code execution and queries to external services.",
   },
   {
     name: "Multiple inputs",
@@ -33,7 +30,7 @@ const features = [
     name: "Model choice",
     built: true,
     description:
-      "Design against models served by Cohere, OpenAI, AI21 and more soon. Switch models seamlessly.",
+      "Design against models served by OpenAI, Cohere, AI21 and more. Switch models seamlessly.",
   },
   {
     name: "Version history",
@@ -48,21 +45,21 @@ const features = [
       "Speed up iterations and reduce costs with cached model interactions.",
   },
   {
-    name: "Apps that do things",
+    name: "Easy deployment & use",
+    built: true,
+    description: "Deploy to an API endpoint or use directly from Dust.",
+  },
+  {
+    name: "DataSources",
     built: true,
     description:
-      "Interact with Google search, code execution blocks and other action blocks to come.",
+      "Fully managed semantic search engines you can query from your workflows.",
   },
   {
-    name: "Easy deployment",
-    built: true,
-    description: "Deploy to an API endpoint or the Dust assistant XP1.",
-  },
-  {
-    name: "Semantic search",
+    name: "Connections",
     built: false,
     description:
-      "Add your team's Notion, Google Docs or Slack to adapt app behaviour to your own data.",
+      "Connect your team's Notion, Google Docs or Slack to managed DataSources that are kept up-to-date automatically.",
   },
 ];
 
@@ -71,7 +68,8 @@ function Features() {
     <div className="mx-auto max-w-3xl xl:max-w-7xl">
       <div className="mx-auto text-center">
         <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-          Build powerful workflows on top of LLMs🔥
+          Build powerful workflows <br />
+          on top of LLMs and Semantic Search🔥
         </h2>
       </div>
       <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
@@ -154,19 +152,7 @@ export default function Home({ ga_tracking_id }) {
           <Features />
         </div>
 
-        <div className="mt-8">
-          <div className="mx-auto text-center sm:max-w-2xl lg:max-w-4xl">
-            <Link href="/xp1">
-              <div className="font-bold text-violet-600">
-                <ArrowRightIcon className="mb-0.5 mr-2 inline-block h-4 w-4" />
-                Discover XP1, a Productivity Assistant (built on Dust) with
-                access to your Tabs
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-12 space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+        <div className="mx-auto mt-8 space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
           <div className="sm:flex sm:items-center">
             <div className="mt-8 sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">
