@@ -4,9 +4,7 @@ import { signIn } from "next-auth/react";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import {
-  ArrowRightCircleIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { ActionButton, Button } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
