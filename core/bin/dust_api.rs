@@ -27,6 +27,8 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 
 #[derive(Serialize)]
 struct APIError {
@@ -1445,6 +1447,11 @@ async fn data_sources_delete(
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .compact()
+        .init();
+
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
             let store = postgres::PostgresStore::new(&db_uri).await?;
@@ -1529,6 +1536,11 @@ async fn main() -> Result<()> {
             delete(data_sources_delete),
         )
         // Extensions
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        )
         .layer(extract::Extension(state.clone()));
 
     // Start the APIState run loop.
