@@ -124,10 +124,6 @@ export default async function handler(
           try {
             for await (const chunk of streamChunks(streamRes.body)) {
               res.write(chunk);
-              // TODO: figure out if .flush() does anything
-              // otherwise figure out why typescript complains
-              // @ts-ignore
-              res.flush();
             }
           } catch (e) {
             console.log("ERROR streaming from Dust API", e);
