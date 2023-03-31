@@ -56,7 +56,8 @@ export const communityApps = [
     user: "spolu",
     sId: "d12ac33169",
     name: "ipcc-ar6-qa",
-    description: "Use semantic search to answer questions about the IPCC AR6 report",
+    description:
+      "Use semantic search to answer questions about the IPCC AR6 report",
     visibility: "public",
   },
   {
