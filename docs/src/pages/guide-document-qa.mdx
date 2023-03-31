@@ -1,0 +1,193 @@
+export const description =
+  "This guide will help you build a Document Q&A app with step-by-step instructions, using Data Sources.";
+
+# Document Q&A
+
+This guide will help you build a Document Q&A app with step-by-step instructions, using Data
+Sources. {{ className: 'lead' }}
+
+<Note>
+  Make sure you're signed-up on [Dust](https://dust.tt) and have reviewed the
+  [Quickstart](/quickstart) guide.
+</Note>
+
+This document assumes that you've already created a Dust app and that you have already set up OpenAI
+as a provider on your Dust account. If you haven't done so, please refer to our
+[Quickstart](/quickstart) guide for step-by-step instructions.
+
+In this guide we will use a [Data Source](/data-sources-overview) to store and index a set of
+documents and make their content available to a large language model using semantic search in order
+to answer questions about them.
+
+The main limitation of LLMs when it comes to answering question about long documents is that the
+documents cannot fit in the LLM [context size](/introduction#large-language-models). Data sources
+allow us to overcome this limitation by splitting documents into smaller chunks and indexing these
+chunks separately.
+
+Given a question, we can then use semantic search to find the most relevant chunks relative to the
+question and feed these chunks to a LLM to generate an answer.
+
+## Creating your first Data Source
+
+We will use a Data Source to automatically chunk, embed and index 4 IPCC reports:
+[AR6-WG1](https://www.ipcc.ch/report/ar6/wg2/), [AR6-WG2](https://www.ipcc.ch/report/ar6/wg2/),
+[AR6-WG3](https://www.ipcc.ch/report/ar6/wg2/) and [AR6-SYR](https://www.ipcc.ch/report/ar6/syr/).
+
+<Note>
+  You can review this section without the need to actually create the data
+  source, and use the pre-filled public Data Source
+  [ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6) in the rest of the guide.
+</Note>
+
+You can create your first Data Source from your Dust home page by selecting the **DataSources** tab
+and clicking on the **New DataSource** button. You'll need to provide a name and description as well
+as select OpenAI's embedding model `text-embedding-ada-002`. Finally it is important to pick a
+`max_chunk_size` value. We decided to use `max_chunk_size=256` for this example (in tokens), to be
+able to insert 12 chunks in-context and leave 1024 tokens for genreating an answer as we plan to use
+`gpt-3.5-turbo` which has a 4096 tokens context size.
+
+Increasing the `max_chunk_size` would provide more context per chunk but would also reduce the
+number of chunks the model can attend to in-context. Reducing it would allow to consider more
+"sources" of information but would reduce the amount of information captured by each chunk. 256
+tokens appears like a good trade-off for our use-case but the right value will depend on your
+use-case and the model you use (as an example, `gpt-4` has 8192 tokens of context, so we could use a
+`max_chunk_size` of 512).
+
+<Image
+  src="/guide_document_qa_newdatasource.png"
+  alt="Dust data source creation panel"
+>
+  _The Dust data source creation panel. The `name` should be short and
+  memorable, lowercase without spaces._
+</Image>
+
+### Inserting documents
+
+Once the Data Source is created, you can click on **Upload Document** to insert documents from the
+interface. Note that it is also possible to insert [Documents by API](/documents#create-a-document).
+
+When inserting a Document, a unique document identifier needs to be provided. Free form tags (on
+which semantic search can be filtered) can also be provided. Text content is filled automatically
+here by uploading the text format of a local `ipcc_ar6_wg1.txt` file which was obtained by
+extracting the text of the associated IPCC PDFs. Insertion acts as an upsert, updating the document
+if it already existed for the provided identifier.
+
+<Image
+  src="/guide_document_qa_insertdocument.png"
+  alt="Dust data source document insertion"
+>
+  _The Dust data source document insertion interface. Tags are optional and
+  arbitrary. The text content was filled here using the **Upload** button._
+</Image>
+
+Once the 4 documents are inserted, you should be able to see them in the Data Source interface. You
+can review the public [ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6) data source as an example.
+
+<Image
+  src="/guide_document_qa_datasource.png"
+  alt="Dust data source document list"
+>
+  _The Dust data source documents list. You can inspect and edit each of the
+  document from this interface. The size of each document and the resulting
+  number of chunks that were created, embedded and indexed is also reported._
+</Image>
+
+Now that your Data Source is ready (or you plan to use
+[ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6)), you can move on to the next section to create a Q&A
+app that will use it.
+
+## Creating a Q&A app
+
+In this section we'll provide step-by-step instructions to create a Q&A app that will use the data
+source to answer user provided questions. You can find a finalized version of the app
+[here](https://dust.tt/spolu/a/01caf5ebc3).
+
+### `input` block
+
+From your home screen create a new app by clicking the **Apps** tab and then the **New App** button.
+
+Assuming you've already covered our [Quickstart guide](/quickstart#add-your-first-block), add an
+input block and associate it with a new dataset with a few questions that might be relevant to the
+data source:
+
+<Image
+  src="/guide_document_qa_devdataset.png"
+  alt="Dust dev dataset to associate to input block"
+>
+  _An example dataset with questions relative to the data source we plan to use.
+  Each question is a different input against which we will design our app._
+</Image>
+
+### `data_source` block
+
+Once the `input` block points to your new dataset you can add a `data_source` block and select your
+data source. If you want to use the publicly available data source
+[ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6), edit the user name to `spolu` and then select
+`ipcc-ar6`. You should set `top_k` to 12, meaning that we'll consume 3072 tokens of context to
+present chunks to the model.
+
+The query can be set directly to the question from the input using templating with the following
+value:
+
+```
+{{INPUT.question}}
+```
+
+<Image src="/guide_document_qa_ds_block.png" alt="Dust `data_source` block">
+  _The Dust `data_source` block pointing to the public `ipcc-ar6` data source.
+  The query is set to the input value question field using templating._
+</Image>
+
+At this point you can run your app and introspect the outputs of the `data_source` block.
+
+### `chat` block
+
+We will use `gpt-3.5-turbo` to process the chunks and generate an answer to the user.
+
+We use the following instruciton in the context of [ipcc-ar6](https://dust.tt/spolu/ds/ipcc-ar6):
+
+```txt
+You are an helpful assistant. For each user question, you'll receive 12 additional system
+messages with chunks of text retrieved by semantic search (based on the question) from IPCC
+AR6 technical reports SYR, WG1, WG2, and WG3.  You should reply to the user with a concise
+but precise answer that is only based on the chunks of text that were presented to you.
+```
+
+And the following code to construct the set of messages presented to the model:
+
+```js
+_fun = (env) => {
+  let messages = [{ role: "user", content: env.state.INPUT.question }];
+  env.state.IPCC_AR6.forEach((d) => {
+    d.chunks.forEach((c) => {
+      messages.push({
+        role: "system",
+        content: `From: ${d.document_id}\n\n${c.text}`,
+      });
+    });
+  });
+  return messages;
+};
+```
+
+### final `code` block
+
+To return only the content generated by the model you can add a final code block with the following
+code:
+
+```js
+_fun = (env) => {
+  return env.state.MODEL.message.content;
+};
+```
+
+You can now run your app and inspec the outputs of the last `code` block.
+
+## Using the app
+
+You can use the **Use** tab to submit new questions to your app and get generated answers direclty.
+
+<Image src="/guide_document_qa_use.png" alt="Dust app use interface">
+  _The app **Use** interface. You can submit new questions and get generated
+  answers directly._
+</Image>

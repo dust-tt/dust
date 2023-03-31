@@ -17,12 +17,12 @@ const guides = [
     name: "Quickstart",
     description: "Step-by-step guide to creating your first Dust app.",
   },
-  // {
-  //   href: '/errors',
-  //   name: 'Errors',
-  //   description:
-  //     'Read about the different types of errors returned by the API.',
-  // },
+  {
+    href: "/guide-document-qa",
+    name: "Document Q&A",
+    description:
+      "Step-by-step guide to creating a document Q&A app using DataSources.",
+  },
   // {
   //   href: '/webhooks',
   //   name: 'Webhooks',
