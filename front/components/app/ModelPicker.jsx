@@ -47,14 +47,11 @@ export default function ModelPicker({
   const refreshModels = () => {
     let provider = providers.find((p) => p.providerId == model.provider_id);
     if (provider) {
-      getProviderLLMModels(
-        provider.providerId,
-        JSON.parse(provider.config),
-        !!chatOnly,
-        !!embedOnly
-      ).then((m) => {
-        setModels(m.models);
-      });
+      getProviderLLMModels(provider.providerId, !!chatOnly, !!embedOnly).then(
+        (m) => {
+          setModels(m.models);
+        }
+      );
     }
   };
 

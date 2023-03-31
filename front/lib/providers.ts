@@ -1,4 +1,16 @@
-export const modelProviders = [
+import { GetProvidersCheckResponseBody } from "@app/pages/api/providers/[pId]/check";
+import { useProviders } from "./swr";
+
+type ModelProvider = {
+  providerId: string;
+  name: string;
+  built: boolean;
+  enabled: boolean;
+  chat: boolean;
+  embed: boolean;
+};
+
+export const modelProviders: ModelProvider[] = [
   {
     providerId: "openai",
     name: "OpenAI",
@@ -41,7 +53,14 @@ export const modelProviders = [
   },
 ];
 
-export const serviceProviders = [
+type ServiceProvider = {
+  providerId: string;
+  name: string;
+  built: boolean;
+  enabled: boolean;
+};
+
+export const serviceProviders: ServiceProvider[] = [
   {
     providerId: "serpapi",
     name: "SerpApi (Google Search)",
@@ -70,36 +89,51 @@ export const serviceProviders = [
   { providerId: "gmail", name: "Gmail", built: false, enabled: false },
 ];
 
-export async function checkProvider(providerId, config) {
+export async function checkProvider(
+  providerId: string,
+  config: object
+): Promise<GetProvidersCheckResponseBody> {
   try {
     const result = await fetch(
       `/api/providers/${providerId}/check?config=${JSON.stringify(config)}`
     );
     return await result.json();
-  } catch (e) {
+  } catch (e: any) {
     return { ok: false, error: e.message };
   }
 }
 
-export function filterModelProviders(providers, chatOnly, embedOnly) {
+export function filterModelProviders(
+  providers: ReturnType<typeof useProviders>["providers"],
+  chatOnly: boolean,
+  embedOnly: boolean
+): ReturnType<typeof useProviders>["providers"] {
   if (!providers) return [];
-  return providers.filter((p) =>
+  const candidateModelProviderIds = new Set(
     modelProviders
-      .filter((p) => !chatOnly || p.chat === true)
-      .filter((p) => !embedOnly || p.embed === true)
+      .filter(
+        (p) =>
+          (!chatOnly || p.chat === true) && (!embedOnly || p.embed === true)
+      )
       .map((p) => p.providerId)
-      .includes(p.providerId)
   );
+  return providers.filter((p) => candidateModelProviderIds.has(p.providerId));
 }
 
-export function filterServiceProviders(providers) {
+export function filterServiceProviders(
+  providers: ReturnType<typeof useProviders>["providers"]
+): ReturnType<typeof useProviders>["providers"] {
   if (!providers) return [];
   return providers.filter((p) =>
     serviceProviders.map((p) => p.providerId).includes(p.providerId)
   );
 }
 
-export async function getProviderLLMModels(providerId, config, chat, embed) {
+export async function getProviderLLMModels(
+  providerId: string,
+  chat: boolean,
+  embed: boolean
+): Promise<{ models?: any[]; error?: any }> {
   let modelsRes = await fetch(
     `/api/providers/${providerId}/models?chat=${chat}&embed=${embed}`
   );
@@ -112,10 +146,23 @@ export async function getProviderLLMModels(providerId, config, chat, embed) {
   return { models: models.models };
 }
 
-export const credentialsFromProviders = (providers) => {
-  let credentials = {};
+type Credentials = {
+  OPENAI_API_KEY?: string;
+  COHERE_API_KEY?: string;
+  AI21_API_KEY?: string;
+  SERP_API_KEY?: string;
+  SERPER_API_KEY?: string;
+  BROWSERLESS_API_KEY?: string;
+};
+
+export const credentialsFromProviders = (
+  providers: { providerId: string; config: string }[]
+): Credentials => {
+  let credentials: Credentials = {};
+
   providers.forEach((provider) => {
-    let config = JSON.parse(provider.config);
+    let config = JSON.parse(provider.config) as { api_key: string };
+
     switch (provider.providerId) {
       case "openai":
         credentials["OPENAI_API_KEY"] = config.api_key;

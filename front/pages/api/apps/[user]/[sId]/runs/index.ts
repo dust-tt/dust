@@ -1,13 +1,27 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, App, Provider } from "@app/lib/models";
-import { dumpSpecification } from "@app/lib/specification";
+import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { dumpSpecification } from "@app/lib/specification";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { Run } from "@app/types/run";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+export type GetRunsResponseBody = {
+  runs: Run[];
+  total: number;
+};
+
+export type PostRunsResponseBody = {
+  run: Run;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetRunsResponseBody | PostRunsResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -83,7 +97,7 @@ export default async function handler(req, res) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-Dust-User-Id": user.id,
+                "X-Dust-User-Id": user.id.toString(),
               },
               body: JSON.stringify({
                 run_type: "execute",
@@ -95,7 +109,7 @@ export default async function handler(req, res) {
             }
           );
 
-          if (!streamRes.ok) {
+          if (!streamRes.ok || !streamRes.body) {
             const error = await streamRes.json();
             res.status(400).json(error.error);
             return;
@@ -108,9 +122,8 @@ export default async function handler(req, res) {
           });
 
           try {
-            for await (const chunk of streamRes.body) {
+            for await (const chunk of streamChunks(streamRes.body)) {
               res.write(chunk);
-              res.flush();
             }
           } catch (e) {
             console.log("ERROR streaming from Dust API", e);
@@ -141,15 +154,18 @@ export default async function handler(req, res) {
             return;
           }
 
-          let latestDatasets = {};
+          let latestDatasets: { [key: string]: string } = {};
           for (const d in datasets.response.datasets) {
             latestDatasets[d] = datasets.response.datasets[d][0].hash;
           }
 
           const config = JSON.parse(req.body.config);
-          const { dataset: inputDataset } = Object.values(config).find(
-            (configValue) => configValue.type == "input"
-          ) || { dataset: null };
+          const inputConfigEntry: any = Object.values(config).find(
+            (configValue: any) => configValue.type == "input"
+          );
+          const inputDataset = inputConfigEntry
+            ? inputConfigEntry.dataset
+            : null;
 
           const runRes = await fetch(
             `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
@@ -157,7 +173,7 @@ export default async function handler(req, res) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-Dust-User-Id": user.id,
+                "X-Dust-User-Id": user.id.toString(),
               },
               body: JSON.stringify({
                 run_type: "local",
@@ -194,8 +210,8 @@ export default async function handler(req, res) {
       }
 
     case "GET":
-      let limit = req.query.limit ? parseInt(req.query.limit) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset) : 0;
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       let runType = req.query.runType ? req.query.runType : "local";
 
       const runsRes = await fetch(
@@ -221,5 +237,21 @@ export default async function handler(req, res) {
     default:
       res.status(405).end();
       return;
+  }
+}
+
+async function* streamChunks(stream: ReadableStream<Uint8Array>) {
+  const reader = stream.getReader();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
   }
 }

@@ -1,8 +1,16 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User } from "@app/lib/models";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 
-export default async function handler(req, res) {
+export type GetProvidersCheckResponseBody =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -23,7 +31,7 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      const config = JSON.parse(req.query.config);
+      const config = JSON.parse(req.query.config as string);
 
       switch (req.query.pId) {
         case "openai":

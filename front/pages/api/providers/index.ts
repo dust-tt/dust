@@ -1,9 +1,20 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { Provider, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, Key } from "@app/lib/models";
-import { new_id } from "@app/lib/utils";
+import { NextApiRequest, NextApiResponse } from "next";
+import { unstable_getServerSession } from "next-auth/next";
 
-export default async function handler(req, res) {
+export type GetProvidersResponseBody = {
+  providers: {
+    id: number;
+    providerId: string;
+    config: string;
+  }[];
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetProvidersResponseBody>
+) {
   const session = await unstable_getServerSession(req, res, authOptions);
   if (!session) {
     res.status(401).end();
@@ -21,26 +32,15 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      let keys = await Key.findAll({
+      let providers = await Provider.findAll({
         where: {
           userId: user.id,
         },
-        order: [["createdAt", "DESC"]],
       });
 
-      res.status(200).json({ keys });
+      res.status(200).json({ providers });
       break;
 
-    case "POST":
-      let secret = `sk-${new_id().slice(0, 32)}`;
-
-      let key = await Key.create({
-        userId: user.id,
-        secret: secret,
-        status: "active",
-      });
-
-      res.status(201).json({ key });
     default:
       res.status(405).end();
       break;
