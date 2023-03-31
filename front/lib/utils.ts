@@ -55,8 +55,8 @@ export const communityApps = [
   {
     user: "spolu",
     sId: "d12ac33169",
-    name: "maths-generate-code",
-    description: "Generate code to answer maths questions",
+    name: "ipcc-ar6-qa",
+    description: "Use semantic search to answer questions about the IPCC AR6 report",
     visibility: "public",
   },
   {
@@ -72,6 +72,13 @@ export const communityApps = [
     name: "web-search-assistant",
     description:
       "Answer questions with high factual accuracy by searching online and compiling responses based on content downloaded from websites (with references).",
+    visibility: "public",
+  },
+  {
+    user: "spolu",
+    sId: "d12ac33169",
+    name: "maths-generate-code",
+    description: "Generate code to answer maths questions",
     visibility: "public",
   },
   {
