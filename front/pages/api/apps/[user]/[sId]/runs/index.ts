@@ -253,6 +253,8 @@ async function* streamChunks(stream: ReadableStream<Uint8Array>) {
       }
       yield value;
     }
+  } catch (e) {
+    console.log("Error streaming chunks", e);
   } finally {
     reader.releaseLock();
   }
