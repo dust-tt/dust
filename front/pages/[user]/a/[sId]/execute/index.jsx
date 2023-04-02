@@ -364,11 +364,13 @@ export default function ExecuteView({
       );
 
       source.onerror = (_event) => {
+        console.log("Received Error", _event);
         setIsErrored(true);
         setIsRunning(false);
       };
 
       source.onmessage = (event) => {
+        console.log("Received Message", event);
         if (event.data === "") {
           console.error("Received empty event");
           // ignore empty events
