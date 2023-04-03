@@ -194,6 +194,8 @@ export default async function handler(
         try {
           for await (const chunk of streamChunks(runRes.body!)) {
             res.write(chunk);
+            // @ts-expect-error
+            res.flush();
           }
         } catch (err) {
           console.log("ERROR streaming from Dust API:", err);
