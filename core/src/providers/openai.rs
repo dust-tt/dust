@@ -447,7 +447,10 @@ pub async fn completion(
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
+        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
         // TODO(spolu): add support for custom organizations
         // .header("OpenAI-Organization", "openai")
         .body(Body::from(body.to_string()))?;
@@ -520,6 +523,10 @@ pub async fn streamed_chat_completion(
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
     let builder = match builder.header("Content-Type", "application/json") {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.header("api-key", api_key.clone().as_str()) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
@@ -773,7 +780,10 @@ pub async fn chat_completion(
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
+        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
         // TODO(spolu): add support for custom organizations
         // .header("OpenAI-Organization", "openai")
         .body(Body::from(body.to_string()))?;
@@ -853,7 +863,10 @@ pub async fn embed(
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
+        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
         // TODO(spolu): add support for custom organizations
         // .header("OpenAI-Organization", "openai")
         .body(Body::from(body.to_string()))?;

@@ -10,13 +10,131 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::{body::Buf, Body, Client, Method, Request, Uri};
+use hyper::header;
+use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::io::prelude::*;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AzureOpenAIScaleSettings {
+    scale_type: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AzureOpenAIDeployment {
+    model: String,
+    owner: String,
+    id: String,
+    status: String,
+    created_at: u64,
+    updated_at: u64,
+    object: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AzureOpenAIDeployments {
+    data: Vec<AzureOpenAIDeployment>,
+}
+
+async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenAIDeployment>> {
+    let url = format!("{}openai/deployments?api-version=2022-12-01", endpoint);
+
+    let mut req = Request::builder().method(Method::GET).uri(url.as_str());
+
+    {
+        let headers = match req.headers_mut() {
+            Some(h) => h,
+            None => Err(anyhow!("Invalid URL: {}", url.as_str()))?,
+        };
+        headers.insert(
+            header::HeaderName::from_bytes("api-key".as_bytes())?,
+            header::HeaderValue::from_bytes(api_key.as_bytes())?,
+        );
+    }
+    let req = req.body(Body::empty())?;
+
+    let https = HttpsConnector::new();
+    let cli = Client::builder().build::<_, hyper::Body>(https);
+    let res = cli.request(req).await?;
+
+    let status = res.status();
+    if status != StatusCode::OK {
+        Err(anyhow!(
+            "Failed to retrieve `azure_openai` Deployments: status_code={}",
+            status
+        ))?;
+    }
+
+    let body = hyper::body::aggregate(res).await?;
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let deployments: AzureOpenAIDeployments = match serde_json::from_slice(c) {
+        Ok(d) => d,
+        Err(_) => Err(anyhow!("Failed to retrieve `azure_openai` Deployments"))?,
+    };
+
+    Ok(deployments.data)
+}
+
+async fn get_deployment(
+    endpoint: &str,
+    api_key: &str,
+    deployment_id: &str,
+) -> Result<AzureOpenAIDeployment> {
+    let url = format!(
+        "{}openai/deployments/{}?api-version=2022-12-01",
+        endpoint, deployment_id
+    );
+
+    let mut req = Request::builder().method(Method::GET).uri(url.as_str());
+
+    {
+        let headers = match req.headers_mut() {
+            Some(h) => h,
+            None => Err(anyhow!("Invalid URL: {}", url.as_str()))?,
+        };
+        headers.insert(
+            header::HeaderName::from_bytes("api-key".as_bytes())?,
+            header::HeaderValue::from_bytes(api_key.as_bytes())?,
+        );
+    }
+    let req = req.body(Body::empty())?;
+
+    let https = HttpsConnector::new();
+    let cli = Client::builder().build::<_, hyper::Body>(https);
+    let res = cli.request(req).await?;
+
+    let status = res.status();
+    if status != StatusCode::OK {
+        Err(anyhow!(
+            "Failed to retrieve `azure_openai` Deployments: status_code={}",
+            status
+        ))?;
+    }
+
+    let body = hyper::body::aggregate(res).await?;
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let deployment: AzureOpenAIDeployment = match serde_json::from_slice(c) {
+        Ok(d) => d,
+        Err(_) => Err(anyhow!(
+            "Failed to retrieve `azure_openai` Deployment `{}`",
+            deployment_id
+        ))?,
+    };
+
+    Ok(deployment)
+}
 
 pub struct AzureOpenAILLM {
     deployment_id: String,
@@ -36,11 +154,24 @@ impl AzureOpenAILLM {
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+        assert!(self.endpoint.is_some());
+
+        Ok(format!(
+            "{}openai/deployments/{}/completions?api-version=2022-12-01",
+            self.endpoint.as_ref().unwrap(),
+            self.deployment_id
+        )
+        .parse::<Uri>()?)
     }
 
+    #[allow(dead_code)]
     fn chat_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
+        Ok(format!(
+            "{}openai/deployments/{}/chat/completions?api-version=2023-03-15-preview",
+            self.endpoint.as_ref().unwrap(),
+            self.deployment_id
+        )
+        .parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
@@ -96,7 +227,14 @@ impl LLM for AzureOpenAILLM {
             },
         }
 
-        // TODO(spolu): go fetch the model id from the deployment
+        let d = get_deployment(
+            self.endpoint.as_ref().unwrap(),
+            self.api_key.as_ref().unwrap(),
+            &self.deployment_id,
+        )
+        .await?;
+
+        self.model_id = Some(d.model);
 
         Ok(())
     }
@@ -354,7 +492,14 @@ impl AzureOpenAIEmbedder {
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
+        assert!(self.endpoint.is_some());
+
+        Ok(format!(
+            "{}openai/deployments/{}/embeddings?api-version=2022-12-01",
+            self.endpoint.as_ref().unwrap(),
+            self.deployment_id
+        )
+        .parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
@@ -406,8 +551,20 @@ impl Embedder for AzureOpenAIEmbedder {
             },
         }
 
-        // TODO(spolu): go fetch the model id from the deployment check that it is
-        // `text-embedding-ada-002`
+        let d = get_deployment(
+            self.endpoint.as_ref().unwrap(),
+            self.api_key.as_ref().unwrap(),
+            &self.deployment_id,
+        )
+        .await?;
+
+        // We ensure at initialize that we only use `text-embedding-ada-002`.
+        match d.model.as_str() {
+            "text-embedding-ada-002" => {}
+            _ => Err(anyhow!("Unsupported model: {}", d.model))?,
+        }
+
+        self.model_id = Some(d.model);
 
         Ok(())
     }
@@ -496,10 +653,12 @@ impl Provider for AzureOpenAIProvider {
         );
         utils::info(
             "Your endpoint and API key can be found at in your Azure portal \
-             (Keys and Endpoint)",
+             (Keys and Endpoint).",
         );
         utils::info("");
-        utils::info("Once ready you can check your setup with `dust provider test azure`");
+        utils::info("Note that Deployment Ids should be used as model Id with `azure_openai`.");
+        utils::info("");
+        utils::info("Once ready you can check your setup with `dust provider test azure_openai`");
 
         Ok(())
     }
@@ -507,59 +666,31 @@ impl Provider for AzureOpenAIProvider {
     async fn test(&self) -> Result<()> {
         // TODO(spolu): list deployments, initialize with deployment ID
 
-        if !utils::confirm(
-            "You are about to make a request for 1 token to `text-ada-001` on the OpenAI API.",
-        )? {
-            Err(anyhow!("User aborted OpenAI test."))?;
-        }
+        let api_key =
+            match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_API_KEY")).await? {
+                Ok(key) => key,
+                Err(_) => Err(anyhow!(
+                    "Environment variable `AZURE_OPENAI_API_KEY` is not set."
+                ))?,
+            };
 
-        let mut llm = self.llm(String::from("text-ada-001"));
-        llm.initialize(Credentials::new()).await?;
+        let endpoint =
+            match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_ENDPOINT")).await? {
+                Ok(endpoint) => endpoint,
+                Err(_) => Err(anyhow!(
+                    "Environment variable `AZURE_OPENAI_ENDPOINT` is not set."
+                ))?,
+            };
 
-        let _ = llm
-            .generate(
-                "Hello 😊",
-                Some(1),
-                0.7,
-                1,
-                &vec![],
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
-            .await?;
+        utils::info("Retrieving deployments...");
+        get_deployments(&endpoint, &api_key)
+            .await?
+            .iter()
+            .for_each(|d| {
+                utils::info(format!("> Deployment: id={} model={}", d.id, d.model).as_str());
+            });
 
-        // let mut embedder = self.embedder(String::from("text-embedding-ada-002"));
-        // embedder.initialize(Credentials::new()).await?;
-
-        // let _v = embedder.embed("Hello 😊", None).await?;
-        // println!("EMBEDDING SIZE: {}", v.vector.len());
-
-        // llm = self.llm(String::from("gpt-3.5-turbo"));
-        // llm.initialize(Credentials::new()).await?;
-
-        // let messages = vec![
-        //     // ChatMessage {
-        //     //     role: String::from("system"),
-        //     //     content: String::from(
-        //     //         "You're a an assistant. Answer as concisely and precisely as possible.",
-        //     //     ),
-        //     // },
-        //     ChatMessage {
-        //         role: String::from("user"),
-        //         content: String::from("How can I calculate the area of a circle?"),
-        //     },
-        // ];
-
-        // let c = llm
-        //     .chat(&messages, 0.7, None, 1, &vec![], None, None, None, None)
-        //     .await?;
-        // println!("CHAT COMPLETION SIZE: {:?}", c);
-
-        utils::done("Test successfully completed! OpenAI is ready to use.");
+        utils::done("Test successfully completed! Azure OpenAI is ready to use.");
 
         Ok(())
     }
