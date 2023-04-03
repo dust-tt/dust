@@ -1,8 +1,8 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
-use crate::providers::openai::{completion, streamed_completion};
-use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::openai::{completion, embed, streamed_completion};
+use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
@@ -10,23 +10,13 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use eventsource_client as es;
-use eventsource_client::Client as ESClient;
-use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::io::prelude::*;
-use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::time::timeout;
 
 pub struct AzureOpenAILLM {
     deployment_id: String,
@@ -54,7 +44,7 @@ impl AzureOpenAILLM {
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
-        match self.model_id {
+        match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
                 "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
                 "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
@@ -79,14 +69,16 @@ impl LLM for AzureOpenAILLM {
             Some(api_key) => {
                 self.api_key = Some(api_key.clone());
             }
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => {
-                    self.api_key = Some(key);
+            None => {
+                match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_API_KEY")).await? {
+                    Ok(key) => {
+                        self.api_key = Some(key);
+                    }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `AZURE_OPENAI_API_KEY` is not set."
+                    ))?,
                 }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `AZURE_OPENAI_API_KEY` is not set."
-                ))?,
-            },
+            }
         }
         match credentials.get("AZURE_OPENAI_ENDPOINT") {
             Some(endpoint) => {
@@ -103,11 +95,14 @@ impl LLM for AzureOpenAILLM {
                 ))?,
             },
         }
+
+        // TODO(spolu): go fetch the model id from the deployment
+
         Ok(())
     }
 
     fn context_size(&self) -> usize {
-        match self.model_id {
+        match self.model_id.as_ref() {
             Some(model_id) => {
                 if model_id.starts_with("gpt-3.5-turbo") {
                     return 4096;
@@ -338,9 +333,153 @@ impl LLM for AzureOpenAILLM {
         Err(anyhow!(
             "Chat capabilties are not implemented for provider `azure_openai`"
         ))
+    }
+}
+
+pub struct AzureOpenAIEmbedder {
+    deployment_id: String,
+    model_id: Option<String>,
+    endpoint: Option<String>,
+    api_key: Option<String>,
+}
+
+impl AzureOpenAIEmbedder {
+    pub fn new(deployment_id: String) -> Self {
+        AzureOpenAIEmbedder {
+            deployment_id,
+            model_id: None,
+            endpoint: None,
+            api_key: None,
+        }
+    }
+
+    fn uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
+    }
+
+    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+        match self.model_id.as_ref() {
+            Some(model_id) => match model_id.as_str() {
+                "text-embedding-ada-002" => cl100k_base_singleton(),
+                _ => unimplemented!(),
+            },
+            None => unimplemented!(),
+        }
+    }
+}
+
+#[async_trait]
+impl Embedder for AzureOpenAIEmbedder {
+    fn id(&self) -> String {
+        self.deployment_id.clone()
+    }
+
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        match credentials.get("AZURE_OPENAI_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
+            }
+            None => {
+                match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_API_KEY")).await? {
+                    Ok(key) => {
+                        self.api_key = Some(key);
+                    }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `AZURE_OPENAI_API_KEY` is not set."
+                    ))?,
+                }
+            }
+        }
+        match credentials.get("AZURE_OPENAI_ENDPOINT") {
+            Some(endpoint) => {
+                self.endpoint = Some(endpoint.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_ENDPOINT"))
+                .await?
+            {
+                Ok(endpoint) => {
+                    self.endpoint = Some(endpoint);
+                }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `AZURE_OPENAI_ENDPOINT` is not set."
+                ))?,
+            },
+        }
+
+        // TODO(spolu): go fetch the model id from the deployment check that it is
+        // `text-embedding-ada-002`
+
+        Ok(())
+    }
+
+    fn context_size(&self) -> usize {
+        match self.model_id.as_ref() {
+            Some(model_id) => match model_id.as_str() {
+                "text-embedding-ada-002" => 8191,
+                _ => unimplemented!(),
+            },
+            None => unimplemented!(),
+        }
+    }
+
+    fn embedding_size(&self) -> usize {
+        match self.model_id.as_ref() {
+            Some(model_id) => match model_id.as_str() {
+                "text-embedding-ada-002" => 1536,
+                _ => unimplemented!(),
+            },
+            None => unimplemented!(),
+        }
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
+        Ok(tokens)
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        let str = { self.tokenizer().lock().decode(tokens)? };
+        Ok(str)
+    }
+
+    async fn embed(&self, text: &str, extras: Option<Value>) -> Result<EmbedderVector> {
+        let e = embed(
+            self.uri()?,
+            self.api_key.clone().unwrap(),
+            None,
+            text,
+            match extras {
+                Some(e) => match e.get("openai_user") {
+                    Some(u) => Some(u.to_string()),
+                    None => None,
+                },
+                None => None,
+            },
+        )
+        .await?;
+
+        assert!(e.data.len() > 0);
+        // println!("EMBEDDING: {:?}", e);
+
+        Ok(EmbedderVector {
+            created: utils::now(),
+            provider: ProviderID::OpenAI.to_string(),
+            model: match self.model_id {
+                Some(ref model_id) => model_id.clone(),
+                None => unimplemented!(),
+            },
+            vector: e.data[0].embedding.clone(),
+        })
+    }
 }
 
 pub struct AzureOpenAIProvider {}
+
+impl AzureOpenAIProvider {
+    pub fn new() -> Self {
+        AzureOpenAIProvider {}
+    }
+}
 
 #[async_trait]
 impl Provider for AzureOpenAIProvider {
@@ -366,6 +505,8 @@ impl Provider for AzureOpenAIProvider {
     }
 
     async fn test(&self) -> Result<()> {
+        // TODO(spolu): list deployments, initialize with deployment ID
+
         if !utils::confirm(
             "You are about to make a request for 1 token to `text-ada-001` on the OpenAI API.",
         )? {
