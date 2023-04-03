@@ -51,13 +51,13 @@ export async function auth_api_user(
     });
   }
 
-  const auth_user = await User.findOne({
+  const authUser = await User.findOne({
     where: {
       id: key.userId,
     },
   });
 
-  if (!auth_user) {
+  if (!authUser) {
     return Err({
       status_code: 500,
       error: {
@@ -67,5 +67,5 @@ export async function auth_api_user(
     });
   }
 
-  return Ok(auth_user);
+  return Ok(authUser);
 }
