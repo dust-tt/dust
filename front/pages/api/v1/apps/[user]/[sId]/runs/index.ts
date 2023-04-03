@@ -1,5 +1,8 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { NextApiRequest, NextApiResponse } from "next";
+import { auth_api_user } from "@app/lib/api/auth";
+import { streamChunks } from "@app/lib/http_utils";
 
 const { DUST_API } = process.env;
 
@@ -9,6 +12,15 @@ export const config = {
   },
 };
 
+interface PoolCall {
+  fn: () => Promise<any>;
+  validate: (result: any) => boolean;
+  interval: number;
+  increment: number;
+  maxInterval: number;
+  maxAttempts: number;
+}
+
 const poll = async ({
   fn,
   validate,
@@ -16,10 +28,10 @@ const poll = async ({
   increment,
   maxInterval,
   maxAttempts,
-}) => {
+}: PoolCall) => {
   let attempts = 0;
 
-  const executePoll = async (resolve, reject) => {
+  const executePoll = async (resolve: any, reject: any) => {
     const result = await fn();
     attempts++;
     if (interval < maxInterval) interval += increment;
@@ -37,81 +49,36 @@ const poll = async ({
   return new Promise(executePoll);
 };
 
-export default async function handler(req, res) {
-  if (!req.headers.authorization) {
-    res.status(401).json({
-      error: {
-        type: "missing_authorization_header_error",
-        message: "Missing Authorization header",
-      },
-    });
-    return;
-  }
-
-  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1]) {
-    res.status(401).json({
-      error: {
-        type: "malformed_authorization_header_error",
-        message: "Malformed Authorization header",
-      },
-    });
-    return;
-  }
-  let secret = parse[1];
-
-  let [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        secret: secret,
-      },
-    }),
-  ]);
-
-  if (!key || key.status !== "active") {
-    res.status(401).json({
-      error: {
-        type: "invalid_api_key_error",
-        message: "The API key provided is invalid or disabled.",
-      },
-    });
-    return;
-  }
-
-  let [reqUser, appUser] = await Promise.all([
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  let [authRes, appOwner] = await Promise.all([
+    auth_api_user(req),
     User.findOne({
       where: {
         username: req.query.user,
       },
     }),
-    User.findOne({
-      where: {
-        id: key.userId,
-      },
-    }),
   ]);
 
-  if (!reqUser) {
+  if (authRes.isErr()) {
+    const err = authRes.error();
+    return res.status(err.status_code).json(err.error);
+  }
+  const authUser = authRes.value();
+
+  if (!appOwner) {
     res.status(404).json({
       error: {
-        type: "app_not_found",
-        message: "The app you're trying to run was not found.",
+        type: "user_not_found",
+        message: "The user you're trying to query was not found.",
       },
     });
     return;
   }
 
-  if (!appUser) {
-    res.status(500).json({
-      error: {
-        type: "internal_server_error",
-        message: "The user associaed with the api key was not found.",
-      },
-    });
-    return;
-  }
-
-  if (appUser.id != reqUser.id) {
+  if (authUser.id != appOwner.id) {
     res.status(401).json({
       error: {
         type: "app_user_mismatch_error",
@@ -126,13 +93,13 @@ export default async function handler(req, res) {
   let [app, providers] = await Promise.all([
     App.findOne({
       where: {
-        userId: reqUser.id,
+        userId: appOwner.id,
         sId: req.query.sId,
       },
     }),
     Provider.findAll({
       where: {
-        userId: reqUser.id,
+        userId: authUser.id,
       },
     }),
   ]);
@@ -180,7 +147,7 @@ export default async function handler(req, res) {
       let credentials = credentialsFromProviders(providers);
 
       console.log("[API] app run creation:", {
-        user: reqUser.username,
+        user: appOwner.username,
         app: app.sId,
         config,
         inputs,
@@ -195,7 +162,7 @@ export default async function handler(req, res) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Dust-User-Id": appUser.id,
+              "X-Dust-User-Id": authUser.id.toString(),
             },
             body: JSON.stringify({
               run_type: "deploy",
@@ -225,9 +192,8 @@ export default async function handler(req, res) {
         });
 
         try {
-          for await (const chunk of runRes.body) {
+          for await (const chunk of streamChunks(runRes.body!)) {
             res.write(chunk);
-            res.flush();
           }
         } catch (err) {
           console.log("ERROR streaming from Dust API:", err);
@@ -242,7 +208,7 @@ export default async function handler(req, res) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Dust-User-Id": appUser.id,
+            "X-Dust-User-Id": authUser.id.toString(),
           },
           body: JSON.stringify({
             run_type: "deploy",
@@ -276,7 +242,9 @@ export default async function handler(req, res) {
         await poll({
           fn: async () => {
             const runRes = await fetch(
-              `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
+              `${DUST_API}/projects/${
+                app!.dustAPIProjectId
+              }/runs/${runId}/status`,
               {
                 method: "GET",
               }
@@ -326,10 +294,10 @@ export default async function handler(req, res) {
       }
 
       if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
-        run.traces = run.traces.filter((t) => {
+        run.traces = run.traces.filter((t: any) => {
           return req.body.block_filter.includes(t[0][1]);
         });
-        run.status.blocks = run.status.blocks.filter((c) => {
+        run.status.blocks = run.status.blocks.filter((c: any) => {
           return req.body.block_filter.includes(c.name);
         });
       }
