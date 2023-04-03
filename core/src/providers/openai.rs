@@ -191,6 +191,10 @@ pub async fn streamed_completion(
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
+    let builder = match builder.header("api-key", api_key.clone().as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
 
     let mut body = json!({
         "prompt": prompt,
