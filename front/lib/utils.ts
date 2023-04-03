@@ -54,7 +54,7 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
 export const communityApps = [
   {
     user: "spolu",
-    sId: "d12ac33169",
+    sId: "01caf5ebc3",
     name: "ipcc-ar6-qa",
     description:
       "Use semantic search to answer questions about the IPCC AR6 report",
