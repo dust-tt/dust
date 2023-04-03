@@ -6,7 +6,7 @@ import { Key, User } from "@app/lib/models";
 /**
  * Get a user id from the Authorization Bearer header
  * @param req NextApiRequest request object
- * @returns Result<number, ApiInternalError> Ok(user_id) or Err(ApiInternalError)
+ * @returns Result<number, HTTPError> Ok(User) or Err(HTTPError)
  */
 export async function auth_api_user(
   req: NextApiRequest
