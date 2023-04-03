@@ -7,12 +7,12 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const auth_result = await auth_api_user(req);
-  if (auth_result.isErr()) {
-    const err = auth_result.error();
+  const authResult = await auth_api_user(req);
+  if (authResult.isErr()) {
+    const err = authResult.error();
     return res.status(err.status_code).json(err.error);
   }
-  const authUser = auth_result.value();
+  const authUser = authResult.value();
 
   let appOwner = await User.findOne({
     where: {
