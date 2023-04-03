@@ -1,6 +1,6 @@
 import { NextApiRequest } from "next";
 import { Result, Ok, Err } from "@app/lib/result";
-import { HTTPError } from "@app/lib/error";
+import { HTTPError } from "@app/lib/api/error";
 import { Key, User } from "@app/lib/models";
 
 /**
