@@ -2,7 +2,7 @@ import { User, App, Provider, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
-import {streamChunks} from "@app/lib/http_utils"
+import { streamChunks } from "@app/lib/http_utils";
 
 const { DUST_API } = process.env;
 
@@ -13,12 +13,12 @@ export const config = {
 };
 
 interface PoolCall {
-  fn: () => Promise<any>,
-  validate: (result: any) => boolean,
-  interval: number,
-  increment: number,
-  maxInterval: number,
-  maxAttempts: number,
+  fn: () => Promise<any>;
+  validate: (result: any) => boolean;
+  interval: number;
+  increment: number;
+  maxInterval: number;
+  maxAttempts: number;
 }
 
 const poll = async ({
@@ -240,7 +240,9 @@ export default async function handler(
         await poll({
           fn: async () => {
             const runRes = await fetch(
-              `${DUST_API}/projects/${app!.dustAPIProjectId}/runs/${runId}/status`,
+              `${DUST_API}/projects/${
+                app!.dustAPIProjectId
+              }/runs/${runId}/status`,
               {
                 method: "GET",
               }
@@ -290,10 +292,10 @@ export default async function handler(
       }
 
       if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
-        run.traces = run.traces.filter((t:any) => {
+        run.traces = run.traces.filter((t: any) => {
           return req.body.block_filter.includes(t[0][1]);
         });
-        run.status.blocks = run.status.blocks.filter((c:any) => {
+        run.status.blocks = run.status.blocks.filter((c: any) => {
           return req.body.block_filter.includes(c.name);
         });
       }

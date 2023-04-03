@@ -1,11 +1,14 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { Op } from "sequelize";
 import { NextApiRequest, NextApiResponse } from "next";
-import {auth_api_user} from "@app/lib/api/auth";
+import { auth_api_user } from "@app/lib/api/auth";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req:NextApiRequest, res:NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const authRes = await auth_api_user(req);
   if (authRes.isErr()) {
     const err = authRes.error();
@@ -43,19 +46,19 @@ export default async function handler(req:NextApiRequest, res:NextApiResponse) {
   const readOnly = authUser.id !== appOwner.id;
 
   let app = await App.findOne({
-      where: readOnly
-        ? {
-            userId: authUser.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: authUser.id,
-            sId: req.query.sId,
+    where: readOnly
+      ? {
+          userId: authUser.id,
+          sId: req.query.sId,
+          visibility: {
+            [Op.or]: ["public", "unlisted"],
           },
-    });
+        }
+      : {
+          userId: authUser.id,
+          sId: req.query.sId,
+        },
+  });
 
   if (!app) {
     res.status(404).json({

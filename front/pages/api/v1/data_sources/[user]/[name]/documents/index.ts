@@ -5,7 +5,10 @@ import { auth_api_user } from "@app/lib/api/auth";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const authRes = await auth_api_user(req);
   if (authRes.isErr()) {
     const err = authRes.error();
@@ -28,7 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     return;
   }
-  
 
   const readOnly = authUser.id !== appOwner.id;
 

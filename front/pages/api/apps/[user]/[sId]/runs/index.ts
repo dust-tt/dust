@@ -6,7 +6,7 @@ import { Run } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
-import {streamChunks} from "@app/lib/http_utils"
+import { streamChunks } from "@app/lib/http_utils";
 
 const { DUST_API } = process.env;
 

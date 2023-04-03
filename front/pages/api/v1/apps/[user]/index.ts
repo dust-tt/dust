@@ -29,7 +29,7 @@ export default async function handler(
     });
     return;
   }
-  
+
   const readOnly = authUser.id !== appOwner.id;
 
   let apps = await App.findAll({
