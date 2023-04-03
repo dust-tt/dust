@@ -6,12 +6,12 @@ import { auth_api_user } from "@app/lib/api/auth";
 const { DUST_API } = process.env;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const authResult = await auth_api_user(req);
-  if (authResult.isErr()) {
-    const err = authResult.error();
+  const authRes = await auth_api_user(req);
+  if (authRes.isErr()) {
+    const err = authRes.error();
     return res.status(err.status_code).json(err.error);
   }
-  const authUser = authResult.value();
+  const authUser = authRes.value();
 
   let appOwner = await User.findOne({
     where: {
