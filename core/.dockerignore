@@ -1,0 +1,6 @@
+.dockerignore
+fly.toml
+Dockerfile
+target/
+store.db
+api_store.db

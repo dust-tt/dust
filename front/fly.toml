@@ -1,0 +1,39 @@
+# fly.toml file generated for dust-front on 2023-04-02T22:31:46+08:00
+
+app = "dust-front"
+kill_signal = "SIGINT"
+kill_timeout = 5
+mounts = []
+primary_region = "nrt"
+processes = []
+
+[build]
+  [build.args]
+    NEXT_PUBLIC_EXAMPLE = "Value goes here"
+
+[env]
+  PORT = "8080"
+  URL = "https://dust-front.fly.dev"
+  NEXTAUTH_URL = "https://dust-front.fly.dev"
+  DUST_API = "http://dust-api.internal:3001"
+  THUM_IO_KEY = "0-Foo"
+  GA_TRACKING_ID = "Foo"
+
+[[services]]
+  internal_port = 8080
+  processes = ["app"]
+  protocol = "tcp"
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+

@@ -1,0 +1,73 @@
+name: Create image and deploy
+on:
+  push:
+    branches: ['fly']
+
+env:
+  REGISTRY: ghcr.io
+  CORE_IMAGE: ghcr.io/${{ github.actor }}/dust-core:latest
+  FRONT_IMAGE: ghcr.io/${{ github.actor }}/dust-front:latest
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push front
+        uses: docker/build-push-action@v4
+        with:
+          context: front/
+          file: front/Dockerfile
+          push: true
+          tags: ${{ env.FRONT_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push core
+        uses: docker/build-push-action@v4
+        with:
+          context: core/
+          file: core/Dockerfile
+          push: true
+          tags: ${{ env.CORE_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  fly-io-deploy:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy core
+        working-directory: core/
+        run: flyctl deploy -i ${CORE_IMAGE}
+        env:
+           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_CORE }}
+
+      - name: Deploy front
+        working-directory: front/
+        run: flyctl deploy -i ${FRONT_IMAGE}
+        env:
+           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_FRONT }}
+
