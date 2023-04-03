@@ -1,83 +1,34 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { Op } from "sequelize";
+import { NextApiRequest, NextApiResponse } from "next";
+import {auth_api_user} from "@app/lib/api/auth";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
-  if (!req.headers.authorization) {
-    res.status(401).json({
-      error: {
-        type: "missing_authorization_header_error",
-        message: "Missing Authorization header",
-      },
-    });
-    return;
+export default async function handler(req:NextApiRequest, res:NextApiResponse) {
+  const auth_result = await auth_api_user(req);
+  if (auth_result.isErr()) {
+    const err = auth_result.error();
+    return res.status(err.status_code).json(err.error);
   }
+  const authUser = auth_result.value();
 
-  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1]) {
-    res.status(401).json({
-      error: {
-        type: "malformed_authorization_header_error",
-        message: "Malformed Authorization header",
-      },
-    });
-    return;
-  }
-  let secret = parse[1];
+  let appOwner = await User.findOne({
+    where: {
+      username: req.query.user,
+    },
+  });
 
-  let [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        secret: secret,
-      },
-    }),
-  ]);
-
-  if (!key || key.status !== "active") {
-    res.status(401).json({
-      error: {
-        type: "invalid_api_key_error",
-        message: "The API key provided is invalid or disabled.",
-      },
-    });
-    return;
-  }
-
-  let [reqUser, appUser] = await Promise.all([
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-    User.findOne({
-      where: {
-        id: key.userId,
-      },
-    }),
-  ]);
-
-  if (!reqUser) {
+  if (!appOwner) {
     res.status(404).json({
       error: {
-        type: "app_not_found",
-        message: "The app whose run you're trying to retrieve was not found.",
+        type: "user_not_found",
+        message: "The user you're trying to query was not found.",
       },
     });
     return;
   }
-
-  if (!appUser) {
-    res.status(500).json({
-      error: {
-        type: "internal_server_error",
-        message: "The user associaed with the api key was not found.",
-      },
-    });
-    return;
-  }
-
-  if (appUser.id != reqUser.id) {
+  if (authUser.id != appOwner.id) {
     res.status(401).json({
       error: {
         type: "app_user_mismatch_error",
@@ -89,29 +40,22 @@ export default async function handler(req, res) {
     return;
   }
 
-  const readOnly = appUser.id !== reqUser.id;
+  const readOnly = authUser.id !== appOwner.id;
 
-  let [app, providers] = await Promise.all([
-    App.findOne({
+  let app = await App.findOne({
       where: readOnly
         ? {
-            userId: appUser.id,
+            userId: authUser.id,
             sId: req.query.sId,
             visibility: {
               [Op.or]: ["public", "unlisted"],
             },
           }
         : {
-            userId: appUser.id,
+            userId: authUser.id,
             sId: req.query.sId,
           },
-    }),
-    Provider.findAll({
-      where: {
-        userId: reqUser.id,
-      },
-    }),
-  ]);
+    });
 
   if (!app) {
     res.status(404).json({
@@ -128,7 +72,7 @@ export default async function handler(req, res) {
       let runId = req.query.runId;
 
       console.log("[API] app run retrieve:", {
-        user: reqUser.username,
+        user: appOwner.username,
         app: app.sId,
         runId,
       });

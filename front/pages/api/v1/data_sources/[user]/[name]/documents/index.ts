@@ -1,63 +1,25 @@
 import { User, DataSource, Key } from "@app/lib/models";
 import { Op } from "sequelize";
+import { NextApiRequest, NextApiResponse } from "next";
+import { auth_api_user } from "@app/lib/api/auth";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
-  if (!req.headers.authorization) {
-    res.status(401).json({
-      error: {
-        type: "missing_authorization_header_error",
-        message: "Missing Authorization header",
-      },
-    });
-    return;
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const auth_result = await auth_api_user(req);
+  if (auth_result.isErr()) {
+    const err = auth_result.error();
+    return res.status(err.status_code).json(err.error);
   }
+  const authUser = auth_result.value();
 
-  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1]) {
-    res.status(401).json({
-      error: {
-        type: "malformed_authorization_header_error",
-        message: "Malformed Authorization header",
-      },
-    });
-    return;
-  }
-  let secret = parse[1];
+  let appOwner = await User.findOne({
+    where: {
+      username: req.query.user,
+    },
+  });
 
-  let [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        secret: secret,
-      },
-    }),
-  ]);
-
-  if (!key || key.status !== "active") {
-    res.status(401).json({
-      error: {
-        type: "invalid_api_key_error",
-        message: "The API key provided is invalid or disabled.",
-      },
-    });
-    return;
-  }
-
-  let [reqUser, appUser] = await Promise.all([
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-    User.findOne({
-      where: {
-        id: key.userId,
-      },
-    }),
-  ]);
-
-  if (!reqUser) {
+  if (!appOwner) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -66,30 +28,21 @@ export default async function handler(req, res) {
     });
     return;
   }
+  
 
-  if (!appUser) {
-    res.status(500).json({
-      error: {
-        type: "internal_server_error",
-        message: "The user associaed with the api key was not found.",
-      },
-    });
-    return;
-  }
-
-  const readOnly = appUser.id !== reqUser.id;
+  const readOnly = authUser.id !== appOwner.id;
 
   let dataSource = await DataSource.findOne({
     where: readOnly
       ? {
-          userId: reqUser.id,
+          userId: appOwner.id,
           name: req.query.name,
           visibility: {
             [Op.or]: ["public"],
           },
         }
       : {
-          userId: reqUser.id,
+          userId: appOwner.id,
           name: req.query.name,
         },
     attributes: [
@@ -115,8 +68,8 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      let limit = req.query.limit ? parseInt(req.query.limit) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset) : 0;
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
       const docsRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,

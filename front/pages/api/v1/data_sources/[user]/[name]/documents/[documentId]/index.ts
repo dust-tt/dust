@@ -1,64 +1,26 @@
 import { User, DataSource, Key, Provider } from "@app/lib/models";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { NextApiRequest, NextApiResponse } from "next";
+import { auth_api_user } from "@app/lib/api/auth";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
-  if (!req.headers.authorization) {
-    res.status(401).json({
-      error: {
-        type: "missing_authorization_header_error",
-        message: "Missing Authorization header",
-      },
-    });
-    return;
+export default async function handler(req:NextApiRequest, res:NextApiResponse) {
+  const auth_result = await auth_api_user(req);
+  if (auth_result.isErr()) {
+    const err = auth_result.error();
+    return res.status(err.status_code).json(err.error);
   }
+  const authUser = auth_result.value();
 
-  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1]) {
-    res.status(401).json({
-      error: {
-        type: "malformed_authorization_header_error",
-        message: "Malformed Authorization header",
-      },
-    });
-    return;
-  }
-  let secret = parse[1];
+  let appOwner = await User.findOne({
+    where: {
+      username: req.query.user,
+    },
+  });
 
-  let [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        secret: secret,
-      },
-    }),
-  ]);
-
-  if (!key || key.status !== "active") {
-    res.status(401).json({
-      error: {
-        type: "invalid_api_key_error",
-        message: "The API key provided is invalid or disabled.",
-      },
-    });
-    return;
-  }
-
-  let [reqUser, appUser] = await Promise.all([
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-    User.findOne({
-      where: {
-        id: key.userId,
-      },
-    }),
-  ]);
-
-  if (!reqUser) {
+  if (!appOwner) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -68,29 +30,32 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!appUser) {
-    res.status(500).json({
+  if (authUser.id != appOwner.id) {
+    res.status(401).json({
       error: {
-        type: "internal_server_error",
-        message: "The user associaed with the api key was not found.",
+        type: "app_user_mismatch_error",
+        message:
+          "Only apps that you own can be interacted with by API \
+          (you can clone this app to run it).",
       },
     });
     return;
   }
 
-  const readOnly = appUser.id !== reqUser.id;
+
+  const readOnly = authUser.id !== appOwner.id;
 
   let dataSource = await DataSource.findOne({
     where: readOnly
       ? {
-          userId: reqUser.id,
+          userId: appOwner.id,
           name: req.query.name,
           visibility: {
             [Op.or]: ["public"],
           },
         }
       : {
-          userId: reqUser.id,
+          userId: appOwner.id,
           name: req.query.name,
         },
     attributes: [
@@ -119,7 +84,7 @@ export default async function handler(req, res) {
       const docRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
           dataSource.name
-        }/documents/${encodeURIComponent(req.query.documentId)}`,
+        }/documents/${encodeURIComponent(req.query.documentId as string)}`,
         {
           method: "GET",
         }
@@ -169,7 +134,7 @@ export default async function handler(req, res) {
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: reqUser.id,
+            userId: appOwner.id,
           },
         }),
       ]);
@@ -215,7 +180,7 @@ export default async function handler(req, res) {
       }
 
       // Enforce FreePlan limit: 32 documents per DataSource.
-      if (reqUser.username !== "spolu") {
+      if (appOwner.username !== "spolu") {
         const documentsRes = await fetch(
           `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
           {
@@ -312,7 +277,7 @@ export default async function handler(req, res) {
       const delRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
           dataSource.name
-        }/documents/${encodeURIComponent(req.query.documentId)}`,
+        }/documents/${encodeURIComponent(req.query.documentId as string)}`,
         {
           method: "DELETE",
         }

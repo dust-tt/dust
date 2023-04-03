@@ -1,7 +1,7 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { NextApiRequest, NextApiResponse } from "next";
-import { auth_api_user } from "@app/lib/api/api_auth";
+import { auth_api_user } from "@app/lib/api/auth";
 import {streamChunks} from "@app/lib/http_utils"
 
 const { DUST_API } = process.env;

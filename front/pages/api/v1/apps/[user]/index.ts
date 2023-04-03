@@ -1,6 +1,6 @@
 import { User, App } from "@app/lib/models";
 import { Op } from "sequelize";
-import { auth_api_user } from "@app/lib/api/api_auth";
+import { auth_api_user } from "@app/lib/api/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
