@@ -6,6 +6,7 @@ import { Run } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
+import {streamChunks} from "@app/lib/http_utils"
 
 const { DUST_API } = process.env;
 
@@ -239,23 +240,5 @@ export default async function handler(
     default:
       res.status(405).end();
       return;
-  }
-}
-
-async function* streamChunks(stream: ReadableStream<Uint8Array>) {
-  const reader = stream.getReader();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      yield value;
-    }
-  } catch (e) {
-    console.log("Error streaming chunks", e);
-  } finally {
-    reader.releaseLock();
   }
 }
