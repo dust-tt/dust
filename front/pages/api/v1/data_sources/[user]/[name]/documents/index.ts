@@ -16,13 +16,13 @@ export default async function handler(
   }
   const authUser = authRes.value();
 
-  let appOwner = await User.findOne({
+  let dataSourceOwner = await User.findOne({
     where: {
       username: req.query.user,
     },
   });
 
-  if (!appOwner) {
+  if (!dataSourceOwner) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -32,19 +32,19 @@ export default async function handler(
     return;
   }
 
-  const readOnly = authUser.id !== appOwner.id;
+  const readOnly = authUser.id !== dataSourceOwner.id;
 
   let dataSource = await DataSource.findOne({
     where: readOnly
       ? {
-          userId: appOwner.id,
+          userId: dataSourceOwner.id,
           name: req.query.name,
           visibility: {
             [Op.or]: ["public"],
           },
         }
       : {
-          userId: appOwner.id,
+          userId: dataSourceOwner.id,
           name: req.query.name,
         },
     attributes: [

@@ -17,13 +17,13 @@ export default async function handler(
   }
   const authUser = authRes.value();
 
-  let appOwner = await User.findOne({
+  let dataSourceOwner = await User.findOne({
     where: {
       username: req.query.user,
     },
   });
 
-  if (!appOwner) {
+  if (!dataSourceOwner) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -33,7 +33,7 @@ export default async function handler(
     return;
   }
 
-  if (authUser.id != appOwner.id) {
+  if (authUser.id != dataSourceOwner.id) {
     res.status(401).json({
       error: {
         type: "app_user_mismatch_error",
@@ -45,19 +45,19 @@ export default async function handler(
     return;
   }
 
-  const readOnly = authUser.id !== appOwner.id;
+  const readOnly = authUser.id !== dataSourceOwner.id;
 
   let dataSource = await DataSource.findOne({
     where: readOnly
       ? {
-          userId: appOwner.id,
+          userId: dataSourceOwner.id,
           name: req.query.name,
           visibility: {
             [Op.or]: ["public"],
           },
         }
       : {
-          userId: appOwner.id,
+          userId: dataSourceOwner.id,
           name: req.query.name,
         },
     attributes: [
@@ -136,7 +136,7 @@ export default async function handler(
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: appOwner.id,
+            userId: dataSourceOwner.id,
           },
         }),
       ]);
@@ -182,7 +182,7 @@ export default async function handler(
       }
 
       // Enforce FreePlan limit: 32 documents per DataSource.
-      if (appOwner.username !== "spolu") {
+      if (dataSourceOwner.username !== "spolu") {
         const documentsRes = await fetch(
           `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
           {
