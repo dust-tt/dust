@@ -9,18 +9,20 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const authRes = await auth_api_user(req);
+  let [authRes, dataSourceOwner] = await Promise.all([
+    auth_api_user(req),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
+
   if (authRes.isErr()) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.error);
   }
   const authUser = authRes.value();
-
-  let dataSourceOwner = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
 
   if (!dataSourceOwner) {
     res.status(404).json({

@@ -53,18 +53,20 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const authRes = await auth_api_user(req);
+  let [authRes, appOwner] = await Promise.all([
+    auth_api_user(req),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
+
   if (authRes.isErr()) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.error);
   }
   const authUser = authRes.value();
-
-  let appOwner = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
 
   if (!appOwner) {
     res.status(404).json({
@@ -97,7 +99,7 @@ export default async function handler(
     }),
     Provider.findAll({
       where: {
-        userId: appOwner.id,
+        userId: authUser.id,
       },
     }),
   ]);
@@ -160,7 +162,7 @@ export default async function handler(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Dust-User-Id": appOwner.id.toString(),
+              "X-Dust-User-Id": authUser.id.toString(),
             },
             body: JSON.stringify({
               run_type: "deploy",
