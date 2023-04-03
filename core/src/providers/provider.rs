@@ -18,6 +18,7 @@ pub enum ProviderID {
     OpenAI,
     Cohere,
     AI21,
+    #[serde(rename = "azure_openai")]
     AzureOpenAI,
 }
 

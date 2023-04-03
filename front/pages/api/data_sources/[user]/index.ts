@@ -141,6 +141,7 @@ export default async function handler(
           }),
         }
       );
+
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
         res.status(500).end();

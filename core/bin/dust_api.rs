@@ -1390,7 +1390,6 @@ async fn data_sources_delete(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    println!("IN DELETE");
     match state
         .store
         .load_data_source(&project, &data_source_id)

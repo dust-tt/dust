@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { classNames } from "@app/lib/utils";
 import { Button } from "@app/components/Button";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
+import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import CohereSetup from "@app/components/providers/CohereSetup";
 import AI21Setup from "@app/components/providers/AI21Setup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
@@ -24,6 +25,7 @@ export default function ProfileProviders({ ga_tracking_id }) {
   const [openAIOpen, setOpenAIOpen] = useState(false);
   const [cohereOpen, setCohereOpen] = useState(false);
   const [ai21Open, setAI21Open] = useState(false);
+  const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
@@ -62,6 +64,12 @@ export default function ProfileProviders({ ga_tracking_id }) {
           setOpen={setAI21Open}
           enabled={configs["ai21"] ? true : false}
           config={configs["ai21"] ? configs["ai21"] : null}
+        />
+        <AzureOpenAISetup
+          open={azureOpenAIOpen}
+          setOpen={setAzureOpenAIOpen}
+          enabled={configs["azure_openai"] ? true : false}
+          config={configs["azure_openai"] ? configs["azure_openai"] : null}
         />
         <SerpAPISetup
           open={serpapiOpen}
@@ -140,6 +148,9 @@ export default function ProfileProviders({ ga_tracking_id }) {
                               break;
                             case "ai21":
                               setAI21Open(true);
+                              break;
+                            case "azure_openai":
+                              setAzureOpenAIOpen(true);
                               break;
                           }
                         }}
