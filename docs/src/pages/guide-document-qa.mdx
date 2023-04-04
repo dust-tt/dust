@@ -7,19 +7,19 @@ This guide will help you build a Document Q&A app with step-by-step instructions
 Sources. {{ className: 'lead' }}
 
 <Note>
-  Make sure you're signed-up on [Dust](https://dust.tt) and have reviewed the
+  Make sure you're signed up on [Dust](https://dust.tt) and have reviewed the
   [Quickstart](/quickstart) guide.
 </Note>
 
-This document assumes that you've already created a Dust app and that you have already set up OpenAI
-as a provider on your Dust account. If you haven't done so, please refer to our
+This document assumes that you know how to create a Dust app and that you have already set up OpenAI
+as a provider on your account. If you haven't done so, please refer to our
 [Quickstart](/quickstart) guide for step-by-step instructions.
 
 In this guide we will use a [Data Source](/data-sources-overview) to store and index a set of
 documents and make their content available to a large language model using semantic search in order
 to answer questions about them.
 
-The main limitation of LLMs when it comes to answering question about long documents is that the
+The main limitation of LLMs when it comes to answering questions about long documents is that the
 documents cannot fit in the LLM [context size](/introduction#large-language-models). Data sources
 allow us to overcome this limitation by splitting documents into smaller chunks and indexing these
 chunks separately.
@@ -41,16 +41,16 @@ We will use a Data Source to automatically chunk, embed and index 4 IPCC reports
 
 You can create your first Data Source from your Dust home page by selecting the **DataSources** tab
 and clicking on the **New DataSource** button. You'll need to provide a name and description as well
-as select OpenAI's embedding model `text-embedding-ada-002`. Finally it is important to pick a
+as select OpenAI's embedding model `text-embedding-ada-002`. Finally, it is important to pick a
 `max_chunk_size` value. We decided to use `max_chunk_size=256` for this example (in tokens), to be
-able to insert 12 chunks in-context and leave 1024 tokens for genreating an answer as we plan to use
-`gpt-3.5-turbo` which has a 4096 tokens context size.
+able to insert 12 chunks in-context and leave 1024 tokens for generating an answer as we plan to use
+`gpt-3.5-turbo` which has a context size of 4096 tokens.
 
 Increasing the `max_chunk_size` would provide more context per chunk but would also reduce the
 number of chunks the model can attend to in-context. Reducing it would allow to consider more
 "sources" of information but would reduce the amount of information captured by each chunk. 256
-tokens appears like a good trade-off for our use-case but the right value will depend on your
-use-case and the model you use (as an example, `gpt-4` has 8192 tokens of context, so we could use a
+tokens appears like a good trade-off for here but the right value will depend on your
+use case and the model you use (as an example, `gpt-4` has 8192 tokens of context, so we could use a
 `max_chunk_size` of 512).
 
 <Image
@@ -99,7 +99,7 @@ app that will use it.
 ## Creating a Q&A app
 
 In this section we'll provide step-by-step instructions to create a Q&A app that will use the data
-source to answer user provided questions. You can find a finalized version of the app
+source to answer user-provided questions. You can find a finalized version of the app
 [here](https://dust.tt/spolu/a/01caf5ebc3).
 
 ### `input` block
@@ -181,7 +181,7 @@ _fun = (env) => {
 };
 ```
 
-You can now run your app and inspec the outputs of the last `code` block.
+You can now run your app and inspect the outputs of the last `code` block.
 
 ## Using the app
 
