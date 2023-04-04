@@ -3,10 +3,11 @@ import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -317,3 +318,6 @@ export default async function handler(
       break;
   }
 }
+
+
+export default withLogging(handler);

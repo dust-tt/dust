@@ -1,6 +1,7 @@
 import { XP1User } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   let user = await XP1User.findOne({
     where: {
       secret: req.body.secret,
@@ -22,3 +23,5 @@ export default async function handler(req, res) {
     secret: user.secret,
   });
 }
+
+export default withLogging(handler);

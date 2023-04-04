@@ -1,6 +1,7 @@
 const { URL, XP1_CHROME_WEB_STORE_URL } = process.env;
+import withLogging from "@app/logger/withlogging";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // If available get version as get parameter.
   const { version } = req.query;
   if (version) {
@@ -15,3 +16,5 @@ export default async function handler(req, res) {
     download_url: XP1_CHROME_WEB_STORE_URL,
   });
 }
+
+export default withLogging(handler);

@@ -2,8 +2,9 @@ import { User, App } from "@app/lib/models";
 import { Op } from "sequelize";
 import { auth_api_user } from "@app/lib/api/auth";
 import { NextApiRequest, NextApiResponse } from "next";
+import withLogging from "@app/logger/withlogging";
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -70,3 +71,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

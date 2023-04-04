@@ -1,4 +1,5 @@
 import { XP1Run, XP1User } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
 
 const {
   XP1_DUST_USER,
@@ -7,7 +8,7 @@ const {
   XP1_DUST_SPECIFICATION_HASH,
 } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
       error: {
@@ -170,3 +171,5 @@ export default async function handler(req, res) {
     run_id: dustRunId,
   });
 }
+
+export default withLogging(handler);

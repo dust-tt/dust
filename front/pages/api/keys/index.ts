@@ -3,6 +3,7 @@ import { new_id } from "@app/lib/utils";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
+import withLogging from "@app/logger/withlogging";
 
 type KeyObject = {
   id: number;
@@ -19,7 +20,7 @@ export type PostKeysResponseBody = {
   key: KeyObject;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetKeysResponseBody | PostKeysResponseBody>
 ) {
@@ -65,3 +66,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);
