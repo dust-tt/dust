@@ -8,6 +8,12 @@ import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
+export const config = {
+  api: {
+    responseLimit: "8mb",
+  },
+};
+
 export type GetRunBlockResponseBody = {
   run: Run | null;
 };

@@ -7,6 +7,12 @@ import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
+export const config = {
+  api: {
+    responseLimit: "8mb",
+  },
+};
+
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, appOwner] = await Promise.all([
     auth_api_user(req),
