@@ -35,6 +35,7 @@ See the [video demo](https://demo.dust.tt) for an explanation of the commands.
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
 - [Install Node](https://nodejs.org/en/download/)
+- [Install Protobuf](https://grpc.io/docs/protoc-installation/)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
 
 #### Start core API on SQLite
