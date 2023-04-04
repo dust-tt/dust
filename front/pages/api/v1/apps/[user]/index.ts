@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!appOwner) {
     res.status(404).json({
@@ -30,19 +30,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const readOnly = authUser.id !== appOwner.id;
+  let role = await auth.roleFor(appOwner);
 
   let apps = await App.findAll({
-    where: readOnly
-      ? {
-          userId: appOwner.id,
-          visibility: {
-            [Op.or]: ["public", "unlisted"],
+    where:
+      role === "read_only"
+        ? {
+            userId: appOwner.id,
+            visibility: {
+              [Op.or]: ["public"],
+            },
+          }
+        : {
+            userId: appOwner.id,
           },
-        }
-      : {
-          userId: appOwner.id,
-        },
   });
 
   switch (req.method) {

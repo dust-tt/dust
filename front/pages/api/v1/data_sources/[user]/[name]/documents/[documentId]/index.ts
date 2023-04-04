@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!dataSourceOwner) {
     res.status(404).json({
@@ -33,33 +33,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  if (authUser.id != dataSourceOwner.id) {
-    res.status(401).json({
-      error: {
-        type: "app_user_mismatch_error",
-        message:
-          "Only apps that you own can be interacted with by API \
-          (you can clone this app to run it).",
-      },
-    });
-    return;
-  }
-
-  const readOnly = authUser.id !== dataSourceOwner.id;
-
   let dataSource = await DataSource.findOne({
-    where: readOnly
-      ? {
-          userId: dataSourceOwner.id,
-          name: req.query.name,
-          visibility: {
-            [Op.or]: ["public"],
-          },
-        }
-      : {
-          userId: dataSourceOwner.id,
-          name: req.query.name,
-        },
+    where: {
+      userId: dataSourceOwner.id,
+      name: req.query.name,
+    },
     attributes: [
       "id",
       "name",
@@ -83,6 +61,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   switch (req.method) {
     case "GET":
+      if (!auth.canReadDataSource(dataSource)) {
+        res.status(404).json({
+          error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+        return;
+      }
+
       const docRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
           dataSource.name
@@ -123,20 +111,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       break;
 
     case "POST":
-      if (readOnly) {
+      if (!auth.canEditDataSource(dataSource)) {
         res.status(401).json({
           error: {
             type: "data_source_user_mismatch_error",
             message: "Only the data source you own can be managed by API.",
           },
         });
-        break;
+        return;
       }
 
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: authUser.id,
+            userId: auth.user().id,
           },
         }),
       ]);
@@ -182,7 +170,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       // Enforce FreePlan limit: 32 documents per DataSource.
-      if (authUser.username !== "spolu") {
+      if (auth.user().username !== "spolu") {
         const documentsRes = await fetch(
           `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
           {
@@ -266,14 +254,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       break;
 
     case "DELETE":
-      if (readOnly) {
+      if (!auth.canEditDataSource(dataSource)) {
         res.status(401).json({
           error: {
             type: "data_source_user_mismatch_error",
             message: "Only the data source you own can be managed by API.",
           },
         });
-        break;
+        return;
       }
 
       const delRes = await fetch(

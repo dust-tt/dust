@@ -1,4 +1,4 @@
-import { User, App, Provider, Key } from "@app/lib/models";
+import { User, App, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -64,25 +64,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!appOwner) {
     res.status(404).json({
       error: {
         type: "user_not_found",
         message: "The user you're trying to query was not found.",
-      },
-    });
-    return;
-  }
-
-  if (authUser.id != appOwner.id) {
-    res.status(401).json({
-      error: {
-        type: "app_user_mismatch_error",
-        message:
-          "Only apps that you own can be interacted with by API \
-          (you can clone this app to run it).",
       },
     });
     return;
@@ -97,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     Provider.findAll({
       where: {
-        userId: authUser.id,
+        userId: auth.user().id,
       },
     }),
   ]);
@@ -107,6 +95,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
+      },
+    });
+    return;
+  }
+
+  if (!auth.canRunApp(app)) {
+    res.status(404).json({
+      error: {
+        type: "app_user_mismatch_error",
+        message:
+          "Only apps that you own can be interacted with by API \
+          (you can clone this app to run it).",
       },
     });
     return;
@@ -160,7 +160,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Dust-User-Id": authUser.id.toString(),
+              "X-Dust-User-Id": auth.user().id.toString(),
             },
             body: JSON.stringify({
               run_type: "deploy",
@@ -213,7 +213,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Dust-User-Id": authUser.id.toString(),
+            "X-Dust-User-Id": auth.user().id.toString(),
           },
           body: JSON.stringify({
             run_type: "deploy",
