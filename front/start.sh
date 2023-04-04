@@ -2,6 +2,8 @@
 
 npx next build
 
+# See https://docs.datadoghq.com/tracing/trace_collection/library_config/nodejs/
+
 export DD_ENV=prod
 export DD_SERVICE=front
 export NODE_OPTIONS='-r dd-trace/init'
