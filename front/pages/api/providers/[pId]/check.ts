@@ -2,15 +2,13 @@ import { User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
+import withLogging from "@app/logger/withlogging";
 
 export type GetProvidersCheckResponseBody =
   | { ok: true }
   | { ok: false; error: string };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -89,6 +87,25 @@ export default async function handler(
           }
           break;
 
+        case "azure_openai":
+          let deploymentsRes = await fetch(
+            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+            {
+              method: "GET",
+              headers: {
+                "api-key": config.api_key,
+              },
+            }
+          );
+          if (!deploymentsRes.ok) {
+            let err = await deploymentsRes.json();
+            res.status(400).json({ ok: false, error: err.error.message });
+          } else {
+            let deployments = await deploymentsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          break;
+
         case "serpapi":
           let testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
@@ -163,3 +180,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

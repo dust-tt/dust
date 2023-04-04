@@ -1,8 +1,10 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import logger from "@app/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { streamChunks } from "@app/lib/http_utils";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -41,7 +43,6 @@ const poll = async ({
     } else if (maxAttempts && attempts === maxAttempts) {
       return reject(new Error("Exceeded max attempts"));
     } else {
-      // console.log("polling again in", interval);
       setTimeout(executePoll, interval, resolve, reject);
     }
   };
@@ -49,10 +50,7 @@ const poll = async ({
   return new Promise(executePoll);
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, appOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -146,13 +144,13 @@ export default async function handler(
 
       let credentials = credentialsFromProviders(providers);
 
-      console.log("[API] app run creation:", {
-        user: appOwner.username,
-        app: app.sId,
-        config,
-        inputs,
-        // credentials,
-      });
+      logger.info(
+        {
+          user: appOwner.username,
+          app: app.sId,
+        },
+        "App run creation"
+      );
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
@@ -198,7 +196,12 @@ export default async function handler(
             res.flush();
           }
         } catch (err) {
-          console.log("ERROR streaming from Dust API:", err);
+          logger.error(
+            {
+              error: err,
+            },
+            "Error streaming from Dust API"
+          );
         }
         res.end();
         break;
@@ -323,3 +326,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

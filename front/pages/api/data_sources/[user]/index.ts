@@ -1,8 +1,10 @@
-import { DataSource, User } from "@app/lib/models";
+import { DataSource, User, Provider } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
+import { credentialsFromProviders } from "@app/lib/providers";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -18,7 +20,7 @@ export type GetDataSourcesResponseBody = {
   }>;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDataSourcesResponseBody>
 ) {
@@ -111,6 +113,15 @@ export default async function handler(
         break;
       }
 
+      let [providers] = await Promise.all([
+        Provider.findAll({
+          where: {
+            userId: user.id,
+          },
+        }),
+      ]);
+      let credentials = credentialsFromProviders(providers);
+
       const dsRes = await fetch(
         `${DUST_API}/projects/${dustProject.response.project.project_id}/data_sources`,
         {
@@ -127,9 +138,11 @@ export default async function handler(
               max_chunk_size: maxChunkSize,
               use_cache: false,
             },
+            credentials,
           }),
         }
       );
+
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
         res.status(500).end();
@@ -153,3 +166,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

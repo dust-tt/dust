@@ -2,10 +2,11 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, DataSource } from "@app/lib/models";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -83,7 +84,6 @@ export default async function handler(req, res) {
       break;
 
     case "DELETE":
-      console.log("DELETEING");
       if (readOnly) {
         res.status(401).end();
         break;
@@ -98,7 +98,6 @@ export default async function handler(req, res) {
 
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
-        console.log(dustDataSource);
         res.status(500).end();
         break;
       }
@@ -113,3 +112,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);

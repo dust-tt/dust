@@ -4,9 +4,11 @@ import { dumpSpecification } from "@app/lib/specification";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Run } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
+import logger from "@app/logger/logger";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import { streamChunks } from "@app/lib/http_utils";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -19,7 +21,7 @@ export type PostRunsResponseBody = {
   run: Run;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunsResponseBody | PostRunsResponseBody>
 ) {
@@ -129,7 +131,12 @@ export default async function handler(
               res.flush();
             }
           } catch (e) {
-            console.log("ERROR streaming from Dust API", e);
+            logger.error(
+              {
+                error: e,
+              },
+              "Error streaming from Dust API"
+            );
           }
           res.end();
           return;
@@ -242,3 +249,5 @@ export default async function handler(
       return;
   }
 }
+
+export default withLogging(handler);

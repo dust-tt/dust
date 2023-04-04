@@ -96,8 +96,6 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
     }
   );
 
-  // console.log(run);
-
   const bottomRef = useRef(null);
 
   const saveState = async (spec, config) => {

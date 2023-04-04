@@ -992,6 +992,7 @@ async fn runs_retrieve_status(
 struct DataSourcesRegisterPayload {
     data_source_id: String,
     config: data_source::DataSourceConfig,
+    credentials: run::Credentials,
 }
 
 async fn data_sources_register(
@@ -1001,7 +1002,7 @@ async fn data_sources_register(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
-    match ds.setup().await {
+    match ds.setup(payload.credentials).await {
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(APIResponse {
@@ -1389,7 +1390,6 @@ async fn data_sources_delete(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    println!("IN DELETE");
     match state
         .store
         .load_data_source(&project, &data_source_id)

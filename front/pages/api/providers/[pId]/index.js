@@ -1,8 +1,9 @@
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, Provider } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
   if (!session) {
     res.status(401).end();
@@ -75,3 +76,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);

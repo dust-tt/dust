@@ -152,6 +152,768 @@ impl Error {
     }
 }
 
+///
+/// Shared streamed/non-streamed chat/completion handling code (used by both OpenAILLM and
+/// AzureOpenAILLM).
+///
+
+pub async fn streamed_completion(
+    uri: Uri,
+    api_key: String,
+    model_id: Option<String>,
+    prompt: &str,
+    max_tokens: Option<i32>,
+    temperature: f32,
+    n: usize,
+    logprobs: Option<i32>,
+    echo: bool,
+    stop: &Vec<String>,
+    frequency_penalty: f32,
+    presence_penalty: f32,
+    top_p: f32,
+    user: Option<String>,
+    event_sender: Option<UnboundedSender<Value>>,
+) -> Result<Completion> {
+    let url = uri.to_string();
+
+    let builder = match es::ClientBuilder::for_url(url.as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.method(String::from("POST")).header(
+        "Authorization",
+        format!("Bearer {}", api_key.clone()).as_str(),
+    ) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.header("Content-Type", "application/json") {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.header("api-key", api_key.clone().as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+
+    let mut body = json!({
+        "prompt": prompt,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "n": n,
+        "logprobs": logprobs,
+        "echo": echo,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "frequency_penalty": frequency_penalty,
+        "presence_penalty": presence_penalty,
+        "top_p": top_p,
+        "stream": true,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+
+    // println!("BODY: {}", body.to_string());
+
+    let client = builder
+        .body(body.to_string())
+        .reconnect(
+            es::ReconnectOptions::reconnect(true)
+                .retry_initial(false)
+                .delay(Duration::from_secs(1))
+                .backoff_factor(2)
+                .delay_max(Duration::from_secs(8))
+                .build(),
+        )
+        .build();
+
+    let mut stream = client.stream();
+
+    let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+
+    'stream: loop {
+        match stream.try_next().await {
+            Ok(e) => match e {
+                Some(es::SSE::Comment(_)) => {
+                    println!("UNEXPECTED COMMENT");
+                }
+                Some(es::SSE::Event(e)) => match e.data.as_str() {
+                    "[DONE]" => {
+                        break 'stream;
+                    }
+                    _ => {
+                        let index = {
+                            let guard = completions.lock();
+                            guard.len()
+                        };
+
+                        let completion: Completion = match serde_json::from_str(e.data.as_str()) {
+                            Ok(c) => c,
+                            Err(err) => {
+                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
+                                match error {
+                                    Ok(error) => {
+                                        match error.retryable_streamed() && index == 0 {
+                                            true => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(100),
+                                                    factor: 2,
+                                                    retries: 3,
+                                                }),
+                                            })?,
+                                            false => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: None,
+                                            })?,
+                                        }
+                                        break 'stream;
+                                    }
+                                    Err(_) => {
+                                        Err(anyhow!(
+                                            "OpenAIAPIError: failed parsing streamed \
+                                                 completion from OpenAI err={} data={}",
+                                            err,
+                                            e.data.as_str(),
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                }
+                            }
+                        };
+
+                        // UTF-8 length of the prompt (as used by the API for text_offset).
+                        let prompt_len = prompt.chars().count();
+
+                        // Only stream if choices is length 1 but should always be the case.
+                        match event_sender.as_ref() {
+                            Some(sender) => {
+                                let mut text = completion.choices[0].text.clone();
+                                let mut tokens = match completion.choices[0].logprobs.as_ref() {
+                                    Some(l) => Some(l.tokens.clone()),
+                                    None => None,
+                                };
+                                let mut logprobs = match completion.choices[0].logprobs.as_ref() {
+                                    Some(l) => Some(l.token_logprobs.clone()),
+                                    None => None,
+                                };
+                                let text_offset = match completion.choices[0].logprobs.as_ref() {
+                                    Some(l) => Some(l.text_offset.clone()),
+                                    None => None,
+                                };
+                                if index == 0 && text_offset.is_some() {
+                                    let mut token_offset: usize = 0;
+                                    for o in text_offset.as_ref().unwrap() {
+                                        if *o < prompt_len {
+                                            token_offset += 1;
+                                        }
+                                    }
+                                    text = text.chars().skip(prompt_len).collect::<String>();
+                                    tokens = match tokens {
+                                        Some(t) => Some(t[token_offset..].to_vec()),
+                                        None => None,
+                                    };
+                                    logprobs = match logprobs {
+                                        Some(l) => Some(l[token_offset..].to_vec()),
+                                        None => None,
+                                    };
+                                }
+
+                                if text.len() > 0 {
+                                    let _ = sender.send(json!({
+                                        "type": "tokens",
+                                        "content": {
+                                            "text": text,
+                                            "tokens": tokens,
+                                            "logprobs": logprobs,
+                                        },
+                                    }));
+                                }
+                            }
+                            None => (),
+                        };
+                        completions.lock().push(completion);
+                    }
+                },
+                None => {
+                    println!("UNEXPECED NONE");
+                    break 'stream;
+                }
+            },
+            Err(e) => {
+                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                break 'stream;
+            }
+        }
+    }
+
+    let completion = {
+        let mut guard = completions.lock();
+        let mut c = match guard.len() {
+            0 => Err(anyhow!("No completions received from OpenAI")),
+            _ => Ok(guard[0].clone()),
+        }?;
+        guard.remove(0);
+        for i in 0..guard.len() {
+            let a = guard[i].clone();
+            if a.choices.len() != c.choices.len() {
+                Err(anyhow!(
+                    "Inconsistent number of choices in streamed completions"
+                ))?;
+            }
+            for j in 0..c.choices.len() {
+                c.choices[j].finish_reason = a.choices.get(j).unwrap().finish_reason.clone();
+                // OpenAI does the bytes merging for us <3.
+                c.choices[j].text = format!("{}{}", c.choices[j].text, a.choices[j].text);
+
+                match c.choices[j].logprobs.as_mut() {
+                    Some(c_logprobs) => match a.choices[j].logprobs.as_ref() {
+                        Some(a_logprobs) => {
+                            c_logprobs.tokens.extend(a_logprobs.tokens.clone());
+                            c_logprobs
+                                .token_logprobs
+                                .extend(a_logprobs.token_logprobs.clone());
+                            c_logprobs
+                                .text_offset
+                                .extend(a_logprobs.text_offset.clone());
+                            match c_logprobs.top_logprobs.as_mut() {
+                                Some(c_top_logprobs) => match a_logprobs.top_logprobs.as_ref() {
+                                    Some(a_top_logprobs) => {
+                                        c_top_logprobs.extend(a_top_logprobs.clone());
+                                    }
+                                    None => (),
+                                },
+                                None => (),
+                            }
+                        }
+                        None => (),
+                    },
+                    None => (),
+                }
+            }
+        }
+        c
+    };
+
+    Ok(completion)
+}
+
+pub async fn completion(
+    uri: Uri,
+    api_key: String,
+    model_id: Option<String>,
+    prompt: &str,
+    max_tokens: Option<i32>,
+    temperature: f32,
+    n: usize,
+    logprobs: Option<i32>,
+    echo: bool,
+    stop: &Vec<String>,
+    frequency_penalty: f32,
+    presence_penalty: f32,
+    top_p: f32,
+    user: Option<String>,
+) -> Result<Completion> {
+    let https = HttpsConnector::new();
+    let cli = Client::builder().build::<_, hyper::Body>(https);
+
+    let mut body = json!({
+        "prompt": prompt,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "n": n,
+        "logprobs": logprobs,
+        "echo": echo,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "frequency_penalty": frequency_penalty,
+        "presence_penalty": presence_penalty,
+        "top_p": top_p,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+
+    // println!("BODY: {}", body.to_string());
+
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        // This one is for `openai`.
+        .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
+        // TODO(spolu): add support for custom organizations
+        // .header("OpenAI-Organization", "openai")
+        .body(Body::from(body.to_string()))?;
+
+    let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
+    };
+    let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
+        Ok(Ok(body)) => body,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
+    };
+
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let completion: Completion = match serde_json::from_slice(c) {
+        Ok(c) => Ok(c),
+        Err(_) => {
+            let error: Error = serde_json::from_slice(c)?;
+            match error.retryable() {
+                true => Err(ModelError {
+                    message: error.message(),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(2000),
+                        factor: 2,
+                        retries: 8,
+                    }),
+                }),
+                false => Err(ModelError {
+                    message: error.message(),
+                    retryable: None,
+                }),
+            }
+        }
+    }?;
+
+    Ok(completion)
+}
+
+pub async fn streamed_chat_completion(
+    uri: Uri,
+    api_key: String,
+    model_id: Option<String>,
+    messages: &Vec<ChatMessage>,
+    temperature: f32,
+    top_p: f32,
+    n: usize,
+    stop: &Vec<String>,
+    max_tokens: Option<i32>,
+    presence_penalty: f32,
+    frequency_penalty: f32,
+    user: Option<String>,
+    event_sender: Option<UnboundedSender<Value>>,
+) -> Result<ChatCompletion> {
+    let url = uri.to_string();
+
+    let builder = match es::ClientBuilder::for_url(url.as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.method(String::from("POST")).header(
+        "Authorization",
+        format!("Bearer {}", api_key.clone()).as_str(),
+    ) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.header("Content-Type", "application/json") {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    let builder = match builder.header("api-key", api_key.clone().as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+
+    let mut body = json!({
+        "messages": messages,
+        "temperature": temperature,
+        "top_p": top_p,
+        "n": n,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "max_tokens": max_tokens,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+        "stream": true,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+
+    // println!("BODY: {}", body.to_string());
+
+    let client = builder
+        .body(body.to_string())
+        .reconnect(
+            es::ReconnectOptions::reconnect(true)
+                .retry_initial(false)
+                .delay(Duration::from_secs(1))
+                .backoff_factor(2)
+                .delay_max(Duration::from_secs(8))
+                .build(),
+        )
+        .build();
+
+    let mut stream = client.stream();
+
+    let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+
+    'stream: loop {
+        match stream.try_next().await {
+            Ok(e) => match e {
+                Some(es::SSE::Comment(_)) => {
+                    println!("UNEXPECTED COMMENT");
+                }
+                Some(es::SSE::Event(e)) => match e.data.as_str() {
+                    "[DONE]" => {
+                        break 'stream;
+                    }
+                    _ => {
+                        let index = {
+                            let guard = chunks.lock();
+                            guard.len()
+                        };
+
+                        let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
+                            Ok(c) => c,
+                            Err(err) => {
+                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
+                                match error {
+                                    Ok(error) => {
+                                        match error.retryable_streamed() && index == 0 {
+                                            true => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(100),
+                                                    factor: 2,
+                                                    retries: 3,
+                                                }),
+                                            })?,
+                                            false => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: None,
+                                            })?,
+                                        }
+                                        break 'stream;
+                                    }
+                                    Err(_) => {
+                                        Err(anyhow!(
+                                            "OpenAIAPIError: failed parsing streamed \
+                                                 completion from OpenAI err={} data={}",
+                                            err,
+                                            e.data.as_str(),
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                }
+                            }
+                        };
+
+                        // println!("CHUNK: {:?}", chunk);
+
+                        // Only stream if choices is length 1 but should always be the case.
+                        match event_sender.as_ref() {
+                            Some(sender) => {
+                                if chunk.choices.len() == 1 {
+                                    // we ignore the role for generating events
+                                    let text = match chunk.choices[0].delta.get("content") {
+                                        None => None,
+                                        Some(content) => match content.as_str() {
+                                            None => None,
+                                            Some(s) => Some(s.to_string()),
+                                        },
+                                    };
+                                    match text {
+                                        Some(t) => match t.len() {
+                                            0 => (),
+                                            _ => {
+                                                let _ = sender.send(json!({
+                                                    "type": "tokens",
+                                                    "content": {
+                                                        "text": t,
+                                                    },
+                                                }));
+                                            }
+                                        },
+                                        None => (),
+                                    }
+                                }
+                            }
+                            None => (),
+                        };
+                        chunks.lock().push(chunk);
+                    }
+                },
+                None => {
+                    println!("UNEXPECED NONE");
+                    break 'stream;
+                }
+            },
+            Err(e) => {
+                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                break 'stream;
+            }
+        }
+    }
+
+    let mut completion = {
+        let guard = chunks.lock();
+        let f = match guard.len() {
+            0 => Err(anyhow!("No chunks received from OpenAI")),
+            _ => Ok(guard[0].clone()),
+        }?;
+        let mut c = ChatCompletion {
+            id: f.id.clone(),
+            object: f.object.clone(),
+            created: f.created,
+            choices: f
+                .choices
+                .iter()
+                .map(|c| ChatChoice {
+                    message: ChatMessage {
+                        role: ChatMessageRole::System,
+                        name: None,
+                        content: "".to_string(),
+                    },
+                    index: c.index,
+                    finish_reason: None,
+                })
+                .collect::<Vec<_>>(),
+        };
+
+        for i in 0..guard.len() {
+            let a = guard[i].clone();
+            if a.choices.len() != f.choices.len() {
+                Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
+            }
+            for j in 0..a.choices.len() {
+                match a.choices.get(j).unwrap().finish_reason.clone() {
+                    None => (),
+                    Some(f) => c.choices[j].finish_reason = Some(f),
+                };
+
+                match a.choices[j].delta.get("role") {
+                    None => (),
+                    Some(role) => match role.as_str() {
+                        None => (),
+                        Some(r) => {
+                            c.choices[j].message.role = ChatMessageRole::from_str(r)?;
+                        }
+                    },
+                };
+
+                match a.choices[j].delta.get("content") {
+                    None => (),
+                    Some(content) => match content.as_str() {
+                        None => (),
+                        Some(s) => {
+                            c.choices[j].message.content =
+                                format!("{}{}", c.choices[j].message.content, s);
+                        }
+                    },
+                };
+            }
+        }
+        c
+    };
+
+    // for all messages, edit the content and strip leading and trailing spaces and \n
+    for m in completion.choices.iter_mut() {
+        m.message.content = m.message.content.trim().to_string();
+    }
+
+    Ok(completion)
+}
+
+pub async fn chat_completion(
+    uri: Uri,
+    api_key: String,
+    model_id: Option<String>,
+    messages: &Vec<ChatMessage>,
+    temperature: f32,
+    top_p: f32,
+    n: usize,
+    stop: &Vec<String>,
+    max_tokens: Option<i32>,
+    presence_penalty: f32,
+    frequency_penalty: f32,
+    user: Option<String>,
+) -> Result<ChatCompletion> {
+    let https = HttpsConnector::new();
+    let cli = Client::builder().build::<_, hyper::Body>(https);
+
+    let mut body = json!({
+        "messages": messages,
+        "temperature": temperature,
+        "top_p": top_p,
+        "n": n,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "max_tokens": max_tokens,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+
+    // println!("BODY: {}", body.to_string());
+
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        // This one is for `openai`.
+        .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
+        // TODO(spolu): add support for custom organizations
+        // .header("OpenAI-Organization", "openai")
+        .body(Body::from(body.to_string()))?;
+
+    let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
+    };
+    let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
+        Ok(Ok(body)) => body,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
+    };
+
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let mut completion: ChatCompletion = match serde_json::from_slice(c) {
+        Ok(c) => Ok(c),
+        Err(_) => {
+            let error: Error = serde_json::from_slice(c)?;
+            match error.retryable() {
+                true => Err(ModelError {
+                    message: error.message(),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(2000),
+                        factor: 2,
+                        retries: 8,
+                    }),
+                }),
+                false => Err(ModelError {
+                    message: error.message(),
+                    retryable: None,
+                }),
+            }
+        }
+    }?;
+
+    // for all messages, edit the content and strip leading and trailing spaces and \n
+    for m in completion.choices.iter_mut() {
+        m.message.content = m.message.content.trim().to_string();
+    }
+
+    Ok(completion)
+}
+
+///
+/// Shared streamed/non-streamed chat/completion handling code (used by both OpenAILLM and
+/// AzureOpenAILLM).
+///
+
+pub async fn embed(
+    uri: Uri,
+    api_key: String,
+    model_id: Option<String>,
+    text: &str,
+    user: Option<String>,
+) -> Result<Embeddings> {
+    let https = HttpsConnector::new();
+    let cli = Client::builder().build::<_, hyper::Body>(https);
+
+    let mut body = json!({
+        "input": text,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+
+    // println!("BODY: {}", body.to_string());
+
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        // This one is for `openai`.
+        .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone())
+        // TODO(spolu): add support for custom organizations
+        // .header("OpenAI-Organization", "openai")
+        .body(Body::from(body.to_string()))?;
+
+    let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
+    };
+    let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+        Ok(Ok(body)) => body,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
+    };
+
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let embeddings: Embeddings = match serde_json::from_slice(c) {
+        Ok(c) => Ok(c),
+        Err(_) => {
+            let error: Error = serde_json::from_slice(c)?;
+            match error.retryable() {
+                true => Err(ModelError {
+                    message: error.message(),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(2000),
+                        factor: 2,
+                        retries: 8,
+                    }),
+                }),
+                false => Err(ModelError {
+                    message: error.message(),
+                    retryable: None,
+                }),
+            }
+        }
+    }?;
+
+    Ok(embeddings)
+}
+
 pub struct OpenAILLM {
     id: String,
     api_key: Option<String>,
@@ -179,676 +941,6 @@ impl OpenAILLM {
                 false => r50k_base_singleton(),
             },
         }
-    }
-
-    async fn streamed_completion(
-        &self,
-        prompt: &str,
-        max_tokens: Option<i32>,
-        temperature: f32,
-        n: usize,
-        logprobs: Option<i32>,
-        echo: bool,
-        stop: &Vec<String>,
-        frequency_penalty: f32,
-        presence_penalty: f32,
-        top_p: f32,
-        user: Option<String>,
-        event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Completion> {
-        assert!(self.api_key.is_some());
-
-        let url = self.uri()?.to_string();
-
-        let builder = match es::ClientBuilder::for_url(url.as_str()) {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-        let builder = match builder.method(String::from("POST")).header(
-            "Authorization",
-            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
-        ) {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-        let builder = match builder.header("Content-Type", "application/json") {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-
-        let mut body = json!({
-            "model": self.id.clone(),
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "n": n,
-            "logprobs": logprobs,
-            "echo": echo,
-            "stop": match stop.len() {
-                0 => None,
-                _ => Some(stop),
-            },
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty,
-            "top_p": top_p,
-            "stream": true,
-        });
-        if user.is_some() {
-            body["user"] = json!(user);
-        }
-
-        // println!("BODY: {}", body.to_string());
-
-        let client = builder
-            .body(body.to_string())
-            .reconnect(
-                es::ReconnectOptions::reconnect(true)
-                    .retry_initial(false)
-                    .delay(Duration::from_secs(1))
-                    .backoff_factor(2)
-                    .delay_max(Duration::from_secs(8))
-                    .build(),
-            )
-            .build();
-
-        let mut stream = client.stream();
-
-        let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
-
-        'stream: loop {
-            match stream.try_next().await {
-                Ok(e) => match e {
-                    Some(es::SSE::Comment(_)) => {
-                        println!("UNEXPECTED COMMENT");
-                    }
-                    Some(es::SSE::Event(e)) => match e.data.as_str() {
-                        "[DONE]" => {
-                            break 'stream;
-                        }
-                        _ => {
-                            let index = {
-                                let guard = completions.lock();
-                                guard.len()
-                            };
-
-                            let completion: Completion = match serde_json::from_str(e.data.as_str())
-                            {
-                                Ok(c) => c,
-                                Err(err) => {
-                                    let error: Result<Error, _> =
-                                        serde_json::from_str(e.data.as_str());
-                                    match error {
-                                        Ok(error) => {
-                                            match error.retryable_streamed() && index == 0 {
-                                                true => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(100),
-                                                        factor: 2,
-                                                        retries: 3,
-                                                    }),
-                                                })?,
-                                                false => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: None,
-                                                })?,
-                                            }
-                                            break 'stream;
-                                        }
-                                        Err(_) => {
-                                            Err(anyhow!(
-                                                "OpenAIAPIError: failed parsing streamed \
-                                                 completion from OpenAI err={} data={}",
-                                                err,
-                                                e.data.as_str(),
-                                            ))?;
-                                            break 'stream;
-                                        }
-                                    }
-                                }
-                            };
-
-                            // UTF-8 length of the prompt (as used by the API for text_offset).
-                            let prompt_len = prompt.chars().count();
-
-                            // Only stream if choices is length 1 but should always be the case.
-                            match event_sender.as_ref() {
-                                Some(sender) => {
-                                    let mut text = completion.choices[0].text.clone();
-                                    let mut tokens = match completion.choices[0].logprobs.as_ref() {
-                                        Some(l) => Some(l.tokens.clone()),
-                                        None => None,
-                                    };
-                                    let mut logprobs = match completion.choices[0].logprobs.as_ref()
-                                    {
-                                        Some(l) => Some(l.token_logprobs.clone()),
-                                        None => None,
-                                    };
-                                    let text_offset = match completion.choices[0].logprobs.as_ref()
-                                    {
-                                        Some(l) => Some(l.text_offset.clone()),
-                                        None => None,
-                                    };
-                                    if index == 0 && text_offset.is_some() {
-                                        let mut token_offset: usize = 0;
-                                        for o in text_offset.as_ref().unwrap() {
-                                            if *o < prompt_len {
-                                                token_offset += 1;
-                                            }
-                                        }
-                                        text = text.chars().skip(prompt_len).collect::<String>();
-                                        tokens = match tokens {
-                                            Some(t) => Some(t[token_offset..].to_vec()),
-                                            None => None,
-                                        };
-                                        logprobs = match logprobs {
-                                            Some(l) => Some(l[token_offset..].to_vec()),
-                                            None => None,
-                                        };
-                                    }
-
-                                    if text.len() > 0 {
-                                        let _ = sender.send(json!({
-                                            "type": "tokens",
-                                            "content": {
-                                                "text": text,
-                                                "tokens": tokens,
-                                                "logprobs": logprobs,
-                                            },
-                                        }));
-                                    }
-                                }
-                                None => (),
-                            };
-                            completions.lock().push(completion);
-                        }
-                    },
-                    None => {
-                        println!("UNEXPECED NONE");
-                        break 'stream;
-                    }
-                },
-                Err(e) => {
-                    Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
-                    break 'stream;
-                }
-            }
-        }
-
-        let completion = {
-            let mut guard = completions.lock();
-            let mut c = match guard.len() {
-                0 => Err(anyhow!("No completions received from OpenAI")),
-                _ => Ok(guard[0].clone()),
-            }?;
-            guard.remove(0);
-            for i in 0..guard.len() {
-                let a = guard[i].clone();
-                if a.choices.len() != c.choices.len() {
-                    Err(anyhow!(
-                        "Inconsistent number of choices in streamed completions"
-                    ))?;
-                }
-                for j in 0..c.choices.len() {
-                    c.choices[j].finish_reason = a.choices.get(j).unwrap().finish_reason.clone();
-                    // OpenAI does the bytes merging for us <3.
-                    c.choices[j].text = format!("{}{}", c.choices[j].text, a.choices[j].text);
-
-                    match c.choices[j].logprobs.as_mut() {
-                        Some(c_logprobs) => match a.choices[j].logprobs.as_ref() {
-                            Some(a_logprobs) => {
-                                c_logprobs.tokens.extend(a_logprobs.tokens.clone());
-                                c_logprobs
-                                    .token_logprobs
-                                    .extend(a_logprobs.token_logprobs.clone());
-                                c_logprobs
-                                    .text_offset
-                                    .extend(a_logprobs.text_offset.clone());
-                                match c_logprobs.top_logprobs.as_mut() {
-                                    Some(c_top_logprobs) => {
-                                        match a_logprobs.top_logprobs.as_ref() {
-                                            Some(a_top_logprobs) => {
-                                                c_top_logprobs.extend(a_top_logprobs.clone());
-                                            }
-                                            None => (),
-                                        }
-                                    }
-                                    None => (),
-                                }
-                            }
-                            None => (),
-                        },
-                        None => (),
-                    }
-                }
-            }
-            c
-        };
-
-        Ok(completion)
-    }
-
-    async fn completion(
-        &self,
-        prompt: &str,
-        max_tokens: Option<i32>,
-        temperature: f32,
-        n: usize,
-        logprobs: Option<i32>,
-        echo: bool,
-        stop: &Vec<String>,
-        frequency_penalty: f32,
-        presence_penalty: f32,
-        top_p: f32,
-        user: Option<String>,
-    ) -> Result<Completion> {
-        assert!(self.api_key.is_some());
-
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let mut body = json!({
-            "model": self.id.clone(),
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "n": n,
-            "logprobs": logprobs,
-            "echo": echo,
-            "stop": match stop.len() {
-                0 => None,
-                _ => Some(stop),
-            },
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty,
-            "top_p": top_p,
-        });
-        if user.is_some() {
-            body["user"] = json!(user);
-        }
-
-        // println!("BODY: {}", body.to_string());
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
-            .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.clone().unwrap()),
-            )
-            // TODO(spolu): add support for custom organizations
-            // .header("OpenAI-Organization", "openai")
-            .body(Body::from(body.to_string()))?;
-
-        let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
-            Ok(Ok(res)) => res,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
-        };
-        let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
-            Ok(Ok(body)) => body,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
-        };
-
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        let completion: Completion = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: Error = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(2000),
-                            factor: 2,
-                            retries: 8,
-                        }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: None,
-                    }),
-                }
-            }
-        }?;
-
-        Ok(completion)
-    }
-
-    async fn streamed_chat_completion(
-        &self,
-        messages: &Vec<ChatMessage>,
-        temperature: f32,
-        top_p: f32,
-        n: usize,
-        stop: &Vec<String>,
-        max_tokens: Option<i32>,
-        presence_penalty: f32,
-        frequency_penalty: f32,
-        user: Option<String>,
-        event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<ChatCompletion> {
-        assert!(self.api_key.is_some());
-
-        let url = self.chat_uri()?.to_string();
-
-        let builder = match es::ClientBuilder::for_url(url.as_str()) {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-        let builder = match builder.method(String::from("POST")).header(
-            "Authorization",
-            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
-        ) {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-        let builder = match builder.header("Content-Type", "application/json") {
-            Ok(b) => b,
-            Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-        };
-
-        let mut body = json!({
-            "model": self.id.clone(),
-            "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p,
-            "n": n,
-            "stop": match stop.len() {
-                0 => None,
-                _ => Some(stop),
-            },
-            "max_tokens": max_tokens,
-            "presence_penalty": presence_penalty,
-            "frequency_penalty": frequency_penalty,
-            "stream": true,
-        });
-        if user.is_some() {
-            body["user"] = json!(user);
-        }
-
-        // println!("BODY: {}", body.to_string());
-
-        let client = builder
-            .body(body.to_string())
-            .reconnect(
-                es::ReconnectOptions::reconnect(true)
-                    .retry_initial(false)
-                    .delay(Duration::from_secs(1))
-                    .backoff_factor(2)
-                    .delay_max(Duration::from_secs(8))
-                    .build(),
-            )
-            .build();
-
-        let mut stream = client.stream();
-
-        let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
-
-        'stream: loop {
-            match stream.try_next().await {
-                Ok(e) => match e {
-                    Some(es::SSE::Comment(_)) => {
-                        println!("UNEXPECTED COMMENT");
-                    }
-                    Some(es::SSE::Event(e)) => match e.data.as_str() {
-                        "[DONE]" => {
-                            break 'stream;
-                        }
-                        _ => {
-                            let index = {
-                                let guard = chunks.lock();
-                                guard.len()
-                            };
-
-                            let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
-                                Ok(c) => c,
-                                Err(err) => {
-                                    let error: Result<Error, _> =
-                                        serde_json::from_str(e.data.as_str());
-                                    match error {
-                                        Ok(error) => {
-                                            match error.retryable_streamed() && index == 0 {
-                                                true => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(100),
-                                                        factor: 2,
-                                                        retries: 3,
-                                                    }),
-                                                })?,
-                                                false => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: None,
-                                                })?,
-                                            }
-                                            break 'stream;
-                                        }
-                                        Err(_) => {
-                                            Err(anyhow!(
-                                                "OpenAIAPIError: failed parsing streamed \
-                                                 completion from OpenAI err={} data={}",
-                                                err,
-                                                e.data.as_str(),
-                                            ))?;
-                                            break 'stream;
-                                        }
-                                    }
-                                }
-                            };
-
-                            // println!("CHUNK: {:?}", chunk);
-
-                            // Only stream if choices is length 1 but should always be the case.
-                            match event_sender.as_ref() {
-                                Some(sender) => {
-                                    if chunk.choices.len() == 1 {
-                                        // we ignore the role for generating events
-                                        let text = match chunk.choices[0].delta.get("content") {
-                                            None => None,
-                                            Some(content) => match content.as_str() {
-                                                None => None,
-                                                Some(s) => Some(s.to_string()),
-                                            },
-                                        };
-                                        match text {
-                                            Some(t) => match t.len() {
-                                                0 => (),
-                                                _ => {
-                                                    let _ = sender.send(json!({
-                                                        "type": "tokens",
-                                                        "content": {
-                                                            "text": t,
-                                                        },
-                                                    }));
-                                                }
-                                            },
-                                            None => (),
-                                        }
-                                    }
-                                }
-                                None => (),
-                            };
-                            chunks.lock().push(chunk);
-                        }
-                    },
-                    None => {
-                        println!("UNEXPECED NONE");
-                        break 'stream;
-                    }
-                },
-                Err(e) => {
-                    Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
-                    break 'stream;
-                }
-            }
-        }
-
-        let mut completion = {
-            let guard = chunks.lock();
-            let f = match guard.len() {
-                0 => Err(anyhow!("No chunks received from OpenAI")),
-                _ => Ok(guard[0].clone()),
-            }?;
-            let mut c = ChatCompletion {
-                id: f.id.clone(),
-                object: f.object.clone(),
-                created: f.created,
-                choices: f
-                    .choices
-                    .iter()
-                    .map(|c| ChatChoice {
-                        message: ChatMessage {
-                            role: ChatMessageRole::System,
-                            name: None,
-                            content: "".to_string(),
-                        },
-                        index: c.index,
-                        finish_reason: None,
-                    })
-                    .collect::<Vec<_>>(),
-            };
-
-            for i in 0..guard.len() {
-                let a = guard[i].clone();
-                if a.choices.len() != f.choices.len() {
-                    Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
-                }
-                for j in 0..a.choices.len() {
-                    match a.choices.get(j).unwrap().finish_reason.clone() {
-                        None => (),
-                        Some(f) => c.choices[j].finish_reason = Some(f),
-                    };
-
-                    match a.choices[j].delta.get("role") {
-                        None => (),
-                        Some(role) => match role.as_str() {
-                            None => (),
-                            Some(r) => {
-                                c.choices[j].message.role = ChatMessageRole::from_str(r)?;
-                            }
-                        },
-                    };
-
-                    match a.choices[j].delta.get("content") {
-                        None => (),
-                        Some(content) => match content.as_str() {
-                            None => (),
-                            Some(s) => {
-                                c.choices[j].message.content =
-                                    format!("{}{}", c.choices[j].message.content, s);
-                            }
-                        },
-                    };
-                }
-            }
-            c
-        };
-
-        // for all messages, edit the content and strip leading and trailing spaces and \n
-        for m in completion.choices.iter_mut() {
-            m.message.content = m.message.content.trim().to_string();
-        }
-
-        Ok(completion)
-    }
-
-    async fn chat_completion(
-        &self,
-        messages: &Vec<ChatMessage>,
-        temperature: f32,
-        top_p: f32,
-        n: usize,
-        stop: &Vec<String>,
-        max_tokens: Option<i32>,
-        presence_penalty: f32,
-        frequency_penalty: f32,
-        user: Option<String>,
-    ) -> Result<ChatCompletion> {
-        assert!(self.api_key.is_some());
-
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let mut body = json!({
-            "model": self.id.clone(),
-            "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p,
-            "n": n,
-            "stop": match stop.len() {
-                0 => None,
-                _ => Some(stop),
-            },
-            "max_tokens": max_tokens,
-            "presence_penalty": presence_penalty,
-            "frequency_penalty": frequency_penalty,
-        });
-        if user.is_some() {
-            body["user"] = json!(user);
-        }
-
-        // println!("BODY: {}", body.to_string());
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.chat_uri()?)
-            .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.clone().unwrap()),
-            )
-            // TODO(spolu): add support for custom organizations
-            // .header("OpenAI-Organization", "openai")
-            .body(Body::from(body.to_string()))?;
-
-        let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
-            Ok(Ok(res)) => res,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
-        };
-        let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
-            Ok(Ok(body)) => body,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
-        };
-
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        let mut completion: ChatCompletion = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: Error = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(2000),
-                            factor: 2,
-                            retries: 8,
-                        }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: None,
-                    }),
-                }
-            }
-        }?;
-
-        // for all messages, edit the content and strip leading and trailing spaces and \n
-        for m in completion.choices.iter_mut() {
-            m.message.content = m.message.content.trim().to_string();
-        }
-
-        Ok(completion)
     }
 }
 
@@ -917,6 +1009,7 @@ impl LLM for OpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
+        assert!(self.api_key.is_some());
         assert!(n > 0);
 
         // println!("STOP: {:?}", stop);
@@ -931,7 +1024,10 @@ impl LLM for OpenAILLM {
 
         let c = match event_sender {
             Some(_) => {
-                self.streamed_completion(
+                streamed_completion(
+                    self.uri()?,
+                    self.api_key.clone().unwrap(),
+                    Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
                     temperature,
@@ -966,7 +1062,10 @@ impl LLM for OpenAILLM {
                 .await?
             }
             None => {
-                self.completion(
+                completion(
+                    self.uri()?,
+                    self.api_key.clone().unwrap(),
+                    Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
                     temperature,
@@ -1099,7 +1198,10 @@ impl LLM for OpenAILLM {
 
         let c = match event_sender {
             Some(_) => {
-                self.streamed_chat_completion(
+                streamed_chat_completion(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    Some(self.id.clone()),
                     messages,
                     temperature,
                     match top_p {
@@ -1129,7 +1231,10 @@ impl LLM for OpenAILLM {
                 .await?
             }
             None => {
-                self.chat_completion(
+                chat_completion(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    Some(self.id.clone()),
                     messages,
                     temperature,
                     match top_p {
@@ -1211,73 +1316,6 @@ impl OpenAIEmbedder {
             _ => r50k_base_singleton(),
         }
     }
-
-    async fn embed(&self, text: &str, user: Option<String>) -> Result<Embeddings> {
-        assert!(self.api_key.is_some());
-
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let mut body = json!({
-            "model": self.id.clone(),
-            "input": text,
-        });
-        if user.is_some() {
-            body["user"] = json!(user);
-        }
-
-        // println!("BODY: {}", body.to_string());
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
-            .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.clone().unwrap()),
-            )
-            // TODO(spolu): add support for custom organizations
-            // .header("OpenAI-Organization", "openai")
-            .body(Body::from(body.to_string()))?;
-
-        let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
-            Ok(Ok(res)) => res,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
-        };
-        let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
-            Ok(Ok(body)) => body,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
-        };
-
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        let embeddings: Embeddings = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: Error = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(2000),
-                            factor: 2,
-                            retries: 8,
-                        }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: None,
-                    }),
-                }
-            }
-        }?;
-
-        Ok(embeddings)
-    }
 }
 
 #[async_trait]
@@ -1336,18 +1374,20 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn embed(&self, text: &str, extras: Option<Value>) -> Result<EmbedderVector> {
-        let e = self
-            .embed(
-                text,
-                match extras {
-                    Some(e) => match e.get("openai_user") {
-                        Some(u) => Some(u.to_string()),
-                        None => None,
-                    },
+        let e = embed(
+            self.uri()?,
+            self.api_key.clone().unwrap(),
+            Some(self.id.clone()),
+            text,
+            match extras {
+                Some(e) => match e.get("openai_user") {
+                    Some(u) => Some(u.to_string()),
                     None => None,
                 },
-            )
-            .await?;
+                None => None,
+            },
+        )
+        .await?;
 
         assert!(e.data.len() > 0);
         // println!("EMBEDDING: {:?}", e);

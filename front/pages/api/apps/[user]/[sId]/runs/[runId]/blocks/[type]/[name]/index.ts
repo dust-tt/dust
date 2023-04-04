@@ -4,14 +4,21 @@ import { Run } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
+
+export const config = {
+  api: {
+    responseLimit: "8mb",
+  },
+};
 
 export type GetRunBlockResponseBody = {
   run: Run | null;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunBlockResponseBody>
 ) {
@@ -88,3 +95,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

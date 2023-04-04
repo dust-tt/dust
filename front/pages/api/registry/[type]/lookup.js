@@ -1,5 +1,6 @@
 import { User, DataSource, Key } from "@app/lib/models";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;
 
@@ -20,7 +21,7 @@ const { DUST_REGISTRY_SECRET } = process.env;
 // Note: there is also a problem with private DataSources on public apps, the use of the registry
 // here will prevent leaking them.
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!req.headers.authorization) {
     res.status(401).end();
     return;
@@ -126,3 +127,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);

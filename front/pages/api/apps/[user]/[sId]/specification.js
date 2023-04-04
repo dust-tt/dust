@@ -3,10 +3,11 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -46,8 +47,6 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      console.log(app);
-
       const datasetsRes = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
         {
@@ -78,3 +77,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);

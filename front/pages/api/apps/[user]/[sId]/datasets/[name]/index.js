@@ -2,10 +2,11 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App, Dataset } from "@app/lib/models";
 import { checkDatasetData } from "@app/lib/datasets";
+import withLogging from "../../../../../../../logger/withlogging";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
   if (!session) {
     res.status(401).end();
@@ -95,7 +96,6 @@ export default async function handler(req, res) {
             return obj;
           }, {});
       });
-      // console.log("DATASET UPLOAD", data);
 
       // Register dataset with the Dust internal API.
       const r = await fetch(
@@ -160,3 +160,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);

@@ -1,4 +1,6 @@
 import { XP1Run, XP1User } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
 
 const {
   XP1_DUST_USER,
@@ -7,7 +9,7 @@ const {
   XP1_DUST_SPECIFICATION_HASH,
 } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
       error: {
@@ -92,20 +94,34 @@ export default async function handler(req, res) {
   try {
     for await (const chunk of runRes.body) {
       buffers.push(chunk);
-      // console.log("CHUNK", chunk);
       try {
         res.write(chunk);
         res.flush();
       } catch (err) {
-        console.log("ERROR streaming to client", err);
+        logger.error(
+          {
+            error: err,
+          },
+          "XP1 Error streaming to client"
+        );
       }
     }
   } catch (err) {
-    console.log("ERROR streaming from Dust API", err);
+    logger.error(
+      {
+        error: err,
+      },
+      "XP1 Error streaming from Dust API"
+    );
   }
   res.end();
 
-  console.log("Retrieved streamed buffers", buffers.length);
+  logger.info(
+    {
+      buffers_length: buffers.length,
+    },
+    "XP1 Retrieved streamed buffers"
+  );
 
   let buf = Buffer.concat(buffers);
   let events = buf
@@ -118,7 +134,13 @@ export default async function handler(req, res) {
       try {
         return JSON.parse(e.split("data:")[1]);
       } catch (err) {
-        console.log("ERROR parsing event", err, e);
+        logger.error(
+          {
+            event: e,
+            error: err,
+          },
+          "XP1 Error parsing event"
+        );
         return null;
       }
     });
@@ -163,10 +185,15 @@ export default async function handler(req, res) {
     completionTokens: completionTokens,
   });
 
-  console.log("Run created", {
-    promptTokens: promptTokens,
-    completionTokens: completionTokens,
-    run_status: runStatus,
-    run_id: dustRunId,
-  });
+  logger.info(
+    {
+      promptTokens: promptTokens,
+      completionTokens: completionTokens,
+      run_status: runStatus,
+      run_id: dustRunId,
+    },
+    "XP1 Run created"
+  );
 }
+
+export default withLogging(handler);

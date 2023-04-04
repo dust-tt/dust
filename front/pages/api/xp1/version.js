@@ -1,12 +1,14 @@
 const { URL, XP1_CHROME_WEB_STORE_URL } = process.env;
+import withLogging from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // If available get version as get parameter.
   const { version } = req.query;
   if (version) {
-    console.log("VERSION CHECK", version);
+    logger.info({ version }, "XP1 version check");
   } else {
-    console.log("VERSION CHECK", "0.1.0 (inferred)");
+    logger.info({ version: "0.1.0 (inferred)" }, "XP1 version check");
   }
 
   res.status(200).json({
@@ -15,3 +17,5 @@ export default async function handler(req, res) {
     download_url: XP1_CHROME_WEB_STORE_URL,
   });
 }
+
+export default withLogging(handler);
