@@ -5,9 +5,10 @@ import { Key, User } from "@app/lib/models";
 import { Authenticator } from "@app/lib/auth";
 
 /**
- * Get a user id from the Authorization Bearer header
+ * Get a an Authenticator assiciated with the authentified user from the Authorization Bearer
+ * header.
  * @param req NextApiRequest request object
- * @returns Result<number, HTTPError> Ok(User) or Err(HTTPError)
+ * @returns Result<Authenticator, HTTPError>
  */
 export async function auth_api_user(
   req: NextApiRequest
