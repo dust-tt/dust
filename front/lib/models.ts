@@ -422,7 +422,9 @@ User.hasMany(DataSource);
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;
-const xp1_sequelize = new Sequelize(XP1_DATABASE_URI as string);
+const xp1_sequelize = new Sequelize(XP1_DATABASE_URI as string, {
+  logging: false,
+});
 
 export class XP1User extends Model<
   InferAttributes<XP1User>,
