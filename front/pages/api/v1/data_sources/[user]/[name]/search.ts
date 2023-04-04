@@ -4,46 +4,44 @@ import {
   performSearch,
   DatasourceSearchResponseBody,
 } from "@app/pages/api/data_sources/[user]/[name]/search";
-import { require_api_user } from "@app/lib/http_utils";
-import { ApiError } from "@app/lib/api_models";
-import { User, DataSource, Provider, Key } from "@app/lib/models";
+import { auth_api_user } from "@app/lib/api/auth";
+import { APIError } from "@app/lib/api/error";
+import { User } from "@app/lib/models";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody | ApiError>
+  res: NextApiResponse<DatasourceSearchResponseBody | APIError>
 ) {
-  const auth_result = await require_api_user(req);
-  if (auth_result.isErr()) {
-    const err = auth_result.error();
-    res.status(err.status_code).json(err.api_error);
-    return;
-  }
-  let auth_user = await User.findOne({
-    where: {
-      id: auth_result.value(),
-    },
-  });
+  let [authRes, dataSourceOwner] = await Promise.all([
+    auth_api_user(req),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  if (!auth_user) {
-    res.status(404).end();
-    return;
+  if (authRes.isErr()) {
+    const err = authRes.error();
+    return res.status(err.status_code).json(err.api_error);
   }
-  let request_uri_user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+  const authUser = authRes.value();
 
-  if (!request_uri_user) {
-    res.status(404).end();
+  if (!dataSourceOwner) {
+    res.status(404).json({
+      error: {
+        type: "user_not_found",
+        message: "The user you're trying to query was not found.",
+      },
+    });
     return;
   }
 
   switch (req.method) {
     case "POST":
       const serach_result = await performSearch(
-        auth_user,
-        request_uri_user,
+        authUser,
+        dataSourceOwner,
         req.query.name as string,
         req.body
       );

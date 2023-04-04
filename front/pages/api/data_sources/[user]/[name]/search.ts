@@ -4,14 +4,11 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
-import {
-  parse_payload,
-  RequestParseError,
-  ApiInternalError,
-} from "@app/lib/http_utils";
+import { parse_payload, RequestParseError } from "@app/lib/http_utils";
 import { JSONSchemaType } from "ajv";
-import { ApiDocument, ApiError } from "@app/lib/api_models";
+import { ApiDocument } from "@app/lib/api_models";
 import { Result, Ok, Err } from "@app/lib/result";
+import { APIErrorWithStatusCode, APIError } from "@app/lib/api/error";
 
 type TagsFilter = {
   is_in?: string[];
@@ -82,7 +79,7 @@ export async function performSearch(
   request_uri_user: User,
   datasource_id: string,
   request_payload: any
-): Promise<Result<DatasourceSearchResponseBody, ApiInternalError>> {
+): Promise<Result<DatasourceSearchResponseBody, APIErrorWithStatusCode>> {
   const readOnly = auth_user.id != request_uri_user.id;
 
   let dataSource = await DataSource.findOne({
@@ -118,7 +115,7 @@ export async function performSearch(
           message: "Data source not found",
         },
       },
-    } as ApiInternalError);
+    });
   }
   let [providers] = await Promise.all([
     Provider.findAll({
@@ -183,7 +180,7 @@ export async function performSearch(
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody | ApiError>
+  res: NextApiResponse<DatasourceSearchResponseBody | APIError>
 ) {
   const session = await getServerSession(req, res, authOptions);
 
