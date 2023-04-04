@@ -1,10 +1,11 @@
 import { XP1User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { sendActivationKey } from "@app/lib/sendgrid";
+import withLogging from "@app/logger/withlogging";
 
 const {} = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
       error: {
@@ -46,3 +47,5 @@ export default async function handler(req, res) {
 
   res.redirect(`/xp1/activate/success`);
 }
+
+export default withLogging(handler);

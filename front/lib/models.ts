@@ -10,7 +10,9 @@ import {
 
 const { FRONT_DATABASE_URI } = process.env;
 
-const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string); // TODO: type process.env
+const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+  logging: false,
+}); // TODO: type process.env
 
 export class User extends Model<
   InferAttributes<User>,

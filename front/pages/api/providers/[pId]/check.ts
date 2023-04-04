@@ -2,15 +2,13 @@ import { User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
+import withLogging from "@app/logger/withlogging";
 
 export type GetProvidersCheckResponseBody =
   | { ok: true }
   | { ok: false; error: string };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -182,3 +180,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

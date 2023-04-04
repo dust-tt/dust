@@ -7,6 +7,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import { streamChunks } from "@app/lib/http_utils";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -19,7 +20,7 @@ export type PostRunsResponseBody = {
   run: Run;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunsResponseBody | PostRunsResponseBody>
 ) {
@@ -242,3 +243,5 @@ export default async function handler(
       return;
   }
 }
+
+export default withLogging(handler);

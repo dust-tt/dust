@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -19,7 +20,7 @@ export type GetDataSourcesResponseBody = {
   }>;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDataSourcesResponseBody>
 ) {
@@ -165,3 +166,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

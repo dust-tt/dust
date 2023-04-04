@@ -9,6 +9,7 @@ import peg from "pegjs";
 import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -16,7 +17,7 @@ const libDir = path.join(process.cwd(), "lib");
 const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
 const specParser = peg.generate(dustPegJs);
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -169,3 +170,5 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+export default withLogging(handler);
