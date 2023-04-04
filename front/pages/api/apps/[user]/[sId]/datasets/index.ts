@@ -4,6 +4,7 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -21,7 +22,7 @@ export type PostDatasetResponseBody = {
   dataset: DatasetObject;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetResponseBody | PostDatasetResponseBody>
 ): Promise<void> {
@@ -187,3 +188,5 @@ export default async function handler(
       break;
   }
 }
+
+export default withLogging(handler);

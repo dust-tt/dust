@@ -2,10 +2,11 @@ import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App, Dataset } from "@app/lib/models";
 import { Op } from "sequelize";
+import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   let user = await User.findOne({
@@ -127,3 +128,6 @@ export default async function handler(req, res) {
       break;
   }
 }
+
+
+export default withLogging(handler);
