@@ -6,9 +6,9 @@ async function handler(req, res) {
   // If available get version as get parameter.
   const { version } = req.query;
   if (version) {
-    loggger.info({ version }, "XP1 version check");
+    logger.info({ version }, "XP1 version check");
   } else {
-    loggger.info({ version: "0.1.0 (inferred)" }, "XP1 version check");
+    logger.info({ version: "0.1.0 (inferred)" }, "XP1 version check");
   }
 
   res.status(200).json({
