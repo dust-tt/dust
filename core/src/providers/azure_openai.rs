@@ -290,13 +290,10 @@ impl LLM for AzureOpenAILLM {
         assert!(self.model_id.is_some());
         assert!(n > 0);
 
-        // println!("STOP: {:?}", stop);
-
         if let Some(m) = max_tokens {
             if m == -1 {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some((self.context_size() - tokens.len()) as i32);
-                // println!("Using max_tokens = {}", max_tokens.unwrap());
             }
         }
 
@@ -377,8 +374,6 @@ impl LLM for AzureOpenAILLM {
                 .await?
             }
         };
-
-        // println!("COMPLETION: {:?}", c);
 
         assert!(c.choices.len() > 0);
         assert!(c.choices[0].logprobs.is_some());
@@ -616,7 +611,6 @@ impl Embedder for AzureOpenAIEmbedder {
         .await?;
 
         assert!(e.data.len() > 0);
-        // println!("EMBEDDING: {:?}", e);
 
         Ok(EmbedderVector {
             created: utils::now(),
