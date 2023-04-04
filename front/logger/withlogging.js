@@ -11,7 +11,7 @@ const withLogging = (handler) => {
         method: req.method,
         url: req.url,
         statusCode: res.statusCode,
-        duration: elapsed,
+        duration: `${elapsed}ms`,
       },
       "Processed request"
     );
