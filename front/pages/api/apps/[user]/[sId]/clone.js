@@ -58,11 +58,6 @@ async function handler(req, res) {
     }),
   ]);
 
-  // console.log("cloneFromUser", cloneFromUser);
-  // console.log("cloneFromApp", cloneFromApp);
-  // console.log("cloneFromDatasets", cloneFromDatasets);
-  // console.log("session", session);
-
   switch (req.method) {
     case "POST":
       if (

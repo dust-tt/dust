@@ -84,7 +84,6 @@ async function handler(req, res) {
       break;
 
     case "DELETE":
-      console.log("DELETEING");
       if (readOnly) {
         res.status(401).end();
         break;
@@ -99,7 +98,6 @@ async function handler(req, res) {
 
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
-        console.log(dustDataSource);
         res.status(500).end();
         break;
       }

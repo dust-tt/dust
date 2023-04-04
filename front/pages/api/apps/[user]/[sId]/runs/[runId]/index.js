@@ -158,10 +158,6 @@ async function handler(req, res) {
       }
       spec = recomputeIndents(spec);
 
-      // console.log("SPEC", spec);
-      // console.log("CONFIG", config);
-      // console.log("RUN", run);
-
       res.status(200).json({ app, spec, config, run });
       break;
 

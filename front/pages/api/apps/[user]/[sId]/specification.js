@@ -47,8 +47,6 @@ async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
-      console.log(app);
-
       const datasetsRes = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
         {

@@ -96,7 +96,6 @@ async function handler(req, res) {
             return obj;
           }, {});
       });
-      // console.log("DATASET UPLOAD", data);
 
       // Register dataset with the Dust internal API.
       const r = await fetch(

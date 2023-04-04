@@ -1,3 +1,5 @@
+import logger from "@app/logger/logger";
+
 export async function* streamChunks(stream: ReadableStream<Uint8Array>) {
   const reader = stream.getReader();
 
@@ -10,7 +12,12 @@ export async function* streamChunks(stream: ReadableStream<Uint8Array>) {
       yield value;
     }
   } catch (e) {
-    console.log("Error streaming chunks", e);
+    logger.error(
+      {
+        error: e,
+      },
+      "Error streaming chunks"
+    );
   } finally {
     reader.releaseLock();
   }

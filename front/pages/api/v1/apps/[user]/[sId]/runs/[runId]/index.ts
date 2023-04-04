@@ -1,6 +1,7 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { Op } from "sequelize";
 import { NextApiRequest, NextApiResponse } from "next";
+import logger from "@app/logger/logger";
 import { auth_api_user } from "@app/lib/api/auth";
 import withLogging from "@app/logger/withlogging";
 
@@ -74,11 +75,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case "GET":
       let runId = req.query.runId;
 
-      console.log("[API] app run retrieve:", {
-        user: appOwner.username,
-        app: app.sId,
-        runId,
-      });
+      logger.info(
+        {
+          user: appOwner.username,
+          app: app.sId,
+          runId,
+        },
+        "App run retrieve"
+      );
 
       const runRes = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}`,

@@ -1,5 +1,6 @@
 import { User, App, Provider, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import logger from "@app/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { streamChunks } from "@app/lib/http_utils";
@@ -42,7 +43,6 @@ const poll = async ({
     } else if (maxAttempts && attempts === maxAttempts) {
       return reject(new Error("Exceeded max attempts"));
     } else {
-      // console.log("polling again in", interval);
       setTimeout(executePoll, interval, resolve, reject);
     }
   };
@@ -144,13 +144,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       let credentials = credentialsFromProviders(providers);
 
-      console.log("[API] app run creation:", {
-        user: appOwner.username,
-        app: app.sId,
-        config,
-        inputs,
-        // credentials,
-      });
+      logger.info(
+        {
+          user: appOwner.username,
+          app: app.sId,
+        },
+        "App run creation"
+      );
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
@@ -196,7 +196,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             res.flush();
           }
         } catch (err) {
-          console.log("ERROR streaming from Dust API:", err);
+          logger.error(
+            {
+              error: err,
+            },
+            "Error streaming from Dust API"
+          );
         }
         res.end();
         break;
