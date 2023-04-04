@@ -85,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     Provider.findAll({
       where: {
-        userId: auth.user()?.id,
+        userId: auth.user()!.id,
       },
     }),
   ]);
