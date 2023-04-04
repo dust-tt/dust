@@ -39,10 +39,10 @@ export default async function handler(req, res) {
     case "GET":
       var chat = req.query.chat === "true" ? true : false;
       var embed = req.query.embed === "true" ? true : false;
+      let config = JSON.parse(provider.config);
 
       switch (req.query.pId) {
         case "openai":
-          let config = JSON.parse(provider.config);
           let modelsRes = await fetch("https://api.openai.com/v1/models", {
             method: "GET",
             headers: {
@@ -104,6 +104,62 @@ export default async function handler(req, res) {
             { id: "j1-jumbo" },
           ];
           res.status(200).json({ models: ai21Models });
+          break;
+
+        case "azure_openai":
+          let deploymentsRes = await fetch(
+            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+            {
+              method: "GET",
+              headers: {
+                "api-key": config.api_key,
+              },
+            }
+          );
+
+          if (!deploymentsRes.ok) {
+            let err = await deploymentsRes.json();
+            res.status(400).json({ error: err.error });
+          } else {
+            let deployments = await deploymentsRes.json();
+            let f = [];
+            if (embed) {
+              f = deployments.data.filter(
+                (d) => d.model === "text-embedding-ada-002"
+              );
+            } else {
+              f = deployments.data.filter((d) => {
+                return (
+                  !(
+                    d.model.includes("search") ||
+                    d.model.includes("similarity") ||
+                    d.model.includes("edit") ||
+                    d.model.includes("insert") ||
+                    d.model.includes("audio") ||
+                    d.model.includes(":") ||
+                    d.model.includes("embedding")
+                  ) &&
+                  (d.model.startsWith("text-") ||
+                    d.model.startsWith("code-") ||
+                    d.model.startsWith("gpt-3.5-turbo") ||
+                    d.model.startsWith("gpt-4")) &&
+                  (!chat ||
+                    d.model.startsWith("gpt-3.5-turbo") ||
+                    d.model.startsWith("gpt-4"))
+                );
+              });
+            }
+            f.sort((a, b) => {
+              if (a.id < b.id) {
+                return -1;
+              }
+              if (a.id > b.id) {
+                return 1;
+              }
+              return 0;
+            });
+            res.status(200).json({ models: f });
+          }
           break;
 
         default:

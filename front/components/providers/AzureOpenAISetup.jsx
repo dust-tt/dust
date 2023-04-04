@@ -4,10 +4,11 @@ import { ActionButton, Button } from "@app/components/Button";
 import { useSWRConfig } from "swr";
 import { checkProvider } from "@app/lib/providers";
 
-export default function AI21Setup({ open, setOpen, config, enabled }) {
+export default function AzureOpenAISetup({ open, setOpen, config, enabled }) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
+  const [endpoint, setEndpoint] = useState(config ? config.endpoint : "");
   const [testSuccessful, setTestSuccessful] = useState(false);
   const [testRunning, setTestRunning] = useState(false);
   const [testError, setTestError] = useState("");
@@ -17,13 +18,19 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
     if (config && config.api_key.length > 0 && apiKey.length == 0) {
       setApiKey(config.api_key);
     }
+    if (config && config.endpoint.length > 0 && endpoint.length == 0) {
+      setEndpoint(config.endpoint);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider("ai21", { api_key: apiKey });
+    let check = await checkProvider("azure_openai", {
+      api_key: apiKey,
+      endpoint,
+    });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -38,7 +45,7 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/providers/ai21`, {
+    let res = await fetch(`/api/providers/azure_openai`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -46,6 +53,7 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
       body: JSON.stringify({
         config: JSON.stringify({
           api_key: apiKey,
+          endpoint,
         }),
       }),
     });
@@ -55,7 +63,7 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/providers/ai21`, {
+    let res = await fetch(`/api/providers/azure_openai`, {
       method: "DELETE",
     });
     mutate(`/api/providers`);
@@ -92,20 +100,14 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-900"
                     >
-                      Setup AI21 Studio
+                      Setup Azure OpenAI
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        To use AI21 Studio models you must provide your API key.
-                        It can be found{" "}
-                        <a
-                          className="font-bold text-violet-600 hover:text-violet-500"
-                          href="https://studio.ai21.com/account/account"
-                          target="_blank"
-                        >
-                          here
-                        </a>
-                        .
+                        To use Azure OpenAI models you must provide your API key
+                        and Endpoint. They can be found in the left menu of your
+                        OpenAI Azure Resource portal (menu item `Keys and
+                        Endpoint`).
                       </p>
                       <p className="mt-2 text-sm text-gray-500">
                         We'll never use your API key for anything other than to
@@ -116,7 +118,19 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
                       <input
                         type="text"
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                        placeholder="AI21 Studio API Key"
+                        placeholder="Azure OpenAI Endpoint"
+                        value={endpoint}
+                        onChange={(e) => {
+                          setEndpoint(e.target.value);
+                          setTestSuccessful(false);
+                        }}
+                      />
+                    </div>
+                    <div className="mt-6">
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                        placeholder="Azure OpenAI API Key"
                         value={apiKey}
                         onChange={(e) => {
                           setApiKey(e.target.value);
@@ -131,7 +145,7 @@ export default function AI21Setup({ open, setOpen, config, enabled }) {
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
                     <span className="text-green-600">
-                      Test succeeded! You can enable AI21 Studio.
+                      Test succeeded! You can enable Azure OpenAI.
                     </span>
                   ) : (
                     <span>&nbsp;</span>
