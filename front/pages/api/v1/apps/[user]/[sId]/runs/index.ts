@@ -50,10 +50,7 @@ const poll = async ({
   return new Promise(executePoll);
 };
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, appOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({

@@ -16,6 +16,7 @@
     "@tailwindcss/forms": "^0.5.3",
     "@uiw/react-textarea-code-editor": "^2.0.6",
     "blake3": "^2.1.7",
+    "dd-trace": "^3.16.0",
     "next": "^13.1.5",
     "next-auth": "^4.18.10",
     "next-remove-imports": "^1.0.8",

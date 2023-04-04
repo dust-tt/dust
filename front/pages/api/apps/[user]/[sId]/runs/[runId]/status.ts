@@ -6,7 +6,6 @@ import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
 
-
 const { DUST_API } = process.env;
 
 export type GetRunStatusResponseBody = {

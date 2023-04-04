@@ -8,10 +8,7 @@ export type GetProvidersCheckResponseBody =
   | { ok: true }
   | { ok: false; error: string };
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -164,6 +161,5 @@ async function handler(
       break;
   }
 }
-
 
 export default withLogging(handler);

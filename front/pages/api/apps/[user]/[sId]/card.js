@@ -4,7 +4,6 @@ import { User, App } from "@app/lib/models";
 import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
 
-
 const { THUM_IO_KEY } = process.env;
 
 async function handler(req, res) {

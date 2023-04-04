@@ -7,10 +7,7 @@ import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, dataSourceOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -318,6 +315,5 @@ async function handler(
       break;
   }
 }
-
 
 export default withLogging(handler);

@@ -80,5 +80,4 @@ async function handler(req, res) {
   }
 }
 
-
 export default withLogging(handler);
