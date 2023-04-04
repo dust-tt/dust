@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { ActionButton, Button } from "@app/components/Button";
 import { useSWRConfig } from "swr";
@@ -13,9 +13,12 @@ export default function CohereSetup({ open, setOpen, config, enabled }) {
   const [testError, setTestError] = useState("");
   const [enableRunning, setEnableRunning] = useState(false);
 
-  if (config && config.api_key.length > 0 && apiKey.length == 0) {
-    setApiKey(config.api_key);
-  }
+  useEffect(() => {
+    if (config && config.api_key.length > 0 && apiKey.length == 0) {
+      setApiKey(config.api_key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config]);
 
   const runTest = async () => {
     setTestRunning(true);

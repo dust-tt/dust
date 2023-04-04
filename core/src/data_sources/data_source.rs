@@ -190,8 +190,9 @@ impl DataSource {
         }
     }
 
-    pub async fn setup(&self) -> Result<()> {
-        let embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
+    pub async fn setup(&self, credentials: Credentials) -> Result<()> {
+        let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
+        embedder.initialize(credentials).await?;
 
         // GCP store created data to test GCP.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
@@ -880,7 +881,7 @@ pub async fn cmd_register(data_source_id: &str, config: &DataSourceConfig) -> Re
 
     let ds = DataSource::new(&project, data_source_id, config);
 
-    ds.setup().await?;
+    ds.setup(Credentials::new()).await?;
     store.register_data_source(&project, &ds).await?;
 
     utils::done(&format!("Registered data_source `{}`", ds.data_source_id(),));

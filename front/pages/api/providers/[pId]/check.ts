@@ -87,6 +87,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           }
           break;
 
+        case "azure_openai":
+          let deploymentsRes = await fetch(
+            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+            {
+              method: "GET",
+              headers: {
+                "api-key": config.api_key,
+              },
+            }
+          );
+          if (!deploymentsRes.ok) {
+            let err = await deploymentsRes.json();
+            res.status(400).json({ ok: false, error: err.error.message });
+          } else {
+            let deployments = await deploymentsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          break;
+
         case "serpapi":
           let testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,

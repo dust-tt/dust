@@ -36,6 +36,14 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
+    providerId: "azure_openai",
+    name: "Azure OpenAI",
+    built: true,
+    enabled: false,
+    chat: false,
+    embed: true,
+  },
+  {
     providerId: "hugging_face",
     name: "Hugging Face",
     built: false,
@@ -150,6 +158,8 @@ type Credentials = {
   OPENAI_API_KEY?: string;
   COHERE_API_KEY?: string;
   AI21_API_KEY?: string;
+  AZURE_OPENAI_API_KEY?: string;
+  AZURE_OPENAI_ENDPOINT?: string;
   SERP_API_KEY?: string;
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;
@@ -161,7 +171,10 @@ export const credentialsFromProviders = (
   let credentials: Credentials = {};
 
   providers.forEach((provider) => {
-    let config = JSON.parse(provider.config) as { api_key: string };
+    let config = JSON.parse(provider.config) as {
+      api_key: string;
+      endpoint?: string;
+    };
 
     switch (provider.providerId) {
       case "openai":
@@ -172,6 +185,10 @@ export const credentialsFromProviders = (
         break;
       case "ai21":
         credentials["AI21_API_KEY"] = config.api_key;
+        break;
+      case "azure_openai":
+        credentials["AZURE_OPENAI_API_KEY"] = config.api_key;
+        credentials["AZURE_OPENAI_ENDPOINT"] = config.endpoint;
         break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
