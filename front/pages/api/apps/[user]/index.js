@@ -10,8 +10,6 @@ const { DUST_API } = process.env;
 async function handler(req, res) {
   const session = await unstable_getServerSession(req, res, authOptions);
 
-  console.log("session", session);
-
   let user = await User.findOne({
     where: {
       username: req.query.user,
