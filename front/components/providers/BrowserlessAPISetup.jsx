@@ -22,6 +22,7 @@ export default function BrowserlessAPISetup({
     if (config && config.api_key.length > 0 && apiKey.length == 0) {
       setApiKey(config.api_key);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const runTest = async () => {

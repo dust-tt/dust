@@ -21,6 +21,7 @@ export default function AzureOpenAISetup({ open, setOpen, config, enabled }) {
     if (config && config.endpoint.length > 0 && endpoint.length == 0) {
       setEndpoint(config.endpoint);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const runTest = async () => {
