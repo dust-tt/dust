@@ -124,7 +124,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: auth.user().id,
+            userId: auth.user()!.id,
           },
         }),
       ]);
@@ -170,7 +170,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       // Enforce FreePlan limit: 32 documents per DataSource.
-      if (auth.user().username !== "spolu") {
+      if (auth.user()!.username !== "spolu") {
         const documentsRes = await fetch(
           `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
           {
