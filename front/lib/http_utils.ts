@@ -1,7 +1,9 @@
 import logger from "@app/logger/logger";
 import Ajv, { JSONSchemaType } from "ajv";
 import { Result, Ok, Err } from "@app/lib/result";
-const ajv = new Ajv();
+const ajv = new Ajv({
+  coerceTypes: true,
+});
 
 export class RequestParseError extends Error {}
 
@@ -47,4 +49,3 @@ export function parse_payload<SchemaType>(
     new RequestParseError(validate.errors?.map((e) => e.message).join(", "))
   );
 }
-

@@ -38,12 +38,19 @@ export default async function handler(
   }
 
   switch (req.method) {
-    case "POST":
+    case "GET":
+      // I could not find a way to make the query params be an array if there is only one tag
+      if (req.query.tags_in && typeof req.query.tags_in === "string") {
+        req.query.tags_in = [req.query.tags_in];
+      }
+      if (req.query.tags_not_in && typeof req.query.tags_not_in === "string") {
+        req.query.tags_not_in = [req.query.tags_not_in];
+      }
       const serach_result = await performSearch(
         authUser,
         dataSourceOwner,
         req.query.name as string,
-        req.body
+        req.query
       );
       if (serach_result.isErr()) {
         const err = serach_result.error();
@@ -53,5 +60,9 @@ export default async function handler(
         res.status(200).json(serach_result.value());
       }
       return;
+
+    default:
+      res.status(405).end();
+      break;
   }
 }

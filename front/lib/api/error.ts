@@ -22,7 +22,7 @@ export type APIError = {
 };
 
 /**
- * Type to transport a HTTP error with its http status code (eg: 404) 
+ * Type to transport a HTTP error with its http status code (eg: 404)
  * and the error object returned by our public API endpoints (api/v1/*)
  */
 export type APIErrorWithStatusCode = {

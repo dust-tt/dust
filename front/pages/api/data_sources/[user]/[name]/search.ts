@@ -11,8 +11,8 @@ import { Result, Ok, Err } from "@app/lib/result";
 import { APIErrorWithStatusCode, APIError } from "@app/lib/api/error";
 
 type TagsFilter = {
-  is_in?: string[];
-  is_not?: string[];
+  in?: string[];
+  not?: string[];
 };
 
 type TimestampFilter = {
@@ -28,8 +28,11 @@ type SearchFilter = {
 export type DatasourceSearchQuery = {
   query: string;
   top_k: number;
-  filter?: SearchFilter;
   full_text: boolean;
+  timestamp_gt?: number;
+  timestamp_lt?: number;
+  tags_in?: string[];
+  tags_not_in?: string[];
 };
 
 const search_query_schema: JSONSchemaType<DatasourceSearchQuery> = {
@@ -38,32 +41,10 @@ const search_query_schema: JSONSchemaType<DatasourceSearchQuery> = {
     query: { type: "string" },
     top_k: { type: "number" },
     full_text: { type: "boolean" },
-    filter: {
-      type: "object",
-      nullable: true,
-      properties: {
-        tags: {
-          type: "object",
-          nullable: true,
-          properties: {
-            is_in: { type: "array", items: { type: "string" }, nullable: true },
-            is_not: {
-              type: "array",
-              items: { type: "string" },
-              nullable: true,
-            },
-          },
-        },
-        timestamp: {
-          type: "object",
-          nullable: true,
-          properties: {
-            gt: { type: "number", nullable: true },
-            lt: { type: "number", nullable: true },
-          },
-        },
-      },
-    },
+    timestamp_gt: { type: "number", nullable: true },
+    timestamp_lt: { type: "number", nullable: true },
+    tags_in: { type: "array", items: { type: "string" }, nullable: true },
+    tags_not_in: { type: "array", items: { type: "string" }, nullable: true },
   },
   required: ["query", "top_k", "full_text"],
 };
@@ -141,17 +122,30 @@ export async function performSearch(
   }
   const search_query = search_query_result.value();
 
+  let filter: SearchFilter = {
+    tags: {
+      in: search_query.tags_in,
+      not: search_query.tags_not_in,
+    },
+    timestamp: {
+      gt: search_query.timestamp_gt,
+      lt: search_query.timestamp_lt,
+    },
+  };
+
+  let serachPayload = {
+    query: search_query.query,
+    top_k: search_query.top_k,
+    full_text: search_query.full_text,
+    filter: filter,
+    credentials: credentials,
+  };
+
   const searchRes = await fetch(
     `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
     {
       method: "POST",
-      body: JSON.stringify({
-        query: search_query?.query,
-        top_k: search_query?.top_k,
-        filter: search_query?.filter,
-        full_text: search_query?.full_text,
-        credentials: credentials,
-      }),
+      body: JSON.stringify(serachPayload),
       headers: {
         "Content-Type": "application/json",
       },
@@ -207,8 +201,15 @@ export default async function handler(
   }
 
   switch (req.method) {
-    case "POST":
-      const request_payload = req.body;
+    case "GET":
+      // I could not find a way to make the query params be an array if there is only one tag
+      if (req.query.tags_in && typeof req.query.tags_in === "string") {
+        req.query.tags_in = [req.query.tags_in];
+      }
+      if (req.query.tags_not_in && typeof req.query.tags_not_in === "string") {
+        req.query.tags_not_in = [req.query.tags_not_in];
+      }
+      const request_payload = req.query;
       const search_result = await performSearch(
         auth_user,
         request_uri_user,
@@ -218,8 +219,13 @@ export default async function handler(
       if (search_result.isOk()) {
         res.status(200).json(search_result.value());
       } else {
+        console.log("ERROR IS : ", JSON.stringify(search_result.error()));
         res.status(search_result.error().status_code).end();
       }
       return;
+
+    default:
+      res.status(405).end();
+      break;
   }
 }
