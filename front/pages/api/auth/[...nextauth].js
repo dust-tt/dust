@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import withLogging from "@app/logger/withlogging";
 
 export const authOptions = {
   providers: [
@@ -63,4 +62,4 @@ export const authOptions = {
   },
 };
 
-export default withLogging(NextAuth(authOptions));
+export default NextAuth(authOptions);
