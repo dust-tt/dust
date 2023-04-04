@@ -6,7 +6,6 @@ import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 
-
 const { DUST_API } = process.env;
 
 export type GetDataSourcesResponseBody = {
