@@ -219,7 +219,6 @@ export default async function handler(
       if (search_result.isOk()) {
         res.status(200).json(search_result.value());
       } else {
-        console.log("ERROR IS : ", JSON.stringify(search_result.error()));
         res.status(search_result.error().status_code).end();
       }
       return;
