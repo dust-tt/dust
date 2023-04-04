@@ -4,13 +4,13 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
-import {ApiDocument} from "@app/lib/api_models";
+import {Document} from "@app/lib/types";
 
 const { DUST_API } = process.env;
 
 
 export type GetDocumentsResponseBody = {
-  documents: Array<ApiDocument>;
+  documents: Array<Document>;
   total: number;
 };
 

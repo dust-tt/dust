@@ -6,7 +6,7 @@ import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { parse_payload, RequestParseError } from "@app/lib/http_utils";
 import { JSONSchemaType } from "ajv";
-import { ApiDocument } from "@app/lib/api_models";
+import { Document } from "@app/lib/types";
 import { Result, Ok, Err } from "@app/lib/result";
 import { APIErrorWithStatusCode, APIError } from "@app/lib/api/error";
 
@@ -71,7 +71,7 @@ const search_query_schema: JSONSchemaType<DatasourceSearchQuery> = {
 const { DUST_API } = process.env;
 
 export type DatasourceSearchResponseBody = {
-  documents: Array<ApiDocument>;
+  documents: Array<Document>;
 };
 
 export async function performSearch(
