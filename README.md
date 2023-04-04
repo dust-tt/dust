@@ -21,6 +21,7 @@ Join our [Discord](https://discord.gg/8NJR3zQU5X).
 ### Command-line Client Quick Start
 
 - [Install Rust](https://www.rust-lang.org/tools/install)
+- [Install Protobuf](https://grpc.io/docs/protoc-installation/)
 - Clone this repository (`$DUST_PATH` represents the path to the `dust` repository).
 - `cd $DUST_PATH/core`
 - `cargo build --release --bin dust`
