@@ -4,9 +4,10 @@
     "prettier", 
     //The following 2 lines will be uncommented in the future once our javascript
     // app can build without errors.
-    // "eslint:recommended", 
     // If you wish to enforce the eslint presets and the camelCase naming convention,
     // uncomment the following lines temporarily.
+    
+    // "eslint:recommended", 
     // "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
