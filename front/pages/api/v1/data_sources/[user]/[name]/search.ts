@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
-import { APIError, APIErrorWithStatusCode } from "@app/lib/api/error";
-import { Result, Ok, Err } from "@app/lib/result";
+import { APIError } from "@app/lib/api/error";
 import { JSONSchemaType } from "ajv";
 import { User, DataSource, Provider } from "@app/lib/models";
 import { Op } from "sequelize";
