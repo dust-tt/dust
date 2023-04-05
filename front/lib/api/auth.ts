@@ -1,6 +1,6 @@
 import { NextApiRequest } from "next";
 import { Result, Ok, Err } from "@app/lib/result";
-import { APIError } from "@app/lib/api/error";
+import { APIErrorWithStatusCode } from "@app/lib/api/error";
 import { Key, User } from "@app/lib/models";
 
 /**
@@ -10,13 +10,15 @@ import { Key, User } from "@app/lib/models";
  */
 export async function auth_api_user(
   req: NextApiRequest
-): Promise<Result<User, APIError>> {
+): Promise<Result<User, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return Err({
       status_code: 401,
-      error: {
-        type: "missing_authorization_header_error",
-        message: "Missing Authorization header",
+      api_error: {
+        error: {
+          type: "missing_authorization_header_error",
+          message: "Missing Authorization header",
+        },
       },
     });
   }
@@ -25,9 +27,11 @@ export async function auth_api_user(
   if (!parse || !parse[1]) {
     return Err({
       status_code: 401,
-      error: {
-        type: "malformed_authorization_header_error",
-        message: "Malformed Authorization header",
+      api_error: {
+        error: {
+          type: "malformed_authorization_header_error",
+          message: "Malformed Authorization header",
+        },
       },
     });
   }
@@ -44,9 +48,11 @@ export async function auth_api_user(
   if (!key || key.status !== "active") {
     return Err({
       status_code: 401,
-      error: {
-        type: "invalid_api_key_error",
-        message: "The API key provided is invalid or disabled.",
+      api_error: {
+        error: {
+          type: "invalid_api_key_error",
+          message: "The API key provided is invalid or disabled.",
+        },
       },
     });
   }
@@ -60,9 +66,11 @@ export async function auth_api_user(
   if (!authUser) {
     return Err({
       status_code: 500,
-      error: {
-        type: "internal_server_error",
-        message: "The user associaed with the api key was not found.",
+      api_error: {
+        error: {
+          type: "internal_server_error",
+          message: "The user associaed with the api key was not found.",
+        },
       },
     });
   }

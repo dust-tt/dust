@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (authRes.isErr()) {
     const err = authRes.error();
-    return res.status(err.status_code).json(err.error);
+    return res.status(err.status_code).json(err.api_error);
   }
   const authUser = authRes.value();
 
