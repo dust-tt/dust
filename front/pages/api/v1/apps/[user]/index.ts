@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { auth_api_user } from "@app/lib/api/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
+import { Role } from "@app/lib/auth";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, appOwner] = await Promise.all([
@@ -18,7 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!appOwner) {
     res.status(404).json({
@@ -30,19 +31,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const readOnly = authUser.id !== appOwner.id;
+  let role = await auth.roleFor(appOwner);
 
   let apps = await App.findAll({
-    where: readOnly
-      ? {
-          userId: appOwner.id,
-          visibility: {
-            [Op.or]: ["public", "unlisted"],
+    where:
+      role === Role.ReadOnly
+        ? {
+            userId: appOwner.id,
+            visibility: {
+              [Op.or]: ["public"],
+            },
+          }
+        : {
+            userId: appOwner.id,
           },
-        }
-      : {
-          userId: appOwner.id,
-        },
   });
 
   switch (req.method) {

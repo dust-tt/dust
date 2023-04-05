@@ -2,15 +2,17 @@ import { NextApiRequest } from "next";
 import { Result, Ok, Err } from "@app/lib/result";
 import { APIErrorWithStatusCode } from "@app/lib/api/error";
 import { Key, User } from "@app/lib/models";
+import { Authenticator } from "@app/lib/auth";
 
 /**
- * Get a user id from the Authorization Bearer header
+ * Get a an Authenticator assiciated with the authentified user from the Authorization Bearer
+ * header.
  * @param req NextApiRequest request object
- * @returns Result<number, HTTPError> Ok(User) or Err(HTTPError)
+ * @returns Result<Authenticator, HTTPError>
  */
 export async function auth_api_user(
   req: NextApiRequest
-): Promise<Result<User, APIErrorWithStatusCode>> {
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return Err({
       status_code: 401,
@@ -75,5 +77,5 @@ export async function auth_api_user(
     });
   }
 
-  return Ok(authUser);
+  return Ok(new Authenticator(authUser));
 }

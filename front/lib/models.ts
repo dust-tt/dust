@@ -91,7 +91,7 @@ export class App extends Model<
   declare sId: string;
   declare name: string;
   declare description: string;
-  declare visibility: string;
+  declare visibility: "public" | "private" | "unlisted";
   declare savedSpecification: string;
   declare savedConfig: string;
   declare savedRun: string;
@@ -365,7 +365,7 @@ export class DataSource extends Model<
 
   declare name: string;
   declare description?: string;
-  declare visibility: string;
+  declare visibility: "public" | "private";
   declare config?: string;
   declare dustAPIProjectId: string;
 

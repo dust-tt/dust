@@ -20,7 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!dataSourceOwner) {
     res.status(404).json({
@@ -32,21 +32,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const readOnly = authUser.id !== dataSourceOwner.id;
-
   let dataSource = await DataSource.findOne({
-    where: readOnly
-      ? {
-          userId: dataSourceOwner.id,
-          name: req.query.name,
-          visibility: {
-            [Op.or]: ["public"],
-          },
-        }
-      : {
-          userId: dataSourceOwner.id,
-          name: req.query.name,
-        },
+    where: {
+      userId: dataSourceOwner.id,
+      name: req.query.name,
+    },
     attributes: [
       "id",
       "name",
@@ -70,6 +60,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   switch (req.method) {
     case "GET":
+      if (!auth.canReadDataSource(dataSource)) {
+        res.status(404).json({
+          error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+        return;
+      }
+
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 

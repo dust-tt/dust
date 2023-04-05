@@ -1,5 +1,4 @@
-import { User, App, Provider, Key } from "@app/lib/models";
-import { Op } from "sequelize";
+import { User, App } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "@app/logger/logger";
 import { auth_api_user } from "@app/lib/api/auth";
@@ -27,7 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const err = authRes.error();
     return res.status(err.status_code).json(err.api_error);
   }
-  const authUser = authRes.value();
+  const auth = authRes.value();
 
   if (!appOwner) {
     res.status(404).json({
@@ -38,33 +37,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
     return;
   }
-  if (authUser.id != appOwner.id) {
-    res.status(401).json({
-      error: {
-        type: "app_user_mismatch_error",
-        message:
-          "Only apps that you own can be interacted with by API \
-          (you can clone this app to run it).",
-      },
-    });
-    return;
-  }
-
-  const readOnly = authUser.id !== appOwner.id;
 
   let app = await App.findOne({
-    where: readOnly
-      ? {
-          userId: authUser.id,
-          sId: req.query.sId,
-          visibility: {
-            [Op.or]: ["public", "unlisted"],
-          },
-        }
-      : {
-          userId: authUser.id,
-          sId: req.query.sId,
-        },
+    where: {
+      userId: appOwner.id,
+      sId: req.query.sId,
+    },
   });
 
   if (!app) {
@@ -72,6 +50,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       error: {
         type: "app_not_found",
         message: "The app whose run you're trying to retrieve was not found.",
+      },
+    });
+    return;
+  }
+
+  // We check for the `canRunApp` permisison as we don't let other users retrieve runs for apps they
+  // don't own.
+  if (!auth.canRunApp(app)) {
+    res.status(404).json({
+      error: {
+        type: "app_user_mismatch_error",
+        message:
+          "Only apps that you own can be interacted with by API \
+          (you can clone this app to run it).",
       },
     });
     return;
