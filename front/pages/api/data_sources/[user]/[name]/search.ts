@@ -50,7 +50,6 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
 
 const { DUST_API } = process.env;
 
-
 type DatasourceSearchResponseBody = {
   documents: Array<Document>;
 };
@@ -114,7 +113,7 @@ export async function performSearch(
       gt: searchQuery.timestamp_gt,
       lt: searchQuery.timestamp_lt,
     },
-  };  
+  };
 
   const serachPayload = {
     query: searchQuery.query,

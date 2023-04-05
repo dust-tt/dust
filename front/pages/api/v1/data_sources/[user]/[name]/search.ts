@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { APIError, APIErrorWithStatusCode } from "@app/lib/api/error";
-import {Result, Ok, Err} from "@app/lib/result"
+import { Result, Ok, Err } from "@app/lib/result";
 import { JSONSchemaType } from "ajv";
 import { User, DataSource, Provider } from "@app/lib/models";
 import { Op } from "sequelize";
@@ -48,7 +48,6 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
 };
 
 const { DUST_API } = process.env;
-
 
 type DatasourceSearchResponseBody = {
   documents: Array<Document>;
@@ -130,7 +129,7 @@ export async function performSearch(
       gt: searchQuery.timestamp_gt,
       lt: searchQuery.timestamp_lt,
     },
-  };  
+  };
 
   const serachPayload = {
     query: searchQuery.query,
