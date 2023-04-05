@@ -5,7 +5,7 @@ import { JSONSchemaType } from "ajv";
 import { User, DataSource, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { parse_payload } from "@app/lib/http_utils";
-import { DocumentType } from "@app/lib/types";
+import { DocumentType } from "@app/types/document";
 
 type TagsFilter = {
   in?: string[];

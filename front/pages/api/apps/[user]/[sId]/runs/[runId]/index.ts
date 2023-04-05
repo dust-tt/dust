@@ -1,6 +1,6 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App } from "@app/lib/models";
+import { auth_user } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
 import {
   recomputeIndents,
   restoreTripleBackticks,
@@ -8,8 +8,9 @@ import {
 import peg from "pegjs";
 import fs from "fs";
 import path from "path";
-import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
+import { AppType, SpecificationType } from "@app/types/app";
+import { RunConfig, RunType } from "@app/types/run";
 
 const { DUST_API } = process.env;
 
@@ -17,38 +18,43 @@ const libDir = path.join(process.cwd(), "lib");
 const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
 const specParser = peg.generate(dustPegJs);
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+export type GetRunStateBody = {
+  app: AppType;
+  spec: SpecificationType;
+  config: RunConfig;
+  run: RunType;
+};
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetRunStateBody>
+): Promise<void> {
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  if (!user) {
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
+
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
-
   let [app] = await Promise.all([
     App.findOne({
-      where: readOnly
-        ? {
-            userId: user.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: user.id,
-            sId: req.query.sId,
-          },
+      where: {
+        userId: appUser.id,
+        sId: req.query.sId,
+      },
     }),
   ]);
 
@@ -61,6 +67,11 @@ async function handler(req, res) {
 
   switch (req.method) {
     case "GET":
+      if (!auth.canReadApp(app)) {
+        res.status(404).end();
+        return;
+      }
+
       // Retrieve run and config.
       const runRes = await fetch(
         `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
@@ -71,7 +82,7 @@ async function handler(req, res) {
 
       if (!runRes.ok) {
         res.status(500).end();
-        break;
+        return;
       }
 
       const r = await runRes.json();
@@ -89,12 +100,13 @@ async function handler(req, res) {
 
       if (!specRes.ok) {
         res.status(500).end();
-        break;
+        return;
       }
 
       const s = await specRes.json();
 
       let spec = specParser.parse(s.response.specification.data);
+
       for (var i = 0; i < spec.length; i++) {
         if (spec[i].name in config.blocks) {
           spec[i].config = { ...config.blocks[spec[i].name] };
@@ -158,12 +170,43 @@ async function handler(req, res) {
       }
       spec = recomputeIndents(spec);
 
-      res.status(200).json({ app, spec, config, run });
-      break;
+      res.status(200).json({
+        app: {
+          uId: app.uId,
+          sId: app.sId,
+          name: app.name,
+          description: app.description,
+          visibility: app.visibility,
+          savedSpecification: app.savedSpecification,
+          savedConfig: app.savedConfig,
+          savedRun: app.savedRun,
+          dustAPIProjectId: app.dustAPIProjectId,
+        },
+        spec: spec.map((b: any) => {
+          return {
+            type: b.type,
+            name: b.name,
+            spec: b.spec,
+            config: b.config,
+            indent: b.indent,
+          };
+        }),
+        config,
+        run: {
+          run_id: run.run_id,
+          created: run.created,
+          run_type: run.run_type,
+          app_hash: run.app_hash,
+          config: run.config,
+          status: run.status,
+          traces: [],
+        },
+      });
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 

@@ -1,4 +1,4 @@
-type BlockType =
+export type BlockType =
   | "input"
   | "data"
   | "data_source"
@@ -11,10 +11,10 @@ type BlockType =
   | "curl"
   | "browser";
 
-type RunType = "deploy" | "local" | "execute";
+type RunRunType = "deploy" | "local" | "execute";
 type Status = "running" | "succeeded" | "errored";
 
-type RunConfig = {
+export type RunConfig = {
   blocks: { [key: string]: any };
 };
 
@@ -31,10 +31,10 @@ type BlockStatus = {
   error_count: number;
 };
 
-export type Run = {
+export type RunType = {
   run_id: string;
   created: number;
-  run_type: RunType;
+  run_type: RunRunType;
   app_hash: string;
   config: RunConfig;
   status: RunStatus;
