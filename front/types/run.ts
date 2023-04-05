@@ -1,4 +1,4 @@
-type BlockType =
+export type BlockType =
   | "input"
   | "data"
   | "data_source"
@@ -14,7 +14,7 @@ type BlockType =
 type RunRunType = "deploy" | "local" | "execute";
 type Status = "running" | "succeeded" | "errored";
 
-type RunConfig = {
+export type RunConfig = {
   blocks: { [key: string]: any };
 };
 

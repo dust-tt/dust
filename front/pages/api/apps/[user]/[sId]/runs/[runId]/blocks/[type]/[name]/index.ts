@@ -1,10 +1,7 @@
 import { App, User } from "@app/lib/models";
 import { auth_user } from "@app/lib/auth";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
