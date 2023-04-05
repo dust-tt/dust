@@ -53,127 +53,10 @@ type DatasourceSearchResponseBody = {
   documents: Array<Document>;
 };
 
-export async function performSearch(
-  authUser: User,
-  requestUriUser: User,
-  datasourceId: string,
-  requestPayload: any
-): Promise<Result<DatasourceSearchResponseBody, APIErrorWithStatusCode>> {
-  const readOnly = authUser.id != requestUriUser.id;
-
-  const dataSource = await DataSource.findOne({
-    where: readOnly
-      ? {
-          userId: requestUriUser.id,
-          name: datasourceId,
-          visibility: {
-            [Op.or]: ["public"],
-          },
-        }
-      : {
-          userId: requestUriUser.id,
-          name: datasourceId,
-        },
-    attributes: [
-      "id",
-      "name",
-      "description",
-      "visibility",
-      "config",
-      "dustAPIProjectId",
-      "updatedAt",
-    ],
-  });
-
-  if (!dataSource) {
-    return Err({
-      status_code: 404,
-      api_error: {
-        error: {
-          type: "data_source_not_found",
-          message: "Data source not found",
-        },
-      },
-    });
-  }
-  const [providers] = await Promise.all([
-    Provider.findAll({
-      where: {
-        userId: authUser.id,
-      },
-    }),
-  ]);
-  const credentials = credentialsFromProviders(providers);
-  const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
-
-  if (searchQueryRes.isErr()) {
-    const err = searchQueryRes.error();
-    return Err({
-      status_code: 400,
-      api_error: {
-        error: {
-          type: "invalid_request_error",
-          message: err.message,
-        },
-      },
-    });
-  }
-  const searchQuery = searchQueryRes.value();
-
-  const filter: SearchFilter = {
-    tags: {
-      in: searchQuery.tags_in,
-      not: searchQuery.tags_not,
-    },
-    timestamp: {
-      gt: searchQuery.timestamp_gt,
-      lt: searchQuery.timestamp_lt,
-    },
-  };
-
-  const serachPayload = {
-    query: searchQuery.query,
-    top_k: searchQuery.top_k,
-    full_text: searchQuery.full_text,
-    filter: filter,
-    credentials: credentials,
-  };
-
-  const searchRes = await fetch(
-    `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
-    {
-      method: "POST",
-      body: JSON.stringify(serachPayload),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!searchRes.ok) {
-    const error = await searchRes.json();
-    return Err({
-      status_code: 400,
-      api_error: {
-        error: {
-          type: "data_source_error",
-          message: "There was an error performing the data source search.",
-          data_source_error: error.error,
-        },
-      },
-    });
-  }
-  const documents = await searchRes.json();
-
-  return Ok({
-    documents: documents.response.documents,
-  });
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | APIError>
-) {
+) : Promise<void> {
   const [authRes, dataSourceOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -208,19 +91,106 @@ export default async function handler(
       if (req.query.tags_not && typeof req.query.tags_not === "string") {
         req.query.tags_not = [req.query.tags_not];
       }
-      const serachRes = await performSearch(
-        authUser,
-        dataSourceOwner,
-        req.query.name as string,
-        req.query
-      );
-      if (serachRes.isErr()) {
-        const err = serachRes.error();
-        res.status(err.status_code).json(err.api_error);
-        return;
-      } else {
-        res.status(200).json(serachRes.value());
+      const readOnly = authUser.id != dataSourceOwner.id;
+      const datasourceId = req.query.name;
+
+      const dataSource = await DataSource.findOne({
+        where: readOnly
+          ? {
+              userId: dataSourceOwner.id,
+              name: datasourceId,
+              visibility: {
+                [Op.or]: ["public"],
+              },
+            }
+          : {
+              userId: dataSourceOwner.id,
+              name: datasourceId,
+            },
+        attributes: [
+          "id",
+          "name",
+          "description",
+          "visibility",
+          "config",
+          "dustAPIProjectId",
+          "updatedAt",
+        ],
+      });
+    
+      if (!dataSource) {
+        return res.status(404).json({
+            error: {
+              type: "data_source_not_found",
+              message: "Data source not found",
+          },
+        });
       }
+      const [providers] = await Promise.all([
+        Provider.findAll({
+          where: {
+            userId: authUser.id,
+          },
+        }),
+      ]);
+      const credentials = credentialsFromProviders(providers);
+      const searchQueryRes = parse_payload(searchQuerySchema, req.query);
+    
+      if (searchQueryRes.isErr()) {
+        const err = searchQueryRes.error();
+        return res.status(400).json({
+            error: {
+              type: "invalid_request_error",
+              message: err.message,
+          },
+        });
+      }
+      const searchQuery = searchQueryRes.value();
+    
+      const filter: SearchFilter = {
+        tags: {
+          in: searchQuery.tags_in,
+          not: searchQuery.tags_not,
+        },
+        timestamp: {
+          gt: searchQuery.timestamp_gt,
+          lt: searchQuery.timestamp_lt,
+        },
+      };
+    
+      const serachPayload = {
+        query: searchQuery.query,
+        top_k: searchQuery.top_k,
+        full_text: searchQuery.full_text,
+        filter: filter,
+        credentials: credentials,
+      };
+    
+      const searchRes = await fetch(
+        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
+        {
+          method: "POST",
+          body: JSON.stringify(serachPayload),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    
+      if (!searchRes.ok) {
+        const error = await searchRes.json();
+        return res.status(400).json({
+            error: {
+              type: "data_source_error",
+              message: "There was an error performing the data source search.",
+              data_source_error: error.error,
+          },
+        });
+      }
+      const documents = await searchRes.json();
+      res.status(200).json({
+        documents: documents.response.documents,
+      });
       return;
     }
     default:
