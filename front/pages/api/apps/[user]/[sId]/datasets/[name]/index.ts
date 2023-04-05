@@ -12,7 +12,7 @@ type GetDatasetResponseBody = { dataset: DatasetType };
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetResponseBody>
-) {
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({
@@ -23,12 +23,14 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    return res.status(authRes.error().status_code).end();
+    res.status(authRes.error().status_code).end();
+    return;
   }
   let auth = authRes.value();
 
   if (!appUser) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   let [app] = await Promise.all([
@@ -41,7 +43,8 @@ async function handler(
   ]);
 
   if (!app) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   let [dataset] = await Promise.all([
@@ -55,13 +58,15 @@ async function handler(
   ]);
 
   if (!dataset) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   switch (req.method) {
     case "GET":
       if (!auth.canReadApp(app)) {
-        return res.status(404).end();
+        res.status(404).end();
+        return;
       }
 
       // TODO(spolu) very likely this route is unused
@@ -72,11 +77,12 @@ async function handler(
           description: dataset.description,
         },
       });
-      break;
+      return;
 
     case "POST":
       if (!auth.canEditApp(app)) {
-        return res.status(404).end();
+        res.status(401).end();
+        return;
       }
 
       if (
@@ -85,21 +91,23 @@ async function handler(
         !(typeof req.body.description == "string") ||
         !Array.isArray(req.body.data)
       ) {
-        return res.status(400).end();
+        res.status(400).end();
+        return;
       }
 
       // Check data validity.
       try {
         checkDatasetData(req.body.data);
       } catch (e) {
-        return res.status(400).end();
+        res.status(400).end();
+        return;
       }
 
       // Reorder all keys as Dust API expects them ordered.
       let data = req.body.data.map((d: any) => {
         return Object.keys(d)
           .sort()
-          .reduce((obj: any, key) => {
+          .reduce((obj: { [key: string]: any }, key) => {
             obj[key] = d[key];
             return obj;
           }, {});
@@ -124,7 +132,7 @@ async function handler(
 
       if (d.error) {
         res.status(500).end();
-        break;
+        return;
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -140,11 +148,12 @@ async function handler(
           description,
         },
       });
-      break;
+      return;
 
     case "DELETE":
       if (!auth.canEditApp(app)) {
-        return res.status(404).end();
+        res.status(401).end();
+        return;
       }
 
       await Dataset.destroy({
@@ -161,10 +170,11 @@ async function handler(
           description: dataset.description,
         },
       });
-      break;
+      return;
 
     default:
-      return res.status(405).end();
+      res.status(405).end();
+      return;
   }
 }
 

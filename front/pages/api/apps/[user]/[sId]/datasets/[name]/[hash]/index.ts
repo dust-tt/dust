@@ -11,7 +11,7 @@ type GetDatasetByHashResponseBody = { dataset: DatasetType };
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetByHashResponseBody>
-) {
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({
@@ -22,12 +22,14 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    return res.status(authRes.error().status_code).end();
+    res.status(authRes.error().status_code).end();
+    return;
   }
   let auth = authRes.value();
 
   if (!appUser) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   let [app] = await Promise.all([
@@ -40,7 +42,8 @@ async function handler(
   ]);
 
   if (!app) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   let [dataset] = await Promise.all([
@@ -54,13 +57,15 @@ async function handler(
   ]);
 
   if (!dataset) {
-    return res.status(404).end();
+    res.status(404).end();
+    return;
   }
 
   switch (req.method) {
     case "GET":
       if (!auth.canReadApp(app)) {
-        return res.status(404).end();
+        res.status(404).end();
+        return;
       }
 
       let hash = req.query.hash;
@@ -79,10 +84,12 @@ async function handler(
         const apiDatasets = await apiDatasetsRes.json();
 
         if (!(dataset.name in apiDatasets.response.datasets)) {
-          return res.status(404).end();
+          res.status(404).end();
+          return;
         }
         if (apiDatasets.response.datasets[dataset.name].lenght == 0) {
-          return res.status(400).end();
+          res.status(400).end();
+          return;
         }
 
         hash = apiDatasets.response.datasets[dataset.name][0].hash;
@@ -106,10 +113,11 @@ async function handler(
           data: apiDataset.response.dataset.data,
         },
       });
-      break;
+      return;
 
     default:
-      return res.status(405).end();
+      res.status(405).end();
+      return;
   }
 }
 
