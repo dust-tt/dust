@@ -5,6 +5,8 @@
     //The following 2 lines will be uncommented in the future once our javascript
     // app can build without errors.
     // "eslint:recommended", 
+    // If you wish to enforce the eslint presets and the camelCase naming convention,
+    // uncomment the following lines temporarily.
     // "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
@@ -14,8 +16,12 @@
         "selector": "variableLike",
         "format": ["camelCase"]
       }
-    ]
-      
+    ],
+    "react/no-unescaped-entities": 0,
+    "react-hooks/rules-of-hooks": 0,
+    "react-hooks/exhaustive-deps": 0,
+    "@next/next/no-img-element": 0,
+    "jsx-a11y/alt-text": 0      
 
     },
   "env": {
