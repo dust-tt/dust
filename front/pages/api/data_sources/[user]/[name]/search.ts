@@ -32,10 +32,10 @@ export type DatasourceSearchQuery = {
   timestamp_gt?: number;
   timestamp_lt?: number;
   tags_in?: string[];
-  tags_not_in?: string[];
+  tags_not?: string[];
 };
 
-const search_query_schema: JSONSchemaType<DatasourceSearchQuery> = {
+const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
   type: "object",
   properties: {
     query: { type: "string" },
@@ -44,37 +44,38 @@ const search_query_schema: JSONSchemaType<DatasourceSearchQuery> = {
     timestamp_gt: { type: "number", nullable: true },
     timestamp_lt: { type: "number", nullable: true },
     tags_in: { type: "array", items: { type: "string" }, nullable: true },
-    tags_not_in: { type: "array", items: { type: "string" }, nullable: true },
+    tags_not: { type: "array", items: { type: "string" }, nullable: true },
   },
   required: ["query", "top_k", "full_text"],
 };
 
 const { DUST_API } = process.env;
 
+
 export type DatasourceSearchResponseBody = {
   documents: Array<Document>;
 };
 
 export async function performSearch(
-  auth_user: User,
-  request_uri_user: User,
-  datasource_id: string,
-  request_payload: any
+  authUser: User,
+  requestUriUser: User,
+  datasourceId: string,
+  requestPayload: any
 ): Promise<Result<DatasourceSearchResponseBody, APIErrorWithStatusCode>> {
-  const readOnly = auth_user.id != request_uri_user.id;
+  const readOnly = authUser.id != requestUriUser.id;
 
-  let dataSource = await DataSource.findOne({
+  const dataSource = await DataSource.findOne({
     where: readOnly
       ? {
-          userId: request_uri_user.id,
-          name: datasource_id,
+          userId: requestUriUser.id,
+          name: datasourceId,
           visibility: {
             [Op.or]: ["public"],
           },
         }
       : {
-          userId: request_uri_user.id,
-          name: datasource_id,
+          userId: requestUriUser.id,
+          name: datasourceId,
         },
     attributes: [
       "id",
@@ -98,18 +99,18 @@ export async function performSearch(
       },
     });
   }
-  let [providers] = await Promise.all([
+  const [providers] = await Promise.all([
     Provider.findAll({
       where: {
-        userId: auth_user.id,
+        userId: authUser.id,
       },
     }),
   ]);
   const credentials = credentialsFromProviders(providers);
-  let search_query_result = parse_payload(search_query_schema, request_payload);
+  const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
 
-  if (search_query_result.isErr()) {
-    const err = search_query_result.error();
+  if (searchQueryRes.isErr()) {
+    const err = searchQueryRes.error();
     return Err({
       status_code: 400,
       api_error: {
@@ -120,23 +121,23 @@ export async function performSearch(
       },
     });
   }
-  const search_query = search_query_result.value();
+  const searchQuery = searchQueryRes.value();
 
-  let filter: SearchFilter = {
+  const filter: SearchFilter = {
     tags: {
-      in: search_query.tags_in,
-      not: search_query.tags_not_in,
+      in: searchQuery.tags_in,
+      not: searchQuery.tags_not,
     },
     timestamp: {
-      gt: search_query.timestamp_gt,
-      lt: search_query.timestamp_lt,
+      gt: searchQuery.timestamp_gt,
+      lt: searchQuery.timestamp_lt,
     },
-  };
+  };  
 
-  let serachPayload = {
-    query: search_query.query,
-    top_k: search_query.top_k,
-    full_text: search_query.full_text,
+  const serachPayload = {
+    query: searchQuery.query,
+    top_k: searchQuery.top_k,
+    full_text: searchQuery.full_text,
     filter: filter,
     credentials: credentials,
   };
@@ -178,50 +179,51 @@ export default async function handler(
 ) {
   const session = await getServerSession(req, res, authOptions);
 
-  let request_uri_user = await User.findOne({
+  const requestUriUser = await User.findOne({
     where: {
       username: req.query.user,
     },
   });
 
-  if (!request_uri_user) {
+  if (!requestUriUser) {
     res.status(404).end();
     return;
   }
 
-  let auth_user = await User.findOne({
+  const authUser = await User.findOne({
     where: {
       githubId: session.provider.id.toString(),
     },
   });
 
-  if (!auth_user) {
+  if (!authUser) {
     res.status(404).end();
     return;
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
       // I could not find a way to make the query params be an array if there is only one tag
       if (req.query.tags_in && typeof req.query.tags_in === "string") {
         req.query.tags_in = [req.query.tags_in];
       }
-      if (req.query.tags_not_in && typeof req.query.tags_not_in === "string") {
-        req.query.tags_not_in = [req.query.tags_not_in];
+      if (req.query.tags_not && typeof req.query.tags_not === "string") {
+        req.query.tags_not = [req.query.tags_not];
       }
-      const request_payload = req.query;
-      const search_result = await performSearch(
-        auth_user,
-        request_uri_user,
+      const requestPayload = req.query;
+      const searchRes = await performSearch(
+        authUser,
+        requestUriUser,
         req.query.name as string,
-        request_payload
+        requestPayload
       );
-      if (search_result.isOk()) {
-        res.status(200).json(search_result.value());
+      if (searchRes.isOk()) {
+        res.status(200).json(searchRes.value());
       } else {
-        res.status(search_result.error().status_code).end();
+        res.status(searchRes.error().status_code).end();
       }
       return;
+    }
 
     default:
       res.status(405).end();

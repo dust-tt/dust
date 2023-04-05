@@ -12,7 +12,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | APIError>
 ) {
-  let [authRes, dataSourceOwner] = await Promise.all([
+  const [authRes, dataSourceOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -38,29 +38,29 @@ export default async function handler(
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
       // I could not find a way to make the query params be an array if there is only one tag
       if (req.query.tags_in && typeof req.query.tags_in === "string") {
         req.query.tags_in = [req.query.tags_in];
       }
-      if (req.query.tags_not_in && typeof req.query.tags_not_in === "string") {
-        req.query.tags_not_in = [req.query.tags_not_in];
+      if (req.query.tags_not && typeof req.query.tags_not === "string") {
+        req.query.tags_not = [req.query.tags_not];
       }
-      const serach_result = await performSearch(
+      const serachRes = await performSearch(
         authUser,
         dataSourceOwner,
         req.query.name as string,
         req.query
       );
-      if (serach_result.isErr()) {
-        const err = serach_result.error();
+      if (serachRes.isErr()) {
+        const err = serachRes.error();
         res.status(err.status_code).json(err.api_error);
         return;
       } else {
-        res.status(200).json(serach_result.value());
+        res.status(200).json(serachRes.value());
       }
       return;
-
+    }
     default:
       res.status(405).end();
       break;
