@@ -12,6 +12,7 @@
     */
   ],
   "rules": {
+    /**
     "@typescript-eslint/naming-convention": [
       "error",
       {
@@ -19,6 +20,7 @@
         "format": ["camelCase"]
       }
     ],
+    */
     "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
