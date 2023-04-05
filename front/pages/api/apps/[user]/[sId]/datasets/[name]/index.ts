@@ -1,72 +1,82 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { NextApiRequest, NextApiResponse } from "next";
+import { auth_user } from "@app/lib/auth";
 import { User, App, Dataset } from "@app/lib/models";
 import { checkDatasetData } from "@app/lib/datasets";
 import withLogging from "../../../../../../../logger/withlogging";
+import { DatasetType } from "@app/lib/types";
 
 const { DUST_API } = process.env;
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
-    return;
+type GetDatasetResponseBody = { dataset: DatasetType };
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetDatasetResponseBody>
+) {
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
+
+  if (authRes.isErr()) {
+    return res.status(authRes.error().status_code).end();
   }
-  let user = await User.findOne({
-    where: {
-      githubId: session.provider.id.toString(),
-    },
-  });
-  if (!user) {
-    res.status(401).end();
-    return;
+  let auth = authRes.value();
+
+  if (!appUser) {
+    return res.status(404).end();
   }
 
   let [app] = await Promise.all([
     App.findOne({
       where: {
-        userId: user.id,
+        userId: appUser.id,
         sId: req.query.sId,
       },
-      attributes: [
-        "id",
-        "uId",
-        "sId",
-        "name",
-        "description",
-        "visibility",
-        "savedSpecification",
-        "updatedAt",
-        "dustAPIProjectId",
-      ],
     }),
   ]);
+
+  if (!app) {
+    return res.status(404).end();
+  }
 
   let [dataset] = await Promise.all([
     Dataset.findOne({
       where: {
-        userId: user.id,
+        userId: appUser.id,
         appId: app.id,
         name: req.query.name,
       },
     }),
   ]);
 
+  if (!dataset) {
+    return res.status(404).end();
+  }
+
   switch (req.method) {
     case "GET":
-      if (!dataset) {
-        res.status(404).end();
-        break;
+      if (!auth.canReadApp(app)) {
+        return res.status(404).end();
       }
 
-      // Retrieve latest dataset data
-      res.status(200).json({ dataset });
+      // TODO(spolu) very likely this route is unused
+
+      res.status(200).json({
+        dataset: {
+          name: dataset.name,
+          description: dataset.description,
+        },
+      });
       break;
 
     case "POST":
-      if (!dataset) {
-        res.status(404).end();
-        break;
+      if (!auth.canEditApp(app)) {
+        return res.status(404).end();
       }
 
       if (
@@ -75,23 +85,21 @@ async function handler(req, res) {
         !(typeof req.body.description == "string") ||
         !Array.isArray(req.body.data)
       ) {
-        res.status(400).end();
-        break;
+        return res.status(400).end();
       }
 
       // Check data validity.
       try {
         checkDatasetData(req.body.data);
       } catch (e) {
-        res.status(400).end();
-        break;
+        return res.status(400).end();
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      let data = req.body.data.map((d) => {
+      let data = req.body.data.map((d: any) => {
         return Object.keys(d)
           .sort()
-          .reduce((obj, key) => {
+          .reduce((obj: any, key) => {
             obj[key] = d[key];
             return obj;
           }, {});
@@ -135,29 +143,28 @@ async function handler(req, res) {
       break;
 
     case "DELETE":
-      if (!dataset) {
-        res.status(404).end();
-        break;
+      if (!auth.canEditApp(app)) {
+        return res.status(404).end();
       }
 
       await Dataset.destroy({
         where: {
-          userId: user.id,
+          userId: appUser.id,
           appId: app.id,
-          name: req.query.name,
+          name: dataset.name,
         },
       });
 
       res.status(200).json({
         dataset: {
-          name: req.body.name,
+          name: dataset.name,
+          description: dataset.description,
         },
       });
       break;
 
     default:
-      res.status(405).end();
-      break;
+      return res.status(405).end();
   }
 }
 

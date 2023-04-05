@@ -6,11 +6,11 @@ import { DatasetType } from "@app/lib/types";
 
 const { DUST_API } = process.env;
 
-export type GetDatasetResponseBody = { dataset: DatasetType };
+type GetDatasetByHashResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatasetResponseBody>
+  res: NextApiResponse<GetDatasetByHashResponseBody>
 ) {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
@@ -27,8 +27,7 @@ async function handler(
   let auth = authRes.value();
 
   if (!appUser) {
-    res.status(404).end();
-    return;
+    return res.status(404).end();
   }
 
   let [app] = await Promise.all([
@@ -41,8 +40,7 @@ async function handler(
   ]);
 
   if (!app) {
-    res.status(404).end();
-    return;
+    return res.status(404).end();
   }
 
   let [dataset] = await Promise.all([
@@ -56,8 +54,7 @@ async function handler(
   ]);
 
   if (!dataset) {
-    res.status(404).end();
-    return;
+    return res.status(404).end();
   }
 
   switch (req.method) {
@@ -112,8 +109,7 @@ async function handler(
       break;
 
     default:
-      res.status(405).end();
-      break;
+      return res.status(405).end();
   }
 }
 

@@ -13,10 +13,11 @@ export type DocumentType = {
     vector: Array<number> | null;
     score: number | null;
   }>;
+  text?: string;
 };
 
 export type DatasetType = {
   name: string;
   description: string;
-  data: Array<any>;
+  data?: Array<any>;
 };
