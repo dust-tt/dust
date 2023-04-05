@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
-import { DocumentType } from "@app/lib/types";
+import { DocumentType } from "@app/types/document";
 
 const { DUST_API } = process.env;
 

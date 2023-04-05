@@ -1,6 +1,6 @@
 import { App, User } from "@app/lib/models";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { Run } from "@app/types/run";
+import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
@@ -9,7 +9,7 @@ import withLogging from "@app/logger/withlogging";
 const { DUST_API } = process.env;
 
 export type GetRunStatusResponseBody = {
-  run: Run | null;
+  run: RunType | null;
 };
 
 async function handler(

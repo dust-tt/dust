@@ -2,7 +2,7 @@ import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { Run } from "@app/types/run";
+import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "@app/logger/logger";
 import { unstable_getServerSession } from "next-auth/next";
@@ -13,12 +13,12 @@ import withLogging from "@app/logger/withlogging";
 const { DUST_API } = process.env;
 
 export type GetRunsResponseBody = {
-  runs: Run[];
+  runs: RunType[];
   total: number;
 };
 
 export type PostRunsResponseBody = {
-  run: Run;
+  run: RunType;
 };
 
 async function handler(

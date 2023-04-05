@@ -15,9 +15,3 @@ export type DocumentType = {
   }>;
   text?: string;
 };
-
-export type DatasetType = {
-  name: string;
-  description: string;
-  data?: Array<any>;
-};

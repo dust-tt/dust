@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { auth_user } from "@app/lib/auth";
 import { User, App, Dataset } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
-import { DatasetType } from "@app/lib/types";
+import { DatasetType } from "@app/types/dataset";
 
 const { DUST_API } = process.env;
 
