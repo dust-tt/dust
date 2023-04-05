@@ -1,73 +1,50 @@
 import { checkDatasetData } from "@app/lib/datasets";
 import { App, Dataset, User } from "@app/lib/models";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
+import { DatasetType } from "@app/lib/types";
+import { auth_user } from "@app/lib/auth";
 
 const { DUST_API } = process.env;
 
-type DatasetObject = {
-  id: number;
-  name: string;
-  description: string;
-};
-
-export type GetDatasetResponseBody = {
-  datasets: DatasetObject[];
+export type GetDatasetsResponseBody = {
+  datasets: DatasetType[];
 };
 
 export type PostDatasetResponseBody = {
-  dataset: DatasetObject;
+  dataset: DatasetType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatasetResponseBody | PostDatasetResponseBody>
+  res: NextApiResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
 ): Promise<void> {
-  const session = await unstable_getServerSession(req, res, authOptions);
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
 
-  if (!user) {
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
-
   let [app] = await Promise.all([
     App.findOne({
-      where: readOnly
-        ? {
-            userId: user.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: user.id,
-            sId: req.query.sId,
-          },
-      attributes: [
-        "id",
-        "uId",
-        "sId",
-        "name",
-        "description",
-        "visibility",
-        "savedSpecification",
-        "updatedAt",
-        "dustAPIProjectId",
-      ],
+      where: {
+        userId: appUser.id,
+        sId: req.query.sId,
+      },
     }),
   ]);
 
@@ -78,20 +55,32 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.canReadApp(app)) {
+        res.status(404).end();
+        return;
+      }
+
       let datasets = await Dataset.findAll({
         where: {
-          userId: user.id,
+          userId: appUser.id,
           appId: app.id,
         },
         order: [["updatedAt", "DESC"]],
         attributes: ["id", "name", "description"],
       });
 
-      res.status(200).json({ datasets } as GetDatasetResponseBody);
+      res.status(200).json({
+        datasets: datasets.map((d) => {
+          return {
+            name: d.name,
+            description: d.description,
+          };
+        }),
+      });
       return;
 
     case "POST":
-      if (readOnly) {
+      if (!auth.canEditApp(app)) {
         res.status(401).end();
         return;
       }
@@ -109,7 +98,7 @@ async function handler(
       // Check that dataset does not already exist.
       let existing = await Dataset.findAll({
         where: {
-          userId: user.id,
+          userId: appUser.id,
           appId: app.id,
         },
         attributes: ["name"],
@@ -166,16 +155,15 @@ async function handler(
 
       let description = req.body.description ? req.body.description : null;
 
-      const { id: datasetId } = await Dataset.create({
+      await Dataset.create({
         name: req.body.name,
         description,
-        userId: user.id,
+        userId: appUser.id,
         appId: app.id,
       });
 
       res.status(201).json({
         dataset: {
-          id: datasetId,
           name: req.body.name,
           description,
         },

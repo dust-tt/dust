@@ -3,9 +3,9 @@ import { auth_api_user } from "@app/lib/api/auth";
 import { APIError } from "@app/lib/api/error";
 import { JSONSchemaType } from "ajv";
 import { User, DataSource, Provider } from "@app/lib/models";
-import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { parse_payload } from "@app/lib/http_utils";
+import { DocumentType } from "@app/lib/types";
 
 type TagsFilter = {
   in?: string[];
@@ -49,7 +49,7 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
 const { DUST_API } = process.env;
 
 type DatasourceSearchResponseBody = {
-  documents: Array<Document>;
+  documents: Array<DocumentType>;
 };
 
 export default async function handler(

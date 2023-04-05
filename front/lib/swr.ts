@@ -1,4 +1,4 @@
-import { GetDatasetResponseBody } from "@app/pages/api/apps/[user]/[sId]/datasets";
+import { GetDatasetsResponseBody } from "@app/pages/api/apps/[user]/[sId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs/[runId]/blocks/[type]/[name]";
 import { GetRunStatusResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs/[runId]/status";
@@ -12,7 +12,7 @@ export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
 
 export function useDatasets(user: string, app: { sId: string }) {
-  const datasetsFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
+  const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWR(
     `/api/apps/${user}/${app.sId}/datasets`,
