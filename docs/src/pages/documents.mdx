@@ -329,8 +329,8 @@ The Document model represents a [data source](/data-sources-overview) document.
       <Property name="tags_in" type="array[string]">
         Filter documents that have one of these tags attached. You can specify multiple tags_in in the search query.
       </Property>      
-      <Property name="tags_not_in" type="array[string]">
-        Exclude documents tagged with one of these tags from the search results. You can specify multiple tags_not_in in the search query.
+      <Property name="tags_not" type="array[string]">
+        Exclude documents tagged with one of these tags from the search results. You can specify multiple tags_not in the search query.
       </Property>            
     </Properties>
 
@@ -340,7 +340,7 @@ The Document model represents a [data source](/data-sources-overview) document.
     <CodeGroup title="Request" tag="POST" label="/v1/data_sources/:user/:data_source_name/search">
 
     ```bash {{ title: 'cURL' }}
-    curl "https://dust.tt/api/v1/data_sources/spolu/foo/search?query=secret&top_k=10&full_text=true&tags_in=foo&tags_in=bar&tags_not_in=baz&tags_not_in=zab" \
+    curl "https://dust.tt/api/v1/data_sources/spolu/foo/search?query=secret&top_k=10&full_text=true&tags_in=foo&tags_in=bar&tags_not=baz&tags_not=zab" \
       -H "Authorization: Bearer sk-..."
     ```
 
