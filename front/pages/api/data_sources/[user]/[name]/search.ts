@@ -1,14 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { User, DataSource, Provider, Key } from "@app/lib/models";
+import { User, DataSource, Provider } from "@app/lib/models";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
-import { parse_payload, RequestParseError } from "@app/lib/http_utils";
+import { parse_payload } from "@app/lib/http_utils";
 import { JSONSchemaType } from "ajv";
 import { Document } from "@app/lib/types";
 import { Result, Ok, Err } from "@app/lib/result";
-import { APIErrorWithStatusCode, APIError } from "@app/lib/api/error";
 
 type TagsFilter = {
   in?: string[];
@@ -52,7 +51,7 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
 const { DUST_API } = process.env;
 
 
-export type DatasourceSearchResponseBody = {
+type DatasourceSearchResponseBody = {
   documents: Array<Document>;
 };
 
@@ -61,7 +60,7 @@ export async function performSearch(
   requestUriUser: User,
   datasourceId: string,
   requestPayload: any
-): Promise<Result<DatasourceSearchResponseBody, APIErrorWithStatusCode>> {
+): Promise<Result<DatasourceSearchResponseBody, number>> {
   const readOnly = authUser.id != requestUriUser.id;
 
   const dataSource = await DataSource.findOne({
@@ -89,15 +88,7 @@ export async function performSearch(
   });
 
   if (!dataSource) {
-    return Err({
-      status_code: 404,
-      api_error: {
-        error: {
-          type: "data_source_not_found",
-          message: "Data source not found",
-        },
-      },
-    });
+    return Err(404);
   }
   const [providers] = await Promise.all([
     Provider.findAll({
@@ -110,16 +101,7 @@ export async function performSearch(
   const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
 
   if (searchQueryRes.isErr()) {
-    const err = searchQueryRes.error();
-    return Err({
-      status_code: 400,
-      api_error: {
-        error: {
-          type: "invalid_request_error",
-          message: err.message,
-        },
-      },
-    });
+    return Err(400);
   }
   const searchQuery = searchQueryRes.value();
 
@@ -154,17 +136,7 @@ export async function performSearch(
   );
 
   if (!searchRes.ok) {
-    const error = await searchRes.json();
-    return Err({
-      status_code: 400,
-      api_error: {
-        error: {
-          type: "data_source_error",
-          message: "There was an error performing the data source search.",
-          data_source_error: error.error,
-        },
-      },
-    });
+    return Err(400);
   }
   const documents = await searchRes.json();
 
@@ -175,7 +147,7 @@ export async function performSearch(
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody | APIError>
+  res: NextApiResponse
 ) {
   const session = await getServerSession(req, res, authOptions);
 
@@ -220,7 +192,7 @@ export default async function handler(
       if (searchRes.isOk()) {
         res.status(200).json(searchRes.value());
       } else {
-        res.status(searchRes.error().status_code).end();
+        res.status(searchRes.error()).end();
       }
       return;
     }
