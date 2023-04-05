@@ -1,13 +1,11 @@
 import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "@app/logger/logger";
-import { unstable_getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
 import { streamChunks } from "@app/lib/http_utils";
+import { auth_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
@@ -25,37 +23,32 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunsResponseBody | PostRunsResponseBody>
 ) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
 
-  if (!user) {
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
-
   let [app] = await Promise.all([
     App.findOne({
-      where: readOnly
-        ? {
-            userId: user.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: user.id,
-            sId: req.query.sId,
-          },
+      where: {
+        userId: appUser.id,
+        sId: req.query.sId,
+      },
     }),
   ]);
 
@@ -66,18 +59,19 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      // Super important check as this would allow other users to run public app with the owner
-      // credentials. We will allow that in the future but the how the credentials are pulled will
-      // nede to be updated.
-      if (readOnly) {
-        res.status(401).end();
-        break;
+      // Super important check as this would allow other users to run public app as their own (we do
+      // pull the right credentials from the auth user), but the resulting run object (`core`) would
+      // be visible by the owner of the app, leaking information both ways. We will allow that in
+      // the future once we introduce a `front` `Run` object.
+      if (!auth.canRunApp(app)) {
+        res.status(404).end();
+        return;
       }
 
       const [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: user.id,
+            userId: auth.user().id,
           },
         }),
       ]);
@@ -100,7 +94,7 @@ async function handler(
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-Dust-User-Id": user.id.toString(),
+                "X-Dust-User-Id": auth.user().id.toString(),
               },
               body: JSON.stringify({
                 run_type: "execute",
@@ -183,7 +177,7 @@ async function handler(
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-Dust-User-Id": user.id.toString(),
+                "X-Dust-User-Id": auth.user().id.toString(),
               },
               body: JSON.stringify({
                 run_type: "local",
@@ -214,12 +208,21 @@ async function handler(
 
           res.status(200).json({ run: run.response.run });
           return;
+
         default:
           res.status(400).end();
           return;
       }
 
     case "GET":
+      // We enforce canRunApp here as we don't want public app's owner Runs to be leaked. In the
+      // future with a `front` `Run` object we'll be able to display the run of any user on other's
+      // apps Logs panel.
+      if (!auth.canRunApp(app)) {
+        res.status(404).end();
+        return;
+      }
+
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       let runType = req.query.runType ? req.query.runType : "local";
@@ -242,7 +245,7 @@ async function handler(
       res
         .status(200)
         .json({ runs: runs.response.runs, total: runs.response.total });
-      break;
+      return;
 
     default:
       res.status(405).end();

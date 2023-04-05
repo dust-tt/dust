@@ -47,6 +47,7 @@ async function handler(
     res.status(404).end();
     return;
   }
+
   let runId = req.query.runId;
   if (runId === "saved") {
     runId = app.savedRun;
