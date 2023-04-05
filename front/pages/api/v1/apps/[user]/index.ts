@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { auth_api_user } from "@app/lib/api/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
+import { Role } from "@app/lib/auth";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [authRes, appOwner] = await Promise.all([
@@ -34,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   let apps = await App.findAll({
     where:
-      role === "read_only"
+      role === Role.ReadOnly
         ? {
             userId: appOwner.id,
             visibility: {

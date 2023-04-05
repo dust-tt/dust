@@ -5,7 +5,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
-type Role = "owner" | "read_only";
+export enum Role {
+  Owner = "owner",
+  ReadOnly = "read_only",
+}
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -43,9 +46,9 @@ export class Authenticator {
    */
   async roleFor(resourceOwner: User): Promise<Role> {
     if (resourceOwner.id === this.authUser?.id) {
-      return "owner";
+      return Role.Owner;
     } else {
-      return "read_only";
+      return Role.ReadOnly;
     }
   }
 
