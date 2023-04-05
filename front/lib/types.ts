@@ -1,4 +1,4 @@
-export type Document = {
+export type DocumentType = {
   created: number;
   document_id: string;
   timestamp: number;
@@ -13,4 +13,10 @@ export type Document = {
     vector: Array<number> | null;
     score: number | null;
   }>;
+};
+
+export type DatasetType = {
+  name: string;
+  description: string;
+  data: Array<any>;
 };
