@@ -56,7 +56,7 @@ type DatasourceSearchResponseBody = {
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | APIError>
-) : Promise<void> {
+): Promise<void> {
   const [authRes, dataSourceOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -117,12 +117,12 @@ export default async function handler(
           "updatedAt",
         ],
       });
-    
+
       if (!dataSource) {
         return res.status(404).json({
-            error: {
-              type: "data_source_not_found",
-              message: "Data source not found",
+          error: {
+            type: "data_source_not_found",
+            message: "Data source not found",
           },
         });
       }
@@ -135,18 +135,18 @@ export default async function handler(
       ]);
       const credentials = credentialsFromProviders(providers);
       const searchQueryRes = parse_payload(searchQuerySchema, req.query);
-    
+
       if (searchQueryRes.isErr()) {
         const err = searchQueryRes.error();
         return res.status(400).json({
-            error: {
-              type: "invalid_request_error",
-              message: err.message,
+          error: {
+            type: "invalid_request_error",
+            message: err.message,
           },
         });
       }
       const searchQuery = searchQueryRes.value();
-    
+
       const filter: SearchFilter = {
         tags: {
           in: searchQuery.tags_in,
@@ -157,7 +157,7 @@ export default async function handler(
           lt: searchQuery.timestamp_lt,
         },
       };
-    
+
       const serachPayload = {
         query: searchQuery.query,
         top_k: searchQuery.top_k,
@@ -165,7 +165,7 @@ export default async function handler(
         filter: filter,
         credentials: credentials,
       };
-    
+
       const searchRes = await fetch(
         `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
         {
@@ -176,14 +176,14 @@ export default async function handler(
           },
         }
       );
-    
+
       if (!searchRes.ok) {
         const error = await searchRes.json();
         return res.status(400).json({
-            error: {
-              type: "data_source_error",
-              message: "There was an error performing the data source search.",
-              data_source_error: error.error,
+          error: {
+            type: "data_source_error",
+            message: "There was an error performing the data source search.",
+            data_source_error: error.error,
           },
         });
       }
