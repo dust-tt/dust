@@ -1,9 +1,7 @@
 import { App, User } from "@app/lib/models";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
+import { auth_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
@@ -16,37 +14,32 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunStatusResponseBody>
 ) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
 
-  if (!user) {
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
-
   let [app] = await Promise.all([
     App.findOne({
-      where: readOnly
-        ? {
-            userId: user.id,
-            sId: req.query.sId,
-            visibility: {
-              [Op.or]: ["public", "unlisted"],
-            },
-          }
-        : {
-            userId: user.id,
-            sId: req.query.sId,
-          },
+      where: {
+        userId: appUser.id,
+        sId: req.query.sId,
+      },
     }),
   ]);
 
@@ -54,7 +47,6 @@ async function handler(
     res.status(404).end();
     return;
   }
-
   let runId = req.query.runId;
   if (runId === "saved") {
     runId = app.savedRun;
@@ -62,9 +54,14 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.canReadApp(app)) {
+        res.status(404).end();
+        return;
+      }
+
       if (!runId || runId.length == 0) {
         res.status(200).json({ run: null });
-        break;
+        return;
       }
 
       const runRes = await fetch(
@@ -76,17 +73,17 @@ async function handler(
 
       if (!runRes.ok) {
         res.status(500).end();
-        break;
+        return;
       }
 
       const run = await runRes.json();
 
       res.status(200).json({ run: run.response.run });
-      break;
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 
