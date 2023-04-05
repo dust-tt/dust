@@ -128,7 +128,7 @@ export default async function handler(
       const [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: auth.user()!.id,
+            userId: auth.user().id,
           },
         }),
       ]);

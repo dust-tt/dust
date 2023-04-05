@@ -20,13 +20,26 @@ export class Authenticator {
     this.authUser = authUser;
   }
 
-  user(): User | null {
-    return this.authUser;
+  /**
+   * The caller should ensure that the user is authenticated before calling this method.
+   *
+   * @returns the authenticated user or throws an error if the user is not authenticated.
+   */
+  user(): User {
+    return this.authUser!;
+  }
+
+  isAnonymous(): boolean {
+    return this.authUser === null;
   }
 
   /**
    * There is no workspace yet but eventually we'll have a workspace model and this will be used to
    * check if the user is a member of the workspace.
+   *
+   * @param resourceOwner the owner of the resource for which we want to check the role. This will
+   * be replaced by a workspace in the future.
+   * @returns the role of the authenticated user.
    */
   async roleFor(resourceOwner: User): Promise<Role> {
     if (resourceOwner.id === this.authUser?.id) {
@@ -38,6 +51,9 @@ export class Authenticator {
 
   /**
    * Any user can run a `public` or `unlisted` app. Only the owner can read a `private` app.
+   *
+   * @param app the app for which we check the read rights
+   * @returns true if the user can read the app, false otherwise.
    */
   canReadApp(app: App): boolean {
     switch (app.visibility) {
@@ -53,6 +69,9 @@ export class Authenticator {
 
   /**
    * Only the owner can edit an app.
+   *
+   * @param app the app for which we check the edit rights
+   * @returns true if the user can edit the app, false otherwise.
    */
   canEditApp(app: App): boolean {
     return this.authUser?.id === app.userId;
@@ -66,6 +85,9 @@ export class Authenticator {
    * Once we introduce a `front` side `Run` object, we can remove this restriction and allow anyone
    * to run a public app with their own credentials. This will enable use to have the "Use" and
    * "Logs" panels available to any logged-in user.
+   *
+   * @param app the app for which we check the run rights
+   * @returns true if the user can run the app, false otherwise.
    */
   canRunApp(app: App): boolean {
     return this.authUser?.id === app.userId;
@@ -73,6 +95,9 @@ export class Authenticator {
 
   /**
    * Any user can read a `public` data source. Only the owner can read a `private` data source.
+   *
+   * @param dataSource the data source for which we check the read rights
+   * @returns true if the user can read the data source, false otherwise.
    */
   canReadDataSource(dataSource: DataSource): boolean {
     switch (dataSource.visibility) {
@@ -87,6 +112,9 @@ export class Authenticator {
 
   /**
    * Only the owner can edit a data source.
+   *
+   * @param dataSource the data source for which we check the edit rights
+   * @returns true if the user can edit the data source, false otherwise.
    */
   canEditDataSource(dataSource: DataSource): boolean {
     return this.authUser?.id === dataSource.userId;
@@ -95,6 +123,7 @@ export class Authenticator {
 
 /**
  * Get a an Authenticator assiciated with the authentified user from the nextauth session.
+ *
  * @param req NextApiRequest request object
  * @param res NextApiResponse response object
  * @returns Result<Authenticator, InternalErrorWithStatusCode>

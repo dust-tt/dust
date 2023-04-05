@@ -85,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     Provider.findAll({
       where: {
-        userId: auth.user()!.id,
+        userId: auth.user().id,
       },
     }),
   ]);
@@ -160,7 +160,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Dust-User-Id": auth.user()!.id.toString(),
+              "X-Dust-User-Id": auth.user().id.toString(),
             },
             body: JSON.stringify({
               run_type: "deploy",
@@ -213,7 +213,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Dust-User-Id": auth.user()!.id.toString(),
+            "X-Dust-User-Id": auth.user().id.toString(),
           },
           body: JSON.stringify({
             run_type: "deploy",
