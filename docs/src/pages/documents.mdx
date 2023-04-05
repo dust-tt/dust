@@ -287,6 +287,82 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
+## List Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to list the documents of a data source.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="user" type="string">
+        Your Dust username.
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the data source you want to insert a document to.
+      </Property>
+    </Properties>
+
+    ### Query parameters
+
+    Query attributes are passed as GET parameters.
+
+    <Properties>
+      <Property name="offset" type="integer">
+        The offset to use to retrieve the documents from the data source, for paging.
+      </Property>
+      <Property name="limit" type="integer">
+        The maximum number of documents to retrieve from the data source, for paging.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents">
+
+    ```bash {{ title: 'cURL' }}
+    curl "https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10" \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "documents":[
+        {
+          "data_source_id": "foo",
+          "created": 1679447719555,
+          "document_id": "acme-report",
+          "timestamp": 1679447719555,
+          "tags": [],
+          "hash": "1651c5e63b6d6...2ae3acd0",
+          "text_size": 13,
+          "chunk_count": 1,
+          "chunks": []
+        }, {
+          "data_source_id": "foo",
+          "created": 1679447275024,
+          "document_id": "top-secret-document",
+          "timestamp": 1679447275024,
+          "tags": [],
+          "hash": "1eebbe66ac93c...47548fcd",
+          "text_size": 21,
+          "chunk_count": 1,
+          "chunks": []
+      }],
+      "total":2
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
 ## Search Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/search' }}
 
 <Row>
@@ -328,10 +404,10 @@ The Document model represents a [data source](/data-sources-overview) document.
       </Property>
       <Property name="tags_in" type="array[string]">
         Filter documents that have one of these tags attached. You can specify multiple tags_in in the search query.
-      </Property>      
+      </Property>
       <Property name="tags_not" type="array[string]">
         Exclude documents tagged with one of these tags from the search results. You can specify multiple tags_not in the search query.
-      </Property>            
+      </Property>
     </Properties>
 
   </Col>
@@ -347,36 +423,40 @@ The Document model represents a [data source](/data-sources-overview) document.
     </CodeGroup>
 
     ```json {{ title: 'Response' }}
-  {
-    "error": null,
-    "response": {
-      "documents": [
-        {
-          "data_source_id": "fulltext-test",
-          "created": 1680101106398,
-          "document_id": "5",
-          "timestamp": 1680101106398,
-          "tags": [],
-          "hash": "9933f078502b24e11cef7f3ef7c5921652d1314c887328442258d2aee8b849da",
-          "text_size": 17,
-          "chunk_count": 1,
-          "chunks": [
-            {
-              "text": "Top secret document...",
-              "hash": "39e28bdc52f7b4f94f877db09d94d2e24a17f0fc0ad2155d6ae8234f20638967",
-              "offset": 0,
-              "vector": null,
-              "score": 0.7754930853843689
-            }
-          ],
-          "text": "Full text of our Top secret document..."
-        }
-      ]
+
+    {
+      "error": null,
+      "response": {
+        "documents": [
+          {
+            "data_source_id": "fulltext-test",
+            "created": 1680101106398,
+            "document_id": "5",
+            "timestamp": 1680101106398,
+            "tags": [],
+            "hash": "9933f078502b24e11cef7f3ef7c5921652d1314c887328442258d2aee8b849da",
+            "text_size": 17,
+            "chunk_count": 1,
+            "chunks": [
+              {
+                "text": "Top secret document...",
+                "hash": "39e28bdc52f7b4f94f877db09d94d2e24a17f0fc0ad2155d6ae8234f20638967",
+                "offset": 0,
+                "vector": null,
+                "score": 0.7754930853843689
+              }
+            ],
+            "text": "Full text of our Top secret document..."
+          }
+        ]
+      }
     }
-  }
+
+
 ```
 
 
   </Col>
 </Row>
 
+```
