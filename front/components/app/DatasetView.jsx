@@ -599,14 +599,16 @@ export default function DatasetView({
               </ul>
             </div>
             <div className="mt-6 flex flex-row">
-              <Button
-                onClick={() => {
-                  handleNewEntry(datasetData.length - 1);
-                }}
-              >
-                <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                New Entry
-              </Button>
+              {!readOnly ? (
+                <Button
+                  onClick={() => {
+                    handleNewEntry(datasetData.length - 1);
+                  }}
+                >
+                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                  New Entry
+                </Button>
+              ) : null}
               <div className="flex-1"></div>
               <div className="ml-2 flex-initial">
                 <Button
