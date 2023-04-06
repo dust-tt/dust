@@ -6,7 +6,7 @@ import withLogging from "@app/logger/withlogging";
 import { Role } from "@app/lib/auth";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let [authRes, appOwner] = await Promise.all([
+  let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const auth = authRes.value();
 
-  if (!appOwner) {
+  if (!appUser) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -31,19 +31,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  let role = await auth.roleFor(appOwner);
+  let role = await auth.roleFor(appUser);
 
   let apps = await App.findAll({
     where:
       role === Role.ReadOnly
         ? {
-            userId: appOwner.id,
+            userId: appUser.id,
             visibility: {
               [Op.or]: ["public"],
             },
           }
         : {
-            userId: appOwner.id,
+            userId: appUser.id,
           },
   });
 

@@ -1,4 +1,7 @@
-export function recomputeIndents(spec) {
+import { SpecificationType } from "@app/types/app";
+import { BlockType } from "@app/types/run";
+
+export function recomputeIndents(spec: SpecificationType): SpecificationType {
   var indent = 0;
   for (var i = 0; i < spec.length; i++) {
     switch (spec[i].type) {
@@ -18,7 +21,7 @@ export function recomputeIndents(spec) {
   return spec;
 }
 
-export function getNextName(spec, name) {
+export function getNextName(spec: SpecificationType, name: string): string {
   let suffix = 0;
   let n = name;
   spec.forEach((b) => {
@@ -33,7 +36,11 @@ export function getNextName(spec, name) {
   return n;
 }
 
-export function addBlock(spec, idx, blockType) {
+export function addBlock(
+  spec: SpecificationType,
+  idx: number,
+  blockType: BlockType | "map_reduce"
+): SpecificationType {
   let s = spec.map((b) => b);
   switch (blockType) {
     case "input":
@@ -209,7 +216,10 @@ export function addBlock(spec, idx, blockType) {
   return recomputeIndents(s);
 }
 
-export function deleteBlock(spec, index) {
+export function deleteBlock(
+  spec: SpecificationType,
+  index: number
+): SpecificationType {
   let s = spec.map((b) => b);
   if (index > -1 && index < spec.length) {
     switch (s[index].type) {
@@ -238,7 +248,10 @@ export function deleteBlock(spec, index) {
   return recomputeIndents(s);
 }
 
-export function moveBlockUp(spec, index) {
+export function moveBlockUp(
+  spec: SpecificationType,
+  index: number
+): SpecificationType {
   let s = spec.map((b) => b);
   if (index > 0 && index < spec.length) {
     switch (s[index].type) {
@@ -257,7 +270,10 @@ export function moveBlockUp(spec, index) {
   return recomputeIndents(s);
 }
 
-export function moveBlockDown(spec, index) {
+export function moveBlockDown(
+  spec: SpecificationType,
+  index: number
+): SpecificationType {
   let s = spec.map((b) => b);
   if (index > -1 && index < spec.length - 1) {
     switch (s[index].type) {
@@ -275,14 +291,17 @@ export function moveBlockDown(spec, index) {
   return recomputeIndents(s);
 }
 
-export function escapeTripleBackticks(s) {
+export function escapeTripleBackticks(s: string): string {
   return s.replace(/```/g, "<DUST_TRIPLE_BACKTICKS>");
 }
-export function restoreTripleBackticks(s) {
+export function restoreTripleBackticks(s: string): string {
   return s.replace(/<DUST_TRIPLE_BACKTICKS>/g, "```");
 }
 
-export function dumpSpecification(spec, latestDatasets) {
+export function dumpSpecification(
+  spec: SpecificationType,
+  latestDatasets: { [key: string]: string }
+): string {
   var out = "";
 
   for (var i = 0; i < spec.length; i++) {

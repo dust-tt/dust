@@ -1,33 +1,41 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { auth_user } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
 import { User, App } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
+import { AppType } from "@app/types/app";
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+export type PostStateResponseBody = {
+  app: AppType;
+};
 
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
-
-  let [user] = await Promise.all([
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<PostStateResponseBody>
+): Promise<void> {
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
     User.findOne({
       where: {
-        githubId: session.provider.id.toString(),
+        username: req.query.user,
       },
     }),
   ]);
 
-  if (!user) {
-    res.status(401).end();
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
+
+  if (!appUser) {
+    res.status(404).end();
     return;
   }
 
   let [app] = await Promise.all([
     App.findOne({
       where: {
-        userId: user.id,
+        userId: appUser.id,
         sId: req.query.sId,
       },
     }),
@@ -40,6 +48,11 @@ async function handler(req, res) {
 
   switch (req.method) {
     case "POST":
+      if (!auth.canEditApp(app)) {
+        res.status(401).end();
+        return;
+      }
+
       if (
         !req.body ||
         !(typeof req.body.specification == "string") ||
