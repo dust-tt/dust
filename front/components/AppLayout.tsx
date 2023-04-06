@@ -12,12 +12,22 @@ import {
 import { ActionButton, Button } from "./Button";
 import { signIn } from "next-auth/react";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { DataSourceType } from "@app/types/data_source";
 
 export default function AppLayout({
   app,
   dataSource,
   ga_tracking_id,
   children,
+}: {
+  app?: {
+    sId: string;
+    name: string;
+    description: string;
+  };
+  dataSource: DataSourceType;
+  ga_tracking_id: string;
+  children: React.ReactNode;
 }) {
   const { data: session, status } = useSession();
 
@@ -69,6 +79,7 @@ export default function AppLayout({
                     <div className="h-2 w-[4px] bg-white"></div>
                     <div className="select-none text-base font-bold tracking-tight text-gray-800">
                       <Link
+                        // @ts-expect-error
                         href={session ? `/${session.user.username}/apps` : `/`}
                       >
                         DUST
@@ -133,6 +144,7 @@ export default function AppLayout({
                 </nav>
                 <div className="static inset-auto hidden flex-initial items-center pr-4 md:flex">
                   <Link href="https://docs.dust.tt">
+                    {/* @ts-expect-error  */}
                     <Button className="mr-2">
                       <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
                       View Documentation
@@ -147,6 +159,7 @@ export default function AppLayout({
                           <span className="sr-only">Open user menu</span>
                           <img
                             className="h-8 w-8 rounded-full"
+                            // @ts-expect-error fds
                             src={session.user.image}
                             alt=""
                           />
@@ -232,6 +245,8 @@ export default function AppLayout({
                         onClick={() =>
                           signIn("github", { callbackUrl: "/api/login" })
                         }
+                        type={undefined}
+                        disabled={undefined}
                       >
                         <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
                         Sign in with Github

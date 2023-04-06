@@ -1,7 +1,11 @@
 import { classNames } from "@app/lib/utils";
 import Link from "next/link";
 import { Menu } from "@headlessui/react";
-import { DocumentIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentIcon,
+  Cog6ToothIcon,
+  DocumentMagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
@@ -11,6 +15,16 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
       href: `/${owner.username}/ds/${dataSource.name}`,
       icon: (
         <DocumentIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
+    {
+      name: "Search",
+      href: `/${user}/ds/${dataSource.name}/search`,
+      icon: (
+        <DocumentMagnifyingGlassIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
