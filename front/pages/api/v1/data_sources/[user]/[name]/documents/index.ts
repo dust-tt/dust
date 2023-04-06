@@ -1,13 +1,22 @@
-import { User, DataSource, Key } from "@app/lib/models";
-import { Op } from "sequelize";
+import { User, DataSource } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import withLogging from "@app/logger/withlogging";
+import { APIError } from "@app/lib/api/error";
+import { DocumentType } from "@app/types/document";
 
 const { DUST_API } = process.env;
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let [authRes, dataSourceOwner] = await Promise.all([
+export type GetDocumentsResponseBody = {
+  documents: Array<DocumentType>;
+  total: number;
+};
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetDocumentsResponseBody | APIError>
+): Promise<void> {
+  let [authRes, dataSourceUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -22,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const auth = authRes.value();
 
-  if (!dataSourceOwner) {
+  if (!dataSourceUser) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -34,7 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   let dataSource = await DataSource.findOne({
     where: {
-      userId: dataSourceOwner.id,
+      userId: dataSourceUser.id,
       name: req.query.name,
     },
   });
@@ -80,7 +89,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             data_source_error: error.error,
           },
         });
-        break;
+        return;
       }
       const documents = await docsRes.json();
 
@@ -88,7 +97,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         documents: documents.response.documents,
         total: documents.response.total,
       });
-      break;
+      return;
+
     default:
       res.status(405).json({
         error: {
@@ -96,7 +106,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      break;
+      return;
   }
 }
 

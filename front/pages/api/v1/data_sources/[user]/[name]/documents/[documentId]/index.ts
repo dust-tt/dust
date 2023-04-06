@@ -4,10 +4,34 @@ import { credentialsFromProviders } from "@app/lib/providers";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import withLogging from "@app/logger/withlogging";
+import { DocumentType } from "@app/types/document";
+import { APIError } from "@app/lib/api/error";
+import { DataSourceType } from "@app/types/data_source";
 
 const { DUST_API } = process.env;
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export type GetDocumentResponseBody = {
+  document: DocumentType;
+};
+export type DeleteDocumentResponseBody = {
+  document: {
+    document_id: string;
+  };
+};
+export type UpsertDocumentResponseBody = {
+  document: DocumentType;
+  data_source: DataSourceType;
+};
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<
+    | GetDocumentResponseBody
+    | DeleteDocumentResponseBody
+    | UpsertDocumentResponseBody
+    | APIError
+  >
+): Promise<void> {
   let [authRes, dataSourceOwner] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -91,7 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             },
           });
         }
-        break;
+        return;
       }
 
       const document = await docRes.json();
@@ -99,7 +123,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.status(200).json({
         document: document.response.document,
       });
-      break;
+      return;
 
     case "POST":
       if (!auth.canEditDataSource(dataSource)) {
@@ -127,7 +151,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             message: "Invalid request body, `text` (string) is required.",
           },
         });
-        break;
+        return;
       }
 
       let timestamp = null;
@@ -140,7 +164,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 "Invalid request body, `timestamp` if provided must be a number.",
             },
           });
-          break;
+          return;
         }
         timestamp = req.body.timestamp;
       }
@@ -155,7 +179,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 "Invalid request body, `tags` if provided must be an array of strings.",
             },
           });
-          break;
+          return;
         }
         tags = req.body.tags;
       }
@@ -177,7 +201,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               data_source_error: error.error,
             },
           });
-          break;
+          return;
         }
         const documents = await documentsRes.json();
         if (documents.response.total >= 32) {
@@ -188,7 +212,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
             },
           });
-          break;
+          return;
         }
       }
 
@@ -201,7 +225,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               "Data sources document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase it.",
           },
         });
-        break;
+        return;
       }
 
       let credentials = credentialsFromProviders(providers);
@@ -233,7 +257,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             data_source_error: error.error,
           },
         });
-        break;
+        return;
       }
 
       const data = await upsertRes.json();
@@ -242,7 +266,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         document: data.response.document,
         data_source: data.response.data_source,
       });
-      break;
+      return;
 
     case "DELETE":
       if (!auth.canEditDataSource(dataSource)) {
@@ -273,15 +297,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             data_source_error: error.error,
           },
         });
-        break;
+        return;
       }
 
       res.status(200).json({
         document: {
-          document_id: req.query.documentId,
+          document_id: req.query.documentId as string,
         },
       });
-      break;
+      return;
 
     default:
       res.status(405).json({
@@ -291,7 +315,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             "The method passed is not supported, GET, POST or DELETE are expected.",
         },
       });
-      break;
+      return;
   }
 }
 

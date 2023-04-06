@@ -3,6 +3,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import logger from "@app/logger/logger";
 import { auth_api_user } from "@app/lib/api/auth";
 import withLogging from "@app/logger/withlogging";
+import { APIError } from "@app/lib/api/error";
+import { RunType } from "@app/types/run";
 
 const { DUST_API } = process.env;
 
@@ -12,7 +14,14 @@ export const config = {
   },
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export type GetRunResponseBody = {
+  run: RunType;
+};
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<APIError | GetRunResponseBody>
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -98,7 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             run_error: error.error,
           },
         });
-        break;
+        return;
       }
 
       let run = (await runRes.json()).response.run;
@@ -112,7 +121,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       res.status(200).json({ run });
-      break;
+      return;
 
     default:
       res.status(405).json({
@@ -121,7 +130,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      break;
+      return;
   }
 }
 

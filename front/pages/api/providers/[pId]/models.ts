@@ -1,23 +1,30 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { User, Provider } from "@app/lib/models";
+import { auth_user } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
+import { Provider } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+export type GetProviderModelsResponseBody = {
+  models: Array<{ id: string }>;
+};
+export type GetProviderModelsErrorResponseBody = {
+  error: string;
+};
 
-  if (!session) {
-    res.status(401).end();
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<
+    GetProviderModelsResponseBody | GetProviderModelsErrorResponseBody
+  >
+): Promise<void> {
+  let authRes = await auth_user(req, res);
+
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
     return;
   }
+  let auth = authRes.value();
 
-  let user = await User.findOne({
-    where: {
-      githubId: session.provider.id.toString(),
-    },
-  });
-
-  if (!user) {
+  if (auth.isAnonymous()) {
     res.status(401).end();
     return;
   }
@@ -25,7 +32,7 @@ async function handler(req, res) {
   let [provider] = await Promise.all([
     Provider.findOne({
       where: {
-        userId: user.id,
+        userId: auth.user().id,
         providerId: req.query.pId,
       },
     }),
@@ -55,11 +62,15 @@ async function handler(req, res) {
             res.status(400).json({ error: err.error });
           } else {
             let models = await modelsRes.json();
+            let mList = models.data.map((m: any) => {
+              return { id: m.id as string };
+            }) as Array<{ id: string }>;
+
             let f = [];
             if (embed) {
-              f = models.data.filter((m) => m.id === "text-embedding-ada-002");
+              f = mList.filter((m) => m.id === "text-embedding-ada-002");
             } else {
-              f = models.data.filter((m) => {
+              f = mList.filter((m) => {
                 return (
                   !(
                     m.id.includes("search") ||
@@ -91,12 +102,12 @@ async function handler(req, res) {
             });
             res.status(200).json({ models: f });
           }
-          break;
+          return;
 
         case "cohere":
           let cohereModels = [{ id: "xlarge" }, { id: "medium" }];
           res.status(200).json({ models: cohereModels });
-          break;
+          return;
 
         case "ai21":
           let ai21Models = [
@@ -105,7 +116,7 @@ async function handler(req, res) {
             { id: "j1-jumbo" },
           ];
           res.status(200).json({ models: ai21Models });
-          break;
+          return;
 
         case "azure_openai":
           let deploymentsRes = await fetch(
@@ -123,13 +134,15 @@ async function handler(req, res) {
             res.status(400).json({ error: err.error });
           } else {
             let deployments = await deploymentsRes.json();
+            let mList = deployments.data.map((m: any) => {
+              return { id: m.id, model: m.model };
+            }) as Array<{ model: string; id: string }>;
+
             let f = [];
             if (embed) {
-              f = deployments.data.filter(
-                (d) => d.model === "text-embedding-ada-002"
-              );
+              f = mList.filter((d) => d.model === "text-embedding-ada-002");
             } else {
-              f = deployments.data.filter((d) => {
+              f = mList.filter((d) => {
                 return (
                   !(
                     d.model.includes("search") ||
@@ -159,19 +172,22 @@ async function handler(req, res) {
               }
               return 0;
             });
-            res.status(200).json({ models: f });
+            res.status(200).json({
+              models: f.map((m) => {
+                return { id: m.id };
+              }),
+            });
           }
-          break;
+          return;
 
         default:
-          res.status(404).json({ ok: false, error: "Provider not found" });
-          break;
+          res.status(404).json({ error: "Provider not found" });
+          return;
       }
 
     default:
-      // Method not allowed
       res.status(405).end();
-      break;
+      return;
   }
 }
 

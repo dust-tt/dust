@@ -1,28 +1,24 @@
-import { User } from "@app/lib/models";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { auth_user } from "@app/lib/auth";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
 import withLogging from "@app/logger/withlogging";
 
 export type GetProvidersCheckResponseBody =
   | { ok: true }
   | { ok: false; error: string };
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetProvidersCheckResponseBody>
+): Promise<void> {
+  let authRes = await auth_user(req, res);
 
-  if (!session) {
-    res.status(401).end();
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
     return;
   }
+  let auth = authRes.value();
 
-  let user = await User.findOne({
-    where: {
-      githubId: session.provider.id.toString(),
-    },
-  });
-
-  if (!user) {
+  if (auth.isAnonymous()) {
     res.status(401).end();
     return;
   }
@@ -46,7 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let models = await modelsRes.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         case "cohere":
           let testRes = await fetch("https://api.cohere.ai/tokenize", {
@@ -64,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let test = await testRes.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         case "ai21":
           let testTokenize = await fetch(
@@ -85,7 +81,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let test = await testTokenize.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         case "azure_openai":
           let deploymentsRes = await fetch(
@@ -104,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let deployments = await deploymentsRes.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         case "serpapi":
           let testSearch = await fetch(
@@ -120,7 +116,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let test = await testSearch.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
         case "serper":
           let testSearchSerper = await fetch(
             `https://google.serper.dev/search`,
@@ -142,7 +138,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let test = await testSearchSerper.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         case "browserlessapi":
           let testScrape = await fetch(
@@ -167,15 +163,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             let test = await testScrape.json();
             res.status(200).json({ ok: true });
           }
-          break;
+          return;
 
         default:
           res.status(404).json({ ok: false, error: "Provider not built" });
-          break;
+          return;
       }
 
     default:
-      // Method not allowed
       res.status(405).end();
       break;
   }

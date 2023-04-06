@@ -1,32 +1,26 @@
-import { Provider, User } from "@app/lib/models";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { Provider } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
+import { auth_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";
+import { ProviderType } from "@app/types/provider";
 
 export type GetProvidersResponseBody = {
-  providers: {
-    id: number;
-    providerId: string;
-    config: string;
-  }[];
+  providers: ProviderType[];
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetProvidersResponseBody>
-) {
-  const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
+): Promise<void> {
+  let authRes = await auth_user(req, res);
+
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
     return;
   }
-  let user = await User.findOne({
-    where: {
-      githubId: session.provider.id.toString(),
-    },
-  });
-  if (!user) {
+  let auth = authRes.value();
+
+  if (auth.isAnonymous()) {
     res.status(401).end();
     return;
   }
@@ -35,16 +29,23 @@ async function handler(
     case "GET":
       let providers = await Provider.findAll({
         where: {
-          userId: user.id,
+          userId: auth.user().id,
         },
       });
 
-      res.status(200).json({ providers });
-      break;
+      res.status(200).json({
+        providers: providers.map((p) => {
+          return {
+            providerId: p.providerId,
+            config: p.config,
+          };
+        }),
+      });
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 

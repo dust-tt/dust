@@ -16,7 +16,7 @@ export type PostKeysResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetKeysResponseBody | PostKeysResponseBody>
-) {
+): Promise<void> {
   let authRes = await auth_user(req, res);
 
   if (authRes.isErr()) {
