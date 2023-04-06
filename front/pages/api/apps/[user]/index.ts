@@ -1,63 +1,67 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { auth_user, Role } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
 import { User, App } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
+import { AppType } from "@app/types/app";
 
 const { DUST_API } = process.env;
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+export type GetAppsResponseBody = {
+  apps: Array<AppType>;
+};
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetAppsResponseBody>
+): Promise<void> {
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  if (!user) {
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
+
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
+  let role = await auth.roleFor(appUser);
 
   switch (req.method) {
     case "GET":
-      const where = readOnly
-        ? {
-            userId: user.id,
-            // Do not include 'unlisted' here.
-            visibility: "public",
-          }
-        : {
-            userId: user.id,
-            visibility: {
-              [Op.or]: ["public", "private", "unlisted"],
-            },
-          };
       let apps = await App.findAll({
-        where,
+        where:
+          role === Role.ReadOnly
+            ? {
+                userId: appUser.id,
+                // Do not include 'unlisted' here.
+                visibility: "public",
+              }
+            : {
+                userId: appUser.id,
+                visibility: {
+                  [Op.or]: ["public", "private", "unlisted"],
+                },
+              },
         order: [["updatedAt", "DESC"]],
-        attributes: [
-          "id",
-          "uId",
-          "sId",
-          "name",
-          "description",
-          "visibility",
-          "updatedAt",
-        ],
       });
 
       res.status(200).json({ apps });
-      break;
+      return;
 
     case "POST":
-      if (readOnly) {
+      if (role != Role.Owner) {
         res.status(401).end();
         return;
       }
@@ -69,7 +73,7 @@ async function handler(req, res) {
         !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
         res.status(400).end();
-        break;
+        return;
       }
 
       const r = await fetch(`${DUST_API}/projects`, {
@@ -78,7 +82,7 @@ async function handler(req, res) {
       const p = await r.json();
       if (p.error) {
         res.status(500).end();
-        break;
+        return;
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -90,16 +94,16 @@ async function handler(req, res) {
         name: req.body.name,
         description,
         visibility: req.body.visibility,
-        userId: user.id,
+        userId: appUser.id,
         dustAPIProjectId: p.response.project.project_id,
       });
 
-      res.redirect(`/${session.user.username}/a/${app.sId}`);
-      break;
+      res.redirect(`/${appUser.username}/a/${app.sId}`);
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 
