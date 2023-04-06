@@ -3,7 +3,7 @@ import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-import logger from "@app/lib/logger/logger";
+import logger from "@app/logger/logger";
 import { streamChunks } from "@app/lib/http_utils";
 import { auth_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";

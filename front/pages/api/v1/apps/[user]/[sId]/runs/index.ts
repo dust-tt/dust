@@ -1,6 +1,6 @@
 import { User, App, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import logger from "@app/lib/logger/logger";
+import logger from "@app/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { streamChunks } from "@app/lib/http_utils";
@@ -51,7 +51,7 @@ const poll = async ({
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let [authRes, appOwner] = await Promise.all([
+  let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -66,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const auth = authRes.value();
 
-  if (!appOwner) {
+  if (!appUser) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -79,7 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let [app, providers] = await Promise.all([
     App.findOne({
       where: {
-        userId: appOwner.id,
+        userId: appUser.id,
         sId: req.query.sId,
       },
     }),
@@ -146,7 +146,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       logger.info(
         {
-          user: appOwner.username,
+          user: appUser.username,
           app: app.sId,
         },
         "App run creation"

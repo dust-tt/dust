@@ -1,6 +1,6 @@
 import { User, App } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
-import logger from "@app/lib/logger/logger";
+import logger from "@app/logger/logger";
 import { auth_api_user } from "@app/lib/api/auth";
 import withLogging from "@app/logger/withlogging";
 
@@ -13,7 +13,7 @@ export const config = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let [authRes, appOwner] = await Promise.all([
+  let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const auth = authRes.value();
 
-  if (!appOwner) {
+  if (!appUser) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -40,7 +40,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   let app = await App.findOne({
     where: {
-      userId: appOwner.id,
+      userId: appUser.id,
       sId: req.query.sId,
     },
   });
@@ -75,7 +75,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       logger.info(
         {
-          user: appOwner.username,
+          user: appUser.username,
           app: app.sId,
           runId,
         },
