@@ -30,7 +30,7 @@ export default function KeysProviders({ ga_tracking_id }) {
   };
 
   const handleDisable = async (key) => {
-    const res = await fetch(`/api/keys/${key.id}/disable`, {
+    const res = await fetch(`/api/keys/${key.secret}/disable`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +77,7 @@ export default function KeysProviders({ ga_tracking_id }) {
 
             <ul role="list" className="">
               {keys.map((key) => (
-                <li key={key.id} className="px-2 py-4">
+                <li key={key.secret} className="px-2 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <p
@@ -85,7 +85,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                           "truncate font-mono text-sm text-slate-700"
                         )}
                       >
-                        {isRevealed[key.id] ? (
+                        {isRevealed[key.secret] ? (
                           <>
                             {key.secret}
                             {key.status == "active" ? (
@@ -94,7 +94,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                                 onClick={() => {
                                   setIsRevealed({
                                     ...isRevealed,
-                                    [key.id]: false,
+                                    [key.secret]: false,
                                   });
                                 }}
                               />
@@ -109,7 +109,7 @@ export default function KeysProviders({ ga_tracking_id }) {
                                 onClick={() => {
                                   setIsRevealed({
                                     ...isRevealed,
-                                    [key.id]: true,
+                                    [key.secret]: true,
                                   });
                                 }}
                               />

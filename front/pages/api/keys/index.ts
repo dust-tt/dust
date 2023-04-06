@@ -1,40 +1,31 @@
-import { Key, User } from "@app/lib/models";
+import { Key } from "@app/lib/models";
+import { auth_user } from "@app/lib/auth";
 import { new_id } from "@app/lib/utils";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
 import withLogging from "@app/logger/withlogging";
-
-type KeyObject = {
-  id: number;
-  secret: string;
-  status: string;
-  userId: number;
-};
+import { KeyType } from "@app/types/key";
 
 export type GetKeysResponseBody = {
-  keys: KeyObject[];
+  keys: KeyType[];
 };
 
 export type PostKeysResponseBody = {
-  key: KeyObject;
+  key: KeyType;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetKeysResponseBody | PostKeysResponseBody>
 ) {
-  const session = await unstable_getServerSession(req, res, authOptions);
-  if (!session) {
-    res.status(401).end();
+  let authRes = await auth_user(req, res);
+
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
     return;
   }
-  let user = await User.findOne({
-    where: {
-      githubId: session.provider.id.toString(),
-    },
-  });
-  if (!user) {
+  let auth = authRes.value();
+
+  if (auth.isAnonymous()) {
     res.status(401).end();
     return;
   }
@@ -43,27 +34,41 @@ async function handler(
     case "GET":
       let keys = await Key.findAll({
         where: {
-          userId: user.id,
+          userId: auth.user().id,
         },
         order: [["createdAt", "DESC"]],
       });
 
-      res.status(200).json({ keys });
-      break;
+      res.status(200).json({
+        keys: keys.map((k) => {
+          return {
+            secret: k.secret,
+            status: k.status,
+          };
+        }),
+      });
+      return;
 
     case "POST":
       let secret = `sk-${new_id().slice(0, 32)}`;
 
       let key = await Key.create({
-        userId: user.id,
+        userId: auth.user().id,
         secret: secret,
         status: "active",
       });
 
-      res.status(201).json({ key });
+      res.status(201).json({
+        key: {
+          secret: key.secret,
+          status: key.status,
+        },
+      });
+      return;
+
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 
