@@ -90,7 +90,7 @@ export class App extends Model<
   declare uId: string;
   declare sId: string;
   declare name: string;
-  declare description: string;
+  declare description?: string;
   declare visibility: "public" | "private" | "unlisted" | "deleted";
   declare savedSpecification?: string;
   declare savedConfig?: string;
@@ -216,7 +216,7 @@ export class Dataset extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare description: string;
+  declare description?: string;
 
   declare userId: ForeignKey<User["id"]>;
   declare appId: ForeignKey<App["id"]>;

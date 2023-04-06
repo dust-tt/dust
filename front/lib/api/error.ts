@@ -6,12 +6,20 @@ export type APIErrorType =
   | "data_source_not_found"
   | "invalid_request_error"
   | "data_source_error"
-  | "user_not_found";
+  | "user_not_found"
+  | "data_source_user_mismatch_error"
+  | "data_source_quota_error"
+  | "data_source_document_not_found"
+  | "app_user_mismatch_error"
+  | "run_error"
+  | "app_not_found"
+  | "method_not_supported_error";
 
 type _APIError = {
   type: APIErrorType;
   message: string;
   data_source_error?: object;
+  run_error?: object;
 };
 
 /**

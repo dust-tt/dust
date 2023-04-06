@@ -61,7 +61,7 @@ async function handler(
       return;
 
     case "POST":
-      if (role != Role.Owner) {
+      if (role !== Role.Owner) {
         res.status(401).end();
         return;
       }

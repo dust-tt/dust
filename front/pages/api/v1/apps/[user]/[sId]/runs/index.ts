@@ -5,8 +5,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { streamChunks } from "@app/lib/http_utils";
 import withLogging from "@app/logger/withlogging";
+import { RunType } from "@app/types/run";
+import { APIError } from "@app/lib/api/error";
 
 const { DUST_API } = process.env;
+
+export type PostRunResponseBody = {
+  run: RunType;
+};
 
 export const config = {
   api: {
@@ -50,7 +56,10 @@ const poll = async ({
   return new Promise(executePoll);
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<PostRunResponseBody | APIError>
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -128,7 +137,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               `specification_hash` (string), `config` (object), and `inputs` (array) are required.",
           },
         });
-        break;
+        return;
       }
 
       let config = req.body.config;
@@ -181,7 +190,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               run_error: error.error,
             },
           });
-          break;
+          return;
         }
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -204,7 +213,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           );
         }
         res.end();
-        break;
+        return;
       }
 
       const runRes = await fetch(
@@ -234,7 +243,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             run_error: error.error,
           },
         });
-        break;
+        return;
       }
 
       let run = (await runRes.json()).response.run;
@@ -290,7 +299,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               run_error: error.error,
             },
           });
-          break;
+          return;
         }
 
         run = (await runRes.json()).response.run;
@@ -314,7 +323,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       res.status(200).json({ run });
-      break;
+      return;
 
     default:
       res.status(405).json({
@@ -323,7 +332,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           message: "The method passed is not supported, POST is expected.",
         },
       });
-      break;
+      return;
   }
 }
 

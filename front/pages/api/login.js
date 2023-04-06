@@ -1,14 +1,15 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth/next";
 import { authOptions, adapter } from "./auth/[...nextauth]";
 import { User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 
 async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+  const session = await getServerSession(req, res, authOptions);
   if (!session) {
     res.status(401).end();
     return;
   }
+
   switch (req.method) {
     case "GET":
       let user = await User.findOne({
@@ -33,11 +34,11 @@ async function handler(req, res) {
       }
 
       res.redirect(`/${session.user.username}`);
-      break;
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 

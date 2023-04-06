@@ -1,16 +1,16 @@
-import { Provider } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_user } from "@app/lib/auth";
+import { Key } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
-import { ProviderType } from "@app/types/provider";
+import { KeyType } from "@app/types/key";
 
-export type GetProvidersResponseBody = {
-  providers: ProviderType[];
+export type PostKeysResponseBody = {
+  key: KeyType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetProvidersResponseBody>
+  res: NextApiResponse<PostKeysResponseBody>
 ): Promise<void> {
   let authRes = await auth_user(req, res);
 
@@ -25,21 +25,31 @@ async function handler(
     return;
   }
 
+  let [key] = await Promise.all([
+    Key.findOne({
+      where: {
+        secret: req.query.secret,
+        userId: auth.user().id,
+      },
+    }),
+  ]);
+
+  if (!key) {
+    res.status(404).end();
+    return;
+  }
+
   switch (req.method) {
-    case "GET":
-      let providers = await Provider.findAll({
-        where: {
-          userId: auth.user().id,
-        },
+    case "POST":
+      await key.update({
+        status: "disabled",
       });
 
       res.status(200).json({
-        providers: providers.map((p) => {
-          return {
-            providerId: p.providerId,
-            config: p.config,
-          };
-        }),
+        key: {
+          secret: key.secret,
+          status: key.status,
+        },
       });
       return;
 

@@ -7,6 +7,8 @@ import { credentialsFromProviders } from "@app/lib/providers";
 import { parse_payload } from "@app/lib/http_utils";
 import { DocumentType } from "@app/types/document";
 
+const { DUST_API } = process.env;
+
 type TagsFilter = {
   in?: string[];
   not?: string[];
@@ -46,8 +48,6 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
   required: ["query", "top_k", "full_text"],
 };
 
-const { DUST_API } = process.env;
-
 type DatasourceSearchResponseBody = {
   documents: Array<DocumentType>;
 };
@@ -56,7 +56,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | APIError>
 ): Promise<void> {
-  const [authRes, dataSourceOwner] = await Promise.all([
+  const [authRes, dataSourceUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
       where: {
@@ -71,7 +71,7 @@ export default async function handler(
   }
   const auth = authRes.value();
 
-  if (!dataSourceOwner) {
+  if (!dataSourceUser) {
     res.status(404).json({
       error: {
         type: "user_not_found",
@@ -83,18 +83,9 @@ export default async function handler(
 
   const dataSource = await DataSource.findOne({
     where: {
-      userId: dataSourceOwner.id,
+      userId: dataSourceUser.id,
       name: req.query.name,
     },
-    attributes: [
-      "id",
-      "name",
-      "description",
-      "visibility",
-      "config",
-      "dustAPIProjectId",
-      "updatedAt",
-    ],
   });
 
   if (!dataSource) {
@@ -195,7 +186,12 @@ export default async function handler(
     }
 
     default:
-      res.status(405).end();
-      break;
+      res.status(405).json({
+        error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
+      return;
   }
 }

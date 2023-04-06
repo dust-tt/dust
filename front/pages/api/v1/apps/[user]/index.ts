@@ -4,8 +4,17 @@ import { auth_api_user } from "@app/lib/api/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
 import { Role } from "@app/lib/auth";
+import { APIError } from "@app/lib/api/error";
+import { AppType } from "@app/types/app";
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export type GetAppsResponseBody = {
+  apps: AppType[];
+};
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetAppsResponseBody | APIError>
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_api_user(req),
     User.findOne({
@@ -52,14 +61,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.status(200).json({
         apps: apps.map((a) => {
           return {
+            uId: a.uId,
             sId: a.sId,
             name: a.name,
             description: a.description,
             visibility: a.visibility,
+            dustAPIProjectId: a.dustAPIProjectId,
           };
         }),
       });
-      break;
+      return;
+
     default:
       res.status(405).json({
         error: {
@@ -67,7 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      break;
+      return;
   }
 }
 

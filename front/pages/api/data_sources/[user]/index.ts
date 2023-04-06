@@ -1,79 +1,79 @@
 import { DataSource, User, Provider } from "@app/lib/models";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { auth_user, Role } from "@app/lib/auth";
 import { NextApiRequest, NextApiResponse } from "next";
-import { unstable_getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
+import { DataSourceType } from "@app/types/data_source";
 
 const { DUST_API } = process.env;
 
 export type GetDataSourcesResponseBody = {
-  dataSources: Array<{
-    id: number;
-    name: string;
-    description?: string;
-    visibility: string;
-    config?: string;
-    dustAPIProjectId: string;
-    updatedAt: Date;
-  }>;
+  dataSources: Array<DataSourceType>;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDataSourcesResponseBody>
-) {
-  const session = await unstable_getServerSession(req, res, authOptions);
+): Promise<void> {
+  let [authRes, dataSourceUser] = await Promise.all([
+    auth_user(req, res),
+    User.findOne({
+      where: {
+        username: req.query.user,
+      },
+    }),
+  ]);
 
-  let user = await User.findOne({
-    where: {
-      username: req.query.user,
-    },
-  });
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
 
-  if (!user) {
-    res.status(200).json({ dataSources: [] });
+  if (!dataSourceUser) {
+    res.status(404).end();
     return;
   }
 
-  const readOnly = !(
-    session && session.provider.id.toString() === user.githubId
-  );
+  let role = await auth.roleFor(dataSourceUser);
 
-  const where = readOnly
-    ? {
-        userId: user.id,
-        // Do not include 'unlisted' here.
-        visibility: "public",
-      }
-    : {
-        userId: user.id,
-        visibility: {
-          [Op.or]: ["public", "private"],
-        },
-      };
+  const where =
+    role === Role.ReadOnly
+      ? {
+          userId: dataSourceUser.id,
+          // Do not include 'unlisted' here.
+          visibility: "public",
+        }
+      : {
+          userId: dataSourceUser.id,
+          visibility: {
+            [Op.or]: ["public", "private"],
+          },
+        };
   let dataSources = await DataSource.findAll({
     where,
     order: [["updatedAt", "DESC"]],
-    attributes: [
-      "id",
-      "name",
-      "description",
-      "visibility",
-      "config",
-      "dustAPIProjectId",
-      "updatedAt",
-    ],
   });
 
   switch (req.method) {
     case "GET":
-      res.status(200).json({ dataSources });
-      break;
+      res.status(200).json({
+        dataSources: dataSources.map((ds) => {
+          return {
+            name: ds.name,
+            description: ds.description,
+            visibility: ds.visibility,
+            config: ds.config,
+            dustAPIProjectId: ds.dustAPIProjectId,
+            updatedAt: ds.updatedAt,
+          };
+        }),
+      });
+      return;
 
     case "POST":
-      if (readOnly) {
+      if (role !== Role.Owner) {
         res.status(401).end();
         return;
       }
@@ -88,13 +88,13 @@ async function handler(
         !["public", "private"].includes(req.body.visibility)
       ) {
         res.status(400).end();
-        break;
+        return;
       }
 
       // Enforce FreePlan limit: 1 DataSource.
-      if (dataSources.length >= 1 && user.username !== "spolu") {
+      if (dataSources.length >= 1 && auth.user().username !== "spolu") {
         res.status(400).end();
-        break;
+        return;
       }
 
       const pRes = await fetch(`${DUST_API}/projects`, {
@@ -103,20 +103,20 @@ async function handler(
       const dustProject = await pRes.json();
       if (dustProject.error) {
         res.status(500).end();
-        break;
+        return;
       }
 
       let description = req.body.description ? req.body.description : null;
       let maxChunkSize = parseInt(req.body.max_chunk_size);
       if (isNaN(maxChunkSize)) {
         res.status(400).end();
-        break;
+        return;
       }
 
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
-            userId: user.id,
+            userId: auth.user().id,
           },
         }),
       ]);
@@ -146,7 +146,7 @@ async function handler(
       const dustDataSource = await dsRes.json();
       if (dustDataSource.error) {
         res.status(500).end();
-        break;
+        return;
       }
 
       let ds = await DataSource.create({
@@ -155,15 +155,15 @@ async function handler(
         visibility: req.body.visibility,
         config: JSON.stringify(dustDataSource.response.data_source.config),
         dustAPIProjectId: dustProject.response.project.project_id,
-        userId: user.id,
+        userId: dataSourceUser.id,
       });
 
-      res.redirect(`/${session.user.username}/ds/${req.body.name}`);
-      break;
+      res.redirect(`/${dataSourceUser.username}/ds/${req.body.name}`);
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 
