@@ -2,6 +2,10 @@ import { RunConfig, BlockType } from "@app/types/run";
 
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
+export type BlockRunConfig = {
+  [key: string]: any;
+};
+
 export type AppType = {
   uId: string;
   sId: string;
@@ -18,7 +22,7 @@ export type SpecificationBlockType = {
   type: BlockType;
   name: string;
   spec: any;
-  config: RunConfig;
+  config: BlockRunConfig;
   indent?: number;
 };
 

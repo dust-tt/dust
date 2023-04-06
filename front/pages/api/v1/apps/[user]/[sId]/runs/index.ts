@@ -1,6 +1,6 @@
 import { User, App, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import logger from "@app/logger/logger";
+import logger from "@app/lib/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/api/auth";
 import { streamChunks } from "@app/lib/http_utils";

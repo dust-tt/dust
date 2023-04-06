@@ -1,5 +1,7 @@
-export function extractConfig(spec) {
-  let c = {};
+import { SpecificationType } from "@app/types/app";
+
+export function extractConfig(spec: SpecificationType): { [key: string]: any } {
+  let c = {} as { [key: string]: any };
   for (var i = 0; i < spec.length; i++) {
     switch (spec[i].type) {
       case "llm":

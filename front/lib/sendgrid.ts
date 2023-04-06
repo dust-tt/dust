@@ -1,6 +1,8 @@
+import { XP1User } from "@app/lib/models";
+
 const { SENDGRID_API_KEY, XP1_CHROME_WEB_STORE_URL } = process.env;
 
-export const sendActivationKey = async (user) => {
+export const sendActivationKey = async (user: XP1User) => {
   const sgMail = require("@sendgrid/mail");
   sgMail.setApiKey(SENDGRID_API_KEY);
 

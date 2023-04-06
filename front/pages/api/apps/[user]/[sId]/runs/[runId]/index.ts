@@ -18,7 +18,7 @@ const libDir = path.join(process.cwd(), "lib");
 const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
 const specParser = peg.generate(dustPegJs);
 
-export type GetRunStateBody = {
+export type GetRunStateResponseBody = {
   app: AppType;
   spec: SpecificationType;
   config: RunConfig;
@@ -27,7 +27,7 @@ export type GetRunStateBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetRunStateBody>
+  res: NextApiResponse<GetRunStateResponseBody>
 ): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
