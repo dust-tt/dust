@@ -3,18 +3,14 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App, Clone, Dataset } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
+import { auth_user } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
-async function handler(req, res) {
-  const session = await unstable_getServerSession(req, res, authOptions);
-
-  let [user, cloneFromUser] = await Promise.all([
-    User.findOne({
-      where: {
-        username: session.user.username,
-      },
-    }),
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  let [authRes, appUser] = await Promise.all([
+    auth_user(req, res),
     User.findOne({
       where: {
         username: req.query.user,
@@ -22,37 +18,36 @@ async function handler(req, res) {
     }),
   ]);
 
-  if (!cloneFromUser) {
+  if (authRes.isErr()) {
+    res.status(authRes.error().status_code).end();
+    return;
+  }
+  let auth = authRes.value();
+
+  if (!appUser) {
     res.status(404).end();
     return;
   }
 
-  if (!session || !user) {
-    res.status(401).end();
-    return;
-  }
-
-  // We allow self-cloning even if we don't display it in the UI.
-
-  let [cloneFromApp] = await Promise.all([
+  let [app] = await Promise.all([
     App.findOne({
       where: {
-        userId: cloneFromUser.id,
+        userId: appUser.id,
         sId: req.query.sId,
       },
     }),
   ]);
 
-  if (!cloneFromApp) {
+  if (!app) {
     res.status(404).end();
     return;
   }
 
-  let [cloneFromDatasets] = await Promise.all([
+  let [datasets] = await Promise.all([
     Dataset.findAll({
       where: {
-        userId: cloneFromUser.id,
-        appId: cloneFromApp.id,
+        userId: appUser.id,
+        appId: app.id,
       },
       order: [["updatedAt", "DESC"]],
     }),
@@ -60,6 +55,17 @@ async function handler(req, res) {
 
   switch (req.method) {
     case "POST":
+      // We want the user to not be anonymous as `canReadApp` can return `true` if the app is public
+      // but we must only accept logged in users (as they have to have a user id).
+      if (auth.isAnonymous()) {
+        res.status(401).end();
+        return;
+      }
+      if (!auth.canReadApp(app)) {
+        res.status(404).end();
+        return;
+      }
+
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||
@@ -67,11 +73,11 @@ async function handler(req, res) {
         !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
         res.status(400).end();
-        break;
+        return;
       }
 
       const r = await fetch(
-        `${DUST_API}/projects/${cloneFromApp.dustAPIProjectId}/clone`,
+        `${DUST_API}/projects/${app.dustAPIProjectId}/clone`,
         {
           method: "POST",
         }
@@ -85,41 +91,41 @@ async function handler(req, res) {
       let description = req.body.description ? req.body.description : null;
       let uId = new_id();
 
-      let [app] = await Promise.all([
+      let [cloned] = await Promise.all([
         App.create({
           uId,
           sId: uId.slice(0, 10),
           name: req.body.name,
           description,
           visibility: req.body.visibility,
-          userId: user.id,
+          userId: auth.user().id,
           dustAPIProjectId: p.response.project.project_id,
-          savedSpecification: cloneFromApp.savedSpecification,
+          savedSpecification: app.savedSpecification,
         }),
       ]);
 
-      let promises = cloneFromDatasets.map((d) => {
-        return Dataset.create({
-          name: d.name,
-          description: d.description,
-          userId: user.id,
-          appId: app.id,
-        });
-      });
-      promises.push(
-        Clone.create({
-          fromId: cloneFromApp.id,
-          toId: app.id,
+      await Promise.all(
+        datasets.map((d) => {
+          return Dataset.create({
+            name: d.name,
+            description: d.description,
+            userId: auth.user().id,
+            appId: cloned.id,
+          });
         })
       );
-      await Promise.all(promises);
 
-      res.redirect(`/${session.user.username}/a/${app.sId}`);
-      break;
+      await Clone.create({
+        fromId: app.id,
+        toId: cloned.id,
+      });
+
+      res.redirect(`/${auth.user().username}/a/${cloned.sId}`);
+      return;
 
     default:
       res.status(405).end();
-      break;
+      return;
   }
 }
 

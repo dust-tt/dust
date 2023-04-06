@@ -92,9 +92,9 @@ export class App extends Model<
   declare name: string;
   declare description: string;
   declare visibility: "public" | "private" | "unlisted";
-  declare savedSpecification: string;
-  declare savedConfig: string;
-  declare savedRun: string;
+  declare savedSpecification?: string;
+  declare savedConfig?: string;
+  declare savedRun?: string;
   declare dustAPIProjectId: string;
 
   declare userId: ForeignKey<User["id"]>;
