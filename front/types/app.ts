@@ -10,7 +10,7 @@ export type AppType = {
   uId: string;
   sId: string;
   name: string;
-  description: string;
+  description?: string;
   visibility: AppVisibility;
   savedSpecification?: string;
   savedConfig?: string;

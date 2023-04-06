@@ -86,15 +86,6 @@ export default async function handler(
       userId: dataSourceOwner.id,
       name: req.query.name,
     },
-    attributes: [
-      "id",
-      "name",
-      "description",
-      "visibility",
-      "config",
-      "dustAPIProjectId",
-      "updatedAt",
-    ],
   });
 
   if (!dataSource) {
