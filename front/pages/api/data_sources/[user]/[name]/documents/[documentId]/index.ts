@@ -55,7 +55,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (auth.canEditDataSource(dataSource)) {
+      if (!auth.canEditDataSource(dataSource)) {
         res.status(401).end();
         return;
       }
@@ -132,11 +132,10 @@ async function handler(
         return;
       }
 
-      res.redirect(
-        `/${dataSourceUser.username}/data_sources/${dataSource.name}`
-      );
-
-      break;
+      res.status(201).json({
+        document: data.response.document,
+      });
+      return;
 
     case "GET":
       if (!auth.canReadDataSource(dataSource)) {
@@ -167,7 +166,7 @@ async function handler(
       return;
 
     case "DELETE":
-      if (auth.canEditDataSource(dataSource)) {
+      if (!auth.canEditDataSource(dataSource)) {
         res.status(401).end();
         return;
       }
