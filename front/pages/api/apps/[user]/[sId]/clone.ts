@@ -1,5 +1,3 @@
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { User, App, Clone, Dataset } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
@@ -8,7 +6,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({

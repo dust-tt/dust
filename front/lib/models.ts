@@ -91,7 +91,7 @@ export class App extends Model<
   declare sId: string;
   declare name: string;
   declare description: string;
-  declare visibility: "public" | "private" | "unlisted";
+  declare visibility: "public" | "private" | "unlisted" | "deleted";
   declare savedSpecification?: string;
   declare savedConfig?: string;
   declare savedRun?: string;

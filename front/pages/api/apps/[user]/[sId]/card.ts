@@ -5,7 +5,10 @@ import withLogging from "@app/logger/withlogging";
 
 const { THUM_IO_KEY } = process.env;
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<void> {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({

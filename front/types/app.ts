@@ -1,6 +1,6 @@
 import { RunConfig, BlockType } from "@app/types/run";
 
-export type AppVisibility = "public" | "private" | "unlisted";
+export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
 export type AppType = {
   uId: string;
@@ -8,9 +8,9 @@ export type AppType = {
   name: string;
   description: string;
   visibility: AppVisibility;
-  savedSpecification: string;
-  savedConfig: string;
-  savedRun: string;
+  savedSpecification?: string;
+  savedConfig?: string;
+  savedRun?: string;
   dustAPIProjectId: string;
 };
 

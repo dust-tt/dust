@@ -61,6 +61,7 @@ export class Authenticator {
   canReadApp(app: App): boolean {
     switch (app.visibility) {
       case "private":
+      case "deleted":
         return this.authUser?.id === app.userId;
       case "public":
       case "unlisted":
