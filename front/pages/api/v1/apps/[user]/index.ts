@@ -1,10 +1,10 @@
 import { User, App } from "@app/lib/models";
 import { Op } from "sequelize";
-import { auth_api_user } from "@app/lib/api/auth";
+import { auth_api_user } from "@app/lib/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
 import { Role } from "@app/lib/auth";
-import { APIError } from "@app/lib/api/error";
+import { APIError } from "@app/lib/error";
 import { AppType } from "@app/types/app";
 
 export type GetAppsResponseBody = {

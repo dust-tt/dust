@@ -2,10 +2,10 @@ import { User, DataSource, Key, Provider } from "@app/lib/models";
 import { Op } from "sequelize";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { NextApiRequest, NextApiResponse } from "next";
-import { auth_api_user } from "@app/lib/api/auth";
+import { auth_api_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
-import { APIError } from "@app/lib/api/error";
+import { APIError } from "@app/lib/error";
 import { DataSourceType } from "@app/types/data_source";
 
 const { DUST_API } = process.env;

@@ -2,11 +2,11 @@ import { User, App, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import { NextApiRequest, NextApiResponse } from "next";
-import { auth_api_user } from "@app/lib/api/auth";
+import { auth_api_user } from "@app/lib/auth";
 import { streamChunks } from "@app/lib/http_utils";
 import withLogging from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
-import { APIError } from "@app/lib/api/error";
+import { APIError } from "@app/lib/error";
 
 const { DUST_API } = process.env;
 
