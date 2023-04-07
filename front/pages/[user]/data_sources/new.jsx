@@ -1,20 +1,16 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/profile/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Button } from "@app/components/Button";
-import { useSession } from "next-auth/react";
 import React, { useState, useEffect, useRef } from "react";
 import { classNames } from "@app/lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "@app/components/app/ModelPicker";
 import { useRouter } from "next/router";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function New({ dataSources, user, ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function New({ authUser, owner, dataSources, ga_tracking_id }) {
   const [disabled, setDisabled] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -64,7 +60,7 @@ export default function New({ dataSources, user, ga_tracking_id }) {
   const router = useRouter();
 
   const handleCreate = async () => {
-    const res = await fetch(`/api/data_sources/${session.user.username}`, {
+    const res = await fetch(`/api/data_sources/${owner.username}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -78,14 +74,14 @@ export default function New({ dataSources, user, ga_tracking_id }) {
         max_chunk_size: `${dataSourceMaxChunkSize}`,
       }),
     });
-    router.push(`/${session.user.username}/ds/${dataSourceName}`);
+    router.push(`/${owner.username}/ds/${dataSourceName}`);
   };
 
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="DataSources" />
+          <MainTab currentTab="DataSources" owner={owner} />
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -113,7 +109,7 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                          {session.user.username}
+                          {owner.username}
                           <ChevronRightIcon
                             className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
@@ -240,7 +236,7 @@ export default function New({ dataSources, user, ga_tracking_id }) {
                       </label>
                       <div className="mt-1 flex">
                         <ModelPicker
-                          user={user}
+                          owner={owner}
                           readOnly={false}
                           model={dataSourceModel}
                           onModelUpdate={(model) => {
@@ -308,13 +304,13 @@ export default function New({ dataSources, user, ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  if (!session) {
+  if (auth.isAnonymous()) {
     return {
       redirect: {
         destination: `/`,
@@ -323,7 +319,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
+  if (context.query.user != auth.user().username) {
     return {
       redirect: {
         destination: `/`,
@@ -343,17 +339,16 @@ export async function getServerSideProps(context) {
   ]);
 
   if (dataSourcesRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [dataSources] = await Promise.all([dataSourcesRes.json()]);
 
   return {
     props: {
-      session,
-      user: context.query.user,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       dataSources: dataSources.dataSources,
       ga_tracking_id: GA_TRACKING_ID,
     },

@@ -19,7 +19,7 @@ export default function AppLayout({
   ga_tracking_id,
   children,
 }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const router = useRouter();
   let route_user = router.query.user;
@@ -225,7 +225,7 @@ export default function AppLayout({
                       </Menu.Items>
                     </Menu>
                   </div>
-                ) : (
+                ) : status !== "loading" ? (
                   <div className="static static inset-auto inset-auto right-0 hidden flex-initial items-center pr-2 sm:flex sm:pr-0">
                     <div className="-mr-2 sm:mr-0">
                       <ActionButton
@@ -238,7 +238,7 @@ export default function AppLayout({
                       </ActionButton>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </>

@@ -1,4 +1,3 @@
-import { classNames } from "@app/lib/utils";
 import { useRunBlock } from "@app/lib/swr";
 import {
   ExclamationCircleIcon,
@@ -6,7 +5,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from "@heroicons/react/20/solid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 
@@ -221,9 +220,9 @@ function Execution({ block, trace }) {
   );
 }
 
-export default function Output({ user, block, runId, status, app }) {
+export default function Output({ owner, block, runId, status, app }) {
   let { run, isRunLoading, isRunError } = useRunBlock(
-    user,
+    owner.username,
     app,
     runId,
     block.type,

@@ -1,4 +1,3 @@
-import { useSession } from "next-auth/react";
 import { classNames } from "@app/lib/utils";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
@@ -9,14 +8,12 @@ import {
   KeyIcon,
 } from "@heroicons/react/24/outline";
 
-export default function MainTab({ currentTab, user, readOnly }) {
-  const { data: session } = useSession();
-
+export default function MainTab({ currentTab, owner, readOnly }) {
   const tabs = readOnly
     ? [
         {
           name: "Apps",
-          href: `/${user}/apps`,
+          href: `/${owner.username}/apps`,
           icon: (
             <CodeBracketIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -26,7 +23,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
         },
         {
           name: "DataSources",
-          href: `/${user}/data_sources`,
+          href: `/${owner.username}/data_sources`,
           icon: (
             <MagnifyingGlassCircleIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -38,7 +35,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
     : [
         {
           name: "Apps",
-          href: `/${session.user.username}/apps`,
+          href: `/${owner.username}/apps`,
           icon: (
             <CodeBracketIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -48,7 +45,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
         },
         {
           name: "DataSources",
-          href: `/${session.user.username}/data_sources`,
+          href: `/${owner.username}/data_sources`,
           icon: (
             <MagnifyingGlassCircleIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -58,7 +55,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
         },
         {
           name: "Providers",
-          href: `/${session.user.username}/providers`,
+          href: `/${owner.username}/providers`,
           icon: (
             <LinkIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -68,7 +65,7 @@ export default function MainTab({ currentTab, user, readOnly }) {
         },
         {
           name: "API keys",
-          href: `/${session.user.username}/keys`,
+          href: `/${owner.username}/keys`,
           icon: (
             <KeyIcon
               className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"

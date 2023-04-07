@@ -1,28 +1,25 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/profile/MainTab";
 import { Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { classNames } from "@app/lib/utils";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourcesView({
-  dataSources,
+  authUser,
+  owner,
   readOnly,
-  user,
+  dataSources,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="DataSources" user={user} readOnly={readOnly} />
+          <MainTab currentTab="DataSources" owner={owner} readOnly={readOnly} />
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
@@ -32,10 +29,13 @@ export default function DataSourcesView({
                   <div className="sm:flex-auto"></div>
                   <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
                     <Link
-                      href={`/${session.user.username}/data_sources/new`}
+                      href={`/${owner.username}/data_sources/new`}
                       onClick={(e) => {
                         // Enforce FreePlan limit: 1 DataSource.
-                        if (dataSources.length >= 1 && user !== "spolu") {
+                        if (
+                          dataSources.length >= 1 &&
+                          authUser.username !== "spolu"
+                        ) {
                           e.preventDefault();
                           window.alert(
                             "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
@@ -56,11 +56,11 @@ export default function DataSourcesView({
               <div className="mt-8 overflow-hidden">
                 <ul role="list" className="">
                   {dataSources.map((ds) => (
-                    <li key={ds.id} className="px-2">
+                    <li key={ds.name} className="px-2">
                       <div className="py-4">
                         <div className="flex items-center justify-between">
                           <Link
-                            href={`/${user}/ds/${ds.name}`}
+                            href={`/${owner.username}/ds/${ds.name}`}
                             className="block"
                           >
                             <p className="truncate text-base font-bold text-violet-600">
@@ -99,8 +99,8 @@ export default function DataSourcesView({
                         <>
                           <p>
                             Welcome to Dust DataSources 🔎{" "}
-                            <span className="font-bold">{user}</span> has not
-                            created any data source yet 🙃
+                            <span className="font-bold">{owner.username}</span>{" "}
+                            has not created any data source yet 🙃
                           </p>
                           <p className="mt-2">
                             Sign-in to create your own data source.
@@ -132,13 +132,14 @@ export default function DataSourcesView({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [dataSourcesRes] = await Promise.all([
     fetch(`${URL}/api/data_sources/${context.query.user}`, {
@@ -151,19 +152,18 @@ export async function getServerSideProps(context) {
   ]);
 
   if (dataSourcesRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [dataSources] = await Promise.all([dataSourcesRes.json()]);
 
   return {
     props: {
-      session,
-      dataSources: dataSources.dataSources,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
+      dataSources: dataSources.dataSources,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

@@ -1,18 +1,14 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/profile/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Button } from "@app/components/Button";
-import { useSession } from "next-auth/react";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { classNames } from "@app/lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function New({ apps, ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function New({ authUser, owner, ga_tracking_id }) {
   const [disable, setDisabled] = useState(true);
 
   const [appName, setAppName] = useState("");
@@ -44,12 +40,12 @@ export default function New({ apps, ga_tracking_id }) {
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Apps" />
+          <MainTab currentTab="Apps" owner={owner} />
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <form
-              action={`/api/apps/${session.user.username}`}
+              action={`/api/apps/${owner.username}`}
               method="POST"
               className="mt-8 space-y-8 divide-y divide-gray-200"
             >
@@ -76,7 +72,7 @@ export default function New({ apps, ga_tracking_id }) {
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                          {session.user.username}
+                          {owner.username}
                           <ChevronRightIcon
                             className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
@@ -237,13 +233,13 @@ export default function New({ apps, ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  if (!session) {
+  if (auth.isAnonymous()) {
     return {
       redirect: {
         destination: `/`,
@@ -252,7 +248,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
+  if (context.query.user != auth.user().username) {
     return {
       redirect: {
         destination: `/`,
@@ -260,26 +256,13 @@ export async function getServerSideProps(context) {
       },
     };
   }
-
-  const [appsRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${session.user.username}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: context.req.headers.cookie,
-      },
-    }),
-  ]);
-
-  if (appsRes.status === 404) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const [apps] = await Promise.all([appsRes.json()]);
 
   return {
-    props: { session, apps: apps.apps, ga_tracking_id: GA_TRACKING_ID },
+    props: {
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }

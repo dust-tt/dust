@@ -3,7 +3,7 @@ import { shallowBlockClone } from "@app/lib/utils";
 import DatasetPicker from "@app/components/app/DatasetPicker";
 
 export default function Input({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -25,7 +25,7 @@ export default function Input({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -45,7 +45,7 @@ export default function Input({
             <>
               <div className="flex flex-initial">dataset:</div>
               <DatasetPicker
-                user={user}
+                owner={owner}
                 app={app}
                 dataset={block.config ? block.config.dataset : ""}
                 onDatasetUpdate={handleSetDataset}

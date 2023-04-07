@@ -1,23 +1,20 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import SpecRunView from "@app/components/app/SpecRunView";
-import { useSession } from "next-auth/react";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function AppRun({
+  authUser,
+  owner,
+  readOnly,
   app,
   spec,
   config,
   run,
-  readOnly,
-  user,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   return (
     <AppLayout
       app={{ sId: app.sId, name: app.name, description: app.description }}
@@ -28,7 +25,7 @@ export default function AppRun({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
@@ -47,7 +44,7 @@ export default function AppRun({
             </div>
 
             <SpecRunView
-              user={user}
+              owner={owner}
               app={app}
               readOnly={true}
               spec={spec}
@@ -68,13 +65,14 @@ export default function AppRun({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [appRunRes] = await Promise.all([
     fetch(
@@ -90,22 +88,21 @@ export async function getServerSideProps(context) {
   ]);
 
   if (appRunRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [appRun] = await Promise.all([appRunRes.json()]);
 
   return {
     props: {
-      session,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
+      readOnly,
       app: appRun.app,
       spec: appRun.spec,
       config: appRun.config,
       run: appRun.run,
-      readOnly,
-      user: context.query.user,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

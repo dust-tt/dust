@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 export default function Browser({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -99,7 +99,7 @@ export default function Browser({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -229,7 +229,7 @@ export default function Browser({
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
               <div className="px-2">
                 <Link
-                  href={`/${user}/providers`}
+                  href={`/${owner.username}/providers`}
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
                     "border px-3",

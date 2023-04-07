@@ -1,8 +1,6 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
 import { ActionButton, Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import {
   PlayCircleIcon,
   DocumentDuplicateIcon,
@@ -19,10 +17,10 @@ import SpecRunView from "@app/components/app/SpecRunView";
 import { extractConfig } from "@app/lib/config";
 import { useSavedRunStatus } from "@app/lib/swr";
 import { mutate } from "swr";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Deploy from "@app/components/app/Deploy";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -69,9 +67,14 @@ const isRunnable = (readOnly, spec, config) => {
   return true;
 };
 
-export default function App({ app, readOnly, user, ga_tracking_id, url }) {
-  const { data: session } = useSession();
-
+export default function App({
+  authUser,
+  owner,
+  readOnly,
+  app,
+  ga_tracking_id,
+  url,
+}) {
   const [spec, setSpec] = useState(JSON.parse(app.savedSpecification || `[]`));
   const [config, setConfig] = useState(
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
@@ -81,7 +84,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
   const [runError, setRunError] = useState(null);
 
   let { run, isRunLoading, isRunError } = useSavedRunStatus(
-    user,
+    owner.username,
     app,
     (data) => {
       if (data && data.run) {
@@ -105,9 +108,9 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
     }
 
     saveTimeout = setTimeout(async () => {
-      if (session) {
+      if (!readOnly && authUser) {
         const [specRes] = await Promise.all([
-          fetch(`/api/apps/${session.user.username}/${app.sId}/state`, {
+          fetch(`/api/apps/${owner.username}/${app.sId}/state`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -190,7 +193,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
     // setTimeout to yield execution so that the button updates right away.
     setTimeout(async () => {
       const [runRes] = await Promise.all([
-        fetch(`/api/apps/${session.user.username}/${app.sId}/runs`, {
+        fetch(`/api/apps/${owner.username}/${app.sId}/runs`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -211,14 +214,12 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
         const [run] = await Promise.all([runRes.json()]);
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-        mutate(
-          `/api/apps/${session.user.username}/${app.sId}/runs/saved/status`
-        );
+        mutate(`/api/apps/${owner.username}/${app.sId}/runs/saved/status`);
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         spec.forEach((block) => {
           mutate(
-            `/api/apps/${session.user.username}/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
+            `/api/apps/${owner.username}/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
           );
         });
       }
@@ -235,7 +236,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
@@ -278,9 +279,9 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
                   })()}
                 </div>
               ) : null}
-              {session && readOnly ? (
+              {authUser && readOnly ? (
                 <div className="flex-initial">
-                  <Link href={`/${user}/a/${app.sId}/clone`}>
+                  <Link href={`/${owner.username}/a/${app.sId}/clone`}>
                     <ActionButton>
                       <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                       Clone
@@ -289,11 +290,11 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
                 </div>
               ) : null}
               <div className="flex-1"></div>
-              {session && !readOnly ? (
+              {authUser && !readOnly ? (
                 <div className="flex-initial">
                   <Deploy
                     disabled={readOnly || !(run?.status.run == "succeeded")}
-                    user={user}
+                    owner={owner}
                     app={app}
                     run={run}
                     spec={spec}
@@ -304,7 +305,7 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
             </div>
 
             <SpecRunView
-              user={user}
+              owner={owner}
               app={app}
               readOnly={readOnly}
               spec={spec}
@@ -390,13 +391,14 @@ export default function App({ app, readOnly, user, ga_tracking_id, url }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [appRes] = await Promise.all([
     fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
@@ -409,20 +411,19 @@ export async function getServerSideProps(context) {
   ]);
 
   if (appRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [app] = await Promise.all([appRes.json()]);
 
   return {
     props: {
-      url: URL,
-      session,
-      app: app.app,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
+      url: URL,
+      app: app.app,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

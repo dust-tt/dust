@@ -1,27 +1,24 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
 import { ActionButton } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
 import DatasetView from "@app/components/app/DatasetView";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function ViewDatasetView({
+  authUser,
+  owner,
+  readOnly,
   app,
   datasets,
   dataset,
-  user,
-  readOnly,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +34,7 @@ export default function ViewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+      Router.push(`/${owner.username}/a/${app.sId}/datasets`);
     }
   }, [isFinishedEditing]);
 
@@ -62,7 +59,7 @@ export default function ViewDatasetView({
   const handleSubmit = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/apps/${session.user.username}/${app.sId}/datasets/${dataset.name}`,
+      `/api/apps/${owner.username}/${app.sId}/datasets/${dataset.name}`,
       {
         method: "POST",
         headers: {
@@ -86,7 +83,7 @@ export default function ViewDatasetView({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Datasets"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
@@ -124,13 +121,14 @@ export default function ViewDatasetView({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [appRes, datasetsRes, datasetRes] = await Promise.all([
     fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
@@ -163,9 +161,7 @@ export async function getServerSideProps(context) {
   ]);
 
   if (appRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [app, datasets, dataset] = await Promise.all([
@@ -176,12 +172,13 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
-      session,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
+      readOnly,
       app: app.app,
       datasets: datasets.datasets,
       dataset: dataset.dataset,
-      user: context.query.user,
-      readOnly,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

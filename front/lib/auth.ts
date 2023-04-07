@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 import { APIErrorWithStatusCode } from "@app/lib/error";
+import { UserType } from "@app/types/user";
 
 export enum Role {
   Owner = "owner",
@@ -17,10 +18,12 @@ export enum Role {
  * associated permission will be implemented here.
  */
 export class Authenticator {
-  authUser: User | null;
+  _authUser: User | null;
+  _session: any;
 
-  constructor(authUser: User | null) {
-    this.authUser = authUser;
+  constructor(authUser: User | null, session: any = null) {
+    this._authUser = authUser;
+    this._session = session;
   }
 
   /**
@@ -28,12 +31,23 @@ export class Authenticator {
    *
    * @returns the authenticated user or throws an error if the user is not authenticated.
    */
-  user(): User {
-    return this.authUser!;
+  user(): UserType {
+    return {
+      id: this._authUser!.id,
+      provider: "github",
+      providerId: this._authUser!.githubId,
+      username: this._authUser!.username,
+      email: this._authUser!.email,
+      name: this._authUser!.name,
+    };
+  }
+
+  session(): any {
+    return this._session;
   }
 
   isAnonymous(): boolean {
-    return this.authUser === null;
+    return this._authUser === null;
   }
 
   /**
@@ -45,7 +59,7 @@ export class Authenticator {
    * @returns the role of the authenticated user.
    */
   async roleFor(resourceOwner: User): Promise<Role> {
-    if (resourceOwner.id === this.authUser?.id) {
+    if (resourceOwner.id === this._authUser?.id) {
       return Role.Owner;
     } else {
       return Role.ReadOnly;
@@ -62,7 +76,7 @@ export class Authenticator {
     switch (app.visibility) {
       case "private":
       case "deleted":
-        return this.authUser?.id === app.userId;
+        return this._authUser?.id === app.userId;
       case "public":
       case "unlisted":
         return true;
@@ -78,7 +92,7 @@ export class Authenticator {
    * @returns true if the user can edit the app, false otherwise.
    */
   canEditApp(app: App): boolean {
-    return this.authUser?.id === app.userId;
+    return this._authUser?.id === app.userId;
   }
 
   /**
@@ -94,7 +108,7 @@ export class Authenticator {
    * @returns true if the user can run the app, false otherwise.
    */
   canRunApp(app: App): boolean {
-    return this.authUser?.id === app.userId;
+    return this._authUser?.id === app.userId;
   }
 
   /**
@@ -108,7 +122,7 @@ export class Authenticator {
       case "public":
         return true;
       case "private":
-        return this.authUser?.id === dataSource.userId;
+        return this._authUser?.id === dataSource.userId;
       default:
         return false;
     }
@@ -121,7 +135,7 @@ export class Authenticator {
    * @returns true if the user can edit the data source, false otherwise.
    */
   canEditDataSource(dataSource: DataSource): boolean {
-    return this.authUser?.id === dataSource.userId;
+    return this._authUser?.id === dataSource.userId;
   }
 }
 
@@ -160,7 +174,7 @@ export async function auth_user(
     });
   }
 
-  return Ok(new Authenticator(authUser));
+  return Ok(new Authenticator(authUser, session));
 }
 
 /**
@@ -236,5 +250,5 @@ export async function auth_api_user(
     });
   }
 
-  return Ok(new Authenticator(authUser));
+  return Ok(new Authenticator(authUser, null));
 }

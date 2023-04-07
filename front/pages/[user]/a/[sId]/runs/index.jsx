@@ -1,15 +1,11 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
-import { ActionButton, Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { Button } from "@app/components/Button";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { classNames, utcDateFrom, timeAgoFrom } from "@app/lib/utils";
-import Router from "next/router";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { useState } from "react";
 import { useRuns } from "@app/lib/swr";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -30,15 +26,19 @@ const inputCount = (status) => {
   return 0;
 };
 
-export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function RunsView({
+  authUser,
+  owner,
+  readOnly,
+  app,
+  ga_tracking_id,
+}) {
   const [runType, setRunType] = useState("local");
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   let { runs, total, isRunsLoading, isRunsError } = useRuns(
-    user,
+    owner.username,
     app,
     limit,
     offset,
@@ -60,7 +60,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Logs"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
@@ -133,7 +133,7 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
                         <div className="flex items-center justify-between">
                           <div className="flex flex-initial">
                             <Link
-                              href={`/${user}/a/${app.sId}/runs/${run.run_id}`}
+                              href={`/${owner.username}/a/${app.sId}/runs/${run.run_id}`}
                               className="block"
                             >
                               <p className="truncate font-mono text-base text-violet-600">
@@ -206,15 +206,16 @@ export default function RunsView({ app, user, readOnly, ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
-  const [appRes, datasetsRes] = await Promise.all([
+  const [appRes] = await Promise.all([
     fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
@@ -222,36 +223,21 @@ export async function getServerSideProps(context) {
         Cookie: context.req.headers.cookie,
       },
     }),
-    fetch(
-      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: context.req.headers.cookie,
-        },
-      }
-    ),
   ]);
 
   if (appRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
-  const [app, datasets] = await Promise.all([
-    appRes.json(),
-    datasetsRes.json(),
-  ]);
+  const [app] = await Promise.all([appRes.json()]);
 
   return {
     props: {
-      session,
-      app: app.app,
-      datasets: datasets.datasets,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
+      app: app.app,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

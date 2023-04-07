@@ -5,7 +5,7 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 
 export default function DatasetPicker({
-  user,
+  owner,
   dataset,
   readOnly,
   app,
@@ -17,7 +17,7 @@ export default function DatasetPicker({
         isDatasetsLoading: false,
         isDatasetsError: false,
       }
-    : useDatasets(user, app);
+    : useDatasets(owner.username, app);
 
   // Remove the dataset if it was suppressed.
   if (
@@ -35,7 +35,7 @@ export default function DatasetPicker({
   return (
     <div className="flex items-center">
       {dataset ? (
-        <Link href={`/${user}/a/${app.sId}/datasets/${dataset}`}>
+        <Link href={`/${owner.username}/a/${app.sId}/datasets/${dataset}`}>
           <div className="text-sm font-bold text-violet-600">{dataset}</div>
         </Link>
       ) : (
@@ -45,7 +45,7 @@ export default function DatasetPicker({
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (
             <Link
-              href={`/${user}/a/${app.sId}/datasets/new`}
+              href={`/${owner.username}/a/${app.sId}/datasets/new`}
               className={classNames(
                 "inline-flex items-center rounded-md py-1 text-sm font-normal",
                 dataset ? "px-1" : "border px-3",
@@ -110,7 +110,7 @@ export default function DatasetPicker({
               })}
               <Menu.Item key="__create_dataset" onClick={() => {}}>
                 {({ active }) => (
-                  <Link href={`/${user}/a/${app.sId}/datasets/new`}>
+                  <Link href={`/${owner.username}/a/${app.sId}/datasets/new`}>
                     <div
                       className={classNames(
                         active ? "bg-gray-50 text-gray-500" : "text-gray-400",

@@ -1,8 +1,6 @@
 import Head from "next/head";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "./api/auth/[...nextauth]";
 import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { ActionButton, Button } from "@app/components/Button";
@@ -10,6 +8,7 @@ import { Logo } from "@app/components/Logo";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { classNames, communityApps } from "@app/lib/utils";
+import { auth_user } from "@app/lib/auth";
 
 const { GA_TRACKING_ID = null } = process.env;
 
@@ -249,22 +248,24 @@ export default function Home({ ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return {
+      props: { ga_tracking_id: GA_TRACKING_ID },
+    };
+  }
+  let auth = authRes.value();
 
-  if (session) {
+  if (!auth.isAnonymous()) {
     return {
       redirect: {
-        destination: `/${session.user.username}/apps`,
+        destination: `/${auth.user().username}/apps`,
         permanent: false,
       },
     };
   }
 
   return {
-    props: { session, ga_tracking_id: GA_TRACKING_ID },
+    props: { ga_tracking_id: GA_TRACKING_ID },
   };
 }

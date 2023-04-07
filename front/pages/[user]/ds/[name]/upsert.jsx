@@ -1,10 +1,7 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
 import { ActionButton } from "@app/components/Button";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 import {
   ArrowUpOnSquareStackIcon,
@@ -15,18 +12,18 @@ import { classNames } from "@app/lib/utils";
 import { useRef } from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceUpsert({
-  dataSource,
+  authUser,
+  owner,
   readOnly,
+  dataSource,
   loadDocumentId,
-  user,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   const fileInputRef = useRef(null);
 
   const [documentId, setDocumentId] = useState("");
@@ -47,7 +44,7 @@ export default function DataSourceUpsert({
       setDownloading(true);
       setDisabled(true);
       fetch(
-        `/api/data_sources/${user}/${
+        `/api/data_sources/${owner.username}/${
           dataSource.name
         }/documents/${encodeURIComponent(loadDocumentId)}`
       ).then(async (res) => {
@@ -85,7 +82,7 @@ export default function DataSourceUpsert({
   const handleUpsert = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/data_sources/${session.user.username}/${
+      `/api/data_sources/${owner.username}/${
         dataSource.name
       }/documents/${encodeURIComponent(documentId)}`,
       {
@@ -99,7 +96,7 @@ export default function DataSourceUpsert({
         }),
       }
     );
-    router.push(`/${session.user.username}/ds/${dataSource.name}`);
+    router.push(`/${owner.username}/ds/${dataSource.name}`);
   };
 
   const handleTagUpdate = (index, value) => {
@@ -127,7 +124,7 @@ export default function DataSourceUpsert({
         <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Documents"
-            user={user}
+            owner={owner}
             readOnly={false}
             dataSource={dataSource}
           />
@@ -311,13 +308,14 @@ export default function DataSourceUpsert({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [dataSourceRes] = await Promise.all([
     fetch(
@@ -333,19 +331,18 @@ export async function getServerSideProps(context) {
   ]);
 
   if (dataSourceRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [dataSource] = await Promise.all([dataSourceRes.json()]);
 
   return {
     props: {
-      session,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
       dataSource: dataSource.dataSource,
-      user: context.query.user,
       loadDocumentId: context.query.documentId || null,
       ga_tracking_id: GA_TRACKING_ID,
     },

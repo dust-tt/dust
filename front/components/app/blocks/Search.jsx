@@ -7,7 +7,7 @@ import { filterServiceProviders } from "@app/lib/providers";
 import Link from "next/link";
 
 export default function Search({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -68,7 +68,7 @@ export default function Search({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -86,14 +86,14 @@ export default function Search({
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial">provider:</div>
-          {/* User has zero search providers */}
+          {/* Owner has zero search providers */}
           {!isProvidersLoading &&
             !readOnly &&
             searchProviders?.length === 0 && (
               <div className="px-2">
                 {searchProviders?.length === 0 && (
                   <Link
-                    href={`/${user}/providers`}
+                    href={`/${owner.username}/providers`}
                     className={classNames(
                       "inline-flex items-center rounded-md py-1 text-sm font-normal",
                       "border px-3",

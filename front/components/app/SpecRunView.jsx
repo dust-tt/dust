@@ -11,7 +11,7 @@ import Browser from "./blocks/Browser";
 import { Map, Reduce } from "./blocks/MapReduce";
 
 export default function SpecRunView({
-  user,
+  owner,
   app,
   readOnly,
   spec,
@@ -57,7 +57,7 @@ export default function SpecRunView({
                 <Input
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -78,7 +78,7 @@ export default function SpecRunView({
                 <Data
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -99,7 +99,7 @@ export default function SpecRunView({
                 <LLM
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -120,7 +120,7 @@ export default function SpecRunView({
                 <Chat
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -141,7 +141,7 @@ export default function SpecRunView({
                 <Code
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -162,7 +162,7 @@ export default function SpecRunView({
                 <DataSource
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -183,7 +183,7 @@ export default function SpecRunView({
                 <Map
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -204,7 +204,7 @@ export default function SpecRunView({
                 <Reduce
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -223,7 +223,7 @@ export default function SpecRunView({
                 <Search
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -244,7 +244,7 @@ export default function SpecRunView({
                 <Curl
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}
@@ -265,7 +265,7 @@ export default function SpecRunView({
                 <Browser
                   key={idx}
                   block={block}
-                  user={user}
+                  owner={owner}
                   app={app}
                   spec={spec}
                   run={run}

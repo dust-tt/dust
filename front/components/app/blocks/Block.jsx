@@ -14,7 +14,7 @@ import NewBlock from "@app/components/app/NewBlock";
 import { Spinner } from "@app/components/Spinner";
 
 export default function Block({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -202,7 +202,7 @@ export default function Block({
         ) : null}
         {status && status.status != "running" ? (
           <Output
-            user={user}
+            owner={owner}
             runId={run.run_id}
             block={block}
             status={status}
