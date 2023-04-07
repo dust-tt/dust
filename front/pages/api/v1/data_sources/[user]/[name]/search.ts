@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { auth_api_user } from "@app/lib/api/auth";
-import { APIError } from "@app/lib/api/error";
+import { auth_api_user } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { JSONSchemaType } from "ajv";
 import { User, DataSource, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";

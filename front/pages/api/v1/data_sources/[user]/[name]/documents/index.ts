@@ -1,8 +1,8 @@
 import { User, DataSource } from "@app/lib/models";
 import { NextApiRequest, NextApiResponse } from "next";
-import { auth_api_user } from "@app/lib/api/auth";
+import { auth_api_user } from "@app/lib/auth";
 import withLogging from "@app/logger/withlogging";
-import { APIError } from "@app/lib/api/error";
+import { APIError } from "@app/lib/error";
 import { DocumentType } from "@app/types/document";
 
 const { DUST_API } = process.env;

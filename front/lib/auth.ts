@@ -1,9 +1,9 @@
-import { App, User, DataSource } from "./models";
-import { InternalErrorWithStatusCode } from "./error";
+import { App, User, DataSource, Key } from "./models";
 import { Result, Ok, Err } from "@app/lib/result";
 import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
+import { APIErrorWithStatusCode } from "@app/lib/error";
 
 export enum Role {
   Owner = "owner",
@@ -135,7 +135,7 @@ export class Authenticator {
 export async function auth_user(
   req: NextApiRequest,
   res: NextApiResponse
-): Promise<Result<Authenticator, InternalErrorWithStatusCode>> {
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
   const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -151,6 +151,88 @@ export async function auth_user(
   if (!authUser) {
     return Err({
       status_code: 404,
+      api_error: {
+        error: {
+          type: "user_not_found",
+          message: "User associated with the session was not found",
+        },
+      },
+    });
+  }
+
+  return Ok(new Authenticator(authUser));
+}
+
+/**
+ * Get a an Authenticator assiciated with the authentified user from the Authorization Bearer
+ * header.
+ * @param req NextApiRequest request object
+ * @returns Result<Authenticator, HTTPError>
+ */
+export async function auth_api_user(
+  req: NextApiRequest
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  if (!req.headers.authorization) {
+    return Err({
+      status_code: 401,
+      api_error: {
+        error: {
+          type: "missing_authorization_header_error",
+          message: "Missing Authorization header",
+        },
+      },
+    });
+  }
+
+  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
+  if (!parse || !parse[1]) {
+    return Err({
+      status_code: 401,
+      api_error: {
+        error: {
+          type: "malformed_authorization_header_error",
+          message: "Malformed Authorization header",
+        },
+      },
+    });
+  }
+  let secret = parse[1];
+
+  let [key] = await Promise.all([
+    Key.findOne({
+      where: {
+        secret: secret,
+      },
+    }),
+  ]);
+
+  if (!key || key.status !== "active") {
+    return Err({
+      status_code: 401,
+      api_error: {
+        error: {
+          type: "invalid_api_key_error",
+          message: "The API key provided is invalid or disabled.",
+        },
+      },
+    });
+  }
+
+  const authUser = await User.findOne({
+    where: {
+      id: key.userId,
+    },
+  });
+
+  if (!authUser) {
+    return Err({
+      status_code: 500,
+      api_error: {
+        error: {
+          type: "internal_server_error",
+          message: "The user associaed with the api key was not found.",
+        },
+      },
     });
   }
 
