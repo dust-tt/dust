@@ -1,25 +1,22 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
 import { ActionButton } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import "@uiw/react-textarea-code-editor/dist.css";
 import Router from "next/router";
 import DatasetView from "@app/components/app/DatasetView";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function NewDatasetView({
+  authUser,
+  owner,
   app,
   datasets,
-  user,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [dataset, setDataset] = useState(null);
@@ -35,7 +32,7 @@ export default function NewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+      Router.push(`/${owner.username}/a/${app.sId}/datasets`);
     }
   }, [isFinishedEditing]);
 
@@ -51,16 +48,13 @@ export default function NewDatasetView({
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(
-      `/api/apps/${session.user.username}/${app.sId}/datasets`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dataset),
-      }
-    );
+    const res = await fetch(`/api/apps/${owner.username}/${app.sId}/datasets`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(dataset),
+    });
     const data = await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
@@ -76,7 +70,7 @@ export default function NewDatasetView({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Datasets"
-            user={user}
+            owner={owner}
           />
         </div>
 
@@ -110,13 +104,13 @@ export default function NewDatasetView({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  if (!session) {
+  if (auth.isAnonymous()) {
     return {
       redirect: {
         destination: `/`,
@@ -125,7 +119,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
+  if (context.query.user != auth.user().username) {
     return {
       redirect: {
         destination: `/`,
@@ -135,7 +129,7 @@ export async function getServerSideProps(context) {
   }
 
   const [appRes, datasetsRes] = await Promise.all([
-    fetch(`${URL}/api/apps/${session.user.username}/${context.query.sId}`, {
+    fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -143,7 +137,7 @@ export async function getServerSideProps(context) {
       },
     }),
     fetch(
-      `${URL}/api/apps/${session.user.username}/${context.query.sId}/datasets`,
+      `${URL}/api/apps/${context.query.user}/${context.query.sId}/datasets`,
       {
         method: "GET",
         headers: {
@@ -167,8 +161,9 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
-      user: session.user.username,
-      session,
+      session: auth.session(),
+      authUser: auth.user(),
+      owner: { username: context.query.user },
       app: app.app,
       datasets: datasets.datasets,
       ga_tracking_id: GA_TRACKING_ID,

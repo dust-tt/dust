@@ -10,11 +10,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
-export default function MainTab({ app, currentTab, user, readOnly }) {
+export default function MainTab({ app, currentTab, owner, readOnly }) {
   let tabs = [
     {
       name: "Specification",
-      href: `/${user}/a/${app.sId}`,
+      href: `/${owner.username}/a/${app.sId}`,
       icon: (
         <CodeBracketIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -24,7 +24,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
     },
     {
       name: "Datasets",
-      href: `/${user}/a/${app.sId}/datasets`,
+      href: `/${owner.username}/a/${app.sId}/datasets`,
       icon: (
         <DocumentIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -37,7 +37,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
   if (!readOnly) {
     tabs.push({
       name: "Use",
-      href: `/${user}/a/${app.sId}/execute`,
+      href: `/${owner.username}/a/${app.sId}/execute`,
       icon: (
         <BoltIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -47,7 +47,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
     });
     tabs.push({
       name: "Logs",
-      href: `/${user}/a/${app.sId}/runs`,
+      href: `/${owner.username}/a/${app.sId}/runs`,
       icon: (
         <ArchiveBoxIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -57,7 +57,7 @@ export default function MainTab({ app, currentTab, user, readOnly }) {
     });
     tabs.push({
       name: "Settings",
-      href: `/${user}/a/${app.sId}/settings`,
+      href: `/${owner.username}/a/${app.sId}/settings`,
       icon: (
         <Cog6ToothIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"

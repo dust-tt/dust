@@ -2,31 +2,29 @@ import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { timeAgoFrom } from "@app/lib/utils";
 import { ActionButton, Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useSWRConfig } from "swr";
 import { useState } from "react";
 import { useDocuments } from "@app/lib/swr";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceView({
-  dataSource,
+  authUser,
+  owner,
   readOnly,
-  user,
+  dataSource,
   ga_tracking_id,
 }) {
   const { mutate } = useSWRConfig();
-  const { data: session } = useSession();
 
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   let { documents, total, isDocumentsLoading, isDocumentsError } = useDocuments(
-    user,
+    owner.username,
     dataSource,
     limit,
     offset
@@ -44,7 +42,7 @@ export default function DataSourceView({
       )
     ) {
       let r = await fetch(
-        `/api/data_sources/${session.user.username}/${
+        `/api/data_sources/${owner.username}/${
           dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,
         {
@@ -52,7 +50,7 @@ export default function DataSourceView({
         }
       );
       mutate(
-        `/api/data_sources/${session.user.username}/${dataSource.name}/documents?limit=${limit}&offset=${offset}`
+        `/api/data_sources/${owner.username}/${dataSource.name}/documents?limit=${limit}&offset=${offset}`
       );
     }
   };
@@ -66,7 +64,7 @@ export default function DataSourceView({
         <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Documents"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
           />
@@ -120,7 +118,7 @@ export default function DataSourceView({
                 <div className="">
                   <div className="mt-0 flex-none">
                     <Link
-                      href={`/${session.user.username}/ds/${dataSource.name}/upsert`}
+                      href={`/${owner.username}/ds/${dataSource.name}/upsert`}
                       onClick={(e) => {
                         // Enforce FreePlan limit: 32 documents per DataSource.
                         if (total >= 32) {
@@ -152,7 +150,7 @@ export default function DataSourceView({
                     className="group rounded border border-gray-300 px-2 px-4"
                   >
                     <Link
-                      href={`/${user}/ds/${
+                      href={`/${owner.username}/ds/${
                         dataSource.name
                       }/upsert?documentId=${encodeURIComponent(d.document_id)}`}
                       className="block"
@@ -227,13 +225,14 @@ export default function DataSourceView({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [res] = await Promise.all([
     fetch(
@@ -249,19 +248,18 @@ export async function getServerSideProps(context) {
   ]);
 
   if (res.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [dataSource] = await Promise.all([res.json()]);
 
   return {
     props: {
-      session,
-      dataSource: dataSource.dataSource,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
+      dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

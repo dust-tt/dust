@@ -12,7 +12,7 @@ const CodeEditor = dynamic(
 );
 
 export default function Curl({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -75,7 +75,7 @@ export default function Curl({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}

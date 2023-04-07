@@ -1,20 +1,16 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { Button } from "@app/components/Button";
-import { useSession } from "next-auth/react";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { classNames } from "@app/lib/utils";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import ModelPicker from "@app/components/app/ModelPicker";
 import { useRouter } from "next/router";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function New({ dataSource, user, ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function New({ authUser, owner, dataSource, ga_tracking_id }) {
   let dataSourceConfig = JSON.parse(dataSource.config);
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
@@ -28,11 +24,14 @@ export default function New({ dataSource, user, ga_tracking_id }) {
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this DataSource?")) {
-      let res = await fetch(`/api/data_sources/${user}/${dataSource.name}`, {
-        method: "DELETE",
-      });
+      let res = await fetch(
+        `/api/data_sources/${owner.username}/${dataSource.name}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (res.ok) {
-        router.push(`/${session.user.username}/data_sources`);
+        router.push(`/${owner.username}/data_sources`);
       }
       return true;
     } else {
@@ -49,7 +48,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
         <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Settings"
-            user={user}
+            owner={owner}
             readOnly={false}
             dataSource={dataSource}
           />
@@ -57,7 +56,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
         <div className="">
           <div className="mx-auto mt-8 max-w-4xl px-2">
             <form
-              action={`/api/data_sources/${session.user.username}/${dataSource.name}`}
+              action={`/api/data_sources/${owner.username}/${dataSource.name}`}
               method="POST"
               className="mt-8 space-y-8 divide-y divide-gray-200"
             >
@@ -73,7 +72,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                          {session.user.username}
+                          {owner.username}
                           <ChevronRightIcon
                             className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
@@ -198,7 +197,7 @@ export default function New({ dataSource, user, ga_tracking_id }) {
                       </label>
                       <div className="mt-1 flex">
                         <ModelPicker
-                          user={user}
+                          owner={owner}
                           readOnly={true}
                           model={{
                             provider_id: dataSourceConfig.provider_id || "",
@@ -253,13 +252,13 @@ export default function New({ dataSource, user, ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  if (!session) {
+  if (auth.isAnonymous()) {
     return {
       redirect: {
         destination: `/`,
@@ -268,7 +267,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
+  if (context.query.user != auth.user().username) {
     return {
       redirect: {
         destination: `/`,
@@ -291,17 +290,16 @@ export async function getServerSideProps(context) {
   ]);
 
   if (res.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [dataSource] = await Promise.all([res.json()]);
 
   return {
     props: {
-      session,
-      user: context.query.user,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
     },

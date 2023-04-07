@@ -1,21 +1,17 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
 import { Button } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { classNames } from "@app/lib/utils";
-import { useState, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function SettingsView({ app, user, ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function SettingsView({ authUser, owner, app, ga_tracking_id }) {
   const [disable, setDisabled] = useState(true);
 
   const [appName, setAppName] = useState(app.name);
@@ -43,11 +39,11 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this app?")) {
-      let res = await fetch(`/api/apps/${user}/${app.sId}`, {
+      let res = await fetch(`/api/apps/${owner.username}/${app.sId}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        router.push(`/${session.user.username}/`);
+        router.push(`/${owner.username}/`);
       }
       return true;
     } else {
@@ -69,7 +65,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Settings"
-            user={user}
+            owner={owner}
             readOnly={false}
           />
         </div>
@@ -78,7 +74,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
           <div className="flex flex-1">
             <div className="w-full max-w-5xl px-4 sm:px-6 lg:px-8">
               <form
-                action={`/api/apps/${session.user.username}/${app.sId}`}
+                action={`/api/apps/${owner.username}/${app.sId}`}
                 method="POST"
                 className="mt-8 space-y-8 divide-y divide-gray-200"
               >
@@ -94,7 +90,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                         </label>
                         <div className="mt-1 flex rounded-md shadow-sm">
                           <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                            {session.user.username}
+                            {owner.username}
                             <ChevronRightIcon
                               className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                               aria-hidden="true"
@@ -243,7 +239,7 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
                   </Button>
                   <div className="flex-1"></div>
                   <div className="flex">
-                    <Link href={`/${user}/a/${app.sId}/clone`}>
+                    <Link href={`/${owner.username}/a/${app.sId}/clone`}>
                       <Button>Clone</Button>
                     </Link>
                   </div>
@@ -261,13 +257,14 @@ export default function SettingsView({ app, user, ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   if (readOnly) {
     return {
@@ -289,18 +286,17 @@ export async function getServerSideProps(context) {
   ]);
 
   if (appRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [app] = await Promise.all([appRes.json()]);
 
   return {
     props: {
-      session,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       app: app.app,
-      user: context.query.user,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

@@ -12,7 +12,7 @@ const CodeEditor = dynamic(
 );
 
 export default function Chat({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -95,7 +95,7 @@ export default function Chat({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -115,7 +115,7 @@ export default function Chat({
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="mr-1 flex flex-initial">model:</div>
             <ModelPicker
-              user={user}
+              owner={owner}
               readOnly={readOnly}
               model={
                 block.config ? block.config : { provider_id: "", model_id: "" }

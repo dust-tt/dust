@@ -29,7 +29,7 @@ const cleanUpConfig = (config) => {
   return JSON.stringify(c);
 };
 
-export default function Deploy({ user, app, spec, run, disabled, url }) {
+export default function Deploy({ owner, app, spec, run, disabled, url }) {
   const [open, setOpen] = useState(false);
 
   let { keys } = useKeys();
@@ -45,7 +45,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
         ? activeKey.secret
         : `sk-...${activeKey.secret.slice(-5)}`;
     }
-    let cURL = `curl ${url}/api/v1/apps/${user}/${app.sId}/runs \\
+    let cURL = `curl ${url}/api/v1/apps/${owner.username}/${app.sId}/runs \\
     -H "Authorization: Bearer ${cURLKey}" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -130,7 +130,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                               This command is ready to copy with your first
                               active API key.{" "}
                               <Link
-                                href={`/${user}/keys`}
+                                href={`/${owner.username}/keys`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                                   "text-violet-600"
@@ -143,7 +143,7 @@ export default function Deploy({ user, app, spec, run, disabled, url }) {
                           ) : (
                             <p className="text-sm text-gray-500">
                               <Link
-                                href={`/${user}/keys`}
+                                href={`/${owner.username}/keys`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                                   "text-violet-600"

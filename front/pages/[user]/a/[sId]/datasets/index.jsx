@@ -1,29 +1,28 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
 import { ActionButton } from "@app/components/Button";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { classNames } from "@app/lib/utils";
 import Router from "next/router";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DatasetsView({
+  authUser,
+  owner,
+  readOnly,
   app,
   datasets,
-  user,
-  readOnly,
   ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   const handleDelete = async (datasetName) => {
     if (confirm("Are you sure you want to delete this dataset entirely?")) {
       const res = await fetch(
-        `/api/apps/${session.user.username}/${app.sId}/datasets/${datasetName}`,
+        `/api/apps/${owner.username}/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",
           headers: {
@@ -32,7 +31,7 @@ export default function DatasetsView({
         }
       );
       const data = await res.json();
-      Router.push(`/${session.user.username}/a/${app.sId}/datasets`);
+      Router.push(`/${owner.username}/a/${app.sId}/datasets`);
     }
   };
 
@@ -46,14 +45,14 @@ export default function DatasetsView({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Datasets"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
         <div className="mx-auto mt-4 w-full max-w-5xl">
           <div className="flex flex-1">
             <div className="mx-2 my-4 flex flex-auto flex-col sm:mx-4 lg:mx-8">
-              <Link href={`/${user}/a/${app.sId}/datasets/new`}>
+              <Link href={`/${owner.username}/a/${app.sId}/datasets/new`}>
                 <ActionButton disabled={readOnly}>
                   <PlusIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
                   New Dataset
@@ -66,7 +65,7 @@ export default function DatasetsView({
                     return (
                       <Link
                         key={d.name}
-                        href={`/${user}/a/${app.sId}/datasets/${d.name}`}
+                        href={`/${owner.username}/a/${app.sId}/datasets/${d.name}`}
                         className="block"
                       >
                         <div
@@ -133,13 +132,14 @@ export default function DatasetsView({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [appRes, datasetsRes] = await Promise.all([
     fetch(`${URL}/api/apps/${context.query.user}/${context.query.sId}`, {
@@ -162,9 +162,7 @@ export async function getServerSideProps(context) {
   ]);
 
   if (appRes.status === 404) {
-    return {
-      notFound: true,
-    };
+    return { notFound: true };
   }
 
   const [app, datasets] = await Promise.all([
@@ -174,11 +172,12 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
-      session,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
+      readOnly,
       app: app.app,
       datasets: datasets.datasets,
-      readOnly,
-      user: context.query.user,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

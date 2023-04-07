@@ -9,7 +9,7 @@ const CodeEditor = dynamic(
 );
 
 export default function Code({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -31,7 +31,7 @@ export default function Code({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}

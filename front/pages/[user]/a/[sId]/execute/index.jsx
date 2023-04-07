@@ -22,11 +22,11 @@ import {
   ChevronRightIcon,
   PlayCircleIcon,
 } from "@heroicons/react/20/solid";
-import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SSE } from "sse.js";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -241,14 +241,13 @@ function ExecuteInput({
 }
 
 export default function ExecuteView({
+  authUser,
+  owner,
   app,
-  user,
-  ga_tracking_id,
   inputDataset,
   config,
+  ga_tracking_id,
 }) {
-  const { data: session } = useSession();
-
   const [inputDatasetKeys, _setInputDatasetKeys] = useState(
     inputDataset ? checkDatasetData(inputDataset.dataset.data) : []
   );
@@ -289,7 +288,7 @@ export default function ExecuteView({
     run: savedRun,
     _isRunLoading,
     _isRunError,
-  } = useSavedRunStatus(user, app, (data) => {
+  } = useSavedRunStatus(owner.username, app, (data) => {
     if (data && data.run) {
       switch (data?.run.status.run) {
         case "running":
@@ -352,16 +351,13 @@ export default function ExecuteView({
         mode: "execute",
       };
 
-      const source = new SSE(
-        `/api/apps/${session.user.username}/${app.sId}/runs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          payload: JSON.stringify(requestBody),
-        }
-      );
+      const source = new SSE(`/api/apps/${owner.username}/${app.sId}/runs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        payload: JSON.stringify(requestBody),
+      });
 
       source.onerror = (_event) => {
         setIsErrored(true);
@@ -452,7 +448,7 @@ export default function ExecuteView({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Use"
-            user={user}
+            owner={owner}
           />
         </div>
         <div className="mx-auto mt-6 w-full max-w-5xl">
@@ -554,6 +550,30 @@ export default function ExecuteView({
 }
 
 export async function getServerSideProps(context) {
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
+
+  if (auth.isAnonymous()) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
+
+  if (context.query.user != auth.user().username) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
+
   const appRes = await fetch(
     `${URL}/api/apps/${context.query.user}/${context.query.sId}`,
     {
@@ -597,11 +617,13 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
+      session: auth.session(),
+      authUser: auth.user(),
+      owner: { username: context.query.user },
       app: app.app,
-      user: context.query.user,
-      ga_tracking_id: GA_TRACKING_ID,
       config,
       inputDataset: inputDataset,
+      ga_tracking_id: GA_TRACKING_ID,
     },
   };
 }

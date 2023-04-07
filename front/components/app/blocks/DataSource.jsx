@@ -14,7 +14,7 @@ const CodeEditor = dynamic(
 );
 
 export default function DataSource({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -140,7 +140,7 @@ export default function DataSource({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -160,7 +160,7 @@ export default function DataSource({
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="mr-1 flex flex-initial">data source:</div>
             <DataSourcePicker
-              currentUser={user}
+              currentUser={owner.username}
               readOnly={readOnly}
               currentDataSources={block.config.data_sources || []}
               onDataSourcesUpdate={(dataSources) => {

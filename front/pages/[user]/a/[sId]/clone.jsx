@@ -10,12 +10,7 @@ import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function CloneView({
-  authUsername,
-  appUsername,
-  app,
-  ga_tracking_id,
-}) {
+export default function CloneView({ authUser, owner, app, ga_tracking_id }) {
   const [disable, setDisabled] = useState(true);
 
   const [appName, setAppName] = useState(app.name);
@@ -53,7 +48,7 @@ export default function CloneView({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
-            user={appUsername}
+            owner={owner}
             readOnly={true}
           />
         </div>
@@ -61,23 +56,23 @@ export default function CloneView({
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <form
-              action={`/api/apps/${appUsername}/${app.sId}/clone`}
+              action={`/api/apps/${owner.username}/${app.sId}/clone`}
               method="POST"
               className="mt-8 space-y-8 divide-y divide-gray-200"
             >
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
-                  {appUsername !== authUsername ? (
+                  {owner.username !== authUser.username ? (
                     <div>
                       <h3 className="text-base font-medium leading-6 text-gray-900">
                         Clone{" "}
-                        <span className="ml-1 font-bold">{appUsername}</span>
+                        <span className="ml-1 font-bold">{owner.username}</span>
                         <ChevronRightIcon
                           className="ml-0.5 inline h-5 w-5 pt-0.5 text-gray-500"
                           aria-hidden="true"
                         />
                         <Link
-                          href={`/${appUsername}/a/${app.sId}`}
+                          href={`/${owner.username}/a/${app.sId}`}
                           className="w-22 mr-1 truncate text-base font-bold text-violet-600 sm:w-auto"
                         >
                           {app.name}
@@ -95,7 +90,7 @@ export default function CloneView({
                       <h3 className="text-base font-medium leading-6 text-gray-900">
                         Clone your app{" "}
                         <Link
-                          href={`/${appUsername}/a/${app.sId}`}
+                          href={`/${owner.username}/a/${app.sId}`}
                           className="w-22 mr-1 truncate text-base font-bold text-violet-600 sm:w-auto"
                         >
                           {app.name}
@@ -121,7 +116,7 @@ export default function CloneView({
                       </label>
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                          {authUsername}
+                          {authUser.username}
                           <ChevronRightIcon
                             className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
                             aria-hidden="true"
@@ -309,9 +304,10 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
-      authUsername: auth.user().username,
+      session: auth.session(),
+      authUser: auth.user(),
       app: app.app,
-      appUsername: context.query.user,
+      owner: { username: context.query.user },
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

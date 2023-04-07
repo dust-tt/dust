@@ -1,20 +1,16 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/profile/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { useSession } from "next-auth/react";
 import { classNames } from "@app/lib/utils";
 import { Button } from "@app/components/Button";
 import { useState } from "react";
 import { useKeys } from "@app/lib/swr";
 import { mutate } from "swr";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function KeysProviders({ ga_tracking_id }) {
-  const { data: session } = useSession();
-
+export default function KeysProviders({ authUser, owner, ga_tracking_id }) {
   let { keys, isKeysLoading, isKeysError } = useKeys();
   let [isRevealed, setIsRevealed] = useState({});
 
@@ -44,7 +40,7 @@ export default function KeysProviders({ ga_tracking_id }) {
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="API keys" />
+          <MainTab currentTab="API keys" owner={owner} />
         </div>
 
         <div className="">
@@ -154,13 +150,13 @@ export default function KeysProviders({ ga_tracking_id }) {
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  if (!session) {
+  if (auth.isAnonymous()) {
     return {
       redirect: {
         destination: `/`,
@@ -169,7 +165,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != session.user.username) {
+  if (context.query.user != auth.user().username) {
     return {
       redirect: {
         destination: `/`,
@@ -179,6 +175,11 @@ export async function getServerSideProps(context) {
   }
 
   return {
-    props: { session, ga_tracking_id: GA_TRACKING_ID },
+    props: {
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
+      ga_tracking_id: GA_TRACKING_ID,
+    },
   };
 }

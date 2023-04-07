@@ -2,7 +2,7 @@ import Block from "./Block";
 import DatasetPicker from "@app/components/app/DatasetPicker";
 
 export default function Data({
-  user,
+  owner,
   app,
   spec,
   run,
@@ -25,7 +25,7 @@ export default function Data({
 
   return (
     <Block
-      user={user}
+      owner={owner}
       app={app}
       spec={spec}
       run={run}
@@ -51,7 +51,7 @@ export default function Data({
             </div>
           ) : (
             <DatasetPicker
-              user={user}
+              owner={owner}
               app={app}
               dataset={block.spec.dataset}
               onDatasetUpdate={handleSetDataset}

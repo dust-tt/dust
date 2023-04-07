@@ -1,12 +1,12 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/app/MainTab";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { auth_user } from "@app/lib/auth";
 
 const { URL, DUST_API, GA_TRACKING_ID = null } = process.env;
 
 export default function Specification({
-  user,
+  authUser,
+  owner,
   readOnly,
   app,
   specification,
@@ -22,7 +22,7 @@ export default function Specification({
           <MainTab
             app={{ sId: app.sId, name: app.name }}
             currentTab="Specification"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
           />
         </div>
@@ -41,13 +41,14 @@ export default function Specification({
 }
 
 export async function getServerSideProps(context) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  let authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  let auth = authRes.value();
 
-  let readOnly = !session || context.query.user !== session.user.username;
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const [specRes] = await Promise.all([
     fetch(
@@ -72,8 +73,10 @@ export async function getServerSideProps(context) {
 
   return {
     props: {
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
       app: data.app,
       specification: data.specification,
       ga_tracking_id: GA_TRACKING_ID,
