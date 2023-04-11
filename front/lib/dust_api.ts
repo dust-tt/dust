@@ -12,18 +12,23 @@ type ErrorResponse = {
 type SuccessResponse<T> = { response: T };
 type DustAPIResponse<T> = Result<SuccessResponse<T>, ErrorResponse>;
 
-type GetDatasetsResponse = {
-  datasets: { [key: string]: { hash: string; created: number }[] };
+export type DustAPIDatasetVersion = {
+  hash: string;
+  created: number;
+};
+
+export type DustAPIDataset = DustAPIDatasetVersion & {
+  dataset_id: string;
+  keys: string[];
+  data: { [key: string]: any }[];
 };
 
 type GetDatasetResponse = {
-  dataset: {
-    created: number;
-    dataset_id: string;
-    hash: string;
-    keys: string[];
-    data: { [key: string]: any }[];
-  };
+  dataset: DustAPIDataset;
+};
+
+type GetDatasetsResponse = {
+  datasets: { [key: string]: DustAPIDatasetVersion[] };
 };
 
 export const DustAPI = {
@@ -64,6 +69,7 @@ export const DustAPI = {
         },
       }
     );
+
     return _resultFromResponse(response);
   },
 };
