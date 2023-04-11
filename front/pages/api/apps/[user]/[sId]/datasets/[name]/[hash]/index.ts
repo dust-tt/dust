@@ -107,16 +107,16 @@ async function handler(
           return;
         }
 
-        if (!(dataset.name in apiDatasets.value.response.datasets)) {
+        if (!(dataset.name in apiDatasets.value.datasets)) {
           res.status(404).end();
           return;
         }
-        if (apiDatasets.value.response.datasets[dataset.name].length == 0) {
+        if (apiDatasets.value.datasets[dataset.name].length == 0) {
           res.status(400).end();
           return;
         }
 
-        hash = apiDatasets.value.response.datasets[dataset.name][0].hash;
+        hash = apiDatasets.value.datasets[dataset.name][0].hash;
       }
 
       const apiDataset = await DustAPI.getDataset(
@@ -134,7 +134,7 @@ async function handler(
         dataset: {
           name: dataset.name,
           description: dataset.description,
-          data: apiDataset.value.response.dataset.data,
+          data: apiDataset.value.dataset.data,
         },
       });
       return;

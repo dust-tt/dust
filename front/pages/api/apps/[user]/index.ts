@@ -92,7 +92,7 @@ async function handler(
         description,
         visibility: req.body.visibility,
         userId: appUser.id,
-        dustAPIProjectId: p.value.response.project.project_id.toString(),
+        dustAPIProjectId: p.value.project.project_id.toString(),
       });
 
       res.redirect(`/${appUser.username}/a/${app.sId}`);

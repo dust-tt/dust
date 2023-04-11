@@ -4,13 +4,10 @@ import { Project } from "@app/types/project";
 const { DUST_API: DUST_API_URL } = process.env;
 
 type ErrorResponse = {
-  error: {
-    message: string;
-    code: number;
-  };
+  message: string;
+  code: number;
 };
-type SuccessResponse<T> = { response: T };
-type DustAPIResponse<T> = Result<SuccessResponse<T>, ErrorResponse>;
+type DustAPIResponse<T> = Result<T, ErrorResponse>;
 
 export type DustAPIDatasetVersion = {
   hash: string;
@@ -79,7 +76,7 @@ async function _resultFromResponse<T>(
 ): Promise<DustAPIResponse<T>> {
   const jsonResponse = await response.json();
   if (jsonResponse.error) {
-    return new Err(jsonResponse);
+    return new Err(jsonResponse.error);
   }
-  return new Ok(jsonResponse);
+  return new Ok(jsonResponse.response);
 }
