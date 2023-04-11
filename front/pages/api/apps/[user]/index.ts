@@ -1,5 +1,5 @@
 import { auth_user, Role } from "@app/lib/auth";
-import { DustAPI, isErrorResponse } from "@app/lib/dust_api";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
@@ -77,7 +77,7 @@ async function handler(
 
       const p = await DustAPI.createProject();
 
-      if (isErrorResponse(p)) {
+      if (p.isErr()) {
         res.status(500).end();
         return;
       }
@@ -92,7 +92,7 @@ async function handler(
         description,
         visibility: req.body.visibility,
         userId: appUser.id,
-        dustAPIProjectId: p.response.project.project_id.toString(),
+        dustAPIProjectId: p.value.response.project.project_id.toString(),
       });
 
       res.redirect(`/${appUser.username}/a/${app.sId}`);

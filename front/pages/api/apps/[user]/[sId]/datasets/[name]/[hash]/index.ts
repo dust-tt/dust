@@ -1,5 +1,5 @@
 import { auth_user } from "@app/lib/auth";
-import { DustAPI, isErrorResponse } from "@app/lib/dust_api";
+import { DustAPI } from "@app/lib/dust_api";
 import { parse_payload } from "@app/lib/http_utils";
 import { App, Dataset, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
@@ -102,21 +102,21 @@ async function handler(
       if (req.query.hash == "latest") {
         const apiDatasets = await DustAPI.getDatasets(app.dustAPIProjectId);
 
-        if (isErrorResponse(apiDatasets)) {
+        if (apiDatasets.isErr()) {
           res.status(500).end();
           return;
         }
 
-        if (!(dataset.name in apiDatasets.response.datasets)) {
+        if (!(dataset.name in apiDatasets.value.response.datasets)) {
           res.status(404).end();
           return;
         }
-        if (apiDatasets.response.datasets[dataset.name].length == 0) {
+        if (apiDatasets.value.response.datasets[dataset.name].length == 0) {
           res.status(400).end();
           return;
         }
 
-        hash = apiDatasets.response.datasets[dataset.name][0].hash;
+        hash = apiDatasets.value.response.datasets[dataset.name][0].hash;
       }
 
       const apiDataset = await DustAPI.getDataset(
@@ -125,7 +125,7 @@ async function handler(
         hash
       );
 
-      if (isErrorResponse(apiDataset)) {
+      if (apiDataset.isErr()) {
         res.status(500).end();
         return;
       }
@@ -134,7 +134,7 @@ async function handler(
         dataset: {
           name: dataset.name,
           description: dataset.description,
-          data: apiDataset.response.dataset.data,
+          data: apiDataset.value.response.dataset.data,
         },
       });
       return;

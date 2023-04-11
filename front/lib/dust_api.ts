@@ -1,3 +1,4 @@
+import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 
 const { DUST_API: DUST_API_URL } = process.env;
@@ -9,14 +10,7 @@ type ErrorResponse = {
   };
 };
 type SuccessResponse<T> = { response: T };
-
-type DustAPIResponse<T> = ErrorResponse | SuccessResponse<T>;
-
-export function isErrorResponse<T>(
-  response: DustAPIResponse<T>
-): response is ErrorResponse {
-  return "error" in response;
-}
+type DustAPIResponse<T> = Result<SuccessResponse<T>, ErrorResponse>;
 
 type GetDatasetsResponse = {
   datasets: { [key: string]: { hash: string; created: number }[] };
@@ -37,13 +31,13 @@ export const DustAPI = {
     const response = await fetch(`${DUST_API_URL}/projects`, {
       method: "POST",
     });
-    return response.json() as Promise<DustAPIResponse<{ project: Project }>>;
+    return _resultFromResponse(response);
   },
 
   async getDatasets(
     projectId: string
   ): Promise<DustAPIResponse<GetDatasetsResponse>> {
-    const datasets = await fetch(
+    const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/datasets`,
       {
         method: "GET",
@@ -52,7 +46,8 @@ export const DustAPI = {
         },
       }
     );
-    return datasets.json() as Promise<DustAPIResponse<GetDatasetsResponse>>;
+
+    return _resultFromResponse(response);
   },
 
   async getDataset(
@@ -60,7 +55,7 @@ export const DustAPI = {
     datasetName: string,
     datasetHash: string
   ): Promise<DustAPIResponse<GetDatasetResponse>> {
-    const dataset = await fetch(
+    const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/datasets/${datasetName}/${datasetHash}`,
       {
         method: "GET",
@@ -69,6 +64,16 @@ export const DustAPI = {
         },
       }
     );
-    return dataset.json() as Promise<DustAPIResponse<GetDatasetResponse>>;
+    return _resultFromResponse(response);
   },
 };
+
+async function _resultFromResponse<T>(
+  response: Response
+): Promise<DustAPIResponse<T>> {
+  const jsonResponse = await response.json();
+  if (jsonResponse.error) {
+    return new Err(jsonResponse);
+  }
+  return new Ok(jsonResponse);
+}
