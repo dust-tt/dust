@@ -2,11 +2,7 @@ import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { auth_user } from "@app/lib/auth";
 import { timeAgoFrom, utcDateFrom } from "@app/lib/utils";
-import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useSWRConfig } from "swr";
 import { useState, useEffect } from "react";
 
 import { DocumentType } from "@app/types/document";
@@ -31,9 +27,6 @@ export default function DataSourceView({
   };
   gaTrackingId: string;
 }) {
-  const { mutate } = useSWRConfig();
-  const { data: session } = useSession();
-
   const [searchQuery, setSearchQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
@@ -56,12 +49,7 @@ export default function DataSourceView({
       searchParams.append("full_text", "false");
 
       const searchRes = await fetch(
-        // @todo(aric): Not sure how to properly construct the URL here.
-        // I don't know if we want to let users search someeone else's data source.
-        // And I don't know what to do about anonymous users.
-        // Please advise @spolu.
-        // @ts-expect-error session.user.username is added dynamically by us in the auth callback.
-        `/api/data_sources/${session.user.username}/${dataSource.name}/search?` +
+        `/api/data_sources/${owner.username}/${dataSource.name}/search?` +
           searchParams.toString(),
         {
           method: "GET",
@@ -88,8 +76,7 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-    // @ts-expect-error session.user.username is added dynamically by us in the auth callback.
-  }, [dataSource.name, searchQuery, session.user.username]);
+  }, [dataSource.name, searchQuery]);
 
   return (
     <AppLayout gaTrackingId={gaTrackingId} dataSource={dataSource}>
@@ -100,6 +87,7 @@ export default function DataSourceView({
             owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
+            authUser={authUser}
           />
         </div>
 

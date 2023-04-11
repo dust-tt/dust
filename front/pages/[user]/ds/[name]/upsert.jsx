@@ -127,6 +127,7 @@ export default function DataSourceUpsert({
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
+            authUser={authUser}
           />
         </div>
 

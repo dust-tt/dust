@@ -7,9 +7,23 @@ import {
   DocumentMagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { DataSourceType } from "@app/types/data_source";
+import { UserType } from "@app/types/user";
 
-export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
-  let tabs = [
+export default function MainTab({
+  dataSource,
+  currentTab,
+  owner,
+  readOnly,
+  authUser,
+}: {
+  dataSource: DataSourceType;
+  currentTab: string;
+  owner: { username: string };
+  readOnly: boolean;
+  authUser?: UserType;
+}) {
+  const tabs = [
     {
       name: "Documents",
       href: `/${owner.username}/ds/${dataSource.name}`,
@@ -20,7 +34,10 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
         />
       ),
     },
-    {
+  ];
+
+  if (authUser) {
+    tabs.push({
       name: "Search",
       href: `/${owner.username}/ds/${dataSource.name}/search`,
       icon: (
@@ -29,8 +46,8 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
           aria-hidden="true"
         />
       ),
-    },
-  ];
+    });
+  }
 
   if (!readOnly) {
     tabs.push({
@@ -44,8 +61,11 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
       ),
     });
   }
-
-  let currTab = tabs.find((tab) => tab.name == currentTab);
+  console.log("tabs are:", tabs);
+  const currTab = tabs.find((tab) => tab.name == currentTab);
+  if (!currTab) {
+    throw new Error("Could not find the current tab: " + currentTab);
+  }
 
   return (
     <div className="w-full">

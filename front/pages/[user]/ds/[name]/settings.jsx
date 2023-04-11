@@ -51,6 +51,7 @@ export default function New({ authUser, owner, dataSource, ga_tracking_id }) {
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
+            authUser={authUser}
           />
         </div>
         <div className="">
