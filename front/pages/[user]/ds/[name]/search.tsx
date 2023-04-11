@@ -38,12 +38,15 @@ export default function DataSourceView({
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
+    setError(false);
     let isCancelled = false;
     (async () => {
       if (searchQuery.trim().length == 0) {
         setDocuments([]);
+
         return;
       }
       setIsLoading(true);
@@ -57,7 +60,7 @@ export default function DataSourceView({
         // I don't know if we want to let users search someeone else's data source.
         // And I don't know what to do about anonymous users.
         // Please advise @spolu.
-        // @ts-expect-error
+        // @ts-expect-error session.user.username is added dynamically by us in the auth callback.
         `/api/data_sources/${session.user.username}/${dataSource.name}/search?` +
           searchParams.toString(),
         {
@@ -73,19 +76,22 @@ export default function DataSourceView({
       }
 
       if (searchRes.ok) {
+        setError(false);
         const documents = await searchRes.json();
         setDocuments(documents.documents);
+      } else {
+        setError(true);
       }
     })();
 
     return () => {
       isCancelled = true;
     };
-    //@ts-expect-error
+    // @ts-expect-error session.user.username is added dynamically by us in the auth callback.
   }, [dataSource.name, searchQuery, session.user.username]);
 
   return (
-    <AppLayout ga_tracking_id={gaTrackingId} dataSource={dataSource}>
+    <AppLayout gaTrackingId={gaTrackingId} dataSource={dataSource}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
           <MainTab
@@ -216,17 +222,30 @@ export default function DataSourceView({
                     </li>
                   ))}
                 <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                  {isLoading ? <p>Searching...</p> : null}
-                  {!isLoading &&
-                  searchQuery.length == 0 &&
-                  documents.length === 0 ? (
-                    <p>Please enter your search query.</p>
-                  ) : null}
-                  {!isLoading &&
-                  searchQuery.length > 0 &&
-                  documents.length === 0 ? (
-                    <p>No document found.</p>
-                  ) : null}
+                  {(() => {
+                    if (error) {
+                      return <div>Something went wrong...</div>;
+                    }
+                    if (isLoading) {
+                      return <p>Searching...</p>;
+                    }
+                    if (
+                      !isLoading &&
+                      searchQuery.length == 0 &&
+                      documents.length === 0
+                    ) {
+                      return <p>Please enter your search query.</p>;
+                    }
+                    if (
+                      !isLoading &&
+                      searchQuery.length > 0 &&
+                      documents.length === 0
+                    ) {
+                      return <p>No document found.</p>;
+                    }
+
+                    return <></>;
+                  })()}
                 </div>
               </ul>
             </div>

@@ -22,7 +22,12 @@ export function Button({
   );
 }
 
-export function ActionButton({ type=null, onClick, disabled=false, children }) {
+export function ActionButton({
+  type = null,
+  onClick,
+  disabled = false,
+  children,
+}) {
   return (
     <button
       type={type ? type : "button"}
