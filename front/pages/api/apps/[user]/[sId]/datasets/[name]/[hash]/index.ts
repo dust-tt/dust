@@ -1,22 +1,52 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { auth_user } from "@app/lib/auth";
-import { User, App, Dataset } from "@app/lib/models";
+import { DustAPI, isErrorResponse } from "@app/lib/dust_api";
+import { parse_payload } from "@app/lib/http_utils";
+import { App, Dataset, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
 type GetDatasetByHashResponseBody = { dataset: DatasetType };
 
+type GetDatasetQuery = {
+  hash: string;
+  user: string;
+  sId: string;
+  name: string;
+};
+
+const getDatasetQuerySchema: JSONSchemaType<GetDatasetQuery> = {
+  type: "object",
+  properties: {
+    hash: { type: "string" },
+    user: { type: "string" },
+    sId: { type: "string" },
+    name: { type: "string" },
+  },
+  required: ["hash", "user", "sId", "name"],
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetByHashResponseBody>
 ): Promise<void> {
+  const getDatasetQueryRes = parse_payload(getDatasetQuerySchema, req.query);
+
+  if (getDatasetQueryRes.isErr()) {
+    res.status(400).end();
+    return;
+  }
+
+  const getDatasetQuery = getDatasetQueryRes.value();
+
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({
       where: {
-        username: req.query.user,
+        username: getDatasetQuery.user,
       },
     }),
   ]);
@@ -36,7 +66,7 @@ async function handler(
     App.findOne({
       where: {
         userId: appUser.id,
-        sId: req.query.sId,
+        sId: getDatasetQuery.sId,
       },
     }),
   ]);
@@ -51,7 +81,7 @@ async function handler(
       where: {
         userId: appUser.id,
         appId: app.id,
-        name: req.query.name,
+        name: getDatasetQuery.name,
       },
     }),
   ]);
@@ -68,26 +98,22 @@ async function handler(
         return;
       }
 
-      let hash = req.query.hash;
+      let hash = getDatasetQuery.hash;
 
       // Translate latest if needed.
       if (req.query.hash == "latest") {
-        const apiDatasetsRes = await fetch(
-          `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const apiDatasets = await apiDatasetsRes.json();
+        const apiDatasets = await DustAPI.getDatasets(app.dustAPIProjectId);
+
+        if (isErrorResponse(apiDatasets)) {
+          res.status(500).end();
+          return;
+        }
 
         if (!(dataset.name in apiDatasets.response.datasets)) {
           res.status(404).end();
           return;
         }
-        if (apiDatasets.response.datasets[dataset.name].lenght == 0) {
+        if (apiDatasets.response.datasets[dataset.name].length == 0) {
           res.status(400).end();
           return;
         }
@@ -95,16 +121,16 @@ async function handler(
         hash = apiDatasets.response.datasets[dataset.name][0].hash;
       }
 
-      const apiDatasetRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/datasets/${dataset.name}/${hash}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const apiDataset = await DustAPI.getDataset(
+        app.dustAPIProjectId,
+        dataset.name,
+        hash
       );
-      const apiDataset = await apiDatasetRes.json();
+
+      if (isErrorResponse(apiDataset)) {
+        res.status(500).end();
+        return;
+      }
 
       res.status(200).json({
         dataset: {
