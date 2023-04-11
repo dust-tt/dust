@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { DocumentType } from "@app/types/document";
 import { DataSourceType } from "@app/types/data_source";
 import { classNames } from "@app/lib/utils";
-import {UserType} from "@app/types//user";
+import { UserType } from "@app/types//user";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -264,8 +264,7 @@ export async function getServerSideProps(context: any) {
     return { notFound: true };
   }
 
-  const [dataSource] = await Promise.all([dataSourceRes.json()]);  
-
+  const [dataSource] = await Promise.all([dataSourceRes.json()]);
 
   return {
     props: {

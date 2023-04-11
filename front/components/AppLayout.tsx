@@ -79,7 +79,7 @@ export default function AppLayout({
                     <div className="h-2 w-[4px] bg-white"></div>
                     <div className="select-none text-base font-bold tracking-tight text-gray-800">
                       <Link
-                        //@ts-expect-error typescript does not know about the fact that we 
+                        //@ts-expect-error typescript does not know about the fact that we
                         // enriched the session with session.user.username.
                         href={session ? `/${session.user.username}/apps` : `/`}
                       >
@@ -147,8 +147,8 @@ export default function AppLayout({
                   <Link href="https://docs.dust.tt">
                     <Button>
                       <>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      View Documentation
+                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                        View Documentation
                       </>
                     </Button>
                   </Link>
@@ -161,8 +161,11 @@ export default function AppLayout({
                           <span className="sr-only">Open user menu</span>
                           <img
                             className="h-8 w-8 rounded-full"
-                            
-                            src={session.user.image ? session.user.image : "https://gravatar.com/avatar/anonymous"}
+                            src={
+                              session.user.image
+                                ? session.user.image
+                                : "https://gravatar.com/avatar/anonymous"
+                            }
                             alt=""
                           />
                         </Menu.Button>
