@@ -88,7 +88,7 @@ export default async function handler(
 
   switch (req.method) {
     case "GET": {
-      if (!auth.canReadDataSource(dataSource)) {
+      if (!auth.canEditDataSource(dataSource)) {
         res.status(404).end();
         return;
       }
@@ -148,6 +148,7 @@ export default async function handler(
       );
 
       if (!searchRes.ok) {
+        console.log("rust search error", await searchRes.text());
         res.status(400).end();
         return;
       }

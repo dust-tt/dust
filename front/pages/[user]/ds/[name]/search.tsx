@@ -14,13 +14,11 @@ const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceView({
   dataSource,
-  readOnly,
   authUser,
   owner,
   gaTrackingId: gaTrackingId,
 }: {
   dataSource: DataSourceType;
-  readOnly: boolean;
   authUser?: UserType;
   owner: {
     username: string;
@@ -85,7 +83,7 @@ export default function DataSourceView({
           <MainTab
             currentTab="Search"
             owner={owner}
-            readOnly={readOnly}
+            readOnly={false}
             dataSource={dataSource}
             authUser={authUser}
           />
@@ -164,16 +162,15 @@ export default function DataSourceView({
                           {d.chunks.map((chunk) => {
                             const chunkId = `chunk-key-${d.document_id}-${chunk.hash}}`;
                             return (
-                              <div key={chunkId}>
+                              <div key={chunkId} className="pb-4">
                                 <div
                                   className={classNames(
-                                    "flex w-full flex-col rounded-sm hover:bg-gray-200",
-                                    "bg-gray-200"
+                                    "flex w-full flex-col rounded-sm "
                                   )}
                                 >
-                                  <div className="flex flex-initial items-center justify-center overflow-hidden p-3">
+                                  <div className="flex flex-initial items-center justify-center overflow-hidden">
                                     <div className="flex flex-1 flex-row pb-1">
-                                      <div className="ml-8 flex-initial text-xs">
+                                      <div className=" flex-initial text-xs">
                                         <span className="rounded bg-yellow-100 px-1 py-0.5 text-gray-500">
                                           Score:{" "}
                                           {chunk.score
@@ -256,8 +253,23 @@ export async function getServerSideProps(context: any) {
   }
   const auth = authRes.value();
 
-  const readOnly =
-    auth.isAnonymous() || context.query.user !== auth.user().username;
+  if (auth.isAnonymous()) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
+
+  if (context.query.user != auth.user().username) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
 
   const [dataSourceRes] = await Promise.all([
     fetch(
@@ -283,7 +295,6 @@ export async function getServerSideProps(context: any) {
       session: auth.session(),
       authUser: auth.isAnonymous() ? null : auth.user(),
       owner: { username: context.query.user },
-      readOnly,
       dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
     },

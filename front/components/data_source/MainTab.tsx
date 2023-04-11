@@ -4,7 +4,7 @@ import { Menu } from "@headlessui/react";
 import {
   DocumentIcon,
   Cog6ToothIcon,
-  DocumentMagnifyingGlassIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { DataSourceType } from "@app/types/data_source";
@@ -41,7 +41,7 @@ export default function MainTab({
       name: "Search",
       href: `/${owner.username}/ds/${dataSource.name}/search`,
       icon: (
-        <DocumentMagnifyingGlassIcon
+        <MagnifyingGlassIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
@@ -61,7 +61,6 @@ export default function MainTab({
       ),
     });
   }
-  console.log("tabs are:", tabs);
   const currTab = tabs.find((tab) => tab.name == currentTab);
   if (!currTab) {
     throw new Error("Could not find the current tab: " + currentTab);
