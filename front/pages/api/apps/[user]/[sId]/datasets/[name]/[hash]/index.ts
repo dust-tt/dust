@@ -7,8 +7,6 @@ import { DatasetType } from "@app/types/dataset";
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-const { DUST_API } = process.env;
-
 type GetDatasetByHashResponseBody = { dataset: DatasetType };
 
 type GetDatasetQuery = {
@@ -33,20 +31,20 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetByHashResponseBody>
 ): Promise<void> {
-  const getDatasetQueryRes = parse_payload(getDatasetQuerySchema, req.query);
+  const queryRes = parse_payload(getDatasetQuerySchema, req.query);
 
-  if (getDatasetQueryRes.isErr()) {
+  if (queryRes.isErr()) {
     res.status(400).end();
     return;
   }
 
-  const getDatasetQuery = getDatasetQueryRes.value();
+  const query = queryRes.value();
 
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({
       where: {
-        username: getDatasetQuery.user,
+        username: query.user,
       },
     }),
   ]);
@@ -66,7 +64,7 @@ async function handler(
     App.findOne({
       where: {
         userId: appUser.id,
-        sId: getDatasetQuery.sId,
+        sId: query.sId,
       },
     }),
   ]);
@@ -81,7 +79,7 @@ async function handler(
       where: {
         userId: appUser.id,
         appId: app.id,
-        name: getDatasetQuery.name,
+        name: query.name,
       },
     }),
   ]);
@@ -98,7 +96,7 @@ async function handler(
         return;
       }
 
-      let hash = getDatasetQuery.hash;
+      let hash = query.hash;
 
       // Translate latest if needed.
       if (req.query.hash == "latest") {

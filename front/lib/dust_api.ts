@@ -2,14 +2,19 @@ import { Project } from "@app/types/project";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
-type ErrorRsponse = { error: string };
+type ErrorResponse = {
+  error: {
+    message: string;
+    code: number;
+  };
+};
 type SuccessResponse<T> = { response: T };
 
-type DustAPIResponse<T> = ErrorRsponse | SuccessResponse<T>;
+type DustAPIResponse<T> = ErrorResponse | SuccessResponse<T>;
 
 export function isErrorResponse<T>(
   response: DustAPIResponse<T>
-): response is { error: string } {
+): response is ErrorResponse {
   return "error" in response;
 }
 

@@ -1,11 +1,11 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { JSONSchemaType } from "ajv";
-import { User, DataSource, Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { parse_payload } from "@app/lib/http_utils";
+import { DataSource, Provider, User } from "@app/lib/models";
+import { credentialsFromProviders } from "@app/lib/providers";
 import { DocumentType } from "@app/types/document";
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
@@ -125,9 +125,9 @@ export default async function handler(
       ]);
       const credentials = credentialsFromProviders(providers);
 
-      const searchQueryRes = parse_payload(searchQuerySchema, req.query);
-      if (searchQueryRes.isErr()) {
-        const err = searchQueryRes.error();
+      const queryRes = parse_payload(searchQuerySchema, req.query);
+      if (queryRes.isErr()) {
+        const err = queryRes.error();
         return res.status(400).json({
           error: {
             type: "invalid_request_error",
@@ -135,23 +135,23 @@ export default async function handler(
           },
         });
       }
-      const searchQuery = searchQueryRes.value();
+      const query = queryRes.value();
 
       const filter: SearchFilter = {
         tags: {
-          in: searchQuery.tags_in,
-          not: searchQuery.tags_not,
+          in: query.tags_in,
+          not: query.tags_not,
         },
         timestamp: {
-          gt: searchQuery.timestamp_gt,
-          lt: searchQuery.timestamp_lt,
+          gt: query.timestamp_gt,
+          lt: query.timestamp_lt,
         },
       };
 
       const serachPayload = {
-        query: searchQuery.query,
-        top_k: searchQuery.top_k,
-        full_text: searchQuery.full_text,
+        query: query.query,
+        top_k: query.top_k,
+        full_text: query.full_text,
         filter: filter,
         credentials: credentials,
       };
