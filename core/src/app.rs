@@ -605,7 +605,9 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             );
-            // Send an event for the block execution trace.
+
+            // Send an event for the block execution trace. Not that when inside a `while` loop that
+            // means we'll send a trace event with map_idx = 0 for each iteration.
             match event_sender.as_ref() {
                 Some(sender) => {
                     let _ = sender.send(json!({
@@ -619,9 +621,48 @@ impl App {
                 }
                 None => (),
             };
-            self.run.as_mut().unwrap().traces.push(t);
 
-            // Update block run executions incrementally
+            // Update the run traces (before updating DB with `apend_run_block`). If we are inside a
+            // `while` loop we unpack the past iterations results along the `map_idx` and go update
+            // the traces manually. Otherwise, we just append the trace to the run object as
+            // execution is linear.
+            match current_while {
+                Some(_) => {
+                    let t = (
+                        (block.block_type(), name.clone()),
+                        flat.iter()
+                            .map(|m| {
+                                assert!(m.len() == 1);
+                                let mt = m
+                                    .iter()
+                                    .map(|o| match o {
+                                        Some(r) => match r {
+                                            (_, Some(v), None) => BlockExecution {
+                                                value: Some(v.clone()),
+                                                error: None,
+                                            },
+                                            (_, None, Some(err)) => BlockExecution {
+                                                value: None,
+                                                error: Some(err.clone()),
+                                            },
+                                            _ => unreachable!(),
+                                        },
+                                        None => unreachable!(),
+                                    })
+                                    .collect::<Vec<_>>();
+                                // TODO(spolu): add mt to the run traces direclty assuming input_idx
+                                // is not in the current skip
+                            })
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                None => {
+                    self.run.as_mut().unwrap().traces.push(t);
+                }
+            }
+
+            // Update block run executions incrementally. Note that when we're in a `while` loop,
+            // the entire trace for the block will be rewritten which is the most efficient.
             store
                 .as_ref()
                 .append_run_block(
