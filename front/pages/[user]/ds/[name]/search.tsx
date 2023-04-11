@@ -81,6 +81,7 @@ export default function DataSourceView({
         setDocuments(documents.documents);
       } else {
         setError(true);
+        setDocuments([]);
       }
     })();
 
@@ -224,7 +225,11 @@ export default function DataSourceView({
                 <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                   {(() => {
                     if (error) {
-                      return <div>Something went wrong...</div>;
+                      return (
+                        <p className="text-sm font-bold text-red-400">
+                          Something went wrong...
+                        </p>
+                      );
                     }
                     if (isLoading) {
                       return <p>Searching...</p>;
