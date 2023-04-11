@@ -8,20 +8,17 @@ import {
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType } from "@app/types/user";
 
 export default function MainTab({
   dataSource,
   currentTab,
   owner,
   readOnly,
-  authUser,
 }: {
   dataSource: DataSourceType;
   currentTab: string;
   owner: { username: string };
   readOnly: boolean;
-  authUser?: UserType;
 }) {
   const tabs = [
     {
@@ -36,7 +33,7 @@ export default function MainTab({
     },
   ];
 
-  if (authUser) {
+  if (!readOnly) {
     tabs.push({
       name: "Search",
       href: `/${owner.username}/ds/${dataSource.name}/search`,

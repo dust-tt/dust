@@ -88,6 +88,10 @@ export default async function handler(
 
   switch (req.method) {
     case "GET": {
+      // Only the owner of a data source can search in it because:
+      // - it is costly. Searching in a data source requires embedding through one of the providers.
+      // - It might not be obvious to the users that a search performed
+      // on someone else's data source is going to cost money to the user performing the search.
       if (!auth.canEditDataSource(dataSource)) {
         res.status(404).end();
         return;
