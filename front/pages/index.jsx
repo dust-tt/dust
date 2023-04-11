@@ -254,7 +254,7 @@ export async function getServerSideProps(context) {
       props: { ga_tracking_id: GA_TRACKING_ID },
     };
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!auth.isAnonymous()) {
     return {

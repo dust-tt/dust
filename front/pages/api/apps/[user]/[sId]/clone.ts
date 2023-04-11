@@ -1,7 +1,7 @@
-import { User, App, Clone, Dataset } from "@app/lib/models";
+import { auth_user } from "@app/lib/auth";
+import { App, Clone, Dataset, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
-import { auth_user } from "@app/lib/auth";
 import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
@@ -20,10 +20,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

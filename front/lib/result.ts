@@ -5,62 +5,37 @@
  * or a success type.
  *
  * Usage:
- * import {Result, Ok, Err} from "@app/lib/result"
+ * import {Result, Ok, Err, isOk, isErr} from "@app/lib/result"
  * function divide(numerator: number, denominator: number) : Result<number, Error> {
  *     if (denominator === 0) {
- *        return Err(new Error("Cannot divide by zero"));
+ *        return new Err(new Error("Cannot divide by zero"));
  *      }
- *     return Ok(numerator / denominator);
+ *     return new Ok(numerator / denominator);
  * }
  */
 
-export class Result<T, E> {
-  private _value?: T;
-  private _error?: E;
+export class Ok<T> {
+  constructor(public value: T) {}
 
-  constructor(value?: T, error?: E) {
-    if (value && error) {
-      throw new Error("Cannot create a Result with both a value and an error");
-    }
-    if (!value && !error) {
-      throw new Error(
-        "Cannot create a Result with neither a value nor an error"
-      );
-    }
-    if (value) {
-      this._value = value;
-    } else {
-      this._error = error;
-    }
+  isOk(): this is Ok<T> {
+    return true;
   }
 
-  isOk(): boolean {
-    return !!this._value;
-  }
-
-  isErr(): boolean {
-    return !!this._error;
-  }
-
-  value(): T {
-    if (!this._value) {
-      throw new Error("Cannot get value of an Err Result");
-    }
-    return this._value;
-  }
-
-  error(): E {
-    if (!this._error) {
-      throw new Error("Cannot get error of an Ok Result");
-    }
-    return this._error;
+  isErr(): this is Err<never> {
+    return false;
   }
 }
 
-export function Ok<T, E>(value: T) {
-  return new Result<T, E>(value);
+export class Err<E> {
+  constructor(public error: E) {}
+
+  isOk(): this is Ok<never> {
+    return false;
+  }
+
+  isErr(): this is Err<E> {
+    return true;
+  }
 }
 
-export function Err<T, E>(error: E): Result<T, E> {
-  return new Result<T, E>(undefined, error);
-}
+export type Result<T, E> = Ok<T> | Err<E>;

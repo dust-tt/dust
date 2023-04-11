@@ -125,7 +125,7 @@ export async function getServerSideProps(context) {
   if (authRes.isErr()) {
     return { noFound: true };
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   let readOnly =
     auth.isAnonymous() || context.query.user !== auth.user().username;

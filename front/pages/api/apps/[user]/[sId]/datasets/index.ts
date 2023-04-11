@@ -1,9 +1,9 @@
+import { auth_user } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { App, Dataset, User } from "@app/lib/models";
-import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
-import { auth_user } from "@app/lib/auth";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
@@ -29,10 +29,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

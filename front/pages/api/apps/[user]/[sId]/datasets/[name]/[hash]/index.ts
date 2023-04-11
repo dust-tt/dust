@@ -1,31 +1,59 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { auth_user } from "@app/lib/auth";
-import { User, App, Dataset } from "@app/lib/models";
+import { DustAPI } from "@app/lib/dust_api";
+import { parse_payload } from "@app/lib/http_utils";
+import { App, Dataset, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
-
-const { DUST_API } = process.env;
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
 
 type GetDatasetByHashResponseBody = { dataset: DatasetType };
+
+type GetDatasetQuery = {
+  hash: string;
+  user: string;
+  sId: string;
+  name: string;
+};
+
+const getDatasetQuerySchema: JSONSchemaType<GetDatasetQuery> = {
+  type: "object",
+  properties: {
+    hash: { type: "string" },
+    user: { type: "string" },
+    sId: { type: "string" },
+    name: { type: "string" },
+  },
+  required: ["hash", "user", "sId", "name"],
+};
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatasetByHashResponseBody>
 ): Promise<void> {
+  const queryRes = parse_payload(getDatasetQuerySchema, req.query);
+
+  if (queryRes.isErr()) {
+    res.status(400).end();
+    return;
+  }
+
+  const query = queryRes.value;
+
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
     User.findOne({
       where: {
-        username: req.query.user,
+        username: query.user,
       },
     }),
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();
@@ -36,7 +64,7 @@ async function handler(
     App.findOne({
       where: {
         userId: appUser.id,
-        sId: req.query.sId,
+        sId: query.sId,
       },
     }),
   ]);
@@ -51,7 +79,7 @@ async function handler(
       where: {
         userId: appUser.id,
         appId: app.id,
-        name: req.query.name,
+        name: query.name,
       },
     }),
   ]);
@@ -68,49 +96,45 @@ async function handler(
         return;
       }
 
-      let hash = req.query.hash;
+      let hash = query.hash;
 
       // Translate latest if needed.
       if (req.query.hash == "latest") {
-        const apiDatasetsRes = await fetch(
-          `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const apiDatasets = await apiDatasetsRes.json();
+        const apiDatasets = await DustAPI.getDatasets(app.dustAPIProjectId);
 
-        if (!(dataset.name in apiDatasets.response.datasets)) {
+        if (apiDatasets.isErr()) {
+          res.status(500).end();
+          return;
+        }
+
+        if (!(dataset.name in apiDatasets.value.datasets)) {
           res.status(404).end();
           return;
         }
-        if (apiDatasets.response.datasets[dataset.name].lenght == 0) {
+        if (apiDatasets.value.datasets[dataset.name].length == 0) {
           res.status(400).end();
           return;
         }
 
-        hash = apiDatasets.response.datasets[dataset.name][0].hash;
+        hash = apiDatasets.value.datasets[dataset.name][0].hash;
       }
 
-      const apiDatasetRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/datasets/${dataset.name}/${hash}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const apiDataset = await DustAPI.getDataset(
+        app.dustAPIProjectId,
+        dataset.name,
+        hash
       );
-      const apiDataset = await apiDatasetRes.json();
+
+      if (apiDataset.isErr()) {
+        res.status(500).end();
+        return;
+      }
 
       res.status(200).json({
         dataset: {
           name: dataset.name,
           description: dataset.description,
-          data: apiDataset.response.dataset.data,
+          data: apiDataset.value.dataset.data,
         },
       });
       return;

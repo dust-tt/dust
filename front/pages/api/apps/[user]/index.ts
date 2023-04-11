@@ -1,12 +1,11 @@
 import { auth_user, Role } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
-import { User, App } from "@app/lib/models";
+import { DustAPI } from "@app/lib/dust_api";
+import { App, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import { Op } from "sequelize";
 import withLogging from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
-
-const { DUST_API } = process.env;
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 export type GetAppsResponseBody = {
   apps: Array<AppType>;
@@ -26,10 +25,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();
@@ -76,11 +75,9 @@ async function handler(
         return;
       }
 
-      const r = await fetch(`${DUST_API}/projects`, {
-        method: "POST",
-      });
-      const p = await r.json();
-      if (p.error) {
+      const p = await DustAPI.createProject();
+
+      if (p.isErr()) {
         res.status(500).end();
         return;
       }
@@ -95,7 +92,7 @@ async function handler(
         description,
         visibility: req.body.visibility,
         userId: appUser.id,
-        dustAPIProjectId: p.response.project.project_id,
+        dustAPIProjectId: p.value.project.project_id.toString(),
       });
 
       res.redirect(`/${appUser.username}/a/${app.sId}`);

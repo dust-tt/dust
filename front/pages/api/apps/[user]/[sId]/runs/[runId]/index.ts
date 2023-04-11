@@ -1,16 +1,16 @@
-import { User, App } from "@app/lib/models";
 import { auth_user } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
+import { App, User } from "@app/lib/models";
 import {
   recomputeIndents,
   restoreTripleBackticks,
 } from "@app/lib/specification";
-import peg from "pegjs";
-import fs from "fs";
-import path from "path";
 import withLogging from "@app/logger/withlogging";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunConfig, RunType } from "@app/types/run";
+import fs from "fs";
+import { NextApiRequest, NextApiResponse } from "next";
+import path from "path";
+import peg from "pegjs";
 
 const { DUST_API } = process.env;
 
@@ -39,10 +39,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

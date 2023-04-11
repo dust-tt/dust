@@ -256,7 +256,7 @@ export async function getServerSideProps(context) {
   if (authRes.isErr()) {
     return { noFound: true };
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (auth.isAnonymous()) {
     return {
