@@ -66,10 +66,10 @@ export default async function handler(
   ]);
 
   if (authRes.isErr()) {
-    const err = authRes.error();
+    const err = authRes.error;
     return res.status(err.status_code).json(err.api_error);
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).json({
@@ -127,7 +127,7 @@ export default async function handler(
 
       const queryRes = parse_payload(searchQuerySchema, req.query);
       if (queryRes.isErr()) {
-        const err = queryRes.error();
+        const err = queryRes.error;
         return res.status(400).json({
           error: {
             type: "invalid_request_error",
@@ -135,7 +135,7 @@ export default async function handler(
           },
         });
       }
-      const query = queryRes.value();
+      const query = queryRes.value;
 
       const filter: SearchFilter = {
         tags: {

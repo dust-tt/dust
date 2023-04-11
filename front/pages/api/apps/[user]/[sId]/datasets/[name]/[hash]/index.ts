@@ -38,7 +38,7 @@ async function handler(
     return;
   }
 
-  const query = queryRes.value();
+  const query = queryRes.value;
 
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
@@ -50,10 +50,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

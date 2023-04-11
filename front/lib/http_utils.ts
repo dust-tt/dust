@@ -1,6 +1,6 @@
+import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import Ajv, { JSONSchemaType } from "ajv";
-import { Result, Ok, Err } from "@app/lib/result";
 const ajv = new Ajv({
   coerceTypes: true,
 });
@@ -42,10 +42,10 @@ export function parse_payload<SchemaType>(
 ): Result<SchemaType, Error> {
   const validate = ajv.compile(schema);
   if (validate(data)) {
-    return Ok(data);
+    return new Ok(data);
   }
 
-  return Err(
+  return new Err(
     new RequestParseError(validate.errors?.map((e) => e.message).join(", "))
   );
 }

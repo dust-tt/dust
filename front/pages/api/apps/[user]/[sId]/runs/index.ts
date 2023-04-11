@@ -1,12 +1,12 @@
+import { auth_user } from "@app/lib/auth";
+import { streamChunks } from "@app/lib/http_utils";
 import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
+import logger from "@app/logger/logger";
+import withLogging from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-import logger from "@app/logger/logger";
-import { streamChunks } from "@app/lib/http_utils";
-import { auth_user } from "@app/lib/auth";
-import withLogging from "@app/logger/withlogging";
 
 const { DUST_API } = process.env;
 
@@ -33,10 +33,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

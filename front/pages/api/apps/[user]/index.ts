@@ -25,10 +25,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

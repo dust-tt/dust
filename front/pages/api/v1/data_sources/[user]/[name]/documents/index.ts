@@ -1,9 +1,9 @@
-import { User, DataSource } from "@app/lib/models";
-import { NextApiRequest, NextApiResponse } from "next";
 import { auth_api_user } from "@app/lib/auth";
-import withLogging from "@app/logger/withlogging";
 import { APIError } from "@app/lib/error";
+import { DataSource, User } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
@@ -26,10 +26,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    const err = authRes.error();
+    const err = authRes.error;
     return res.status(err.status_code).json(err.api_error);
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).json({

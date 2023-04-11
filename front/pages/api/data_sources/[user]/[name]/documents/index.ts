@@ -1,8 +1,8 @@
 import { auth_user } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
@@ -25,10 +25,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).end();

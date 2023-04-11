@@ -1,10 +1,10 @@
-import { DataSource, User, Provider } from "@app/lib/models";
-import { auth_user, Role } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
+import { Role, auth_user } from "@app/lib/auth";
+import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 const { DUST_API } = process.env;
 
@@ -26,10 +26,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).end();

@@ -1,11 +1,10 @@
-import { User, App } from "@app/lib/models";
-import { Op } from "sequelize";
-import { auth_api_user } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
-import withLogging from "@app/logger/withlogging";
-import { Role } from "@app/lib/auth";
+import { Role, auth_api_user } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
+import { App, User } from "@app/lib/models";
+import withLogging from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 export type GetAppsResponseBody = {
   apps: AppType[];
@@ -25,10 +24,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    const err = authRes.error();
+    const err = authRes.error;
     return res.status(err.status_code).json(err.api_error);
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (!appUser) {
     res.status(404).json({

@@ -1,9 +1,9 @@
-import { Key } from "@app/lib/models";
 import { auth_user } from "@app/lib/auth";
+import { Key } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import { NextApiRequest, NextApiResponse } from "next";
 import withLogging from "@app/logger/withlogging";
 import { KeyType } from "@app/types/key";
+import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetKeysResponseBody = {
   keys: KeyType[];
@@ -20,10 +20,10 @@ async function handler(
   let authRes = await auth_user(req, res);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (auth.isAnonymous()) {
     res.status(401).end();

@@ -1,8 +1,8 @@
 import { auth_user } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
-import { User, App } from "@app/lib/models";
+import { App, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
+import { NextApiRequest, NextApiResponse } from "next";
 
 export type PostStateResponseBody = {
   app: AppType;
@@ -22,10 +22,10 @@ async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (!appUser) {
     res.status(404).end();

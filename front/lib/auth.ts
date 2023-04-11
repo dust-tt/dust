@@ -1,10 +1,10 @@
-import { App, User, DataSource, Key } from "./models";
-import { Result, Ok, Err } from "@app/lib/result";
-import { NextApiRequest, NextApiResponse } from "next";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { getServerSession } from "next-auth/next";
 import { APIErrorWithStatusCode } from "@app/lib/error";
+import { Err, Ok, Result } from "@app/lib/result";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { UserType } from "@app/types/user";
+import { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+import { App, DataSource, Key, User } from "./models";
 
 export enum Role {
   Owner = "owner",
@@ -153,7 +153,7 @@ export async function auth_user(
   const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
-    return Ok(new Authenticator(null));
+    return new Ok(new Authenticator(null));
   }
 
   let authUser = await User.findOne({
@@ -163,7 +163,7 @@ export async function auth_user(
   });
 
   if (!authUser) {
-    return Err({
+    return new Err({
       status_code: 404,
       api_error: {
         error: {
@@ -174,7 +174,7 @@ export async function auth_user(
     });
   }
 
-  return Ok(new Authenticator(authUser, session));
+  return new Ok(new Authenticator(authUser, session));
 }
 
 /**
@@ -187,7 +187,7 @@ export async function auth_api_user(
   req: NextApiRequest
 ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
-    return Err({
+    return new Err({
       status_code: 401,
       api_error: {
         error: {
@@ -200,7 +200,7 @@ export async function auth_api_user(
 
   let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
   if (!parse || !parse[1]) {
-    return Err({
+    return new Err({
       status_code: 401,
       api_error: {
         error: {
@@ -221,7 +221,7 @@ export async function auth_api_user(
   ]);
 
   if (!key || key.status !== "active") {
-    return Err({
+    return new Err({
       status_code: 401,
       api_error: {
         error: {
@@ -239,7 +239,7 @@ export async function auth_api_user(
   });
 
   if (!authUser) {
-    return Err({
+    return new Err({
       status_code: 500,
       api_error: {
         error: {
@@ -250,5 +250,5 @@ export async function auth_api_user(
     });
   }
 
-  return Ok(new Authenticator(authUser, null));
+  return new Ok(new Authenticator(authUser, null));
 }

@@ -1,8 +1,8 @@
 import { auth_user } from "@app/lib/auth";
-import { NextApiRequest, NextApiResponse } from "next";
 import { Provider } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { ProviderType } from "@app/types/provider";
+import { NextApiRequest, NextApiResponse } from "next";
 
 export type PostProviderResponseBody = {
   provider: ProviderType;
@@ -21,10 +21,10 @@ async function handler(
   let authRes = await auth_user(req, res);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  let auth = authRes.value();
+  let auth = authRes.value;
 
   if (auth.isAnonymous()) {
     res.status(401).end();
