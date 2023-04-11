@@ -1,11 +1,10 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, User } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";
 import withLogging from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetSpecificationResponseBody = {
   app: AppType;
@@ -57,21 +56,15 @@ async function handler(
         return;
       }
 
-      const datasetsRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
-        {
-          method: "GET",
-        }
-      );
-      const datasets = await datasetsRes.json();
-      if (datasets.error) {
+      const datasets = await DustAPI.getDatasets(app.dustAPIProjectId);
+      if (datasets.isErr()) {
         res.status(500).end();
         return;
       }
 
       let latestDatasets = {} as { [key: string]: string };
-      for (const d in datasets.response.datasets) {
-        latestDatasets[d] = datasets.response.datasets[d][0].hash;
+      for (const d in datasets.value.datasets) {
+        latestDatasets[d] = datasets.value.datasets[d][0].hash;
       }
 
       let spec = dumpSpecification(

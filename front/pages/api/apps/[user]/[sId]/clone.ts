@@ -1,10 +1,9 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, Clone, Dataset, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 async function handler(
   req: NextApiRequest,
@@ -77,14 +76,8 @@ async function handler(
         return;
       }
 
-      const r = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/clone`,
-        {
-          method: "POST",
-        }
-      );
-      const p = await r.json();
-      if (p.error) {
+      const project = await DustAPI.cloneProject(app.dustAPIProjectId);
+      if (project.isErr()) {
         res.status(500).end();
         break;
       }
@@ -100,7 +93,7 @@ async function handler(
           description,
           visibility: req.body.visibility,
           userId: auth.user().id,
-          dustAPIProjectId: p.response.project.project_id,
+          dustAPIProjectId: project.value.project.project_id.toString(),
           savedSpecification: app.savedSpecification,
         }),
       ]);
