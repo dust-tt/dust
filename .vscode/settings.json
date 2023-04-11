@@ -3,5 +3,8 @@
       "./front",
       "./docs",
       "./xp1",
+    ],
+    "rust-analyzer.linkedProjects": [
+      "./core/Cargo.toml"
     ]
   }

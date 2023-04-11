@@ -43,9 +43,11 @@ pub mod blocks {
     pub mod curl;
     pub mod data;
     pub mod data_source;
+    pub mod end;
     pub mod input;
     pub mod llm;
     pub mod map;
     pub mod reduce;
     pub mod search;
+    pub mod r#while;
 }
