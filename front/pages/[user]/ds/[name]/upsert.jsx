@@ -17,7 +17,6 @@ import { auth_user } from "@app/lib/auth";
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceUpsert({
-  authUser,
   owner,
   readOnly,
   dataSource,
@@ -127,7 +126,6 @@ export default function DataSourceUpsert({
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
-            authUser={authUser}
           />
         </div>
 
@@ -340,7 +338,6 @@ export async function getServerSideProps(context) {
   return {
     props: {
       session: auth.session(),
-      authUser: auth.isAnonymous() ? null : auth.user(),
       owner: { username: context.query.user },
       readOnly,
       dataSource: dataSource.dataSource,

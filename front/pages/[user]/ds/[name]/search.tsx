@@ -14,12 +14,10 @@ const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceView({
   dataSource,
-  authUser,
   owner,
   gaTrackingId: gaTrackingId,
 }: {
   dataSource: DataSourceType;
-  authUser?: UserType;
   owner: {
     username: string;
   };
@@ -85,7 +83,6 @@ export default function DataSourceView({
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
-            authUser={authUser}
           />
         </div>
 
@@ -293,7 +290,6 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       session: auth.session(),
-      authUser: auth.isAnonymous() ? null : auth.user(),
       owner: { username: context.query.user },
       dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
