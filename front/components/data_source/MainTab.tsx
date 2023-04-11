@@ -1,11 +1,26 @@
 import { classNames } from "@app/lib/utils";
 import Link from "next/link";
 import { Menu } from "@headlessui/react";
-import { DocumentIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentIcon,
+  Cog6ToothIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { DataSourceType } from "@app/types/data_source";
 
-export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
-  let tabs = [
+export default function MainTab({
+  dataSource,
+  currentTab,
+  owner,
+  readOnly,
+}: {
+  dataSource: DataSourceType;
+  currentTab: string;
+  owner: { username: string };
+  readOnly: boolean;
+}) {
+  const tabs = [
     {
       name: "Documents",
       href: `/${owner.username}/ds/${dataSource.name}`,
@@ -20,6 +35,17 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
 
   if (!readOnly) {
     tabs.push({
+      name: "Search",
+      href: `/${owner.username}/ds/${dataSource.name}/search`,
+      icon: (
+        <MagnifyingGlassIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    });
+
+    tabs.push({
       name: "Settings",
       href: `/${owner.username}/ds/${dataSource.name}/settings`,
       icon: (
@@ -30,8 +56,10 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
       ),
     });
   }
-
-  let currTab = tabs.find((tab) => tab.name == currentTab);
+  const currTab = tabs.find((tab) => tab.name == currentTab);
+  if (!currTab) {
+    throw new Error("Could not find the current tab: " + currentTab);
+  }
 
   return (
     <div className="w-full">

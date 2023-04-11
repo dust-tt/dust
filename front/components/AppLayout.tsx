@@ -12,27 +12,37 @@ import {
 import { ActionButton, Button } from "./Button";
 import { signIn } from "next-auth/react";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { DataSourceType } from "@app/types/data_source";
 
 export default function AppLayout({
   app,
   dataSource,
-  ga_tracking_id,
+  gaTrackingId,
   children,
+}: {
+  app?: {
+    sId: string;
+    name: string;
+    description: string;
+  };
+  dataSource: DataSourceType;
+  gaTrackingId: string;
+  children: React.ReactNode;
 }) {
   const { data: session, status } = useSession();
 
   const router = useRouter();
-  let route_user = router.query.user;
+  const routeUser = router.query.user;
 
   return (
     <main data-color-mode="light">
       <Head>
         {app ? (
-          <title>{`Dust - ${route_user} > ${app.name}`}</title>
+          <title>{`Dust - ${routeUser} > ${app.name}`}</title>
         ) : dataSource ? (
-          <title>{`Dust - ${route_user} > ${dataSource.name}`}</title>
+          <title>{`Dust - ${routeUser} > ${dataSource.name}`}</title>
         ) : (
-          <title>{`Dust - ${route_user}`}</title>
+          <title>{`Dust - ${routeUser}`}</title>
         )}
         <link rel="shortcut icon" href="/static/favicon.png" />
         {app ? (
@@ -41,7 +51,7 @@ export default function AppLayout({
             <meta name="twitter:site" content="@dust4ai" />
             <meta
               name="twitter:title"
-              content={"[Dust] " + route_user + " > " + app.name}
+              content={"[Dust] " + routeUser + " > " + app.name}
             />
             <meta
               name="twitter:description"
@@ -49,7 +59,7 @@ export default function AppLayout({
             />
             <meta
               name="twitter:image"
-              content={`https://dust.tt/api/apps/${route_user}/${app.sId}/card`}
+              content={`https://dust.tt/api/apps/${routeUser}/${app.sId}/card`}
             />
           </>
         ) : null}
@@ -69,6 +79,8 @@ export default function AppLayout({
                     <div className="h-2 w-[4px] bg-white"></div>
                     <div className="select-none text-base font-bold tracking-tight text-gray-800">
                       <Link
+                        //@ts-expect-error typescript does not know about the fact that we
+                        // enriched the session with session.user.username.
                         href={session ? `/${session.user.username}/apps` : `/`}
                       >
                         DUST
@@ -87,12 +99,12 @@ export default function AppLayout({
                         <Link
                           href={
                             dataSource
-                              ? `/${route_user}/data_sources`
-                              : `/${route_user}/apps`
+                              ? `/${routeUser}/data_sources`
+                              : `/${routeUser}/apps`
                           }
                           className="text-base font-bold text-gray-800"
                         >
-                          {route_user}
+                          {routeUser}
                         </Link>
                       </div>
                     </li>
@@ -105,7 +117,7 @@ export default function AppLayout({
                             aria-hidden="true"
                           />
                           <Link
-                            href={`/${route_user}/a/${app.sId}`}
+                            href={`/${routeUser}/a/${app.sId}`}
                             className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {app.name}
@@ -121,7 +133,7 @@ export default function AppLayout({
                             aria-hidden="true"
                           />
                           <Link
-                            href={`/${route_user}/ds/${dataSource.name}`}
+                            href={`/${routeUser}/ds/${dataSource.name}`}
                             className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {dataSource.name}
@@ -133,13 +145,15 @@ export default function AppLayout({
                 </nav>
                 <div className="static inset-auto hidden flex-initial items-center pr-4 md:flex">
                   <Link href="https://docs.dust.tt">
-                    <Button className="mr-2">
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      View Documentation
+                    <Button>
+                      <>
+                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                        View Documentation
+                      </>
                     </Button>
                   </Link>
                 </div>
-                {session ? (
+                {session && session.user ? (
                   <div className="static inset-auto right-0 flex flex-initial items-center pr-2">
                     <Menu as="div" className="relative">
                       <div>
@@ -147,7 +161,11 @@ export default function AppLayout({
                           <span className="sr-only">Open user menu</span>
                           <img
                             className="h-8 w-8 rounded-full"
-                            src={session.user.image}
+                            src={
+                              session.user.image
+                                ? session.user.image
+                                : "https://gravatar.com/avatar/anonymous"
+                            }
                             alt=""
                           />
                         </Menu.Button>
@@ -247,7 +265,7 @@ export default function AppLayout({
       <div className="mt-0">{children}</div>
       <>
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${ga_tracking_id}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -256,7 +274,7 @@ export default function AppLayout({
           function gtag(){window.dataLayer.push(arguments);}
           gtag('js', new Date());
 
-          gtag('config', '${ga_tracking_id}');
+          gtag('config', '${gaTrackingId}');
           `}
         </Script>
       </>
