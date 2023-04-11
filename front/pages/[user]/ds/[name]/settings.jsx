@@ -10,7 +10,7 @@ import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-export default function New({ owner, dataSource, ga_tracking_id }) {
+export default function New({ authUser, owner, dataSource, ga_tracking_id }) {
   let dataSourceConfig = JSON.parse(dataSource.config);
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
@@ -51,6 +51,7 @@ export default function New({ owner, dataSource, ga_tracking_id }) {
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
+            authUser={authUser}
           />
         </div>
         <div className="">
@@ -298,6 +299,7 @@ export async function getServerSideProps(context) {
   return {
     props: {
       session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
       owner: { username: context.query.user },
       dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
