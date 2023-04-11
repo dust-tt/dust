@@ -1,5 +1,6 @@
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
+import { auth_user } from "@app/lib/auth";
 import { timeAgoFrom, utcDateFrom } from "@app/lib/utils";
 import { unstable_getServerSession } from "next-auth/next";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
@@ -11,19 +12,24 @@ import { useState, useEffect } from "react";
 import { DocumentType } from "@app/types/document";
 import { DataSourceType } from "@app/types/data_source";
 import { classNames } from "@app/lib/utils";
+import {UserType} from "@app/types//user";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
 export default function DataSourceView({
   dataSource,
   readOnly,
-  user,
-  ga_tracking_id: gaTrackingId,
+  authUser,
+  owner,
+  gaTrackingId: gaTrackingId,
 }: {
   dataSource: DataSourceType;
   readOnly: boolean;
-  user: any;
-  ga_tracking_id: string;
+  authUser?: UserType;
+  owner: {
+    username: string;
+  };
+  gaTrackingId: string;
 }) {
   const { mutate } = useSWRConfig();
   const { data: session } = useSession();
@@ -84,7 +90,7 @@ export default function DataSourceView({
         <div className="mt-2 flex flex-initial">
           <MainTab
             currentTab="Search"
-            user={user}
+            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
           />
@@ -131,7 +137,7 @@ export default function DataSourceView({
                           <div className="col-span-4">
                             <p className="truncate text-base font-bold text-violet-600">
                               <Link
-                                href={`/${user}/ds/${
+                                href={`/${owner.username}/ds/${
                                   dataSource.name
                                 }/upsert?documentId=${encodeURIComponent(
                                   d.document_id
@@ -232,15 +238,16 @@ export default function DataSourceView({
 }
 
 export async function getServerSideProps(context: any) {
-  const session = await unstable_getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
+  const authRes = await auth_user(context.req, context.res);
+  if (authRes.isErr()) {
+    return { noFound: true };
+  }
+  const auth = authRes.value();
 
-  const readOnly = !session || context.query.user !== session.user.username;
+  const readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
-  const [res] = await Promise.all([
+  const [dataSourceRes] = await Promise.all([
     fetch(
       `${URL}/api/data_sources/${context.query.user}/${context.query.name}`,
       {
@@ -253,20 +260,20 @@ export async function getServerSideProps(context: any) {
     ),
   ]);
 
-  if (res.status === 404) {
-    return {
-      notFound: true,
-    };
+  if (dataSourceRes.status === 404) {
+    return { notFound: true };
   }
 
-  const [dataSource] = await Promise.all([res.json()]);
+  const [dataSource] = await Promise.all([dataSourceRes.json()]);  
+
 
   return {
     props: {
-      session,
-      dataSource: dataSource.dataSource,
+      session: auth.session(),
+      authUser: auth.isAnonymous() ? null : auth.user(),
+      owner: { username: context.query.user },
       readOnly,
-      user: context.query.user,
+      dataSource: dataSource.dataSource,
       ga_tracking_id: GA_TRACKING_ID,
     },
   };

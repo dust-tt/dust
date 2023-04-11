@@ -1,6 +1,6 @@
 import { classNames } from "@app/lib/utils";
 
-export function Button({ type, onClick, disabled, children }) {
+export function Button({ type=null, onClick=null, disabled=false, children }) {
   return (
     <button
       type={type ? type : "button"}

@@ -22,7 +22,7 @@ export default function MainTab({ dataSource, currentTab, owner, readOnly }) {
     },
     {
       name: "Search",
-      href: `/${user}/ds/${dataSource.name}/search`,
+      href: `/${owner.username}/ds/${dataSource.name}/search`,
       icon: (
         <DocumentMagnifyingGlassIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
