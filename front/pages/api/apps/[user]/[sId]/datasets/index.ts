@@ -1,11 +1,10 @@
 import { auth_user } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, Dataset, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetDatasetsResponseBody = {
   datasets: DatasetType[];
@@ -133,22 +132,12 @@ async function handler(
           }, {});
       });
 
-      // Register dataset with the Dust internal API.
-      const r = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/datasets`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            dataset_id: req.body.name,
-            data,
-          }),
-        }
+      const dataset = await DustAPI.createDataset(
+        app.dustAPIProjectId,
+        req.body.name,
+        data
       );
-      const d = await r.json();
-      if (d.error) {
+      if (dataset.isErr()) {
         res.status(500).end();
         return;
       }

@@ -11,7 +11,7 @@ export type BlockType =
   | "curl"
   | "browser";
 
-type RunRunType = "deploy" | "local" | "execute";
+export type RunRunType = "deploy" | "local" | "execute";
 type Status = "running" | "succeeded" | "errored";
 
 export type RunConfig = {

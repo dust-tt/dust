@@ -1,23 +1,38 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
+import { RunConfig, RunRunType, RunType } from "@app/types/run";
+import { streamChunks } from "./http_utils";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
-type ErrorResponse = {
+export type ErrorResponse = {
   message: string;
   code: number;
 };
-type DustAPIResponse<T> = Result<T, ErrorResponse>;
+export type DustAPIResponse<T> = Result<T, ErrorResponse>;
 
 export type DustAPIDatasetVersion = {
   hash: string;
   created: number;
 };
 
-export type DustAPIDataset = DustAPIDatasetVersion & {
+export type DustAPIDatasetWithoutData = DustAPIDatasetVersion & {
   dataset_id: string;
   keys: string[];
+};
+
+export type DustAPIDataset = DustAPIDatasetWithoutData & {
   data: { [key: string]: any }[];
+};
+
+type DustAPICreateRunPayload = {
+  runType: RunRunType;
+  specification?: string | null;
+  specificationHash?: string | null;
+  datasetId?: string | null;
+  inputs?: any[] | null;
+  config: RunConfig;
+  credentials: { [key: string]: string };
 };
 
 type GetDatasetResponse = {
@@ -26,6 +41,13 @@ type GetDatasetResponse = {
 
 type GetDatasetsResponse = {
   datasets: { [key: string]: DustAPIDatasetVersion[] };
+};
+
+type GetRunsResponse = {
+  offset: number;
+  limit: number;
+  total: number;
+  runs: RunType[];
 };
 
 export const DustAPI = {
@@ -64,6 +86,114 @@ export const DustAPI = {
         headers: {
           "Content-Type": "application/json",
         },
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async createDataset(
+    projectId: string,
+    datasetId: string,
+    data: any[]
+  ): Promise<DustAPIResponse<{ dataset: DustAPIDatasetWithoutData }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/datasets`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset_id: datasetId,
+          data,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async cloneProject(
+    projectId: string
+  ): Promise<DustAPIResponse<{ project: Project }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/clone`,
+      {
+        method: "POST",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async createRun(
+    projectId: string,
+    dustUserId: string,
+    payload: DustAPICreateRunPayload
+  ): Promise<DustAPIResponse<{ run: RunType }>> {
+    const response = await fetch(`${DUST_API_URL}/projects/${projectId}/runs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Dust-User-Id": dustUserId,
+      },
+      body: JSON.stringify({
+        run_type: payload.runType,
+        specification: payload.specification,
+        specification_hash: payload.specificationHash,
+        dataset_id: payload.datasetId,
+        inputs: payload.inputs,
+        config: payload.config,
+        credentials: payload.credentials,
+      }),
+    });
+
+    return _resultFromResponse(response);
+  },
+
+  async createRunStream(
+    projectId: string,
+    dustUserId: string,
+    payload: DustAPICreateRunPayload
+  ): Promise<DustAPIResponse<AsyncGenerator<Uint8Array, void, unknown>>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs/stream`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Dust-User-Id": dustUserId,
+        },
+        body: JSON.stringify({
+          run_type: payload.runType,
+          specification: payload.specification,
+          specification_hash: payload.specificationHash,
+          dataset_id: payload.datasetId,
+          inputs: payload.inputs,
+          config: payload.config,
+          credentials: payload.credentials,
+        }),
+      }
+    );
+
+    if (!response.ok || !response.body) {
+      return _resultFromResponse(response);
+    }
+
+    return new Ok(streamChunks(response.body));
+  },
+
+  async getRuns(
+    projectId: string,
+    limit: number,
+    offset: number,
+    runType: RunRunType
+  ): Promise<DustAPIResponse<GetRunsResponse>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
+      {
+        method: "GET",
       }
     );
 
