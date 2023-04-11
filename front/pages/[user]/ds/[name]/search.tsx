@@ -85,7 +85,6 @@ export default function DataSourceView({
             owner={owner}
             readOnly={false}
             dataSource={dataSource}
-            authUser={authUser}
           />
         </div>
 

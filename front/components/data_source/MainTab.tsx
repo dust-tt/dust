@@ -44,9 +44,7 @@ export default function MainTab({
         />
       ),
     });
-  }
 
-  if (!readOnly) {
     tabs.push({
       name: "Settings",
       href: `/${owner.username}/ds/${dataSource.name}/settings`,
