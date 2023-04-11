@@ -250,8 +250,6 @@ export default function AppLayout({
                         onClick={() =>
                           signIn("github", { callbackUrl: "/api/login" })
                         }
-                        type={undefined}
-                        disabled={undefined}
                       >
                         <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
                         Sign in with Github
