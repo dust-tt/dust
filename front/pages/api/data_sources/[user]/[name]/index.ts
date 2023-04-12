@@ -1,10 +1,9 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetDataSourceResponseBody = {
   dataSource: DataSourceType;
@@ -12,7 +11,7 @@ export type GetDataSourceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<GetDataSourceResponseBody>
 ): Promise<void> {
   let [authRes, dataSourceUser] = await Promise.all([
     auth_user(req, res),
@@ -95,15 +94,12 @@ async function handler(
         return;
       }
 
-      const dsRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`,
-        {
-          method: "DELETE",
-        }
+      const dustDataSource = await DustAPI.deleteDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.name
       );
 
-      const dustDataSource = await dsRes.json();
-      if (dustDataSource.error) {
+      if (dustDataSource.isErr()) {
         res.status(500).end();
         return;
       }

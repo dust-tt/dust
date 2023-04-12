@@ -1,24 +1,11 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { User, DataSource, Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
-import { parse_payload } from "@app/lib/http_utils";
-import { JSONSchemaType } from "ajv";
 import { auth_user } from "@app/lib/auth";
-
-type TagsFilter = {
-  in?: string[];
-  not?: string[];
-};
-
-type TimestampFilter = {
-  gt?: number;
-  lt?: number;
-};
-
-type SearchFilter = {
-  tags?: TagsFilter;
-  timestamp?: TimestampFilter;
-};
+import { DustAPI } from "@app/lib/dust_api";
+import { parse_payload } from "@app/lib/http_utils";
+import { DataSource, Provider, User } from "@app/lib/models";
+import { credentialsFromProviders } from "@app/lib/providers";
+import { DocumentType } from "@app/types/document";
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -44,10 +31,8 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
   required: ["query", "top_k", "full_text"],
 };
 
-const { DUST_API } = process.env;
-
 type DatasourceSearchResponseBody = {
-  documents: Array<Document>;
+  documents: Array<DocumentType>;
 };
 
 export default async function handler(
@@ -64,10 +49,10 @@ export default async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).end();
@@ -119,47 +104,37 @@ export default async function handler(
         res.status(400).end();
         return;
       }
-      const searchQuery = searchQueryRes.value();
+      const searchQuery = searchQueryRes.value;
 
-      const filter: SearchFilter = {
-        tags: {
-          in: searchQuery.tags_in,
-          not: searchQuery.tags_not,
-        },
-        timestamp: {
-          gt: searchQuery.timestamp_gt,
-          lt: searchQuery.timestamp_lt,
-        },
-      };
-
-      const serachPayload = {
-        query: searchQuery.query,
-        top_k: searchQuery.top_k,
-        full_text: searchQuery.full_text,
-        filter: filter,
-        credentials: credentials,
-      };
-
-      const searchRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
+      const data = await DustAPI.searchDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
         {
-          method: "POST",
-          body: JSON.stringify(serachPayload),
-          headers: {
-            "Content-Type": "application/json",
+          query: searchQuery.query,
+          topK: searchQuery.top_k,
+          fullText: searchQuery.full_text,
+          filter: {
+            tags: {
+              in: searchQuery.tags_in,
+              not: searchQuery.tags_not,
+            },
+            timestamp: {
+              gt: searchQuery.timestamp_gt,
+              lt: searchQuery.timestamp_lt,
+            },
           },
+          credentials: credentials,
         }
       );
 
-      if (!searchRes.ok) {
-        console.log("rust search error", await searchRes.text());
+      if (data.isErr()) {
+        console.log("rust search error", data.error);
         res.status(400).end();
         return;
       }
-      const data = await searchRes.json();
 
       res.status(200).json({
-        documents: data.response.documents,
+        documents: data.value.documents,
       });
       return;
     }

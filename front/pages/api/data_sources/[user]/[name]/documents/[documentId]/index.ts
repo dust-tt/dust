@@ -1,11 +1,10 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetDocumentResponseBody = {
   document: DocumentType;
@@ -83,19 +82,17 @@ async function handler(
       }
 
       // Enforce FreePlan limit: 32 documents per DataSource.
-      const documentsRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
-        {
-          method: "GET",
-        }
+      const documents = await DustAPI.getDataSourceDocuments(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        1,
+        0
       );
-      if (!documentsRes.ok) {
-        const error = await documentsRes.json();
-        res.status(400).json(error.error);
+      if (documents.isErr()) {
+        res.status(400).end();
         return;
       }
-      const documents = await documentsRes.json();
-      if (documents.response.total >= 32) {
+      if (documents.value.total >= 32) {
         res.status(400).end();
         return;
       }
@@ -109,31 +106,23 @@ async function handler(
       let credentials = credentialsFromProviders(providers);
 
       // Create document with the Dust internal API.
-      const upsertRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents`,
+      const data = await DustAPI.upsertDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            document_id: documentId,
-            tags: tags,
-            text: req.body.text,
-            credentials,
-          }),
+          documentId,
+          tags,
+          credentials,
+          text: req.body.text,
         }
       );
-
-      const data = await upsertRes.json();
-
-      if (data.error) {
+      if (data.isErr()) {
         res.status(500).end();
         return;
       }
 
       res.status(201).json({
-        document: data.response.document,
+        document: data.value.document,
       });
       return;
 
@@ -143,25 +132,19 @@ async function handler(
         return;
       }
 
-      const documentRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
-          dataSource.name
-        }/documents/${encodeURIComponent(documentId)}`,
-        {
-          method: "GET",
-        }
+      const document = await DustAPI.getDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        documentId
       );
 
-      if (!documentRes.ok) {
-        const error = await documentRes.json();
-        res.status(400).json(error.error);
+      if (document.isErr()) {
+        res.status(400).end();
         return;
       }
 
-      const document = await documentRes.json();
-
       res.status(200).json({
-        document: document.response.document,
+        document: document.value.document,
       });
       return;
 
@@ -171,18 +154,14 @@ async function handler(
         return;
       }
 
-      const delRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
-          dataSource.name
-        }/documents/${encodeURIComponent(documentId)}`,
-        {
-          method: "DELETE",
-        }
+      const deleteResult = await DustAPI.deleteDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        documentId
       );
 
-      if (!delRes.ok) {
-        const error = await delRes.json();
-        res.status(400).json(error.error);
+      if (deleteResult.isErr()) {
+        res.status(400).end();
         return;
       }
 

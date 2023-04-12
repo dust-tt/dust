@@ -5,11 +5,11 @@ import { streamChunks } from "./http_utils";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
-export type ErrorResponse = {
+export type DustAPIErrorResponse = {
   message: string;
   code: number;
 };
-export type DustAPIResponse<T> = Result<T, ErrorResponse>;
+export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
 
 export type DustAPIDatasetVersion = {
   hash: string;
@@ -40,6 +40,25 @@ export type DustAPIDataSource = {
   config: DustAPIDataSourceConfig;
 };
 
+export type DustAPIDocument = {
+  data_source_id: string;
+  created: number;
+  document_id: string;
+  timestamp: number;
+  tags: string[];
+  hash: string;
+  text_size: number;
+  chunk_count: number;
+  chunks: {
+    text: string;
+    hash: string;
+    offset: number;
+    vector?: number[] | null;
+    score?: number | null;
+  }[];
+  text?: string | null;
+};
+
 type DustAPICreateRunPayload = {
   runType: RunRunType;
   specification?: string | null;
@@ -68,6 +87,14 @@ type GetRunsResponse = {
 type DustAPICreateDataSourcePayload = {
   dataSourceId: string;
   config: DustAPIDataSourceConfig;
+  credentials: { [key: string]: string };
+};
+
+type DustAPIUpsertDocumentPayload = {
+  documentId: string;
+  timestamp?: number | null;
+  tags: string[];
+  text: string;
   credentials: { [key: string]: string };
 };
 
@@ -283,6 +310,152 @@ export const DustAPI = {
           config: payload.config,
           credentials: payload.credentials,
         }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async deleteDataSource(
+    projectId: string,
+    dataSourceName: string
+  ): Promise<DustAPIResponse<{ data_source: DustAPIDataSource }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async searchDataSource(
+    projectId: string,
+    dataSourceName: string,
+    payload: {
+      query: string;
+      topK: number;
+      filter?: {
+        tags: {
+          in?: string[] | null;
+          not?: string[] | null;
+        };
+        timestamp?: {
+          gt?: number | null;
+          lt?: number | null;
+        };
+      } | null;
+      fullText: boolean;
+      credentials: { [key: string]: string };
+    }
+  ): Promise<DustAPIResponse<{ documents: DustAPIDocument[] }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/search`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: payload.query,
+          top_k: payload.topK,
+          filter: payload.filter,
+          full_text: payload.fullText,
+          credentials: payload.credentials,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDataSourceDocuments(
+    projectId: string,
+    dataSourceName: string,
+    limit: number,
+    offset: number
+  ): Promise<
+    DustAPIResponse<{
+      offset: number;
+      limit: number;
+      total: number;
+      documents: DustAPIDocument[];
+    }>
+  > {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDataSourceDocument(
+    projectId: string,
+    dataSourceName: string,
+    documentId: string
+  ): Promise<
+    DustAPIResponse<{
+      document: DustAPIDocument;
+      data_source: DustAPIDataSource;
+    }>
+  > {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+        documentId
+      )}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async upsertDataSourceDocument(
+    projectId: string,
+    dataSourceName: string,
+    payload: DustAPIUpsertDocumentPayload
+  ): Promise<
+    DustAPIResponse<{
+      document: DustAPIDocument;
+      data_source: DustAPIDataSource;
+    }>
+  > {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          document_id: payload.documentId,
+          timestamp: payload.timestamp,
+          text: payload.text,
+          tags: payload.tags,
+          credentials: payload.credentials,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async deleteDataSourceDocument(
+    projectId: string,
+    dataSourceName: string,
+    documentId: string
+  ): Promise<DustAPIResponse<{ data_source: DustAPIDataSource }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+        documentId
+      )}`,
+      {
+        method: "DELETE",
       }
     );
 

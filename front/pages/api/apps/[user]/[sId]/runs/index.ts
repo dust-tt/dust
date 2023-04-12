@@ -1,5 +1,5 @@
 import { auth_user } from "@app/lib/auth";
-import { DustAPI, ErrorResponse } from "@app/lib/dust_api";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
@@ -8,16 +8,19 @@ import withLogging from "@app/logger/withlogging";
 import { RunRunType, RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 
-export type GetRunsResponseBody = {
-  runs: RunType[];
-  total: number;
-};
-
-export type PostRunsResponseBody =
+export type GetRunsResponseBody =
   | {
-      run: RunType;
+      runs: RunType[];
+      total: number;
     }
-  | ErrorResponse;
+  | {
+      message: string;
+      code: number;
+    };
+
+export type PostRunsResponseBody = {
+  run: RunType;
+};
 
 async function handler(
   req: NextApiRequest,
