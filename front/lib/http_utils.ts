@@ -49,3 +49,13 @@ export function parse_payload<SchemaType>(
     new RequestParseError(validate.errors?.map((e) => e.message).join(", "))
   );
 }
+
+export function parseServerSentEventChunk(chunk: Uint8Array): any | null {
+  const rawEvent = new TextDecoder().decode(chunk);
+  if (rawEvent && rawEvent.length && rawEvent.startsWith("data:")) {
+    const eventData = rawEvent.split("data:")[1];
+    const event = JSON.parse(eventData);
+    return event;
+  }
+  return null;
+}
