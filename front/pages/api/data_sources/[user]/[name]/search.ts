@@ -1,9 +1,9 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { User, DataSource, Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
-import { parse_payload } from "@app/lib/http_utils";
-import { JSONSchemaType } from "ajv";
 import { auth_user } from "@app/lib/auth";
+import { parse_payload } from "@app/lib/http_utils";
+import { DataSource, Provider, User } from "@app/lib/models";
+import { credentialsFromProviders } from "@app/lib/providers";
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
 
 type TagsFilter = {
   in?: string[];
@@ -64,10 +64,10 @@ export default async function handler(
   ]);
 
   if (authRes.isErr()) {
-    res.status(authRes.error().status_code).end();
+    res.status(authRes.error.status_code).end();
     return;
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (!dataSourceUser) {
     res.status(404).end();
@@ -119,7 +119,7 @@ export default async function handler(
         res.status(400).end();
         return;
       }
-      const searchQuery = searchQueryRes.value();
+      const searchQuery = searchQueryRes.value;
 
       const filter: SearchFilter = {
         tags: {
