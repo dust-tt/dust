@@ -6,6 +6,7 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "tsc": "tsc",
     "test": "jest",
     "coverage": "jest --coverage"
   },
