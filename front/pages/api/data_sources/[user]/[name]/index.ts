@@ -1,4 +1,5 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
@@ -95,15 +96,12 @@ async function handler(
         return;
       }
 
-      const dsRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}`,
-        {
-          method: "DELETE",
-        }
+      const dustDataSource = await DustAPI.deleteDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.name
       );
 
-      const dustDataSource = await dsRes.json();
-      if (dustDataSource.error) {
+      if (dustDataSource.isErr()) {
         res.status(500).end();
         return;
       }

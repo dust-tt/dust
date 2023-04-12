@@ -288,6 +288,20 @@ export const DustAPI = {
 
     return _resultFromResponse(response);
   },
+
+  async deleteDataSource(
+    projectId: string,
+    dataSourceName: string
+  ): Promise<DustAPIResponse<{ data_source: DustAPIDataSource }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
 };
 
 async function _resultFromResponse<T>(
