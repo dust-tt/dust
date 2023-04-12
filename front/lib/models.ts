@@ -534,6 +534,50 @@ DataSource.init(
 User.hasMany(DataSource);
 Workspace.hasMany(DataSource);
 
+export class Run extends Model<
+  InferAttributes<Run>,
+  InferCreationAttributes<Run>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare dustRunId: string;
+  declare userId: ForeignKey<User["id"]>;
+  declare appId: ForeignKey<App["id"]>;
+}
+
+Run.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    dustRunId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "run",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["userId", "appId"] }],
+  }
+);
+Run.belongsTo(User);
+Run.belongsTo(App);
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;

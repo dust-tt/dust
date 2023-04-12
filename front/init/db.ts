@@ -5,6 +5,7 @@ import {
   DataSource,
   Key,
   Provider,
+  Run,
   User,
   Workspace,
   Membership,
@@ -22,6 +23,7 @@ async function main() {
   await Clone.sync({ alter: true });
   await Key.sync({ alter: true });
   await DataSource.sync({ alter: true });
+  await Run.sync({ alter: true });
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
 
