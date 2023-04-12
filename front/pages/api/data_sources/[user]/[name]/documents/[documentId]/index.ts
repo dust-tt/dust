@@ -3,11 +3,10 @@ import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDocumentResponseBody = {
-  document: DocumentType;
+  document: DustAPIDocument;
 };
 
 async function handler(
