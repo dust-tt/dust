@@ -5,15 +5,13 @@ import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
 
-const { DUST_API } = process.env;
-
 export type GetDataSourceResponseBody = {
   dataSource: DataSourceType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<GetDataSourceResponseBody>
 ): Promise<void> {
   let [authRes, dataSourceUser] = await Promise.all([
     auth_user(req, res),
