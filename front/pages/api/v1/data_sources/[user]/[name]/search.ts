@@ -1,28 +1,13 @@
 import { auth_api_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { DocumentType } from "@app/types/document";
+
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
-
-type TagsFilter = {
-  in?: string[];
-  not?: string[];
-};
-
-type TimestampFilter = {
-  gt?: number;
-  lt?: number;
-};
-
-type SearchFilter = {
-  tags?: TagsFilter;
-  timestamp?: TimestampFilter;
-};
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -137,50 +122,39 @@ export default async function handler(
       }
       const query = queryRes.value;
 
-      const filter: SearchFilter = {
-        tags: {
-          in: query.tags_in,
-          not: query.tags_not,
-        },
-        timestamp: {
-          gt: query.timestamp_gt,
-          lt: query.timestamp_lt,
-        },
-      };
-
-      const serachPayload = {
-        query: query.query,
-        top_k: query.top_k,
-        full_text: query.full_text,
-        filter: filter,
-        credentials: credentials,
-      };
-
-      const searchRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/search`,
+      const data = await DustAPI.searchDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
         {
-          method: "POST",
-          body: JSON.stringify(serachPayload),
-          headers: {
-            "Content-Type": "application/json",
+          query: query.query,
+          topK: query.top_k,
+          fullText: query.full_text,
+          filter: {
+            tags: {
+              in: query.tags_in,
+              not: query.tags_not,
+            },
+            timestamp: {
+              gt: query.timestamp_gt,
+              lt: query.timestamp_lt,
+            },
           },
+          credentials,
         }
       );
 
-      if (!searchRes.ok) {
-        const error = await searchRes.json();
+      if (data.isErr()) {
         return res.status(400).json({
           error: {
             type: "data_source_error",
             message: "There was an error performing the data source search.",
-            data_source_error: error.error,
+            data_source_error: data.error,
           },
         });
       }
-      const data = await searchRes.json();
 
       res.status(200).json({
-        documents: data.response.documents,
+        documents: data.value.documents,
       });
       return;
     }

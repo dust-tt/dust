@@ -1,6 +1,6 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
-import { BlockType, RunConfig, RunRunType, RunType } from "@app/types/run";
+import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
 import { streamChunks } from "./http_utils";
 
 const { DUST_API: DUST_API_URL } = process.env;
@@ -59,6 +59,18 @@ export type DustAPIDocument = {
   text?: string | null;
 };
 
+export type DustAPIRun = {
+  run_id: string;
+  created: number;
+  run_type: RunRunType;
+  app_hash: string;
+  config: RunConfig;
+  status: RunStatus;
+  traces: Array<
+    [[BlockType, string], Array<Array<{ value?: any; error?: string }>>]
+  >;
+};
+
 type DustAPICreateRunPayload = {
   runType: RunRunType;
   specification?: string | null;
@@ -81,7 +93,7 @@ type GetRunsResponse = {
   offset: number;
   limit: number;
   total: number;
-  runs: RunType[];
+  runs: DustAPIRun[];
 };
 
 type DustAPICreateDataSourcePayload = {
@@ -179,7 +191,7 @@ export const DustAPI = {
     projectId: string,
     dustUserId: string,
     payload: DustAPICreateRunPayload
-  ): Promise<DustAPIResponse<{ run: RunType }>> {
+  ): Promise<DustAPIResponse<{ run: DustAPIRun }>> {
     const response = await fetch(`${DUST_API_URL}/projects/${projectId}/runs`, {
       method: "POST",
       headers: {
@@ -248,10 +260,24 @@ export const DustAPI = {
     return _resultFromResponse(response);
   },
 
+  async getRun(
+    projectId: string,
+    runId: string
+  ): Promise<DustAPIResponse<{ run: DustAPIRun }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs/${runId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
   async getRunStatus(
     projectId: string,
     runId: string
-  ): Promise<DustAPIResponse<{ run: RunType }>> {
+  ): Promise<DustAPIResponse<{ run: DustAPIRun }>> {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/${runId}/status`,
       {
@@ -283,7 +309,7 @@ export const DustAPI = {
     runId: string,
     runType: BlockType,
     blockName: string
-  ): Promise<DustAPIResponse<{ run: RunType }>> {
+  ): Promise<DustAPIResponse<{ run: DustAPIRun }>> {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/${runId}/blocks/${runType}/${blockName}`,
       {

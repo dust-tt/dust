@@ -1,4 +1,5 @@
 import { auth_api_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
@@ -6,8 +7,6 @@ import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetDocumentResponseBody = {
   document: DocumentType;
@@ -85,18 +84,14 @@ async function handler(
         return;
       }
 
-      const docRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
-          dataSource.name
-        }/documents/${encodeURIComponent(req.query.documentId as string)}`,
-        {
-          method: "GET",
-        }
+      const docRes = await DustAPI.getDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        req.query.documentId as string
       );
 
-      if (!docRes.ok) {
-        const error = await docRes.json();
-        if (docRes.status === 404) {
+      if (docRes.isErr()) {
+        if (docRes.error.code === 404) {
           res.status(404).json({
             error: {
               type: "data_source_document_not_found",
@@ -110,19 +105,18 @@ async function handler(
               type: "data_source_error",
               message:
                 "There was an error retrieving the data source document.",
-              data_source_error: error.error,
+              data_source_error: docRes.error,
             },
           });
+
+          return;
         }
+      } else {
+        res.status(200).json({
+          document: docRes.value.document,
+        });
         return;
       }
-
-      const document = await docRes.json();
-
-      res.status(200).json({
-        document: document.response.document,
-      });
-      return;
 
     case "POST":
       if (!auth.canEditDataSource(dataSource)) {
@@ -185,25 +179,25 @@ async function handler(
 
       // Enforce FreePlan limit: 32 documents per DataSource.
       if (auth.user().username !== "spolu") {
-        const documentsRes = await fetch(
-          `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=1&offset=0`,
-          {
-            method: "GET",
-          }
+        const documents = await DustAPI.getDataSourceDocuments(
+          dataSource.dustAPIProjectId,
+          dataSource.name,
+          1,
+          0
         );
-        if (!documentsRes.ok) {
-          const error = await documentsRes.json();
+
+        if (documents.isErr()) {
           res.status(400).json({
             error: {
               type: "data_source_error",
               message: "There was an error retrieving the data source.",
-              data_source_error: error.error,
+              data_source_error: documents.error,
             },
           });
           return;
         }
-        const documents = await documentsRes.json();
-        if (documents.response.total >= 32) {
+
+        if (documents.value.total >= 32) {
           res.status(401).json({
             error: {
               type: "data_source_quota_error",
@@ -230,40 +224,38 @@ async function handler(
       let credentials = credentialsFromProviders(providers);
 
       // Create document with the Dust internal API.
-      const upsertRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents`,
+      const upsertRes = await DustAPI.upsertDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            document_id: req.query.documentId,
-            timestamp,
-            tags,
-            text: req.body.text,
-            credentials,
-          }),
+          documentId: req.query.documentId as string,
+          timestamp,
+          tags,
+          text: req.body.text,
+          credentials,
         }
       );
 
-      if (!upsertRes.ok) {
-        const error = await upsertRes.json();
+      if (upsertRes.isErr()) {
         res.status(500).json({
           error: {
             type: "internal_server_error",
             message: "There was an error upserting the document.",
-            data_source_error: error.error,
+            data_source_error: upsertRes.error,
           },
         });
         return;
       }
 
-      const data = await upsertRes.json();
-
       res.status(200).json({
-        document: data.response.document,
-        data_source: data.response.data_source,
+        document: upsertRes.value.document,
+        data_source: {
+          name: dataSource.name,
+          description: dataSource.description,
+          visibility: dataSource.visibility,
+          config: dataSource.config,
+          dustAPIProjectId: dataSource.dustAPIProjectId,
+        },
       });
       return;
 
@@ -278,22 +270,18 @@ async function handler(
         return;
       }
 
-      const delRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${
-          dataSource.name
-        }/documents/${encodeURIComponent(req.query.documentId as string)}`,
-        {
-          method: "DELETE",
-        }
+      const delRes = await DustAPI.deleteDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        req.query.documentId as string
       );
 
-      if (!delRes.ok) {
-        const error = await delRes.json();
+      if (delRes.isErr()) {
         res.status(500).json({
           error: {
             type: "internal_server_error",
             message: "There was an error deleting the document.",
-            data_source_error: error.error,
+            data_source_error: delRes.error,
           },
         });
         return;

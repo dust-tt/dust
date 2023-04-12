@@ -1,12 +1,11 @@
 import { auth_api_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { App, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import withLogging from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export const config = {
   api: {
@@ -91,26 +90,21 @@ async function handler(
         "App run retrieve"
       );
 
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}`,
-        {
-          method: "GET",
-        }
+      const runRes = await DustAPI.getRun(
+        app.dustAPIProjectId,
+        runId as string
       );
-
-      if (!runRes.ok) {
-        const error = await runRes.json();
-        res.status(400).json({
+      if (runRes.isErr()) {
+        res.status(runRes.error.code).json({
           error: {
             type: "run_error",
             message: "There was an error retrieving the run.",
-            run_error: error.error,
+            run_error: runRes.error,
           },
         });
         return;
       }
-
-      let run = (await runRes.json()).response.run;
+      let run: RunType = runRes.value.run;
       run.specification_hash = run.app_hash;
       delete run.app_hash;
 

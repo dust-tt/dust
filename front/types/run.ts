@@ -18,12 +18,12 @@ export type RunConfig = {
   blocks: { [key: string]: any };
 };
 
-type RunStatus = {
+export type RunStatus = {
   run: Status;
   blocks: BlockStatus[];
 };
 
-type BlockStatus = {
+export type BlockStatus = {
   block_type: BlockType;
   name: string;
   status: Status;
@@ -35,10 +35,17 @@ export type RunType = {
   run_id: string;
   created: number;
   run_type: RunRunType;
-  app_hash: string;
+  app_hash?: string | null;
+  specification_hash?: string | null;
   config: RunConfig;
   status: RunStatus;
   traces: Array<
     [[BlockType, string], Array<Array<{ value?: any; error?: string }>>]
   >;
+  results?:
+    | {
+        value?: any | null;
+        error?: string | null;
+      }[][]
+    | null;
 };
