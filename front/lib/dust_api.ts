@@ -40,6 +40,25 @@ export type DustAPIDataSource = {
   config: DustAPIDataSourceConfig;
 };
 
+export type DustAPIDocument = {
+  data_source_id: string;
+  created: number;
+  document_id: string;
+  timestamp: number;
+  tags: string[];
+  hash: string;
+  text_size: number;
+  chunk_count: number;
+  chunks: {
+    text: string;
+    hash: string;
+    offset: number;
+    vector?: number[] | null;
+    score?: number | null;
+  }[];
+  text?: string | null;
+};
+
 type DustAPICreateRunPayload = {
   runType: RunRunType;
   specification?: string | null;
@@ -297,6 +316,46 @@ export const DustAPI = {
       `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}`,
       {
         method: "DELETE",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async searchDataSource(
+    projectId: string,
+    dataSourceName: string,
+    payload: {
+      query: string;
+      topK: number;
+      filter?: {
+        tags: {
+          in?: string[] | null;
+          not?: string[] | null;
+        };
+        timestamp?: {
+          gt?: number | null;
+          lt?: number | null;
+        };
+      } | null;
+      fullText: boolean;
+      credentials: { [key: string]: string };
+    }
+  ): Promise<DustAPIResponse<{ documents: DustAPIDocument[] }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/search`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: payload.query,
+          top_k: payload.topK,
+          filter: payload.filter,
+          full_text: payload.fullText,
+          credentials: payload.credentials,
+        }),
       }
     );
 
