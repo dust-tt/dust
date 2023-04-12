@@ -14,47 +14,49 @@ const {
   NANGO_SLACK_CONNECTOR_ID,
 } = process.env;
 
-function triggerSlackOauthFlow(authUser) {
-  const connectionId = `slack-managed-ds-${authUser.id}`;
-
-  var nango = new Nango({ publicKey: NANGO_PUBLIC_KEY });
-  nango
-    .auth(NANGO_SLACK_CONNECTOR_ID, connectionId)
-    .then((result) => {
-      console.log(
-        `OAuth flow succeeded for provider "${result.providerConfigKey}" and connection-id "${result.connectionId}"!`
-      );
-      createSlackManagedDataSource(authUser, connectionId);
-    })
-    .catch((error) => {
-      console.error(
-        `There was an error in the OAuth flow for integration: ${error.message}`
-      );
-    });
-}
-
-async function createSlackManagedDataSource(user, nangoConnectionId) {
-  const res = await fetch(`/api/data_sources/${user.username}/managed`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      nango_connection_id: nangoConnectionId,
-    }),
-  });
-  const data = await res.json();
-  console.log("data from createSlackManagedDataSource: ", data);
-  return data;
-}
-
 export default function DataSourcesView({
   authUser,
   owner,
   readOnly,
   dataSources,
   ga_tracking_id,
+  nango_public_key,
+  nango_slack_connection_id,
 }) {
+  function triggerSlackOauthFlow(authUser) {
+    const connectionId = `slack-managed-ds-${authUser.id}`;
+
+    var nango = new Nango({ publicKey: nango_public_key });
+    nango
+      .auth(nango_slack_connection_id, connectionId)
+      .then((result) => {
+        console.log(
+          `OAuth flow succeeded for provider "${result.providerConfigKey}" and connection-id "${result.connectionId}"!`
+        );
+        createSlackManagedDataSource(authUser, connectionId);
+      })
+      .catch((error) => {
+        console.error(
+          `There was an error in the OAuth flow for integration: ${error.message}`
+        );
+      });
+  }
+
+  async function createSlackManagedDataSource(user, nangoConnectionId) {
+    const res = await fetch(`/api/data_sources/${user.username}/managed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nango_connection_id: nangoConnectionId,
+      }),
+    });
+    const data = await res.json();
+    console.log("data from createSlackManagedDataSource: ", data);
+    return data;
+  }
+
   return (
     <AppLayout ga_tracking_id={ga_tracking_id}>
       <div className="flex flex-col">
@@ -202,7 +204,6 @@ export async function getServerSideProps(context) {
       },
     }),
   ]);
-
   if (dataSourcesRes.status === 404) {
     return { notFound: true };
   }
@@ -217,6 +218,8 @@ export async function getServerSideProps(context) {
       readOnly,
       dataSources: dataSources.dataSources,
       ga_tracking_id: GA_TRACKING_ID,
+      nango_public_key: NANGO_PUBLIC_KEY,
+      nango_slack_connection_id: NANGO_SLACK_CONNECTOR_ID,
     },
   };
 }

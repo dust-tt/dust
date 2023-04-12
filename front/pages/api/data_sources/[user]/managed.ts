@@ -1,20 +1,16 @@
 import { Role, auth_user } from "@app/lib/auth";
 import { new_id } from "@app/lib/utils";
 import { DustAPI } from "@app/lib/dust_api";
-import {
-  DataSource,
-  Provider,
-  User,
-  Connector,
-  Key,
-  front_sequelize,
-} from "@app/lib/models";
+import { DataSource, Provider, User, Connector, Key } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
+import { triggerSlackSync } from "@app/connectors/src/client";
+import { Nango } from "@nangohq/node";
 
+const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;
@@ -74,7 +70,7 @@ async function handler(
       }
       const providerId = "openai";
       const maxChunkSize = 1024;
-      const dataSourceId = `Slack-Managed-123`;
+      const dataSourceId = `Slack-Managed`;
       const description = "Slack data source managed by Dust";
       const modelId = "text-embedding-ada-002";
 
@@ -129,55 +125,59 @@ async function handler(
         return;
       }
 
-      try {
-        await front_sequelize.transaction(async (t) => {
-          
-          const createdDataSource = await DataSource.create({
-            name: dataSourceId,
-            description: description,
-            visibility: "private",
-            config: JSON.stringify(dustDataSource.value.data_source.config),
-            dustAPIProjectId: dustProject.value.project.project_id.toString(),
-            userId: dataSourceUserId,
-          }, {
-            // transaction: t,
-            
-          });
+      const createdDataSource = await DataSource.create(
+        {
+          name: dataSourceId,
+          description: description,
+          visibility: "private",
+          config: JSON.stringify(dustDataSource.value.data_source.config),
+          dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          userId: dataSourceUserId,
+        }
+      );
 
-          await Connector.create({
-            type: "slack",
-            nangoConnectionId: nangoConnectionId,
-            dataSourceId: createdDataSource.id,
-            userId: auth.user().id,
-          }, {
-            // transaction:t
-          });
+      await Connector.create(
+        {
+          type: "slack",
+          nangoConnectionId: nangoConnectionId,
+          dataSourceId: createdDataSource.id,
+          userId: auth.user().id,
+        }
+      );
 
-          const systemKey = await Key.findOne({
-            where: {
-              userId: auth.user().id,
-              isSystem: true,
-            },
-            // transaction:t
-          });
-          if (!systemKey) {
-            const secret = `sk-${new_id().slice(0, 32)}`;
+      let systemKey = await Key.findOne({
+        where: {
+          userId: auth.user().id,
+          isSystem: true,
+        },
+        // transaction:t
+      });
+      if (!systemKey) {
+        const secret = `sk-${new_id().slice(0, 32)}`;
 
-            Key.create({
-              userId: createdDataSource.userId,
-              secret: secret,
-              isSystem: true,
-              status: "active",
-            }, {
-              // transaction:t
-            });
+        systemKey = await Key.create(
+          {
+            userId: createdDataSource.userId,
+            secret: secret,
+            isSystem: true,
+            status: "active",
           }
-        });
-      } catch (e) {
-        console.error(e);
-        res.status(500).end();
-        return;
+        );
       }
+
+      let nango = new Nango({ secretKey: NANGO_SECRET_KEY });
+      let accessToken = await nango.getToken(
+        NANGO_SLACK_CONNECTOR_ID!,
+        nangoConnectionId
+      );
+      triggerSlackSync(
+        { accessToken: accessToken },
+        {
+          username: dataSourceUser.username,
+          datasourceId: createdDataSource.name,
+          APIKey: systemKey.secret,
+        }
+      );
 
       // Would be cool to be able to enqueue the first Slack sync task here
       res.redirect(`/${dataSourceUser.username}/ds/${req.body.name}`);

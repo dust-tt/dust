@@ -1,10 +1,13 @@
-import { Connection, Client } from '@temporalio/client';
-import { slack_workflow } from './workflows';
-import { nanoid } from 'nanoid';
-import { SlackConfig, DustConfig } from './slack/slack';
+import { Connection, Client } from "@temporalio/client";
+import { slack_workflow } from "./workflows";
+import { nanoid } from "nanoid";
+import { SlackConfig, DustConfig } from "./slack/slack";
 
-
-export async function triggerSlackSync(slackConfig: SlackConfig, dustConfig:DustConfig) {
+export async function triggerSlackSync(
+  slackConfig: SlackConfig,
+  dustConfig: DustConfig
+) {
+  console.log("triggerSlackSync: ", slackConfig, dustConfig);
   // Connect to the default Server location (localhost:7233)
   const connection = await Connection.connect({});
   // In production, pass options to configure TLS and other settings:
@@ -21,13 +24,12 @@ export async function triggerSlackSync(slackConfig: SlackConfig, dustConfig:Dust
   const handle = await client.workflow.start(slack_workflow, {
     // type inference works! args: [name: string]
     args: [slackConfig, dustConfig],
-    taskQueue: 'hello-world',
+    taskQueue: "hello-world",
     // in practice, use a meaningful business ID, like customerId or transactionId
-    workflowId: 'workflow-' + nanoid(),
+    workflowId: "workflow-" + nanoid(),
   });
   console.log(`Started workflow ${handle.workflowId}`);
 
   // optional: wait for client result
   console.log(await handle.result()); // Hello, Temporal!
 }
-
