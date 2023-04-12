@@ -1,8 +1,9 @@
 import { auth_user } from "@app/lib/auth";
-import { DustAPI, DustAPIDocument } from "@app/lib/dust_api";
+import { DustAPI } from "@app/lib/dust_api";
 import { parse_payload } from "@app/lib/http_utils";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { DocumentType } from "@app/types/document";
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -31,7 +32,7 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
 };
 
 type DatasourceSearchResponseBody = {
-  documents: Array<DustAPIDocument>;
+  documents: Array<DocumentType>;
 };
 
 export default async function handler(
