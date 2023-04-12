@@ -628,33 +628,55 @@ impl App {
             // execution is linear.
             match current_while {
                 Some(_) => {
-                    let t = (
-                        (block.block_type(), name.clone()),
-                        flat.iter()
-                            .map(|m| {
-                                assert!(m.len() == 1);
-                                let mt = m
-                                    .iter()
-                                    .map(|o| match o {
-                                        Some(r) => match r {
-                                            (_, Some(v), None) => BlockExecution {
-                                                value: Some(v.clone()),
-                                                error: None,
-                                            },
-                                            (_, None, Some(err)) => BlockExecution {
-                                                value: None,
-                                                error: Some(err.clone()),
-                                            },
-                                            _ => unreachable!(),
-                                        },
-                                        None => unreachable!(),
-                                    })
-                                    .collect::<Vec<_>>();
-                                // TODO(spolu): add mt to the run traces direclty assuming input_idx
-                                // is not in the current skip
-                            })
-                            .collect::<Vec<_>>(),
+                    // First thing to do is to clone and transform `t` to remove block executions
+                    // that are skipped (they have a null value) so that they don't get accumulated
+                    // after the `while` condition started returning false.
+                    assert!(
+                        current_skips.is_some()
+                            && t.1.len() == current_skips.as_ref().unwrap().len()
                     );
+                    let mut t = t.clone();
+                    t.1.iter_mut()
+                        .zip(current_skips.as_ref().unwrap().iter())
+                        .for_each(|(m, skipped)| {
+                            assert!(m.len() == 1);
+                            if *skipped {
+                                m.pop();
+                            }
+                        });
+
+                    match current_while_iteration {
+                        Some(0) => {
+                            // If we are inside a `while` loop and this is the first iteration, we
+                            // insert the trace normally.
+                            self.run.as_mut().unwrap().traces.push(t);
+                        }
+                        _ => {
+                            // If we are inside a `while` loop, we append the current trace along the
+                            // `map_idx` dimension to the run's existing traces for that block.
+                            self.run
+                                .as_mut()
+                                .unwrap()
+                                .traces
+                                .iter_mut()
+                                .for_each(|(k, v)| {
+                                    if k.0 == t.0 .0 && k.1 == t.0 .1 {
+                                        v.iter_mut().zip(t.1.iter()).for_each(|(r, n)| {
+                                            match n.len() {
+                                                // skipped
+                                                0 => (),
+                                                // effectively run
+                                                1 => {
+                                                    r.push(n[0].clone());
+                                                }
+                                                _ => unreachable!(),
+                                            }
+                                        })
+                                    }
+                                });
+                            println!("run traces: {:?}", self.run.as_ref().unwrap().traces);
+                        }
+                    }
                 }
                 None => {
                     self.run.as_mut().unwrap().traces.push(t);
@@ -763,33 +785,51 @@ impl App {
                             match current_while {
                                 // We're outside a `while` loop, simply set the value.
                                 None => {
+                                    // Note that if the block type is `reduce` this will override in
+                                    // the state the value for the `map` type since they have the
+                                    // same name. This is fine as this is not super useful
+                                    // information as it's repetitive.
                                     e.state.insert(name.clone(), v);
                                 }
                                 // We're inside a `while` loop, accumulate value in `env.state` as
                                 // an array.
                                 Some(_) => {
-                                    match e.state.get(name) {
-                                        Some(Value::Array(arr)) => {
-                                            assert!(
-                                                current_skips.is_some()
-                                                    && envs.len()
-                                                        == current_skips.as_ref().unwrap().len()
-                                            );
-                                            match current_skips.as_ref().unwrap().get(input_idx) {
-                                                Some(false) => {
-                                                    let mut arr = arr.clone();
-                                                    arr.push(v.clone());
-                                                    e.state.insert(name.clone(), Value::Array(arr));
+                                    // We don't insert a value if the block type is `end` as `while`
+                                    // and `end` have the same name so this would lead to a
+                                    // alternation of boolean (`while` output) and null (`end`
+                                    // output).
+                                    if block.block_type() != BlockType::End {
+                                        match e.state.get(name) {
+                                            Some(Value::Array(arr)) => {
+                                                assert!(
+                                                    current_skips.is_some()
+                                                        && envs.len()
+                                                            == current_skips
+                                                                .as_ref()
+                                                                .unwrap()
+                                                                .len()
+                                                );
+                                                match current_skips.as_ref().unwrap().get(input_idx)
+                                                {
+                                                    Some(false) => {
+                                                        let mut arr = arr.clone();
+                                                        arr.push(v.clone());
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(arr),
+                                                        );
+                                                    }
+                                                    Some(true) => (), // Do not aggregate value.
+                                                    None => unreachable!(),
                                                 }
-                                                Some(true) => (), // Do not aggregate value.
-                                                None => unreachable!(),
                                             }
-                                        }
-                                        None => {
-                                            e.state.insert(name.clone(), Value::Array(vec![v]));
-                                        }
-                                        _ => unreachable!(),
-                                    };
+                                            None => {
+                                                println!("INSERTING {} [{:?}]", name, v);
+                                                e.state.insert(name.clone(), Value::Array(vec![v]));
+                                            }
+                                            _ => unreachable!(),
+                                        };
+                                    }
                                 }
                             };
                             envs[input_idx][map_idx] = e;
@@ -1004,14 +1044,10 @@ mod tests {
         store.init().await?;
         let project = store.create_project().await?;
 
-        let d = Dataset::new_from_jsonl(
-            "env",
-            vec![json!({"foo": 1, "bar": 1}), json!({"foo": 2, "bar": 2})],
-        )
-        .await?;
+        let d = Dataset::new_from_jsonl("env", vec![json!({"foo": 1}), json!({"foo": 5 })]).await?;
         store.register_dataset(&project, &d).await?;
 
-        let CASES: Vec<(&str, Vec<Vec<usize>>)> = vec![
+        let test_cases: Vec<(&str, Vec<Vec<usize>>)> = vec![
             (
                 "
 input INPUT {}
@@ -1033,14 +1069,14 @@ code CODE1 {
   code:
 ```
 _fun = (env) => {
-  return {\"res\": env['state']['INPUT']['bar']};
+  return {\"res\": env.state.INPUT.foo};
 }
 ```
 }
 
 reduce LOOP {}
 ",
-                vec![vec![1, 1], vec![1, 1], vec![1, 1], vec![1, 2], vec![1, 1]],
+                vec![vec![1, 1], vec![1, 1], vec![1, 1], vec![1, 5], vec![1, 1]],
             ),
             (
                 "
@@ -1055,7 +1091,7 @@ code CODE1 {
   code:
 ```
 _fun = (env) => {
-  return {\"res\": env['state']['INPUT']['bar']};
+  return {\"res\": env.state.INPUT.foo};
 }
 ```
 }
@@ -1064,9 +1100,96 @@ reduce LOOP {}
 ",
                 vec![vec![1, 1], vec![1, 1], vec![4, 4], vec![1, 1]],
             ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  // console.log('FOOO');
+  // console.log(typeof env.state.FOO);
+  // console.log(JSON.stringify(env.state.FOO));
+  // console.log(env.state.FOO.length);
+  // console.log(env.state.INPUT.foo);
+  return (env.state.FOO ? env.state.FOO.length < env.state.INPUT.foo : true);
+}
+```
+    max_iterations: 8
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (env.state.LOOP.length !== env.state.INPUT.foo + 1) {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (env.state.FOO.length !== env.state.INPUT.foo) {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![2, 6], vec![1, 5], vec![1, 5], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return (env.state.FOO ? env.state.FOO.length < env.state.INPUT.foo : true);
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (env.state.LOOP.length !== Math.min(2+1, env.state.INPUT.foo + 1)) {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (env.state.FOO.length !== Math.min(2, env.state.INPUT.foo)) {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![2, 3], vec![1, 2], vec![1, 2], vec![1, 1]],
+            ),
         ];
 
-        for (s, expect) in CASES {
+        for (s, expect) in test_cases {
             let h = store.latest_dataset_hash(&project, "env").await?;
             let d = store
                 .load_dataset(&project, "env", h.unwrap().as_str())
@@ -1101,18 +1224,19 @@ reduce LOOP {}
                 .unwrap();
 
             assert!(r.status().run_status() == Status::Succeeded);
+            // println!("{:?}", r.traces);
             assert!(expect.len() == r.traces.len());
             for (i, (block, traces)) in r.traces.iter().enumerate() {
                 assert!(expect[i].len() == traces.len());
                 for (j, trace) in traces.iter().enumerate() {
-                    println!(
-                        "BLOCK {:?} {} {} expect={} got={}",
-                        block,
-                        i,
-                        j,
-                        expect[i][j],
-                        trace.len()
-                    );
+                    // println!(
+                    //     "BLOCK {:?} {} {} expect={} got={}",
+                    //     block,
+                    //     i,
+                    //     j,
+                    //     expect[i][j],
+                    //     trace.len()
+                    // );
                     assert!(expect[i][j] == trace.len());
                 }
             }
