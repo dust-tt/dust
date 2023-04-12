@@ -1,13 +1,13 @@
 import { classNames } from "@app/lib/utils";
-import Link from "next/link";
+import { DataSourceType } from "@app/types/data_source";
 import { Menu } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
-  DocumentIcon,
   Cog6ToothIcon,
+  DocumentIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { DataSourceType } from "@app/types/data_source";
+import Link from "next/link";
 
 export default function MainTab({
   dataSource,
@@ -113,7 +113,7 @@ export default function MainTab({
                       ? "border-gray-500 font-bold text-gray-700"
                       : "border-transparent font-medium text-gray-500 hover:border-gray-200 hover:text-gray-700"
                   )}
-                  aria-current={tab.current ? "page" : undefined}
+                  aria-current={tab.name === currentTab ? "page" : undefined}
                 >
                   {tab.icon}
                   {tab.name}
