@@ -674,7 +674,6 @@ impl App {
                                         })
                                     }
                                 });
-                            println!("run traces: {:?}", self.run.as_ref().unwrap().traces);
                         }
                     }
                 }
@@ -799,19 +798,16 @@ impl App {
                                     // alternation of boolean (`while` output) and null (`end`
                                     // output).
                                     if block.block_type() != BlockType::End {
-                                        match e.state.get(name) {
-                                            Some(Value::Array(arr)) => {
-                                                assert!(
-                                                    current_skips.is_some()
-                                                        && envs.len()
-                                                            == current_skips
-                                                                .as_ref()
-                                                                .unwrap()
-                                                                .len()
-                                                );
-                                                match current_skips.as_ref().unwrap().get(input_idx)
-                                                {
-                                                    Some(false) => {
+                                        assert!(
+                                            current_skips.is_some()
+                                                && envs.len()
+                                                    == current_skips.as_ref().unwrap().len()
+                                        );
+
+                                        match current_skips.as_ref().unwrap().get(input_idx) {
+                                            Some(false) => {
+                                                match e.state.get(name) {
+                                                    Some(Value::Array(arr)) => {
                                                         let mut arr = arr.clone();
                                                         arr.push(v.clone());
                                                         e.state.insert(
@@ -819,15 +815,29 @@ impl App {
                                                             Value::Array(arr),
                                                         );
                                                     }
-                                                    Some(true) => (), // Do not aggregate value.
-                                                    None => unreachable!(),
-                                                }
+                                                    None => {
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(vec![v]),
+                                                        );
+                                                    }
+                                                    _ => unreachable!(),
+                                                };
                                             }
-                                            None => {
-                                                println!("INSERTING {} [{:?}]", name, v);
-                                                e.state.insert(name.clone(), Value::Array(vec![v]));
+                                            Some(true) => {
+                                                // Do not aggregate value, but if we are skipped and
+                                                // there is nothing yet, insert the empty array.
+                                                match e.state.get(name) {
+                                                    None => {
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(vec![]),
+                                                        );
+                                                    }
+                                                    _ => (),
+                                                };
                                             }
-                                            _ => unreachable!(),
+                                            None => unreachable!(),
                                         };
                                     }
                                 }
@@ -1187,6 +1197,74 @@ _fun = (env) => {
 ",
                 vec![vec![1, 1], vec![2, 3], vec![1, 2], vec![1, 2], vec![1, 1]],
             ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return false;
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (JSON.stringify(env.state.LOOP) !== '[false]') {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (JSON.stringify(env.state.FOO) !== '[]') {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![1, 1], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return (env.state.INPUT.foo === 5);
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+",
+                vec![vec![1, 1], vec![1, 3], vec![0, 2], vec![0, 2]],
+            ),
         ];
 
         for (s, expect) in test_cases {
@@ -1226,7 +1304,7 @@ _fun = (env) => {
             assert!(r.status().run_status() == Status::Succeeded);
             // println!("{:?}", r.traces);
             assert!(expect.len() == r.traces.len());
-            for (i, (block, traces)) in r.traces.iter().enumerate() {
+            for (i, (_block, traces)) in r.traces.iter().enumerate() {
                 assert!(expect[i].len() == traces.len());
                 for (j, trace) in traces.iter().enumerate() {
                     // println!(
