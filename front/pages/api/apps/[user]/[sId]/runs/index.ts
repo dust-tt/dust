@@ -1,5 +1,5 @@
 import { auth_user } from "@app/lib/auth";
-import { DustAPI, ErrorResponse } from "@app/lib/dust_api";
+import { DustAPI, DustAPIErrorResponse } from "@app/lib/dust_api";
 import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
@@ -17,7 +17,7 @@ export type PostRunsResponseBody =
   | {
       run: RunType;
     }
-  | ErrorResponse;
+  | DustAPIErrorResponse;
 
 async function handler(
   req: NextApiRequest,

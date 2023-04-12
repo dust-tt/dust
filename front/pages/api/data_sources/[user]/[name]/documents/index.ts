@@ -1,15 +1,19 @@
 import { auth_user } from "@app/lib/auth";
+import {
+  DustAPI,
+  DustAPIDocument,
+  DustAPIErrorResponse,
+} from "@app/lib/dust_api";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
 
-const { DUST_API } = process.env;
-
-export type GetDocumentsResponseBody = {
-  documents: Array<DocumentType>;
-  total: number;
-};
+export type GetDocumentsResponseBody =
+  | {
+      documents: Array<DustAPIDocument>;
+      total: number;
+    }
+  | DustAPIErrorResponse;
 
 async function handler(
   req: NextApiRequest,
@@ -57,24 +61,21 @@ async function handler(
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
-      const documentsRes = await fetch(
-        `${DUST_API}/projects/${dataSource.dustAPIProjectId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,
-        {
-          method: "GET",
-        }
+      const documents = await DustAPI.getDataSourceDocuments(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        limit,
+        offset
       );
 
-      if (!documentsRes.ok) {
-        const error = await documentsRes.json();
-        res.status(400).json(error.error);
+      if (documents.isErr()) {
+        res.status(400).json(documents.error);
         return;
       }
 
-      const documents = await documentsRes.json();
-
       res.status(200).json({
-        documents: documents.response.documents,
-        total: documents.response.total,
+        documents: documents.value.documents,
+        total: documents.value.total,
       });
       return;
 
