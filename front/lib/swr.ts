@@ -108,9 +108,7 @@ export function useRuns(
   );
 
   return {
-    // TODO: fix TS
     runs: data ? data.runs : [],
-    // TODO: fix TS
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,

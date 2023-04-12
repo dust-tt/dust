@@ -8,15 +8,15 @@ import withLogging from "@app/logger/withlogging";
 import { RunRunType, RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 
-export type GetRunsResponseBody =
-  | {
-      runs: RunType[];
-      total: number;
-    }
-  | {
-      message: string;
-      code: number;
-    };
+export type GetRunsResponseBody = {
+  runs: RunType[];
+  total: number;
+};
+
+type GetRunsErrorResponseBody = {
+  message: string;
+  code: number;
+};
 
 export type PostRunsResponseBody = {
   run: RunType;
@@ -24,7 +24,9 @@ export type PostRunsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetRunsResponseBody | PostRunsResponseBody>
+  res: NextApiResponse<
+    GetRunsResponseBody | GetRunsErrorResponseBody | PostRunsResponseBody
+  >
 ) {
   let [authRes, appUser] = await Promise.all([
     auth_user(req, res),
