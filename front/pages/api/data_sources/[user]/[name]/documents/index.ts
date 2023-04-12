@@ -1,19 +1,13 @@
 import { auth_user } from "@app/lib/auth";
-import {
-  DustAPI,
-  DustAPIDocument,
-  DustAPIErrorResponse,
-} from "@app/lib/dust_api";
+import { DustAPI, DustAPIDocument } from "@app/lib/dust_api";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { NextApiRequest, NextApiResponse } from "next";
 
-export type GetDocumentsResponseBody =
-  | {
-      documents: Array<DustAPIDocument>;
-      total: number;
-    }
-  | DustAPIErrorResponse;
+export type GetDocumentsResponseBody = {
+  documents: Array<DustAPIDocument>;
+  total: number;
+};
 
 async function handler(
   req: NextApiRequest,
@@ -69,7 +63,7 @@ async function handler(
       );
 
       if (documents.isErr()) {
-        res.status(400).json(documents.error);
+        res.status(400).end();
         return;
       }
 
