@@ -1,14 +1,14 @@
 import { auth_api_user } from "@app/lib/auth";
-import { DustAPIDocument } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { DataSource, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
+import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
 export type GetDocumentsResponseBody = {
-  documents: Array<DustAPIDocument>;
+  documents: Array<DocumentType>;
   total: number;
 };
 

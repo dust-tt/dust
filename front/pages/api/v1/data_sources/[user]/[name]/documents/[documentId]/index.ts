@@ -1,16 +1,16 @@
 import { auth_api_user } from "@app/lib/auth";
-import { DustAPIDocument } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
+import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
 
 const { DUST_API } = process.env;
 
 export type GetDocumentResponseBody = {
-  document: DustAPIDocument;
+  document: DocumentType;
 };
 export type DeleteDocumentResponseBody = {
   document: {
@@ -18,7 +18,7 @@ export type DeleteDocumentResponseBody = {
   };
 };
 export type UpsertDocumentResponseBody = {
-  document: DustAPIDocument;
+  document: DocumentType;
   data_source: DataSourceType;
 };
 
