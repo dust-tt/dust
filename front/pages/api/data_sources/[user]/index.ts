@@ -1,12 +1,11 @@
 import { Role, auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
-
-const { DUST_API } = process.env;
 
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;
@@ -97,11 +96,8 @@ async function handler(
         return;
       }
 
-      const pRes = await fetch(`${DUST_API}/projects`, {
-        method: "POST",
-      });
-      const dustProject = await pRes.json();
-      if (dustProject.error) {
+      const dustProject = await DustAPI.createProject();
+      if (dustProject.isErr()) {
         res.status(500).end();
         return;
       }
@@ -122,39 +118,32 @@ async function handler(
       ]);
       let credentials = credentialsFromProviders(providers);
 
-      const dsRes = await fetch(
-        `${DUST_API}/projects/${dustProject.response.project.project_id}/data_sources`,
+      const dustDataSource = await DustAPI.createDataSource(
+        dustProject.value.project.project_id.toString(),
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+          dataSourceId: req.body.name as string,
+          config: {
+            provider_id: req.body.provider_id as string,
+            model_id: req.body.model_id as string,
+            splitter_id: "base_v0",
+            max_chunk_size: maxChunkSize,
+            use_cache: false,
           },
-          body: JSON.stringify({
-            data_source_id: req.body.name,
-            config: {
-              provider_id: req.body.provider_id,
-              model_id: req.body.model_id,
-              splitter_id: "base_v0",
-              max_chunk_size: maxChunkSize,
-              use_cache: false,
-            },
-            credentials,
-          }),
+          credentials,
         }
       );
 
-      const dustDataSource = await dsRes.json();
-      if (dustDataSource.error) {
+      if (dustDataSource.isErr()) {
         res.status(500).end();
         return;
       }
 
-      let ds = await DataSource.create({
+      await DataSource.create({
         name: req.body.name,
         description: description,
         visibility: req.body.visibility,
-        config: JSON.stringify(dustDataSource.response.data_source.config),
-        dustAPIProjectId: dustProject.response.project.project_id,
+        config: JSON.stringify(dustDataSource.value.data_source.config),
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
         userId: dataSourceUser.id,
       });
 

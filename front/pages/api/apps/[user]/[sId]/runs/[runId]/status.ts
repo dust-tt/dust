@@ -1,10 +1,9 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, User } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
-
-const { DUST_API } = process.env;
 
 export type GetRunStatusResponseBody = {
   run: RunType | null;
@@ -65,21 +64,16 @@ async function handler(
         return;
       }
 
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
-        {
-          method: "GET",
-        }
+      const run = await DustAPI.getRunStatus(
+        app.dustAPIProjectId,
+        runId as string
       );
-
-      if (!runRes.ok) {
+      if (run.isErr()) {
         res.status(500).end();
         return;
       }
 
-      const run = await runRes.json();
-
-      res.status(200).json({ run: run.response.run });
+      res.status(200).json({ run: run.value.run });
       return;
 
     default:

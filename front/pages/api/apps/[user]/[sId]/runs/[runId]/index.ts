@@ -1,4 +1,5 @@
 import { auth_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { App, User } from "@app/lib/models";
 import {
   recomputeIndents,
@@ -11,8 +12,6 @@ import fs from "fs";
 import { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 import peg from "pegjs";
-
-const { DUST_API } = process.env;
 
 const libDir = path.join(process.cwd(), "lib");
 const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
@@ -72,40 +71,31 @@ async function handler(
         return;
       }
 
-      // Retrieve run and config.
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}/status`,
-        {
-          method: "GET",
-        }
+      const r = await DustAPI.getRunStatus(
+        app.dustAPIProjectId,
+        runId as string
       );
-
-      if (!runRes.ok) {
+      if (r.isErr()) {
         res.status(500).end();
         return;
       }
-
-      const r = await runRes.json();
-      const run = r.response.run;
+      const run = r.value.run;
       const config = run.config;
 
       // Retrieve specification and parse it.
       const specHash = run.app_hash;
-      const specRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/specifications/${specHash}`,
-        {
-          method: "GET",
-        }
+
+      const s = await DustAPI.getSpecification(
+        app.dustAPIProjectId,
+        specHash as string
       );
 
-      if (!specRes.ok) {
+      if (s.isErr()) {
         res.status(500).end();
         return;
       }
 
-      const s = await specRes.json();
-
-      let spec = specParser.parse(s.response.specification.data);
+      let spec = specParser.parse(s.value.specification.data);
 
       for (var i = 0; i < spec.length; i++) {
         if (spec[i].name in config.blocks) {
