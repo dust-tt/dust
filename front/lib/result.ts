@@ -5,7 +5,7 @@
  * or a success type.
  *
  * Usage:
- * import {Result, Ok, Err, isOk, isErr} from "@app/lib/result"
+ * import {Result, Ok, Err} from "@app/lib/result"
  * function divide(numerator: number, denominator: number) : Result<number, Error> {
  *     if (denominator === 0) {
  *        return new Err(new Error("Cannot divide by zero"));
