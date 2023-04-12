@@ -1,14 +1,15 @@
 import {
   App,
   Clone,
-  Dataset,
+  Connector,
   DataSource,
+  Dataset,
   Key,
+  Membership,
   Provider,
   Run,
   User,
   Workspace,
-  Membership,
   XP1Run,
   XP1User,
 } from "@app/lib/models";
@@ -24,6 +25,7 @@ async function main() {
   await Key.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
+  await Connector.sync({ alter: true });
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
 

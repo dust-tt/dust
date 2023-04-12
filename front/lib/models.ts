@@ -10,7 +10,7 @@ import {
 
 const { FRONT_DATABASE_URI } = process.env;
 
-const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   logging: false,
 }); // TODO: type process.env
 
@@ -433,6 +433,8 @@ export class Key extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare isSystem: boolean;
 }
 Key.init(
   {
@@ -459,11 +461,25 @@ Key.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isSystem: {
+      type: DataTypes.BOOLEAN,
+      // We want only one system key per user, so allowing the null value allows us to have
+      // a unique index on the pair (userId, isSystem=true) without having to use partial indexes
+      // We can allow
+      allowNull: true,
+    },
   },
   {
     modelName: "keys",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["secret"] }, { fields: ["userId"] }],
+    indexes: [
+      { unique: true, fields: ["secret"] },
+      { fields: ["userId"] },
+      {
+        fields: ["userId", "isSystem"],
+        unique: true,
+      },
+    ],
   }
 );
 User.hasMany(Key);
@@ -589,6 +605,57 @@ Run.init(
 User.hasMany(Run);
 App.hasMany(Run);
 Workspace.hasMany(Run);
+
+export class Connector extends Model<
+  InferAttributes<Connector>,
+  InferCreationAttributes<Connector>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare type: "slack" | "notion" | "google";
+
+  declare nangoConnectionId: string;
+
+  declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+}
+
+Connector.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    nangoConnectionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "connector",
+    sequelize: front_sequelize,
+  }
+);
+User.hasMany(Connector);
+DataSource.hasOne(Connector);
+Connector.hasOne(DataSource);
 
 // XP1
 

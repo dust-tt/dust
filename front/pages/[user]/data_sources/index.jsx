@@ -5,8 +5,48 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { classNames } from "@app/lib/utils";
 import { auth_user } from "@app/lib/auth";
+import Nango from "@nangohq/frontend";
 
-const { URL, GA_TRACKING_ID = null } = process.env;
+const {
+  URL,
+  GA_TRACKING_ID = null,
+  NANGO_PUBLIC_KEY,
+  NANGO_SLACK_CONNECTOR_ID,
+} = process.env;
+
+function triggerSlackOauthFlow(authUser) {
+  const connectionId = `slack-managed-ds-${authUser.id}`;
+
+  var nango = new Nango({ publicKey: NANGO_PUBLIC_KEY });
+  nango
+    .auth(NANGO_SLACK_CONNECTOR_ID, connectionId)
+    .then((result) => {
+      console.log(
+        `OAuth flow succeeded for provider "${result.providerConfigKey}" and connection-id "${result.connectionId}"!`
+      );
+      createSlackManagedDataSource(authUser, connectionId);
+    })
+    .catch((error) => {
+      console.error(
+        `There was an error in the OAuth flow for integration: ${error.message}`
+      );
+    });
+}
+
+async function createSlackManagedDataSource(user, nangoConnectionId) {
+  const res = await fetch(`/api/data_sources/${user.username}/managed`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nango_connection_id: nangoConnectionId,
+    }),
+  });
+  const data = await res.json();
+  console.log("data from createSlackManagedDataSource: ", data);
+  return data;
+}
 
 export default function DataSourcesView({
   authUser,
@@ -22,36 +62,48 @@ export default function DataSourcesView({
           <MainTab currentTab="DataSources" owner={owner} readOnly={readOnly} />
         </div>
         <div className="">
-          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto mt-8 divide-x divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
             <div>
-              {readOnly ? null : (
+              <div className="flex items-center justify-end">
+                {readOnly ? null : (
+                  <div className="sm:flex sm:items-center">
+                    <div className="sm:flex-auto"></div>
+                    <div className="mt-4 sm:mt-0 sm:ml-3 sm:flex-none">
+                      <Link
+                        href={`/${owner.username}/data_sources/new`}
+                        onClick={(e) => {
+                          // Enforce FreePlan limit: 1 DataSource.
+                          if (
+                            dataSources.length >= 1 &&
+                            authUser.username !== "spolu"
+                          ) {
+                            e.preventDefault();
+                            window.alert(
+                              "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                            );
+                            return;
+                          }
+                        }}
+                      >
+                        <Button>
+                          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                          New DataSource
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
                 <div className="sm:flex sm:items-center">
                   <div className="sm:flex-auto"></div>
-                  <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link
-                      href={`/${owner.username}/data_sources/new`}
-                      onClick={(e) => {
-                        // Enforce FreePlan limit: 1 DataSource.
-                        if (
-                          dataSources.length >= 1 &&
-                          authUser.username !== "spolu"
-                        ) {
-                          e.preventDefault();
-                          window.alert(
-                            "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                          );
-                          return;
-                        }
-                      }}
-                    >
-                      <Button>
-                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                        New DataSource
-                      </Button>
-                    </Link>
+                  <div className="mt-4 sm:mt-0 sm:ml-3 sm:flex-none">
+                    <Button onClick={() => triggerSlackOauthFlow(authUser)}>
+                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                      Add Slack Data Source
+                    </Button>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="mt-8 overflow-hidden">
                 <ul role="list" className="">

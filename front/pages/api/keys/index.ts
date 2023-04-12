@@ -44,6 +44,7 @@ async function handler(
           return {
             secret: k.secret,
             status: k.status,
+            isSystem: false,
           };
         }),
       });
@@ -64,6 +65,7 @@ async function handler(
         status: "active",
         userId: auth.user().id,
         workspaceId: authOwner.id,
+        isSystem: false,
       });
 
       res.status(201).json({
