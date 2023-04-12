@@ -8,8 +8,6 @@ import withLogging from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 
-const { DUST_API } = process.env;
-
 export type PostRunResponseBody = {
   run: RunType;
 };
@@ -232,16 +230,7 @@ async function handler(
         return;
       }
 
-      let run: Omit<RunType, "app_hash"> & {
-        specification_hash?: string | null;
-        app_hash?: string | null;
-        results?:
-          | {
-              value?: any;
-              error?: string | undefined;
-            }[][]
-          | null;
-      } = runRes.value.run;
+      let run: RunType = runRes.value.run;
       run.specification_hash = run.app_hash;
       delete run.app_hash;
 
