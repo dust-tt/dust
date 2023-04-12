@@ -3,12 +3,12 @@ import MainTab from "@app/components/data_source/MainTab";
 import { auth_user } from "@app/lib/auth";
 import { timeAgoFrom, utcDateFrom } from "@app/lib/utils";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-import { DocumentType } from "@app/types/document";
-import { DataSourceType } from "@app/types/data_source";
 import { classNames } from "@app/lib/utils";
 import { UserType } from "@app/types//user";
+import { DataSourceType } from "@app/types/data_source";
+import { DocumentType } from "@app/types/document";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -250,7 +250,7 @@ export async function getServerSideProps(context: any) {
   if (authRes.isErr()) {
     return { noFound: true };
   }
-  const auth = authRes.value();
+  const auth = authRes.value;
 
   if (auth.isAnonymous()) {
     return {
