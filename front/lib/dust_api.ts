@@ -248,6 +248,20 @@ export const DustAPI = {
     return _resultFromResponse(response);
   },
 
+  async getRun(
+    projectId: string,
+    runId: string
+  ): Promise<DustAPIResponse<{ run: RunType }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs/${runId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
   async getRunStatus(
     projectId: string,
     runId: string

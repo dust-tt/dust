@@ -1,6 +1,6 @@
 import { auth_api_user } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
-import { streamChunks } from "@app/lib/http_utils";
 import { App, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
@@ -163,31 +163,24 @@ async function handler(
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
-        const runRes = await fetch(
-          `${DUST_API}/projects/${app.dustAPIProjectId}/runs/stream`,
+        const runRes = await DustAPI.createRunStream(
+          app.dustAPIProjectId,
+          auth.user().id.toString(),
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Dust-User-Id": auth.user().id.toString(),
-            },
-            body: JSON.stringify({
-              run_type: "deploy",
-              specification_hash: specificationHash,
-              inputs,
-              config: { blocks: config },
-              credentials,
-            }),
+            runType: "deploy",
+            specificationHash: specificationHash,
+            config: { blocks: config },
+            inputs,
+            credentials,
           }
         );
 
-        if (!runRes.ok) {
-          const error = await runRes.json();
+        if (runRes.isErr()) {
           res.status(400).json({
             error: {
               type: "run_error",
               message: "There was an error running the app.",
-              run_error: error.error,
+              run_error: runRes.error,
             },
           });
           return;
@@ -199,7 +192,7 @@ async function handler(
         });
 
         try {
-          for await (const chunk of streamChunks(runRes.body!)) {
+          for await (const chunk of runRes.value) {
             res.write(chunk);
             // @ts-expect-error
             res.flush();
@@ -216,37 +209,39 @@ async function handler(
         return;
       }
 
-      const runRes = await fetch(
-        `${DUST_API}/projects/${app.dustAPIProjectId}/runs`,
+      const runRes = await DustAPI.createRun(
+        app.dustAPIProjectId,
+        auth.user().id.toString(),
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Dust-User-Id": auth.user().id.toString(),
-          },
-          body: JSON.stringify({
-            run_type: "deploy",
-            specification_hash: specificationHash,
-            inputs,
-            config: { blocks: config },
-            credentials,
-          }),
+          runType: "deploy",
+          specificationHash: specificationHash,
+          config: { blocks: config },
+          inputs,
+          credentials,
         }
       );
 
-      if (!runRes.ok) {
-        const error = await runRes.json();
+      if (runRes.isErr()) {
         res.status(400).json({
           error: {
             type: "run_error",
             message: "There was an error running the app.",
-            run_error: error.error,
+            run_error: runRes.error,
           },
         });
         return;
       }
 
-      let run = (await runRes.json()).response.run;
+      let run: Omit<RunType, "app_hash"> & {
+        specification_hash?: string | null;
+        app_hash?: string | null;
+        results?:
+          | {
+              value?: any;
+              error?: string | undefined;
+            }[][]
+          | null;
+      } = runRes.value.run;
       run.specification_hash = run.app_hash;
       delete run.app_hash;
 
@@ -255,19 +250,14 @@ async function handler(
         let runId = run.run_id;
         await poll({
           fn: async () => {
-            const runRes = await fetch(
-              `${DUST_API}/projects/${
-                app!.dustAPIProjectId
-              }/runs/${runId}/status`,
-              {
-                method: "GET",
-              }
+            const run = await DustAPI.getRunStatus(
+              app!.dustAPIProjectId,
+              runId
             );
-            if (!runRes.ok) {
-              const error = await runRes.json();
+            if (run.isErr()) {
               return { status: "error" };
             }
-            const r = (await runRes.json()).response.run;
+            const r = run.value.run;
             return { status: r.status.run };
           },
           validate: (r) => {
@@ -283,26 +273,18 @@ async function handler(
         });
 
         // Finally refresh the run object.
-        const runRes = await fetch(
-          `${DUST_API}/projects/${app.dustAPIProjectId}/runs/${runId}`,
-          {
-            method: "GET",
-          }
-        );
-
-        if (!runRes.ok) {
-          const error = await runRes.json();
+        const runRes = await DustAPI.getRun(app!.dustAPIProjectId, runId);
+        if (runRes.isErr()) {
           res.status(400).json({
             error: {
               type: "run_error",
               message: "There was an error retrieving the run while polling.",
-              run_error: error.error,
+              run_error: runRes.error,
             },
           });
           return;
         }
-
-        run = (await runRes.json()).response.run;
+        run = runRes.value.run;
         run.specification_hash = run.app_hash;
         delete run.app_hash;
       }
@@ -322,7 +304,7 @@ async function handler(
         run.results = null;
       }
 
-      res.status(200).json({ run });
+      res.status(200).json({ run: run as RunType });
       return;
 
     default:
