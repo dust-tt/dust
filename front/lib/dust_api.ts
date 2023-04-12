@@ -65,6 +65,12 @@ type GetRunsResponse = {
   runs: RunType[];
 };
 
+type DustAPICreateDataSourcePayload = {
+  dataSourceId: string;
+  config: DustAPIDataSourceConfig;
+  credentials: { [key: string]: string };
+};
+
 export const DustAPI = {
   async createProject(): Promise<DustAPIResponse<{ project: Project }>> {
     const response = await fetch(`${DUST_API_URL}/projects`, {
@@ -263,11 +269,7 @@ export const DustAPI = {
 
   async createDataSource(
     projectId: string,
-    payload: {
-      dataSourceId: string;
-      config: DustAPIDataSourceConfig;
-      credentials: { [key: string]: string };
-    }
+    payload: DustAPICreateDataSourcePayload
   ): Promise<DustAPIResponse<{ data_source: DustAPIDataSource }>> {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/data_sources`,
