@@ -202,7 +202,7 @@ function Error({ error }) {
   );
 }
 
-function Execution({ block, trace }) {
+export function Execution({ block, trace }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((t, i) => {
