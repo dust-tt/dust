@@ -260,6 +260,26 @@ export const DustAPI = {
     return _resultFromResponse(response);
   },
 
+  async getRunsBatch(
+    projectId: string,
+    dustRunIds: string[]
+  ): Promise<DustAPIResponse<{ runs: DustAPIRun[] }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs/batch`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          run_ids: dustRunIds,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
   async getRun(
     projectId: string,
     runId: string

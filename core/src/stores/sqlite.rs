@@ -33,6 +33,8 @@ impl SQLiteStore {
     pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
         let manager = SqliteConnectionManager::file(sqlite_path);
         let pool = Pool::new(manager)?;
+        let c = pool.get()?;
+        rusqlite::vtab::array::load_module(&c)?;
         Ok(SQLiteStore { pool })
     }
 
@@ -378,6 +380,53 @@ impl Store for SQLiteStore {
                 },
                 Ok(run_id) => Ok(Some(run_id)),
             }
+        })
+        .await?
+    }
+
+    async fn load_runs(&self, project: &Project, run_ids: Vec<String>) -> Result<Vec<Run>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<Vec<Run>> {
+            let c = pool.get()?;
+            let run_ids_values = std::rc::Rc::new(
+                run_ids
+                    .iter()
+                    .map(|s| rusqlite::types::Value::Text(s.to_string()))
+                    .collect::<Vec<rusqlite::types::Value>>(),
+            );
+            let mut stmt = c.prepare(
+                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs
+                    WHERE project = ?1 AND run_id IN rarray(?2);",
+            )?;
+            let mut rows = stmt.query(params![project_id, run_ids_values])?;
+            let mut runs = Vec::new();
+
+            while let Some(row) = rows.next()? {
+                let run_id: String = row.get(0)?;
+                let created: u64 = row.get(1)?;
+                let app_hash: String = row.get(2)?;
+                let config_data: String = row.get(3)?;
+                let status_data: String = row.get(4)?;
+                let run_type_str: String = row.get(5)?;
+                let run_type = RunType::from_str(&run_type_str)?;
+
+                let run_config: RunConfig = serde_json::from_str(&config_data)?;
+                let run_status: RunStatus = serde_json::from_str(&status_data)?;
+
+                runs.push(Run::new_from_store(
+                    &run_id,
+                    created as u64,
+                    run_type.clone(),
+                    &app_hash,
+                    &run_config,
+                    &run_status,
+                    vec![],
+                ));
+            }
+            Ok(runs)
         })
         .await?
     }

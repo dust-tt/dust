@@ -857,6 +857,40 @@ async fn runs_list(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct RunsRetrieveBatchPayload {
+    run_ids: Vec<String>,
+}
+
+async fn runs_retrieve_batch(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Json(payload): extract::Json<RunsRetrieveBatchPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_runs(&project, payload.run_ids).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve runs: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(runs) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "runs": runs,
+                })),
+            }),
+        ),
+    }
+}
+
 async fn runs_retrieve(
     extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
@@ -1496,6 +1530,10 @@ async fn main() -> Result<()> {
             post(runs_create_stream),
         )
         .route("/projects/:project_id/runs", get(runs_list))
+        .route(
+            "/projects/:project_id/runs/batch",
+            post(runs_retrieve_batch),
+        )
         .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
         .route(
             "/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
