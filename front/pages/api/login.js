@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions, adapter } from "./auth/[...nextauth]";
-import { User } from "@app/lib/models";
+import { authOptions } from "./auth/[...nextauth]";
+import { User, Workspace, Membership } from "@app/lib/models";
+import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
 
 async function handler(req, res) {
@@ -25,11 +26,27 @@ async function handler(req, res) {
         await user.save();
       }
       if (!user) {
-        user = await User.create({
-          githubId: session.provider.id.toString(),
-          username: session.user.username,
-          email: session.user.email,
-          name: session.user.name,
+        let uId = new_id();
+
+        const [u, w] = await Promise.all([
+          User.create({
+            githubId: session.provider.id.toString(),
+            username: session.user.username,
+            email: session.user.email,
+            name: session.user.name,
+          }),
+          Workspace.create({
+            uId,
+            sId: uId.slice(0, 10),
+            name: session.user.username,
+            type: "personal",
+          }),
+        ]);
+
+        const m = await Membership.create({
+          role: "admin",
+          userId: u.id,
+          workspaceId: w.id,
         });
       }
 

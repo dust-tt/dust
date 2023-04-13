@@ -6,12 +6,16 @@ import {
   Key,
   Provider,
   User,
+  Workspace,
+  Membership,
   XP1Run,
   XP1User,
 } from "@app/lib/models";
 
 async function main() {
   await User.sync({ alter: true });
+  await Workspace.sync({ alter: true });
+  await Membership.sync({ alter: true });
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
