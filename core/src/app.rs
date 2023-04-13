@@ -95,12 +95,15 @@ impl App {
         }
 
         // Check that:
-        // - maps are matched by a reduce and that they are not nested.
         // - there is at most one input.
+        // - `map`s are matched by a `reduce` and that they are not nested.
+        // - `while`s are matched by a `end` and they are not nested.
+        // - `map`/`reduce` and `while`/`end` are not nested.
         let mut current_map: Option<String> = None;
         let mut current_while: Option<String> = None;
         let mut input_found = false;
         let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
+
         for (name, block) in &blocks {
             if block.block_type() == BlockType::Input {
                 if input_found {
@@ -164,7 +167,7 @@ impl App {
                 current_while = Some(name.clone());
             }
             if block.block_type() == BlockType::Reduce {
-                match current_map.clone() {
+                match current_map.as_ref() {
                     None => {
                         Err(anyhow!(
                             "Block `reduce {}` is not matched by a previous `map {}` block",
@@ -186,7 +189,7 @@ impl App {
                 }
             }
             if block.block_type() == BlockType::End {
-                match current_while.clone() {
+                match current_while.as_ref() {
                     None => {
                         Err(anyhow!(
                             "Block `end {}` is not matched by a previous `while {}` block",
@@ -582,7 +585,7 @@ impl App {
                 };
             });
 
-            let t = (
+            let trace = (
                 (block.block_type(), name.clone()),
                 flat.iter()
                     .map(|m| {
@@ -606,16 +609,16 @@ impl App {
                     .collect::<Vec<_>>(),
             );
 
-            // Send an event for the block execution trace. Not that when inside a `while` loop that
-            // means we'll send a trace event with map_idx = 0 for each iteration.
+            // Send an event for the block execution trace. Note that when inside a `while` loop
+            // that means we'll send a trace event with map_idx = 0 for each iteration.
             match event_sender.as_ref() {
                 Some(sender) => {
                     let _ = sender.send(json!({
                         "type": "block_execution",
                         "content": {
-                            "block_type": t.0.0,
-                            "block_name": t.0.1,
-                            "execution": t.1,
+                            "block_type": trace.0.0,
+                            "block_name": trace.0.1,
+                            "execution": trace.1,
                         }
                     }));
                 }
@@ -633,9 +636,9 @@ impl App {
                     // after the `while` condition started returning false.
                     assert!(
                         current_skips.is_some()
-                            && t.1.len() == current_skips.as_ref().unwrap().len()
+                            && trace.1.len() == current_skips.as_ref().unwrap().len()
                     );
-                    let mut t = t.clone();
+                    let mut t = trace.clone();
                     t.1.iter_mut()
                         .zip(current_skips.as_ref().unwrap().iter())
                         .for_each(|(m, skipped)| {
@@ -678,7 +681,7 @@ impl App {
                     }
                 }
                 None => {
-                    self.run.as_mut().unwrap().traces.push(t);
+                    self.run.as_mut().unwrap().traces.push(trace);
                 }
             }
 
@@ -913,7 +916,7 @@ impl App {
                 );
             }
 
-            // Special post-processing of end blocks. If `current_skips` are all false, we exit the
+            // Special post-processing of end blocks. If `current_skips` are all true, we exit the
             // while loop otherwise we loop.
             if block.block_type() == BlockType::End {
                 assert!(current_while.is_some());
