@@ -79,6 +79,111 @@ User.init(
   }
 );
 
+export class Workspace extends Model<
+  InferAttributes<Workspace>,
+  InferCreationAttributes<Workspace>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare uId: string;
+  declare sId: string;
+  declare name: string;
+  declare description?: string;
+  declare type: "personal" | "team";
+  declare plan?: string;
+}
+Workspace.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    uId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+    },
+    type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    plan: {
+      type: DataTypes.STRING,
+    },
+  },
+  {
+    modelName: "workspace",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["sId"] }],
+  }
+);
+
+export class Membership extends Model<
+  InferAttributes<Membership>,
+  InferCreationAttributes<Membership>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare role: "admin" | "builder" | "user" | "revoked";
+
+  declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+}
+Membership.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    role: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "membership",
+    sequelize: front_sequelize,
+  }
+);
+User.hasMany(Membership);
+Workspace.hasMany(Membership);
+
 export class App extends Model<
   InferAttributes<App>,
   InferCreationAttributes<App>
@@ -98,6 +203,7 @@ export class App extends Model<
   declare dustAPIProjectId: string;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 App.init(
   {
@@ -159,6 +265,7 @@ App.init(
   }
 );
 User.hasMany(App);
+Workspace.hasMany(App);
 
 export class Provider extends Model<
   InferAttributes<Provider>,
@@ -172,6 +279,7 @@ export class Provider extends Model<
   declare config: string;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Provider.init(
   {
@@ -206,6 +314,7 @@ Provider.init(
   }
 );
 User.hasMany(Provider);
+Workspace.hasMany(Provider);
 
 export class Dataset extends Model<
   InferAttributes<Dataset>,
@@ -219,6 +328,7 @@ export class Dataset extends Model<
   declare description?: string;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare appId: ForeignKey<App["id"]>;
 }
 Dataset.init(
@@ -254,6 +364,7 @@ Dataset.init(
 );
 User.hasMany(Dataset);
 App.hasMany(Dataset);
+Workspace.hasMany(Dataset);
 
 export class Clone extends Model<
   InferAttributes<Clone>,
@@ -320,6 +431,7 @@ export class Key extends Model<
   declare status: string;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Key.init(
   {
@@ -354,6 +466,7 @@ Key.init(
   }
 );
 User.hasMany(Key);
+Workspace.hasMany(Key);
 
 export class DataSource extends Model<
   InferAttributes<DataSource>,
@@ -370,6 +483,7 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 DataSource.init(
@@ -418,6 +532,7 @@ DataSource.init(
   }
 );
 User.hasMany(DataSource);
+Workspace.hasMany(DataSource);
 
 // XP1
 
