@@ -1,6 +1,7 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import Ajv, { JSONSchemaType } from "ajv";
+
 const ajv = new Ajv({
   coerceTypes: true,
 });
@@ -48,14 +49,4 @@ export function parse_payload<SchemaType>(
   return new Err(
     new RequestParseError(validate.errors?.map((e) => e.message).join(", "))
   );
-}
-
-export function parseServerSentEventChunk(chunk: Uint8Array): any | null {
-  const rawEvent = new TextDecoder().decode(chunk);
-  if (rawEvent && rawEvent.length && rawEvent.startsWith("data:")) {
-    const eventData = rawEvent.split("data:")[1];
-    const event = JSON.parse(eventData);
-    return event;
-  }
-  return null;
 }

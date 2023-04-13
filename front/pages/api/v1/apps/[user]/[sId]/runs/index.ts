@@ -1,7 +1,6 @@
 import { auth_api_user } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
-import { parseServerSentEventChunk } from "@app/lib/http_utils";
 import { App, Provider, Run, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
@@ -190,16 +189,8 @@ async function handler(
           Connection: "keep-alive",
         });
 
-        let dustRunId: string | null = null;
-
         try {
-          for await (const chunk of runRes.value) {
-            if (!dustRunId) {
-              const event = parseServerSentEventChunk(chunk);
-              if (event?.content?.run_id) {
-                dustRunId = event.content.run_id;
-              }
-            }
+          for await (const chunk of runRes.value.chunkStream) {
             res.write(chunk);
             // @ts-expect-error
             res.flush();
@@ -214,7 +205,12 @@ async function handler(
         }
         res.end();
 
-        if (!dustRunId) {
+        let dustRunId: string | null = null;
+
+        try {
+          dustRunId = await runRes.value.runId;
+        } catch (err) {
+          console.error(err);
           logger.error(
             {
               error: "No run ID received from Dust API",

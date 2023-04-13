@@ -1,6 +1,7 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
+import { EventSourceParser, createParser } from "eventsource-parser";
 import { streamChunks } from "./http_utils";
 
 const { DUST_API: DUST_API_URL } = process.env;
@@ -216,7 +217,12 @@ export const DustAPI = {
     projectId: string,
     dustUserId: string,
     payload: DustAPICreateRunPayload
-  ): Promise<DustAPIResponse<AsyncGenerator<Uint8Array, void, unknown>>> {
+  ): Promise<
+    DustAPIResponse<{
+      chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
+      runId: Promise<string>;
+    }>
+  > {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/stream`,
       {
@@ -241,7 +247,38 @@ export const DustAPI = {
       return _resultFromResponse(response);
     }
 
-    return new Ok(streamChunks(response.body));
+    const chunkStream = streamChunks(response.body);
+
+    let parser: EventSourceParser | null = null;
+    const runIdPromise = new Promise<string>((resolve, reject) => {
+      parser = createParser((event) => {
+        if (event.type === "event") {
+          if (event.data) {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.content?.run_id) {
+                resolve(data.content.run_id);
+              }
+            } catch (err) {
+              console.error(err);
+              reject("Failed to parse event data");
+            }
+          }
+        }
+      });
+    });
+
+    // allows to feed the SSE parser with chunks of data while iterating over the stream
+    // this means that the `runId` promise will never be resolved unless the caller
+    // consumes the stream
+    const asyncGen = async function* () {
+      for await (const chunk of chunkStream) {
+        parser!.feed(new TextDecoder().decode(chunk));
+        yield chunk;
+      }
+    };
+
+    return new Ok({ chunkStream: asyncGen(), runId: runIdPromise });
   },
 
   async getRuns(
