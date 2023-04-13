@@ -229,6 +229,7 @@ async function handler(
           dustRunId,
           userId: auth.user().id,
           appId: app.id,
+          runType: "deploy",
         });
 
         return;
@@ -261,6 +262,7 @@ async function handler(
         dustRunId: runRes.value.run.run_id,
         userId: auth.user().id,
         appId: app.id,
+        runType: "deploy",
       });
 
       let run: RunType = runRes.value.run;

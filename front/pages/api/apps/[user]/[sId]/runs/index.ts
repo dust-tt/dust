@@ -155,6 +155,7 @@ async function handler(
             dustRunId,
             userId: auth.user().id,
             appId: app.id,
+            runType: "execute",
           });
 
           res.end();
@@ -214,6 +215,7 @@ async function handler(
             dustRunId: dustRun.value.run.run_id,
             userId: auth.user().id,
             appId: app.id,
+            runType: "local",
           });
 
           await app.update({

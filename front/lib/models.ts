@@ -543,6 +543,8 @@ export class Run extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare dustRunId: string;
+  declare runType: string;
+
   declare userId: ForeignKey<User["id"]>;
   declare appId: ForeignKey<App["id"]>;
 }
@@ -568,15 +570,23 @@ Run.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    runType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     modelName: "run",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["userId", "appId"] }],
+    indexes: [
+      { fields: ["userId", "appId"] },
+      { unique: true, fields: ["dustRunId"] },
+    ],
   }
 );
-Run.belongsTo(User);
-Run.belongsTo(App);
+User.hasMany(Run);
+App.hasMany(Run);
+Workspace.hasMany(Run);
 
 // XP1
 
