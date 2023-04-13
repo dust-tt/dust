@@ -140,28 +140,17 @@ export default function DataSourceView({
                               </Link>
                             </p>
                           </div>
-                        </div>
-                        <div className="mt-2 flex justify-between">
-                          <div className="flex flex-initial">
-                            <p className="text-sm text-gray-300">
-                              {Math.floor(d.text_size / 1024)} kb /{" "}
-                              {d.chunk_count} chunks{" "}
-                            </p>
-                          </div>
-                          <div
-                            className="mt-0 flex items-center"
-                            title={utcDateFrom(d.timestamp)}
-                          >
-                            <p className="text-sm text-gray-500">
+                          <div className="col-span-1 text-right">
+                            <p className="text-align-right text-sm text-gray-500">
                               {timeAgoFrom(d.timestamp)} ago
                             </p>
                           </div>
                         </div>
-                        <div className="mt-2 justify-between">
+                        <div className="mt-4 justify-between space-y-2">
                           {d.chunks.map((chunk) => {
                             const chunkId = `chunk-key-${d.document_id}-${chunk.hash}}`;
                             return (
-                              <div key={chunkId} className="pb-4">
+                              <div key={chunkId}>
                                 <div
                                   className={classNames(
                                     "flex w-full flex-col rounded-sm "
@@ -206,7 +195,7 @@ export default function DataSourceView({
                       </div>
                     </li>
                   ))}
-                <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                <div className="mt-4 flex flex-col items-center justify-center text-sm text-gray-500">
                   {(() => {
                     if (error) {
                       return (
@@ -223,7 +212,7 @@ export default function DataSourceView({
                       searchQuery.length == 0 &&
                       documents.length === 0
                     ) {
-                      return <p>Please enter your search query.</p>;
+                      return null;
                     }
                     if (
                       !isLoading &&
