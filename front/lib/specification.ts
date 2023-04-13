@@ -13,6 +13,14 @@ export function recomputeIndents(spec: SpecificationType): SpecificationType {
         indent--;
         spec[i].indent = indent;
         break;
+      case "while":
+        spec[i].indent = indent;
+        indent++;
+        break;
+      case "end":
+        indent--;
+        spec[i].indent = indent;
+        break;
       default:
         spec[i].indent = indent;
         break;
@@ -39,7 +47,7 @@ export function getNextName(spec: SpecificationType, name: string): string {
 export function addBlock(
   spec: SpecificationType,
   idx: number,
-  blockType: BlockType | "map_reduce"
+  blockType: BlockType | "map_reduce" | "while_end"
 ): SpecificationType {
   let s = spec.map((b) => b);
   switch (blockType) {
@@ -56,7 +64,7 @@ export function addBlock(
       });
       break;
     case "map_reduce":
-      // TODO(spolu): prevent if we are already inside a map
+      // TODO(spolu): prevent if we are already inside a map or while
       s.splice(idx + 1, 0, {
         type: "map",
         name: getNextName(spec, "LOOP"),
@@ -69,6 +77,26 @@ export function addBlock(
       });
       s.splice(idx + 2, 0, {
         type: "reduce",
+        name: getNextName(spec, "LOOP"),
+        indent: 0,
+        spec: {},
+        config: {},
+      });
+      break;
+    case "while_end":
+      // TODO(spolu): prevent if we are already inside a map or while
+      s.splice(idx + 1, 0, {
+        type: "while",
+        name: getNextName(spec, "LOOP"),
+        indent: 0,
+        spec: {
+          condition_code: "_fun = (env) => {\n  // return false;\n}",
+          max_iterations: "8",
+        },
+        config: {},
+      });
+      s.splice(idx + 2, 0, {
+        type: "end",
         name: getNextName(spec, "LOOP"),
         indent: 0,
         spec: {},
@@ -232,10 +260,28 @@ export function deleteBlock(
           }
         }
         break;
+      case "while":
+        s.splice(index, 1);
+        for (var i = index; i < s.length; i++) {
+          if (s[i].type == "end") {
+            s.splice(i, 1);
+            break;
+          }
+        }
+        break;
       case "reduce":
         s.splice(index, 1);
         for (var i = index - 1; i >= 0; i--) {
           if (s[i].type == "map") {
+            s.splice(i, 1);
+            break;
+          }
+        }
+        break;
+      case "end":
+        s.splice(index, 1);
+        for (var i = index - 1; i >= 0; i--) {
+          if (s[i].type == "while") {
             s.splice(i, 1);
             break;
           }
@@ -257,7 +303,9 @@ export function moveBlockUp(
     switch (s[index].type) {
       case "map":
       case "reduce":
-        if (["map", "reduce"].includes(s[index - 1].type)) {
+      case "while":
+      case "end":
+        if (["map", "reduce", "while", "end"].includes(s[index - 1].type)) {
           break;
         }
       default:
@@ -279,7 +327,9 @@ export function moveBlockDown(
     switch (s[index].type) {
       case "map":
       case "reduce":
-        if (["map", "reduce"].includes(s[index + 1].type)) {
+      case "while":
+      case "end":
+        if (["map", "reduce", "while", "end"].includes(s[index + 1].type)) {
           break;
         }
       default:
@@ -429,7 +479,27 @@ export function dumpSpecification(
         out += "\n";
         break;
       }
-
+      case "while": {
+        out += `while ${block.name} {\n`;
+        out += `  condition_code: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.condition_code
+        )}\n\`\`\`\n`;
+        if (
+          block.spec.max_iterations !== undefined &&
+          block.spec.max_iterations !== null &&
+          block.spec.max_iterations.length > 0
+        ) {
+          out += `  max_iterations: ${block.spec.max_iterations}\n`;
+        }
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "end": {
+        out += `end ${block.name} { }\n`;
+        out += "\n";
+        break;
+      }
       case "search": {
         out += `search ${block.name} {\n`;
         out += `  query: \n\`\`\`\n${block.spec.query}\n\`\`\`\n`;

@@ -7,6 +7,8 @@ export type BlockType =
   | "chat"
   | "map"
   | "reduce"
+  | "while"
+  | "end"
   | "search"
   | "curl"
   | "browser";

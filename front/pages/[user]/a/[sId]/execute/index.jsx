@@ -307,7 +307,7 @@ export default function ExecuteView({
       setIsRunning(false);
       const candidates = executionLogs.blockOrder.filter(
         // Don't treat reduce blocks as output as they don't have output
-        ({ type: blockType }) => blockType !== "reduce"
+        ({ type: blockType }) => !["reduce", "end"].includes(blockType)
       );
       const lastBlock = candidates[candidates.length - 1];
 

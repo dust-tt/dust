@@ -73,6 +73,12 @@ export default function NewBlock({
       description:
         "Map over an array and execute a sequence of blocks in parallel.",
     },
+    {
+      type: "while_end",
+      typeNames: ["while", "end"],
+      name: "While End",
+      description: "Loop over a set of blocks until a condition is met.",
+    },
   ];
   if (!containsInput) {
     blocks.splice(0, 0, {

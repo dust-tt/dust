@@ -247,7 +247,7 @@ export default function Output({ owner, block, runId, status, app }) {
     run.traces.length > 0 &&
     run.traces[0].length > 0 &&
     run.traces[0][1].length > 0 &&
-    !["reduce"].includes(block.type)
+    !["reduce", "end"].includes(block.type)
   ) {
     let traces = run.traces[0][1];
 

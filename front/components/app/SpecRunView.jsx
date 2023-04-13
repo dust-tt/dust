@@ -9,6 +9,7 @@ import Search from "./blocks/Search";
 import Curl from "./blocks/Curl";
 import Browser from "./blocks/Browser";
 import { Map, Reduce } from "./blocks/MapReduce";
+import { While, End } from "./blocks/WhileEnd";
 
 export default function SpecRunView({
   owner,
@@ -218,6 +219,48 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
+
+            case "while":
+              return (
+                <While
+                  key={idx}
+                  block={block}
+                  owner={owner}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
+              break;
+
+            case "end":
+              return (
+                <End
+                  key={idx}
+                  block={block}
+                  owner={owner}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
+
             case "search":
               return (
                 <Search
