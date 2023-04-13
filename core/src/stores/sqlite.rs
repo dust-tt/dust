@@ -384,12 +384,16 @@ impl Store for SQLiteStore {
         .await?
     }
 
-    async fn load_runs(&self, project: &Project, run_ids: Vec<String>) -> Result<Vec<Run>> {
+    async fn load_runs(
+        &self,
+        project: &Project,
+        run_ids: Vec<String>,
+    ) -> Result<HashMap<String, Run>> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
 
-        tokio::task::spawn_blocking(move || -> Result<Vec<Run>> {
+        tokio::task::spawn_blocking(move || -> Result<HashMap<String, Run>> {
             let c = pool.get()?;
             let run_ids_values = std::rc::Rc::new(
                 run_ids
@@ -426,7 +430,13 @@ impl Store for SQLiteStore {
                     vec![],
                 ));
             }
-            Ok(runs)
+
+            let runs_map = runs
+                .into_iter()
+                .map(|r| (r.run_id().to_string(), r))
+                .collect::<HashMap<String, Run>>();
+
+            Ok(runs_map)
         })
         .await?
     }

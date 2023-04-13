@@ -377,7 +377,11 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn load_runs(&self, project: &Project, run_ids: Vec<String>) -> Result<Vec<Run>> {
+    async fn load_runs(
+        &self,
+        project: &Project,
+        run_ids: Vec<String>,
+    ) -> Result<HashMap<String, Run>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -415,7 +419,12 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(runs)
+        let runs_map = runs
+            .into_iter()
+            .map(|r| (r.run_id().to_string(), r))
+            .collect();
+
+        Ok(runs_map)
     }
 
     async fn list_runs(
