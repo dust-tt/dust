@@ -1,6 +1,6 @@
 use crate::blocks::{
     browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, data_source::DataSource,
-    input::Input, llm::LLM, map::Map, reduce::Reduce, search::Search,
+    end::End, input::Input, llm::LLM, map::Map, r#while::While, reduce::Reduce, search::Search,
 };
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
@@ -68,6 +68,8 @@ pub enum BlockType {
     Search,
     Curl,
     Browser,
+    While,
+    End,
 }
 
 impl ToString for BlockType {
@@ -84,6 +86,8 @@ impl ToString for BlockType {
             BlockType::Search => String::from("search"),
             BlockType::Curl => String::from("curl"),
             BlockType::Browser => String::from("browser"),
+            BlockType::While => String::from("while"),
+            BlockType::End => String::from("end"),
         }
     }
 }
@@ -103,6 +107,8 @@ impl FromStr for BlockType {
             "search" => Ok(BlockType::Search),
             "curl" => Ok(BlockType::Curl),
             "browser" => Ok(BlockType::Browser),
+            "while" => Ok(BlockType::While),
+            "end" => Ok(BlockType::End),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }
@@ -175,6 +181,8 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::Search => Ok(Box::new(Search::parse(block_pair)?)),
         BlockType::Curl => Ok(Box::new(Curl::parse(block_pair)?)),
         BlockType::Browser => Ok(Box::new(Browser::parse(block_pair)?)),
+        BlockType::While => Ok(Box::new(While::parse(block_pair)?)),
+        BlockType::End => Ok(Box::new(End::parse(block_pair)?)),
     }
 }
 

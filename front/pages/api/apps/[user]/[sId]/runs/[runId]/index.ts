@@ -132,11 +132,18 @@ async function handler(
               spec[i].spec.instructions = restoreTripleBackticks(
                 spec[i].spec.instructions
               );
-              if (spec[i].spec.messages_code) {
-                spec[i].spec.messages_code = restoreTripleBackticks(
-                  spec[i].spec.messages_code
-                );
-              }
+            }
+            if (spec[i].spec.messages_code) {
+              spec[i].spec.messages_code = restoreTripleBackticks(
+                spec[i].spec.messages_code
+              );
+            }
+          }
+          if (spec[i].type === "while") {
+            if (spec[i].spec.condition_code) {
+              spec[i].spec.condition_code = restoreTripleBackticks(
+                spec[i].spec.condition_code
+              );
             }
           }
           if (spec[i].type === "data_source") {

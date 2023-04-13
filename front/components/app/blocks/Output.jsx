@@ -117,12 +117,22 @@ function ValueViewer({ block, value, k, topLevel }) {
           ) : null}
         </>
       ) : (
-        <div className="ml-4 flex text-sm text-gray-600">
+        <div className="ml-2 flex text-sm text-gray-600">
           {k != null ? (
-            <span className="mr-1 font-bold text-gray-700">{k}:</span>
+            <span className="ml-2 mr-1 font-bold text-gray-700">{k}:</span>
           ) : null}
           <span className="whitespace-pre-wrap">
-            {typeof value === "string" ? <StringViewer value={value} /> : value}
+            {typeof value === "string" ? (
+              <StringViewer value={value} />
+            ) : typeof value === "boolean" ? (
+              value ? (
+                <span className="italic">true</span>
+              ) : (
+                <span className="italic">false</span>
+              )
+            ) : (
+              value
+            )}
           </span>
         </div>
       )}
@@ -192,7 +202,7 @@ function Error({ error }) {
   );
 }
 
-function Execution({ block, trace }) {
+export function Execution({ block, trace }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((t, i) => {
@@ -247,7 +257,7 @@ export default function Output({ owner, block, runId, status, app }) {
     run.traces.length > 0 &&
     run.traces[0].length > 0 &&
     run.traces[0][1].length > 0 &&
-    !["reduce"].includes(block.type)
+    !["reduce", "end"].includes(block.type)
   ) {
     let traces = run.traces[0][1];
 

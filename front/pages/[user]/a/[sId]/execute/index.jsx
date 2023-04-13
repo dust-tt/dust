@@ -1,8 +1,3 @@
-import {
-  ArrayViewer,
-  ObjectViewer,
-  StringViewer,
-} from "@app/components/app/blocks/Output";
 import MainTab from "@app/components/app/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";
@@ -27,6 +22,7 @@ import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SSE } from "sse.js";
 import { auth_user } from "@app/lib/auth";
+import { Execution } from "@app/components/app/blocks/Output";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
@@ -35,28 +31,34 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
-function preProcessOutput(output) {
-  if (Array.isArray(output) && output.length === 1) {
-    return preProcessOutput(output[0]);
+function getTraceFromEvents(data) {
+  const events = Array.isArray(data) ? data : [data];
+
+  let traces = events
+    .map((o) => {
+      const t = o?.content?.execution;
+      if (t) {
+        return t[0];
+      }
+      return null;
+    })
+    .filter((x) => x !== null);
+
+  traces = traces.map((trace) =>
+    Array.isArray(trace) && trace.length === 1 ? trace[0] : trace
+  );
+
+  if (traces.length === 1 && Array.isArray(traces[0])) {
+    traces = traces[0];
   }
-  if (Array.isArray(output)) {
-    return output.map(preProcessOutput);
-  }
-  if (output.value && output.error === null) {
-    return preProcessOutput(output.value);
-  }
-  if (output.error) {
-    return { error: output.error };
-  }
-  if (
-    Object.keys(output).length === 2 &&
-    output.value === null &&
-    output.error === null
-  ) {
+
+  traces = traces.filter((t) => t.value !== null || t.error !== null);
+
+  if (traces.length === 0) {
     return null;
   }
 
-  return output;
+  return traces;
 }
 
 function ExecuteOutputLine({
@@ -67,30 +69,16 @@ function ExecuteOutputLine({
   expanded,
   onToggleExpand,
 }) {
-  let preprocessedOutput = outputForBlock
-    ? preProcessOutput(outputForBlock.content.execution[0])
-    : null;
+  let traces = outputForBlock ? getTraceFromEvents(outputForBlock) : null;
 
   return (
     <div className="leading-none">
       <button
-        disabled={!preprocessedOutput}
+        disabled={!traces}
         onClick={() => onToggleExpand()}
-        className={classNames(
-          "border-none",
-          preprocessedOutput ? null : "text-gray-400"
-        )}
+        className={classNames("border-none", traces ? null : "text-gray-400")}
       >
         <div className="flex flex-row items-center">
-          {lastEventForBlock.content.status === "running" ? (
-            <div className="mr-1">
-              <Spinner />
-            </div>
-          ) : lastEventForBlock.content.status === "errored" ? (
-            <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
-          ) : (
-            <CheckCircleIcon className="min-w-4 h-4 w-4 text-emerald-300" />
-          )}
           {!expanded ? (
             <ChevronRightIcon className="h-4 w-4 text-gray-400" />
           ) : (
@@ -102,17 +90,20 @@ function ExecuteOutputLine({
             </span>
             <span className="ml-1 font-bold text-gray-700">{blockName}</span>
           </div>
+          <div>
+            {lastEventForBlock.content.status === "running" ? (
+              <div className="ml-1">
+                <Spinner />
+              </div>
+            ) : lastEventForBlock.content.status === "errored" ? (
+              <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
+            ) : null}
+          </div>
         </div>
       </button>
       {expanded ? (
         <div className="ml-8 mb-2 flex text-sm text-gray-600">
-          {Array.isArray(preprocessedOutput) ? (
-            <ArrayViewer value={preprocessedOutput} />
-          ) : typeof preprocessedOutput == "string" ? (
-            <StringViewer value={preprocessedOutput} />
-          ) : typeof outputForBlock.content.execution == "object" ? (
-            <ObjectViewer value={preprocessedOutput} />
-          ) : null}
+          <Execution block={null} trace={traces} />
         </div>
       ) : null}
     </div>
@@ -307,7 +298,7 @@ export default function ExecuteView({
       setIsRunning(false);
       const candidates = executionLogs.blockOrder.filter(
         // Don't treat reduce blocks as output as they don't have output
-        ({ type: blockType }) => blockType !== "reduce"
+        ({ type: blockType }) => !["reduce", "end"].includes(blockType)
       );
       const lastBlock = candidates[candidates.length - 1];
 
@@ -390,12 +381,10 @@ export default function ExecuteView({
               const blockTypeName = `${blockType}-${blockName}`;
 
               if (parsedEvent.type === "block_status") {
-                const lastBlock = blockOrder[blockOrder.length - 1];
-                if (
-                  !lastBlock ||
-                  lastBlock.name !== blockName ||
-                  lastBlock.type !== blockType
-                ) {
+                const existingBlock = blockOrder.find(
+                  ({ name, type }) => name === blockName && type === blockType
+                );
+                if (!existingBlock) {
                   blockOrder.push({ name: blockName, type: blockType });
                 }
                 lastEventByBlockTypeName[blockTypeName] = parsedEvent;
@@ -405,7 +394,15 @@ export default function ExecuteView({
                   setIsErrored(true);
                 }
               } else {
-                outputByBlockTypeName[blockTypeName] = parsedEvent;
+                if (outputByBlockTypeName[blockTypeName]) {
+                  if (!Array.isArray(outputByBlockTypeName[blockTypeName])) {
+                    const existingOutput = outputByBlockTypeName[blockTypeName];
+                    outputByBlockTypeName[blockTypeName] = [existingOutput];
+                  }
+                } else {
+                  outputByBlockTypeName[blockTypeName] = [];
+                }
+                outputByBlockTypeName[blockTypeName].push(parsedEvent);
               }
               return {
                 blockOrder,
@@ -533,10 +530,10 @@ export default function ExecuteView({
                   Output
                 </h3>
                 <ExecuteFinalOutput
-                  value={preProcessOutput(
+                  value={getTraceFromEvents(
                     executionLogs.outputByBlockTypeName[
                       finalOutputBlockTypeName
-                    ].content.execution[0]
+                    ]
                   )}
                   errored={isErrored}
                 />

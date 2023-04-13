@@ -95,11 +95,15 @@ impl App {
         }
 
         // Check that:
-        // - maps are matched by a reduce and that they are not nested.
         // - there is at most one input.
+        // - `map`s are matched by a `reduce` and that they are not nested.
+        // - `while`s are matched by a `end` and they are not nested.
+        // - `map`/`reduce` and `while`/`end` are not nested.
         let mut current_map: Option<String> = None;
+        let mut current_while: Option<String> = None;
         let mut input_found = false;
         let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
+
         for (name, block) in &blocks {
             if block.block_type() == BlockType::Input {
                 if input_found {
@@ -115,9 +119,24 @@ impl App {
                         current_map.as_ref().unwrap()
                     ))?;
                 }
+                if current_while.is_some() {
+                    Err(anyhow!(
+                        "Block `input {}` is nested in `while {}` which is invalid.",
+                        name,
+                        current_map.as_ref().unwrap()
+                    ))?;
+                }
                 input_found = true;
             }
             if block.block_type() == BlockType::Map {
+                if current_while.is_some() {
+                    Err(anyhow!(
+                        "Nested maps and while blocks are not currently supported, \
+                         found `map {}` nested in `while {}`",
+                        name,
+                        current_while.as_ref().unwrap()
+                    ))?;
+                }
                 if current_map.is_some() {
                     Err(anyhow!(
                         "Nested maps are not currently supported, \
@@ -125,12 +144,30 @@ impl App {
                         name,
                         current_map.as_ref().unwrap()
                     ))?;
-                } else {
-                    current_map = Some(name.clone());
                 }
+                current_map = Some(name.clone());
+            }
+            if block.block_type() == BlockType::While {
+                if current_map.is_some() {
+                    Err(anyhow!(
+                        "Nested maps and while blocks are not currently supported, \
+                         found `while {}` nested in `map {}`",
+                        name,
+                        current_map.as_ref().unwrap()
+                    ))?;
+                }
+                if current_while.is_some() {
+                    Err(anyhow!(
+                        "Nested while are not currently supported, \
+                         found `while {}` nested in `while {}`",
+                        name,
+                        current_while.as_ref().unwrap()
+                    ))?;
+                }
+                current_while = Some(name.clone());
             }
             if block.block_type() == BlockType::Reduce {
-                match current_map.clone() {
+                match current_map.as_ref() {
                     None => {
                         Err(anyhow!(
                             "Block `reduce {}` is not matched by a previous `map {}` block",
@@ -151,6 +188,29 @@ impl App {
                     }
                 }
             }
+            if block.block_type() == BlockType::End {
+                match current_while.as_ref() {
+                    None => {
+                        Err(anyhow!(
+                            "Block `end {}` is not matched by a previous `while {}` block",
+                            name.as_str(),
+                            name.as_str()
+                        ))?;
+                    }
+                    Some(w) => {
+                        if w.as_str() != name.as_str() {
+                            Err(anyhow!(
+                                "Block `end {}` does not match the current `while {}` block",
+                                name.as_str(),
+                                w.as_str()
+                            ))?;
+                        } else {
+                            current_while = None;
+                        }
+                    }
+                }
+            }
+
             let block_type_name = (block.block_type(), name.clone());
             match block_type_names.contains(&block_type_name) {
                 true => Err(anyhow!(
@@ -275,8 +335,16 @@ impl App {
         let mut current_map: Option<String> = None;
         let mut current_map_blocks: Vec<String> = vec![];
 
+        let mut current_while: Option<usize> = None;
+        let mut current_while_iteration: Option<usize> = None;
+        let mut current_skips: Option<Vec<bool>> = None;
+
         let mut block_idx = 0;
-        for (_, name, block) in &self.blocks {
+
+        // for (_, name, block) in &self.blocks {
+        while block_idx < self.blocks.len() {
+            let (_, name, block) = &self.blocks[block_idx];
+
             // Special pre-processing of the input block, injects data as input and build
             // input_envs.
             if block.block_type() == BlockType::Input {
@@ -297,6 +365,35 @@ impl App {
                         }]
                     })
                     .collect::<Vec<_>>();
+            }
+
+            // Special post-processing of while blocks, if not already in the while loop, mark that
+            // we're in a while loop by setting `current_while`. This means we'll aggregate block
+            // results as arrays instead of values in the `env.state`.
+            if block.block_type() == BlockType::While {
+                match current_while {
+                    Some(w) => {
+                        assert!(w == block_idx);
+                        current_while_iteration = Some(current_while_iteration.unwrap() + 1);
+                    }
+                    None => {
+                        current_while = Some(block_idx);
+                        current_skips = Some(envs.iter().map(|_| false).collect());
+                        current_while_iteration = Some(0);
+                    }
+                }
+                envs = envs
+                    .iter()
+                    .map(|map_envs| {
+                        assert!(map_envs.len() == 1);
+                        let mut env = map_envs[0].clone();
+                        env.map = Some(MapState {
+                            name: name.clone(),
+                            iteration: current_while_iteration.unwrap(),
+                        });
+                        vec![env]
+                    })
+                    .collect();
             }
 
             // Special pre-processing for reduce blocks. Reduce the envs of the blocks that were
@@ -404,44 +501,55 @@ impl App {
                 let project = project.clone();
                 let run_id = run_id.clone();
                 let event_sender = event_sender.clone();
+                let skip = match current_skips {
+                    Some(ref skips) => skips[input_idx],
+                    None => false,
+                };
                 tokio::spawn(async move {
-                    match b.execute(&name, &e, event_sender).await {
-                        Ok(v) => {
-                            let block_status = {
-                                let mut block_status = block_status.lock();
-                                block_status.success_count += 1;
-                                block_status.clone()
-                            };
-                            let run_status = {
-                                let mut run_status = run_status.lock();
-                                run_status.set_block_status(block_status);
-                                run_status.clone()
-                            };
-                            store
-                                .update_run_status(&project, &run_id, &run_status)
-                                .await?;
-                            Ok((input_idx, map_idx, e, Ok(v)))
-                                as Result<
-                                    (usize, usize, Env, Result<Value, anyhow::Error>),
-                                    anyhow::Error,
-                                >
-                        }
-                        Err(err) => {
-                            let block_status = {
-                                let mut block_status = block_status.lock();
-                                block_status.error_count += 1;
-                                block_status.clone()
-                            };
-                            let run_status = {
-                                let mut run_status = run_status.lock();
-                                run_status.set_block_status(block_status);
-                                run_status.clone()
-                            };
-                            store
-                                .update_run_status(&project, &run_id, &run_status)
-                                .await?;
-                            Ok((input_idx, map_idx, e, Err(err)))
-                        }
+                    match skip {
+                        false => match b.execute(&name, &e, event_sender).await {
+                            Ok(v) => {
+                                let block_status = {
+                                    let mut block_status = block_status.lock();
+                                    block_status.success_count += 1;
+                                    block_status.clone()
+                                };
+                                let run_status = {
+                                    let mut run_status = run_status.lock();
+                                    run_status.set_block_status(block_status);
+                                    run_status.clone()
+                                };
+                                store
+                                    .update_run_status(&project, &run_id, &run_status)
+                                    .await?;
+                                Ok((input_idx, map_idx, e, Ok(v)))
+                                    as Result<
+                                        (usize, usize, Env, Result<Value, anyhow::Error>),
+                                        anyhow::Error,
+                                    >
+                            }
+                            Err(err) => {
+                                let block_status = {
+                                    let mut block_status = block_status.lock();
+                                    block_status.error_count += 1;
+                                    block_status.clone()
+                                };
+                                let run_status = {
+                                    let mut run_status = run_status.lock();
+                                    run_status.set_block_status(block_status);
+                                    run_status.clone()
+                                };
+                                store
+                                    .update_run_status(&project, &run_id, &run_status)
+                                    .await?;
+                                Ok((input_idx, map_idx, e, Err(err)))
+                            }
+                        },
+                        true => Ok((input_idx, map_idx, e, Ok(Value::Null)))
+                            as Result<
+                                (usize, usize, Env, Result<Value, anyhow::Error>),
+                                anyhow::Error,
+                            >,
                     }
                 })
             })
@@ -477,7 +585,7 @@ impl App {
                 };
             });
 
-            let t = (
+            let trace = (
                 (block.block_type(), name.clone()),
                 flat.iter()
                     .map(|m| {
@@ -500,23 +608,85 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             );
-            // Send an event for the block execution trace.
+
+            // Send an event for the block execution trace. Note that when inside a `while` loop
+            // that means we'll send a trace event with map_idx = 0 for each iteration.
             match event_sender.as_ref() {
                 Some(sender) => {
                     let _ = sender.send(json!({
                         "type": "block_execution",
                         "content": {
-                            "block_type": t.0.0,
-                            "block_name": t.0.1,
-                            "execution": t.1,
+                            "block_type": trace.0.0,
+                            "block_name": trace.0.1,
+                            "execution": trace.1,
                         }
                     }));
                 }
                 None => (),
             };
-            self.run.as_mut().unwrap().traces.push(t);
 
-            // Update block run executions incrementally
+            // Update the run traces (before updating DB with `apend_run_block`). If we are inside a
+            // `while` loop we unpack the past iterations results along the `map_idx` and go update
+            // the traces manually. Otherwise, we just append the trace to the run object as
+            // execution is linear.
+            match current_while {
+                Some(_) => {
+                    // First thing to do is to clone and transform `t` to remove block executions
+                    // that are skipped (they have a null value) so that they don't get accumulated
+                    // after the `while` condition started returning false.
+                    assert!(
+                        current_skips.is_some()
+                            && trace.1.len() == current_skips.as_ref().unwrap().len()
+                    );
+                    let mut t = trace.clone();
+                    t.1.iter_mut()
+                        .zip(current_skips.as_ref().unwrap().iter())
+                        .for_each(|(m, skipped)| {
+                            assert!(m.len() == 1);
+                            if *skipped {
+                                m.pop();
+                            }
+                        });
+
+                    match current_while_iteration {
+                        Some(0) => {
+                            // If we are inside a `while` loop and this is the first iteration, we
+                            // insert the trace normally.
+                            self.run.as_mut().unwrap().traces.push(t);
+                        }
+                        _ => {
+                            // If we are inside a `while` loop, we append the current trace along the
+                            // `map_idx` dimension to the run's existing traces for that block.
+                            self.run
+                                .as_mut()
+                                .unwrap()
+                                .traces
+                                .iter_mut()
+                                .for_each(|(k, v)| {
+                                    if k.0 == t.0 .0 && k.1 == t.0 .1 {
+                                        v.iter_mut().zip(t.1.iter()).for_each(|(r, n)| {
+                                            match n.len() {
+                                                // skipped
+                                                0 => (),
+                                                // effectively run
+                                                1 => {
+                                                    r.push(n[0].clone());
+                                                }
+                                                _ => unreachable!(),
+                                            }
+                                        })
+                                    }
+                                });
+                        }
+                    }
+                }
+                None => {
+                    self.run.as_mut().unwrap().traces.push(trace);
+                }
+            }
+
+            // Update block run executions incrementally. Note that when we're in a `while` loop,
+            // the entire trace for the block will be rewritten which is the most efficient.
             store
                 .as_ref()
                 .append_run_block(
@@ -614,7 +784,67 @@ impl App {
                         (mut e, Some(v), _) => {
                             // Finally update the environment with the block execution result and
                             // prepare the next loop `envs` object.
-                            e.state.insert(name.clone(), v);
+                            match current_while {
+                                // We're outside a `while` loop, simply set the value.
+                                None => {
+                                    // Note that if the block type is `reduce` this will override in
+                                    // the state the value for the `map` type since they have the
+                                    // same name. This is fine as this is not super useful
+                                    // information as it's repetitive.
+                                    e.state.insert(name.clone(), v);
+                                }
+                                // We're inside a `while` loop, accumulate value in `env.state` as
+                                // an array.
+                                Some(_) => {
+                                    // We don't insert a value if the block type is `end` as `while`
+                                    // and `end` have the same name so this would lead to a
+                                    // alternation of boolean (`while` output) and null (`end`
+                                    // output).
+                                    if block.block_type() != BlockType::End {
+                                        assert!(
+                                            current_skips.is_some()
+                                                && envs.len()
+                                                    == current_skips.as_ref().unwrap().len()
+                                        );
+
+                                        match current_skips.as_ref().unwrap().get(input_idx) {
+                                            Some(false) => {
+                                                match e.state.get(name) {
+                                                    Some(Value::Array(arr)) => {
+                                                        let mut arr = arr.clone();
+                                                        arr.push(v.clone());
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(arr),
+                                                        );
+                                                    }
+                                                    None => {
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(vec![v]),
+                                                        );
+                                                    }
+                                                    _ => unreachable!(),
+                                                };
+                                            }
+                                            Some(true) => {
+                                                // Do not aggregate value, but if we are skipped and
+                                                // there is nothing yet, insert the empty array.
+                                                match e.state.get(name) {
+                                                    None => {
+                                                        e.state.insert(
+                                                            name.clone(),
+                                                            Value::Array(vec![]),
+                                                        );
+                                                    }
+                                                    _ => (),
+                                                };
+                                            }
+                                            None => unreachable!(),
+                                        };
+                                    }
+                                }
+                            };
                             envs[input_idx][map_idx] = e;
                         }
                         _ => unreachable!(),
@@ -663,7 +893,56 @@ impl App {
                     .collect::<Vec<_>>();
             }
 
-            block_idx += 1;
+            // Special post-processing of while blocks. We retrieve the output of the `while` block
+            // to create the `current_skip` mask.
+            if block.block_type() == BlockType::While {
+                current_skips = Some(
+                    envs.iter()
+                        .map(|map_envs| {
+                            assert!(map_envs.len() == 1);
+                            match map_envs[0].state.get(name) {
+                                Some(Value::Array(arr)) => {
+                                    assert!(arr.len() > 0);
+                                    // get latest value
+                                    match arr.last() {
+                                        Some(Value::Bool(b)) => !*b,
+                                        _ => unreachable!(), // Checked at while block execution.
+                                    }
+                                }
+                                _ => unreachable!(),
+                            }
+                        })
+                        .collect::<Vec<bool>>(),
+                );
+            }
+
+            // Special post-processing of end blocks. If `current_skips` are all true, we exit the
+            // while loop otherwise we loop.
+            if block.block_type() == BlockType::End {
+                assert!(current_while.is_some());
+                match current_skips.as_ref().unwrap().iter().all(|b| *b) {
+                    true => {
+                        current_while = None;
+                        current_skips = None;
+                        current_while_iteration = None;
+                        block_idx += 1;
+                        envs = envs
+                            .iter()
+                            .map(|map_envs| {
+                                assert!(map_envs.len() == 1);
+                                let mut env = map_envs[0].clone();
+                                env.map = None;
+                                vec![env]
+                            })
+                            .collect();
+                    }
+                    false => {
+                        block_idx = current_while.unwrap();
+                    }
+                }
+            } else {
+                block_idx += 1;
+            }
         }
 
         self.run.as_mut().unwrap().set_run_status(Status::Succeeded);
@@ -763,4 +1042,287 @@ pub async fn cmd_run(dataset_id: &str, config_path: &str) -> Result<()> {
     .await?;
 
     app.run(Credentials::new(), Box::new(store), None).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::App;
+    use crate::run::{Credentials, RunConfig, Status};
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn app_end_to_end() -> Result<()> {
+        let store = SQLiteStore::new_in_memory()?;
+        store.init().await?;
+        let project = store.create_project().await?;
+
+        let d = Dataset::new_from_jsonl("env", vec![json!({"foo": 1}), json!({"foo": 5 })]).await?;
+        store.register_dataset(&project, &d).await?;
+
+        let test_cases: Vec<(&str, Vec<Vec<usize>>)> = vec![
+            (
+                "
+input INPUT {}
+
+code ARR {
+    code:
+```
+_fun = (env) => {
+  return Array(env.state.INPUT.foo).fill('foo');
+}
+```
+}
+
+map LOOP {
+    from: ARR
+}
+
+code CODE1 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env.state.INPUT.foo};
+}
+```
+}
+
+reduce LOOP {}
+",
+                vec![vec![1, 1], vec![1, 1], vec![1, 1], vec![1, 5], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+map LOOP {
+    from: INPUT
+    repeat: 4
+}
+
+code CODE1 {
+  code:
+```
+_fun = (env) => {
+  return {\"res\": env.state.INPUT.foo};
+}
+```
+}
+
+reduce LOOP {}
+",
+                vec![vec![1, 1], vec![1, 1], vec![4, 4], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  // console.log('FOOO');
+  // console.log(typeof env.state.FOO);
+  // console.log(JSON.stringify(env.state.FOO));
+  // console.log(env.state.FOO.length);
+  // console.log(env.state.INPUT.foo);
+  return (env.state.FOO ? env.state.FOO.length < env.state.INPUT.foo : true);
+}
+```
+    max_iterations: 8
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (env.state.LOOP.length !== env.state.INPUT.foo + 1) {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (env.state.FOO.length !== env.state.INPUT.foo) {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![2, 6], vec![1, 5], vec![1, 5], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return (env.state.FOO ? env.state.FOO.length < env.state.INPUT.foo : true);
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (env.state.LOOP.length !== Math.min(2+1, env.state.INPUT.foo + 1)) {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (env.state.FOO.length !== Math.min(2, env.state.INPUT.foo)) {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![2, 3], vec![1, 2], vec![1, 2], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return false;
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+
+code CODE2 {
+  code:
+```
+_fun = (env) => {
+  if (JSON.stringify(env.state.LOOP) !== '[false]') {
+    throw new Error('LOOP length does not match INPUT.foo');
+  }
+  if (JSON.stringify(env.state.FOO) !== '[]') {
+    throw new Error('FOO length does not match INPUT.foo');
+  }
+}
+```
+}
+",
+                vec![vec![1, 1], vec![1, 1], vec![1, 1]],
+            ),
+            (
+                "
+input INPUT {}
+
+while LOOP {
+    condition_code:
+```
+_fun = (env) => {
+  return (env.state.INPUT.foo === 5);
+}
+```
+    max_iterations: 2
+}
+
+code FOO {
+  code:
+```
+_fun = (env) => {
+  return 'hello';
+}
+```
+}
+
+end LOOP {}
+",
+                vec![vec![1, 1], vec![1, 3], vec![0, 2], vec![0, 2]],
+            ),
+        ];
+
+        for (s, expect) in test_cases {
+            let h = store.latest_dataset_hash(&project, "env").await?;
+            let d = store
+                .load_dataset(&project, "env", h.unwrap().as_str())
+                .await?;
+
+            let mut app = App::new(s).await?;
+
+            store
+                .register_specification(&project, &app.hash(), s)
+                .await?;
+
+            let r = store.latest_specification_hash(&project).await?;
+            assert!(r.unwrap() == app.hash());
+
+            app.prepare_run(
+                RunType::Local,
+                RunConfig {
+                    blocks: HashMap::new(),
+                },
+                project.clone(),
+                d,
+                Box::new(store.clone()),
+            )
+            .await?;
+
+            app.run(Credentials::new(), Box::new(store.clone()), None)
+                .await?;
+
+            let r = store
+                .load_run(&project, app.run_ref().unwrap().run_id(), None)
+                .await?
+                .unwrap();
+
+            assert!(r.status().run_status() == Status::Succeeded);
+            // println!("{:?}", r.traces);
+            assert!(expect.len() == r.traces.len());
+            for (i, (_block, traces)) in r.traces.iter().enumerate() {
+                assert!(expect[i].len() == traces.len());
+                for (j, trace) in traces.iter().enumerate() {
+                    // println!(
+                    //     "BLOCK {:?} {} {} expect={} got={}",
+                    //     block,
+                    //     i,
+                    //     j,
+                    //     expect[i][j],
+                    //     trace.len()
+                    // );
+                    assert!(expect[i][j] == trace.len());
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
