@@ -17,7 +17,8 @@ export type APIErrorType =
   | "app_user_mismatch_error"
   | "run_error"
   | "app_not_found"
-  | "method_not_supported_error";
+  | "method_not_supported_error"
+  | "personal_workspace_not_found";
 
 type _APIError = {
   type: APIErrorType;

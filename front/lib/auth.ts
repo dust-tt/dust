@@ -4,7 +4,7 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { UserType } from "@app/types/user";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { App, DataSource, Key, User } from "./models";
+import { App, DataSource, Key, User, Workspace, Membership } from "./models";
 
 export enum Role {
   Owner = "owner",
@@ -40,6 +40,10 @@ export class Authenticator {
       email: this._authUser!.email,
       name: this._authUser!.name,
     };
+  }
+
+  dbUser(): User {
+    return this._authUser!;
   }
 
   session(): any {
@@ -137,6 +141,41 @@ export class Authenticator {
   canEditDataSource(dataSource: DataSource): boolean {
     return this._authUser?.id === dataSource.userId;
   }
+}
+
+export async function personalWorkspace(
+  user: User
+): Promise<Result<Workspace, APIErrorWithStatusCode>> {
+  // Find the Workspace of type personal for which there is a Membership for `user`.
+  const workspace = await Workspace.findOne({
+    where: {
+      type: "personal",
+    },
+    include: [
+      {
+        model: Membership,
+        where: {
+          userId: user.id,
+        },
+      },
+    ],
+  });
+
+  //console.log("personalWorkspace", workspace);
+
+  if (!workspace) {
+    return new Err({
+      status_code: 500,
+      api_error: {
+        error: {
+          type: "personal_workspace_not_found",
+          message: "Personal workspace for user not found",
+        },
+      },
+    });
+  }
+
+  return new Ok(workspace);
 }
 
 /**

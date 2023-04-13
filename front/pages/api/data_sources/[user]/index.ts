@@ -1,4 +1,4 @@
-import { Role, auth_user } from "@app/lib/auth";
+import { Role, auth_user, personalWorkspace } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Provider, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
@@ -138,6 +138,13 @@ async function handler(
         return;
       }
 
+      let ownerRes = await personalWorkspace(dataSourceUser);
+      if (ownerRes.isErr()) {
+        res.status(ownerRes.error.status_code).end();
+        return;
+      }
+      let owner = ownerRes.value;
+
       await DataSource.create({
         name: req.body.name,
         description: description,
@@ -145,6 +152,7 @@ async function handler(
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         userId: dataSourceUser.id,
+        workspaceId: owner.id,
       });
 
       res.redirect(`/${dataSourceUser.username}/ds/${req.body.name}`);

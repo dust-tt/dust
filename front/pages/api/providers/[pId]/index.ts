@@ -1,4 +1,4 @@
-import { auth_user } from "@app/lib/auth";
+import { auth_user, personalWorkspace } from "@app/lib/auth";
 import { Provider } from "@app/lib/models";
 import withLogging from "@app/logger/withlogging";
 import { ProviderType } from "@app/types/provider";
@@ -52,11 +52,19 @@ async function handler(
         return;
       }
 
+      let authOwnerRes = await personalWorkspace(auth.dbUser());
+      if (authOwnerRes.isErr()) {
+        res.status(authOwnerRes.error.status_code).end();
+        return;
+      }
+      let authOwner = authOwnerRes.value;
+
       if (!provider) {
         provider = await Provider.create({
           providerId: req.query.pId,
           config: req.body.config,
           userId: auth.user().id,
+          workspaceId: authOwner.id,
         });
         res.status(201).json({
           provider: {

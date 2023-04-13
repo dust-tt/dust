@@ -1,4 +1,4 @@
-import { auth_user, Role } from "@app/lib/auth";
+import { auth_user, Role, personalWorkspace } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { App, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
@@ -85,14 +85,22 @@ async function handler(
       let description = req.body.description ? req.body.description : null;
       let uId = new_id();
 
+      let ownerRes = await personalWorkspace(appUser);
+      if (ownerRes.isErr()) {
+        res.status(ownerRes.error.status_code).end();
+        return;
+      }
+      let owner = ownerRes.value;
+
       let app = await App.create({
         uId,
         sId: uId.slice(0, 10),
         name: req.body.name,
         description,
         visibility: req.body.visibility,
-        userId: appUser.id,
         dustAPIProjectId: p.value.project.project_id.toString(),
+        userId: appUser.id,
+        workspaceId: owner.id,
       });
 
       res.redirect(`/${appUser.username}/a/${app.sId}`);
