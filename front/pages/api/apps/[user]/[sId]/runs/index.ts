@@ -5,7 +5,7 @@ import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import withLogging from "@app/logger/withlogging";
-import { RunRunType, RunType } from "@app/types/run";
+import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetRunsResponseBody = {
@@ -228,31 +228,42 @@ async function handler(
       }
 
     case "GET":
-      // We enforce canRunApp here as we don't want public app's owner Runs to be leaked. In the
-      // future with a `front` `Run` object we'll be able to display the run of any user on other's
-      // apps Logs panel.
-      if (!auth.canRunApp(app)) {
-        res.status(404).end();
-        return;
-      }
-
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       let runType = req.query.runType ? req.query.runType : "local";
 
-      const runs = await DustAPI.getRuns(
-        app.dustAPIProjectId,
+      const where = {
+        runType,
+        userId: auth.user().id,
+        appId: app.id,
+      };
+
+      const userRuns = await Run.findAll({
+        where: where,
         limit,
         offset,
-        runType as RunRunType
+        order: [["createdAt", "DESC"]],
+      });
+      const totalNumberOfRuns = await Run.count({
+        where,
+      });
+      const userDustRunIds = userRuns.map((r) => r.dustRunId);
+
+      const dustRuns = await DustAPI.getRunsBatch(
+        app.dustAPIProjectId,
+        userDustRunIds
       );
 
-      if (runs.isErr()) {
-        res.status(400).json(runs.error);
+      if (dustRuns.isErr()) {
+        console.log(dustRuns.error);
+        res.status(400).json(dustRuns.error);
         return;
       }
 
-      res.status(200).json({ runs: runs.value.runs, total: runs.value.total });
+      res.status(200).json({
+        runs: userDustRunIds.map((dustRunId) => dustRuns.value.runs[dustRunId]),
+        total: totalNumberOfRuns,
+      });
       return;
 
     default:

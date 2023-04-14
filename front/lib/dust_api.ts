@@ -304,26 +304,10 @@ export const DustAPI = {
     return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
   },
 
-  async getRuns(
-    projectId: string,
-    limit: number,
-    offset: number,
-    runType: RunRunType
-  ): Promise<DustAPIResponse<GetRunsResponse>> {
-    const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
-      {
-        method: "GET",
-      }
-    );
-
-    return _resultFromResponse(response);
-  },
-
   async getRunsBatch(
     projectId: string,
     dustRunIds: string[]
-  ): Promise<DustAPIResponse<{ runs: DustAPIRun[] }>> {
+  ): Promise<DustAPIResponse<{ runs: { [key: string]: DustAPIRun } }>> {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/batch`,
       {
