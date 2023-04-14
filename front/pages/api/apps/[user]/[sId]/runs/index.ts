@@ -1,4 +1,4 @@
-import { auth_user } from "@app/lib/auth";
+import { auth_user, personalWorkspace } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { App, Provider, Run, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
@@ -146,11 +146,19 @@ async function handler(
             return;
           }
 
+          let authOwnerRes = await personalWorkspace(auth.dbUser());
+          if (authOwnerRes.isErr()) {
+            res.status(authOwnerRes.error.status_code).end();
+            return;
+          }
+          let authOwner = authOwnerRes.value;
+
           Run.create({
             dustRunId,
-            userId: auth.user().id,
             appId: app.id,
             runType: "execute",
+            userId: auth.user().id,
+            workspaceId: authOwner.id,
           });
 
           res.end();
@@ -206,11 +214,19 @@ async function handler(
             return;
           }
 
+          let ownerRes = await personalWorkspace(appUser);
+          if (ownerRes.isErr()) {
+            res.status(ownerRes.error.status_code).end();
+            return;
+          }
+          let owner = ownerRes.value;
+
           Run.create({
             dustRunId: dustRun.value.run.run_id,
-            userId: auth.user().id,
             appId: app.id,
             runType: "local",
+            userId: appUser.id,
+            workspaceId: owner.id,
           });
 
           await app.update({

@@ -1,4 +1,4 @@
-import { auth_user } from "@app/lib/auth";
+import { auth_user, personalWorkspace } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { App, Clone, Dataset, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
@@ -85,6 +85,13 @@ async function handler(
       let description = req.body.description ? req.body.description : null;
       let uId = new_id();
 
+      let authOwnerRes = await personalWorkspace(auth.dbUser());
+      if (authOwnerRes.isErr()) {
+        res.status(authOwnerRes.error.status_code).end();
+        return;
+      }
+      let authOwner = authOwnerRes.value;
+
       let [cloned] = await Promise.all([
         App.create({
           uId,
@@ -92,9 +99,10 @@ async function handler(
           name: req.body.name,
           description,
           visibility: req.body.visibility,
-          userId: auth.user().id,
           dustAPIProjectId: project.value.project.project_id.toString(),
           savedSpecification: app.savedSpecification,
+          userId: auth.user().id,
+          workspaceId: authOwner.id,
         }),
       ]);
 
@@ -103,8 +111,9 @@ async function handler(
           return Dataset.create({
             name: d.name,
             description: d.description,
-            userId: auth.user().id,
             appId: cloned.id,
+            userId: auth.user().id,
+            workspaceId: authOwner.id,
           });
         })
       );

@@ -1,4 +1,4 @@
-import { auth_user } from "@app/lib/auth";
+import { auth_user, personalWorkspace } from "@app/lib/auth";
 import { Key } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import withLogging from "@app/logger/withlogging";
@@ -50,12 +50,20 @@ async function handler(
       return;
 
     case "POST":
+      let authOwnerRes = await personalWorkspace(auth.dbUser());
+      if (authOwnerRes.isErr()) {
+        res.status(authOwnerRes.error.status_code).end();
+        return;
+      }
+      let authOwner = authOwnerRes.value;
+
       let secret = `sk-${new_id().slice(0, 32)}`;
 
       let key = await Key.create({
-        userId: auth.user().id,
         secret: secret,
         status: "active",
+        userId: auth.user().id,
+        workspaceId: authOwner.id,
       });
 
       res.status(201).json({

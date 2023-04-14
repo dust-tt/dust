@@ -1,4 +1,4 @@
-import { auth_user } from "@app/lib/auth";
+import { auth_user, personalWorkspace } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { DustAPI } from "@app/lib/dust_api";
 import { App, Dataset, User } from "@app/lib/models";
@@ -144,11 +144,19 @@ async function handler(
 
       let description = req.body.description ? req.body.description : null;
 
+      let ownerRes = await personalWorkspace(appUser);
+      if (ownerRes.isErr()) {
+        res.status(ownerRes.error.status_code).end();
+        return;
+      }
+      let owner = ownerRes.value;
+
       await Dataset.create({
         name: req.body.name,
         description,
-        userId: appUser.id,
         appId: app.id,
+        userId: appUser.id,
+        workspaceId: owner.id,
       });
 
       res.status(201).json({

@@ -1,4 +1,4 @@
-import { auth_api_user } from "@app/lib/auth";
+import { auth_api_user, personalWorkspace } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { App, Provider, Run, User } from "@app/lib/models";
@@ -40,10 +40,11 @@ const poll = async ({
   const executePoll = async (resolve: any, reject: any) => {
     logger.info(
       {
+        attempts,
+        maxAttempts,
         interval,
         increment,
         maxInterval,
-        maxAttempts,
       },
       "Executing poll"
     );
@@ -171,6 +172,13 @@ async function handler(
 
       let credentials = credentialsFromProviders(providers);
 
+      let authOwnerRes = await personalWorkspace(auth.dbUser());
+      if (authOwnerRes.isErr()) {
+        res.status(authOwnerRes.error.status_code).end();
+        return;
+      }
+      let authOwner = authOwnerRes.value;
+
       logger.info(
         {
           user: appUser.username,
@@ -241,9 +249,10 @@ async function handler(
 
         Run.create({
           dustRunId,
-          userId: auth.user().id,
           appId: app.id,
           runType: "deploy",
+          userId: auth.user().id,
+          workspaceId: authOwner.id,
         });
 
         res.end();
@@ -275,9 +284,10 @@ async function handler(
 
       Run.create({
         dustRunId: runRes.value.run.run_id,
-        userId: auth.user().id,
         appId: app.id,
         runType: "deploy",
+        userId: auth.user().id,
+        workspaceId: authOwner.id,
       });
 
       let run: RunType = runRes.value.run;
