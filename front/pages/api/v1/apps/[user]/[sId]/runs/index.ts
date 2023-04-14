@@ -215,7 +215,7 @@ async function handler(
             },
             "Error streaming from Dust API"
           );
-          res.status(500).end();
+          res.end();
           return;
         }
 
@@ -226,6 +226,7 @@ async function handler(
           runType: "deploy",
         });
 
+        res.end();
         return;
       }
 
