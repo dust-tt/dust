@@ -33,8 +33,6 @@ impl SQLiteStore {
     pub fn new<P: AsRef<Path>>(sqlite_path: P) -> Result<Self> {
         let manager = SqliteConnectionManager::file(sqlite_path);
         let pool = Pool::new(manager)?;
-        let c = pool.get()?;
-        rusqlite::vtab::array::load_module(&c)?;
         Ok(SQLiteStore { pool })
     }
 
@@ -395,6 +393,7 @@ impl Store for SQLiteStore {
 
         tokio::task::spawn_blocking(move || -> Result<HashMap<String, Run>> {
             let c = pool.get()?;
+            rusqlite::vtab::array::load_module(&c)?;
             let run_ids_values = std::rc::Rc::new(
                 run_ids
                     .iter()
