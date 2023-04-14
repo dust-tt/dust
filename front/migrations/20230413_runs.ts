@@ -13,13 +13,13 @@ async function main() {
   console.log(`Retrieved ${core_runs_rows.length}`);
 
   console.log("Generating runById");
-  const runById = core_runs_rows.reduce(
-    (acc: any, r: any) => ({
-      ...acc,
-      [r.run_id]: r,
-    }),
-    {}
-  ) as { [key: string]: { run_id: string; run_type: string; project: number } };
+  const runById = {} as {
+    [key: string]: { run_id: string; run_type: string; project: number };
+  };
+  core_runs_rows.forEach((r) => {
+    runById[(r as any).run_id] = r as any;
+  });
+
   console.log("Generating allRunIds");
   const allRunIds = core_runs_rows.map((r: any) => r.run_id);
 
