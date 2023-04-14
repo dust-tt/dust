@@ -47,13 +47,10 @@ async function main() {
   });
 
   console.log("Generating appByProjectId");
-  const appByProjectId = appsToBackfill.reduce(
-    (acc: any, a: any) => ({
-      ...acc,
-      [a.dustAPIProjectId]: a,
-    }),
-    {}
-  ) as { [key: number]: App };
+  const appByProjectId = {} as { [key: number]: App };
+  appsToBackfill.forEach((a) => {
+    appByProjectId[(a as any).dustAPIProjectId] = a as any;
+  });
 
   console.log("Chunking");
   const chunkSize = 16;
