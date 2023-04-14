@@ -7,9 +7,11 @@ async function main() {
   const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
   });
+  console.log("Retrieving core runs");
   const data = await core_sequelize.query("SELECT * FROM runs");
   const core_runs_rows = data[0];
 
+  console.log("Generating runById");
   const runById = core_runs_rows.reduce(
     (acc: any, r: any) => ({
       ...acc,
@@ -17,26 +19,33 @@ async function main() {
     }),
     {}
   ) as { [key: string]: { run_id: string; run_type: string; project: number } };
+  console.log("Generating allRunIds");
   const allRunIds = core_runs_rows.map((r: any) => r.run_id);
 
+  console.log("Retrieving existing front runs");
   const existingFrontRuns = await Run.findAll();
+  console.log("Generating alreadyBackfilledRunIds");
   const alreadyBackfilledRunIds = new Set(
     existingFrontRuns.map((r) => r.dustRunId)
   );
 
+  console.log("Generating runIdsToBackfill");
   const runIdsToBackfill = allRunIds.filter(
     (r) => !alreadyBackfilledRunIds.has(r)
   );
+  console.log("Generating projectIdsToBackfill");
   const projectIdsToBackfill = Array.from(
     new Set(runIdsToBackfill.map((r) => runById[r].project)).values()
   );
 
+  console.log("Retrieving apps to backfill");
   const appsToBackfill = await App.findAll({
     where: {
       dustAPIProjectId: projectIdsToBackfill,
     },
   });
 
+  console.log("Generating appByProjectId");
   const appByProjectId = appsToBackfill.reduce(
     (acc: any, a: any) => ({
       ...acc,
@@ -45,6 +54,7 @@ async function main() {
     {}
   ) as { [key: number]: App };
 
+  console.log("Chunking");
   const chunkSize = 16;
   const chunks = [];
   for (let i = 0; i < runIdsToBackfill.length; i += chunkSize) {
