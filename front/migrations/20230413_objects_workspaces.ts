@@ -1,9 +1,16 @@
-import { User, App, Dataset, Provider, Key, DataSource } from "@app/lib/models";
+import {
+  User,
+  App,
+  Dataset,
+  Provider,
+  Key,
+  DataSource,
+  Run,
+} from "@app/lib/models";
 import { personalWorkspace } from "@app/lib/auth";
-import { new_id } from "@app/lib/utils";
 
 async function addWorkspaceToObject(
-  object: App | Dataset | Provider | Key | DataSource
+  object: App | Dataset | Provider | Key | DataSource | Run
 ) {
   if (object.workspaceId) {
     console.log(`o ${object.id} ${object.userId} ${object.workspaceId}`);
@@ -33,7 +40,7 @@ async function addWorkspaceToObject(
 }
 
 async function updateObjects(
-  objects: App[] | Dataset[] | Provider[] | Key[] | DataSource[]
+  objects: App[] | Dataset[] | Provider[] | Key[] | DataSource[] | Run[]
 ) {
   const chunks = [];
   for (let i = 0; i < objects.length; i += 16) {
@@ -76,6 +83,11 @@ async function updateDataSources() {
   await updateObjects(dataSources);
 }
 
+async function updateRuns() {
+  let runs = await Run.findAll();
+  await updateObjects(runs);
+}
+
 async function main() {
   console.log(`Update Apps...`);
   await updateApps();
@@ -87,6 +99,8 @@ async function main() {
   await updateKeys();
   console.log(`Update DataSources...`);
   await updateDataSources();
+  console.log(`Update Runs...`);
+  await updateRuns();
 }
 
 main()
