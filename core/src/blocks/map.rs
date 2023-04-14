@@ -12,6 +12,8 @@ pub struct Map {
     repeat: Option<usize>,
 }
 
+static MAP_MAX_ITERATIONS: usize = 128;
+
 impl Map {
     pub fn repeat(&self) -> Option<usize> {
         self.repeat
@@ -28,7 +30,15 @@ impl Map {
                     match key.as_str() {
                         "from" => from = Some(value),
                         "repeat" => match value.parse::<usize>() {
-                            Ok(n) => repeat = Some(n),
+                            Ok(n) => {
+                                if n > MAP_MAX_ITERATIONS {
+                                    Err(anyhow!(
+                                        "Map `repeat` exceeds maximum value ({})",
+                                        MAP_MAX_ITERATIONS
+                                    ))?;
+                                }
+                                repeat = Some(n)
+                            }
                             Err(_) => Err(anyhow!(
                                 "Invalid `repeat` in `map` block, expecting unsigned integer"
                             ))?,
@@ -86,13 +96,22 @@ impl Block for Map {
                             or `repeat` must be defined",
                         self.from
                     )),
-                    Some(arr) => match arr.len() {
-                        0 => Err(anyhow::anyhow!(
-                            "Map `from` block `{}` output must be a non-empty array",
-                            self.from
-                        )),
-                        _ => Ok(v.clone()),
-                    },
+                    Some(arr) => {
+                        if arr.len() > MAP_MAX_ITERATIONS {
+                            Err(anyhow::anyhow!(
+                                "Map `from` block `{}` output exceeds maximum size ({})",
+                                self.from,
+                                MAP_MAX_ITERATIONS
+                            ))?;
+                        }
+                        match arr.len() {
+                            0 => Err(anyhow::anyhow!(
+                                "Map `from` block `{}` output must be a non-empty array",
+                                self.from
+                            )),
+                            _ => Ok(v.clone()),
+                        }
+                    }
                 },
                 Some(repeat) => match repeat {
                     0 => Err(anyhow::anyhow!(
