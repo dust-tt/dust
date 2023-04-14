@@ -3,16 +3,16 @@ import MainTab from "@app/components/app/MainTab";
 import { Button } from "@app/components/Button";
 import Link from "next/link";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRuns } from "@app/lib/swr";
 import { auth_user } from "@app/lib/auth";
 
 const { URL, GA_TRACKING_ID = null } = process.env;
 
-const tabs = [
-  { name: "Design", runType: "local" },
-  { name: "Execute", runType: "execute" },
-  { name: "API", runType: "deploy" },
+const TABS = [
+  { name: "Design", runType: "local", ownerOwnly: true },
+  { name: "Execute", runType: "execute", ownerOwnly: false },
+  { name: "API", runType: "deploy", ownerOwnly: false },
 ];
 
 const inputCount = (status) => {
@@ -37,8 +37,17 @@ export default function RunsView({
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
+  const [tabs, setTabs] = useState([]);
+  useEffect(() => {
+    setTabs(
+      TABS.filter((tab) => {
+        return !(tab.ownerOwnly && readOnly);
+      })
+    );
+  }, [readOnly]);
+
   let { runs, total, isRunsLoading, isRunsError } = useRuns(
-    owner.username,
+    authUser.username,
     app,
     limit,
     offset,
@@ -62,6 +71,7 @@ export default function RunsView({
             currentTab="Logs"
             owner={owner}
             readOnly={readOnly}
+            authUser={authUser}
           />
         </div>
         <div className="mx-auto mt-4 w-full max-w-5xl">

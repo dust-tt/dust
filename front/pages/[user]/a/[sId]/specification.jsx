@@ -24,6 +24,7 @@ export default function Specification({
             currentTab="Specification"
             owner={owner}
             readOnly={readOnly}
+            authUser={authUser}
           />
         </div>
         <div className="w-max-4xl mx-auto">

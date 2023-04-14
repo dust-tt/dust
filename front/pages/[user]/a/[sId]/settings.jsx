@@ -67,6 +67,7 @@ export default function SettingsView({ authUser, owner, app, ga_tracking_id }) {
             currentTab="Settings"
             owner={owner}
             readOnly={false}
+            authUser={authUser}
           />
         </div>
 

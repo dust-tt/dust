@@ -51,7 +51,6 @@ async function handler(
   let [app] = await Promise.all([
     App.findOne({
       where: {
-        userId: appUser.id,
         sId: req.query.sId,
       },
     }),
@@ -62,17 +61,13 @@ async function handler(
     return;
   }
 
+  if (!auth.canReadApp(app)) {
+    res.status(404).end();
+    return;
+  }
+
   switch (req.method) {
     case "POST":
-      // Super important check as this would allow other users to run public app as their own (we do
-      // pull the right credentials from the auth user), but the resulting run object (`core`) would
-      // be visible by the owner of the app, leaking information both ways. We will allow that in
-      // the future once we introduce a `front` `Run` object.
-      if (!auth.canRunApp(app)) {
-        res.status(404).end();
-        return;
-      }
-
       const [providers] = await Promise.all([
         Provider.findAll({
           where: {
@@ -158,6 +153,12 @@ async function handler(
 
         // Run creation as part of the app design process (Specification pane).
         case "design":
+          // Only the app owner is allowed to create runs in design mode.
+          if (!auth.isAppOwner) {
+            res.status(404).end();
+            return;
+          }
+
           if (
             !req.body ||
             !(typeof req.body.config == "string") ||

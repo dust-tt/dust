@@ -71,6 +71,7 @@ export default function NewDatasetView({
             app={{ sId: app.sId, name: app.name }}
             currentTab="Datasets"
             owner={owner}
+            authUser={authUser}
           />
         </div>
 

@@ -47,6 +47,7 @@ export default function DatasetsView({
             currentTab="Datasets"
             owner={owner}
             readOnly={readOnly}
+            authUser={authUser}
           />
         </div>
         <div className="mx-auto mt-4 w-full max-w-5xl">

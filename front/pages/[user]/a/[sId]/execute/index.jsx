@@ -238,6 +238,7 @@ export default function ExecuteView({
   inputDataset,
   config,
   ga_tracking_id,
+  readOnly,
 }) {
   const [inputDatasetKeys, _setInputDatasetKeys] = useState(
     inputDataset ? checkDatasetData(inputDataset.dataset.data) : []
@@ -446,6 +447,8 @@ export default function ExecuteView({
             app={{ sId: app.sId, name: app.name }}
             currentTab="Use"
             owner={owner}
+            authUser={authUser}
+            readOnly={readOnly}
           />
         </div>
         <div className="mx-auto mt-6 w-full max-w-5xl">
@@ -562,14 +565,8 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (context.query.user != auth.user().username) {
-    return {
-      redirect: {
-        destination: `/`,
-        permanent: false,
-      },
-    };
-  }
+  let readOnly =
+    auth.isAnonymous() || context.query.user !== auth.user().username;
 
   const appRes = await fetch(
     `${URL}/api/apps/${context.query.user}/${context.query.sId}`,
@@ -589,6 +586,14 @@ export async function getServerSideProps(context) {
   }
 
   const app = await appRes.json();
+  if (!auth.canReadApp(app.app)) {
+    return {
+      redirect: {
+        destination: `/`,
+        permanent: false,
+      },
+    };
+  }
 
   const savedSpecification = JSON.parse(app.app.savedSpecification || "[]");
   const config = extractConfig(savedSpecification);
@@ -621,6 +626,7 @@ export async function getServerSideProps(context) {
       config,
       inputDataset: inputDataset,
       ga_tracking_id: GA_TRACKING_ID,
+      readOnly,
     },
   };
 }

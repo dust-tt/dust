@@ -107,7 +107,7 @@ export class Authenticator {
    * @param app the app for which we check the run rights
    * @returns true if the user can run the app, false otherwise.
    */
-  canRunApp(app: App): boolean {
+  isAppOwner(app: App): boolean {
     return this._authUser?.id === app.userId;
   }
 
