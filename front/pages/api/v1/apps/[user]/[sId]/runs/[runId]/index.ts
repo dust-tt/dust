@@ -53,25 +53,11 @@ async function handler(
     },
   });
 
-  if (!app) {
+  if (!app || !auth.canReadApp(app)) {
     res.status(404).json({
       error: {
         type: "app_not_found",
         message: "The app whose run you're trying to retrieve was not found.",
-      },
-    });
-    return;
-  }
-
-  // We check for the `canRunApp` permisison as we don't let other users retrieve runs for apps they
-  // don't own.
-  if (!auth.canRunApp(app)) {
-    res.status(404).json({
-      error: {
-        type: "app_user_mismatch_error",
-        message:
-          "Only apps that you own can be interacted with by API \
-          (you can clone this app to run it).",
       },
     });
     return;
