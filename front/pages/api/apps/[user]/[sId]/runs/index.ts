@@ -154,7 +154,7 @@ async function handler(
         // Run creation as part of the app design process (Specification pane).
         case "design":
           // Only the app owner is allowed to create runs in design mode.
-          if (!auth.isAppOwner) {
+          if (!auth.isAppOwner(app)) {
             res.status(404).end();
             return;
           }
