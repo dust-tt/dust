@@ -215,9 +215,13 @@ export const DustAPI = {
   async createRunStream(
     projectId: string,
     dustUserId: string,
-    payload: DustAPICreateRunPayload,
-    onDustRunId?: (runId: string) => void
-  ): Promise<DustAPIResponse<AsyncGenerator<Uint8Array, void, unknown>>> {
+    payload: DustAPICreateRunPayload
+  ): Promise<
+    DustAPIResponse<{
+      chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
+      dustRunId: Promise<string>;
+    }>
+  > {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/stream`,
       {
@@ -242,13 +246,22 @@ export const DustAPI = {
       return _resultFromResponse(response);
     }
 
-    let parser = createParser((event) => {
+    let hasRunId = false;
+    let rejectDustRunIdPromise: (err: Error) => void;
+    let resolveDustRunIdPromise: (runId: string) => void;
+    const dustRunIdPromise = new Promise<string>((resolve, reject) => {
+      rejectDustRunIdPromise = reject;
+      resolveDustRunIdPromise = resolve;
+    });
+
+    const parser = createParser((event) => {
       if (event.type === "event") {
         if (event.data) {
           try {
             const data = JSON.parse(event.data);
             if (data.content?.run_id) {
-              onDustRunId?.(data.content.run_id);
+              hasRunId = true;
+              resolveDustRunIdPromise(data.content.run_id);
             }
           } catch (err) {
             console.error(err);
@@ -266,8 +279,15 @@ export const DustAPI = {
           if (done) {
             break;
           }
-          parser.feed(new TextDecoder().decode(value));
+          parser!.feed(new TextDecoder().decode(value));
           yield value;
+        }
+        if (!hasRunId) {
+          // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+          setImmediate(() => {
+            console.error("No run id received");
+            rejectDustRunIdPromise(new Error("No run id received"));
+          });
         }
       } catch (e) {
         console.error(
@@ -281,7 +301,7 @@ export const DustAPI = {
       }
     };
 
-    return new Ok(streamChunks());
+    return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
   },
 
   async getRuns(
