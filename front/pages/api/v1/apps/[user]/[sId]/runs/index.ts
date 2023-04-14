@@ -1,7 +1,7 @@
 import { auth_api_user } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
-import { App, Provider, User } from "@app/lib/models";
+import { App, Provider, Run, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import withLogging from "@app/logger/withlogging";
@@ -190,7 +190,7 @@ async function handler(
         });
 
         try {
-          for await (const chunk of runRes.value) {
+          for await (const chunk of runRes.value.chunkStream) {
             res.write(chunk);
             // @ts-expect-error
             res.flush();
@@ -203,6 +203,29 @@ async function handler(
             "Error streaming from Dust API"
           );
         }
+        res.end();
+
+        let dustRunId: string;
+        try {
+          dustRunId = await runRes.value.dustRunId;
+        } catch (e) {
+          logger.error(
+            {
+              error: "No run ID received from Dust API after consuming stream",
+            },
+            "Error streaming from Dust API"
+          );
+          res.end();
+          return;
+        }
+
+        Run.create({
+          dustRunId,
+          userId: auth.user().id,
+          appId: app.id,
+          runType: "deploy",
+        });
+
         res.end();
         return;
       }
@@ -229,6 +252,13 @@ async function handler(
         });
         return;
       }
+
+      Run.create({
+        dustRunId: runRes.value.run.run_id,
+        userId: auth.user().id,
+        appId: app.id,
+        runType: "deploy",
+      });
 
       let run: RunType = runRes.value.run;
       run.specification_hash = run.app_hash;

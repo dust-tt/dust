@@ -377,6 +377,56 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn load_runs(
+        &self,
+        project: &Project,
+        run_ids: Vec<String>,
+    ) -> Result<HashMap<String, Run>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs 
+                WHERE project = $1 AND run_id = any($2)",
+            )
+            .await?;
+
+        let rows = c.query(&stmt, &[&project.project_id(), &run_ids]).await?;
+
+        let runs: Vec<Run> = rows
+            .iter()
+            .map(|row| {
+                let run_id: String = row.get(0);
+                let created: i64 = row.get(1);
+                let app_hash: String = row.get(2);
+                let config_data: String = row.get(3);
+                let status_data: String = row.get(4);
+                let run_type_str: String = row.get(5);
+                let run_type = RunType::from_str(&run_type_str)?;
+                let run_config: RunConfig = serde_json::from_str(&config_data)?;
+                let run_status: RunStatus = serde_json::from_str(&status_data)?;
+
+                Ok(Run::new_from_store(
+                    &run_id,
+                    created as u64,
+                    run_type.clone(),
+                    &app_hash,
+                    &run_config,
+                    &run_status,
+                    vec![],
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let runs_map = runs
+            .into_iter()
+            .map(|r| (r.run_id().to_string(), r))
+            .collect();
+
+        Ok(runs_map)
+    }
+
     async fn list_runs(
         &self,
         project: &Project,

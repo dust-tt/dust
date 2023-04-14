@@ -37,7 +37,7 @@ uuid = { version = "1.1", features = ["v4"] }
 parking_lot = "0.12"
 chrono = "0.4"
 axum = "0.5"
-rusqlite = { version = "0.28", features = ["bundled", "chrono", "serde_json"] }
+rusqlite = { version = "0.28", features = ["bundled", "chrono", "serde_json", "vtab", "array"] }
 r2d2_sqlite = "0.21"
 r2d2 = "0.8"
 tokio-postgres = "0.7"

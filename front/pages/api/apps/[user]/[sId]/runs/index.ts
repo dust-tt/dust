@@ -1,6 +1,6 @@
 import { auth_user } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { App, Provider, User } from "@app/lib/models";
+import { App, Provider, Run, User } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
@@ -104,6 +104,7 @@ async function handler(
               credentials: credentialsFromProviders(providers),
             }
           );
+
           if (streamRes.isErr()) {
             res.status(400).json(streamRes.error);
             return;
@@ -116,7 +117,7 @@ async function handler(
           });
 
           try {
-            for await (const chunk of streamRes.value) {
+            for await (const chunk of streamRes.value.chunkStream) {
               res.write(chunk);
               // @ts-expect-error
               res.flush();
@@ -129,6 +130,29 @@ async function handler(
               "Error streaming from Dust API"
             );
           }
+
+          let dustRunId: string;
+          try {
+            dustRunId = await streamRes.value.dustRunId;
+          } catch (e) {
+            logger.error(
+              {
+                error:
+                  "No run ID received from Dust API after consuming stream",
+              },
+              "Error streaming from Dust API"
+            );
+            res.end();
+            return;
+          }
+
+          Run.create({
+            dustRunId,
+            userId: auth.user().id,
+            appId: app.id,
+            runType: "execute",
+          });
+
           res.end();
           return;
 
@@ -162,7 +186,7 @@ async function handler(
             ? inputConfigEntry.dataset
             : null;
 
-          const run = await DustAPI.createRun(
+          const dustRun = await DustAPI.createRun(
             app.dustAPIProjectId,
             auth.user().id.toString(),
             {
@@ -177,18 +201,25 @@ async function handler(
             }
           );
 
-          if (run.isErr()) {
-            res.status(400).json(run.error);
+          if (dustRun.isErr()) {
+            res.status(400).json(dustRun.error);
             return;
           }
+
+          Run.create({
+            dustRunId: dustRun.value.run.run_id,
+            userId: auth.user().id,
+            appId: app.id,
+            runType: "local",
+          });
 
           await app.update({
             savedSpecification: req.body.specification,
             savedConfig: req.body.config,
-            savedRun: run.value.run.run_id,
+            savedRun: dustRun.value.run.run_id,
           });
 
-          res.status(200).json({ run: run.value.run });
+          res.status(200).json({ run: dustRun.value.run });
           return;
 
         default:

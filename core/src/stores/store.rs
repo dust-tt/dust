@@ -49,6 +49,11 @@ pub trait Store {
         run_type: RunType,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Run>, usize)>;
+    async fn load_runs(
+        &self,
+        project: &Project,
+        run_ids: Vec<String>,
+    ) -> Result<HashMap<String, Run>>;
 
     async fn create_run_empty(&self, project: &Project, run: &Run) -> Result<()>;
     async fn update_run_status(

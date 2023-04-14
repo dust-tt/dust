@@ -1,7 +1,7 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
-import { streamChunks } from "./http_utils";
+import { createParser } from "eventsource-parser";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
@@ -216,7 +216,12 @@ export const DustAPI = {
     projectId: string,
     dustUserId: string,
     payload: DustAPICreateRunPayload
-  ): Promise<DustAPIResponse<AsyncGenerator<Uint8Array, void, unknown>>> {
+  ): Promise<
+    DustAPIResponse<{
+      chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
+      dustRunId: Promise<string>;
+    }>
+  > {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/stream`,
       {
@@ -241,7 +246,62 @@ export const DustAPI = {
       return _resultFromResponse(response);
     }
 
-    return new Ok(streamChunks(response.body));
+    let hasRunId = false;
+    let rejectDustRunIdPromise: (err: Error) => void;
+    let resolveDustRunIdPromise: (runId: string) => void;
+    const dustRunIdPromise = new Promise<string>((resolve, reject) => {
+      rejectDustRunIdPromise = reject;
+      resolveDustRunIdPromise = resolve;
+    });
+
+    const parser = createParser((event) => {
+      if (event.type === "event") {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.content?.run_id) {
+              hasRunId = true;
+              resolveDustRunIdPromise(data.content.run_id);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+    });
+
+    const reader = response.body.getReader();
+
+    const streamChunks = async function* () {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          parser!.feed(new TextDecoder().decode(value));
+          yield value;
+        }
+        if (!hasRunId) {
+          // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+          setImmediate(() => {
+            console.error("No run id received");
+            rejectDustRunIdPromise(new Error("No run id received"));
+          });
+        }
+      } catch (e) {
+        console.error(
+          {
+            error: e,
+          },
+          "Error streaming chunks"
+        );
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
   },
 
   async getRuns(
@@ -254,6 +314,26 @@ export const DustAPI = {
       `${DUST_API_URL}/projects/${projectId}/runs?limit=${limit}&offset=${offset}&run_type=${runType}`,
       {
         method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getRunsBatch(
+    projectId: string,
+    dustRunIds: string[]
+  ): Promise<DustAPIResponse<{ runs: DustAPIRun[] }>> {
+    const response = await fetch(
+      `${DUST_API_URL}/projects/${projectId}/runs/batch`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          run_ids: dustRunIds,
+        }),
       }
     );
 
