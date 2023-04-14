@@ -10,6 +10,7 @@ async function main() {
   console.log("Retrieving core runs");
   const data = await core_sequelize.query("SELECT * FROM runs");
   const core_runs_rows = data[0];
+  console.log(`Retrieved ${core_runs_rows.length}`);
 
   console.log("Generating runById");
   const runById = core_runs_rows.reduce(
