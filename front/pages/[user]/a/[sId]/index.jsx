@@ -238,6 +238,7 @@ export default function App({
             currentTab="Specification"
             owner={owner}
             readOnly={readOnly}
+            authUser={authUser}
           />
         </div>
         <div className="mx-auto mt-4 flex w-full max-w-5xl flex-auto">

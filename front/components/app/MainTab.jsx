@@ -10,7 +10,13 @@ import {
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
-export default function MainTab({ app, currentTab, owner, readOnly }) {
+export default function MainTab({
+  app,
+  currentTab,
+  owner,
+  readOnly,
+  authUser,
+}) {
   let tabs = [
     {
       name: "Specification",
@@ -34,7 +40,7 @@ export default function MainTab({ app, currentTab, owner, readOnly }) {
     },
   ];
 
-  if (!readOnly) {
+  if (authUser) {
     tabs.push({
       name: "Use",
       href: `/${owner.username}/a/${app.sId}/execute`,
@@ -55,6 +61,9 @@ export default function MainTab({ app, currentTab, owner, readOnly }) {
         />
       ),
     });
+  }
+
+  if (!readOnly) {
     tabs.push({
       name: "Settings",
       href: `/${owner.username}/a/${app.sId}/settings`,

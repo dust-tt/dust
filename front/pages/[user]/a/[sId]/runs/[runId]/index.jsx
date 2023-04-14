@@ -27,6 +27,7 @@ export default function AppRun({
             currentTab="Specification"
             owner={owner}
             readOnly={readOnly}
+            authUser={authUser}
           />
         </div>
         <div className="mx-auto mt-4 w-full max-w-5xl">

@@ -50,6 +50,7 @@ export default function CloneView({ authUser, owner, app, ga_tracking_id }) {
             currentTab="Specification"
             owner={owner}
             readOnly={true}
+            authUser={authUser}
           />
         </div>
 

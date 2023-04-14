@@ -107,7 +107,6 @@ async function handler(
   let [app, providers] = await Promise.all([
     App.findOne({
       where: {
-        userId: appUser.id,
         sId: req.query.sId,
       },
     }),
@@ -118,23 +117,11 @@ async function handler(
     }),
   ]);
 
-  if (!app) {
+  if (!app || !auth.canReadApp(app)) {
     res.status(404).json({
       error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
-      },
-    });
-    return;
-  }
-
-  if (!auth.canRunApp(app)) {
-    res.status(404).json({
-      error: {
-        type: "app_user_mismatch_error",
-        message:
-          "Only apps that you own can be interacted with by API \
-          (you can clone this app to run it).",
       },
     });
     return;
