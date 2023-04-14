@@ -38,7 +38,27 @@ const poll = async ({
   let attempts = 0;
 
   const executePoll = async (resolve: any, reject: any) => {
-    const result = await fn();
+    logger.info(
+      {
+        interval,
+        increment,
+        maxInterval,
+        maxAttempts,
+      },
+      "Executing poll"
+    );
+    let result = null;
+    try {
+      result = await fn();
+    } catch (e) {
+      logger.error(
+        {
+          error: e,
+        },
+        "Caught error in executePoll"
+      );
+      return reject(e);
+    }
     attempts++;
     if (interval < maxInterval) interval += increment;
 
@@ -280,7 +300,7 @@ async function handler(
             return { status: r.status.run };
           },
           validate: (r) => {
-            if (r.status == "running") {
+            if (r && r.status == "running") {
               return false;
             }
             return true;
