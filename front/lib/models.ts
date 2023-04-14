@@ -579,7 +579,7 @@ Run.init(
     modelName: "run",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["userId", "appId"] },
+      { fields: ["userId", "appId", "runType"] },
       { unique: true, fields: ["dustRunId"] },
     ],
   }
