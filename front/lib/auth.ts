@@ -146,21 +146,31 @@ export class Authenticator {
 export async function personalWorkspace(
   user: User
 ): Promise<Result<Workspace, APIErrorWithStatusCode>> {
+  const memberships = await Membership.findAll({
+    where: {
+      userId: user.id,
+    },
+  });
+
+  if (memberships.length === 0) {
+    return new Err({
+      status_code: 500,
+      api_error: {
+        error: {
+          type: "personal_workspace_not_found",
+          message: "Personal workspace for user not found",
+        },
+      },
+    });
+  }
+
   // Find the Workspace of type personal for which there is a Membership for `user`.
   const workspace = await Workspace.findOne({
     where: {
+      id: memberships.map((m) => m.workspaceId),
       type: "personal",
     },
-    include: [
-      {
-        model: Membership,
-        where: {
-          userId: user.id,
-        },
-      },
-    ],
   });
-
   //console.log("personalWorkspace", workspace);
 
   if (!workspace) {

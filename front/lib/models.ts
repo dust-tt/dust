@@ -179,6 +179,7 @@ Membership.init(
   {
     modelName: "membership",
     sequelize: front_sequelize,
+    indexes: [{ fields: ["userId"] }],
   }
 );
 User.hasMany(Membership);
