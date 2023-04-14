@@ -1,6 +1,7 @@
 import { XP1User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { sendActivationKey } from "@app/lib/sendgrid";
+import logger from "@app/logger/logger";
 import withLogging from "@app/logger/withlogging";
 
 const {} = process.env;
@@ -14,7 +15,6 @@ async function handler(req, res) {
       },
     });
   }
-  console.log(req.body);
   if (
     !req.body ||
     !(typeof req.body.name == "string") ||
@@ -24,10 +24,10 @@ async function handler(req, res) {
     return;
   }
 
-  console.log(`USER_CREATION`, {
-    name: req.body.name,
-    email: req.body.email,
-  });
+  logger.info(
+    { name: req.body.name, email: req.body.email },
+    "XP1 user creation"
+  );
 
   let user = await XP1User.findOne({
     where: {
