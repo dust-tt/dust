@@ -547,6 +547,7 @@ export class Run extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare appId: ForeignKey<App["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 Run.init(
