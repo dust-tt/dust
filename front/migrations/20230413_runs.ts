@@ -16,7 +16,7 @@ async function main() {
       [r.run_id]: r,
     }),
     {}
-  ) as { [key: number]: { run_id: string; run_type: string; project: number } };
+  ) as { [key: string]: { run_id: string; run_type: string; project: number } };
   const allRunIds = core_runs_rows.map((r: any) => r.run_id);
 
   const existingFrontRuns = await Run.findAll();
