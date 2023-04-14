@@ -1,8 +1,7 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
-import { EventSourceParser, createParser } from "eventsource-parser";
-import { streamChunks } from "./http_utils";
+import { createParser } from "eventsource-parser";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
@@ -216,13 +215,9 @@ export const DustAPI = {
   async createRunStream(
     projectId: string,
     dustUserId: string,
-    payload: DustAPICreateRunPayload
-  ): Promise<
-    DustAPIResponse<{
-      chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
-      runId: Promise<string>;
-    }>
-  > {
+    payload: DustAPICreateRunPayload,
+    onDustRunId?: (runId: string) => void
+  ): Promise<DustAPIResponse<AsyncGenerator<Uint8Array, void, unknown>>> {
     const response = await fetch(
       `${DUST_API_URL}/projects/${projectId}/runs/stream`,
       {
@@ -247,38 +242,46 @@ export const DustAPI = {
       return _resultFromResponse(response);
     }
 
-    const chunkStream = streamChunks(response.body);
-
-    let parser: EventSourceParser | null = null;
-    const runIdPromise = new Promise<string>((resolve, reject) => {
-      parser = createParser((event) => {
-        if (event.type === "event") {
-          if (event.data) {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.content?.run_id) {
-                resolve(data.content.run_id);
-              }
-            } catch (err) {
-              console.error(err);
-              reject("Failed to parse event data");
+    let parser = createParser((event) => {
+      if (event.type === "event") {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.content?.run_id) {
+              onDustRunId?.(data.content.run_id);
             }
+          } catch (err) {
+            console.error(err);
           }
         }
-      });
+      }
     });
 
-    // allows to feed the SSE parser with chunks of data while iterating over the stream
-    // this means that the `runId` promise will never be resolved unless the caller
-    // consumes the stream
-    const asyncGen = async function* () {
-      for await (const chunk of chunkStream) {
-        parser!.feed(new TextDecoder().decode(chunk));
-        yield chunk;
+    const reader = response.body.getReader();
+
+    const streamChunks = async function* () {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          parser.feed(new TextDecoder().decode(value));
+          yield value;
+        }
+      } catch (e) {
+        console.error(
+          {
+            error: e,
+          },
+          "Error streaming chunks"
+        );
+      } finally {
+        reader.releaseLock();
       }
     };
 
-    return new Ok({ chunkStream: asyncGen(), runId: runIdPromise });
+    return new Ok(streamChunks());
   },
 
   async getRuns(

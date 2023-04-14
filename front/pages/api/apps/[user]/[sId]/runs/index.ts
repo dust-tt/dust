@@ -93,6 +93,8 @@ async function handler(
             return;
           }
 
+          let dustRunId: string | null = null;
+
           const streamRes = await DustAPI.createRunStream(
             app.dustAPIProjectId,
             auth.user().id.toString(),
@@ -102,6 +104,9 @@ async function handler(
               inputs: req.body.inputs,
               config: { blocks: JSON.parse(req.body.config) },
               credentials: credentialsFromProviders(providers),
+            },
+            (dustRunId) => {
+              dustRunId = dustRunId;
             }
           );
 
@@ -117,7 +122,7 @@ async function handler(
           });
 
           try {
-            for await (const chunk of streamRes.value.chunkStream) {
+            for await (const chunk of streamRes.value) {
               res.write(chunk);
               // @ts-expect-error
               res.flush();
@@ -131,15 +136,11 @@ async function handler(
             );
           }
 
-          let dustRunId: string | null = null;
-
-          try {
-            dustRunId = await streamRes.value.runId;
-          } catch (err) {
-            console.error(err);
+          if (dustRunId === null) {
             logger.error(
               {
-                error: "No run ID received from Dust API",
+                error:
+                  "No run ID received from Dust API after consuming stream",
               },
               "Error streaming from Dust API"
             );
