@@ -74,7 +74,7 @@ The Run model contains all the information about the execution of a Dust app.
 
 ---
 
-## Create a Run {{ tag: 'POST', label: '/v1/apps/:user/:app_id/runs' }}
+## Create a Run {{ tag: 'POST', label: '/v1/w/:workspace_id/apps/:app_id/runs' }}
 
 <Row>
   <Col>
@@ -87,8 +87,8 @@ The Run model contains all the information about the execution of a Dust app.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the app's workspace (can be found in the app's URL)
       </Property>
       <Property name="app_id" type="string">
         The ID of the Dust app you want to execute.
@@ -134,10 +134,10 @@ The Run model contains all the information about the execution of a Dust app.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/v1/apps/:user/:app_id/runs">
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/apps/:app_id/runs">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/apps/spolu/cc77ea22f8/runs \
+    curl https://dust.tt/api/v1/w/3e26b0e764/apps/cc77ea22f8/runs \
       -H "Authorization: Bearer sk-..." \
       -H "Content-Type: application/json" \
       -d '{
@@ -209,7 +209,7 @@ The Run model contains all the information about the execution of a Dust app.
 
 ---
 
-## Retrieve a Run {{ tag: 'GET', label: '/v1/apps/:user/:app_id/runs/:run_id' }}
+## Retrieve a Run {{ tag: 'GET', label: '/v1/w/:workspace_id/apps/:app_id/runs/:run_id' }}
 
 <Row>
   <Col>
@@ -220,8 +220,8 @@ The Run model contains all the information about the execution of a Dust app.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the app's workspace (can be found in the app's URL)
       </Property>
       <Property name="app_id" type="string">
         The ID of the Dust app you want to execute.
@@ -234,10 +234,10 @@ The Run model contains all the information about the execution of a Dust app.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/apps/:user/:app_id/runs/:run_id">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/apps/:app_id/runs/:run_id">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/apps/spolu/cc77ea22f8/runs/5be2f49d42d19...097cd573 \
+    curl https://dust.tt/api/v1/w/3e26b0e764/apps/cc77ea22f8/runs/5be2f49d42d19...097cd573 \
       -H "Authorization: Bearer sk-..." \
     ```
 

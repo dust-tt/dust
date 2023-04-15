@@ -55,6 +55,7 @@ export const communityApps = [
   {
     user: "spolu",
     sId: "01caf5ebc3",
+    wId: "3e26b0e764",
     name: "ipcc-ar6-qa",
     description:
       "Use semantic search to answer questions about the IPCC AR6 report",
@@ -63,6 +64,7 @@ export const communityApps = [
   {
     user: "bcmejla",
     sId: "cc20d98f70",
+    wId: "9fff4af13d",
     name: "wedding-thank-yous",
     description: "Solving the blank page problem for wedding thank you notes",
     visibility: "public",
@@ -70,6 +72,7 @@ export const communityApps = [
   {
     user: "spolu",
     sId: "2316f9c6b0",
+    wId: "3e26b0e764",
     name: "web-search-assistant",
     description:
       "Answer questions with high factual accuracy by searching online and compiling responses based on content downloaded from websites (with references).",
@@ -78,6 +81,7 @@ export const communityApps = [
   {
     user: "spolu",
     sId: "d12ac33169",
+    wId: "3e26b0e764",
     name: "maths-generate-code",
     description: "Generate code to answer maths questions",
     visibility: "public",
@@ -85,6 +89,7 @@ export const communityApps = [
   {
     user: "spolu",
     sId: "b39f8e9023",
+    wId: "3e26b0e764",
     name: "toolbot-repro",
     description:
       "Teach LLM to teach itself new tasks by teaching it to generate few shot examples from high-level tasks descriptions and prompting itself with them.",

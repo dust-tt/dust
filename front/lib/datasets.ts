@@ -1,3 +1,5 @@
+import { DatasetEntry } from "@app/types/dataset";
+
 function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   if (a.size !== b.size) {
     return false;
@@ -10,7 +12,10 @@ function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   return true;
 }
 
-export function checkDatasetData(data: Array<object>): string[] {
+export function checkDatasetData(data: Array<object> | undefined): string[] {
+  if (!data) {
+    throw new Error("data must be defined");
+  }
   if (!Array.isArray(data)) {
     throw new Error("data must be an array");
   }
@@ -33,7 +38,7 @@ export function checkDatasetData(data: Array<object>): string[] {
 
 export function getDatasetTypes(
   datasetKeys: string[],
-  entry: { [key: string]: any }
+  entry: DatasetEntry
 ): string[] {
   return datasetKeys.map((key) => getValueType(entry[key]));
 }

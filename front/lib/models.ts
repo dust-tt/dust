@@ -262,6 +262,8 @@ App.init(
     indexes: [
       { fields: ["userId", "visibility"] },
       { fields: ["userId", "sId", "visibility"] },
+      { fields: ["workspaceId", "visibility"] },
+      { fields: ["workspaceId", "sId", "visibility"] },
     ],
   }
 );

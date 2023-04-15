@@ -1,13 +1,14 @@
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
 import { createParser } from "eventsource-parser";
 
 const { DUST_API: DUST_API_URL } = process.env;
 
 export type DustAPIErrorResponse = {
   message: string;
-  code: number;
+  code: string;
 };
 export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
 
@@ -189,14 +190,14 @@ export const DustAPI = {
 
   async createRun(
     projectId: string,
-    dustUserId: string,
+    owner: WorkspaceType,
     payload: DustAPICreateRunPayload
   ): Promise<DustAPIResponse<{ run: DustAPIRun }>> {
     const response = await fetch(`${DUST_API_URL}/projects/${projectId}/runs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Dust-User-Id": dustUserId,
+        "X-Dust-Workspace-Id": owner.sId,
       },
       body: JSON.stringify({
         run_type: payload.runType,
@@ -214,7 +215,7 @@ export const DustAPI = {
 
   async createRunStream(
     projectId: string,
-    dustUserId: string,
+    owner: WorkspaceType,
     payload: DustAPICreateRunPayload
   ): Promise<
     DustAPIResponse<{
@@ -228,7 +229,7 @@ export const DustAPI = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-User-Id": dustUserId,
+          "X-Dust-Workspace-Id": owner.sId,
         },
         body: JSON.stringify({
           run_type: payload.runType,

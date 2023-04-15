@@ -5,6 +5,7 @@ import { useSWRConfig } from "swr";
 import { checkProvider } from "@app/lib/providers";
 
 export default function BrowserlessAPISetup({
+  owner,
   open,
   setOpen,
   config,
@@ -28,7 +29,9 @@ export default function BrowserlessAPISetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider("browserlessapi", { api_key: apiKey });
+    let check = await checkProvider(owner, "browserlessapi", {
+      api_key: apiKey,
+    });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -43,7 +46,7 @@ export default function BrowserlessAPISetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/providers/browserlessapi`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/browserlessapi`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -54,16 +57,18 @@ export default function BrowserlessAPISetup({
         }),
       }),
     });
+    let data = await res.json();
     setEnableRunning(false);
-    mutate(`/api/providers`);
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/providers/browserlessapi`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/browserlessapi`, {
       method: "DELETE",
     });
-    mutate(`/api/providers`);
+    let data = await res.json();
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 

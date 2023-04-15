@@ -1,6 +1,6 @@
-import { SpecificationType } from "@app/types/app";
+import { BlockRunConfig, SpecificationType } from "@app/types/app";
 
-export function extractConfig(spec: SpecificationType): { [key: string]: any } {
+export function extractConfig(spec: SpecificationType): BlockRunConfig {
   let c = {} as { [key: string]: any };
   for (var i = 0; i < spec.length; i++) {
     switch (spec[i].type) {

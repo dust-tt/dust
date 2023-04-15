@@ -75,17 +75,17 @@ impl DataSource {
     async fn search_data_source(
         &self,
         env: &Env,
-        username: Option<String>,
+        workspace_id: Option<String>,
         data_source_id: String,
         top_k: usize,
         filter: Option<SearchFilter>,
     ) -> Result<Vec<Document>> {
-        let data_source_project = match username {
-            Some(username) => {
-                let dust_user_id = match env.credentials.get("DUST_USER_ID") {
+        let data_source_project = match workspace_id {
+            Some(workspace_id) => {
+                let dust_workspace_id = match env.credentials.get("DUST_WORKSPACE_ID") {
                     None => Err(anyhow!(
-                        "DUST_USER_ID credentials missing, but `username` \
-                           is set in `data_source` block"
+                        "DUST_WORKSPACE_ID credentials missing, but `workspace_id` \
+                           is set in `data_source` block config"
                     ))?,
                     Some(v) => v.clone(),
                 };
@@ -101,16 +101,13 @@ impl DataSource {
                 };
 
                 let url = format!(
-                    "{}/api/registry/data_sources/lookup?username={}&data_source_id={}",
+                    "{}/api/registry/data_sources/lookup?workspace_id={}&data_source_id={}",
                     front_api.as_str(),
-                    encode(&username),
+                    encode(&workspace_id),
                     encode(&data_source_id),
                 );
                 let parsed_url = Url::parse(url.as_str())?;
 
-                // GET $DUST_FRONT_API/api/registry/data_sources/lookup
-                //       ?data_source_id=
-                //       &username=
                 let mut req = Request::builder().method(Method::GET).uri(url.as_str());
 
                 {
@@ -125,8 +122,8 @@ impl DataSource {
                         )?,
                     );
                     headers.insert(
-                        header::HeaderName::from_bytes("X-Dust-User-Id".as_bytes())?,
-                        header::HeaderValue::from_bytes(dust_user_id.as_bytes())?,
+                        header::HeaderName::from_bytes("X-Dust-Workspace-Id".as_bytes())?,
+                        header::HeaderValue::from_bytes(dust_workspace_id.as_bytes())?,
                     );
                 }
                 let req = req.body(Body::empty())?;
@@ -150,7 +147,7 @@ impl DataSource {
                 if status != StatusCode::OK {
                     Err(anyhow!(
                         "Failed to retrieve DataSource `{} > {}`",
-                        username,
+                        workspace_id,
                         data_source_id,
                     ))?;
                 }
@@ -227,7 +224,7 @@ impl Block for DataSource {
         let err_msg = format!(
             "Invalid or missing `data_sources` in configuration for \
               `data_source` block `{}`, expecting `{{ \"data_sources\": \
-              [ {{ [\"username\": ...,] \"data_source\": ... }}, ... ] }}`",
+              [ {{ [\"workspace_id\": ...,] \"data_source\": ... }}, ... ] }}`",
             name
         );
 
@@ -236,7 +233,7 @@ impl Block for DataSource {
                 Some(Value::Array(a)) => a
                     .iter()
                     .map(|v| {
-                        let username = match v.get("username") {
+                        let workspace_id = match v.get("workspace_id") {
                             Some(Value::String(p)) => Some(p.clone()),
                             _ => None,
                         };
@@ -244,7 +241,7 @@ impl Block for DataSource {
                             Some(Value::String(i)) => i.clone(),
                             _ => Err(anyhow!(err_msg.clone()))?,
                         };
-                        Ok((username, data_source_id))
+                        Ok((workspace_id, data_source_id))
                     })
                     .collect::<Result<Vec<_>>>()?,
                 _ => Err(anyhow!(err_msg.clone()))?,
@@ -276,10 +273,10 @@ impl Block for DataSource {
 
         // For each data_sources, retrieve documents concurrently.
         let mut futures = Vec::new();
-        for (u, ds) in data_sources {
+        for (wId, ds) in data_sources {
             futures.push(self.search_data_source(
                 env,
-                u.clone(),
+                wId.clone(),
                 ds.clone(),
                 top_k,
                 filter.clone(),

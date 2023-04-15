@@ -2,9 +2,9 @@ import StatsD from "hot-shots";
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "./logger";
 
-const statsDClient = new StatsD();
+export const statsDClient = new StatsD();
 
-const withLogging = (handler: any) => {
+export const withLogging = (handler: any) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
     let now = new Date();
     let output = await handler(req, res);
@@ -31,5 +31,3 @@ const withLogging = (handler: any) => {
     return output;
   };
 };
-
-export default withLogging;

@@ -82,7 +82,7 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## Create a Document {{ tag: 'POST', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+## Create a Document {{ tag: 'POST', label: '/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id' }}
 
 <Row>
   <Col>
@@ -94,8 +94,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the data source's workspace (can be found in the data source's URL)
       </Property>
       <Property name="data_source_name" type="string">
         The name of the data source you want to insert a document to.
@@ -130,10 +130,10 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+    curl https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/documents/top-secret-document \
       -H "Authorization: Bearer sk-..." \
       -H "Content-Type: application/json" \
       -d '{
@@ -183,7 +183,7 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## Retrieve a Document {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+## Retrieve a Document {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id' }}
 
 <Row>
   <Col>
@@ -193,8 +193,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the data source's workspace (can be found in the data source's URL)
       </Property>
       <Property name="data_source_name" type="string">
         The name of the data source you want to insert a document to.
@@ -208,10 +208,10 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+    curl https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/documents/top-secret-document \
       -H "Authorization: Bearer sk-..."
     ```
 
@@ -239,7 +239,7 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## Delete a Document {{ tag: 'DELETE', label: '/v1/data_sources/:user/:data_source_name/documents/:document_id' }}
+## Delete a Document {{ tag: 'DELETE', label: '/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id' }}
 
 <Row>
   <Col>
@@ -250,8 +250,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the data source's workspace (can be found in the data source's URL)
       </Property>
       <Property name="data_source_name" type="string">
         The name of the data source you want to insert a document to.
@@ -265,10 +265,10 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/v1/data_sources/:user/:data_source_name/documents/:document_id">
+    <CodeGroup title="Request" tag="DELETE" label="/v1/w/:workspace_id/data_sources/:data_source_name/documents/:document_id">
 
     ```bash {{ title: 'cURL' }}
-    curl -XDELETE https://dust.tt/api/v1/data_sources/spolu/foo/documents/top-secret-document \
+    curl -XDELETE https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/documents/top-secret-document \
       -H "Authorization: Bearer sk-..."
     ```
 
@@ -287,7 +287,7 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## List Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/documents' }}
+## List Documents {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/documents' }}
 
 <Row>
   <Col>
@@ -297,8 +297,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the data source's workspace (can be found in the data source's URL)
       </Property>
       <Property name="data_source_name" type="string">
         The name of the data source you want to insert a document to.
@@ -321,10 +321,10 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/documents">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/data_sources/:data_source_name/documents">
 
     ```bash {{ title: 'cURL' }}
-    curl "https://dust.tt/api/v1/data_sources/spolu/foo/documents?offset=0&limit=10" \
+    curl "https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/documents?offset=0&limit=10" \
       -H "Authorization: Bearer sk-..."
     ```
 
@@ -363,7 +363,7 @@ The Document model represents a [data source](/data-sources-overview) document.
 
 ---
 
-## Search Documents {{ tag: 'GET', label: '/v1/data_sources/:user/:data_source_name/search' }}
+## Search Documents {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/search' }}
 
 <Row>
   <Col>
@@ -373,8 +373,8 @@ The Document model represents a [data source](/data-sources-overview) document.
     ### URL attributes
 
     <Properties>
-      <Property name="user" type="string">
-        Your Dust username.
+      <Property name="workspace_id" type="string">
+        The ID of the data source's workspace (can be found in the data source's URL)
       </Property>
       <Property name="data_source_name" type="string">
         The name of the data source you want to perform your search against.
@@ -415,10 +415,10 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/data_sources/:user/:data_source_name/search">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/data_sources/:data_source_name/search">
 
     ```bash {{ title: 'cURL' }}
-    curl "https://dust.tt/api/v1/data_sources/spolu/foo/search?query=secret&top_k=10&full_text=true&tags_in=foo&tags_in=bar&tags_not=baz&tags_not=zab" \
+    curl "https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/search?query=secret&top_k=10&full_text=true&tags_in=foo&tags_in=bar&tags_not=baz&tags_not=zab" \
       -H "Authorization: Bearer sk-..."
     ```
 

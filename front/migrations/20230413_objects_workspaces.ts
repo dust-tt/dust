@@ -1,12 +1,13 @@
 import {
-  User,
   App,
-  Dataset,
-  Provider,
-  Key,
   DataSource,
+  Dataset,
+  Key,
+  Provider,
   Run,
+  User,
 } from "@app/lib/models";
+// @ts-expect-error
 import { personalWorkspace } from "@app/lib/auth";
 
 async function addWorkspaceToObject(
