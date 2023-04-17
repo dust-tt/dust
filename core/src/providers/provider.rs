@@ -1,4 +1,5 @@
 use crate::providers::ai21::AI21Provider;
+use crate::providers::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
@@ -20,6 +21,7 @@ pub enum ProviderID {
     AI21,
     #[serde(rename = "azure_openai")]
     AzureOpenAI,
+    Anthropic,
 }
 
 impl ToString for ProviderID {
@@ -29,6 +31,7 @@ impl ToString for ProviderID {
             ProviderID::Cohere => String::from("cohere"),
             ProviderID::AI21 => String::from("ai21"),
             ProviderID::AzureOpenAI => String::from("azure_openai"),
+            ProviderID::Anthropic => String::from("anthropic"),
         }
     }
 }
@@ -41,6 +44,7 @@ impl FromStr for ProviderID {
             "cohere" => Ok(ProviderID::Cohere),
             "ai21" => Ok(ProviderID::AI21),
             "azure_openai" => Ok(ProviderID::AzureOpenAI),
+            "anthropic" => Ok(ProviderID::Anthropic),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai)",
             ))?,
@@ -134,6 +138,7 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::Cohere => Box::new(CohereProvider::new()),
         ProviderID::AI21 => Box::new(AI21Provider::new()),
         ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
+        ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
     }
 }
 
