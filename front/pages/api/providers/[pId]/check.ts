@@ -102,6 +102,33 @@ async function handler(
           }
           return;
 
+        case "anthropic":
+          let testGenerate = await fetch(
+            "https://api.anthropic.com/v1/complete",
+            {
+              method: "POST",
+              headers: {
+                "x-api-key": config.api_key,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                prompt: "👋",
+                model: "claude-instant-v1",
+                max_tokens_to_sample: 1,
+                stop_sequences: [],
+              }),
+            }
+          );
+
+          if (!testGenerate.ok) {
+            let err = await testGenerate.json();
+            res.status(400).json({ ok: false, error: err.message });
+          } else {
+            let test = await testGenerate.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         case "serpapi":
           let testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,

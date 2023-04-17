@@ -208,9 +208,9 @@ impl LLM for AnthropicLLM {
             completions.push(Tokens {
                 // Anthropic only return the text
                 text: response.completion.clone(),
-                tokens: None,
-                logprobs: None,
-                top_logprobs: None,
+                tokens: Some(vec![]),
+                logprobs: Some(vec![]),
+                top_logprobs: Some(vec![]),
             });
         }
 

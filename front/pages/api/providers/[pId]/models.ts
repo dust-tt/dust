@@ -180,6 +180,14 @@ async function handler(
           }
           return;
 
+        case "anthropic":
+          const anthropic_models = [
+            { id: "claude-v1" },
+            { id: "claude-instant-v1" },
+          ];
+          res.status(200).json({ models: anthropic_models });
+          return;
+
         default:
           res.status(404).json({ error: "Provider not found" });
           return;

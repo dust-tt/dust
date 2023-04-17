@@ -44,6 +44,14 @@ export const modelProviders: ModelProvider[] = [
     embed: true,
   },
   {
+    providerId: "anthropic",
+    name: "Anthropic",
+    built: true,
+    enabled: false,
+    chat: false,
+    embed: false,
+  },
+  {
     providerId: "hugging_face",
     name: "Hugging Face",
     built: false,
@@ -160,6 +168,7 @@ type Credentials = {
   AI21_API_KEY?: string;
   AZURE_OPENAI_API_KEY?: string;
   AZURE_OPENAI_ENDPOINT?: string;
+  ANTHROPIC_API_KEY?: string;
   SERP_API_KEY?: string;
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;
@@ -190,6 +199,8 @@ export const credentialsFromProviders = (
         credentials["AZURE_OPENAI_API_KEY"] = config.api_key;
         credentials["AZURE_OPENAI_ENDPOINT"] = config.endpoint;
         break;
+      case "anthropic":
+        credentials["ANTHROPIC_API_KEY"] = config.api_key;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
         break;
