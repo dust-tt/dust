@@ -1,5 +1,5 @@
 import { Worker } from "@temporalio/worker";
-import * as activities from "./slack/slack";
+import * as activities from "./slack/full_sync";
 
 async function run() {
   // Step 1: Register Workflows and Activities with the Worker and connect to

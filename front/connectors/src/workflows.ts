@@ -1,9 +1,9 @@
 import { proxyActivities } from "@temporalio/workflow";
 // Only import the activity types
-import type * as slack_activities from "./slack/slack";
-import { DustConfig, SlackConfig } from "./slack/slack";
+import type * as slack_activities from "./slack/full_sync";
+import { DustConfig, SlackConfig } from "./slack/interface";
 
-const { processChannels } = proxyActivities<typeof slack_activities>({
+const { syncAllChannels } = proxyActivities<typeof slack_activities>({
   startToCloseTimeout: "1 minute",
   retry: {
     maximumAttempts: 2,
@@ -15,5 +15,5 @@ export async function slack_workflow(
   slackConfig: SlackConfig,
   dustConfig: DustConfig
 ): Promise<void> {
-  await processChannels(slackConfig, dustConfig);
+  await syncAllChannels(slackConfig, dustConfig);
 }

@@ -1,7 +1,7 @@
 import { Connection, Client } from "@temporalio/client";
 import { slack_workflow } from "./workflows";
 import { nanoid } from "nanoid";
-import { SlackConfig, DustConfig } from "./slack/slack";
+import { SlackConfig, DustConfig } from "./slack/interface";
 
 export async function triggerSlackSync(
   slackConfig: SlackConfig,
