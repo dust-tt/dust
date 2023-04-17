@@ -9,6 +9,7 @@ use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::fmt::{self, Display};
 use std::io::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -40,8 +41,6 @@ pub struct Error {
     // {"detail":[{"loc":["body","model"],"msg":"field required","type":"value_error.missing"}]}
     pub detail: Vec<ErrorDetail>,
 }
-
-use std::fmt::{self, Display};
 
 impl Display for ErrorDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
