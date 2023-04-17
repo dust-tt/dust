@@ -4,7 +4,7 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { UserType } from "@app/types/user";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { App, DataSource, Key, User, Workspace, Membership } from "./models";
+import { App, DataSource, Key, Membership, User, Workspace } from "./models";
 
 export enum Role {
   Owner = "owner",
@@ -96,22 +96,6 @@ export class Authenticator {
    * @returns true if the user can edit the app, false otherwise.
    */
   canEditApp(app: App): boolean {
-    return this._authUser?.id === app.userId;
-  }
-
-  /**
-   * Only the owner of an app can run it. This is an artificial restriction due to the fact that we
-   * don't have `front` side `Run` objects. If we allowed anyone to run an app, the "Logs" panel of
-   * a user would see `Runs` from other user which is not desirable.
-   *
-   * Once we introduce a `front` side `Run` object, we can remove this restriction and allow anyone
-   * to run a public app with their own credentials. This will enable use to have the "Use" and
-   * "Logs" panels available to any logged-in user.
-   *
-   * @param app the app for which we check the run rights
-   * @returns true if the user can run the app, false otherwise.
-   */
-  isAppOwner(app: App): boolean {
     return this._authUser?.id === app.userId;
   }
 
