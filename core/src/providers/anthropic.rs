@@ -31,8 +31,7 @@ pub struct Response {
 pub struct ErrorDetail {
     pub loc: Vec<String>,
     pub msg: String,
-    #[serde(rename = "type")]
-    pub type_: String,
+    pub r#type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -44,7 +43,7 @@ pub struct Error {
 
 impl Display for ErrorDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{}", self.loc.join("."), self.type_, self.msg)
+        write!(f, "{},{},{}", self.loc.join("."), self.r#type, self.msg)
     }
 }
 
