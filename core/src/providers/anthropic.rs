@@ -328,7 +328,7 @@ impl Provider for AnthropicProvider {
         );
         utils::info("Your API key can be found at `https://console.anthropic.com/account/keys`.");
         utils::info("");
-        utils::info("Once ready you can check your setup with `dust provider test Anthropic`");
+        utils::info("Once ready you can check your setup with `dust provider test anthropic`");
 
         Ok(())
     }
