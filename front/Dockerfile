@@ -17,6 +17,8 @@ ENV NEXT_TELEMETRY_DISABLED 1
 #RUN yarn build
 
 # If using npm comment out above and use below instead
+# Fix npm run build failed when not set Database URI
+RUN echo "FRONT_DATABASE_URI=sqlite:front_store.sqlite\nXP1_DATABASE_URI=sqlite:xp1_store.sqlite\n" > .env.local
 RUN npm run build
 
 # Production image, copy all the files and run next
