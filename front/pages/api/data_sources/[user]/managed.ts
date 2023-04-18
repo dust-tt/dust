@@ -7,7 +7,7 @@ import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
-import { triggerSlackSync } from "@app/connectors/src/client";
+import { triggerSlackSync } from "dust-connectors/compiled/client";
 import { Nango } from "@nangohq/node";
 
 const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -125,25 +125,21 @@ async function handler(
         return;
       }
 
-      const createdDataSource = await DataSource.create(
-        {
-          name: dataSourceId,
-          description: description,
-          visibility: "private",
-          config: JSON.stringify(dustDataSource.value.data_source.config),
-          dustAPIProjectId: dustProject.value.project.project_id.toString(),
-          userId: dataSourceUserId,
-        }
-      );
+      const createdDataSource = await DataSource.create({
+        name: dataSourceId,
+        description: description,
+        visibility: "private",
+        config: JSON.stringify(dustDataSource.value.data_source.config),
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        userId: dataSourceUserId,
+      });
 
-      await Connector.create(
-        {
-          type: "slack",
-          nangoConnectionId: nangoConnectionId,
-          dataSourceId: createdDataSource.id,
-          userId: auth.user().id,
-        }
-      );
+      await Connector.create({
+        type: "slack",
+        nangoConnectionId: nangoConnectionId,
+        dataSourceId: createdDataSource.id,
+        userId: auth.user().id,
+      });
 
       let systemKey = await Key.findOne({
         where: {
@@ -155,14 +151,12 @@ async function handler(
       if (!systemKey) {
         const secret = `sk-${new_id().slice(0, 32)}`;
 
-        systemKey = await Key.create(
-          {
-            userId: createdDataSource.userId,
-            secret: secret,
-            isSystem: true,
-            status: "active",
-          }
-        );
+        systemKey = await Key.create({
+          userId: createdDataSource.userId,
+          secret: secret,
+          isSystem: true,
+          status: "active",
+        });
       }
 
       let nango = new Nango({ secretKey: NANGO_SECRET_KEY });

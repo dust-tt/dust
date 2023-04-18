@@ -655,7 +655,6 @@ Connector.init(
 );
 User.hasMany(Connector);
 DataSource.hasOne(Connector);
-Connector.hasOne(DataSource);
 
 // XP1
 
