@@ -222,7 +222,7 @@ async function handler(
 
         Run.create({
           dustRunId,
-          appId: app.internalId,
+          appId: app.id,
           runType: "deploy",
           workspaceId: keyRes.value.workspaceId,
         });
@@ -252,7 +252,7 @@ async function handler(
 
       Run.create({
         dustRunId: runRes.value.run.run_id,
-        appId: app.internalId,
+        appId: app.id,
         runType: "deploy",
         workspaceId: keyRes.value.workspaceId,
       });

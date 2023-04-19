@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
-import { AppType } from "@app/types/app";
 import { App } from "@app/lib/models";
+import { AppType } from "@app/types/app";
 import { Op } from "sequelize";
 
 export async function getApp(
@@ -34,7 +34,7 @@ export async function getApp(
   }
 
   return {
-    internalId: app.id,
+    id: app.id,
     uId: app.uId,
     sId: app.sId,
     name: app.name,
@@ -71,7 +71,7 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
 
   return apps.map((app) => {
     return {
-      internalId: app.id,
+      id: app.id,
       uId: app.uId,
       sId: app.sId,
       name: app.name,

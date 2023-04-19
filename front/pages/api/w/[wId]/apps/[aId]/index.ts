@@ -89,7 +89,7 @@ async function handler(
 
       res.status(200).json({
         app: {
-          internalId: app.id,
+          id: app.id,
           uId: app.uId,
           sId: app.sId,
           name: app.name,

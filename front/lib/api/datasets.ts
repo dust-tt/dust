@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { AppType } from "@app/types/app";
-import { Dataset } from "@app/lib/models";
-import { DatasetType } from "@app/types/dataset";
 import { DustAPI } from "@app/lib/dust_api";
+import { Dataset } from "@app/lib/models";
+import { AppType } from "@app/types/app";
+import { DatasetType } from "@app/types/dataset";
 
 export async function getDatasets(
   auth: Authenticator,
@@ -16,7 +16,7 @@ export async function getDatasets(
   const datasets = await Dataset.findAll({
     where: {
       workspaceId: owner.id,
-      appId: app.internalId,
+      appId: app.id,
     },
     order: [["updatedAt", "DESC"]],
     attributes: ["id", "name", "description"],
@@ -41,7 +41,7 @@ export async function getDataset(
   const dataset = await Dataset.findOne({
     where: {
       workspaceId: owner.id,
-      appId: app.internalId,
+      appId: app.id,
       name,
     },
   });
@@ -70,7 +70,7 @@ export async function getDatasetHash(
   const dataset = await Dataset.findOne({
     where: {
       workspaceId: owner.id,
-      appId: app.internalId,
+      appId: app.id,
       name,
     },
   });

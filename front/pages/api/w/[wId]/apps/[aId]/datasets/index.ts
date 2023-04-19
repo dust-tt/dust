@@ -68,7 +68,7 @@ async function handler(
       let existing = await Dataset.findAll({
         where: {
           workspaceId: owner.id,
-          appId: app.internalId,
+          appId: app.id,
         },
         attributes: ["name"],
       });
@@ -117,7 +117,7 @@ async function handler(
       await Dataset.create({
         name: req.body.name,
         description,
-        appId: app.internalId,
+        appId: app.id,
         workspaceId: owner.id,
       });
 

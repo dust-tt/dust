@@ -36,7 +36,7 @@ async function handler(
     Dataset.findOne({
       where: {
         workspaceId: owner.id,
-        appId: app.internalId,
+        appId: app.id,
         name: req.query.name,
       },
     }),
@@ -117,7 +117,7 @@ async function handler(
       await Dataset.destroy({
         where: {
           workspaceId: owner.id,
-          appId: app.internalId,
+          appId: app.id,
           name: dataset.name,
         },
       });

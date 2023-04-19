@@ -95,7 +95,7 @@ async function handler(
       );
 
       await Clone.create({
-        fromId: app.internalId,
+        fromId: app.id,
         toId: cloned.id,
       });
 

@@ -1,7 +1,7 @@
 import { RoleType } from "@app/lib/auth";
 
 export type WorkspaceType = {
-  id: number,
+  id: number;
   uId: string;
   sId: string;
   name: string;
