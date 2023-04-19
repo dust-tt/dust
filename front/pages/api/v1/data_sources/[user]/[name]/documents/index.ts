@@ -1,10 +1,11 @@
-import { auth_api_user } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
-import { DataSource, User } from "@app/lib/models";
-import withLogging from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
+import { statsDClient, withLogging } from "@app/logger/withlogging";
+import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
 import { DocumentType } from "@app/types/document";
 import { NextApiRequest, NextApiResponse } from "next";
+
+import wIdHandler from "@app/pages/api/v1/w/[wId]/data_sources/[name]/documents/index";
 
 export type GetDocumentsResponseBody = {
   documents: Array<DocumentType>;
@@ -15,93 +16,39 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDocumentsResponseBody | APIError>
 ): Promise<void> {
-  let [authRes, dataSourceUser] = await Promise.all([
-    auth_api_user(req),
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-  ]);
-
-  if (authRes.isErr()) {
-    const err = authRes.error;
-    return res.status(err.status_code).json(err.api_error);
-  }
-  const auth = authRes.value;
-
-  if (!dataSourceUser) {
+  let wId = legacyUserToWorkspace[req.query.user as string];
+  if (!wId) {
     res.status(404).json({
       error: {
         type: "user_not_found",
-        message: "The user you're trying to query was not found.",
+        message:
+          "The legacy user you're trying to query was not found \
+          (check out our docs for updated workspace based URLs).",
       },
     });
-    return;
   }
 
-  let dataSource = await DataSource.findOne({
-    where: {
-      userId: dataSourceUser.id,
-      name: req.query.name,
+  logger.info(
+    {
+      user: req.query.user,
+      wId,
+      url: req.url,
     },
-  });
+    "Legacy user to workspace rewrite"
+  );
 
-  if (!dataSource) {
-    res.status(404).json({
-      error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-    return;
-  }
+  const tags = [
+    `method:${req.method}`,
+    `url:${req.url}`,
+    `user:${req.query.user}`,
+    `wId:${wId}`,
+  ];
 
-  switch (req.method) {
-    case "GET":
-      if (!auth.canReadDataSource(dataSource)) {
-        res.status(404).json({
-          error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-        return;
-      }
+  statsDClient.increment("legacyAPIUser.rewrite", 1, tags);
 
-      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+  req.query.wId = wId;
 
-      const documents = await DustAPI.getDataSourceDocuments(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        limit,
-        offset
-      );
-      if (documents.isErr()) {
-        return res.status(documents.error.code).json({
-          error: {
-            type: "data_source_error",
-            message: "There was an error retrieving the data source documents.",
-          },
-        });
-      }
-
-      res.status(200).json({
-        documents: documents.value.documents,
-        total: documents.value.total,
-      });
-      return;
-
-    default:
-      res.status(405).json({
-        error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-      return;
-  }
+  return wIdHandler(req, res);
 }
 
 export default withLogging(handler);

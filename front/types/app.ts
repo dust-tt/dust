@@ -1,4 +1,4 @@
-import { RunConfig, BlockType } from "@app/types/run";
+import { BlockType } from "@app/types/run";
 
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
@@ -7,6 +7,7 @@ export type BlockRunConfig = {
 };
 
 export type AppType = {
+  id: number;
   uId: string;
   sId: string;
   name: string;

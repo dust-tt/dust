@@ -1,21 +1,24 @@
-import { GetDatasetsResponseBody } from "@app/pages/api/apps/[user]/[sId]/datasets";
-import { GetRunsResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs";
-import { GetRunBlockResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs/[runId]/blocks/[type]/[name]";
-import { GetRunStatusResponseBody } from "@app/pages/api/apps/[user]/[sId]/runs/[runId]/status";
-import { GetDataSourcesResponseBody } from "@app/pages/api/data_sources/[user]";
-import { GetDocumentsResponseBody } from "@app/pages/api/data_sources/[user]/[name]/documents";
-import { GetKeysResponseBody } from "@app/pages/api/keys";
-import { GetProvidersResponseBody } from "@app/pages/api/providers";
+import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
+import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
+import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
+import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
+import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
+import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import { AppType } from "@app/types/app";
+import { RunRunType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
 import useSWR, { Fetcher } from "swr";
 
 export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
 
-export function useDatasets(user: string, app: { sId: string }) {
+export function useDatasets(owner: WorkspaceType, app: AppType) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWR(
-    `/api/apps/${user}/${app.sId}/datasets`,
+    `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
     datasetsFetcher
   );
 
@@ -26,10 +29,13 @@ export function useDatasets(user: string, app: { sId: string }) {
   };
 }
 
-export function useProviders() {
+export function useProviders(owner: WorkspaceType) {
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
 
-  const { data, error } = useSWR(`/api/providers`, providersFetcher);
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/providers`,
+    providersFetcher
+  );
 
   return {
     providers: data ? data.providers : [],
@@ -39,13 +45,13 @@ export function useProviders() {
 }
 
 export function useSavedRunStatus(
-  user: string,
-  app: { sId: string },
-  refresh: number
+  owner: WorkspaceType,
+  app: AppType,
+  refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWR(
-    `/api/apps/${user}/${app.sId}/runs/saved/status`,
+    `/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`,
     runStatusFetcher,
     {
       refreshInterval: refresh,
@@ -60,16 +66,16 @@ export function useSavedRunStatus(
 }
 
 export function useRunBlock(
-  user: string,
-  app: { sId: string },
+  owner: WorkspaceType,
+  app: AppType,
   runId: string,
   type: string,
   name: string,
-  refresh: number
+  refresh: (data: GetRunBlockResponseBody | undefined) => number
 ) {
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
   const { data, error } = useSWR(
-    `/api/apps/${user}/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
+    `/api/w/${owner.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
     runBlockFetcher,
     {
       refreshInterval: refresh,
@@ -83,9 +89,9 @@ export function useRunBlock(
   };
 }
 
-export function useKeys() {
+export function useKeys(owner: WorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
-  const { data, error } = useSWR(`/api/keys`, keysFetcher);
+  const { data, error } = useSWR(`/api/w/${owner.sId}/keys`, keysFetcher);
 
   return {
     keys: data ? data.keys : [],
@@ -95,15 +101,15 @@ export function useKeys() {
 }
 
 export function useRuns(
-  user: string,
-  app: { sId: string },
+  owner: WorkspaceType,
+  app: AppType,
   limit: number,
   offset: number,
-  runType: string
+  runType: RunRunType
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
   const { data, error } = useSWR(
-    `/api/apps/${user}/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`,
+    `/api/w/${owner.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`,
     runsFetcher
   );
 
@@ -116,14 +122,14 @@ export function useRuns(
 }
 
 export function useDocuments(
-  user: string,
+  owner: WorkspaceType,
   dataSource: { name: string },
   limit: number,
   offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error } = useSWR(
-    `/api/data_sources/${user}/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,
+    `/api/w/${owner.sId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 
@@ -135,10 +141,10 @@ export function useDocuments(
   };
 }
 
-export function useDataSources(user: string) {
+export function useDataSources(owner: WorkspaceType) {
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
   const { data, error } = useSWR(
-    `/api/data_sources/${user}`,
+    `/api/w/${owner.sId}/data_sources`,
     dataSourcesFetcher
   );
 

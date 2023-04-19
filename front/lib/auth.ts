@@ -1,15 +1,16 @@
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { Err, Ok, Result } from "@app/lib/result";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { UserType } from "@app/types/user";
-import { NextApiRequest, NextApiResponse } from "next";
+import { UserType, WorkspaceType } from "@app/types/user";
+import {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 import { getServerSession } from "next-auth/next";
-import { App, DataSource, Key, Membership, User, Workspace } from "./models";
+import { Key, Membership, User, Workspace } from "./models";
 
-export enum Role {
-  Owner = "owner",
-  ReadOnly = "read_only",
-}
+export type RoleType = "admin" | "builder" | "user" | "none";
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -18,207 +19,235 @@ export enum Role {
  * associated permission will be implemented here.
  */
 export class Authenticator {
-  _authUser: User | null;
-  _session: any;
+  _workspace: Workspace | null;
+  _role: RoleType;
 
-  constructor(authUser: User | null, session: any = null) {
-    this._authUser = authUser;
-    this._session = session;
+  constructor(workspace: Workspace | null, role: RoleType) {
+    this._workspace = workspace;
+    this._role = role;
   }
 
   /**
-   * The caller should ensure that the user is authenticated before calling this method.
+   * Get a an Authenticator for the target workspace associated with the authentified user from the
+   * NextAuth session.
    *
-   * @returns the authenticated user or throws an error if the user is not authenticated.
+   * @param session any NextAuth session
+   * @param wId string target workspace id
+   * @returns Promise<Authenticator>
    */
-  user(): UserType {
-    return {
-      id: this._authUser!.id,
-      provider: "github",
-      providerId: this._authUser!.githubId,
-      username: this._authUser!.username,
-      email: this._authUser!.email,
-      name: this._authUser!.name,
-    };
-  }
+  static async fromSession(session: any, wId: string): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      (async () => {
+        return await Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+      })(),
+      (async () => {
+        if (!session) {
+          return null;
+        } else {
+          return await User.findOne({
+            where: {
+              githubId: session.provider.id.toString(),
+            },
+          });
+        }
+      })(),
+    ]);
 
-  dbUser(): User {
-    return this._authUser!;
-  }
+    let role = "none" as RoleType;
 
-  session(): any {
-    return this._session;
-  }
+    if (user && workspace) {
+      const membership = await Membership.findOne({
+        where: {
+          userId: user.id,
+          workspaceId: workspace.id,
+        },
+      });
 
-  isAnonymous(): boolean {
-    return this._authUser === null;
-  }
-
-  /**
-   * There is no workspace yet but eventually we'll have a workspace model and this will be used to
-   * check if the user is a member of the workspace.
-   *
-   * @param resourceOwner the owner of the resource for which we want to check the role. This will
-   * be replaced by a workspace in the future.
-   * @returns the role of the authenticated user.
-   */
-  async roleFor(resourceOwner: User): Promise<Role> {
-    if (resourceOwner.id === this._authUser?.id) {
-      return Role.Owner;
-    } else {
-      return Role.ReadOnly;
+      if (membership) {
+        switch (membership.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = membership.role;
+            break;
+          default:
+            role = "none";
+        }
+      }
     }
+
+    return new Authenticator(workspace, role);
   }
 
-  /**
-   * Any user can run a `public` or `unlisted` app. Only the owner can read a `private` app.
-   *
-   * @param app the app for which we check the read rights
-   * @returns true if the user can read the app, false otherwise.
-   */
-  canReadApp(app: App): boolean {
-    switch (app.visibility) {
-      case "private":
-      case "deleted":
-        return this._authUser?.id === app.userId;
-      case "public":
-      case "unlisted":
+  static async fromKey(key: Key, wId: string): Promise<Authenticator> {
+    const [workspace, keyWorkspace] = await Promise.all([
+      (async () => {
+        return await Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+      })(),
+      (async () => {
+        return await Workspace.findOne({
+          where: {
+            id: key.workspaceId,
+          },
+        });
+      })(),
+    ]);
+
+    let role = "none" as RoleType;
+
+    if (workspace && keyWorkspace) {
+      if (keyWorkspace.id === workspace.id) {
+        role = "builder";
+      }
+    }
+
+    return new Authenticator(workspace, role);
+  }
+
+  role(): RoleType {
+    return this._role;
+  }
+
+  isUser(): boolean {
+    switch (this._role) {
+      case "admin":
+      case "builder":
+      case "user":
         return true;
       default:
         return false;
     }
   }
 
-  /**
-   * Only the owner can edit an app.
-   *
-   * @param app the app for which we check the edit rights
-   * @returns true if the user can edit the app, false otherwise.
-   */
-  canEditApp(app: App): boolean {
-    return this._authUser?.id === app.userId;
-  }
-
-  /**
-   * Any user can read a `public` data source. Only the owner can read a `private` data source.
-   *
-   * @param dataSource the data source for which we check the read rights
-   * @returns true if the user can read the data source, false otherwise.
-   */
-  canReadDataSource(dataSource: DataSource): boolean {
-    switch (dataSource.visibility) {
-      case "public":
+  isBuilder(): boolean {
+    switch (this._role) {
+      case "admin":
+      case "builder":
         return true;
-      case "private":
-        return this._authUser?.id === dataSource.userId;
       default:
         return false;
     }
   }
 
-  /**
-   * Only the owner can edit a data source.
-   *
-   * @param dataSource the data source for which we check the edit rights
-   * @returns true if the user can edit the data source, false otherwise.
-   */
-  canEditDataSource(dataSource: DataSource): boolean {
-    return this._authUser?.id === dataSource.userId;
-  }
-}
-
-export async function personalWorkspace(
-  user: User
-): Promise<Result<Workspace, APIErrorWithStatusCode>> {
-  const memberships = await Membership.findAll({
-    where: {
-      userId: user.id,
-    },
-  });
-
-  if (memberships.length === 0) {
-    return new Err({
-      status_code: 500,
-      api_error: {
-        error: {
-          type: "personal_workspace_not_found",
-          message: "Personal workspace for user not found",
-        },
-      },
-    });
+  isAdmin(): boolean {
+    switch (this._role) {
+      case "admin":
+        return true;
+      default:
+        return false;
+    }
   }
 
-  // Find the Workspace of type personal for which there is a Membership for `user`.
-  const workspace = await Workspace.findOne({
-    where: {
-      id: memberships.map((m) => m.workspaceId),
-      type: "personal",
-    },
-  });
-  //console.log("personalWorkspace", workspace);
-
-  if (!workspace) {
-    return new Err({
-      status_code: 500,
-      api_error: {
-        error: {
-          type: "personal_workspace_not_found",
-          message: "Personal workspace for user not found",
-        },
-      },
-    });
+  workspace(): WorkspaceType | null {
+    return this._workspace
+      ? {
+          id: this._workspace.id,
+          uId: this._workspace.uId,
+          sId: this._workspace.sId,
+          name: this._workspace.name,
+          type: this._workspace.type,
+          role: this._role,
+        }
+      : null;
   }
-
-  return new Ok(workspace);
 }
 
 /**
- * Get a an Authenticator assiciated with the authentified user from the nextauth session.
- *
+ * Retrieves the NextAuth session from the request/response.
  * @param req NextApiRequest request object
  * @param res NextApiResponse response object
- * @returns Result<Authenticator, InternalErrorWithStatusCode>
+ * @returns Promise<any>
  */
-export async function auth_user(
-  req: NextApiRequest,
-  res: NextApiResponse
-): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
-  const session = await getServerSession(req, res, authOptions);
+export async function getSession(
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
+): Promise<any> {
+  return await getServerSession(req, res, authOptions);
+}
 
+/**
+ * Retrieves the user for a given session
+ * @param session any NextAuth session
+ * @returns Promise<UserType | null>
+ */
+export async function getUserFromSession(
+  session: any
+): Promise<UserType | null> {
   if (!session) {
-    return new Ok(new Authenticator(null));
+    return null;
   }
 
-  let authUser = await User.findOne({
+  const user = await User.findOne({
     where: {
       githubId: session.provider.id.toString(),
     },
   });
 
-  if (!authUser) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        error: {
-          type: "user_not_found",
-          message: "User associated with the session was not found",
-        },
-      },
-    });
+  if (!user) {
+    return null;
   }
 
-  return new Ok(new Authenticator(authUser, session));
+  const memberships = await Membership.findAll({
+    where: {
+      userId: user.id,
+    },
+  });
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: memberships.map((m) => m.workspaceId),
+    },
+  });
+
+  return {
+    id: user.id,
+    provider: "github",
+    providerId: user.githubId,
+    username: user.username,
+    email: user.email,
+    name: user.name,
+    image: session.user ? session.user.image : null,
+    workspaces: workspaces.map((w) => {
+      let m = memberships.find((m) => m.workspaceId === w.id);
+      let role = "none" as RoleType;
+      if (m) {
+        switch (m.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = m.role;
+            break;
+          default:
+            role = "none";
+        }
+      }
+      return {
+        id: w.id,
+        uId: w.uId,
+        sId: w.sId,
+        name: w.name,
+        type: w.type,
+        role,
+      };
+    }),
+  };
 }
 
 /**
- * Get a an Authenticator assiciated with the authentified user from the Authorization Bearer
- * header.
+ * Retrieves the API Key from the request.
  * @param req NextApiRequest request object
- * @returns Result<Authenticator, HTTPError>
+ * @returns Result<Key, APIErrorWithStatusCode>
  */
-export async function auth_api_user(
+export async function getAPIKey(
   req: NextApiRequest
-): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+): Promise<Result<Key, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return new Err({
       status_code: 401,
@@ -232,7 +261,7 @@ export async function auth_api_user(
   }
 
   let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1]) {
+  if (!parse || !parse[1] || !parse[1].startsWith("sk-")) {
     return new Err({
       status_code: 401,
       api_error: {
@@ -243,12 +272,11 @@ export async function auth_api_user(
       },
     });
   }
-  let secret = parse[1];
 
   let [key] = await Promise.all([
     Key.findOne({
       where: {
-        secret: secret,
+        secret: parse[1],
       },
     }),
   ]);
@@ -265,23 +293,5 @@ export async function auth_api_user(
     });
   }
 
-  const authUser = await User.findOne({
-    where: {
-      id: key.userId,
-    },
-  });
-
-  if (!authUser) {
-    return new Err({
-      status_code: 500,
-      api_error: {
-        error: {
-          type: "internal_server_error",
-          message: "The user associaed with the api key was not found.",
-        },
-      },
-    });
-  }
-
-  return new Ok(new Authenticator(authUser, null));
+  return new Ok(key);
 }

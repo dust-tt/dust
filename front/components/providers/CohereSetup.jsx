@@ -4,7 +4,7 @@ import { ActionButton, Button } from "@app/components/Button";
 import { useSWRConfig } from "swr";
 import { checkProvider } from "@app/lib/providers";
 
-export default function CohereSetup({ open, setOpen, config, enabled }) {
+export default function CohereSetup({ owner, open, setOpen, config, enabled }) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
@@ -23,7 +23,7 @@ export default function CohereSetup({ open, setOpen, config, enabled }) {
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider("cohere", { api_key: apiKey });
+    let check = await checkProvider(owner, "cohere", { api_key: apiKey });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -38,7 +38,7 @@ export default function CohereSetup({ open, setOpen, config, enabled }) {
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/providers/cohere`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/cohere`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -49,16 +49,18 @@ export default function CohereSetup({ open, setOpen, config, enabled }) {
         }),
       }),
     });
+    let data = await res.json();
     setEnableRunning(false);
-    mutate(`/api/providers`);
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/providers/cohere`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/cohere`, {
       method: "DELETE",
     });
-    mutate(`/api/providers`);
+    let data = await res.json();
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 

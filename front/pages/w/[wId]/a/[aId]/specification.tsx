@@ -1,0 +1,100 @@
+import AppLayout from "@app/components/AppLayout";
+import MainTab from "@app/components/app/MainTab";
+import { getSession, Authenticator, getUserFromSession } from "@app/lib/auth";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { AppType } from "@app/types/app";
+import { UserType, WorkspaceType } from "@app/types/user";
+import { getApp } from "@app/lib/api/app";
+import { DustAPI } from "@app/lib/dust_api";
+import { dumpSpecification } from "@app/lib/specification";
+
+const { URL, GA_TRACKING_ID = "" } = process.env;
+
+export const getServerSideProps: GetServerSideProps<{
+  user: UserType | null;
+  owner: WorkspaceType;
+  readOnly: boolean;
+  app: AppType;
+  specification: string;
+  gaTrackingId: string;
+}> = async (context) => {
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  const owner = auth.workspace();
+  if (!owner) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const readOnly = !auth.isBuilder();
+
+  const app = await getApp(auth, context.params?.aId as string);
+
+  if (!app) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const datasets = await DustAPI.getDatasets(app.dustAPIProjectId);
+  if (datasets.isErr()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  let latestDatasets = {} as { [key: string]: string };
+  for (const d in datasets.value.datasets) {
+    latestDatasets[d] = datasets.value.datasets[d][0].hash;
+  }
+
+  let spec = dumpSpecification(
+    JSON.parse(app.savedSpecification || "[]"),
+    latestDatasets
+  );
+
+  return {
+    props: {
+      user,
+      owner,
+      readOnly,
+      app,
+      specification: spec,
+      gaTrackingId: GA_TRACKING_ID,
+    },
+  };
+};
+
+export default function Specification({
+  user,
+  owner,
+  readOnly,
+  app,
+  specification,
+  gaTrackingId,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  return (
+    <AppLayout user={user} owner={owner} app={app} gaTrackingId={gaTrackingId}>
+      <div className="flex flex-col">
+        <div className="mt-2 flex flex-initial">
+          <MainTab app={app} currentTab="Specification" owner={owner} />
+        </div>
+        <div className="w-max-4xl mx-auto">
+          <div className="flex flex-auto">
+            <div className="my-8 flex flex-auto flex-col">
+              <div className="whitespace-pre font-mono text-[13px] text-gray-700">
+                {specification}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

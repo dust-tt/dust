@@ -1,6 +1,6 @@
 const { URL, XP1_CHROME_WEB_STORE_URL } = process.env;
-import withLogging from "@app/logger/withlogging";
 import logger from "@app/logger/logger";
+import { withLogging } from "@app/logger/withlogging";
 
 async function handler(req, res) {
   // If available get version as get parameter.

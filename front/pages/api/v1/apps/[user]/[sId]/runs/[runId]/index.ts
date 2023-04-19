@@ -1,11 +1,11 @@
-import { auth_api_user } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
-import { App, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import withLogging from "@app/logger/withlogging";
+import { statsDClient, withLogging } from "@app/logger/withlogging";
+import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
 import { RunType } from "@app/types/run";
 import { NextApiRequest, NextApiResponse } from "next";
+
+import wIdHandler from "@app/pages/api/v1/w/[wId]/apps/[aId]/runs/[runId]/index";
 
 export const config = {
   api: {
@@ -21,97 +21,42 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<APIError | GetRunResponseBody>
 ): Promise<void> {
-  let [authRes, appUser] = await Promise.all([
-    auth_api_user(req),
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-  ]);
-
-  if (authRes.isErr()) {
-    const err = authRes.error;
-    return res.status(err.status_code).json(err.api_error);
-  }
-  const auth = authRes.value;
-
-  if (!appUser) {
+  let wId = legacyUserToWorkspace[req.query.user as string];
+  if (!wId) {
     res.status(404).json({
       error: {
         type: "user_not_found",
-        message: "The user you're trying to query was not found.",
+        message:
+          "The legacy user you're trying to query was not found \
+          (check out our docs for updated workspace based URLs).",
       },
     });
-    return;
   }
 
-  let app = await App.findOne({
-    where: {
-      userId: appUser.id,
-      sId: req.query.sId,
+  logger.info(
+    {
+      user: req.query.user,
+      wId,
+      aId: req.query.sId,
+      url: req.url,
     },
-  });
+    "Legacy user to workspace rewrite"
+  );
 
-  if (!app || !auth.canReadApp(app)) {
-    res.status(404).json({
-      error: {
-        type: "app_not_found",
-        message: "The app whose run you're trying to retrieve was not found.",
-      },
-    });
-    return;
-  }
+  const tags = [
+    `method:${req.method}`,
+    `url:${req.url}`,
+    `user:${req.query.user}`,
+    `wId:${wId}`,
+    `aId:${req.query.sId}`,
+  ];
 
-  switch (req.method) {
-    case "GET":
-      let runId = req.query.runId;
+  statsDClient.increment("legacyAPIUser.rewrite", 1, tags);
 
-      logger.info(
-        {
-          user: appUser.username,
-          app: app.sId,
-          runId,
-        },
-        "App run retrieve"
-      );
+  req.query.wId = wId;
+  req.query.aId = req.query.sId;
 
-      const runRes = await DustAPI.getRun(
-        app.dustAPIProjectId,
-        runId as string
-      );
-      if (runRes.isErr()) {
-        res.status(runRes.error.code).json({
-          error: {
-            type: "run_error",
-            message: "There was an error retrieving the run.",
-            run_error: runRes.error,
-          },
-        });
-        return;
-      }
-      let run: RunType = runRes.value.run;
-      run.specification_hash = run.app_hash;
-      delete run.app_hash;
-
-      if (run.status.run === "succeeded" && run.traces.length > 0) {
-        run.results = run.traces[run.traces.length - 1][1];
-      } else {
-        run.results = null;
-      }
-
-      res.status(200).json({ run });
-      return;
-
-    default:
-      res.status(405).json({
-        error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-      return;
-  }
+  return wIdHandler(req, res);
 }
 
 export default withLogging(handler);

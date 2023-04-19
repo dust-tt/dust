@@ -1,3 +1,5 @@
+import { BlockRunConfig } from "./app";
+
 export type BlockType =
   | "input"
   | "data"
@@ -17,7 +19,7 @@ export type RunRunType = "deploy" | "local" | "execute";
 type Status = "running" | "succeeded" | "errored";
 
 export type RunConfig = {
-  blocks: { [key: string]: any };
+  blocks: BlockRunConfig;
 };
 
 export type RunStatus = {
@@ -33,6 +35,11 @@ export type BlockStatus = {
   error_count: number;
 };
 
+export type TraceType = {
+  value?: any;
+  error?: string;
+};
+
 export type RunType = {
   run_id: string;
   created: number;
@@ -41,9 +48,7 @@ export type RunType = {
   specification_hash?: string | null;
   config: RunConfig;
   status: RunStatus;
-  traces: Array<
-    [[BlockType, string], Array<Array<{ value?: any; error?: string }>>]
-  >;
+  traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
   results?:
     | {
         value?: any | null;

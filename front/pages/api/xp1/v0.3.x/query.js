@@ -1,6 +1,6 @@
 import { XP1Run, XP1User } from "@app/lib/models";
-import withLogging from "@app/logger/withlogging";
 import logger from "@app/logger/logger";
+import { withLogging } from "@app/logger/withlogging";
 
 const {
   XP1_DUST_USER,

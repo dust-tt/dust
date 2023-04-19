@@ -702,10 +702,10 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
 
-    match headers.get("X-Dust-User-Id") {
+    match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {
             Ok(v) => {
-                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
+                credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
             }
             _ => (),
         },
@@ -745,10 +745,10 @@ async fn runs_create_stream(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
 
-    match headers.get("X-Dust-User-Id") {
+    match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {
             Ok(v) => {
-                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
+                credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
             }
             _ => (),
         },

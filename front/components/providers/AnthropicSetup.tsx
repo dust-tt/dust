@@ -1,10 +1,12 @@
 import { ActionButton, Button } from "@app/components/Button";
 import { checkProvider } from "@app/lib/providers";
+import { WorkspaceType } from "@app/types/user";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 type AnthropicSetupProps = {
+  owner: WorkspaceType;
   open: boolean;
   setOpen: (open: boolean) => void;
   config: { [key: string]: string };
@@ -12,6 +14,7 @@ type AnthropicSetupProps = {
 };
 
 export default function AnthropicSetup({
+  owner,
   open,
   setOpen,
   config,
@@ -35,7 +38,7 @@ export default function AnthropicSetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider("anthropic", {
+    let check = await checkProvider(owner, "anthropic", {
       api_key: apiKey,
     });
 
@@ -52,7 +55,7 @@ export default function AnthropicSetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/providers/anthropic`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -63,16 +66,18 @@ export default function AnthropicSetup({
         }),
       }),
     });
+    let data = await res.json();
     setEnableRunning(false);
-    mutate(`/api/providers`);
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/providers/anthropic`, {
+    let res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
       method: "DELETE",
     });
-    mutate(`/api/providers`);
+    let data = await res.json();
+    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 

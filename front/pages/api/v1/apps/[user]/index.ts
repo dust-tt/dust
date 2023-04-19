@@ -1,10 +1,11 @@
-import { Role, auth_api_user } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { App, User } from "@app/lib/models";
-import withLogging from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
+import { statsDClient, withLogging } from "@app/logger/withlogging";
+import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
 import { AppType } from "@app/types/app";
 import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
+
+import wIdHandler from "@app/pages/api/v1/w/[wId]/apps/index";
 
 export type GetAppsResponseBody = {
   apps: AppType[];
@@ -14,72 +15,39 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetAppsResponseBody | APIError>
 ): Promise<void> {
-  let [authRes, appUser] = await Promise.all([
-    auth_api_user(req),
-    User.findOne({
-      where: {
-        username: req.query.user,
-      },
-    }),
-  ]);
-
-  if (authRes.isErr()) {
-    const err = authRes.error;
-    return res.status(err.status_code).json(err.api_error);
-  }
-  const auth = authRes.value;
-
-  if (!appUser) {
+  let wId = legacyUserToWorkspace[req.query.user as string];
+  if (!wId) {
     res.status(404).json({
       error: {
         type: "user_not_found",
-        message: "The user you're trying to query was not found.",
+        message:
+          "The legacy user you're trying to query was not found \
+          (check out our docs for updated workspace based URLs).",
       },
     });
-    return;
   }
 
-  let role = await auth.roleFor(appUser);
+  logger.info(
+    {
+      user: req.query.user,
+      wId,
+      url: req.url,
+    },
+    "Legacy user to workspace rewrite"
+  );
 
-  let apps = await App.findAll({
-    where:
-      role === Role.ReadOnly
-        ? {
-            userId: appUser.id,
-            visibility: {
-              [Op.or]: ["public"],
-            },
-          }
-        : {
-            userId: appUser.id,
-          },
-  });
+  const tags = [
+    `method:${req.method}`,
+    `url:${req.url}`,
+    `user:${req.query.user}`,
+    `wId:${wId}`,
+  ];
 
-  switch (req.method) {
-    case "GET":
-      res.status(200).json({
-        apps: apps.map((a) => {
-          return {
-            uId: a.uId,
-            sId: a.sId,
-            name: a.name,
-            description: a.description,
-            visibility: a.visibility,
-            dustAPIProjectId: a.dustAPIProjectId,
-          };
-        }),
-      });
-      return;
+  statsDClient.increment("legacyAPIUser.rewrite", 1, tags);
 
-    default:
-      res.status(405).json({
-        error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-      return;
-  }
+  req.query.wId = wId;
+
+  return wIdHandler(req, res);
 }
 
 export default withLogging(handler);

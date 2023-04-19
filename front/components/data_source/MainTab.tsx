@@ -1,5 +1,6 @@
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
+import { WorkspaceType } from "@app/types/user";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
@@ -13,17 +14,15 @@ export default function MainTab({
   dataSource,
   currentTab,
   owner,
-  readOnly,
 }: {
   dataSource: DataSourceType;
   currentTab: string;
-  owner: { username: string };
-  readOnly: boolean;
+  owner: WorkspaceType;
 }) {
   const tabs = [
     {
       name: "Documents",
-      href: `/${owner.username}/ds/${dataSource.name}`,
+      href: `/w/${owner.sId}/ds/${dataSource.name}`,
       icon: (
         <DocumentIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -33,10 +32,14 @@ export default function MainTab({
     },
   ];
 
-  if (!readOnly) {
+  if (
+    owner.role === "user" ||
+    owner.role === "builder" ||
+    owner.role === "admin"
+  ) {
     tabs.push({
       name: "Search",
-      href: `/${owner.username}/ds/${dataSource.name}/search`,
+      href: `/w/${owner.sId}/ds/${dataSource.name}/search`,
       icon: (
         <MagnifyingGlassIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -44,10 +47,12 @@ export default function MainTab({
         />
       ),
     });
+  }
 
+  if (owner.role === "builder" || owner.role === "admin") {
     tabs.push({
       name: "Settings",
-      href: `/${owner.username}/ds/${dataSource.name}/settings`,
+      href: `/w/${owner.sId}/ds/${dataSource.name}/settings`,
       icon: (
         <Cog6ToothIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"

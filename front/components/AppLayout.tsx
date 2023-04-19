@@ -1,65 +1,60 @@
-import Head from "next/head";
-import Script from "next/script";
-import Link from "next/link";
-import { Disclosure, Menu } from "@headlessui/react";
-import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/router";
 import { classNames } from "@app/lib/utils";
+import { AppType } from "@app/types/app";
+import { DataSourceType } from "@app/types/data_source";
+import { UserType, WorkspaceType } from "@app/types/user";
+import { Disclosure, Menu } from "@headlessui/react";
 import {
   ChevronRightIcon,
   ComputerDesktopIcon,
 } from "@heroicons/react/20/solid";
-import { ActionButton, Button } from "./Button";
-import { signIn } from "next-auth/react";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
-import { DataSourceType } from "@app/types/data_source";
+import { signIn, signOut } from "next-auth/react";
+import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import Script from "next/script";
+import { ActionButton, Button } from "./Button";
+import WorkspacePicker from "./WorkspacePicker";
 
 export default function AppLayout({
+  user,
+  owner,
   app,
   dataSource,
   gaTrackingId,
   children,
 }: {
-  app?: {
-    sId: string;
-    name: string;
-    description: string;
-  };
-  dataSource: DataSourceType;
+  user: UserType | null;
+  owner: WorkspaceType;
+  app?: AppType;
+  dataSource?: DataSourceType;
   gaTrackingId: string;
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
-
   const router = useRouter();
-  const routeUser = router.query.user;
 
   return (
     <main data-color-mode="light">
       <Head>
         {app ? (
-          <title>{`Dust - ${routeUser} > ${app.name}`}</title>
+          <title>{`Dust - ${owner.name} > ${app.name}`}</title>
         ) : dataSource ? (
-          <title>{`Dust - ${routeUser} > ${dataSource.name}`}</title>
+          <title>{`Dust - ${owner.name} > ${dataSource.name}`}</title>
         ) : (
-          <title>{`Dust - ${routeUser}`}</title>
+          <title>{`Dust - ${owner.name}`}</title>
         )}
         <link rel="shortcut icon" href="/static/favicon.png" />
         {app ? (
           <>
-            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:card" content="summary" />
             <meta name="twitter:site" content="@dust4ai" />
             <meta
               name="twitter:title"
-              content={"[Dust] " + routeUser + " > " + app.name}
+              content={"[Dust] " + owner.name + " > " + app.name}
             />
             <meta
               name="twitter:description"
               content={app.description ? app.description : ""}
-            />
-            <meta
-              name="twitter:image"
-              content={`https://dust.tt/api/apps/${routeUser}/${app.sId}/card`}
             />
           </>
         ) : null}
@@ -78,34 +73,39 @@ export default function AppLayout({
                     </div>
                     <div className="h-2 w-[4px] bg-white"></div>
                     <div className="select-none text-base font-bold tracking-tight text-gray-800">
-                      <Link
-                        //@ts-expect-error typescript does not know about the fact that we
-                        // enriched the session with session.user.username.
-                        href={session ? `/${session.user.username}/apps` : `/`}
-                      >
-                        DUST
-                      </Link>
+                      <Link href="/">DUST</Link>
                     </div>
                   </div>
                 </div>
                 <nav className="ml-1 flex h-12 flex-1">
-                  <ol role="list" className="flex items-center space-x-2">
+                  <ol role="list" className="flex items-center space-x-1">
                     <li>
                       <div className="flex items-center">
                         <ChevronRightIcon
                           className="mr-1 h-5 w-5 shrink pt-0.5 text-gray-400"
                           aria-hidden="true"
                         />
-                        <Link
-                          href={
-                            dataSource
-                              ? `/${routeUser}/data_sources`
-                              : `/${routeUser}/apps`
-                          }
-                          className="text-base font-bold text-gray-800"
-                        >
-                          {routeUser}
-                        </Link>
+                        {user && user.workspaces.length > 1 ? (
+                          <WorkspacePicker
+                            user={user}
+                            workspace={owner}
+                            readOnly={false}
+                            onWorkspaceUpdate={(workspace) => {
+                              router.push(`/w/${workspace.sId}/a`);
+                            }}
+                          />
+                        ) : (
+                          <Link
+                            href={
+                              dataSource
+                                ? `/w/${owner.sId}/ds`
+                                : `/w/${owner.sId}/a`
+                            }
+                            className="text-base font-bold text-gray-800"
+                          >
+                            {owner.name}
+                          </Link>
+                        )}
                       </div>
                     </li>
 
@@ -117,7 +117,7 @@ export default function AppLayout({
                             aria-hidden="true"
                           />
                           <Link
-                            href={`/${routeUser}/a/${app.sId}`}
+                            href={`/w/${owner.sId}/a/${app.sId}`}
                             className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {app.name}
@@ -133,7 +133,7 @@ export default function AppLayout({
                             aria-hidden="true"
                           />
                           <Link
-                            href={`/${routeUser}/ds/${dataSource.name}`}
+                            href={`/w/${owner.sId}/ds/${dataSource.name}`}
                             className="w-22 truncate text-base font-bold text-violet-600 sm:w-auto"
                           >
                             {dataSource.name}
@@ -153,7 +153,7 @@ export default function AppLayout({
                     </Button>
                   </Link>
                 </div>
-                {session && session.user ? (
+                {user ? (
                   <div className="static inset-auto right-0 flex flex-initial items-center pr-2">
                     <Menu as="div" className="relative">
                       <div>
@@ -162,8 +162,8 @@ export default function AppLayout({
                           <img
                             className="h-8 w-8 rounded-full"
                             src={
-                              session.user.image
-                                ? session.user.image
+                              user.image
+                                ? user.image
                                 : "https://gravatar.com/avatar/anonymous"
                             }
                             alt=""
@@ -215,20 +215,6 @@ export default function AppLayout({
                         <Menu.Item>
                           {({ active }) => (
                             <a
-                              href="https://dust.tt/xp1"
-                              target="_blank"
-                              className={classNames(
-                                active ? "bg-gray-50" : "",
-                                "block px-4 py-2 text-sm font-bold text-violet-600"
-                              )}
-                            >
-                              Discover XP1
-                            </a>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <a
                               href="#"
                               onClick={() => signOut()}
                               className={classNames(
@@ -243,7 +229,7 @@ export default function AppLayout({
                       </Menu.Items>
                     </Menu>
                   </div>
-                ) : status !== "loading" ? (
+                ) : (
                   <div className="static static inset-auto inset-auto right-0 hidden flex-initial items-center pr-2 sm:flex sm:pr-0">
                     <div className="-mr-2 sm:mr-0">
                       <ActionButton
@@ -256,7 +242,7 @@ export default function AppLayout({
                       </ActionButton>
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
           </>

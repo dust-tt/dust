@@ -1,5 +1,6 @@
-import { GetProvidersCheckResponseBody } from "@app/pages/api/providers/[pId]/check";
+import { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
 import { useProviders } from "./swr";
+import { WorkspaceType } from "@app/types/user";
 
 type ModelProvider = {
   providerId: string;
@@ -106,12 +107,15 @@ export const serviceProviders: ServiceProvider[] = [
 ];
 
 export async function checkProvider(
+  owner: WorkspaceType,
   providerId: string,
   config: object
 ): Promise<GetProvidersCheckResponseBody> {
   try {
     const result = await fetch(
-      `/api/providers/${providerId}/check?config=${JSON.stringify(config)}`
+      `/api/w/${
+        owner.sId
+      }/providers/${providerId}/check?config=${JSON.stringify(config)}`
     );
     return await result.json();
   } catch (e: any) {
@@ -146,12 +150,13 @@ export function filterServiceProviders(
 }
 
 export async function getProviderLLMModels(
+  owner: WorkspaceType,
   providerId: string,
   chat: boolean,
   embed: boolean
 ): Promise<{ models?: any[]; error?: any }> {
   let modelsRes = await fetch(
-    `/api/providers/${providerId}/models?chat=${chat}&embed=${embed}`
+    `/api/w/${owner.sId}/providers/${providerId}/models?chat=${chat}&embed=${embed}`
   );
   if (!modelsRes.ok) {
     let err = await modelsRes.json();
