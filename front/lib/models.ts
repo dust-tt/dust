@@ -203,7 +203,6 @@ export class App extends Model<
   declare savedRun?: string;
   declare dustAPIProjectId: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 App.init(
@@ -260,14 +259,11 @@ App.init(
     modelName: "app",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["userId", "visibility"] },
-      { fields: ["userId", "sId", "visibility"] },
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "sId", "visibility"] },
     ],
   }
 );
-User.hasMany(App);
 Workspace.hasMany(App);
 
 export class Provider extends Model<
@@ -281,7 +277,6 @@ export class Provider extends Model<
   declare providerId: string;
   declare config: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Provider.init(
@@ -313,10 +308,9 @@ Provider.init(
   {
     modelName: "provider",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["userId"] }],
+    indexes: [{ fields: ["workspaceId"] }],
   }
 );
-User.hasMany(Provider);
 Workspace.hasMany(Provider);
 
 export class Dataset extends Model<
@@ -330,7 +324,6 @@ export class Dataset extends Model<
   declare name: string;
   declare description?: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare appId: ForeignKey<App["id"]>;
 }
@@ -362,10 +355,9 @@ Dataset.init(
   {
     modelName: "dataset",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["userId", "appId", "name"] }],
+    indexes: [{ fields: ["workspaceId", "appId", "name"] }],
   }
 );
-User.hasMany(Dataset);
 App.hasMany(Dataset);
 Workspace.hasMany(Dataset);
 
@@ -433,7 +425,6 @@ export class Key extends Model<
   declare secret: string;
   declare status: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Key.init(
@@ -465,10 +456,9 @@ Key.init(
   {
     modelName: "keys",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["secret"] }, { fields: ["userId"] }],
+    indexes: [{ unique: true, fields: ["secret"] }, { fields: ["workspaceId"] }],
   }
 );
-User.hasMany(Key);
 Workspace.hasMany(Key);
 
 export class DataSource extends Model<
@@ -485,7 +475,6 @@ export class DataSource extends Model<
   declare config?: string;
   declare dustAPIProjectId: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
@@ -529,12 +518,11 @@ DataSource.init(
     modelName: "data_source",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["userId", "visibility"] },
-      { fields: ["userId", "name", "visibility"] },
+      { fields: ["workspaceId", "visibility"] },
+      { fields: ["workspaceId", "name", "visibility"] },
     ],
   }
 );
-User.hasMany(DataSource);
 Workspace.hasMany(DataSource);
 
 export class Run extends Model<
@@ -548,7 +536,6 @@ export class Run extends Model<
   declare dustRunId: string;
   declare runType: string;
 
-  declare userId: ForeignKey<User["id"]>;
   declare appId: ForeignKey<App["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -583,12 +570,11 @@ Run.init(
     modelName: "run",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["userId", "appId", "runType"] },
+      { fields: ["workspaceId", "appId", "runType"] },
       { unique: true, fields: ["dustRunId"] },
     ],
   }
 );
-User.hasMany(Run);
 App.hasMany(Run);
 Workspace.hasMany(Run);
 
