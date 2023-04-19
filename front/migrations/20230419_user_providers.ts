@@ -17,6 +17,7 @@ async function main() {
           if (!u.provider) {
             await u.update({
               provider: "github",
+              // @ts-expect-error
               providerId: u.githubId,
             });
             console.log(`+ ${u.id}`);

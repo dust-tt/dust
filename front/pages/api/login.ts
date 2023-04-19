@@ -20,7 +20,8 @@ async function handler(
     case "GET":
       let user = await User.findOne({
         where: {
-          githubId: session.provider.id.toString(),
+          provider: session.provider.provider,
+          providerId: session.provider.id.toString(),
         },
       });
 
@@ -37,7 +38,6 @@ async function handler(
           User.create({
             provider: "github",
             providerId: session.provider.id.toString(),
-            githubId: session.provider.id.toString(),
             username: session.user.username,
             email: session.user.email,
             name: session.user.name,
