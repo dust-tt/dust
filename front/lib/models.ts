@@ -21,8 +21,8 @@ export class User extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  // declare provider: string | null;
-  // declare providerId: string | null;
+  declare provider: "github" | "google" | null;
+  declare providerId: string | null;
   declare githubId: string;
   declare username: string;
   declare email: string;
@@ -45,12 +45,12 @@ User.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    // provider: {
-    //   type: DataTypes.STRING,
-    // },
-    // providerId: {
-    //   type: DataTypes.STRING,
-    // },
+    provider: {
+      type: DataTypes.STRING,
+    },
+    providerId: {
+      type: DataTypes.STRING,
+    },
     githubId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -72,9 +72,9 @@ User.init(
     modelName: "user",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["githubId"] },
       { fields: ["username"] },
-      // { fields: ["provider", "providerId"] },
+      { fields: ["githubId"] },
+      { fields: ["provider", "providerId"] },
     ],
   }
 );
