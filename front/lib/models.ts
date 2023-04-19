@@ -456,7 +456,10 @@ Key.init(
   {
     modelName: "keys",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["secret"] }, { fields: ["workspaceId"] }],
+    indexes: [
+      { unique: true, fields: ["secret"] },
+      { fields: ["workspaceId"] },
+    ],
   }
 );
 Workspace.hasMany(Key);
