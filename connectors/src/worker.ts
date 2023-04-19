@@ -1,13 +1,18 @@
 import { Worker } from '@temporalio/worker';
-import * as activities from './slack/full_sync';
+import * as full_sync_activities from './slack/full_sync';
+import * as sync_thread_activities from './slack/sync_thread';
+import * as info_activities from './slack/info';
+
 
 async function run() {
   // Step 1: Register Workflows and Activities with the Worker and connect to
   // the Temporal server.
   const worker = await Worker.create({
     workflowsPath: require.resolve('./slack/workflows'),
-    activities,
+    activities:{...full_sync_activities, ...sync_thread_activities, ...info_activities},
     taskQueue: 'hello-world',
+    debugMode: true,
+    showStackTraceSources: true,
   });
   // Worker connects to localhost by default and uses console.error for logging.
   // Customize the Worker by passing more options to create():

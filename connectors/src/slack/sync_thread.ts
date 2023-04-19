@@ -57,12 +57,13 @@ export async function slackSyncThreadWithClient(
   } while (next_cursor);
 
   await upsertToDatasource(allMessages, channel, dustConfig, thread_ts);
+  
 }
 
 /**
  * Upsert a Slack thread to a Dust data source.
  */
-export async function upsertToDatasource(
+async function upsertToDatasource(
   messages: Message[],
   channel: Channel,
   dustConfig: DustConfig,
@@ -87,7 +88,7 @@ export async function upsertToDatasource(
   try {
     const dust_request_result = await axios.post(dust_url, dust_request_payload, dust_request_config);
     if (dust_request_result.status >= 200 && dust_request_result.status < 300) {
-      console.log('successfully uploaded to do: ', dust_request_payload);
+      console.log('successfully uploaded to do: ', thread_ts, documentId);
     }
   } catch (err: any) {
     console.error('Error uploading to dust: ', err.response.data);

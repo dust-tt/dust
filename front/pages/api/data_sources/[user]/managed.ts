@@ -7,7 +7,7 @@ import withLogging from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
-import { triggerSlackSync } from "dust-connectors/compiled/client";
+import { triggerSlackSync, getTeamInfo } from "dust-connectors/compiled/slack/client";
 import { Nango } from "@nangohq/node";
 
 const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -134,11 +134,20 @@ async function handler(
         userId: dataSourceUserId,
       });
 
+      let nango = new Nango({ secretKey: NANGO_SECRET_KEY });
+      let accessToken = await nango.getToken(
+        NANGO_SLACK_CONNECTOR_ID!,
+        nangoConnectionId
+      );
+
+      const slackTeamId = await getTeamInfo({ accessToken: accessToken });
+
       await Connector.create({
         type: "slack",
         nangoConnectionId: nangoConnectionId,
         dataSourceId: createdDataSource.id,
         userId: auth.user().id,
+        slackTeamId: slackTeamId
       });
 
       let systemKey = await Key.findOne({
@@ -159,11 +168,8 @@ async function handler(
         });
       }
 
-      let nango = new Nango({ secretKey: NANGO_SECRET_KEY });
-      let accessToken = await nango.getToken(
-        NANGO_SLACK_CONNECTOR_ID!,
-        nangoConnectionId
-      );
+
+      
       triggerSlackSync(
         { accessToken: accessToken },
         {

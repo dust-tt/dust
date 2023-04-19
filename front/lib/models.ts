@@ -618,6 +618,10 @@ export class Connector extends Model<
 
   declare nangoConnectionId: string;
 
+  // I know this is dirty, but I don't want to create a new table for this right now.
+  // Let's discuss this at Pull Request time.
+  declare slackTeamId: string; 
+
   declare dataSourceId: ForeignKey<DataSource["id"]>;
   declare userId: ForeignKey<User["id"]>;
 }
@@ -647,10 +651,17 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    slackTeamId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "connector",
     sequelize: front_sequelize,
+    indexes: [
+      { unique: true, fields: ["slackTeamId"] },
+    ]
   }
 );
 User.hasMany(Connector);

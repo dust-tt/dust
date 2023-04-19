@@ -10,6 +10,7 @@ export type APIErrorType =
   | "data_source_not_found"
   | "invalid_request_error"
   | "data_source_error"
+  | "connector_error"
   | "user_not_found"
   | "data_source_user_mismatch_error"
   | "data_source_quota_error"
