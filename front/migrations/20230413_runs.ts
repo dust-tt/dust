@@ -70,6 +70,7 @@ async function main() {
         if (!app) {
           console.warn(`No app found for project ${projectId}`);
         }
+        // @ts-expect-error
         const userId = app?.userId;
         const appId = app?.id;
         return {

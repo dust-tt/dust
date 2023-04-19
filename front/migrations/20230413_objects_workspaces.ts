@@ -14,21 +14,25 @@ async function addWorkspaceToObject(
   object: App | Dataset | Provider | Key | DataSource | Run
 ) {
   if (object.workspaceId) {
+    // @ts-expect-error
     console.log(`o ${object.id} ${object.userId} ${object.workspaceId}`);
     return;
   }
 
   const user = await User.findOne({
     where: {
+      // @ts-expect-error
       id: object.userId,
     },
   });
   if (!user) {
+    // @ts-expect-error
     throw new Error(`User id=${object.userId} not found`);
   }
   const ownerRes = await personalWorkspace(user);
 
   if (ownerRes.isErr()) {
+    // @ts-expect-error
     throw new Error(`Workspace not found for user id=${object.userId}`);
   }
 
