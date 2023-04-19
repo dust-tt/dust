@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - front/**
-      - .github/workflows/lint-front.yml
+      - .github/workflows/build-and-lint-front.yml
 
 jobs:
   check-eslint:
