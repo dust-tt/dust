@@ -50,7 +50,8 @@ export class Authenticator {
         } else {
           return await User.findOne({
             where: {
-              githubId: session.provider.id.toString(),
+              provider: session.provider.provider,
+              providerId: session.provider.id.toString(),
             },
           });
         }
@@ -187,7 +188,8 @@ export async function getUserFromSession(
 
   const user = await User.findOne({
     where: {
-      githubId: session.provider.id.toString(),
+      provider: session.provider.provider,
+      providerId: session.provider.id.toString(),
     },
   });
 
@@ -208,8 +210,8 @@ export async function getUserFromSession(
 
   return {
     id: user.id,
-    provider: "github",
-    providerId: user.githubId,
+    provider: user.provider,
+    providerId: user.providerId,
     username: user.username,
     email: user.email,
     name: user.name,

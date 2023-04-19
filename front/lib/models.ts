@@ -21,9 +21,8 @@ export class User extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare provider: "github" | "google" | null;
-  declare providerId: string | null;
-  declare githubId: string;
+  declare provider: "github" | "google";
+  declare providerId: string;
   declare username: string;
   declare email: string;
   declare name: string;
@@ -51,10 +50,6 @@ User.init(
     providerId: {
       type: DataTypes.STRING,
     },
-    githubId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -71,11 +66,7 @@ User.init(
   {
     modelName: "user",
     sequelize: front_sequelize,
-    indexes: [
-      { fields: ["username"] },
-      { fields: ["githubId"] },
-      { fields: ["provider", "providerId"] },
-    ],
+    indexes: [{ fields: ["username"] }, { fields: ["provider", "providerId"] }],
   }
 );
 

@@ -11,7 +11,7 @@ export type WorkspaceType = {
 
 export type UserType = {
   id: number;
-  provider: string;
+  provider: "github" | "google";
   providerId: string;
   username: string;
   email: string;
