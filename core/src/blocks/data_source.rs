@@ -273,10 +273,10 @@ impl Block for DataSource {
 
         // For each data_sources, retrieve documents concurrently.
         let mut futures = Vec::new();
-        for (wId, ds) in data_sources {
+        for (w_id, ds) in data_sources {
             futures.push(self.search_data_source(
                 env,
-                wId.clone(),
+                w_id.clone(),
                 ds.clone(),
                 top_k,
                 filter.clone(),
