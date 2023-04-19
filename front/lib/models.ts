@@ -46,9 +46,11 @@ User.init(
     },
     provider: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     providerId: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     username: {
       type: DataTypes.STRING,
