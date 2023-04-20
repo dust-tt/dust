@@ -307,7 +307,7 @@ const DEFAULT_DATASOURCES_COUNT_LIMIT = 1;
 const DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT = 32;
 const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
 
-function planForWorkspace(w: Workspace): PlanType {
+export function planForWorkspace(w: Workspace): PlanType {
   let limits = {
     dataSources: {
       count: DEFAULT_DATASOURCES_COUNT_LIMIT,

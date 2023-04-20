@@ -23,6 +23,7 @@
     "dust-connectors": "file:../connectors",
     "eventsource-parser": "^1.0.0",
     "hot-shots": "^10.0.0",
+    "minimist": "^1.2.8",
     "next": "^13.1.5",
     "next-auth": "^4.18.10",
     "next-remove-imports": "^1.0.8",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
+    "@types/minimist": "^1.2.2",
     "@types/node": "^18.15.3",
     "@types/pegjs": "^0.10.3",
     "@types/react": "^18.0.28",
