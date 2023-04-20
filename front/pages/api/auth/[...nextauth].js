@@ -8,14 +8,17 @@ export const authOptions = {
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
     }),
-    // GoogleProvider({
-    //   clientId: process.env.GOOGLE_CLIENT_ID,
-    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    // }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     session: async ({ session, token, user }) => {
+      // console.log("TOKEN", token);
+      // console.log("SESSION", session);
+      // Legacy support for old tokens.
       if (token.github && !token.provider) {
         token.provider = {
           provider: "github",
@@ -26,19 +29,19 @@ export const authOptions = {
       }
       session.provider = token.provider;
       session.user.username = token.provider.username;
+      session.user.email_verified = !!token.provider.email_verified;
       if (!session.user.image) {
         session.user.image = null;
       }
-      // console.log("TOKEN", token);
-      // console.log("SESSION", session);
+      console.log("FINAL SESSION", session);
       return session;
     },
     async jwt({ token, user, account, profile, isNewUser }) {
-      // console.log("JWT", token, user, account, profile, isNewUser);
       // console.log("JWT TOKEN", token);
       // console.log("JWT USER", user);
       // console.log("JWT ACCOUNT", account);
       // console.log("JWT PROFILE", profile);
+      // console.log("JWT ISNEWUSER", isNewUser);
       if (profile && account && account.provider === "github") {
         token.provider = {
           provider: "github",
@@ -47,16 +50,16 @@ export const authOptions = {
           access_token: account.access_token,
         };
       }
-      // if (profile && account && account.provider === "google") {
-      //   token.provider = {
-      //     provider: "google",
-      //     id: account.providerAccountId,
-      //     username: profile.email,
-      //     access_token: account.access_token,
-      //   };
-      // }
-      // console.log("JTW");
-      // console.log(token);
+      if (profile && account && account.provider === "google") {
+        token.provider = {
+          provider: "google",
+          id: account.providerAccountId,
+          username: profile.email.split("@")[0],
+          email_verified: profile.email_verified,
+          access_token: account.access_token,
+        };
+      }
+      console.log("FINAL JTW TOKEN", token);
       return token;
     },
   },

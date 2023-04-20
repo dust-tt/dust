@@ -130,7 +130,7 @@ Workspace.init(
   {
     modelName: "workspace",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["sId"] }],
+    indexes: [{ unique: true, fields: ["sId"] }],
   }
 );
 
@@ -252,6 +252,7 @@ App.init(
     modelName: "app",
     sequelize: front_sequelize,
     indexes: [
+      { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "sId", "visibility"] },
     ],

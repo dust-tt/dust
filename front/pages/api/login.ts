@@ -36,7 +36,7 @@ async function handler(
 
         const [u, w] = await Promise.all([
           User.create({
-            provider: "github",
+            provider: session.provider.provider,
             providerId: session.provider.id.toString(),
             username: session.user.username,
             email: session.user.email,
