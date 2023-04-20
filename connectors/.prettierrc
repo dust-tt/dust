@@ -1,2 +1,7 @@
-printWidth: 120
-singleQuote: true
+{
+  "singleQuote": false,
+  "trailingComma": "es5",
+  "requirePragma": false,
+  "arrowParens": "always",
+  "semi": true
+}
