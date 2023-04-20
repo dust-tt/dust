@@ -69,7 +69,7 @@ async function handler(
         tags = req.body.tags;
       }
 
-      // Enforce FreePlan limit: 32 documents per DataSource.
+      // Enforce plan limits.
       const documents = await DustAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
         dataSource.name,
@@ -80,13 +80,18 @@ async function handler(
         res.status(400).end();
         return;
       }
-      if (documents.value.total >= 32) {
+
+      // Enforce plan limits: DataSource documents count.
+      if (documents.value.total >= owner.plan.limits.dataSources.count) {
         res.status(400).end();
         return;
       }
 
-      // Enforce FreePlan limit: 1MB per document.
-      if (req.body.text.length > 1024 * 1024) {
+      // Enforce plan limits: DataSource document size.
+      if (
+        req.body.text.length >
+        1024 * owner.plan.limits.dataSources.documents.sizeMb
+      ) {
         res.status(400).end();
         return;
       }

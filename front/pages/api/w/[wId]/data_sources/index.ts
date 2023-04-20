@@ -53,8 +53,8 @@ async function handler(
         return;
       }
 
-      // Enforce FreePlan limit: 1 DataSource.
-      if (dataSources.length >= 1) {
+      // Enforce plan limits: DataSources count.
+      if (dataSources.length >= owner.plan.limits.dataSources.count) {
         res.status(400).end();
         return;
       }

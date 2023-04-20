@@ -161,11 +161,14 @@ export default function DataSourceView({
                     <Link
                       href={`/w/${owner.sId}/ds/${dataSource.name}/upsert`}
                       onClick={(e) => {
-                        // Enforce FreePlan limit: 32 documents per DataSource.
-                        if (total >= 32) {
+                        // Enforce plan limits: DataSource documents count.
+                        if (
+                          total >= owner.plan.limits.dataSources.documents.count
+                        ) {
                           e.preventDefault();
                           window.alert(
-                            "DataSources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
+                            "DataSources are limited to 32 documents on our free plan. \
+                             Contact team@dust.tt if you want to increase this limit."
                           );
                           return;
                         }
