@@ -21,12 +21,15 @@
     ]
   },
   "dependencies": {
+    "@nangohq/node": "^0.9.0",
     "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "1.7.0",
     "@temporalio/client": "1.7.0",
     "@temporalio/worker": "1.7.0",
     "@temporalio/workflow": "1.7.0",
-    "nanoid": "3.x"
+    "nanoid": "3.x",
+    "pg": "^8.10.0",
+    "sequelize": "^6.31.0"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.0",
@@ -39,8 +42,8 @@
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "nodemon": "^2.0.12",
     "prettier": "^2.3.2",
-    "ts-node": "^10.8.1",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^3.12.6",
     "typescript": "^4.4.2"
   },
   "files": [
