@@ -2,6 +2,7 @@
   "extends": [
     "next/core-web-vitals",
     "prettier"
+
     //The following 2 lines will be uncommented in the future once our javascript
     // app can build without errors.
     // If you wish to enforce the eslint presets and the camelCase naming convention,
@@ -11,6 +12,7 @@
     "plugin:@typescript-eslint/recommended"
     */
   ],
+  "plugins": ["simple-import-sort"],
   "rules": {
     /**
     "@typescript-eslint/naming-convention": [
@@ -25,8 +27,36 @@
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
-    "jsx-a11y/alt-text": 0
+    "jsx-a11y/alt-text": 0,
+    "simple-import-sort/imports": [
+      "error",
+      {
+        "groups": [
+          // Side effect imports.
+          ["^\\u0000"],
+          // Node.js builtins prefixed with `node:`.
+          ["^node:"],
+          // Packages.
+          // Things that start with a letter (or digit or underscore), or `@` followed by a letter.
+          ["^@?\\w"],
+          // @app imports.
+          ["^@app"],
+          // Absolute imports and other imports such as Vue-style `@/foo`.
+          // Anything not matched in another group.
+          ["^"],
+          // Relative imports.
+          // Anything that starts with a dot.
+          ["^\\."]
+        ]
+      }
+    ],
+    "simple-import-sort/exports": "error"
   },
+  "overrides": [
+    {
+      "files": ["*.jsx", "*.js", "*.ts", "*.tsx", "*.json"]
+    }
+  ],
   "env": {
     "browser": true,
     "node": true,

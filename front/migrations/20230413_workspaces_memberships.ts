@@ -1,4 +1,4 @@
-import { User, Workspace, Membership } from "@app/lib/models";
+import { Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 
 async function main() {

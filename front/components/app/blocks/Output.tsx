@@ -1,7 +1,3 @@
-import { useRunBlock } from "@app/lib/swr";
-import { AppType, SpecificationBlockType } from "@app/types/app";
-import { TraceType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -9,6 +5,11 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useState } from "react";
+
+import { useRunBlock } from "@app/lib/swr";
+import { AppType, SpecificationBlockType } from "@app/types/app";
+import { TraceType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 

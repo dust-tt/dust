@@ -1,3 +1,6 @@
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useState } from "react";
+
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
@@ -14,8 +17,6 @@ import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useState } from "react";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -1,7 +1,8 @@
+import { Op } from "sequelize";
+
 import { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models";
 import { AppType } from "@app/types/app";
-import { Op } from "sequelize";
 
 export async function getApp(
   auth: Authenticator,

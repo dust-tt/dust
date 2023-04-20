@@ -1,6 +1,3 @@
-import { classNames } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
-import { WorkspaceType } from "@app/types/user";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
@@ -9,6 +6,10 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
+
+import { classNames } from "@app/lib/utils";
+import { DataSourceType } from "@app/types/data_source";
+import { WorkspaceType } from "@app/types/user";
 
 export default function MainTab({
   dataSource,

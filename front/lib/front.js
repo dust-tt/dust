@@ -1,6 +1,6 @@
-import { useBeforeunload } from "react-beforeunload";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { useBeforeunload } from "react-beforeunload";
 
 export function useRegisterUnloadHandlers(
   editorDirty,

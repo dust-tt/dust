@@ -1,17 +1,18 @@
-import AppLayout from "@app/components/AppLayout";
-import MainTab from "@app/components/app/MainTab";
-import { Button } from "@app/components/Button";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { classNames } from "@app/lib/utils";
-import { useState } from "react";
-import { useEffect } from "react";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { getSession, Authenticator, getUserFromSession } from "@app/lib/auth";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useState } from "react";
+import { useEffect } from "react";
+
+import MainTab from "@app/components/app/MainTab";
+import AppLayout from "@app/components/AppLayout";
+import { Button } from "@app/components/Button";
+import { getApp } from "@app/lib/api/app";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { classNames } from "@app/lib/utils";
 import { AppType, AppVisibility } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { getApp } from "@app/lib/api/app";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

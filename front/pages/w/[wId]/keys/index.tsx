@@ -1,15 +1,16 @@
-import AppLayout from "@app/components/AppLayout";
-import MainTab from "@app/components/profile/MainTab";
-import { classNames } from "@app/lib/utils";
-import { Button } from "@app/components/Button";
-import { useState } from "react";
-import { useKeys } from "@app/lib/swr";
-import { mutate } from "swr";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { getSession, Authenticator, getUserFromSession } from "@app/lib/auth";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { useState } from "react";
+import { mutate } from "swr";
+
+import AppLayout from "@app/components/AppLayout";
+import { Button } from "@app/components/Button";
+import MainTab from "@app/components/profile/MainTab";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useKeys } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import { KeyType } from "@app/types/key";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

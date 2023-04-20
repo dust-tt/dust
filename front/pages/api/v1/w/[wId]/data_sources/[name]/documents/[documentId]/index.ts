@@ -1,3 +1,5 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
@@ -7,7 +9,6 @@ import { credentialsFromProviders } from "@app/lib/providers";
 import { withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDocumentResponseBody = {
   document: DocumentType;

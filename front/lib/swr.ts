@@ -1,3 +1,5 @@
+import useSWR, { Fetcher } from "swr";
+
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
@@ -9,7 +11,6 @@ import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-import useSWR, { Fetcher } from "swr";
 
 export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());

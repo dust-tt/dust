@@ -1,14 +1,15 @@
+import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
+import { ArrowRightCircleIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import Script from "next/script";
+import { signIn } from "next-auth/react";
+
 import { ActionButton, Button } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames, communityApps } from "@app/lib/utils";
-import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon, CheckIcon } from "@heroicons/react/24/outline";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { signIn } from "next-auth/react";
-import Head from "next/head";
-import Link from "next/link";
-import Script from "next/script";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

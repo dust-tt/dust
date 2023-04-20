@@ -1,8 +1,9 @@
+import { createParser } from "eventsource-parser";
+
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-import { createParser } from "eventsource-parser";
 
 const { DUST_API: DUST_API_URL } = process.env;
 

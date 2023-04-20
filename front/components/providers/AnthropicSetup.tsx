@@ -1,9 +1,10 @@
-import { ActionButton, Button } from "@app/components/Button";
-import { checkProvider } from "@app/lib/providers";
-import { WorkspaceType } from "@app/types/user";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
+
+import { ActionButton, Button } from "@app/components/Button";
+import { checkProvider } from "@app/lib/providers";
+import { WorkspaceType } from "@app/types/user";
 
 type AnthropicSetupProps = {
   owner: WorkspaceType;

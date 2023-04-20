@@ -1,16 +1,17 @@
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+
+import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import ModelPicker from "@app/components/app/ModelPicker";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

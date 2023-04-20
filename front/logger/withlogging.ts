@@ -1,5 +1,6 @@
 import StatsD from "hot-shots";
 import { NextApiRequest, NextApiResponse } from "next";
+
 import logger from "./logger";
 
 export const statsDClient = new StatsD();

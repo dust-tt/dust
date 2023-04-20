@@ -1,3 +1,9 @@
+import "@uiw/react-textarea-code-editor/dist.css";
+
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import {
@@ -7,10 +13,7 @@ import {
 } from "@app/types/app";
 import { BlockType, RunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import "@uiw/react-textarea-code-editor/dist.css";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+
 import Block from "./Block";
 
 const CodeEditor = dynamic(

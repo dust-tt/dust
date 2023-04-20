@@ -1,3 +1,5 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
@@ -5,7 +7,6 @@ import { DataSource, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;

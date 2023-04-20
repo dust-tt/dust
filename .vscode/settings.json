@@ -3,6 +3,7 @@
   "rust-analyzer.linkedProjects": ["./core/Cargo.toml"],
 
   "editor.codeActionsOnSave": {
-    "source.organizeImports": true
+    "source.organizeImports": false,
+    "source.fixAll": true
   }
 }

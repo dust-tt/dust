@@ -1,8 +1,9 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Provider } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";
 import { ProviderType } from "@app/types/provider";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetProvidersResponseBody = {
   providers: ProviderType[];

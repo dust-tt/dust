@@ -1,9 +1,10 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
+
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
-import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 export type PostAppResponseBody = {
   app: AppType;

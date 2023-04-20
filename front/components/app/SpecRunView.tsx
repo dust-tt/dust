@@ -1,20 +1,22 @@
 import TextareaAutosize from "react-textarea-autosize";
-import Input from "./blocks/Input";
-import Data from "./blocks/Data";
-import LLM from "./blocks/LLM";
+
+import { SpecificationBlockType, SpecificationType } from "@app/types/app";
+import { AppType } from "@app/types/app";
+import { BlockType } from "@app/types/run";
+import { RunType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
+
+import Browser from "./blocks/Browser";
 import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
-import DataSource from "./blocks/DataSource";
-import Search from "./blocks/Search";
 import Curl from "./blocks/Curl";
-import Browser from "./blocks/Browser";
+import Data from "./blocks/Data";
+import DataSource from "./blocks/DataSource";
+import Input from "./blocks/Input";
+import LLM from "./blocks/LLM";
 import { Map, Reduce } from "./blocks/MapReduce";
-import { While, End } from "./blocks/WhileEnd";
-import { BlockType } from "@app/types/run";
-import { SpecificationType, SpecificationBlockType } from "@app/types/app";
-import { WorkspaceType } from "@app/types/user";
-import { AppType } from "@app/types/app";
-import { RunType } from "@app/types/run";
+import Search from "./blocks/Search";
+import { End, While } from "./blocks/WhileEnd";
 
 export default function SpecRunView({
   owner,
