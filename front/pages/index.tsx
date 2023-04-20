@@ -234,7 +234,7 @@ export default function Home({
           </div>
         </div>
 
-        <div className="my-10 mx-auto max-w-3xl text-center text-gray-400 text-sm">
+        <div className="my-10 mx-auto max-w-3xl text-center text-sm text-gray-400">
           Dust © 2022 – 2023
         </div>
         <>
