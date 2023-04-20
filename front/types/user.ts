@@ -1,5 +1,17 @@
 import { RoleType } from "@app/lib/auth";
 
+/**
+ *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
+ *  limit. If the limit is undefined we revert to the default limit.
+ * */
+export type LimitsType = {
+  dataSources: { count: number; documents: { count: number; sizeMb: number } };
+};
+
+export type PlanType = {
+  limits: LimitsType;
+};
+
 export type WorkspaceType = {
   id: number;
   uId: string;
@@ -7,6 +19,7 @@ export type WorkspaceType = {
   name: string;
   type: "personal" | "team";
   role: RoleType;
+  plan: PlanType;
 };
 
 export type UserType = {

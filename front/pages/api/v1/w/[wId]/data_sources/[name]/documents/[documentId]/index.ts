@@ -38,6 +38,17 @@ async function handler(
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
+  const owner = auth.workspace();
+  if (!owner) {
+    res.status(404).json({
+      error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+    return;
+  }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
@@ -133,7 +144,7 @@ async function handler(
         tags = req.body.tags;
       }
 
-      // Enforce FreePlan limit: 32 documents per DataSource.
+      // Enforce plan limits.
       const documents = await DustAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
         dataSource.name,
@@ -152,7 +163,10 @@ async function handler(
         return;
       }
 
-      if (documents.value.total >= 32) {
+      // Enforce plan limits: DataSource documents count.
+      if (
+        documents.value.total >= owner.plan.limits.dataSources.documents.count
+      ) {
         res.status(401).json({
           error: {
             type: "data_source_quota_error",
@@ -163,8 +177,11 @@ async function handler(
         return;
       }
 
-      // Enforce FreePlan limit: 1MB per document.
-      if (req.body.text.length > 1024 * 1024) {
+      // Enforce plan limits: DataSource document size.
+      if (
+        req.body.text.length >
+        1024 * owner.plan.limits.dataSources.documents.sizeMb
+      ) {
         res.status(401).json({
           error: {
             type: "data_source_quota_error",

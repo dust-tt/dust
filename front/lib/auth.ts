@@ -1,7 +1,8 @@
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 import {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -156,6 +157,7 @@ export class Authenticator {
           name: this._workspace.name,
           type: this._workspace.type,
           role: this._role,
+          plan: planForWorkspace(this._workspace),
         }
       : null;
   }
@@ -237,6 +239,7 @@ export async function getUserFromSession(
         name: w.name,
         type: w.type,
         role,
+        plan: planForWorkspace(w),
       };
     }),
   };
@@ -296,4 +299,60 @@ export async function getAPIKey(
   }
 
   return new Ok(key);
+}
+
+const DEFAULT_DATASOURCES_COUNT_LIMIT = 1;
+const DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT = 32;
+const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
+
+function planForWorkspace(w: Workspace): PlanType {
+  let limits = {
+    dataSources: {
+      count: DEFAULT_DATASOURCES_COUNT_LIMIT,
+      documents: {
+        count: DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT,
+        sizeMb: DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT,
+      },
+    },
+  };
+
+  if (w.plan) {
+    let plan = {} as any;
+    try {
+      plan = JSON.parse(w.plan) as any;
+    } catch (e) {
+      logger.error({ planJSON: w.plan, error: e }, "Error parsing plan JSON");
+    }
+
+    if (plan.limits) {
+      if (plan.limits.dataSources) {
+        if (
+          plan.limits.dataSources.count &&
+          typeof plan.limits.dataSources.count === "number"
+        ) {
+          limits.dataSources.count = plan.limits.dataSources.count;
+        }
+        if (plan.limits.dataSources.documents) {
+          if (
+            plan.limits.dataSources.documents.count &&
+            typeof plan.limits.dataSources.documents.count === "number"
+          ) {
+            limits.dataSources.documents.count =
+              plan.limits.dataSources.documents.count;
+          }
+          if (
+            plan.limits.dataSources.documents.sizeMb &&
+            typeof plan.limits.dataSources.documents.sizeMb === "number"
+          ) {
+            limits.dataSources.documents.sizeMb =
+              plan.limits.dataSources.documents.sizeMb;
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    limits,
+  };
 }
