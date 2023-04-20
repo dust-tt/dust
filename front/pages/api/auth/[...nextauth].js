@@ -33,7 +33,7 @@ export const authOptions = {
       if (!session.user.image) {
         session.user.image = null;
       }
-      console.log("FINAL SESSION", session);
+      // console.log("FINAL SESSION", session);
       return session;
     },
     async jwt({ token, user, account, profile, isNewUser }) {
@@ -59,7 +59,7 @@ export const authOptions = {
           access_token: account.access_token,
         };
       }
-      console.log("FINAL JTW TOKEN", token);
+      // console.log("FINAL JTW TOKEN", token);
       return token;
     },
   },
