@@ -20,7 +20,6 @@
     "ajv": "^8.12.0",
     "blake3": "^2.1.7",
     "dd-trace": "^3.16.0",
-    "dust-connectors": "file:../connectors",
     "eventsource-parser": "^1.0.0",
     "hot-shots": "^10.0.0",
     "next": "^13.1.5",
