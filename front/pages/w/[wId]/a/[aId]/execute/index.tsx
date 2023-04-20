@@ -236,9 +236,15 @@ function ExecuteFinalOutput({
   value: unknown;
   errored: boolean;
 }) {
-  let cleanedValue = value;
+  let cleanedValue = value as any;
   if (Array.isArray(value) && value.length === 1) {
     cleanedValue = value[0];
+  }
+
+  if (cleanedValue && "value" in cleanedValue && cleanedValue.value) {
+    cleanedValue = cleanedValue.value;
+  } else if (cleanedValue && "error" in cleanedValue && cleanedValue.error) {
+    cleanedValue = cleanedValue.error;
   }
 
   return (
