@@ -54,7 +54,7 @@
   },
   "overrides": [
     {
-      "files": ["*.jsx", "*.js", "*.ts", "*.tsx", "*.json"]
+      "files": ["*.jsx", "*.js", "*.ts", "*.tsx"]
     }
   ],
   "env": {
