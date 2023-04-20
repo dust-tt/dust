@@ -1,3 +1,7 @@
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -7,9 +11,6 @@ import { UserType } from "@app/types//user";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { WorkspaceType } from "@app/types/user";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
-import { useEffect, useState } from "react";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

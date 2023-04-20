@@ -1,8 +1,9 @@
-import { classNames } from "@app/lib/utils";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
+
+import { classNames } from "@app/lib/utils";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export default function WorkspacePicker({
   user,

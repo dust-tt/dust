@@ -1,3 +1,6 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
+
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { App, Provider, Run } from "@app/lib/models";
@@ -6,8 +9,6 @@ import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
-import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 export type GetRunsResponseBody = {
   runs: RunType[];

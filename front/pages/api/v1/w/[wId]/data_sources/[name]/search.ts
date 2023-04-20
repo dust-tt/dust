@@ -1,3 +1,6 @@
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
@@ -6,8 +9,6 @@ import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { DocumentType } from "@app/types/document";
-import { JSONSchemaType } from "ajv";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export type DatasourceSearchQuery = {
   query: string;

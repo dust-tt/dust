@@ -1,11 +1,11 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { APIError } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { statsDClient, withLogging } from "@app/logger/withlogging";
 import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
-import { AppType } from "@app/types/app";
-import { NextApiRequest, NextApiResponse } from "next";
-
 import wIdHandler from "@app/pages/api/v1/w/[wId]/apps/index";
+import { AppType } from "@app/types/app";
 
 export type GetAppsResponseBody = {
   apps: AppType[];

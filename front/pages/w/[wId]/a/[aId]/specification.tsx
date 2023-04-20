@@ -1,12 +1,13 @@
-import AppLayout from "@app/components/AppLayout";
-import MainTab from "@app/components/app/MainTab";
-import { getSession, Authenticator, getUserFromSession } from "@app/lib/auth";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { AppType } from "@app/types/app";
-import { UserType, WorkspaceType } from "@app/types/user";
+
+import MainTab from "@app/components/app/MainTab";
+import AppLayout from "@app/components/AppLayout";
 import { getApp } from "@app/lib/api/app";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { dumpSpecification } from "@app/lib/specification";
+import { AppType } from "@app/types/app";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL, GA_TRACKING_ID = "" } = process.env;
 

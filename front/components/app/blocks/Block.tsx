@@ -1,20 +1,22 @@
-import { classNames } from "@app/lib/utils";
 import {
-  TrashIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
   ArrowPathIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
 } from "@heroicons/react/20/solid";
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import Output from "./Output";
+
 import NewBlock from "@app/components/app/NewBlock";
 import { Spinner } from "@app/components/Spinner";
-import { BlockType } from "@app/types/run";
-import { SpecificationType, SpecificationBlockType } from "@app/types/app";
-import { WorkspaceType } from "@app/types/user";
+import { classNames } from "@app/lib/utils";
+import { SpecificationBlockType, SpecificationType } from "@app/types/app";
 import { AppType } from "@app/types/app";
+import { BlockType } from "@app/types/run";
 import { RunType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
+
+import Output from "./Output";
 
 export default function Block({
   owner,

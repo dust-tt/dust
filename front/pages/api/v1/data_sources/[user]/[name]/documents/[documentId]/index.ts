@@ -1,12 +1,12 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { APIError } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { statsDClient, withLogging } from "@app/logger/withlogging";
 import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
+import wIdHandler from "@app/pages/api/v1/w/[wId]/data_sources/[name]/documents/[documentId]/index";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
-import { NextApiRequest, NextApiResponse } from "next";
-
-import wIdHandler from "@app/pages/api/v1/w/[wId]/data_sources/[name]/documents/[documentId]/index";
 
 export type GetDocumentResponseBody = {
   document: DocumentType;

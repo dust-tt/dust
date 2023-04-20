@@ -1,5 +1,6 @@
-import { XP1User } from "../lib/models.js";
 import sgMail from "@sendgrid/mail";
+
+import { XP1User } from "../lib/models.js";
 
 const { SENDGRID_API_KEY, LIVE = false } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);

@@ -1,9 +1,10 @@
 import Head from "next/head";
+import Link from "next/link";
 import Script from "next/script";
+import { useEffect, useState } from "react";
+
 import { ActionButton, HighlightButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
-import Link from "next/link";
-import { useEffect, useState } from "react";
 
 const { GA_TRACKING_ID = null, XP1_CHROME_WEB_STORE_URL } = process.env;
 

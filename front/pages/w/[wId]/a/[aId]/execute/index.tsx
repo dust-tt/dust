@@ -1,8 +1,22 @@
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ExclamationCircleIcon,
+  PlayCircleIcon,
+} from "@heroicons/react/20/solid";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
+// TODO: type sse.js or use something else
+// @ts-ignore
+import { SSE } from "sse.js";
+
+import { Execution } from "@app/components/app/blocks/Output";
+import MainTab from "@app/components/app/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";
 import { Spinner } from "@app/components/Spinner";
-import MainTab from "@app/components/app/MainTab";
-import { Execution } from "@app/components/app/blocks/Output";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -18,19 +32,6 @@ import { AppType, BlockRunConfig, SpecificationType } from "@app/types/app";
 import { DatasetType } from "@app/types/dataset";
 import { TraceType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ExclamationCircleIcon,
-  PlayCircleIcon,
-} from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import TextareaAutosize from "react-textarea-autosize";
-// TODO: type sse.js or use something else
-// @ts-ignore
-import { SSE } from "sse.js";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

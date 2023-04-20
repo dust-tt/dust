@@ -1,11 +1,12 @@
 import { Menu } from "@headlessui/react";
-import { classNames } from "@app/lib/utils";
-import { useEffect } from "react";
-import { useProviders } from "@app/lib/swr";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
-import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
+import { useEffect } from "react";
 import { useState } from "react";
+
+import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
+import { useProviders } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import { WorkspaceType } from "@app/types/user";
 
 export default function ModelPicker({

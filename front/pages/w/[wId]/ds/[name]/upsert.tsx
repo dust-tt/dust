@@ -1,11 +1,3 @@
-import AppLayout from "@app/components/AppLayout";
-import { ActionButton, Button } from "@app/components/Button";
-import MainTab from "@app/components/data_source/MainTab";
-import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { classNames } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareStackIcon,
   MinusCircleIcon,
@@ -14,6 +6,15 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
+
+import AppLayout from "@app/components/AppLayout";
+import { ActionButton, Button } from "@app/components/Button";
+import MainTab from "@app/components/data_source/MainTab";
+import { getDataSource } from "@app/lib/api/data_sources";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { classNames } from "@app/lib/utils";
+import { DataSourceType } from "@app/types/data_source";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -1,3 +1,9 @@
+import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
+import { useState } from "react";
+import { useSWRConfig } from "swr";
+
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton, Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
@@ -7,11 +13,6 @@ import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
-import { useState } from "react";
-import { useSWRConfig } from "swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

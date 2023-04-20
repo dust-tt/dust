@@ -1,7 +1,8 @@
+import { Op } from "sequelize";
+
 import { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
 import { DataSourceType } from "@app/types/data_source";
-import { Op } from "sequelize";
 
 export async function getDataSource(
   auth: Authenticator,

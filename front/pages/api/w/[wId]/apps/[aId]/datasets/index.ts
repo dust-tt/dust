@@ -1,3 +1,5 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -6,7 +8,6 @@ import { DustAPI } from "@app/lib/dust_api";
 import { Dataset } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDatasetsResponseBody = {
   datasets: DatasetType[];

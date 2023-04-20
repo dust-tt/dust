@@ -1,14 +1,16 @@
-import { APIErrorWithStatusCode } from "@app/lib/error";
-import { Err, Ok, Result } from "@app/lib/result";
-import logger from "@app/logger/logger";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 import {
   GetServerSidePropsContext,
   NextApiRequest,
   NextApiResponse,
 } from "next";
 import { getServerSession } from "next-auth/next";
+
+import { APIErrorWithStatusCode } from "@app/lib/error";
+import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+
 import { Key, Membership, User, Workspace } from "./models";
 
 export type RoleType = "admin" | "builder" | "user" | "none";

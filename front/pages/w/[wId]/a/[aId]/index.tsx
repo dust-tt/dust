@@ -1,9 +1,19 @@
-import AppLayout from "@app/components/AppLayout";
-import { ActionButton, Button } from "@app/components/Button";
+import {
+  DocumentDuplicateIcon,
+  PlayCircleIcon,
+} from "@heroicons/react/20/solid";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { mutate } from "swr";
+
 import Deploy from "@app/components/app/Deploy";
 import MainTab from "@app/components/app/MainTab";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
+import AppLayout from "@app/components/AppLayout";
+import { ActionButton, Button } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -22,15 +32,6 @@ import {
 } from "@app/types/app";
 import { BlockType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
-import {
-  DocumentDuplicateIcon,
-  PlayCircleIcon,
-} from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
-import { useRef, useState } from "react";
-import { mutate } from "swr";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

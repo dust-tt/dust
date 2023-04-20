@@ -1,20 +1,22 @@
-import { classNames } from "@app/lib/utils";
-import { Button } from "@app/components/Button";
-import { checkDatasetData } from "@app/lib/datasets";
-import TextareaAutosize from "react-textarea-autosize";
-import { useState, useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
+import "@uiw/react-textarea-code-editor/dist.css";
+
 import {
-  PlusIcon,
   PlusCircleIcon,
+  PlusIcon,
   XCircleIcon,
 } from "@heroicons/react/20/solid";
 import {
-  ArrowUpOnSquareStackIcon,
   ArrowDownOnSquareIcon,
+  ArrowUpOnSquareStackIcon,
 } from "@heroicons/react/24/outline";
-import "@uiw/react-textarea-code-editor/dist.css";
+import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
+
+import { Button } from "@app/components/Button";
+import { checkDatasetData } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
+import { classNames } from "@app/lib/utils";
 import { DatasetEntry, DatasetType } from "@app/types/dataset";
 
 const CodeEditor = dynamic(

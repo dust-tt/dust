@@ -1,15 +1,17 @@
-import Block from "./Block";
 import { Menu } from "@headlessui/react";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { useProviders } from "@app/lib/swr";
-import { filterServiceProviders } from "@app/lib/providers";
 import Link from "next/link";
-import { BlockType } from "@app/types/run";
-import { SpecificationType, SpecificationBlockType } from "@app/types/app";
-import { WorkspaceType } from "@app/types/user";
+
+import { filterServiceProviders } from "@app/lib/providers";
+import { useProviders } from "@app/lib/swr";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { SpecificationBlockType, SpecificationType } from "@app/types/app";
 import { AppType } from "@app/types/app";
+import { BlockType } from "@app/types/run";
 import { RunType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
+
+import Block from "./Block";
 
 export default function Search({
   owner,

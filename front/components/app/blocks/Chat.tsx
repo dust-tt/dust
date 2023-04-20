@@ -1,15 +1,18 @@
-import Block from "./Block";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+import "@uiw/react-textarea-code-editor/dist.css";
+
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import "@uiw/react-textarea-code-editor/dist.css";
+
 import ModelPicker from "@app/components/app/ModelPicker";
-import { BlockType } from "@app/types/run";
-import { SpecificationType, SpecificationBlockType } from "@app/types/app";
-import { WorkspaceType } from "@app/types/user";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { SpecificationBlockType, SpecificationType } from "@app/types/app";
 import { AppType } from "@app/types/app";
+import { BlockType } from "@app/types/run";
 import { RunType } from "@app/types/run";
+import { WorkspaceType } from "@app/types/user";
+
+import Block from "./Block";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

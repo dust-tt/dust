@@ -1,18 +1,20 @@
-import { classNames } from "@app/lib/utils";
-import { AppType } from "@app/types/app";
-import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { Disclosure, Menu } from "@headlessui/react";
 import {
   ChevronRightIcon,
   ComputerDesktopIcon,
 } from "@heroicons/react/20/solid";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
-import { signIn, signOut } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
+import { signIn, signOut } from "next-auth/react";
+
+import { classNames } from "@app/lib/utils";
+import { AppType } from "@app/types/app";
+import { DataSourceType } from "@app/types/data_source";
+import { UserType, WorkspaceType } from "@app/types/user";
+
 import { ActionButton, Button } from "./Button";
 import WorkspacePicker from "./WorkspacePicker";
 

@@ -1,6 +1,7 @@
 import { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
-import { useProviders } from "./swr";
 import { WorkspaceType } from "@app/types/user";
+
+import { useProviders } from "./swr";
 
 type ModelProvider = {
   providerId: string;

@@ -1,10 +1,11 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
+
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { DataSource } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
-import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 export type GetDataSourceResponseBody = {
   dataSource: DataSourceType;

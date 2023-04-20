@@ -1,14 +1,14 @@
-import AppLayout from "@app/components/AppLayout";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+
 import MainTab from "@app/components/app/MainTab";
 import SpecRunView from "@app/components/app/SpecRunView";
-
-import { getSession, Authenticator, getUserFromSession } from "@app/lib/auth";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { AppType, SpecificationType } from "@app/types/app";
-import { UserType, WorkspaceType } from "@app/types/user";
-import { RunType } from "@app/types/run";
+import AppLayout from "@app/components/AppLayout";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { AppType, SpecificationType } from "@app/types/app";
+import { RunType } from "@app/types/run";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -1,9 +1,11 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+
 import { getUserFromSession } from "@app/lib/auth";
 import { Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
-import { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession } from "next-auth/next";
+
 import { authOptions } from "./auth/[...nextauth]";
 
 async function handler(

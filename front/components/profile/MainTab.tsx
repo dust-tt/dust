@@ -1,12 +1,13 @@
-import { classNames } from "@app/lib/utils";
 import { Menu } from "@headlessui/react";
-import Link from "next/link";
-import { CodeBracketIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import {
-  MagnifyingGlassCircleIcon,
-  LinkIcon,
   KeyIcon,
+  LinkIcon,
+  MagnifyingGlassCircleIcon,
 } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, CodeBracketIcon } from "@heroicons/react/24/solid";
+import Link from "next/link";
+
+import { classNames } from "@app/lib/utils";
 import { WorkspaceType } from "@app/types/user";
 
 export default function MainTab({

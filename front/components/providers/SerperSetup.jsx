@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { ActionButton, Button } from "@app/components/Button";
+import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
+
+import { ActionButton, Button } from "@app/components/Button";
 import { checkProvider } from "@app/lib/providers";
 
 export default function SerperSetup({ owner, open, setOpen, config, enabled }) {

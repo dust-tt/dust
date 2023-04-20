@@ -1,3 +1,5 @@
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
@@ -5,7 +7,6 @@ import { APIError } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
-import { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {
