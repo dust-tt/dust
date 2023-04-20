@@ -156,7 +156,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --userId argument");
       }
       if (!args.role) {
-        throw new Error("Missing --userId argument");
+        throw new Error("Missing --role argument");
       }
       if (!["admin", "builder", "user"].includes(args.role)) {
         throw new Error(`Invalid --role: ${args.role}`);
