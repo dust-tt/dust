@@ -83,7 +83,9 @@ async function handler(
       }
 
       // Enforce plan limits: DataSource documents count.
-      if (documents.value.total >= owner.plan.limits.dataSources.count) {
+      if (
+        documents.value.total >= owner.plan.limits.dataSources.documents.count
+      ) {
         res.status(400).end();
         return;
       }
