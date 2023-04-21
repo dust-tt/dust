@@ -46,7 +46,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "app_not_found",
-        message: "The app you're trying to modify datasets for was not found.",
+        message: "The app was not found.",
       },
     });
   }
@@ -72,7 +72,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "app_not_found",
-        message: "The app you're trying to modify datasets for was not found.",
+        message: "The app was not found.",
       },
     });
   }
@@ -285,8 +285,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "app_not_found",
-            message:
-              "The app you're trying to modify datasets for was not found.",
+            message: "The app was not found.",
           },
         });
       }
