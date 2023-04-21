@@ -6,6 +6,7 @@ import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
@@ -92,6 +93,36 @@ async function handler(
         tags = req.body.tags;
       }
 
+      let sourceUrl: string | null = null;
+      if (req.body.sourceUrl) {
+        if (typeof req.body.sourceUrl !== "string") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a string.",
+            },
+          });
+        }
+
+        const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
+          validateUrl(req.body.sourceUrl);
+
+        if (!isSourceUrlValid) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+            },
+          });
+        }
+
+        sourceUrl = standardizedSourceUrl;
+      }
+
       // Enforce plan limits.
       const documents = await DustAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
@@ -150,6 +181,7 @@ async function handler(
         {
           documentId: req.query.documentId as string,
           tags,
+          sourceUrl,
           credentials,
           text: req.body.text,
         }

@@ -1029,8 +1029,8 @@ impl Store for SQLiteStore {
                 None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
             };
 
-            let d: Option<(u64, u64, u64, String, String, u64, u64)> = match c.query_row(
-                "SELECT id, created, timestamp, tags_json, hash, text_size, chunk_count \
+            let d: Option<(u64, u64, u64, String, Option<String>, String, u64, u64)> = match c.query_row(
+                "SELECT id, created, timestamp, tags_json, source_url, hash, text_size, chunk_count \
                    FROM data_sources_documents \
                    WHERE data_source = ?1 AND document_id = ?2 AND status='latest'",
                 params![data_source_row_id, document_id],
@@ -1043,6 +1043,7 @@ impl Store for SQLiteStore {
                         row.get(4).unwrap(),
                         row.get(5).unwrap(),
                         row.get(6).unwrap(),
+                        row.get(7).unwrap(),
                     ))
                 },
             ) {
@@ -1050,12 +1051,13 @@ impl Store for SQLiteStore {
                     rusqlite::Error::QueryReturnedNoRows => None,
                     _ => Err(e)?,
                 },
-                Ok((row_id, created, timestamp, tags_data, hash, text_size, chunk_count)) => {
+                Ok((row_id, created, timestamp, tags_data, source_url, hash, text_size, chunk_count)) => {
                     Some((
                         row_id,
                         created,
                         timestamp,
                         tags_data,
+                        source_url,
                         hash,
                         text_size,
                         chunk_count,
@@ -1065,7 +1067,7 @@ impl Store for SQLiteStore {
             if d.is_none() {
                 return Ok(None);
             }
-            let (_, created, timestamp, tags_data, hash, text_size, chunk_count) = d.unwrap();
+            let (_, created, timestamp, tags_data,source_url, hash, text_size, chunk_count) = d.unwrap();
             let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
             Ok(Some(Document {
@@ -1074,6 +1076,7 @@ impl Store for SQLiteStore {
                 timestamp,
                 document_id,
                 tags,
+                source_url,
                 hash,
                 text_size,
                 chunk_count: chunk_count as usize,
@@ -1096,6 +1099,7 @@ impl Store for SQLiteStore {
         let document_created = document.created;
         let document_timestamp = document.timestamp;
         let document_tags = document.tags.clone();
+        let document_source_url = document.source_url.clone();
         let document_hash = document.hash.clone();
         let document_text_size = document.text_size;
         let document_chunk_count = document.chunks.len() as u64;
@@ -1136,9 +1140,9 @@ impl Store for SQLiteStore {
 
                 let mut stmt = tx.prepare_cached(
                     "INSERT INTO data_sources_documents \
-                      (data_source, created, document_id, timestamp, tags_json, hash, \
-                       text_size, chunk_count, status) \
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      (data_source, created, document_id, timestamp, tags_json, source_url, \
+                        hash, text_size, chunk_count, status) \
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )?;
                 let document_tags_data = serde_json::to_string(&document_tags)?;
                 let _ = stmt.insert(params![
@@ -1147,6 +1151,7 @@ impl Store for SQLiteStore {
                     document_id,
                     document_timestamp,
                     document_tags_data,
+                    document_source_url,
                     document_hash,
                     document_text_size,
                     document_chunk_count,
@@ -1190,13 +1195,13 @@ impl Store for SQLiteStore {
 
             // Retrieve documents.
             let mut stmt = c.prepare_cached(
-                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                "SELECT id, created, document_id, timestamp, tags_json, source_url, hash, text_size, \
                    chunk_count FROM data_sources_documents \
                    WHERE data_source = ?1 AND status = 'latest' \
                    ORDER BY timestamp DESC",
             )?;
             let mut stmt_limit_offset = c.prepare_cached(
-                "SELECT id, created, document_id, timestamp, tags_json, hash, text_size, \
+                "SELECT id, created, document_id, timestamp, tags_json, source_url, hash, text_size, \
                    chunk_count FROM data_sources_documents \
                    WHERE data_source = ?1 AND status = 'latest' \
                    ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3",
@@ -1214,9 +1219,10 @@ impl Store for SQLiteStore {
                 let document_id: String = row.get(2)?;
                 let timestamp: u64 = row.get(3)?;
                 let tags_data: String = row.get(4)?;
-                let hash: String = row.get(5)?;
-                let text_size: u64 = row.get(6)?;
-                let chunk_count: u64 = row.get(7)?;
+                let source_url: Option<String> = row.get(5)?;
+                let hash: String = row.get(6)?;
+                let text_size: u64 = row.get(7)?;
+                let chunk_count: u64 = row.get(8)?;
 
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
 
@@ -1226,6 +1232,7 @@ impl Store for SQLiteStore {
                     timestamp,
                     document_id,
                     tags,
+                    source_url,
                     hash,
                     text_size,
                     chunk_count: chunk_count as usize,

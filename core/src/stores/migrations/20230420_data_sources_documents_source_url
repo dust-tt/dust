@@ -1,0 +1,4 @@
+ALTER TABLE
+    data_sources_documents
+ADD
+    COLUMN source_url TEXT DEFAULT '';
