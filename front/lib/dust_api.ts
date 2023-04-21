@@ -48,6 +48,7 @@ export type DustAPIDocument = {
   document_id: string;
   timestamp: number;
   tags: string[];
+  source_url?: string | null;
   hash: string;
   text_size: number;
   chunk_count: number;
@@ -108,6 +109,7 @@ type DustAPIUpsertDocumentPayload = {
   documentId: string;
   timestamp?: number | null;
   tags: string[];
+  sourceUrl?: string | null;
   text: string;
   credentials: { [key: string]: string };
 };
@@ -529,6 +531,7 @@ export const DustAPI = {
           timestamp: payload.timestamp,
           text: payload.text,
           tags: payload.tags,
+          source_url: payload.sourceUrl,
           credentials: payload.credentials,
         }),
       }

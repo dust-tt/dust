@@ -96,3 +96,20 @@ export const communityApps = [
     visibility: "public",
   },
 ];
+
+export const isValidUrl = (urlString: string) => {
+  const urlPattern = new RegExp(
+    // require "http://", "https://", or no protocol
+    "^(https?:\\/\\/)?" +
+      // require domain name (can be an IP address) + optional port number
+      "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" +
+      "((\\d{1,3}\\.){3}\\d{1,3}))" +
+      "(\\:\\d+)?" +
+      // path + query + fragment
+      "(\\/[-a-z\\d%_.~+]*)*" +
+      "(\\?[;&a-z\\d%_.~+=-]*)?" +
+      "(\\#[-a-z\\d_]*)?$",
+    "i"
+  );
+  return !!urlPattern.test(urlString);
+};

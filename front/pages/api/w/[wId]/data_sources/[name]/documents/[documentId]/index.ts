@@ -6,6 +6,7 @@ import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { isValidUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
@@ -92,6 +93,18 @@ async function handler(
         tags = req.body.tags;
       }
 
+      let sourceUrl: string | null = null;
+      if (req.body.sourceUrl) {
+        if (
+          typeof req.body.sourceUrl !== "string" ||
+          !isValidUrl(req.body.sourceUrl)
+        ) {
+          res.status(400).end();
+          return;
+        }
+        sourceUrl = req.body.sourceUrl;
+      }
+
       // Enforce plan limits.
       const documents = await DustAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
@@ -150,6 +163,7 @@ async function handler(
         {
           documentId: req.query.documentId as string,
           tags,
+          sourceUrl,
           credentials,
           text: req.body.text,
         }

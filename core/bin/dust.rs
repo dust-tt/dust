@@ -156,6 +156,10 @@ enum DataSourceCommands {
         /// Document tags
         #[clap(value_parser, required = false)]
         tags: Vec<String>,
+
+        // Document source URL
+        #[clap(value_parser, required = false)]
+        source_url: Option<String>,
     },
     /// Searches a DataSource
     Search {
@@ -257,12 +261,14 @@ fn main() -> Result<()> {
                 data_source_id,
                 document_id,
                 tags,
+                source_url,
                 text_path,
             } => rt.block_on(data_source::cmd_upsert(
                 data_source_id,
                 document_id,
                 None,
                 tags,
+                source_url,
                 text_path,
             )),
             DataSourceCommands::Search {

@@ -74,6 +74,7 @@ pub struct Document {
     pub document_id: String,
     pub timestamp: u64,
     pub tags: Vec<String>,
+    pub source_url: Option<String>,
     pub hash: String,
     pub text_size: u64,
     pub chunk_count: usize,
@@ -88,6 +89,7 @@ impl Document {
         document_id: &str,
         timestamp: u64,
         tags: &Vec<String>,
+        source_url: &Option<String>,
         hash: &str,
         text_size: u64,
     ) -> Result<Self> {
@@ -97,6 +99,7 @@ impl Document {
             document_id: document_id.to_string(),
             timestamp,
             tags: tags.clone(),
+            source_url: source_url.clone(),
             hash: hash.to_string(),
             text_size,
             chunk_count: 0,
@@ -288,6 +291,7 @@ impl DataSource {
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
+        source_url: &Option<String>,
         text: &str,
     ) -> Result<Document> {
         let store = store.clone();
@@ -316,6 +320,7 @@ impl DataSource {
             document_id,
             timestamp,
             tags,
+            source_url,
             &document_hash,
             text.len() as u64,
         )?;
@@ -894,6 +899,7 @@ pub async fn cmd_upsert(
     document_id: &str,
     timestamp: Option<u64>,
     tags: &Vec<String>,
+    source_url: &Option<String>,
     text_path: &str,
 ) -> Result<()> {
     let root_path = utils::init_check().await?;
@@ -919,6 +925,7 @@ pub async fn cmd_upsert(
             document_id,
             timestamp,
             tags,
+            source_url,
             text,
         )
         .await?;
