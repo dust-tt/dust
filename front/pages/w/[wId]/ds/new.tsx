@@ -124,7 +124,12 @@ export default function DataSourceNew({
         max_chunk_size: `${dataSourceMaxChunkSize}`,
       }),
     });
-    router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
+    if (res.ok) {
+      router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
+    } else {
+      setCreating(false);
+      window.alert("Error creating DataSource. Please try again later.");
+    }
   };
 
   return (

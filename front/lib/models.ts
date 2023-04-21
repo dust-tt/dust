@@ -83,7 +83,7 @@ export class Workspace extends Model<
   declare uId: string;
   declare sId: string;
   declare name: string;
-  declare description?: string;
+  declare allowedDomain?: string;
   declare type: "personal" | "team";
   declare plan?: string;
 }
@@ -116,7 +116,7 @@ Workspace.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
+    allowedDomain: {
       type: DataTypes.STRING,
     },
     type: {
