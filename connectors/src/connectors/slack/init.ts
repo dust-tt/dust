@@ -10,9 +10,9 @@ const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
 export async function createSlackConnector(
   dataSourceConfig: DataSourceConfig,
   nangoConnectionId: NangoConnectionId
-): Promise<Result<void, Error>> {
-  await sequelize_conn.transaction(
-    async (t): Promise<Result<[Connector, SlackConfiguration], Error>> => {
+): Promise<Result<string, Error>> {
+  const res = await sequelize_conn.transaction(
+    async (t): Promise<Result<Connector, Error>> => {
       if (!NANGO_SECRET_KEY) {
         throw new Error("NANGO_SECRET_KEY is not defined");
       }
@@ -61,9 +61,13 @@ export async function createSlackConnector(
         { transaction: t }
       );
 
-      return new Ok([connector, slackConfig]);
+      return new Ok(connector);
     }
   );
 
-  return new Ok(undefined);
+  if (res.isErr()) {
+    return res;
+  }
+
+  return new Ok(res.value.id.toString());
 }
