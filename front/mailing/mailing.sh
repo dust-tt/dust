@@ -1,6 +1,2 @@
 #!/bin/sh
-
-cp package.json package.json.save
-cp mailing/package.json package.json
-node mailing/$1.js
-mv package.json.save package.json
+env $(cat .env.local) npx tsx mailing/$1.ts
