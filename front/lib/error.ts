@@ -2,6 +2,8 @@ import { NextApiResponse } from "next";
 
 import logger from "@app/logger/logger";
 
+import { DustAPIErrorResponse } from "./dust_api";
+
 export type InternalErrorWithStatusCode = {
   status_code: number;
 };
@@ -28,9 +30,9 @@ export type APIErrorType =
 export type APIError = {
   type: APIErrorType;
   message: string;
-  data_source_error?: object;
-  run_error?: object;
-  app_error?: object;
+  data_source_error?: DustAPIErrorResponse;
+  run_error?: DustAPIErrorResponse;
+  app_error?: DustAPIErrorResponse;
 };
 
 export type ReturnedAPIErrorType = {

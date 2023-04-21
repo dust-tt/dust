@@ -3,11 +3,12 @@ import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App, Provider, Run } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 
 export type GetRunsResponseBody = {
@@ -27,7 +28,10 @@ export type PostRunsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetRunsResponseBody | GetRunsErrorResponseBody | PostRunsResponseBody
+    | GetRunsResponseBody
+    | GetRunsErrorResponseBody
+    | PostRunsResponseBody
+    | ReturnedAPIErrorType
   >
 ) {
   const session = await getSession(req, res);
@@ -38,8 +42,13 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   let app = await App.findOne({
@@ -58,18 +67,28 @@ async function handler(
           sId: req.query.aId,
         },
   });
-
   if (!app) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   switch (req.method) {
     case "POST":
       // Only the users that are `builders` for the current workspace can create runs.
       if (!auth.isBuilder()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can create runs.",
+          },
+        });
       }
 
       const [providers] = await Promise.all([
@@ -88,8 +107,15 @@ async function handler(
             !(typeof req.body.config == "string") ||
             !(typeof req.body.specificationHash === "string")
           ) {
-            res.status(400).end();
-            return;
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The request body is invalid, expects \
+                  { config: string, specificationHash: string, mode: string }.",
+              },
+            });
           }
 
           const streamRes = await DustAPI.createRunStream(
@@ -105,8 +131,14 @@ async function handler(
           );
 
           if (streamRes.isErr()) {
-            res.status(400).json(streamRes.error);
-            return;
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "run_error",
+                message: "The streamed run execution failed.",
+                run_error: streamRes.error,
+              },
+            });
           }
 
           res.writeHead(200, {
@@ -162,14 +194,27 @@ async function handler(
             !(typeof req.body.config == "string") ||
             !(typeof req.body.specification === "string")
           ) {
-            res.status(400).end();
-            return;
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The request body is invalid, expects \
+                  { config: string, specificationHash: string }.",
+              },
+            });
           }
 
           const datasets = await DustAPI.getDatasets(app.dustAPIProjectId);
           if (datasets.isErr()) {
-            res.status(500).end();
-            return;
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Datasets retrieval failed.",
+                app_error: datasets.error,
+              },
+            });
           }
 
           let latestDatasets: { [key: string]: string } = {};
@@ -197,8 +242,14 @@ async function handler(
           });
 
           if (dustRun.isErr()) {
-            res.status(400).json(dustRun.error);
-            return;
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "run_error",
+                message: "Run creation failed.",
+                run_error: dustRun.error,
+              },
+            });
           }
 
           Run.create({
@@ -218,14 +269,26 @@ async function handler(
           return;
 
         default:
-          res.status(400).end();
-          return;
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The request body is invalid, expects `mode` to be one of `design` or `execute` .",
+            },
+          });
       }
 
     case "GET":
       if (!auth.isUser()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_not_found",
+            message:
+              "The app you're trying to modify datasets for was not found.",
+          },
+        });
       }
 
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -255,9 +318,14 @@ async function handler(
       );
 
       if (dustRuns.isErr()) {
-        console.log(dustRuns.error);
-        res.status(400).json(dustRuns.error);
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Runs retrieval failed.",
+            app_error: dustRuns.error,
+          },
+        });
       }
 
       res.status(200).json({
@@ -267,8 +335,14 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
+        },
+      });
   }
 }
 
