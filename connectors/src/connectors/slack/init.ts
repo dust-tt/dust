@@ -1,8 +1,8 @@
-import { Connector, SlackConfiguration, sequelize_conn } from "@app/lib/models";
+import { Connector, sequelize_conn,SlackConfiguration } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
+import { DataSourceConfig } from "@app/types/data_source_config";
 import { Nango } from "@nangohq/node";
 import { WebClient } from "@slack/web-api";
-import { DataSourceConfig } from "@app/types/data_source_config";
 export type NangoConnectionId = string;
 
 const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -48,12 +48,12 @@ export async function createSlackConnector(
           nangoConnectionId,
           workspaceAPIKey: dataSourceConfig.systemAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
         },
         { transaction: t }
       );
 
-      const slackConfig = await SlackConfiguration.create(
+      await SlackConfiguration.create(
         {
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,

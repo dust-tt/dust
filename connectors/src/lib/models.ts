@@ -26,7 +26,7 @@ export class Connector extends Model<
   declare nangoConnectionId: string;
   declare workspaceAPIKey: string;
   declare workspaceId: string;
-  declare dataSourceId: string;
+  declare dataSourceName: string;
 }
 
 Connector.init(
@@ -62,7 +62,7 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    dataSourceId: {
+    dataSourceName: {
       type: DataTypes.STRING,
       allowNull: false,
     },
