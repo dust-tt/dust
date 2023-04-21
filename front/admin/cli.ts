@@ -1,7 +1,8 @@
+import parseArgs from "minimist";
+
 import { planForWorkspace } from "@app/lib/auth";
 import { Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import parseArgs from "minimist";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -18,9 +19,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       workspaces.forEach((w) => {
-        console.log(
-          `> wId='${w.sId}' name='${w.name}' description="${w.description}"`
-        );
+        console.log(`> wId='${w.sId}' name='${w.name}'`);
       });
       return;
     }
@@ -42,7 +41,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`workspace:`);
       console.log(`  wId: ${w.sId}`);
       console.log(`  name: ${w.name}`);
-      console.log(`  description: ${w.description}`);
       console.log(`  type: ${w.type}`);
 
       let plan = planForWorkspace(w);
@@ -70,7 +68,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         uId,
         sId: uId.slice(0, 10),
         name: args.name,
-        description: args.description || null,
         type: "team",
       });
 
