@@ -6,7 +6,7 @@ import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import { isValidUrl } from "@app/lib/utils";
+import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
@@ -106,7 +106,10 @@ async function handler(
           });
         }
 
-        if (!isValidUrl(req.body.sourceUrl)) {
+        const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
+          validateUrl(req.body.sourceUrl);
+
+        if (!isSourceUrlValid) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -116,7 +119,8 @@ async function handler(
             },
           });
         }
-        sourceUrl = req.body.sourceUrl;
+
+        sourceUrl = standardizedSourceUrl;
       }
 
       // Enforce plan limits.
