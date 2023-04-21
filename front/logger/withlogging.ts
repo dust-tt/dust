@@ -1,6 +1,8 @@
 import StatsD from "hot-shots";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { APIErrorWithStatusCode } from "@app/lib/error";
+
 import logger from "./logger";
 
 export const statsDClient = new StatsD();
@@ -32,3 +34,33 @@ export const withLogging = (handler: any) => {
     return output;
   };
 };
+
+export function apiError(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  error: APIErrorWithStatusCode
+): void {
+  logger.error(
+    {
+      method: req.method,
+      url: req.url,
+      statusCode: error.status_code,
+      error,
+    },
+    "API Error"
+  );
+
+  const tags = [
+    `method:${req.method}`,
+    `url:${req.url}`,
+    `status_code:${res.statusCode}`,
+    `error_type:${error.api_error.type}`,
+  ];
+
+  statsDClient.increment("api_errors.count", 1, tags);
+
+  res.status(error.status_code).json({
+    error: error.api_error,
+  });
+  return;
+}

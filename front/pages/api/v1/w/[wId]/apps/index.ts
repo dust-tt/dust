@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getApps } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 
 export type GetAppsResponseBody = {
@@ -16,8 +16,7 @@ async function handler(
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
-    const err = keyRes.error;
-    return res.status(err.status_code).json(err.api_error);
+    return apiError(req, res, keyRes.error);
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
@@ -29,13 +28,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).json({
-        error: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
           type: "method_not_supported_error",
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      return;
   }
 }
 

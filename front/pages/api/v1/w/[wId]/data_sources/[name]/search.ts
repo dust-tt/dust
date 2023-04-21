@@ -8,6 +8,7 @@ import { APIError } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import { apiError } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
 export type DatasourceSearchQuery = {
@@ -44,18 +45,18 @@ export default async function handler(
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
-    const err = keyRes.error;
-    return res.status(err.status_code).json(err.api_error);
+    return apiError(req, res, keyRes.error);
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
-    return res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "data_source_not_found",
-        message: "Data source not found",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -79,8 +80,9 @@ export default async function handler(
       const queryRes = parse_payload(searchQuerySchema, req.query);
       if (queryRes.isErr()) {
         const err = queryRes.error;
-        return res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "invalid_request_error",
             message: err.message,
           },
@@ -110,8 +112,9 @@ export default async function handler(
       );
 
       if (data.isErr()) {
-        return res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "data_source_error",
             message: "There was an error performing the data source search.",
             data_source_error: data.error,
@@ -126,12 +129,12 @@ export default async function handler(
     }
 
     default:
-      res.status(405).json({
-        error: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
           type: "method_not_supported_error",
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      return;
   }
 }
