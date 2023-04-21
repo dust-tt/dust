@@ -1,4 +1,4 @@
-export interface DustConfig {
+export interface DataSourceConfig {
   systemAPIKey: string;
   workspaceId: string;
   dataSourceName: string;
