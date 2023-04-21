@@ -63,6 +63,9 @@ The Document model represents a [data source](/data-sources-overview) document.
     [`data_source`](core-blocks#data-source-block) block for more details. If
     not specified, defaults to the empty list.{" "}
   </Property>
+  <Property name="source_url" type="string">
+    User specified URL for the document.
+  </Property>
   <Property name="text_size" type="integer">
     The size in bytes of the document's text.
   </Property>
@@ -123,7 +126,10 @@ The Document model represents a [data source](/data-sources-overview) document.
         A user-specified timestamp for the document. If not specified, defaults to the current time.
       </Property>
       <Property name="tags" type="[]string">
-        A list of user-specified tags to associate with the documents.
+        A list of user-specified tags to associate with the document.
+      </Property>
+      <Property name="source_url" type="[]string">
+        A user-specified URL to associate with the document.
       </Property>
     </Properties>
 
@@ -151,6 +157,7 @@ The Document model represents a [data source](/data-sources-overview) document.
         "document_id": "top-secret-document",
         "timestamp": 1679447275024,
         "tags": [],
+        "source_url": null,
         "hash": "1eebbe66ac93c...47548fcd",
         "text_size": 21,
         "chunk_count": 1,
@@ -225,6 +232,7 @@ The Document model represents a [data source](/data-sources-overview) document.
         "document_id": "top-secret-document",
         "timestamp": 1679447275024,
         "tags": [],
+        "source_url": null,
         "hash": "1eebbe66ac93c...47548fcd",
         "text_size": 21,
         "chunk_count": 1,
@@ -339,6 +347,7 @@ The Document model represents a [data source](/data-sources-overview) document.
           "document_id": "acme-report",
           "timestamp": 1679447719555,
           "tags": [],
+          "source_url": null,
           "hash": "1651c5e63b6d6...2ae3acd0",
           "text_size": 13,
           "chunk_count": 1,
@@ -349,6 +358,7 @@ The Document model represents a [data source](/data-sources-overview) document.
           "document_id": "top-secret-document",
           "timestamp": 1679447275024,
           "tags": [],
+          "source_url": null,
           "hash": "1eebbe66ac93c...47548fcd",
           "text_size": 21,
           "chunk_count": 1,
@@ -435,6 +445,7 @@ The Document model represents a [data source](/data-sources-overview) document.
             "document_id": "5",
             "timestamp": 1680101106398,
             "tags": [],
+            "source_url": null,
             "hash": "9933f078502b2...e8b849da",
             "text_size": 17,
             "chunk_count": 1,
