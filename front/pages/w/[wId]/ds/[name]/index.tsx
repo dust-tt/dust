@@ -164,6 +164,7 @@ export default function DataSourceView({
                       onClick={(e) => {
                         // Enforce plan limits: DataSource documents count.
                         if (
+                          owner.plan.limits.dataSources.documents.count != -1 &&
                           total >= owner.plan.limits.dataSources.documents.count
                         ) {
                           e.preventDefault();

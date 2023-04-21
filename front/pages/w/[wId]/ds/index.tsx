@@ -74,8 +74,9 @@ export default function DataSourcesView({
                       onClick={(e) => {
                         // Enforce plan limits: DataSources count.
                         if (
+                          owner.plan.limits.dataSources.count != -1 &&
                           dataSources.length >=
-                          owner.plan.limits.dataSources.count
+                            owner.plan.limits.dataSources.count
                         ) {
                           e.preventDefault();
                           window.alert(

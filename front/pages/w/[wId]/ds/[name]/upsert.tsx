@@ -111,16 +111,16 @@ export default function DataSourceUpsert({
 
   const handleFileUpload = (file: File) => {
     // Enforce plan limits: DataSource documents size.
-    if (file.size > 1024 * owner.plan.limits.dataSources.documents.sizeMb) {
+    if (
+      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
+      file.size > 1024 * owner.plan.limits.dataSources.documents.sizeMb
+    ) {
       window.alert(
         "DataSource document upload size is limited to 1MB on our free plan. \
          Contact team@dust.tt if you want to increase this limit."
       );
       return;
     }
-    let fileData = new FileReader();
-    fileData.onloadend = handleFileLoadedEnded;
-    fileData.readAsText(file);
   };
 
   const router = useRouter();
