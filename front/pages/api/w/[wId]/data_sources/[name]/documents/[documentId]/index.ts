@@ -7,6 +7,7 @@ import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
+import { APIError } from "@app/lib/error";
 
 export type GetDocumentResponseBody = {
   document: DocumentType;
@@ -14,7 +15,7 @@ export type GetDocumentResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDocumentResponseBody>
+  res: NextApiResponse<GetDocumentResponseBody | APIError>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -24,27 +25,37 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
+    res.status(404).json({
+      error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
     return;
   }
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
-    res.status(404).end();
-    return;
-  }
-
-  let documentId = req.query.documentId;
-  if (!documentId || typeof documentId !== "string") {
-    res.status(400).end();
+    res.status(404).json({
+      error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
     return;
   }
 
   switch (req.method) {
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(401).end();
+        res.status(401).json({
+          error: {
+            type: "data_source_auth_error",
+            message:
+              "You can only alter the data souces of the workspaces for which you are a builder.",
+          },
+        });
         return;
       }
 
@@ -57,14 +68,25 @@ async function handler(
       ]);
 
       if (!req.body || !(typeof req.body.text == "string")) {
-        res.status(400).end();
+        res.status(400).json({
+          error: {
+            type: "invalid_request_error",
+            message: "Invalid request body, `text` (string) is required.",
+          },
+        });
         return;
       }
 
       let tags = [];
       if (req.body.tags) {
         if (!Array.isArray(req.body.tags)) {
-          res.status(400).end();
+          res.status(400).json({
+            error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `tags` if provided must be an array of strings.",
+            },
+          });
           return;
         }
         tags = req.body.tags;
@@ -78,7 +100,13 @@ async function handler(
         0
       );
       if (documents.isErr()) {
-        res.status(400).end();
+        res.status(400).json({
+          error: {
+            type: "data_source_error",
+            message: "There was an error retrieving the data source.",
+            data_source_error: documents.error,
+          },
+        });
         return;
       }
 
@@ -86,7 +114,13 @@ async function handler(
       if (
         documents.value.total >= owner.plan.limits.dataSources.documents.count
       ) {
-        res.status(400).end();
+        res.status(401).json({
+          error: {
+            type: "data_source_quota_error",
+            message:
+              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
+          },
+        });
         return;
       }
 
@@ -95,7 +129,13 @@ async function handler(
         req.body.text.length >
         1024 * owner.plan.limits.dataSources.documents.sizeMb
       ) {
-        res.status(400).end();
+        res.status(401).json({
+          error: {
+            type: "data_source_quota_error",
+            message:
+              "Data sources document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase it.",
+          },
+        });
         return;
       }
 
@@ -106,14 +146,20 @@ async function handler(
         dataSource.dustAPIProjectId,
         dataSource.name,
         {
-          documentId,
+          documentId: req.query.documentId as string,
           tags,
           credentials,
           text: req.body.text,
         }
       );
       if (data.isErr()) {
-        res.status(500).end();
+        res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: "There was an error upserting the document.",
+            data_source_error: data.error,
+          },
+        });
         return;
       }
 
@@ -126,7 +172,7 @@ async function handler(
       const document = await DustAPI.getDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
-        documentId
+        req.query.documentId as string
       );
 
       if (document.isErr()) {
@@ -148,7 +194,7 @@ async function handler(
       const deleteResult = await DustAPI.deleteDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
-        documentId
+        req.query.documentId as string
       );
 
       if (deleteResult.isErr()) {
