@@ -21,13 +21,11 @@
     ]
   },
   "dependencies": {
-    "@nangohq/node": "^0.9.0",
     "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "1.7.0",
     "@temporalio/client": "1.7.0",
     "@temporalio/worker": "1.7.0",
     "@temporalio/workflow": "1.7.0",
-    "nanoid": "3.x",
     "pg": "^8.10.0",
     "sequelize": "^6.31.0"
   },
