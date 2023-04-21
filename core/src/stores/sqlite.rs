@@ -1325,22 +1325,10 @@ impl Store for SQLiteStore {
             {
                 let mut stmt =
                     tx.prepare_cached("DELETE FROM data_sources_documents WHERE data_source = ?1")?;
-                match stmt.insert(params![data_source_row_id]) {
-                    Ok(_) => {}
-                    Err(e) => match e {
-                        rusqlite::Error::StatementChangedRows(0) => {}
-                        _ => Err(e)?,
-                    },
-                }
+                stmt.execute(params![data_source_row_id])?;
 
                 let mut stmt = tx.prepare_cached("DELETE FROM data_sources WHERE id = ?1")?;
-                match stmt.insert(params![data_source_row_id]) {
-                    Ok(_) => {}
-                    Err(e) => match e {
-                        rusqlite::Error::StatementChangedRows(0) => {}
-                        _ => Err(e)?,
-                    },
-                }
+                stmt.execute(params![data_source_row_id])?;
             }
             tx.commit()?;
             Ok(())
