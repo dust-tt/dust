@@ -56,7 +56,7 @@ of always allowing you to build with better tools.</p>
 async function main() {
   let users = await User.findAll({
     where: {
-      username: "spolu",
+      username: Object.keys(legacyUserToWorkspace),
     },
   });
 
