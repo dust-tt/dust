@@ -12,7 +12,7 @@ pub struct Map {
     repeat: Option<usize>,
 }
 
-static MAP_MAX_ITERATIONS: usize = 128;
+static MAP_MAX_ITERATIONS: usize = 64;
 
 impl Map {
     pub fn repeat(&self) -> Option<usize> {
