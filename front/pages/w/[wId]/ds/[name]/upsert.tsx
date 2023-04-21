@@ -12,7 +12,7 @@ import { ActionButton, Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { classNames, isValidUrl } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -74,16 +74,14 @@ export default function DataSourceUpsert({
   const [documentId, setDocumentId] = useState("");
   const [text, setText] = useState("");
   const [tags, setTags] = useState([] as string[]);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-  const [isSourceUrlValid, setIsSourceUrlValid] = useState(true);
 
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    setDisabled(!documentId || !text || !isSourceUrlValid);
-  }, [documentId, text, isSourceUrlValid]);
+    setDisabled(!documentId || !text);
+  }, [documentId, text]);
 
   useEffect(() => {
     if (loadDocumentId) {
@@ -101,7 +99,6 @@ export default function DataSourceUpsert({
           setDownloading(false);
           setText(document.document.text);
           setTags(document.document.tags);
-          setSourceUrl(document.document.source_url);
         }
       });
     }
@@ -130,7 +127,6 @@ export default function DataSourceUpsert({
 
   const handleUpsert = async () => {
     setLoading(true);
-
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${
         dataSource.name
@@ -143,7 +139,6 @@ export default function DataSourceUpsert({
         body: JSON.stringify({
           text,
           tags: tags.filter((tag) => tag),
-          sourceUrl: sourceUrl ? checkUrl(sourceUrl).processedUrl : null,
         }),
       }
     );
@@ -172,39 +167,6 @@ export default function DataSourceUpsert({
     const newTags = [...tags];
     newTags.splice(index, 1);
     setTags(newTags);
-  };
-
-  const checkUrl = (
-    value: string
-  ): { isValid: boolean; processedUrl: string | null } => {
-    let url = value.trim();
-    if (!isValidUrl(url)) {
-      return { isValid: false, processedUrl: null };
-    }
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "http://" + url;
-    }
-    try {
-      return { isValid: true, processedUrl: new URL(url).href };
-    } catch (e) {
-      return { isValid: false, processedUrl: null };
-    }
-  };
-
-  const handleSourceUrlChange = (value: string) => {
-    let url: string | null = value.trim();
-    if (url.length === 0) {
-      url = null;
-    }
-
-    if (url) {
-      const { isValid } = checkUrl(url);
-      setIsSourceUrlValid(isValid);
-    } else {
-      setIsSourceUrlValid(true);
-    }
-
-    setSourceUrl(url);
   };
 
   return (
@@ -317,30 +279,6 @@ export default function DataSourceUpsert({
                         <div className="flex flex-1"></div>
                       </div>
                     ) : null}
-                  </div>
-                  <div className="col-span-2">
-                    <label
-                      htmlFor="sourceUrl"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Source URL
-                    </label>
-                    <div className="mt-1 flex rounded-md shadow-sm">
-                      <input
-                        type="text"
-                        name="sourceUrl"
-                        id="sourceUrl"
-                        readOnly={readOnly}
-                        className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md text-sm",
-                          isSourceUrlValid
-                            ? "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
-                            : "border-red-300 focus:border-red-500 focus:ring-red-500"
-                        )}
-                        value={sourceUrl || undefined}
-                        onChange={(e) => handleSourceUrlChange(e.target.value)}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
