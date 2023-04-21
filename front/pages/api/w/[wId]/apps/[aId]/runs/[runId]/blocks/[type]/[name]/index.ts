@@ -27,19 +27,7 @@ async function handler(
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_not_found",
-        message: "The app you're trying to modify datasets for was not found.",
-      },
-    });
-  }
-
   const app = await getApp(auth, req.query.aId as string);
-
   if (!app) {
     return apiError(req, res, {
       status_code: 404,

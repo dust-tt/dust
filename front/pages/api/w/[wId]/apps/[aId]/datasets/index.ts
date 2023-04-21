@@ -42,7 +42,6 @@ async function handler(
   }
 
   const app = await getApp(auth, req.query.aId as string);
-
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -69,7 +68,7 @@ async function handler(
           api_error: {
             type: "app_auth_error",
             message:
-              "You can't modify an app in a workspace for which you're not a builder.",
+              "Only the users that are `builders` for the current workspace can modify an app.",
           },
         });
       }
@@ -85,7 +84,8 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { name: string, description: string, data: any[] }",
+              "The request body is invalid, expects \
+               { name: string, description: string, data: any[] }.",
           },
         });
       }

@@ -17,6 +17,8 @@ import { ActionButton, Button } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
+import { DustAPIErrorResponse } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   addBlock,
   deleteBlock,
@@ -142,9 +144,7 @@ export default function AppView({
   );
   const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
   const [runRequested, setRunRequested] = useState(false);
-  const [runError, setRunError] = useState(
-    null as null | { message: string; code: string }
-  );
+  const [runError, setRunError] = useState(null as null | DustAPIErrorResponse);
 
   let { run, isRunLoading, isRunError } = useSavedRunStatus(
     owner,
@@ -273,8 +273,8 @@ export default function AppView({
       ]);
 
       if (!runRes.ok) {
-        const [error] = await Promise.all([runRes.json()]);
-        setRunError(error as { message: string; code: string });
+        const error: ReturnedAPIErrorType = await runRes.json();
+        setRunError(error.error.run_error as DustAPIErrorResponse);
       } else {
         setRunError(null);
         const [run] = await Promise.all([runRes.json()]);
