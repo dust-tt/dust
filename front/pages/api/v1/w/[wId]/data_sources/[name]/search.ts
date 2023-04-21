@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
@@ -41,7 +41,7 @@ type DatasourceSearchResponseBody = {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody | APIError>
+  res: NextApiResponse<DatasourceSearchResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApps } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 
@@ -12,7 +12,7 @@ export type GetAppsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetAppsResponseBody | APIError>
+  res: NextApiResponse<GetAppsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

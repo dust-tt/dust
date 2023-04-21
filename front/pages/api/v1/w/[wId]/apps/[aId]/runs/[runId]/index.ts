@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
@@ -20,7 +20,7 @@ export type GetRunResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<APIError | GetRunResponseBody>
+  res: NextApiResponse<GetRunResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

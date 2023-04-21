@@ -5,8 +5,9 @@ import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
 
 export type GetDatasetsResponseBody = {
@@ -19,7 +20,9 @@ export type PostDatasetResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
+  res: NextApiResponse<
+    GetDatasetsResponseBody | PostDatasetResponseBody | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -29,15 +32,25 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   const app = await getApp(auth, req.query.aId as string);
 
   if (!app) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   switch (req.method) {
@@ -51,8 +64,14 @@ async function handler(
 
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "You can't modify an app in a workspace for which you're not a builder.",
+          },
+        });
       }
 
       if (
@@ -61,8 +80,14 @@ async function handler(
         !(typeof req.body.description == "string") ||
         !Array.isArray(req.body.data)
       ) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { name: string, description: string, data: any[] }",
+          },
+        });
       }
 
       // Check that dataset does not already exist.
@@ -81,16 +106,26 @@ async function handler(
         }
       });
       if (exists) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The dataset name already exists in this app.",
+          },
+        });
       }
 
       // Check data validity.
       try {
         checkDatasetData(req.body.data);
       } catch (e) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The data passed as request body is invalid.",
+          },
+        });
       }
 
       // Reorder all keys as Dust API expects them ordered.
@@ -109,8 +144,14 @@ async function handler(
         data
       );
       if (dataset.isErr()) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "The dataset creation failed.",
+            app_error: dataset.error,
+          },
+        });
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -131,8 +172,14 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      break;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, POST or DELETE is expected.",
+        },
+      });
   }
 }
 
