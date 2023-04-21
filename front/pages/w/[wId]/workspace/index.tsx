@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -13,6 +14,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  members: UserType[];
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -29,10 +31,13 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const members = await getMembers(auth);
+
   return {
     props: {
       user,
       owner,
+      members,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -41,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function NewApp({
   user,
   owner,
+  members,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -226,6 +232,40 @@ export default function NewApp({
                       >
                         Update
                       </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mt-8 space-y-8">
+                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-5">
+                      <div className="block text-sm font-medium text-gray-700">
+                        Members
+                      </div>
+                      <ul className="mt-4">
+                        {members.map((member) => (
+                          <li
+                            key={member.id}
+                            className="mt-2 flex items-center justify-between"
+                          >
+                            <div className="flex items-center">
+                              <div className="">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {member.name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {member.email}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 text-sm text-gray-500">
+                              {member.workspaces[0].role}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 </div>

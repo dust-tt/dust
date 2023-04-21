@@ -4,12 +4,12 @@ import { Membership, User } from "@app/lib/models";
 import { UserType } from "@app/types/user";
 
 /**
- * Returns the users of the workspace associated with the authenticator (without listing their own
- * workspaces).
+ * Returns the users members of the workspace associated with the authenticator (without listing
+ * their own workspaces).
  * @param auth Authenticator
- * @returns UserType[] users of the workspace
+ * @returns UserType[] members of the workspace
  */
-export async function getUsers(auth: Authenticator): Promise<UserType[]> {
+export async function getMembers(auth: Authenticator): Promise<UserType[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];
@@ -42,6 +42,9 @@ export async function getUsers(auth: Authenticator): Promise<UserType[]> {
       }
     }
 
+    let w = { ...owner };
+    w.role = role;
+
     return {
       id: u.id,
       provider: u.provider,
@@ -50,7 +53,7 @@ export async function getUsers(auth: Authenticator): Promise<UserType[]> {
       email: u.email,
       name: u.name,
       image: null,
-      workspaces: [],
+      workspaces: [w],
     };
   });
 }
