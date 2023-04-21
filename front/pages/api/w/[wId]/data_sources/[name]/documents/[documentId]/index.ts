@@ -3,11 +3,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
+import { APIError } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
-import { APIError } from "@app/lib/error";
 
 export type GetDocumentResponseBody = {
   document: DocumentType;
