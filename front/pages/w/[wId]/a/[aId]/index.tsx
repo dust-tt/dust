@@ -172,18 +172,17 @@ export default function AppView({
 
     saveTimeout = setTimeout(async () => {
       if (!readOnly) {
-        const [specRes] = await Promise.all([
-          fetch(`/api/w/${owner.sId}/apps/${app.sId}/state`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              specification: JSON.stringify(spec),
-              config: JSON.stringify(config),
-            }),
+        await fetch(`/api/w/${owner.sId}/apps/${app.sId}/state`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            specification: JSON.stringify(spec),
+            config: JSON.stringify(config),
           }),
-        ]);
+        });
+
         console.log("STATE SAVED", spec, config);
       }
     }, 1000);

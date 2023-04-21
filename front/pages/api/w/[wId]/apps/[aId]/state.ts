@@ -64,10 +64,25 @@ async function handler(
         break;
       }
 
-      await app.update({
+      const updateParams: {
+        savedSpecification: string;
+        savedConfig: string;
+        savedRun?: string;
+      } = {
         savedSpecification: req.body.specification,
         savedConfig: req.body.config,
-      });
+      };
+
+      if (req.body.run) {
+        if (typeof req.body.run != "string") {
+          res.status(400).end();
+          break;
+        }
+
+        updateParams.savedRun = req.body.run;
+      }
+
+      await app.update(updateParams);
 
       res.status(200).json({
         app: {
