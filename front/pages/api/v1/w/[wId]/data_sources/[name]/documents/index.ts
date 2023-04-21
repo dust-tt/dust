@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
@@ -14,7 +14,7 @@ export type GetDocumentsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDocumentsResponseBody | APIError>
+  res: NextApiResponse<GetDocumentsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { apiError, statsDClient, withLogging } from "@app/logger/withlogging";
 import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
@@ -14,7 +14,7 @@ export type GetDocumentsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDocumentsResponseBody | APIError>
+  res: NextApiResponse<GetDocumentsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   let wId = legacyUserToWorkspace[req.query.user as string];
   if (!wId) {

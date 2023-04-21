@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { validateUrl } from "@app/lib/utils";
@@ -16,7 +16,7 @@ export type GetDocumentResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDocumentResponseBody | APIError>
+  res: NextApiResponse<GetDocumentResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -259,8 +259,14 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, GET, POST or DELETE is expected.",
+        },
+      });
   }
 }
 

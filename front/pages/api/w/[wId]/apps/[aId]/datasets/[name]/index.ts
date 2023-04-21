@@ -4,15 +4,16 @@ import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
 
 type GetDatasetResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatasetResponseBody>
+  res: NextApiResponse<GetDatasetResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -22,15 +23,25 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   const app = await getApp(auth, req.query.aId as string);
 
   if (!app) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to modify datasets for was not found.",
+      },
+    });
   }
 
   let [dataset] = await Promise.all([
@@ -44,15 +55,26 @@ async function handler(
   ]);
 
   if (!dataset) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "dataset_not_found",
+        message: "The dataset you're trying to modify or delete was not found.",
+      },
+    });
   }
 
   switch (req.method) {
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "You can't modify an app in a workspace for which you're not a builder.",
+          },
+        });
       }
 
       if (
@@ -61,16 +83,27 @@ async function handler(
         !(typeof req.body.description == "string") ||
         !Array.isArray(req.body.data)
       ) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { name: string, description: string, data: any[] }",
+          },
+        });
       }
 
       // Check data validity.
       try {
         checkDatasetData(req.body.data);
       } catch (e) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The data passed as request body is invalid.",
+          },
+        });
       }
 
       // Reorder all keys as Dust API expects them ordered.
@@ -90,8 +123,14 @@ async function handler(
         data
       );
       if (d.isErr()) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "The dataset creation failed.",
+            app_error: d.error,
+          },
+        });
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -111,8 +150,14 @@ async function handler(
 
     case "DELETE":
       if (!auth.isBuilder()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "You can't delete an app in a workspace for which you're not a builder.",
+          },
+        });
       }
 
       await Dataset.destroy({
@@ -132,8 +177,14 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, POST or DELETE is expected.",
+        },
+      });
   }
 }
 

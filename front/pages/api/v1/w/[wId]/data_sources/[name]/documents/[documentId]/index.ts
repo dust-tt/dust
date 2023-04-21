@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { APIError } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { validateUrl } from "@app/lib/utils";
@@ -30,7 +30,7 @@ async function handler(
     | GetDocumentResponseBody
     | DeleteDocumentResponseBody
     | UpsertDocumentResponseBody
-    | APIError
+    | ReturnedAPIErrorType
   >
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
@@ -298,7 +298,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET, POST, or DELETE is expected.",
         },
       });
   }

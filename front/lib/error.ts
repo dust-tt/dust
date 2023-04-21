@@ -20,6 +20,8 @@ export type APIErrorType =
   | "data_source_document_not_found"
   | "run_error"
   | "app_not_found"
+  | "app_auth_error"
+  | "dataset_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found";
 
@@ -28,6 +30,11 @@ export type APIError = {
   message: string;
   data_source_error?: object;
   run_error?: object;
+  app_error?: object;
+};
+
+export type ReturnedAPIErrorType = {
+  error: APIError;
 };
 
 /**
