@@ -56,7 +56,7 @@ async function handler(
         return;
       }
 
-      const targetOwner = auth.workspace();
+      const targetOwner = targetAuth.workspace();
       if (!targetOwner) {
         res.status(401).end();
         return;
