@@ -143,6 +143,7 @@ async function handler(
 
       // Enforce plan limits: DataSource documents count.
       if (
+        owner.plan.limits.dataSources.documents.count != -1 &&
         documents.value.total >= owner.plan.limits.dataSources.documents.count
       ) {
         return apiError(req, res, {
@@ -158,8 +159,9 @@ async function handler(
 
       // Enforce plan limits: DataSource document size.
       if (
+        owner.plan.limits.dataSources.documents.sizeMb != -1 &&
         req.body.text.length >
-        1024 * owner.plan.limits.dataSources.documents.sizeMb
+          1024 * owner.plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
           status_code: 401,

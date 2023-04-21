@@ -55,7 +55,10 @@ async function handler(
       }
 
       // Enforce plan limits: DataSources count.
-      if (dataSources.length >= owner.plan.limits.dataSources.count) {
+      if (
+        owner.plan.limits.dataSources.count != -1 &&
+        dataSources.length >= owner.plan.limits.dataSources.count
+      ) {
         res.status(400).end();
         return;
       }
