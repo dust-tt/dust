@@ -149,20 +149,25 @@ async function handler(
       let sourceUrl: string | null = null;
       if (req.body.sourceUrl) {
         if (typeof req.body.sourceUrl !== "string") {
-          res.status(400).json({
-            type: "invalid_request_error",
-            message:
-              "Invalid request body, `sourceUrl` if provided must be a string.",
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a string.",
+            },
           });
-          return;
         }
+
         if (!isValidUrl(req.body.sourceUrl)) {
-          res.status(400).json({
-            type: "invalid_request_error",
-            message:
-              "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+            },
           });
-          return;
         }
         sourceUrl = req.body.sourceUrl;
       }

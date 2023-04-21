@@ -95,12 +95,26 @@ async function handler(
 
       let sourceUrl: string | null = null;
       if (req.body.sourceUrl) {
-        if (
-          typeof req.body.sourceUrl !== "string" ||
-          !isValidUrl(req.body.sourceUrl)
-        ) {
-          res.status(400).end();
-          return;
+        if (typeof req.body.sourceUrl !== "string") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a string.",
+            },
+          });
+        }
+
+        if (!isValidUrl(req.body.sourceUrl)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+            },
+          });
         }
         sourceUrl = req.body.sourceUrl;
       }
