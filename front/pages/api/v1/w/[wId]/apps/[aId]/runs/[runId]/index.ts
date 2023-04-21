@@ -5,7 +5,7 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import logger from "@app/logger/logger";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 
 export const config = {
@@ -24,32 +24,31 @@ async function handler(
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
-    const err = keyRes.error;
-    return res.status(err.status_code).json(err.api_error);
+    return apiError(req, res, keyRes.error);
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
       },
     });
-    return;
   }
 
   let app = await getApp(auth, req.query.aId as string);
 
   if (!app) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "app_not_found",
-        message: "The app whose run you're trying to retrieve was not found.",
+        message: "The app you're trying to run was not found",
       },
     });
-    return;
   }
 
   switch (req.method) {
@@ -73,14 +72,14 @@ async function handler(
       // retrieve only our own runs. Basically this assumes the `runId` as a secret.
       const runRes = await DustAPI.getRun(app.dustAPIProjectId, runId);
       if (runRes.isErr()) {
-        res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "run_error",
             message: "There was an error retrieving the run.",
             run_error: runRes.error,
           },
         });
-        return;
       }
       let run: RunType = runRes.value.run;
       run.specification_hash = run.app_hash;
@@ -96,13 +95,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).json({
-        error: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
           type: "method_not_supported_error",
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      return;
   }
 }
 

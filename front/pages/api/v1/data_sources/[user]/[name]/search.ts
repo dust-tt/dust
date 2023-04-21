@@ -2,7 +2,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { APIError } from "@app/lib/error";
 import logger from "@app/logger/logger";
-import { statsDClient, withLogging } from "@app/logger/withlogging";
+import {
+  apiError,
+  statsDClient,
+  withLogging,
+} from "@app/logger/withlogging";
 import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace";
 import wIdHandler from "@app/pages/api/v1/w/[wId]/data_sources/[name]/search";
 import { DocumentType } from "@app/types/document";
@@ -17,8 +21,9 @@ async function handler(
 ): Promise<void> {
   let wId = legacyUserToWorkspace[req.query.user as string];
   if (!wId) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "user_not_found",
         message:
           "The legacy user you're trying to query was not found \

@@ -7,7 +7,7 @@ import { APIError } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
 
 export type PostRunResponseBody = {
@@ -83,20 +83,19 @@ async function handler(
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
-    const err = keyRes.error;
-    return res.status(err.status_code).json(err.api_error);
+    return apiError(req, res, keyRes.error);
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
       },
     });
-    return;
   }
 
   let [app, providers] = await Promise.all([
@@ -109,13 +108,13 @@ async function handler(
   ]);
 
   if (!app) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
       },
     });
-    return;
   }
 
   switch (req.method) {
@@ -126,15 +125,15 @@ async function handler(
         !(typeof req.body.config === "object" && req.body.config !== null) ||
         !Array.isArray(req.body.inputs)
       ) {
-        res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "invalid_request_error",
             message:
               "Invalid request body, \
               `specification_hash` (string), `config` (object), and `inputs` (array) are required.",
           },
         });
-        return;
       }
 
       let config = req.body.config;
@@ -176,14 +175,14 @@ async function handler(
         );
 
         if (runRes.isErr()) {
-          res.status(400).json({
-            error: {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
               type: "run_error",
               message: "There was an error running the app.",
               run_error: runRes.error,
             },
           });
-          return;
         }
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -241,14 +240,14 @@ async function handler(
       });
 
       if (runRes.isErr()) {
-        res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "run_error",
             message: "There was an error running the app.",
             run_error: runRes.error,
           },
         });
-        return;
       }
 
       Run.create({
@@ -292,14 +291,14 @@ async function handler(
         // Finally refresh the run object.
         const runRes = await DustAPI.getRun(app!.dustAPIProjectId, runId);
         if (runRes.isErr()) {
-          res.status(400).json({
-            error: {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
               type: "run_error",
               message: "There was an error retrieving the run while polling.",
               run_error: runRes.error,
             },
           });
-          return;
         }
         run = runRes.value.run;
         run.specification_hash = run.app_hash;
@@ -325,13 +324,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).json({
-        error: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
-      return;
   }
 }
 

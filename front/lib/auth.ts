@@ -259,10 +259,8 @@ export async function getAPIKey(
     return new Err({
       status_code: 401,
       api_error: {
-        error: {
-          type: "missing_authorization_header_error",
-          message: "Missing Authorization header",
-        },
+        type: "missing_authorization_header_error",
+        message: "Missing Authorization header",
       },
     });
   }
@@ -272,10 +270,8 @@ export async function getAPIKey(
     return new Err({
       status_code: 401,
       api_error: {
-        error: {
-          type: "malformed_authorization_header_error",
-          message: "Malformed Authorization header",
-        },
+        type: "malformed_authorization_header_error",
+        message: "Malformed Authorization header",
       },
     });
   }
@@ -292,10 +288,8 @@ export async function getAPIKey(
     return new Err({
       status_code: 401,
       api_error: {
-        error: {
-          type: "invalid_api_key_error",
-          message: "The API key provided is invalid or disabled.",
-        },
+        type: "invalid_api_key_error",
+        message: "The API key provided is invalid or disabled.",
       },
     });
   }

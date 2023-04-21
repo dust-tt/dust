@@ -6,7 +6,7 @@ import { DustAPI } from "@app/lib/dust_api";
 import { APIError } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 
@@ -34,32 +34,31 @@ async function handler(
 ): Promise<void> {
   let keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
-    const err = keyRes.error;
-    return res.status(err.status_code).json(err.api_error);
+    return apiError(req, res, keyRes.error);
   }
   let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
       },
     });
-    return;
   }
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
-    res.status(404).json({
-      error: {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
       },
     });
-    return;
   }
 
   switch (req.method) {
@@ -71,8 +70,9 @@ async function handler(
       );
 
       if (docRes.isErr()) {
-        return res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "data_source_error",
             message: "There was an error retrieving the data source document.",
             data_source_error: docRes.error,
@@ -87,14 +87,14 @@ async function handler(
 
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(401).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
             type: "data_source_auth_error",
             message:
               "You can only alter the data souces of the workspaces for which you are a builder.",
           },
         });
-        return;
       }
 
       let [providers] = await Promise.all([
@@ -106,26 +106,26 @@ async function handler(
       ]);
 
       if (!req.body || !(typeof req.body.text == "string")) {
-        res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "invalid_request_error",
             message: "Invalid request body, `text` (string) is required.",
           },
         });
-        return;
       }
 
       let timestamp = null;
       if (req.body.timestamp) {
         if (typeof req.body.timestamp !== "number") {
-          res.status(400).json({
-            error: {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
               type: "invalid_request_error",
               message:
                 "Invalid request body, `timestamp` if provided must be a number.",
             },
           });
-          return;
         }
         timestamp = req.body.timestamp;
       }
@@ -133,14 +133,14 @@ async function handler(
       let tags = [];
       if (req.body.tags) {
         if (!Array.isArray(req.body.tags)) {
-          res.status(400).json({
-            error: {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
               type: "invalid_request_error",
               message:
                 "Invalid request body, `tags` if provided must be an array of strings.",
             },
           });
-          return;
         }
         tags = req.body.tags;
       }
@@ -154,28 +154,29 @@ async function handler(
       );
 
       if (documents.isErr()) {
-        res.status(400).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
             type: "data_source_error",
             message: "There was an error retrieving the data source.",
             data_source_error: documents.error,
           },
         });
-        return;
       }
 
       // Enforce plan limits: DataSource documents count.
       if (
         documents.value.total >= owner.plan.limits.dataSources.documents.count
       ) {
-        res.status(401).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
             type: "data_source_quota_error",
             message:
-              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
+              "Data sources are limited to 32 documents on our free plan. \
+               Contact team@dust.tt if you want to increase this limit.",
           },
         });
-        return;
       }
 
       // Enforce plan limits: DataSource document size.
@@ -183,14 +184,15 @@ async function handler(
         req.body.text.length >
         1024 * owner.plan.limits.dataSources.documents.sizeMb
       ) {
-        res.status(401).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
             type: "data_source_quota_error",
             message:
-              "Data sources document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase it.",
+              "Data sources document upload size is limited to 1MB on our free plan. \
+               Contact team@dust.tt if you want to increase it.",
           },
         });
-        return;
       }
 
       let credentials = credentialsFromProviders(providers);
@@ -209,14 +211,14 @@ async function handler(
       );
 
       if (upsertRes.isErr()) {
-        res.status(500).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
             type: "internal_server_error",
             message: "There was an error upserting the document.",
             data_source_error: upsertRes.error,
           },
         });
-        return;
       }
 
       res.status(200).json({
@@ -227,14 +229,14 @@ async function handler(
 
     case "DELETE":
       if (!auth.isBuilder()) {
-        res.status(401).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
             type: "data_source_auth_error",
             message:
               "You can only alter the data souces of the workspaces for which you are a builder.",
           },
         });
-        return;
       }
 
       const delRes = await DustAPI.deleteDataSourceDocument(
@@ -244,14 +246,14 @@ async function handler(
       );
 
       if (delRes.isErr()) {
-        res.status(500).json({
-          error: {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
             type: "internal_server_error",
             message: "There was an error deleting the document.",
             data_source_error: delRes.error,
           },
         });
-        return;
       }
 
       res.status(200).json({
@@ -262,14 +264,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).json({
-        error: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET, POST or DELETE are expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
-      return;
   }
 }
 

@@ -1,3 +1,7 @@
+import { NextApiResponse } from "next";
+
+import logger from "@app/logger/logger";
+
 export type InternalErrorWithStatusCode = {
   status_code: number;
 };
@@ -19,18 +23,11 @@ export type APIErrorType =
   | "method_not_supported_error"
   | "personal_workspace_not_found";
 
-type _APIError = {
+export type APIError = {
   type: APIErrorType;
   message: string;
   data_source_error?: object;
   run_error?: object;
-};
-
-/**
- * Error structure returned by our public API endpoints (api/v1/*)
- */
-export type APIError = {
-  error: _APIError;
 };
 
 /**
