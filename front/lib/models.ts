@@ -462,7 +462,7 @@ Key.init(
       { unique: true, fields: ["secret"] },
       { fields: ["workspaceId"] },
       {
-        fields: ["userId", "isSystem"],
+        fields: ["workspaceId", "isSystem"],
         unique: true,
       },
     ],
@@ -485,6 +485,7 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
   declare connectorId?: string;
   declare connectorProvider?: ConnectorProvider;
 }
