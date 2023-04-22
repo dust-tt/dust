@@ -9,10 +9,10 @@ export type InternalErrorWithStatusCode = {
 };
 
 export type APIErrorType =
+  | "internal_server_error"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_api_key_error"
-  | "internal_server_error"
   | "data_source_not_found"
   | "invalid_request_error"
   | "data_source_error"

@@ -10,7 +10,41 @@ export const statsDClient = new StatsD();
 export const withLogging = (handler: any) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
     let now = new Date();
-    let output = await handler(req, res);
+    try {
+      await handler(req, res);
+    } catch (err) {
+      let elapsed = new Date().getTime() - now.getTime();
+      logger.error(
+        {
+          method: req.method,
+          url: req.url,
+          duration: `${elapsed} ms`,
+          error: err,
+          // @ts-expect-error
+          error_stack: err?.stack,
+        },
+        "Unhandled API Error"
+      );
+
+      const tags = [
+        `method:${req.method}`,
+        `url:${req.url}`,
+        `status_code:500`,
+        `error_type:unhandled_internal_server_error`,
+      ];
+
+      statsDClient.increment("api_errors.count", 1, tags);
+
+      // Try to return a 500 as it's likely nothing was returned yet.
+      res.status(500).json({
+        error: {
+          type: "internal_server_error",
+          message: `Unhandled internal server error: ${err}`,
+        },
+      });
+      return;
+    }
+
     let elapsed = new Date().getTime() - now.getTime();
 
     const tags = [
@@ -31,7 +65,6 @@ export const withLogging = (handler: any) => {
       },
       "Processed request"
     );
-    return output;
   };
 };
 
