@@ -1,4 +1,4 @@
-import {ConnectorProvider} from "dust-connectors/lib/types/connector";
+import { ConnectorProvider } from "dust-connectors/lib/types/connector";
 import {
   CreationOptional,
   DataTypes,

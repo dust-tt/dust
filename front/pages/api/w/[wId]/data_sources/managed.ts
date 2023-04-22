@@ -12,7 +12,6 @@ import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 
-
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;
 };
@@ -21,7 +20,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDataSourcesResponseBody>
 ): Promise<void> {
-  console.error('0')
+  console.error("0");
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -73,12 +72,13 @@ async function handler(
       // Enforce plan limits: DataSources count.
       if (dataSources.length >= owner.plan.limits.dataSources.count) {
         return apiError(req, res, {
-          status_code:402, 
+          status_code: 402,
           api_error: {
             type: "plan_limit_exceeded",
-            message: "You have reached the limit of data sources for your plan.",
+            message:
+              "You have reached the limit of data sources for your plan.",
           },
-        })
+        });
       }
 
       const dustProject = await DustAPI.createProject();
