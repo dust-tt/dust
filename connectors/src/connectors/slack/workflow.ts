@@ -1,4 +1,3 @@
-// /temporal/src/workflows.ts
 import { proxyActivities } from '@temporalio/workflow';
 import type * as activities from './slack'; // purely for type safety
 
