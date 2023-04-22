@@ -1,3 +1,4 @@
+import {ConnectorProvider} from "dust-connectors/lib/types/connector";
 import {
   CreationOptional,
   DataTypes,
@@ -417,7 +418,8 @@ export class Key extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare secret: string;
-  declare status: string;
+  declare status: "active" | "disabled";
+  declare isSystem?: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -446,6 +448,12 @@ Key.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isSystem: {
+      type: DataTypes.BOOLEAN,
+      // We want only one system key per workspace, so allowing the null value allows us to have
+      // a unique index on the pair (userId, isSystem=true) without having to use partial indexes
+      allowNull: true,
+    },
   },
   {
     modelName: "keys",
@@ -453,6 +461,10 @@ Key.init(
     indexes: [
       { unique: true, fields: ["secret"] },
       { fields: ["workspaceId"] },
+      {
+        fields: ["userId", "isSystem"],
+        unique: true,
+      },
     ],
   }
 );
@@ -473,6 +485,8 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare connectorId?: string;
+  declare connectorProvider?: ConnectorProvider;
 }
 
 DataSource.init(

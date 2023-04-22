@@ -1,7 +1,8 @@
+import parseArgs from "minimist";
+
 import { planForWorkspace } from "@app/lib/auth";
 import { Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import parseArgs from "minimist";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
