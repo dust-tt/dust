@@ -203,8 +203,7 @@ async function handler(
           api_error: {
             type: "data_source_quota_error",
             message:
-              "Data sources are limited to 32 documents on our free plan. \
-               Contact team@dust.tt if you want to increase this limit.",
+              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
           },
         });
       }
@@ -220,8 +219,7 @@ async function handler(
           api_error: {
             type: "data_source_quota_error",
             message:
-              "Data sources document upload size is limited to 1MB on our free plan. \
-               Contact team@dust.tt if you want to increase it.",
+              "Data sources document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase it.",
           },
         });
       }

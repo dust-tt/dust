@@ -169,8 +169,7 @@ export default function DataSourceView({
                         ) {
                           e.preventDefault();
                           window.alert(
-                            "DataSources are limited to 32 documents on our free plan. \
-                             Contact team@dust.tt if you want to increase this limit."
+                            "DataSources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
                           );
                           return;
                         }

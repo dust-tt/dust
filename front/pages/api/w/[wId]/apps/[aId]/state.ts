@@ -81,8 +81,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects \
-               { specification: string, config: string }.",
+              "The request body is invalid, expects { specification: string, config: string }.",
           },
         });
       }

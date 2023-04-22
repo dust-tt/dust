@@ -112,8 +112,7 @@ async function handler(
               api_error: {
                 type: "invalid_request_error",
                 message:
-                  "The request body is invalid, expects \
-                  { config: string, specificationHash: string, mode: string }.",
+                  "The request body is invalid, expects { config: string, specificationHash: string, mode: string }.",
               },
             });
           }
@@ -199,8 +198,7 @@ async function handler(
               api_error: {
                 type: "invalid_request_error",
                 message:
-                  "The request body is invalid, expects \
-                  { config: string, specificationHash: string }.",
+                  "The request body is invalid, expects { config: string, specificationHash: string }.",
               },
             });
           }
