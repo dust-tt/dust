@@ -1,0 +1,55 @@
+{
+  "name": "dust-connectors",
+  "version": "0.2.3",
+  "description": "Dust Connectors",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write \"src/**/*.(js|ts)\"",
+    "lint": "eslint src --ext .js,.ts",
+    "lint:fix": "eslint src --fix --ext .js,.ts",
+    "test": "jest --config jest.config.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+
+  "author": "Dust.tt team",
+
+  "devDependencies": {
+    "@types/jest": "29.4.0",
+    "@typescript-eslint/eslint-plugin": "5.54.0",
+    "@typescript-eslint/parser": "5.52.0",
+    "eslint": "8.35.0",
+    "eslint-plugin-jest": "27.2.1",
+    "jest": "29.4.3",
+    "pg": "^8.8.0",
+    "pg-hstore": "^2.3.4",
+    "pg-native": "^3.0.1",
+    "prettier": "2.8.4",
+    "sequelize": "^6.28.0",
+    "ts-jest": "29.0.5",
+    "typescript": "4.9.5"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "dependencies": {
+    "@slack/web-api": "^6.8.1",
+    "@temporalio/activity": "^1.7.2",
+    "@temporalio/client": "^1.7.2",
+    "@temporalio/worker": "^1.7.2",
+    "@temporalio/workflow": "^1.7.2",
+    "@types/pg": "^8.6.6",
+    "@types/sequelize": "^4.28.14"
+  },
+  "peerDependencies": {
+    "pg": "^8.8.0",
+    "pg-hstore": "^2.3.4",
+    "pg-native": "^3.0.1",
+    "sequelize": "^6.28.0"
+  }
+}
