@@ -87,8 +87,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects \
-               { name: string, description: string, data: any[] }.",
+              "The request body is invalid, expects { name: string, description: string, data: any[] }.",
           },
         });
       }

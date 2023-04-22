@@ -116,8 +116,7 @@ export default function DataSourceUpsert({
       file.size > 1024 * owner.plan.limits.dataSources.documents.sizeMb
     ) {
       window.alert(
-        "DataSource document upload size is limited to 1MB on our free plan. \
-         Contact team@dust.tt if you want to increase this limit."
+        "DataSource document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase this limit."
       );
       return;
     }

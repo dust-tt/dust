@@ -130,8 +130,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "Invalid request body, \
-              `specification_hash` (string), `config` (object), and `inputs` (array) are required.",
+              "Invalid request body, `specification_hash` (string), `config` (object), and `inputs` (array) are required.",
           },
         });
       }

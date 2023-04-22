@@ -28,8 +28,7 @@ async function handler(
       api_error: {
         type: "user_not_found",
         message:
-          "The legacy user you're trying to query was not found \
-          (check out our docs for updated workspace based URLs).",
+          "The legacy user you're trying to query was not found (check out our docs for updated workspace based URLs).",
       },
     });
   }
