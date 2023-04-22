@@ -26,6 +26,7 @@ export type APIErrorType =
   | "dataset_not_found"
   | "workspace_not_found"
   | "workspace_auth_error"
+  | "workspace_user_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found";
 

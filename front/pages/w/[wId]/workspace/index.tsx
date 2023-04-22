@@ -1,11 +1,15 @@
+import { Listbox, Transition } from "@headlessui/react";
+import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
+import { mutate } from "swr";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useMembers } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -14,7 +18,6 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  members: UserType[];
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -31,13 +34,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const members = await getMembers(auth);
-
   return {
     props: {
       user,
       owner,
-      members,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -46,7 +46,6 @@ export const getServerSideProps: GetServerSideProps<{
 export default function NewApp({
   user,
   owner,
-  members,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -60,6 +59,8 @@ export default function NewApp({
       ? `https://dust.tt/?signIn=google&wId=${owner.sId}`
       : null
   );
+
+  let { members } = useMembers(owner);
 
   const formValidation = () => {
     let valid = true;
@@ -115,6 +116,23 @@ export default function NewApp({
       );
       // Hack! non critical.
       owner.name = workspaceName;
+    }
+  };
+
+  const handleMemberRoleChange = async (member: UserType, role: string) => {
+    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to update membership.");
+    } else {
+      mutate(`/api/w/${owner.sId}/members`);
     }
   };
 
@@ -241,10 +259,10 @@ export default function NewApp({
                 <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-5">
                     <div className="sm:col-span-5">
-                      <div className="block text-sm font-medium text-gray-700">
-                        Members
+                      <div className="block text-sm font-medium text-gray-800">
+                        {members.length} Members
                       </div>
-                      <ul className="mt-4">
+                      <ul className="mt-6 space-y-4">
                         {members.map((member) => (
                           <li
                             key={member.id}
@@ -252,16 +270,119 @@ export default function NewApp({
                           >
                             <div className="flex items-center">
                               <div className="">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {member.name}
+                                <div className="text-sm font-medium text-gray-500">
+                                  {member.name}{" "}
+                                  {member.id === user?.id ? (
+                                    <span className="ml-1 rounded-sm bg-gray-200 px-1 py-0.5 text-xs font-bold text-gray-900">
+                                      you
+                                    </span>
+                                  ) : null}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {member.email}
-                                </div>
+                                {member.provider === "google" ? (
+                                  <div className="flex-cols flex text-sm text-gray-500">
+                                    <div className="mt-0.5 mr-1 flex h-4 w-4 flex-initial">
+                                      <img src="https://google.com/favicon.ico"></img>
+                                    </div>
+                                    <div className="flex flex-1">
+                                      {member.email}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {member.provider === "github" ? (
+                                  <div className="flex-cols flex text-sm text-gray-500">
+                                    <div className="mt-1 mr-1 ml-0.5 flex h-3 w-3 flex-initial">
+                                      <img src="https://github.com/favicon.ico"></img>
+                                    </div>
+                                    <div className="ml-0.5 flex flex-1">
+                                      {member.username}
+                                    </div>
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
-                            <div className="flex-shrink-0 text-sm text-gray-500">
-                              {member.workspaces[0].role}
+                            <div className="w-28 flex-shrink-0 text-sm text-gray-500">
+                              {member.id !== user?.id ? (
+                                <Listbox
+                                  value={member.workspaces[0].role}
+                                  onChange={(role) => {
+                                    handleMemberRoleChange(member, role);
+                                  }}
+                                >
+                                  {({ open }) => (
+                                    <>
+                                      <div className="relative">
+                                        <Listbox.Button className="relative w-full cursor-default cursor-pointer rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-1">
+                                          <span className="block truncate">
+                                            {member.workspaces[0].role}
+                                          </span>
+                                          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                            <ChevronUpDownIcon
+                                              className="h-5 w-5 text-gray-400"
+                                              aria-hidden="true"
+                                            />
+                                          </span>
+                                        </Listbox.Button>
+
+                                        <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                          {[
+                                            "admin",
+                                            "builder",
+                                            "user",
+                                            "revoked",
+                                          ].map((role) => (
+                                            <Listbox.Option
+                                              key={role}
+                                              className={({ active }) =>
+                                                classNames(
+                                                  active
+                                                    ? "cursor-pointer font-semibold"
+                                                    : "",
+                                                  "text-gray-900",
+                                                  "relative cursor-default select-none py-1 pl-3 pr-9"
+                                                )
+                                              }
+                                              value={role}
+                                            >
+                                              {({ selected, active }) => (
+                                                <>
+                                                  <span
+                                                    className={classNames(
+                                                      selected
+                                                        ? "font-semibold"
+                                                        : "",
+                                                      "block truncate"
+                                                    )}
+                                                  >
+                                                    {role}
+                                                  </span>
+
+                                                  {selected ? (
+                                                    <span
+                                                      className={classNames(
+                                                        "text-violet-600",
+                                                        "absolute inset-y-0 right-0 flex items-center pr-4"
+                                                      )}
+                                                    >
+                                                      <CheckIcon
+                                                        className="h-4 w-4"
+                                                        aria-hidden="true"
+                                                      />
+                                                    </span>
+                                                  ) : null}
+                                                </>
+                                              )}
+                                            </Listbox.Option>
+                                          ))}
+                                        </Listbox.Options>
+                                      </div>
+                                    </>
+                                  )}
+                                </Listbox>
+                              ) : (
+                                <span className="ml-2 italic text-gray-900">
+                                  admin
+                                </span>
+                              )}
                             </div>
                           </li>
                         ))}
