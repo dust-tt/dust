@@ -38,6 +38,10 @@
   "dependencies": {
     "@nangohq/node": "^0.9.0",
     "@slack/web-api": "^6.8.1",
+    "@temporalio/activity": "^1.7.2",
+    "@temporalio/client": "^1.7.2",
+    "@temporalio/worker": "^1.7.2",
+    "@temporalio/workflow": "^1.7.2",
     "@trpc/server": "^10.21.1",
     "pg": "^8.8.0",
     "sequelize": "^6.28.0",
