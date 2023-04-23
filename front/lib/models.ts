@@ -417,7 +417,8 @@ export class Key extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare secret: string;
-  declare status: string;
+  declare status: "active" | "disabled";
+  declare isSystem?: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -446,6 +447,12 @@ Key.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isSystem: {
+      type: DataTypes.BOOLEAN,
+      // We want only one system key per workspace, so allowing the null value allows us to have
+      // a unique index on the pair (userId, isSystem=true) without having to use partial indexes
+      allowNull: true,
+    },
   },
   {
     modelName: "keys",
@@ -453,6 +460,10 @@ Key.init(
     indexes: [
       { unique: true, fields: ["secret"] },
       { fields: ["workspaceId"] },
+      {
+        fields: ["workspaceId", "isSystem"],
+        unique: true,
+      },
     ],
   }
 );
@@ -471,8 +482,12 @@ export class DataSource extends Model<
   declare visibility: "public" | "private";
   declare config?: string;
   declare dustAPIProjectId: string;
+  declare connectorId?: string;
+  declare connectorProvider?: "slack" | "notion" | "google";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+
 }
 
 DataSource.init(
@@ -509,6 +524,12 @@ DataSource.init(
     dustAPIProjectId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    connectorId: {
+      type: DataTypes.STRING,
+    },
+    connectorProvider: {
+      type: DataTypes.STRING,
     },
   },
   {

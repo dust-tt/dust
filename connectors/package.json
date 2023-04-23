@@ -36,7 +36,11 @@
   "author": "Jakub Synowiec <jsynowiec@users.noreply.github.com>",
   "license": "Apache-2.0",
   "dependencies": {
+    "@nangohq/node": "^0.9.0",
+    "@slack/web-api": "^6.8.1",
     "@trpc/server": "^10.21.1",
+    "pg": "^8.8.0",
+    "sequelize": "^6.28.0",
     "tslib": "~2.5",
     "zod": "^3.21.4"
   },
