@@ -1,5 +1,5 @@
 {
-  "name": "t3",
+  "name": "connectors",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,8 +23,6 @@
     "next": "^13.2.4",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
     "sequelize": "^6.28.0",
     "zod": "^3.21.4"
   },
