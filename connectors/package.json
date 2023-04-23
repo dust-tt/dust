@@ -1,0 +1,44 @@
+{
+  "name": "node-typescript-boilerplate",
+  "version": "0.0.0",
+  "description": "Minimalistic boilerplate to quick-start Node.js development in TypeScript.",
+  "type": "module",
+  "engines": {
+    "node": ">= 18.12 <19"
+  },
+  "devDependencies": {
+    "@types/jest": "~29.5",
+    "@types/node": "~18",
+    "@typescript-eslint/eslint-plugin": "~5.59",
+    "@typescript-eslint/parser": "~5.59",
+    "eslint": "~8.38",
+    "eslint-config-prettier": "~8.8",
+    "eslint-plugin-jest": "~27.2",
+    "jest": "~29.5",
+    "prettier": "~2.8",
+    "rimraf": "~5.0",
+    "ts-api-utils": "~0.0.44",
+    "ts-jest": "~29.1",
+    "typescript": "~5.0"
+  },
+  "scripts": {
+    "start": "node build/src/main.js",
+    "clean": "rimraf coverage build tmp",
+    "prebuild": "npm run lint",
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -w -p tsconfig.json",
+    "build:release": "npm run clean && tsc -p tsconfig.release.json",
+    "lint": "eslint . --ext .ts --ext .mts",
+    "test": "jest --coverage",
+    "prettier": "prettier --config .prettierrc --write .",
+    "test:watch": "jest --watch"
+  },
+  "author": "Jakub Synowiec <jsynowiec@users.noreply.github.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "tslib": "~2.5"
+  },
+  "volta": {
+    "node": "18.12.1"
+  }
+}
