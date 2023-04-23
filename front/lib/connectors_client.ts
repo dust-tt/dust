@@ -1,6 +1,6 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 
-import { ClientRouterInterface } from "@app/../t3/src/router.js";
+import { ClientRouterInterface } from "@app/../connectors/src/router.js";
 
 const {CONNECTORS_TRPC_URL} = process.env;
 

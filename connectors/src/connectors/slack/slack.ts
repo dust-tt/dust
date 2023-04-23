@@ -79,9 +79,7 @@ export async function createSlackConnector(
 }
 
 /**
- * Basic Slack API method created just to show case the interaction with Slack API through a
- * temporal Workflow in this node package.
- * @todo(aric)) Shoud be removed once we have another PR actually triggering a Temporal Workflow using this module.
+ * Show case only.
  */
 export async function getChannels(
   nangoConnectionId: string

@@ -166,14 +166,19 @@ async function handler(
       }
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
   }
 }
 
-//Not sure where this should go.
+// Not sure where this should go.
 // Lets find out at code review time.
-export async function getSystemApiKey(
+async function getSystemApiKey(
   workspaceId: number
 ): Promise<Result<Key, Error>> {
   let key = await Key.findOne({
@@ -197,5 +202,4 @@ export async function getSystemApiKey(
 
   return new Ok(key);
 }
-
 export default withLogging(handler);

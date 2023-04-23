@@ -7,6 +7,7 @@ import {
   Model,
   Sequelize,
 } from "sequelize";
+import { type ConnectorProvider } from "@connectors/types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 
@@ -22,7 +23,7 @@ export class Connector extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare type: "slack" | "notion" | "google";
+  declare type: ConnectorProvider;
   declare nangoConnectionId: string;
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -108,7 +109,10 @@ SlackConfiguration.init(
   },
   {
     sequelize: sequelize_conn,
-    indexes: [{ fields: ["slackTeamId"] }, { fields: ["connectorId"] , unique: true}],
+    indexes: [
+      { fields: ["slackTeamId"] },
+      { fields: ["connectorId"], unique: true },
+    ],
     modelName: "slack_configurations",
   }
 );

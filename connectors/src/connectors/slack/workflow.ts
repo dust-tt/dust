@@ -7,8 +7,7 @@ const { getChannels } = proxyActivities<typeof activities>({
 });
 
 /**
- * This workflow exists just to show case the interaction with Slack API through a
- * temporal Workflow in this node package.
+ * Here only for show casing.
  */
 export async function printSlackChannelsWorkflow(nangoConnectionId: string): Promise<void> {
   const channels = await getChannels(nangoConnectionId);
