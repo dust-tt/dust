@@ -486,8 +486,6 @@ export class DataSource extends Model<
   declare connectorProvider?: "slack" | "notion" | "google";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-
-
 }
 
 DataSource.init(

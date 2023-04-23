@@ -1,5 +1,5 @@
 export interface DataSourceConfig {
-    APIKey: string;
-    workspaceId: string;
-    dataSourceName: string;
-  }
+  APIKey: string;
+  workspaceId: string;
+  dataSourceName: string;
+}

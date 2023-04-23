@@ -68,17 +68,16 @@ async function handler(
         });
       }
 
-
       const dustProject = await DustAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
-          status_code:500,
-          api_error:{
+          status_code: 500,
+          api_error: {
             type: "internal_server_error",
             // I don't know if we want to forward the core error to the client. LMK during code review please.
-            message:`Could not create the project. Reason: ${dustProject.error}`
-          }
-        })
+            message: `Could not create the project. Reason: ${dustProject.error}`,
+          },
+        });
       }
 
       const [providers] = await Promise.all([
@@ -108,11 +107,11 @@ async function handler(
       if (dustDataSource.isErr()) {
         return apiError(req, res, {
           status_code: 500,
-          api_error:{
-            type:"data_source_error",
-            message: `Could not create the data source. reason: ${dustDataSource.error}`
-          }
-        })
+          api_error: {
+            type: "data_source_error",
+            message: `Could not create the data source. reason: ${dustDataSource.error}`,
+          },
+        });
       }
 
       const dataSource = await DataSource.create({
@@ -126,13 +125,15 @@ async function handler(
       });
       const systemAPIKeyRes = await getSystemApiKey(owner.id);
       if (systemAPIKeyRes.isErr()) {
-        console.error(`Could not create the system API key: ${systemAPIKeyRes.error}`)
+        console.error(
+          `Could not create the system API key: ${systemAPIKeyRes.error}`
+        );
         return apiError(req, res, {
           status_code: 500,
-          api_error:{
-            type:"internal_server_error",
-            message: "Could not create the system API key"
-          }
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not create the system API key",
+          },
         });
       }
 
@@ -149,7 +150,9 @@ async function handler(
 
         // Trigger a temporal workflow to print the channels in the worker process.
         // Here for show casing only.
-        connectorsClient.getCannelsViaTemporalShowCaseProcedure.query(connectorId);
+        connectorsClient.getCannelsViaTemporalShowCaseProcedure.query(
+          connectorId
+        );
 
         res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
         return;

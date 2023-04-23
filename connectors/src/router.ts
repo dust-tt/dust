@@ -34,10 +34,10 @@ const appRouter = router({
     }),
   getCannelsViaTemporalShowCaseProcedure: publicProcedure
     .input(z.string())
-    .query(async (opts)  => {
+    .query(async (opts) => {
       const { input } = opts;
       const connector = await Connector.findByPk(input);
-      console.log('found connector:', connector)
+      console.log("found connector:", connector);
       if (!connector) {
         throw new Error(`Could not find the connector with id: ${input}`);
       }

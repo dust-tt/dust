@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "trcp": "tsx ./src/index.ts",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
@@ -35,6 +37,8 @@
     "@typescript-eslint/parser": "^5.56.0",
     "eslint": "^8.36.0",
     "eslint-config-next": "^13.2.4",
+    "prettier": "^2.8.8",
+    "prettier-plugin-tailwindcss": "^0.2.5",
     "ts-node": "^10.9.1",
     "tsx": "^3.12.6",
     "typescript": "^5.0.2"
