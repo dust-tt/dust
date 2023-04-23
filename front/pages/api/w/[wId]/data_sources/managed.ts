@@ -147,6 +147,10 @@ async function handler(
         dataSource.connectorProvider = "slack";
         dataSource.save();
 
+        // Trigger a temporal workflow to print the channels in the worker process.
+        // Here for show casing only.
+        connectorsClient.getCannelsViaTemporalShowCaseProcedure.query(connectorId);
+
         res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
         return;
       } catch (err) {
