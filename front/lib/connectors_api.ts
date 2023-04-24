@@ -6,9 +6,9 @@ export type ConnectorsAPIErrorResponse = {
   };
 };
 
-const { CONNECTORS_API_URL, DUST_CONNECTORS_SECRET } = process.env;
-if (!CONNECTORS_API_URL) {
-  throw new Error("CONNECTORS_API_URL is not defined");
+const { CONNECTORS_API, DUST_CONNECTORS_SECRET } = process.env;
+if (!CONNECTORS_API) {
+  throw new Error("CONNECTORS_API is not defined");
 }
 
 if (!DUST_CONNECTORS_SECRET) {
@@ -26,19 +26,16 @@ export const ConnectorsAPI = {
     nangoConnectionId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     console.log("sending headers: ", getDefaultHeaders());
-    const res = await fetch(
-      `${CONNECTORS_API_URL}/connectors/create/${provider}`,
-      {
-        method: "POST",
-        headers: getDefaultHeaders(),
-        body: JSON.stringify({
-          workspaceId: workspaceId,
-          APIKey: APIKey,
-          dataSourceName: dataSourceName,
-          nangoConnectionId: nangoConnectionId,
-        }),
-      }
-    );
+    const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
+      method: "POST",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({
+        workspaceId: workspaceId,
+        APIKey: APIKey,
+        dataSourceName: dataSourceName,
+        nangoConnectionId: nangoConnectionId,
+      }),
+    });
 
     return _resultFromResponse(res);
   },
