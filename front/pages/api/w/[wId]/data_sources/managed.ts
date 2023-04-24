@@ -94,7 +94,7 @@ async function handler(
         {
           dataSourceId: dataSourceName,
           config: {
-            provider_id: dataSourceProdiverId,
+            provider_id: dataSourceProviderId,
             model_id: dataSourceModelId,
             splitter_id: "base_v0",
             max_chunk_size: dataSourceMaxChunkSize,
@@ -116,7 +116,7 @@ async function handler(
 
       const dataSource = await DataSource.create({
         name: dataSourceName,
-        description: dataSoruceDescription,
+        description: dataSourceDescription,
         //assuming managed data sources are always private for now
         visibility: "private",
         config: JSON.stringify(dustDataSource.value.data_source.config),
