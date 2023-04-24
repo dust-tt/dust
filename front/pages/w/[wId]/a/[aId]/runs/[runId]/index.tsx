@@ -93,6 +93,18 @@ export default function AppRun({
 
     setIsLoading(true);
 
+    const inputBlockConfigEntry = Object.entries(run.config.blocks).find(
+      ([_name, value]) => value.type === "input"
+    );
+    if (inputBlockConfigEntry) {
+      const [_inputBlockName, inputBlockConfig] = inputBlockConfigEntry;
+      for (const block of spec) {
+        if (block.type === "input") {
+          block.config = inputBlockConfig;
+        }
+      }
+    }
+
     await fetch(`/api/w/${owner.sId}/apps/${app.sId}/state`, {
       method: "POST",
       headers: {
