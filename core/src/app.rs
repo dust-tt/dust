@@ -214,7 +214,9 @@ impl App {
 
             // check that blocks don't share the same name, except for `map/reduce` and `while/end`
             if let Some(block_types) = block_types_by_name.get_mut(name) {
-                if block_types.len() > 1
+                // there is already at least one block with this name
+                if block_types.len() > 1 // More than 2 blocks with the same name is never valid.
+                // 2 blocks with the same name is OK if they are `map`/`reduce` or `while`/`end`
                     || !((block.block_type() == BlockType::End
                         && block_types.contains(&BlockType::While))
                         || (block.block_type() == BlockType::Reduce
@@ -228,6 +230,7 @@ impl App {
                     block_types.insert(block.block_type());
                 }
             } else {
+                // first block with this name
                 block_types_by_name
                     .insert(name.clone(), vec![block.block_type()].into_iter().collect());
             }
