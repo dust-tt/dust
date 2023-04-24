@@ -52,3 +52,7 @@ pub mod blocks {
     pub mod search;
     pub mod r#while;
 }
+
+pub mod deno {
+    pub mod script;
+}

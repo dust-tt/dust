@@ -1,8 +1,8 @@
 use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
@@ -66,7 +66,7 @@ impl Block for Code {
         let result = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", (&env,))
+            script.call("_fun", &env)
         })
         .await??;
 

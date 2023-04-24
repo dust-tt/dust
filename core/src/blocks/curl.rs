@@ -1,9 +1,9 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -115,7 +115,7 @@ impl Block for Curl {
         let headers_value: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(headers_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", (&e,))
+            script.call("_fun", &e)
         })
         .await?
         {
@@ -128,7 +128,7 @@ impl Block for Curl {
         let body_value: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(body_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", (&e,))
+            script.call("_fun", &e)
         })
         .await?
         {

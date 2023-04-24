@@ -1,10 +1,10 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::deno::script::Script;
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use js_sandbox::Script;
 use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -254,7 +254,7 @@ impl Block for Chat {
         let messages_value: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(messages_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", (&e,))
+            script.call("_fun", &e)
         })
         .await?
         {
