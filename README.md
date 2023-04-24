@@ -69,5 +69,5 @@ EOF
 ```
 
 3. Run `npm install`
-4. Run `XP1_DATABASE_URI=sqlite:xp1_store.sqlite FRONT_DATABASE_URI=sqlite:front_store.sqlite ./init/init.sh`
+4. Run `XP1_DATABASE_URI=sqlite:xp1_store.sqlite FRONT_DATABASE_URI=sqlite:front_store.sqlite ./admin/init_db.sh`
 5. Start server with `npm run dev`
