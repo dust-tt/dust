@@ -1,10 +1,11 @@
+import { Result } from "@connectors/lib/result";
 import { Request, Response } from "express";
 
 import { createSlackConnector } from "../connectors/slack/slack";
 import { ConnectorsAPIErrorResponse } from "../types/errors";
 
 type ConnectorCreateReqBody = {
-  APIKey: string;
+  workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
   nangoConnectionId: string;
@@ -24,7 +25,7 @@ export const createConnectorAPIHandler = async (
 ) => {
   try {
     if (
-      !req.body.APIKey ||
+      !req.body.workspaceAPIKey ||
       !req.body.dataSourceName ||
       !req.body.workspaceId ||
       !req.body.nangoConnectionId
@@ -37,14 +38,23 @@ export const createConnectorAPIHandler = async (
       });
       return;
     }
-    const conncetorRes = await createSlackConnector(
-      {
-        APIKey: req.body.APIKey,
-        dataSourceName: req.body.dataSourceName,
-        workspaceId: req.body.workspaceId,
-      },
-      req.body.nangoConnectionId
-    );
+    let conncetorRes: Result<string, Error>;
+    if (req.params.connector_provider === "slack") {
+      conncetorRes = await createSlackConnector(
+        {
+          workspaceAPIKey: req.body.workspaceAPIKey,
+          dataSourceName: req.body.dataSourceName,
+          workspaceId: req.body.workspaceId,
+        },
+        req.body.nangoConnectionId
+      );
+    } else {
+      return res.status(400).send({
+        error: {
+          message: `Unknown connector provider ${req.params.connector_provider}`,
+        },
+      });
+    }
     if (conncetorRes.isErr()) {
       res.status(500).send({ error: { message: conncetorRes.error.message } });
       return;

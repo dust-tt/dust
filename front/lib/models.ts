@@ -418,7 +418,7 @@ export class Key extends Model<
 
   declare secret: string;
   declare status: "active" | "disabled";
-  declare isSystem?: boolean;
+  declare isSystem: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -449,9 +449,8 @@ Key.init(
     },
     isSystem: {
       type: DataTypes.BOOLEAN,
-      // We want only one system key per workspace, so allowing the null value allows us to have
-      // a unique index on the pair (userId, isSystem=true) without having to use partial indexes
-      allowNull: true,
+      defaultValue: false,
+      allowNull: false,
     },
   },
   {
@@ -460,10 +459,6 @@ Key.init(
     indexes: [
       { unique: true, fields: ["secret"] },
       { fields: ["workspaceId"] },
-      {
-        fields: ["workspaceId", "isSystem"],
-        unique: true,
-      },
     ],
   }
 );

@@ -6,14 +6,7 @@ export type ConnectorsAPIErrorResponse = {
   };
 };
 
-const { CONNECTORS_API, DUST_CONNECTORS_SECRET } = process.env;
-if (!CONNECTORS_API) {
-  throw new Error("CONNECTORS_API is not defined");
-}
-
-if (!DUST_CONNECTORS_SECRET) {
-  throw new Error("DUST_CONNECTORS_SECRET is not defined");
-}
+const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 
@@ -31,7 +24,7 @@ export const ConnectorsAPI = {
       headers: getDefaultHeaders(),
       body: JSON.stringify({
         workspaceId: workspaceId,
-        APIKey: APIKey,
+        workspaceAPIKey: APIKey,
         dataSourceName: dataSourceName,
         nangoConnectionId: nangoConnectionId,
       }),

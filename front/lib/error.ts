@@ -26,8 +26,7 @@ export type APIErrorType =
   | "dataset_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found"
-  | "workspace_not_found"
-  | "plan_limit_exceeded";
+  | "workspace_not_found";
 
 export type APIError = {
   type: APIErrorType;

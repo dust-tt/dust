@@ -40,6 +40,7 @@ async function handler(
       let keys = await Key.findAll({
         where: {
           workspaceId: owner.id,
+          isSystem: false,
         },
         order: [["createdAt", "DESC"]],
       });
@@ -61,6 +62,7 @@ async function handler(
         secret: secret,
         status: "active",
         workspaceId: owner.id,
+        isSystem: false,
       });
 
       res.status(201).json({

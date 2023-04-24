@@ -53,7 +53,7 @@ export async function createSlackConnector(
         {
           type: "slack",
           nangoConnectionId,
-          workspaceAPIKey: dataSourceConfig.APIKey,
+          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
         },

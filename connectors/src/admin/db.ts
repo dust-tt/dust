@@ -1,8 +1,8 @@
 import { Connector, SlackConfiguration } from "../lib/models.js";
 
 async function main(): Promise<void> {
-  await SlackConfiguration.sync({ alter: true });
   await Connector.sync({ alter: true });
+  await SlackConfiguration.sync({ alter: true });
   return;
 }
 

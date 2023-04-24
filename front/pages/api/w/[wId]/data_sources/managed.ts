@@ -4,13 +4,14 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Key, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -102,7 +103,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "data_source_error",
-            message: `Could not create the data source. reason: ${dustDataSource.error}`,
+            message: `Could not create the data source. reason: ${dustDataSource.error.message}`,
           },
         });
       }

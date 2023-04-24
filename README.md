@@ -66,8 +66,6 @@ DUST_API=http://localhost:3001
 CONNECTORS_API=http://localhost:3002
 
 GA_TRACKING_ID=Foo
-
-DUST_CONNECTORS_SECRET=L3AhrnR3YuYEx6otwUnbzit29C1hTYnp
 EOF
 ```
 
