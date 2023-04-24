@@ -49,7 +49,7 @@ async function handler(
       const dataSourceDescription = "Slack (managed)";
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 512;
+      const dataSourceMaxChunkSize = 256;
 
       if (
         !req.body.nangoConnectionId ||
@@ -158,11 +158,11 @@ async function handler(
             },
           });
         }
-        const conncetorsResJson = (await connectorsRes.json()) as {
+        const connectorsResJson = (await connectorsRes.json()) as {
           connectorId: string;
         };
 
-        dataSource.connectorId = conncetorsResJson.connectorId;
+        dataSource.connectorId = connectorsResJson.connectorId;
         dataSource.connectorProvider = "slack";
         dataSource.save();
 
@@ -174,7 +174,6 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             // Do we want to forward the message from the connector service here?
-            // TRPC is logging it but we might want to share why with the user.
             message: "Failed to create the connector.",
           },
         });

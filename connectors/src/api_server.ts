@@ -41,7 +41,7 @@ app.post(
           );
         return;
       }
-      const conncetorRes = await createSlackConnector(
+      const connectorRes = await createSlackConnector(
         {
           APIKey: req.body.APIKey,
           dataSourceName: req.body.dataSourceName,
@@ -49,13 +49,13 @@ app.post(
         },
         req.body.nangoConnectionId
       );
-      if (conncetorRes.isErr()) {
-        res.status(500).send(conncetorRes.error.message);
+      if (connectorRes.isErr()) {
+        res.status(500).send(connectorRes.error.message);
         return;
       }
 
       return res.status(200).send({
-        connectorId: conncetorRes.value,
+        connectorId: connectorRes.value,
       });
     } catch (e) {
       console.error(e);
