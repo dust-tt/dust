@@ -63,6 +63,39 @@ async function handler(
           },
         });
       }
+      const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
+      if (systemAPIKeyRes.isErr()) {
+        console.error(
+          `Could not create the system API key: ${systemAPIKeyRes.error}`
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not create the system API key",
+          },
+        });
+      }
+
+      const connectorsRes = await ConnectorsAPI.createConnector(
+        "slack",
+        owner.id.toString(),
+        systemAPIKeyRes.value.secret,
+        dataSourceName,
+        req.body.nangoConnectionId
+      );
+      if (connectorsRes.isErr()) {
+        console.error(
+          `Failed to create the connector: ${connectorsRes.error.error.message}`
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create the connector.",
+          },
+        });
+      }
 
       const dustProject = await DustAPI.createProject();
       if (dustProject.isErr()) {
@@ -103,7 +136,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "data_source_error",
-            message: `Could not create the data source. reason: ${dustDataSource.error.message}`,
+            message: dustDataSource.error.message,
           },
         });
       }
@@ -116,42 +149,9 @@ async function handler(
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
+        connectorId: connectorsRes.value.connectorId,
+        connectorProvider: "slack",
       });
-      const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
-      if (systemAPIKeyRes.isErr()) {
-        console.error(
-          `Could not create the system API key: ${systemAPIKeyRes.error}`
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Could not create the system API key",
-          },
-        });
-      }
-      const connectorsRes = await ConnectorsAPI.createConnector(
-        "slack",
-        owner.id.toString(),
-        systemAPIKeyRes.value.secret,
-        dataSource.name,
-        req.body.nangoConnectionId
-      );
-      if (connectorsRes.isErr()) {
-        console.error(
-          `Failed to create the connector: ${connectorsRes.error.error.message}`
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to create the connector.",
-          },
-        });
-      }
-      dataSource.connectorId = connectorsRes.value.connectorId;
-      dataSource.connectorProvider = "slack";
-      dataSource.save();
 
       res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
       return;
