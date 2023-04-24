@@ -78,13 +78,11 @@ async function handler(
         });
       }
 
-      const [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-      ]);
+      const providers = await Provider.findAll({
+        where: {
+          workspaceId: owner.id,
+        },
+      });
       let credentials = credentialsFromProviders(providers);
 
       const dustDataSource = await DustAPI.createDataSource(
