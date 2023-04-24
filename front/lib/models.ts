@@ -471,6 +471,7 @@ export class DataSource extends Model<
   declare visibility: "public" | "private";
   declare config?: string;
   declare dustAPIProjectId: string;
+  declare isManaged: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -510,6 +511,11 @@ DataSource.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isManaged: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     modelName: "data_source",
@@ -517,6 +523,9 @@ DataSource.init(
     indexes: [
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "name", "visibility"] },
+      {
+        fields: ["isManaged"],
+      },
     ],
   }
 );
