@@ -804,38 +804,13 @@ checksum = "23d8666cb01533c39dde32bcbab8e227b4ed6679b2c925eba05feabea39508fb"
 
 [[package]]
 name = "deno_core"
-version = "0.178.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d58bd9e43979857fd26f4696f8e9f39fb645539ef3e604264521b408daf1d92b"
-dependencies = [
- "anyhow",
- "bytes",
- "deno_ops 0.56.0",
- "futures",
- "indexmap",
- "libc",
- "log",
- "once_cell",
- "parking_lot",
- "pin-project",
- "serde",
- "serde_json",
- "serde_v8 0.89.0",
- "smallvec",
- "sourcemap",
- "url",
- "v8",
-]
-
-[[package]]
-name = "deno_core"
 version = "0.181.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6d512a601e07e65440e481523326439425cc1c614b7c346abe2ffa2575a3468"
 dependencies = [
  "anyhow",
  "bytes",
- "deno_ops 0.59.0",
+ "deno_ops",
  "futures",
  "indexmap",
  "libc",
@@ -845,26 +820,11 @@ dependencies = [
  "pin-project",
  "serde",
  "serde_json",
- "serde_v8 0.92.0",
+ "serde_v8",
  "smallvec",
  "sourcemap",
  "url",
  "v8",
-]
-
-[[package]]
-name = "deno_ops"
-version = "0.56.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f494a90671467e3de74b557b3c1fe805aad87c7239580d2be8f2dddde971824"
-dependencies = [
- "once_cell",
- "pmutil",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "regex",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -970,7 +930,7 @@ dependencies = [
  "clap",
  "cloud-storage",
  "colored",
- "deno_core 0.181.0",
+ "deno_core",
  "dns-lookup",
  "eventsource-client",
  "fancy-regex",
@@ -978,7 +938,6 @@ dependencies = [
  "hyper",
  "hyper-tls",
  "itertools",
- "js-sandbox",
  "lazy_static",
  "parking_lot",
  "pest",
@@ -1643,29 +1602,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "936cfd212a0155903bcbc060e316fb6cc7cbf2e1907329391ebadc1fe0ce77c2"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "js-sandbox"
-version = "0.2.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0931d68d496d96cbfbdff2c8325e59d361d0b5b2f7b4c8bf6f7412a35e096c93"
-dependencies = [
- "deno_core 0.178.0",
- "js-sandbox-macros",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "js-sandbox-macros"
-version = "0.2.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0445474069bad4c2b01856976d83c796521ae9298ba718ecf26041767eb68b2"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.8",
 ]
 
 [[package]]
@@ -2839,21 +2775,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_v8"
-version = "0.89.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9541cff99b1b9da15461aada44f09577af1f614add71f2fedc250c7e650a0383"
-dependencies = [
- "bytes",
- "derive_more",
- "num-bigint 0.4.3",
- "serde",
- "serde_bytes",
- "smallvec",
- "v8",
 ]
 
 [[package]]
