@@ -13,12 +13,13 @@ import { useMembers } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   gaTrackingId: string;
+  url: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -39,6 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       gaTrackingId: GA_TRACKING_ID,
+      url: URL,
     },
   };
 };
@@ -47,6 +49,7 @@ export default function NewApp({
   user,
   owner,
   gaTrackingId,
+  url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
 
@@ -56,7 +59,7 @@ export default function NewApp({
   const [allowedDomainError, setAllowedDomainError] = useState("");
   const [inviteLink, setInviteLink] = useState(
     owner.allowedDomain !== null
-      ? `https://dust.tt/?signIn=google&wId=${owner.sId}`
+      ? `${url}/?signIn=google&wId=${owner.sId}`
       : null
   );
 
@@ -110,9 +113,7 @@ export default function NewApp({
       window.alert("Failed to update workspace.");
     } else {
       setInviteLink(
-        allowedDomain !== null
-          ? `https://dust.tt/?signIn=google&wId=${owner.sId}`
-          : null
+        allowedDomain !== null ? `${url}/?signIn=google&wId=${owner.sId}` : null
       );
       // Hack! non critical.
       owner.name = workspaceName;
@@ -261,8 +262,10 @@ export default function NewApp({
                     <div className="sm:col-span-5">
                       <div className="block text-sm font-medium text-gray-800">
                         {members.length} Members
-                        {!isMembersLoading ? (
-                          <span className="ml-2 text-gray-400 text-xs">loading...</span>
+                        {isMembersLoading ? (
+                          <span className="ml-2 text-xs text-gray-400">
+                            loading...
+                          </span>
                         ) : null}
                       </div>
                       <ul className="mt-6 space-y-4">

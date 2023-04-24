@@ -156,7 +156,7 @@ export default function Home({
                       signIn("github", {
                         callbackUrl: router.query.wId
                           ? `/api/login?wId=${router.query.wId}`
-                          : `api/login`,
+                          : `/api/login`,
                       })
                     }
                   >
@@ -178,7 +178,7 @@ export default function Home({
                       signIn("google", {
                         callbackUrl: router.query.wId
                           ? `/api/login?wId=${router.query.wId}`
-                          : `api/login`,
+                          : `/api/login`,
                       })
                     }
                   >

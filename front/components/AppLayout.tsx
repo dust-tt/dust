@@ -218,7 +218,12 @@ export default function AppLayout({
                           {({ active }) => (
                             <a
                               href="#"
-                              onClick={() => signOut()}
+                              onClick={() =>
+                                signOut({
+                                  callbackUrl: "/",
+                                  redirect: true,
+                                })
+                              }
                               className={classNames(
                                 active ? "bg-gray-50" : "",
                                 "block px-4 py-2 text-sm text-gray-700"
