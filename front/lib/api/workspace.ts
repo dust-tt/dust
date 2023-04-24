@@ -42,9 +42,6 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
       }
     }
 
-    let w = { ...owner };
-    w.role = role;
-
     return {
       id: u.id,
       provider: u.provider,
@@ -53,7 +50,7 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
       email: u.email,
       name: u.name,
       image: null,
-      workspaces: [w],
+      workspaces: [{ ...owner, role }],
     };
   });
 }
