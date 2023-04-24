@@ -212,7 +212,7 @@ async function handler(
       if (
         owner.plan.limits.dataSources.documents.sizeMb != -1 &&
         req.body.text.length >
-          1024 * owner.plan.limits.dataSources.documents.sizeMb
+          1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
           status_code: 401,

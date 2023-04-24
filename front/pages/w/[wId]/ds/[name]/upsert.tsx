@@ -113,7 +113,7 @@ export default function DataSourceUpsert({
     // Enforce plan limits: DataSource documents size.
     if (
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      file.size > 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      file.size > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
     ) {
       window.alert(
         "DataSource document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase this limit."
