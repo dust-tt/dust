@@ -3,6 +3,7 @@ import express from "express";
 import minimist from "minimist";
 
 import { createConnectorAPIHandler } from "./api/createConnector";
+import logger from "./logger/logger";
 import { authMiddleware } from "./middleware/auth";
 
 const argv = minimist(process.argv.slice(2));
@@ -19,5 +20,5 @@ app.use(bodyParser.json());
 app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
 
 app.listen(port, () => {
-  console.log(`Connectors API listening on port ${port}`);
+  logger.info(`Connectors API listening on port ${port}`);
 });

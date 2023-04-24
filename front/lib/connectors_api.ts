@@ -18,7 +18,6 @@ export const ConnectorsAPI = {
     dataSourceName: string,
     nangoConnectionId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
-    console.log("sending headers: ", getDefaultHeaders());
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
       headers: getDefaultHeaders(),

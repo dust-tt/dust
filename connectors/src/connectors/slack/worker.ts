@@ -1,5 +1,6 @@
 import { Worker } from "@temporalio/worker";
 
+import logger from "../../logger/logger.js";
 import * as activities from "./slack.js";
 
 async function run(): Promise<void> {
@@ -13,4 +14,4 @@ async function run(): Promise<void> {
   return;
 }
 
-run().catch((err) => console.log(err));
+run().catch((err) => logger.info(err));

@@ -7,6 +7,7 @@ import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Key, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
@@ -65,7 +66,7 @@ async function handler(
       }
       const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
       if (systemAPIKeyRes.isErr()) {
-        console.error(
+        logger.error(
           `Could not create the system API key: ${systemAPIKeyRes.error}`
         );
         return apiError(req, res, {
@@ -85,7 +86,7 @@ async function handler(
         req.body.nangoConnectionId
       );
       if (connectorsRes.isErr()) {
-        console.error(
+        logger.error(
           `Failed to create the connector: ${connectorsRes.error.error.message}`
         );
         return apiError(req, res, {

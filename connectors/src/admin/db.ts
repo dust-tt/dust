@@ -1,4 +1,5 @@
 import { Connector, SlackConfiguration } from "../lib/models.js";
+import logger from "../logger/logger";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
@@ -8,9 +9,9 @@ async function main(): Promise<void> {
 
 main()
   .then(() => {
-    console.log("Done");
+    logger.info("Done");
   })
   .catch((err) => {
-    console.error(err);
+    logger.error(err);
     process.exit(1);
   });

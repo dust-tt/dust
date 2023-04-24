@@ -24,6 +24,7 @@
     "minimist": "^1.2.8",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
+    "pino": "^8.11.0",
     "sequelize": "^6.28.0"
   },
   "devDependencies": {

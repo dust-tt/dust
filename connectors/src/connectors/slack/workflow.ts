@@ -1,5 +1,6 @@
 import { proxyActivities } from "@temporalio/workflow";
 
+import logger from "../../logger/logger";
 import type * as activities from "./slack.js"; // purely for type safety
 
 const { getChannels } = proxyActivities<typeof activities>({
@@ -13,6 +14,6 @@ export async function printSlackChannelsWorkflow(
   nangoConnectionId: string
 ): Promise<void> {
   const channels = await getChannels(nangoConnectionId);
-  console.log("channels:", channels);
+  logger.error("channels:", channels);
   return;
 }

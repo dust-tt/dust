@@ -2,6 +2,7 @@ import { Result } from "@connectors/lib/result";
 import { Request, Response } from "express";
 
 import { createSlackConnector } from "../connectors/slack/slack";
+import logger from "../logger/logger";
 import { ConnectorsAPIErrorResponse } from "../types/errors";
 
 type ConnectorCreateReqBody = {
@@ -33,7 +34,7 @@ export const createConnectorAPIHandler = async (
       // We would probably want to return the same error inteface than we use in the /front package. TBD.
       res.status(400).send({
         error: {
-          message: `Missing required parameters. Required : APIKey, dataSourceName, workspaceId, nangoConnectionId`,
+          message: `Missing required parameters. Required : workspaceAPIKey, dataSourceName, workspaceId, nangoConnectionId`,
         },
       });
       return;
@@ -64,7 +65,7 @@ export const createConnectorAPIHandler = async (
       connectorId: conncetorRes.value,
     });
   } catch (e) {
-    console.error(e);
+    logger.error(e);
     return res
       .status(500)
       .send({ error: { message: "Could not create the connector" } });
