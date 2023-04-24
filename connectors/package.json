@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "scripts": {
     "format": "prettier --write .",
-    "format:check": "prettier --check ." ,
+    "format:check": "prettier --check .",
     "lint": "eslint .",
-    "trpc": "tsx ./src/index.ts",
+    "start-api": "tsx ./src/index.ts",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
   "dependencies": {
@@ -15,7 +15,9 @@
     "@temporalio/client": "^1.7.2",
     "@temporalio/worker": "^1.7.2",
     "@temporalio/workflow": "^1.7.2",
-    "@trpc/server": "^10.21.1",
+    "@types/express": "^4.17.17",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.28.0",

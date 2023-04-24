@@ -4,10 +4,10 @@
 npm install
 ```
 
-## Start trpc server
+## Start API server
 
 ```
-npm run trpc
+npm run start-api
 ```
 
 ## Start a temporal worker (Slack for example)
