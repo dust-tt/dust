@@ -137,6 +137,9 @@ async function handler(
         req.body.nangoConnectionId
       );
       if (connectorsRes.isErr()) {
+        console.error(
+          `Failed to create the connector: ${connectorsRes.error.error.message}`
+        );
         return apiError(req, res, {
           status_code: 500,
           api_error: {

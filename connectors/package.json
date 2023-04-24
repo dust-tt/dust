@@ -6,7 +6,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "build": "tsc",
-    "start-api": "tsx ./src/api_server.ts",
+    "start-api": "tsx ./src/api_server.ts -p 3002",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
   "dependencies": {
@@ -17,8 +17,10 @@
     "@temporalio/worker": "^1.7.2",
     "@temporalio/workflow": "^1.7.2",
     "@types/express": "^4.17.17",
+    "@types/minimist": "^1.2.2",
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
+    "minimist": "^1.2.8",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.28.0"

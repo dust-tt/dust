@@ -1,12 +1,18 @@
 import { Err, Ok, Result } from "@app/lib/result";
 
 export type ConnectorsAPIErrorResponse = {
-  message: string;
+  error: {
+    message: string;
+  };
 };
 
-const { CONNECTORS_API_URL } = process.env;
+const { CONNECTORS_API_URL, DUST_CONNECTORS_SECRET } = process.env;
 if (!CONNECTORS_API_URL) {
   throw new Error("CONNECTORS_API_URL is not defined");
+}
+
+if (!DUST_CONNECTORS_SECRET) {
+  throw new Error("DUST_CONNECTORS_SECRET is not defined");
 }
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
@@ -19,13 +25,12 @@ export const ConnectorsAPI = {
     dataSourceName: string,
     nangoConnectionId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+    console.log("sending headers: ", getDefaultHeaders());
     const res = await fetch(
       `${CONNECTORS_API_URL}/connectors/create/${provider}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getDefaultHeaders(),
         body: JSON.stringify({
           workspaceId: workspaceId,
           APIKey: APIKey,
@@ -39,12 +44,27 @@ export const ConnectorsAPI = {
   },
 };
 
+function getDefaultHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${DUST_CONNECTORS_SECRET}`,
+  };
+}
 async function _resultFromResponse<T>(
   response: Response
 ): Promise<ConnectorsAPIResponse<T>> {
-  const jsonResponse = await response.json();
-  if (jsonResponse.error) {
-    return new Err(jsonResponse.error);
+  if (!response.ok) {
+    if (response.headers.get("Content-Type") === "application/json") {
+      return new Err(await response.json());
+    } else {
+      return new Err({
+        error: {
+          message: `Unexpected response status: ${response.status} ${response.statusText}`,
+        },
+      });
+    }
   }
+  const jsonResponse = await response.json();
+
   return new Ok(jsonResponse);
 }

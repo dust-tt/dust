@@ -74,7 +74,9 @@ Connector.init(
   },
   {
     sequelize: sequelize_conn,
+
     modelName: "connectors",
+    indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }
 );
 
