@@ -65,7 +65,7 @@ GITHUB_SECRET=d59af0da231fc697d7dd8d3002ed1d9765e11c7f
 DUST_API=http://localhost:3001
 
 GA_TRACKING_ID=Foo
-CONNECTORS_URL=http://localhost:3002
+CONNECTORS_API_URL=http://localhost:3002
 EOF
 ```
 

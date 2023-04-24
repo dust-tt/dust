@@ -5,7 +5,7 @@ import { createSlackConnector } from "./connectors/slack/slack";
 
 const app = express();
 app.use(bodyParser.json());
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3002;
+const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3002;
 
 type ConnectorCreateReqBody = {
   APIKey: string;

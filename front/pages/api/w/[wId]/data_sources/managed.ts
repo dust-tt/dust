@@ -9,7 +9,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { CONNECTORS_URL } = process.env;
+const { CONNECTORS_API_URL } = process.env;
 
 async function handler(
   req: NextApiRequest,
@@ -135,7 +135,7 @@ async function handler(
 
       try {
         const connectorsRes = await fetch(
-          `${CONNECTORS_URL}/connectors/create/slack`,
+          `${CONNECTORS_API_URL}/connectors/create/slack`,
           {
             method: "POST",
             headers: {
