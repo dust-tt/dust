@@ -46,5 +46,5 @@ async function _resultFromResponse<T>(
   if (jsonResponse.error) {
     return new Err(jsonResponse.error);
   }
-  return new Ok(jsonResponse.response);
+  return new Ok(jsonResponse);
 }
