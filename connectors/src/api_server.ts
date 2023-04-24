@@ -61,5 +61,5 @@ app.post(
 );
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`Connectors API listening on port ${port}`);
 });

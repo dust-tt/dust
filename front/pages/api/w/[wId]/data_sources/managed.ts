@@ -1,24 +1,19 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { P } from "pino";
 
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { connectorsClient } from "@app/lib/connectors_client";
 import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Key, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 
-export type GetDataSourcesResponseBody = {
-  dataSources: Array<DataSourceType>;
-};
+const {CONNECTORS_URL} = process.env;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDataSourcesResponseBody>
+  res: NextApiResponse
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -28,11 +23,15 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
   }
 
-  let dataSources = await getDataSources(auth);
 
   switch (req.method) {
     case "POST":
@@ -138,21 +137,34 @@ async function handler(
       }
 
       try {
-        const connectorId = await connectorsClient.createSlackConnector.mutate({
-          workspaceId: owner.id.toString(),
-          APIKey: systemAPIKeyRes.value.secret,
-          dataSourceName: dataSource.name,
-          nangoConnectionId: req.body.nangoConnectionId,
+        const connectorsRes = await fetch(`${CONNECTORS_URL}/connectors/create/slack`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            workspaceId: owner.id.toString(),
+            APIKey: systemAPIKeyRes.value.secret,
+            dataSourceName: dataSource.name,
+            nangoConnectionId: req.body.nangoConnectionId,
+          }),
         });
-        dataSource.connectorId = connectorId;
+        if (!connectorsRes.ok) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to create the connector.",
+            },
+          });
+        }
+        const conncetorsResJson = (await connectorsRes.json()) as {
+          connectorId: string;
+        };
+
+        dataSource.connectorId = conncetorsResJson.connectorId;
         dataSource.connectorProvider = "slack";
         dataSource.save();
-
-        // Trigger a temporal workflow to print the channels in the worker process.
-        // Here for show casing only.
-        connectorsClient.getChannelsViaTemporalShowCaseProcedure.query(
-          connectorId
-        );
 
         res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
         return;
@@ -169,13 +181,6 @@ async function handler(
       }
 
     default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
   }
 }
 

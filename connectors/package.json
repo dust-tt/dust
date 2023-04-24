@@ -5,6 +5,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "build": "tsc",
     "start-api": "tsx ./src/api_server.ts",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
@@ -20,8 +21,7 @@
     "express": "^4.18.2",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.28.0",
-    "zod": "^3.21.4"
+    "sequelize": "^6.28.0"
   },
   "devDependencies": {
     "@types/eslint": "^8.21.3",
