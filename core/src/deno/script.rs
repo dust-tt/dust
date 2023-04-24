@@ -16,7 +16,8 @@ impl Script {
     const DEFAULT_FILENAME: &'static str = "code_block.js";
 
     pub fn from_string(js_code: &str) -> Result<Self> {
-        // console.log() is not available by default -- add the most basic version with single argument (and no warn/info/... variants)
+        // console.log() is not available by default -- add the most basic version with single
+        // argument (and no warn/info/... variants)
         let all_code =
             "const console = { log: function(expr) { Deno.core.print(expr + '\\n', false); } };"
                 .to_string()
@@ -38,14 +39,16 @@ impl Script {
             .ops(vec![(op_return::decl())])
             .build();
 
-        let mut runtime = JsRuntime::new(deno_core::RuntimeOptions {
+        let options = deno_core::RuntimeOptions {
             module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
             extensions: vec![ext],
             ..Default::default()
-        });
+        };
+
+        let mut runtime = JsRuntime::new(options);
 
         // We cannot provide a dynamic filename because execute_script() requires a &'static str
-        runtime.execute_script(Self::DEFAULT_FILENAME, js_code)?;
+        runtime.execute_script(Self::DEFAULT_FILENAME, js_code.into())?;
 
         Ok(Script {
             runtime,
@@ -84,6 +87,8 @@ impl Script {
 			}})()"
         );
 
+        // println!("CALLING SCRIPT:\n{}", js_code);
+
         if let Some(timeout) = self.timeout {
             let handle = self.runtime.v8_isolate().thread_safe_handle();
 
@@ -98,7 +103,7 @@ impl Script {
 
         // TODO use strongly typed JsError here (downcast)
         self.runtime
-            .execute_script(Self::DEFAULT_FILENAME, js_code)?;
+            .execute_script(Self::DEFAULT_FILENAME, js_code.into())?;
         deno_core::futures::executor::block_on(self.runtime.run_event_loop(false))?;
 
         let state_rc = self.runtime.op_state();

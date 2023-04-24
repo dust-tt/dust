@@ -829,13 +829,13 @@ dependencies = [
 
 [[package]]
 name = "deno_core"
-version = "0.179.0"
+version = "0.181.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c9307ca2299cb7b0bdaa345cbdc82a252a8e4e5a4463e28f44c715d55e460fb"
+checksum = "e6d512a601e07e65440e481523326439425cc1c614b7c346abe2ffa2575a3468"
 dependencies = [
  "anyhow",
  "bytes",
- "deno_ops 0.57.0",
+ "deno_ops 0.59.0",
  "futures",
  "indexmap",
  "libc",
@@ -845,7 +845,7 @@ dependencies = [
  "pin-project",
  "serde",
  "serde_json",
- "serde_v8 0.90.0",
+ "serde_v8 0.92.0",
  "smallvec",
  "sourcemap",
  "url",
@@ -869,10 +869,11 @@ dependencies = [
 
 [[package]]
 name = "deno_ops"
-version = "0.57.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04610f07342fbb33a2b7ea7aa16a95ab71adb13a0ce858a8d1a1414660a83e3e"
+checksum = "8724e792ab5e493902fb31d1ae8b5e93a1b471d52da5d3bfa18f51a1cbe9809a"
 dependencies = [
+ "lazy-regex",
  "once_cell",
  "pmutil",
  "proc-macro-crate",
@@ -969,7 +970,7 @@ dependencies = [
  "clap",
  "cloud-storage",
  "colored",
- "deno_core 0.179.0",
+ "deno_core 0.181.0",
  "dns-lookup",
  "eventsource-client",
  "fancy-regex",
@@ -1697,6 +1698,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "lazy-regex"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff63c423c68ea6814b7da9e88ce585f793c87ddd9e78f646970891769c8235d4"
+dependencies = [
+ "lazy-regex-proc_macros",
+ "once_cell",
+ "regex",
+]
+
+[[package]]
+name = "lazy-regex-proc_macros"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8edfc11b8f56ce85e207e62ea21557cfa09bb24a8f6b04ae181b086ff8611c22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2834,9 +2858,9 @@ dependencies = [
 
 [[package]]
 name = "serde_v8"
-version = "0.90.0"
+version = "0.92.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "916ca7852a4c5f0ba59ce4a46301bf7c7ad573c2c89a0fe67e90fe30dcbd6f7d"
+checksum = "57d2fb8b104d897bb6f58e65f6512b7d7c95b70b589649bc9e19333defbb1a4e"
 dependencies = [
  "bytes",
  "derive_more",
@@ -2844,6 +2868,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "smallvec",
+ "thiserror",
  "v8",
 ]
 
@@ -3060,22 +3085,22 @@ checksum = "b7b3e525a49ec206798b40326a44121291b530c963cfb01018f63e135bac543d"
 
 [[package]]
 name = "thiserror"
-version = "1.0.40"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978c9a314bd8dc99be594bc3c175faaa9794be04a5a5e153caba6915336cebac"
+checksum = "6a9cd18aa97d5c45c6603caea1da6628790b37f7a34b6ca89522331c5180fed0"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.40"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
+checksum = "1fb327af4685e4d03fa8cbcf1716380da910eeb2bb8be417e7f9fd3fb164f36f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.8",
+ "syn 1.0.109",
 ]
 
 [[package]]
