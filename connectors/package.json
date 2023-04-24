@@ -32,8 +32,5 @@
     "prettier": "^2.8.8",
     "tsx": "^3.12.6",
     "typescript": "^5.0.2"
-  },
-  "ct3aMetadata": {
-    "initVersion": "7.12.0"
   }
 }
