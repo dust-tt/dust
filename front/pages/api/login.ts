@@ -140,7 +140,8 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Could not find user or workspace for user.",
+            message:
+              "Could not find user or workspace for user, contact us at team@dust.tt for assistance.",
           },
         });
       }

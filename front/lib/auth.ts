@@ -4,6 +4,7 @@ import {
   NextApiResponse,
 } from "next";
 import { getServerSession } from "next-auth/next";
+import { Op } from "sequelize";
 
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { Err, Ok, Result } from "@app/lib/result";
@@ -205,6 +206,7 @@ export async function getUserFromSession(
   const memberships = await Membership.findAll({
     where: {
       userId: user.id,
+      role: { [Op.in]: ["admin", "builder", "user"] },
     },
   });
   const workspaces = await Workspace.findAll({

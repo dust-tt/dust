@@ -319,7 +319,10 @@ export default function NewApp({
                                       <div className="relative">
                                         <Listbox.Button className="relative w-full cursor-default cursor-pointer rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-1">
                                           <span className="block truncate">
-                                            {member.workspaces[0].role}
+                                            {member.workspaces[0].role ===
+                                            "none"
+                                              ? "revoked"
+                                              : member.workspaces[0].role}
                                           </span>
                                           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                                             <ChevronUpDownIcon
