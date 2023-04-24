@@ -43,8 +43,8 @@ async function handler(
         });
       }
 
-      const dataSourceName = "Slack (managed)";
-      const dataSourceDescription = "Slack (managed)";
+      const dataSourceName = "managed-slack";
+      const dataSourceDescription = "managed-slack";
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 256;
@@ -105,6 +105,7 @@ async function handler(
             type: "internal_server_error",
             // I don't know if we want to forward the core error to the client. LMK during code review please.
             message: `Could not create the project. Reason: ${dustProject.error}`,
+            data_source_error: dustProject.error,
           },
         });
       }
@@ -135,8 +136,9 @@ async function handler(
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "data_source_error",
-            message: dustDataSource.error.message,
+            type: "internal_server_error",
+            message: "Failed to create the data source.",
+            data_source_error: dustDataSource.error,
           },
         });
       }
