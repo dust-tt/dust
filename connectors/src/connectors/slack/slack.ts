@@ -1,13 +1,14 @@
+import { WebClient } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse.js";
+
 import {
   Connector,
   sequelize_conn,
   SlackConfiguration,
 } from "../../lib/models.js";
+import { nango_client } from "../../lib/nango_client.js";
 import { Err, Ok, type Result } from "../../lib/result.js";
 import type { DataSourceConfig } from "../../types/data_source_config.js";
-import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse.js";
-import { nango_client } from "../../lib/nango_client.js";
 export type NangoConnectionId = string;
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;

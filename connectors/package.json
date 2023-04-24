@@ -1,15 +1,11 @@
 {
   "name": "connectors",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "trcp": "tsx ./src/index.ts",
+    "format:check": "prettier --check ." ,
+    "lint": "eslint .",
+    "trpc": "tsx ./src/index.ts",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
   "dependencies": {
@@ -20,7 +16,6 @@
     "@temporalio/worker": "^1.7.2",
     "@temporalio/workflow": "^1.7.2",
     "@trpc/server": "^10.21.1",
-    "next": "^13.2.4",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.28.0",
@@ -32,10 +27,9 @@
     "@typescript-eslint/eslint-plugin": "^5.56.0",
     "@typescript-eslint/parser": "^5.56.0",
     "eslint": "^8.36.0",
-    "eslint-config-next": "^13.2.4",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
     "prettier": "^2.8.8",
-    "prettier-plugin-tailwindcss": "^0.2.5",
-    "ts-node": "^10.9.1",
     "tsx": "^3.12.6",
     "typescript": "^5.0.2"
   },

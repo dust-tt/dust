@@ -1,4 +1,5 @@
 import { Worker } from "@temporalio/worker";
+
 import * as activities from "./slack.js";
 
 async function run(): Promise<void> {

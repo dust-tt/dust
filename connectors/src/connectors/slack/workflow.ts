@@ -1,4 +1,5 @@
 import { proxyActivities } from "@temporalio/workflow";
+
 import type * as activities from "./slack.js"; // purely for type safety
 
 const { getChannels } = proxyActivities<typeof activities>({

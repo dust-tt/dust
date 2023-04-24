@@ -7,6 +7,7 @@ import {
   Model,
   Sequelize,
 } from "sequelize";
+
 import { type ConnectorProvider } from "../types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;

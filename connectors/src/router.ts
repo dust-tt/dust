@@ -1,8 +1,9 @@
-import { router, publicProcedure } from "./trpc.js";
 import { z } from "zod";
-import { createSlackConnector } from "./connectors/slack/slack.js";
+
 import { slackGetChannelsViaTemporal } from "./connectors/slack/client.js";
+import { createSlackConnector } from "./connectors/slack/slack.js";
 import { Connector } from "./lib/models.js";
+import { publicProcedure, router } from "./trpc.js";
 
 const appRouter = router({
   createSlackConnector: publicProcedure
@@ -37,7 +38,6 @@ const appRouter = router({
     .query(async (opts) => {
       const { input } = opts;
       const connector = await Connector.findByPk(input);
-      console.log("found connector:", connector);
       if (!connector) {
         throw new Error(`Could not find the connector with id: ${input}`);
       }
