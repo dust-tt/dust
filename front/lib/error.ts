@@ -9,10 +9,10 @@ export type InternalErrorWithStatusCode = {
 };
 
 export type APIErrorType =
-  | "internal_server_error"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_api_key_error"
+  | "internal_server_error"
   | "data_source_not_found"
   | "invalid_request_error"
   | "data_source_error"
@@ -28,7 +28,8 @@ export type APIErrorType =
   | "workspace_auth_error"
   | "workspace_user_not_found"
   | "method_not_supported_error"
-  | "personal_workspace_not_found";
+  | "personal_workspace_not_found"
+  | "workspace_not_found";
 
 export type APIError = {
   type: APIErrorType;

@@ -421,7 +421,8 @@ export class Key extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare secret: string;
-  declare status: string;
+  declare status: "active" | "disabled";
+  declare isSystem: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -450,6 +451,11 @@ Key.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isSystem: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
   },
   {
     modelName: "keys",
@@ -475,6 +481,8 @@ export class DataSource extends Model<
   declare visibility: "public" | "private";
   declare config?: string;
   declare dustAPIProjectId: string;
+  declare connectorId?: string;
+  declare connectorProvider?: "slack" | "notion" | "google";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -513,6 +521,12 @@ DataSource.init(
     dustAPIProjectId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    connectorId: {
+      type: DataTypes.STRING,
+    },
+    connectorProvider: {
+      type: DataTypes.STRING,
     },
   },
   {

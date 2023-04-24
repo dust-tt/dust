@@ -1,22 +1,26 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
-  "version": "4.4.2",
   "compilerOptions": {
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "rootDir": "./src",
-    "outDir": "./compiled",
-    "target": "es5",
-    "module": "commonjs",
+    "target": "es2017",
+    "lib": ["es2017"],
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "Node16",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"]
+      "@connectors/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", ".eslintrc.js"],
-  "ts-node": {
-    // tsconfig-paths is needed by ts-node to resolve @app/* paths. ESLint resolves them separately.
-    "require": ["tsconfig-paths/register"]
-  }
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }
