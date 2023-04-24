@@ -232,7 +232,7 @@ export default function Home({
                   <div className="py-4">
                     <div className="flex items-center justify-between">
                       <Link
-                        href={`/${app.user}/a/${app.sId}`}
+                        href={`/w/${app.wId}/a/${app.sId}`}
                         className="block"
                       >
                         <p className="truncate text-base font-bold text-violet-600">
