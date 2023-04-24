@@ -65,7 +65,7 @@ export const createConnectorAPIHandler = async (
       connectorId: conncetorRes.value,
     });
   } catch (e) {
-    logger.error(e);
+    logger.error({ error: e }, "Failed to create the connector");
     return res
       .status(500)
       .send({ error: { message: "Could not create the connector" } });

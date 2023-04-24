@@ -14,6 +14,6 @@ export async function printSlackChannelsWorkflow(
   nangoConnectionId: string
 ): Promise<void> {
   const channels = await getChannels(nangoConnectionId);
-  logger.error("channels:", channels);
+  logger.info("channels:", channels);
   return;
 }

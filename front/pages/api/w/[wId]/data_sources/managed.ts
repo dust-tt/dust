@@ -67,7 +67,10 @@ async function handler(
       const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
       if (systemAPIKeyRes.isErr()) {
         logger.error(
-          `Could not create the system API key: ${systemAPIKeyRes.error}`
+          {
+            error: systemAPIKeyRes.error,
+          },
+          "Could not create the system API key"
         );
         return apiError(req, res, {
           status_code: 500,
@@ -87,7 +90,10 @@ async function handler(
       );
       if (connectorsRes.isErr()) {
         logger.error(
-          `Failed to create the connector: ${connectorsRes.error.error.message}`
+          {
+            error: connectorsRes.error,
+          },
+          "Failed to create the connector"
         );
         return apiError(req, res, {
           status_code: 500,

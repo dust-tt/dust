@@ -12,6 +12,11 @@ main()
     logger.info("Done");
   })
   .catch((err) => {
-    logger.error(err);
+    logger.error(
+      {
+        error: err,
+      },
+      "Failed to sync database schema"
+    );
     process.exit(1);
   });
