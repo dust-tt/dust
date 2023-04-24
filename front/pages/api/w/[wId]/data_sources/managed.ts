@@ -33,7 +33,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder()) {
+      if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
