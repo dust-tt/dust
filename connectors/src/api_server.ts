@@ -7,6 +7,10 @@ const app = express();
 app.use(bodyParser.json());
 const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3002;
 
+export type ConnectorsAPIErrorResponse = {
+  message: string;
+};
+
 type ConnectorCreateReqBody = {
   APIKey: string;
   dataSourceName: string;
@@ -14,7 +18,9 @@ type ConnectorCreateReqBody = {
   nangoConnectionId: string;
 };
 
-type ConnectorCreateResBody = { connectorId: string } | string;
+type ConnectorCreateResBody =
+  | { connectorId: string }
+  | ConnectorsAPIErrorResponse;
 
 app.post(
   "/connectors/create/:connector_provider",
@@ -34,14 +40,12 @@ app.post(
         !req.body.nangoConnectionId
       ) {
         // We would probably want to return the same error inteface than we use in the /front package. TBD.
-        res
-          .status(400)
-          .send(
-            `Missing required parameters. Required : APIKey, dataSourceName, workspaceId, nangoConnectionId`
-          );
+        res.status(400).send({
+          message: `Missing required parameters. Required : APIKey, dataSourceName, workspaceId, nangoConnectionId`,
+        });
         return;
       }
-      const connectorRes = await createSlackConnector(
+      const conncetorRes = await createSlackConnector(
         {
           APIKey: req.body.APIKey,
           dataSourceName: req.body.dataSourceName,
@@ -49,17 +53,19 @@ app.post(
         },
         req.body.nangoConnectionId
       );
-      if (connectorRes.isErr()) {
-        res.status(500).send(connectorRes.error.message);
+      if (conncetorRes.isErr()) {
+        res.status(500).send({ message: conncetorRes.error.message });
         return;
       }
 
       return res.status(200).send({
-        connectorId: connectorRes.value,
+        connectorId: conncetorRes.value,
       });
     } catch (e) {
       console.error(e);
-      return res.status(500).send("Could not create the connector");
+      return res
+        .status(500)
+        .send({ message: "Could not create the connector" });
     }
   }
 );

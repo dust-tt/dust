@@ -11,6 +11,9 @@ import {
 import { type ConnectorProvider } from "../types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
+if (!CONNECTORS_DATABASE_URI) {
+  throw new Error("CONNECTORS_DATABASE_URI is not defined");
+}
 
 export const sequelize_conn = new Sequelize(
   CONNECTORS_DATABASE_URI as string,

@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth/next";
 
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { Err, Ok, Result } from "@app/lib/result";
+import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlanType, UserType, WorkspaceType } from "@app/types/user";
@@ -351,4 +352,29 @@ export function planForWorkspace(w: Workspace): PlanType {
   return {
     limits,
   };
+}
+
+export async function getOrCreateSystemApiKey(
+  workspaceId: number
+): Promise<Result<Key, Error>> {
+  let key = await Key.findOne({
+    where: {
+      workspaceId,
+      isSystem: true,
+    },
+  });
+  if (!key) {
+    let secret = `sk-${new_id().slice(0, 32)}`;
+    key = await Key.create({
+      workspaceId,
+      isSystem: true,
+      secret: secret,
+      status: "active",
+    });
+  }
+  if (!key) {
+    return new Err(new Error("Failed to create system key"));
+  }
+
+  return new Ok(key);
 }

@@ -1,15 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { DataSource, Key, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import { Err, Ok, Result } from "@app/lib/result";
-import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { CONNECTORS_API_URL } = process.env;
 
 async function handler(
   req: NextApiRequest,
@@ -119,7 +116,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
       });
-      const systemAPIKeyRes = await getSystemApiKey(owner.id);
+      const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
       if (systemAPIKeyRes.isErr()) {
         console.error(
           `Could not create the system API key: ${systemAPIKeyRes.error}`
@@ -132,81 +129,31 @@ async function handler(
           },
         });
       }
-
-      try {
-        const connectorsRes = await fetch(
-          `${CONNECTORS_API_URL}/connectors/create/slack`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              workspaceId: owner.id.toString(),
-              APIKey: systemAPIKeyRes.value.secret,
-              dataSourceName: dataSource.name,
-              nangoConnectionId: req.body.nangoConnectionId,
-            }),
-          }
-        );
-        if (!connectorsRes.ok) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to create the connector.",
-            },
-          });
-        }
-        const connectorsResJson = (await connectorsRes.json()) as {
-          connectorId: string;
-        };
-
-        dataSource.connectorId = connectorsResJson.connectorId;
-        dataSource.connectorProvider = "slack";
-        dataSource.save();
-
-        res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
-        return;
-      } catch (err) {
+      const connectorsRes = await ConnectorsAPI.createConnector(
+        "slack",
+        owner.id.toString(),
+        systemAPIKeyRes.value.secret,
+        dataSource.name,
+        req.body.nangoConnectionId
+      );
+      if (connectorsRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            // Do we want to forward the message from the connector service here?
             message: "Failed to create the connector.",
           },
         });
       }
+      dataSource.connectorId = connectorsRes.value.connectorId;
+      dataSource.connectorProvider = "slack";
+      dataSource.save();
+
+      res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
+      return;
 
     default:
   }
 }
 
-// Not sure where this should go.
-// Lets find out at code review time.
-async function getSystemApiKey(
-  workspaceId: number
-): Promise<Result<Key, Error>> {
-  let key = await Key.findOne({
-    where: {
-      workspaceId,
-      isSystem: true,
-    },
-  });
-  if (!key) {
-    let secret = `sk-${new_id().slice(0, 32)}`;
-    key = await Key.create({
-      workspaceId,
-      isSystem: true,
-      secret: secret,
-      status: "active",
-    });
-  }
-  if (!key) {
-    return new Err(new Error("Failed to create system key"));
-  }
-
-  return new Ok(key);
-}
 export default withLogging(handler);
