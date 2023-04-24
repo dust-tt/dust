@@ -12,14 +12,18 @@ type ConnectorCreateReqBody = {
   dataSourceName: string;
   workspaceId: string;
   nangoConnectionId: string;
-}
+};
 
-type ConnectorCreateResBody = { connectorId: string } | string ;
+type ConnectorCreateResBody = { connectorId: string } | string;
 
 app.post(
   "/connectors/create/:connector_provider",
   async (
-    req: Request<{ connector_provider: string }, ConnectorCreateResBody , ConnectorCreateReqBody>,
+    req: Request<
+      { connector_provider: string },
+      ConnectorCreateResBody,
+      ConnectorCreateReqBody
+    >,
     res: Response<ConnectorCreateResBody>
   ) => {
     try {

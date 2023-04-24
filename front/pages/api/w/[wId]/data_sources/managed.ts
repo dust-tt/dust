@@ -9,7 +9,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const {CONNECTORS_URL} = process.env;
+const { CONNECTORS_URL } = process.env;
 
 async function handler(
   req: NextApiRequest,
@@ -31,7 +31,6 @@ async function handler(
       },
     });
   }
-
 
   switch (req.method) {
     case "POST":
@@ -137,18 +136,21 @@ async function handler(
       }
 
       try {
-        const connectorsRes = await fetch(`${CONNECTORS_URL}/connectors/create/slack`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            workspaceId: owner.id.toString(),
-            APIKey: systemAPIKeyRes.value.secret,
-            dataSourceName: dataSource.name,
-            nangoConnectionId: req.body.nangoConnectionId,
-          }),
-        });
+        const connectorsRes = await fetch(
+          `${CONNECTORS_URL}/connectors/create/slack`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              workspaceId: owner.id.toString(),
+              APIKey: systemAPIKeyRes.value.secret,
+              dataSourceName: dataSource.name,
+              nangoConnectionId: req.body.nangoConnectionId,
+            }),
+          }
+        );
         if (!connectorsRes.ok) {
           return apiError(req, res, {
             status_code: 500,
