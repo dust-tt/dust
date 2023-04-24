@@ -60,7 +60,7 @@ export default function NewApp({
       : null
   );
 
-  let { members } = useMembers(owner);
+  let { members, isMembersLoading } = useMembers(owner);
 
   const formValidation = () => {
     let valid = true;
@@ -261,6 +261,9 @@ export default function NewApp({
                     <div className="sm:col-span-5">
                       <div className="block text-sm font-medium text-gray-800">
                         {members.length} Members
+                        {!isMembersLoading ? (
+                          <span className="ml-2 text-gray-400 text-xs">loading...</span>
+                        ) : null}
                       </div>
                       <ul className="mt-6 space-y-4">
                         {members.map((member) => (
@@ -281,7 +284,7 @@ export default function NewApp({
                                 {member.provider === "google" ? (
                                   <div className="flex-cols flex text-sm text-gray-500">
                                     <div className="mt-0.5 mr-1 flex h-4 w-4 flex-initial">
-                                      <img src="https://google.com/favicon.ico"></img>
+                                      <img src="/static/google_white_32x32.png"></img>
                                     </div>
                                     <div className="flex flex-1">
                                       {member.email}
@@ -290,10 +293,10 @@ export default function NewApp({
                                 ) : null}
                                 {member.provider === "github" ? (
                                   <div className="flex-cols flex text-sm text-gray-500">
-                                    <div className="mt-1 mr-1 ml-0.5 flex h-3 w-3 flex-initial">
-                                      <img src="https://github.com/favicon.ico"></img>
+                                    <div className="mt-0.5 mr-1 flex h-4 w-4 flex-initial">
+                                      <img src="/static/github_black_32x32.png"></img>
                                     </div>
-                                    <div className="ml-0.5 flex flex-1">
+                                    <div className="flex flex-1">
                                       {member.username}
                                     </div>
                                   </div>

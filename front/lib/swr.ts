@@ -163,7 +163,7 @@ export function useMembers(owner: WorkspaceType) {
 
   return {
     members: data ? data.members : [],
-    isDataSourcesLoading: !error && !data,
-    isDataSourcesError: error,
+    isMembersLoading: !error && !data,
+    isMembersError: error,
   };
 }
