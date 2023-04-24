@@ -5,7 +5,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "start-api": "tsx ./src/index.ts",
+    "start-api": "tsx ./src/api_server.ts",
     "slack-worker": "tsx ./src/connectors/slack/worker.ts"
   },
   "dependencies": {
