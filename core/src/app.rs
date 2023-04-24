@@ -99,10 +99,11 @@ impl App {
         // - `map`s are matched by a `reduce` and that they are not nested.
         // - `while`s are matched by a `end` and they are not nested.
         // - `map`/`reduce` and `while`/`end` are not nested.
+        // - blocks don't share the same name, except for `map/reduce` and `while/end` pairs.
         let mut current_map: Option<String> = None;
         let mut current_while: Option<String> = None;
         let mut input_found = false;
-        let mut block_type_names: HashSet<(BlockType, String)> = HashSet::new();
+        let mut block_types_by_name: HashMap<String, HashSet<BlockType>> = HashMap::new();
 
         for (name, block) in &blocks {
             if block.block_type() == BlockType::Input {
@@ -211,16 +212,27 @@ impl App {
                 }
             }
 
-            let block_type_name = (block.block_type(), name.clone());
-            match block_type_names.contains(&block_type_name) {
-                true => Err(anyhow!(
-                    "Repeated block `{} {}`",
-                    block_type_name.0.to_string(),
-                    block_type_name.1
-                ))?,
-                false => {
-                    block_type_names.insert(block_type_name);
+            // check that blocks don't share the same name, except for `map/reduce` and `while/end`
+            if let Some(block_types) = block_types_by_name.get_mut(name) {
+                // there is already at least one block with this name
+                if block_types.len() > 1 // More than 2 blocks with the same name is never valid.
+                // 2 blocks with the same name is OK if they are `map`/`reduce` or `while`/`end`
+                    || !((block.block_type() == BlockType::End
+                        && block_types.contains(&BlockType::While))
+                        || (block.block_type() == BlockType::Reduce
+                            && block_types.contains(&BlockType::Map)))
+                {
+                    Err(anyhow!(
+                        "Found multiple blocks with the same name `{}`.",
+                        name
+                    ))?
+                } else {
+                    block_types.insert(block.block_type());
                 }
+            } else {
+                // first block with this name
+                block_types_by_name
+                    .insert(name.clone(), vec![block.block_type()].into_iter().collect());
             }
         }
 
