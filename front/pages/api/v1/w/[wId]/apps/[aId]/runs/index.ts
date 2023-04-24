@@ -40,16 +40,6 @@ const poll = async ({
   let attempts = 0;
 
   const executePoll = async (resolve: any, reject: any) => {
-    logger.info(
-      {
-        attempts,
-        maxAttempts,
-        interval,
-        increment,
-        maxInterval,
-      },
-      "Executing poll"
-    );
     let result = null;
     try {
       result = await fn();
