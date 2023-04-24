@@ -115,7 +115,7 @@ export default function DataSourcePicker({
             {(dataSources || []).length > 0 ? (
               <Menu.Items
                 className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
                   name && name.length > 0 ? "-left-4" : "left-1"
                 )}
               >

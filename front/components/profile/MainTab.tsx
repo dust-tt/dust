@@ -3,6 +3,7 @@ import {
   KeyIcon,
   LinkIcon,
   MagnifyingGlassCircleIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon, CodeBracketIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
@@ -64,6 +65,18 @@ export default function MainTab({
         />
       ),
     });
+    if (owner.type === "team") {
+      tabs.push({
+        name: "Workspace",
+        href: `/w/${owner.sId}/workspace`,
+        icon: (
+          <UsersIcon
+            className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+            aria-hidden="true"
+          />
+        ),
+      });
+    }
   }
 
   let currTab = tabs.find((tab) => tab.name == currentTab);

@@ -143,7 +143,7 @@ export default function ModelPicker({
           {readOnly ? null : (
             <Menu.Items
               className={classNames(
-                "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
+                "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
                 model.provider_id && model.provider_id.length > 0
                   ? "-left-4"
                   : "left-1"

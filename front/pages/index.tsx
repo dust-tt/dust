@@ -1,8 +1,8 @@
-import { ComputerDesktopIcon } from "@heroicons/react/20/solid";
 import { ArrowRightCircleIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 
@@ -125,6 +125,8 @@ function Features() {
 export default function Home({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   return (
     <>
       <Head>
@@ -145,31 +147,63 @@ export default function Home({
             </div>
           </h1>
 
-          <div className="mt-16 flex flex-col sm:flex-row">
-            <div className="flex flex-1"></div>
-            <div className="flex w-full flex-initial sm:mr-4 sm:w-auto">
-              <Link href="https://docs.dust.tt" className="mx-auto">
-                <div className="mr-2">
-                  <Button>
-                    <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                    View Documentation
-                  </Button>
+          <div className="mt-8 flex flex-col">
+            {!router.query.signIn || router.query.signIn === "github" ? (
+              <div className="flex w-full w-auto flex-initial">
+                <div className="mx-auto mt-2">
+                  <ActionButton
+                    onClick={() =>
+                      signIn("github", {
+                        callbackUrl: router.query.wId
+                          ? `/api/login?wId=${router.query.wId}`
+                          : `/api/login`,
+                      })
+                    }
+                  >
+                    <img
+                      src="/static/github_white_32x32.png"
+                      className="ml-1 h-4 w-4"
+                    />
+                    <span className="ml-2 mr-1">Sign in with GitHub</span>
+                  </ActionButton>
                 </div>
-              </Link>
-            </div>
-            <div className="flex w-full flex-initial sm:w-auto">
-              <div className="mx-auto mt-2 sm:mt-0">
-                <ActionButton
-                  onClick={() =>
-                    signIn("github", { callbackUrl: "/api/login" })
-                  }
-                >
-                  <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
-                  Sign in with Github
-                </ActionButton>
+              </div>
+            ) : null}
+
+            {!router.query.signIn || router.query.signIn === "google" ? (
+              <div className="flex w-full w-auto flex-initial">
+                <div className="mx-auto mt-2">
+                  <ActionButton
+                    onClick={() =>
+                      signIn("google", {
+                        callbackUrl: router.query.wId
+                          ? `/api/login?wId=${router.query.wId}`
+                          : `/api/login`,
+                      })
+                    }
+                  >
+                    <img
+                      src="/static/google_white_32x32.png"
+                      className="ml-1 h-4 w-4"
+                    />
+                    <span className="ml-2 mr-1">Sign in with Google</span>
+                  </ActionButton>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex w-full w-auto flex-initial">
+              <div className="mx-auto mt-3">
+                <Link href="https://docs.dust.tt" className="mx-auto">
+                  <div className="">
+                    <Button>
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      View Documentation
+                    </Button>
+                  </div>
+                </Link>
               </div>
             </div>
-            <div className="flex flex-1"></div>
           </div>
         </div>
 
@@ -198,7 +232,7 @@ export default function Home({
                   <div className="py-4">
                     <div className="flex items-center justify-between">
                       <Link
-                        href={`/${app.user}/a/${app.sId}`}
+                        href={`/w/${app.wId}/a/${app.sId}`}
                         className="block"
                       >
                         <p className="truncate text-base font-bold text-violet-600">

@@ -4,6 +4,7 @@ import {
   NextApiResponse,
 } from "next";
 import { getServerSession } from "next-auth/next";
+import { Op } from "sequelize";
 
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { Err, Ok, Result } from "@app/lib/result";
@@ -157,6 +158,7 @@ export class Authenticator {
           uId: this._workspace.uId,
           sId: this._workspace.sId,
           name: this._workspace.name,
+          allowedDomain: this._workspace.allowedDomain || null,
           type: this._workspace.type,
           role: this._role,
           plan: planForWorkspace(this._workspace),
@@ -204,6 +206,7 @@ export async function getUserFromSession(
   const memberships = await Membership.findAll({
     where: {
       userId: user.id,
+      role: { [Op.in]: ["admin", "builder", "user"] },
     },
   });
   const workspaces = await Workspace.findAll({
@@ -239,6 +242,7 @@ export async function getUserFromSession(
         uId: w.uId,
         sId: w.sId,
         name: w.name,
+        allowedDomain: w.allowedDomain || null,
         type: w.type,
         role,
         plan: planForWorkspace(w),

@@ -7,6 +7,7 @@ import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
+import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
@@ -153,5 +154,16 @@ export function useDataSources(owner: WorkspaceType) {
     dataSources: data ? data.dataSources : [],
     isDataSourcesLoading: !error && !data,
     isDataSourcesError: error,
+  };
+}
+
+export function useMembers(owner: WorkspaceType) {
+  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
+  const { data, error } = useSWR(`/api/w/${owner.sId}/members`, membersFetcher);
+
+  return {
+    members: data ? data.members : [],
+    isMembersLoading: !error && !data,
+    isMembersError: error,
   };
 }

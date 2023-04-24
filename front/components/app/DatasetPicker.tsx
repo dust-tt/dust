@@ -92,7 +92,7 @@ export default function DatasetPicker({
         {readOnly ? null : (
           <Menu.Items
             className={classNames(
-              "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
+              "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
               dataset ? "-left-8" : "left-1"
             )}
           >

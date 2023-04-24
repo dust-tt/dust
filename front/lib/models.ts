@@ -84,6 +84,7 @@ export class Workspace extends Model<
   declare sId: string;
   declare name: string;
   declare description?: string;
+  declare allowedDomain?: string;
   declare type: "personal" | "team";
   declare plan?: string;
 }
@@ -117,6 +118,9 @@ Workspace.init(
       allowNull: false,
     },
     description: {
+      type: DataTypes.STRING,
+    },
+    allowedDomain: {
       type: DataTypes.STRING,
     },
     type: {
@@ -172,7 +176,7 @@ Membership.init(
   {
     modelName: "membership",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["userId"] }],
+    indexes: [{ fields: ["userId", "role"] }],
   }
 );
 User.hasMany(Membership);
