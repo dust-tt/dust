@@ -48,8 +48,8 @@ async function handler(
       }
 
       const dataSourceName = "Slack (managed)";
-      const dataSoruceDescription = "Slack (managed)";
-      const dataSourceProdiverId = "openai";
+      const dataSourceDescription = "Slack (managed)";
+      const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 512;
 
@@ -150,7 +150,7 @@ async function handler(
 
         // Trigger a temporal workflow to print the channels in the worker process.
         // Here for show casing only.
-        connectorsClient.getCannelsViaTemporalShowCaseProcedure.query(
+        connectorsClient.getChannelsViaTemporalShowCaseProcedure.query(
           connectorId
         );
 

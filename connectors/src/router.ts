@@ -33,7 +33,7 @@ const appRouter = router({
 
       return connectorRes.value;
     }),
-  getCannelsViaTemporalShowCaseProcedure: publicProcedure
+  getChannelsViaTemporalShowCaseProcedure: publicProcedure
     .input(z.string())
     .query(async (opts) => {
       const { input } = opts;
