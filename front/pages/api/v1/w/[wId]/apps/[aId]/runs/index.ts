@@ -68,7 +68,11 @@ const poll = async ({
     if (validate(result)) {
       return resolve(result);
     } else if (maxAttempts && attempts === maxAttempts) {
-      return reject(new Error("Exceeded max attempts"));
+      return reject(
+        new Error(
+          "The run took too long to complete, retry with `blocking=false` and direct polling of the runId"
+        )
+      );
     } else {
       setTimeout(executePoll, interval, resolve, reject);
     }
@@ -263,29 +267,39 @@ async function handler(
       // If `blocking` is set, poll for run completion.
       if (req.body.blocking) {
         let runId = run.run_id;
-        await poll({
-          fn: async () => {
-            const run = await DustAPI.getRunStatus(
-              app!.dustAPIProjectId,
-              runId
-            );
-            if (run.isErr()) {
-              return { status: "error" };
-            }
-            const r = run.value.run;
-            return { status: r.status.run };
-          },
-          validate: (r) => {
-            if (r && r.status == "running") {
-              return false;
-            }
-            return true;
-          },
-          interval: 128,
-          increment: 32,
-          maxInterval: 1024,
-          maxAttempts: 64,
-        });
+        try {
+          await poll({
+            fn: async () => {
+              const run = await DustAPI.getRunStatus(
+                app!.dustAPIProjectId,
+                runId
+              );
+              if (run.isErr()) {
+                return { status: "error" };
+              }
+              const r = run.value.run;
+              return { status: r.status.run };
+            },
+            validate: (r) => {
+              if (r && r.status == "running") {
+                return false;
+              }
+              return true;
+            },
+            interval: 128,
+            increment: 32,
+            maxInterval: 1024,
+            maxAttempts: 64,
+          });
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "run_error",
+              message: `There was an error polling the run status: runId=${runId} error=${e}`,
+            },
+          });
+        }
 
         // Finally refresh the run object.
         const runRes = await DustAPI.getRun(app!.dustAPIProjectId, runId);
