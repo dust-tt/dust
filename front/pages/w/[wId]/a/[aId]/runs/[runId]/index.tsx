@@ -13,6 +13,7 @@ import { ActionButton } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -123,6 +124,13 @@ export default function AppRun({
 
     setIsLoading(false);
     setSavedRunId(run.run_id);
+    logger.info(
+      {
+        app: app.sId,
+        run: run.run_id,
+      },
+      "Restored app to previous run"
+    );
   };
 
   return (
