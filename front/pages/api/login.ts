@@ -21,7 +21,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let invite = null as null | Workspace;
+      let invite: null | Workspace = null;
       if (req.query.wId) {
         invite = await Workspace.findOne({
           where: {
