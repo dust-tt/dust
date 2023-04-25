@@ -2,7 +2,7 @@ import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/notion/temporal/activities";
 
-async function run() {
+export async function runNotionWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
@@ -12,8 +12,3 @@ async function run() {
 
   await worker.run();
 }
-
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
