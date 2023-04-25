@@ -8,6 +8,8 @@ import {
   Sequelize,
 } from "sequelize";
 
+import { ConnectorProvider } from "./connectors_api";
+
 const { FRONT_DATABASE_URI } = process.env;
 
 const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
@@ -482,7 +484,7 @@ export class DataSource extends Model<
   declare config?: string;
   declare dustAPIProjectId: string;
   declare connectorId?: string;
-  declare connectorProvider?: "slack" | "notion";
+  declare connectorProvider?: ConnectorProvider;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
