@@ -107,7 +107,7 @@ async function handler(
 
       const connectorsRes = await ConnectorsAPI.createConnector(
         provider,
-        owner.sId.toString(),
+        owner.sId,
         systemAPIKeyRes.value.secret,
         dataSourceName,
         req.body.nangoConnectionId
