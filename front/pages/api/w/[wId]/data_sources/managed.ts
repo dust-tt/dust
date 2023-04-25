@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
+import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Key, Provider } from "@app/lib/models";
@@ -70,7 +70,7 @@ async function handler(
         });
       }
 
-      const provider = req.body.provider as "slack" | "notion";
+      const provider = req.body.provider as ConnectorProvider;
 
       // Enforce plan limits: managed DataSources.
       if (!owner.plan.limits.dataSources.managed) {
