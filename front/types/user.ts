@@ -5,7 +5,11 @@ import { RoleType } from "@app/lib/auth";
  *  limit. If the limit is undefined we revert to the default limit.
  * */
 export type LimitsType = {
-  dataSources: { count: number; documents: { count: number; sizeMb: number } };
+  dataSources: {
+    count: number;
+    documents: { count: number; sizeMb: number };
+    managed: boolean;
+  };
 };
 
 export type PlanType = {

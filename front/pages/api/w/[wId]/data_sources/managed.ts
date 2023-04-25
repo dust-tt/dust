@@ -9,10 +9,15 @@ import { DataSource, Key, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { DataSourceType } from "@app/types/data_source";
+
+export type PostManagedDataSourceResponseBody = {
+  dataSource: DataSourceType;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<PostManagedDataSourceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -39,13 +44,13 @@ async function handler(
           api_error: {
             type: "app_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can create a data source.",
+              "Only the users that are `admins` for the current workspace can create a managed data source.",
           },
         });
       }
 
       const dataSourceName = "managed-slack";
-      const dataSourceDescription = "managed-slack";
+      const dataSourceDescription = "Managed Data Source for Slack";
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 256;
@@ -59,12 +64,24 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects \
-               { nangoConnectionId: string }.",
+              "The request body is invalid, expects { nangoConnectionId: string }.",
           },
         });
       }
-      const systemAPIKeyRes = await getOrCreateSystemApiKey(owner.id);
+
+      // Enforce plan limits: DataSources count.
+      if (!owner.plan.limits.dataSources.managed) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "plan_limit_error",
+            message:
+              "Your plan does not allow you to create managed data sources.",
+          },
+        });
+      }
+
+      const systemAPIKeyRes = await getOrCreateSystemApiKey(owner);
       if (systemAPIKeyRes.isErr()) {
         logger.error(
           {
@@ -76,7 +93,8 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Could not create the system API key",
+            message:
+              "Could not create a system API key for the managed data source.",
           },
         });
       }
@@ -100,6 +118,7 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             message: "Failed to create the connector.",
+            connectors_error: connectorsRes.error,
           },
         });
       }
@@ -110,8 +129,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            // I don't know if we want to forward the core error to the client. LMK during code review please.
-            message: `Could not create the project. Reason: ${dustProject.error}`,
+            message: `Failed to create internal project for the data source.`,
             data_source_error: dustProject.error,
           },
         });
@@ -153,7 +171,6 @@ async function handler(
       const dataSource = await DataSource.create({
         name: dataSourceName,
         description: dataSourceDescription,
-        //assuming managed data sources are always private for now
         visibility: "private",
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
@@ -162,10 +179,24 @@ async function handler(
         connectorProvider: "slack",
       });
 
-      res.redirect(`/${owner.sId}/ds/${dataSource.name}`);
-      return;
+      return res.status(201).json({
+        dataSource: {
+          name: dataSource.name,
+          description: dataSource.description,
+          visibility: dataSource.visibility,
+          config: dataSource.config,
+          dustAPIProjectId: dataSource.dustAPIProjectId,
+        },
+      });
 
     default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
   }
 }
 
