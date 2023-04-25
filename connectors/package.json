@@ -6,12 +6,12 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "build": "tsc",
-    "start-api": "env $(cat .env.local) tsx ./src/api_server.ts -p 3002",
-    "slack-worker": "env $(cat .env.local) tsx ./src/connectors/slack/worker.ts",
+    "start": "env $(cat .env.local) tsx ./src/start.ts -p 3002",
     "initdb": "env $(cat .env.local) npx tsx src/admin/db.ts"
   },
   "dependencies": {
     "@nangohq/node": "^0.9.0",
+    "@notionhq/client": "^2.2.4",
     "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "^1.7.2",
     "@temporalio/client": "^1.7.2",

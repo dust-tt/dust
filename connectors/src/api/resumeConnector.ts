@@ -1,30 +1,30 @@
 import { Request, Response } from "express";
 
-import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateReqBody = {
+type ConnectorResumeReqBody = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
   nangoConnectionId: string;
 };
 
-type ConnectorCreateResBody =
+type ConnectorResumeResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-const _createConnectorAPIHandler = async (
+const _resumeConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
-    ConnectorCreateResBody,
-    ConnectorCreateReqBody
+    ConnectorResumeResBody,
+    ConnectorResumeReqBody
   >,
-  res: Response<ConnectorCreateResBody>
+  res: Response<ConnectorResumeResBody>
 ) => {
   try {
     if (
@@ -33,7 +33,6 @@ const _createConnectorAPIHandler = async (
       !req.body.workspaceId ||
       !req.body.nangoConnectionId
     ) {
-      // We would probably want to return the same error inteface than we use in the /front package. TBD.
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
@@ -52,10 +51,10 @@ const _createConnectorAPIHandler = async (
         status_code: 400,
       });
     }
-    const connectorCreator =
-      CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+    const connectorResumer =
+      RESUME_CONNECTOR_BY_TYPE[req.params.connector_provider];
 
-    const connectorRes = await connectorCreator(
+    const resumeRes = await connectorResumer(
       {
         workspaceAPIKey: req.body.workspaceAPIKey,
         dataSourceName: req.body.dataSourceName,
@@ -64,29 +63,31 @@ const _createConnectorAPIHandler = async (
       req.body.nangoConnectionId
     );
 
-    if (connectorRes.isErr()) {
+    if (resumeRes.isErr()) {
       return apiError(req, res, {
         api_error: {
           type: "internal_server_error",
-          message: connectorRes.error.message,
+          message: "Could not resume the connector",
         },
         status_code: 500,
       });
     }
 
-    return res.status(200).json({ connectorId: connectorRes.value });
+    return res.status(200).json({
+      connectorId: resumeRes.value,
+    });
   } catch (e) {
-    logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
+    logger.error(errorFromAny(e), "Failed to resume the connector");
     return apiError(req, res, {
       api_error: {
         type: "internal_server_error",
-        message: "An unexpected error occured while creating the connector.",
+        message: "Could not resume the connector",
       },
       status_code: 500,
     });
   }
 };
 
-export const createConnectorAPIHandler = withLogging(
-  _createConnectorAPIHandler
+export const resumeConnectorAPIHandler = withLogging(
+  _resumeConnectorAPIHandler
 );

@@ -1,43 +1,37 @@
 import { Request, Response } from "express";
 
-import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { STOP_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateReqBody = {
-  workspaceAPIKey: string;
+type ConnectorStopReqBody = {
   dataSourceName: string;
   workspaceId: string;
-  nangoConnectionId: string;
 };
 
-type ConnectorCreateResBody =
+type ConnectorStopResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-const _createConnectorAPIHandler = async (
+const _stopConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
-    ConnectorCreateResBody,
-    ConnectorCreateReqBody
+    ConnectorStopResBody,
+    ConnectorStopReqBody
   >,
-  res: Response<ConnectorCreateResBody>
+  res: Response<ConnectorStopResBody>
 ) => {
   try {
-    if (
-      !req.body.workspaceAPIKey ||
-      !req.body.dataSourceName ||
-      !req.body.workspaceId ||
-      !req.body.nangoConnectionId
-    ) {
+    if (!req.body.dataSourceName || !req.body.workspaceId) {
       // We would probably want to return the same error inteface than we use in the /front package. TBD.
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
-          message: `Missing required parameters. Required : workspaceAPIKey, dataSourceName, workspaceId, nangoConnectionId`,
+          message:
+            "Missing required parameters. Required : dataSourceName, workspaceId",
         },
         status_code: 400,
       });
@@ -52,41 +46,38 @@ const _createConnectorAPIHandler = async (
         status_code: 400,
       });
     }
-    const connectorCreator =
-      CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
 
-    const connectorRes = await connectorCreator(
-      {
-        workspaceAPIKey: req.body.workspaceAPIKey,
-        dataSourceName: req.body.dataSourceName,
-        workspaceId: req.body.workspaceId,
-      },
-      req.body.nangoConnectionId
-    );
+    const connectorStopper =
+      STOP_CONNECTOR_BY_TYPE[req.params.connector_provider];
 
-    if (connectorRes.isErr()) {
+    const stopRes = await connectorStopper({
+      dataSourceName: req.body.dataSourceName,
+      workspaceId: req.body.workspaceId,
+    });
+
+    if (stopRes.isErr()) {
       return apiError(req, res, {
         api_error: {
           type: "internal_server_error",
-          message: connectorRes.error.message,
+          message: stopRes.error.message,
         },
         status_code: 500,
       });
     }
 
-    return res.status(200).json({ connectorId: connectorRes.value });
+    return res.status(200).json({
+      connectorId: stopRes.value,
+    });
   } catch (e) {
-    logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
+    logger.error(errorFromAny(e), "Failed to stop the connector");
     return apiError(req, res, {
       api_error: {
         type: "internal_server_error",
-        message: "An unexpected error occured while creating the connector.",
+        message: "Could not stop the connector",
       },
       status_code: 500,
     });
   }
 };
 
-export const createConnectorAPIHandler = withLogging(
-  _createConnectorAPIHandler
-);
+export const stopConnectorAPIHandler = withLogging(_stopConnectorAPIHandler);

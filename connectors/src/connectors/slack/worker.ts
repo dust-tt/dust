@@ -1,9 +1,8 @@
 import { Worker } from "@temporalio/worker";
 
-import logger from "../../logger/logger.js";
 import * as activities from "./slack.js";
 
-async function run(): Promise<void> {
+export async function runSlackWorker(): Promise<void> {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflow"),
     activities,
@@ -13,5 +12,3 @@ async function run(): Promise<void> {
 
   return;
 }
-
-run().catch((err) => logger.info(err));

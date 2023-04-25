@@ -11,7 +11,7 @@ import {
 import {
   type ConnectorProvider,
   ConnectorSyncStatus,
-} from "../types/connector";
+} from "@connectors/types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 if (!CONNECTORS_DATABASE_URI) {
