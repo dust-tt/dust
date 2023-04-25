@@ -36,10 +36,20 @@ export const ConnectorsAPI = {
   async getSyncStatus(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       lastSyncStatus: ConnectorSyncStatus;
-      lastSyncStartTime: Date;
-      lastSuccessfulSyncTime: Date;
+      lastSyncStartTime: number;
+      lastSuccessfulSyncTime: number;
     }>
-  > {},
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/sync_status/${connectorId}`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
 };
 
 function getDefaultHeaders() {

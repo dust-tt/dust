@@ -3,6 +3,7 @@ import express from "express";
 import minimist from "minimist";
 
 import { createConnectorAPIHandler } from "./api/createConnector";
+import { getConnectorStatusAPIHandler } from "./api/syncStatus";
 import logger from "./logger/logger";
 import { authMiddleware } from "./middleware/auth";
 
@@ -18,6 +19,7 @@ app.use(authMiddleware);
 app.use(bodyParser.json());
 
 app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
+app.get("/connectors/sync_status/:connector_id", getConnectorStatusAPIHandler);
 
 app.listen(port, () => {
   logger.info(`Connectors API listening on port ${port}`);
