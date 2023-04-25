@@ -2,9 +2,9 @@ import {
   getPagesEditedSince,
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
-import { upsertToDatasource } from "@connectors/connectors/notion/lib/upsert";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
+import { upsertToDatasource } from "@connectors/lib/upsert";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function notionGetPagesToSyncActivity(
