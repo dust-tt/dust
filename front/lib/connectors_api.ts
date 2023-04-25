@@ -10,9 +10,11 @@ const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 
+export type ConnectorProvider = "slack" | "notion";
+
 export const ConnectorsAPI = {
   async createConnector(
-    provider: "slack" | "notion",
+    provider: ConnectorProvider,
     workspaceId: string,
     workspaceAPIKey: string,
     dataSourceName: string,
