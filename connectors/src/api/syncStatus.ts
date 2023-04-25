@@ -1,9 +1,9 @@
-import { Connector } from "@connectors/lib/models";
-import { ConnectorSyncStatus } from "@connectors/types/connector";
 import { Request, Response } from "express";
 
-import logger from "../logger/logger";
-import { ConnectorsAPIErrorResponse } from "../types/errors";
+import { Connector } from "@connectors/lib/models";
+import logger from "@connectors/logger/logger";
+import { ConnectorSyncStatus } from "@connectors/types/connector";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type GetSyncStatusRes =
   | {
