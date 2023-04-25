@@ -2,6 +2,7 @@ import { createParser } from "eventsource-parser";
 
 import { Err, Ok, Result } from "@app/lib/result";
 import { Project } from "@app/types/project";
+import { CredentialsType } from "@app/types/provider";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
@@ -81,7 +82,7 @@ type DustAPICreateRunPayload = {
   datasetId?: string | null;
   inputs?: any[] | null;
   config: RunConfig;
-  credentials: { [key: string]: string };
+  credentials: CredentialsType;
 };
 
 type GetDatasetResponse = {
@@ -102,7 +103,7 @@ type GetRunsResponse = {
 type DustAPICreateDataSourcePayload = {
   dataSourceId: string;
   config: DustAPIDataSourceConfig;
-  credentials: { [key: string]: string };
+  credentials: CredentialsType;
 };
 
 type DustAPIUpsertDocumentPayload = {
@@ -111,7 +112,7 @@ type DustAPIUpsertDocumentPayload = {
   tags: string[];
   sourceUrl?: string | null;
   text: string;
-  credentials: { [key: string]: string };
+  credentials: CredentialsType;
 };
 
 export const DustAPI = {

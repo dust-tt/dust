@@ -1,13 +1,17 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  credentialsFromProviders,
+  dustManagedCredentials,
+} from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { DocumentType } from "@app/types/document";
+import { CredentialsType } from "@app/types/provider";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -77,14 +81,18 @@ export default async function handler(
       }
       const requestPayload = req.query;
 
-      const [providers] = await Promise.all([
-        Provider.findAll({
+      let credentials: CredentialsType | null = null;
+      if (dataSource.connector) {
+        // Dust managed credentials: managed data source.
+        credentials = dustManagedCredentials();
+      } else {
+        const providers = await Provider.findAll({
           where: {
             workspaceId: owner.id,
           },
-        }),
-      ]);
-      const credentials = credentialsFromProviders(providers);
+        });
+        credentials = credentialsFromProviders(providers);
+      }
       const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
 
       if (searchQueryRes.isErr()) {

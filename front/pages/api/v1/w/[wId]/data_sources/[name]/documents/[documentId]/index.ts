@@ -1,15 +1,19 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  credentialsFromProviders,
+  dustManagedCredentials,
+} from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
+import { CredentialsType } from "@app/types/provider";
 
 export type GetDocumentResponseBody = {
   document: DocumentType;
@@ -97,14 +101,6 @@ async function handler(
           },
         });
       }
-
-      let [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: keyRes.value.workspaceId,
-          },
-        }),
-      ]);
 
       if (!req.body || !(typeof req.body.text == "string")) {
         return apiError(req, res, {
@@ -224,7 +220,18 @@ async function handler(
         });
       }
 
-      let credentials = credentialsFromProviders(providers);
+      let credentials: CredentialsType | null = null;
+      if (keyRes.value.isSystem) {
+        // Dust managed credentials: system API key (managed data source).
+        credentials = dustManagedCredentials();
+      } else {
+        let providers = await Provider.findAll({
+          where: {
+            workspaceId: keyRes.value.workspaceId,
+          },
+        });
+        credentials = credentialsFromProviders(providers);
+      }
 
       // Create document with the Dust internal API.
       const upsertRes = await DustAPI.upsertDataSourceDocument(

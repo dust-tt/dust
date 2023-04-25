@@ -54,6 +54,7 @@ async function handler(
         key: {
           secret: key.secret,
           status: key.status,
+          isSystem: key.isSystem,
         },
       });
       return;

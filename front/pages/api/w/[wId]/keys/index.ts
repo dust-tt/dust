@@ -50,6 +50,7 @@ async function handler(
           return {
             secret: k.secret,
             status: k.status,
+            isSystem: k.isSystem,
           };
         }),
       });
@@ -69,6 +70,7 @@ async function handler(
         key: {
           secret: key.secret,
           status: key.status,
+          isSystem: key.isSystem,
         },
       });
       return;
