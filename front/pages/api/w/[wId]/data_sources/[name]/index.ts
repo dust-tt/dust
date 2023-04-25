@@ -71,6 +71,13 @@ async function handler(
           visibility: dataSource.visibility,
           config: dataSource.config,
           dustAPIProjectId: dataSource.dustAPIProjectId,
+          connector:
+            dataSource.connectorId && dataSource.connectorProvider
+              ? {
+                  id: dataSource.connectorId,
+                  provider: dataSource.connectorProvider,
+                }
+              : null,
         },
       });
       return;

@@ -1,4 +1,5 @@
 export type DataSourceVisibility = "public" | "private";
+export type DataSourceConnectorProviders = "slack" | "notion";
 
 export type DataSourceType = {
   name: string;
@@ -6,4 +7,5 @@ export type DataSourceType = {
   visibility: DataSourceVisibility;
   config?: string;
   dustAPIProjectId: string;
+  connector: { id: string; provider: string } | null;
 };
