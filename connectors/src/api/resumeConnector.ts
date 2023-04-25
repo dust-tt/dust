@@ -1,40 +1,35 @@
 import { Request, Response } from "express";
 
-import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import logger from "@connectors/logger/logger";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateReqBody = {
+type ConnectorResumeReqBody = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
   nangoConnectionId: string;
 };
 
-type ConnectorCreateResBody =
+type ConnectorResumeResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-export const createConnectorAPIHandler = async (
+export const resumeConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
-    ConnectorCreateResBody,
-    ConnectorCreateReqBody
+    ConnectorResumeResBody,
+    ConnectorResumeReqBody
   >,
-  res: Response<ConnectorCreateResBody>
+  res: Response<ConnectorResumeResBody>
 ) => {
   try {
-    if (
-      !req.body.workspaceAPIKey ||
-      !req.body.dataSourceName ||
-      !req.body.workspaceId ||
-      !req.body.nangoConnectionId
-    ) {
+    if (!req.body.dataSourceName || !req.body.workspaceId) {
       // We would probably want to return the same error inteface than we use in the /front package. TBD.
       res.status(400).send({
         error: {
-          message: `Missing required parameters. Required : workspaceAPIKey, dataSourceName, workspaceId, nangoConnectionId`,
+          message: `Missing required parameters. Required : dataSourceName, workspaceId`,
         },
       });
       return;
@@ -47,10 +42,10 @@ export const createConnectorAPIHandler = async (
         },
       });
     }
-    const connectorCreator =
-      CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+    const connectorResumer =
+      RESUME_CONNECTOR_BY_TYPE[req.params.connector_provider];
 
-    const connectorRes = await connectorCreator(
+    const resumeRes = await connectorResumer(
       {
         workspaceAPIKey: req.body.workspaceAPIKey,
         dataSourceName: req.body.dataSourceName,
@@ -59,18 +54,18 @@ export const createConnectorAPIHandler = async (
       req.body.nangoConnectionId
     );
 
-    if (connectorRes.isErr()) {
-      res.status(500).send({ error: { message: connectorRes.error.message } });
+    if (resumeRes.isErr()) {
+      res.status(500).send({ error: { message: resumeRes.error.message } });
       return;
     }
 
     return res.status(200).send({
-      connectorId: connectorRes.value,
+      connectorId: resumeRes.value,
     });
   } catch (e) {
-    logger.error(e, "Failed to create the connector");
+    logger.error(e, "Failed to resume the connector");
     return res
       .status(500)
-      .send({ error: { message: "Could not create the connector" } });
+      .send({ error: { message: "Could not resume the connector" } });
   }
 };
