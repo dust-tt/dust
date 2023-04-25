@@ -150,7 +150,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "Invalid request body, `sourceUrl` if provided must be a string.",
+                "Invalid request body, `source_url` if provided must be a string.",
             },
           });
         }
@@ -163,7 +163,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+                "Invalid request body, `source_url` if provided must be a valid URL.",
             },
           });
         }
