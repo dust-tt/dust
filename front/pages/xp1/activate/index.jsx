@@ -62,7 +62,7 @@ export default function Activate({ ga_tracking_id }) {
                   type="text"
                   name="name"
                   placeholder="John Doe"
-                  className="rounded-r border border-gray-700 bg-gray-700 py-1 px-2 font-bold text-white focus:border-transparent focus:outline-none focus:ring-0 focus:ring-violet-600"
+                  className="rounded-r border border-gray-700 bg-gray-700 px-2 py-1 font-bold text-white focus:border-transparent focus:outline-none focus:ring-0 focus:ring-violet-600"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -75,7 +75,7 @@ export default function Activate({ ga_tracking_id }) {
                   type="email"
                   name="email"
                   placeholder="team@dust.tt"
-                  className="rounded-r border border-gray-700 bg-gray-700 py-1 px-2 font-bold text-white focus:border-transparent focus:outline-none focus:ring-0 focus:ring-violet-600"
+                  className="rounded-r border border-gray-700 bg-gray-700 px-2 py-1 font-bold text-white focus:border-transparent focus:outline-none focus:ring-0 focus:ring-violet-600"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

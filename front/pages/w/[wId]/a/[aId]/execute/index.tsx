@@ -185,7 +185,7 @@ function ExecuteOutputLine({
         </div>
       </button>
       {expanded ? (
-        <div className="ml-8 mb-2 flex text-sm text-gray-600">
+        <div className="mb-2 ml-8 flex text-sm text-gray-600">
           <Execution block={null} trace={traces} />
         </div>
       ) : null}
@@ -603,7 +603,7 @@ export default function ExecuteView({
                   </span>{" "}
                   block.
                 </p>
-                <ul className="mt-4 mb-6 space-y-1">
+                <ul className="mb-6 mt-4 space-y-1">
                   {inputDatasetKeys.map((k) => (
                     <li key={k}>
                       <ExecuteInput

@@ -70,7 +70,7 @@ export default function WorkspacePicker({
                           )}
                         >
                           <CheckIcon
-                            className="ml-2 -mt-0.5 inline h-3 w-3"
+                            className="-mt-0.5 ml-2 inline h-3 w-3"
                             aria-hidden="true"
                           />
                         </span>

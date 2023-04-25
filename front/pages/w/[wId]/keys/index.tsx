@@ -108,7 +108,7 @@ export default function ProfileKeys({
                   keys with others, or expose it in the browser or client-side
                   code.
                 </p>
-                <div className="mt-4 mb-2 sm:flex sm:items-center">
+                <div className="mb-2 mt-4 sm:flex sm:items-center">
                   <Button
                     onClick={() => {
                       handleGenerate();

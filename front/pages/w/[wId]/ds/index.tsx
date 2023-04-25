@@ -68,7 +68,7 @@ export default function DataSourcesView({
               {readOnly ? null : (
                 <div className="sm:flex sm:items-center">
                   <div className="sm:flex-auto"></div>
-                  <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+                  <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
                     <Link
                       href={`/w/${owner.sId}/ds/new`}
                       onClick={(e) => {

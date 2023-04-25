@@ -91,7 +91,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
 
         <div className="leading-16 mx-auto my-8 mt-16">
           <div className="mx-auto max-w-2xl text-sm text-gray-900">
-            <div className="rounded-t bg-gray-800 py-2 px-3 text-gray-200">
+            <div className="rounded-t bg-gray-800 px-3 py-2 text-gray-200">
               User guide
             </div>
             <div className="rounded-b bg-gray-700 py-2 pl-3 pr-1 text-white">
@@ -140,30 +140,30 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
                 </li>
               </ul>
               <p className="my-2 mt-6 font-bold"># Example usage</p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Reply to [[email]] based on [[knowledgebase]]
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Summarize with bullet-points [[cnn]]
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Extract [[linkedin]] experience as CSV
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Generate a twitter thread with emoji to sell [[product]]
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Generate a 5 sentence bio about [[linkedin]]
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 Generate a personalized email to [[linkedin]] offering to try
                 [[xp1]]
               </p>
-              <p className="my-1 mx-2 font-bold italic text-gray-300">
+              <p className="mx-2 my-1 font-bold italic text-gray-300">
                 JSON from [[email]] and [[linkedin]] of the form {"{"}name,
                 email, job_title, feedback, date {"}"}
               </p>
-              <p className="mt-6 mb-2 font-bold"># Known Limitations</p>
+              <p className="mb-2 mt-6 font-bold"># Known Limitations</p>
               <ul className="my-2">
                 <li>
                   - Does not work with Google Docs and Google Sheets (work in
@@ -174,13 +174,13 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
                   especially when using multiple tabs
                 </li>
               </ul>
-              <p className="mt-6 mb-2 font-bold"># Privacy</p>
+              <p className="mb-2 mt-6 font-bold"># Privacy</p>
               <p className="my-2">
                 Only the text content of the tabs you select and submit are sent
                 through our servers to OpenAI's API. Cookies, tab list, or
                 non-submitted tab content are never sent.
               </p>
-              <p className="mt-6 mb-2 font-bold"># Support</p>
+              <p className="mb-2 mt-6 font-bold"># Support</p>
               <ul className="my-2">
                 <li>
                   - Email <a href="mailto:team@dust.tt">team@dust.tt</a>

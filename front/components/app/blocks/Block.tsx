@@ -89,7 +89,7 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "group flex flex-auto flex-col rounded border border-gray-300 px-4 pt-1 pb-3"
+          "group flex flex-auto flex-col rounded border border-gray-300 px-4 pb-3 pt-1"
         )}
       >
         <div className="flex flex-row items-center">
@@ -106,7 +106,7 @@ export default function Block({
               type="text"
               placeholder="BLOCK_NAME"
               className={classNames(
-                "block w-full rounded-md py-1 px-1 uppercase placeholder-gray-200",
+                "block w-full rounded-md px-1 py-1 uppercase placeholder-gray-200",
                 readOnly
                   ? "border-white ring-0 focus:border-white focus:ring-0"
                   : nameError != ""
@@ -191,7 +191,7 @@ export default function Block({
         status.status == "running" &&
         !["map", "reduce", "end"].includes(block.type) ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
-            <div className="mr-2 ml-2">
+            <div className="ml-2 mr-2">
               <Spinner />
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
@@ -199,7 +199,7 @@ export default function Block({
         ) : running && !(status && status.status != "running") ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
             <div role="status">
-              <div className="mr-2 ml-2">
+              <div className="ml-2 mr-2">
                 <Spinner />
               </div>
             </div>

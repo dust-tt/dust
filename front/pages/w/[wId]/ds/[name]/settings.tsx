@@ -149,7 +149,7 @@ export default function DataSourceSettings({
             <div className="mt-8 space-y-8 divide-y divide-gray-200">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
-                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
                     <div className="sm:col-span-3">
                       <label
                         htmlFor="dataSourceName"
@@ -278,7 +278,7 @@ export default function DataSourceSettings({
                 </div>
 
                 <div>
-                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
                     <div className="sm:col-span-6">
                       <label
                         htmlFor="embedder"

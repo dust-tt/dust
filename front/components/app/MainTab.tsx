@@ -131,7 +131,7 @@ export default function MainTab({
                   href={tab.href}
                   key={tab.name}
                   className={classNames(
-                    "flex items-center whitespace-nowrap border-b-2 py-3 px-4 text-sm",
+                    "flex items-center whitespace-nowrap border-b-2 px-4 py-3 text-sm",
                     tab.name === currentTab
                       ? "border-gray-500 font-bold text-gray-700"
                       : "border-transparent font-medium text-gray-500 hover:border-gray-200 hover:text-gray-700"

@@ -93,7 +93,7 @@ function Features() {
           on top of LLMs and Semantic Search🔥
         </h2>
       </div>
-      <div className="py-16 px-4 sm:px-6 xl:py-24 xl:px-8">
+      <div className="px-4 py-16 sm:px-6 xl:px-8 xl:py-24">
         <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 xl:grid-cols-4 xl:gap-x-8">
           {features.map((feature) => (
             <div key={feature.name} className="relative">
@@ -111,7 +111,7 @@ function Features() {
                   )}
                 </p>
               </dt>
-              <dd className="mt-2 ml-9 text-base text-gray-500">
+              <dd className="ml-9 mt-2 text-base text-gray-500">
                 {feature.description}
               </dd>
             </div>
@@ -149,7 +149,7 @@ export default function Home({
 
           <div className="mt-8 flex flex-col">
             {!router.query.signIn || router.query.signIn === "github" ? (
-              <div className="flex w-full w-auto flex-initial">
+              <div className="flex w-auto w-full flex-initial">
                 <div className="mx-auto mt-2">
                   <ActionButton
                     onClick={() =>
@@ -171,7 +171,7 @@ export default function Home({
             ) : null}
 
             {!router.query.signIn || router.query.signIn === "google" ? (
-              <div className="flex w-full w-auto flex-initial">
+              <div className="flex w-auto w-full flex-initial">
                 <div className="mx-auto mt-2">
                   <ActionButton
                     onClick={() =>
@@ -192,7 +192,7 @@ export default function Home({
               </div>
             ) : null}
 
-            <div className="flex w-full w-auto flex-initial">
+            <div className="flex w-auto w-full flex-initial">
               <div className="mx-auto mt-3">
                 <Link href="https://docs.dust.tt" className="mx-auto">
                   <div className="">
@@ -269,7 +269,7 @@ export default function Home({
           </div>
         </div>
 
-        <div className="my-10 mx-auto max-w-3xl text-center text-sm text-gray-400">
+        <div className="mx-auto my-10 max-w-3xl text-center text-sm text-gray-400">
           Dust © 2022 – 2023
         </div>
         <>

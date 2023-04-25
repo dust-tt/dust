@@ -190,7 +190,7 @@ export default function DataSourceUpsert({
               <div className="w-full">
                 <div className="mt-4 space-y-6 divide-y divide-gray-200"></div>
 
-                <div className="mt-2 grid gap-y-4 gap-x-4 sm:grid-cols-5">
+                <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
                   <div className="sm:col-span-5">
                     <label
                       htmlFor="documentId"
@@ -226,7 +226,7 @@ export default function DataSourceUpsert({
               <div className="mb-8 w-full">
                 <div className="space-y-6 divide-y divide-gray-200"></div>
 
-                <div className="mt-2 grid grid-cols-5 gap-y-4 gap-x-4">
+                <div className="mt-2 grid grid-cols-5 gap-x-4 gap-y-4">
                   <div className="col-span-3">
                     <label
                       htmlFor="tags"
@@ -255,7 +255,7 @@ export default function DataSourceUpsert({
                         />
                         {!readOnly ? (
                           <div
-                            className="cursor-pointer pt-2 pl-1 group-hover:visible"
+                            className="cursor-pointer pl-1 pt-2 group-hover:visible"
                             onClick={() => {
                               handleTagDelete(index);
                             }}
