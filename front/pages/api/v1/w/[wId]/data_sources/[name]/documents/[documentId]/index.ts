@@ -221,9 +221,8 @@ async function handler(
       }
 
       let credentials: CredentialsType | null = null;
-
-      // Dust managed credentials: system API key (managed data source);
       if (keyRes.value.isSystem) {
+        // Dust managed credentials: system API key (managed data source).
         credentials = dustManagedCredentials();
       } else {
         let providers = await Provider.findAll({

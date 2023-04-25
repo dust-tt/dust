@@ -75,9 +75,8 @@ export default async function handler(
       }
 
       let credentials: CredentialsType | null = null;
-
-      // If the API key is a system API key, we use the Dust managed credentials to upsert.
       if (keyRes.value.isSystem) {
+        // Dust managed credentials: system API key (managed data source).
         credentials = dustManagedCredentials();
       } else {
         let providers = await Provider.findAll({

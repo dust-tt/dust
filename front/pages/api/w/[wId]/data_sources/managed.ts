@@ -141,7 +141,7 @@ async function handler(
         });
       }
 
-      // For managed DataSources we use the Dust managed credentials.
+      // Dust managed credentials: managed data source.
       let credentials = dustManagedCredentials();
 
       const dustDataSource = await DustAPI.createDataSource(
