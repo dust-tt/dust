@@ -2,6 +2,7 @@ import { NextApiResponse } from "next";
 
 import logger from "@app/logger/logger";
 
+import { ConnectorsAPIErrorResponse } from "./connectors_api";
 import { DustAPIErrorResponse } from "./dust_api";
 
 export type InternalErrorWithStatusCode = {
@@ -29,7 +30,8 @@ export type APIErrorType =
   | "workspace_user_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found"
-  | "workspace_not_found";
+  | "workspace_not_found"
+  | "plan_limit_error";
 
 export type APIError = {
   type: APIErrorType;
@@ -37,6 +39,7 @@ export type APIError = {
   data_source_error?: DustAPIErrorResponse;
   run_error?: DustAPIErrorResponse;
   app_error?: DustAPIErrorResponse;
+  connectors_error?: ConnectorsAPIErrorResponse;
 };
 
 export type ReturnedAPIErrorType = {

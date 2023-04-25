@@ -32,7 +32,7 @@ async function handler(
 
   if (!auth.isAdmin()) {
     return apiError(req, res, {
-      status_code: 401,
+      status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:

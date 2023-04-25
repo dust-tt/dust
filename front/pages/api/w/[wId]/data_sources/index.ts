@@ -3,18 +3,27 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Provider } from "@app/lib/models";
 import { credentialsFromProviders } from "@app/lib/providers";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;
 };
 
+export type PostDataSourceResponseBody = {
+  dataSource: DataSourceType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDataSourcesResponseBody>
+  res: NextApiResponse<
+    | GetDataSourcesResponseBody
+    | PostDataSourceResponseBody
+    | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -24,8 +33,13 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
   }
 
   let dataSources = await getDataSources(auth);
@@ -37,8 +51,14 @@ async function handler(
 
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(401).end();
-        return;
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that are `admins` for the current workspace can create a managed data source.",
+          },
+        });
       }
 
       if (
@@ -50,8 +70,14 @@ async function handler(
         !(typeof req.body.max_chunk_size == "string") ||
         !["public", "private"].includes(req.body.visibility)
       ) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { name, description, provider_id, model_id, max_chunk_size, visibility }.",
+          },
+        });
       }
 
       // Enforce plan limits: DataSources count.
@@ -59,21 +85,38 @@ async function handler(
         owner.plan.limits.dataSources.count != -1 &&
         dataSources.length >= owner.plan.limits.dataSources.count
       ) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "plan_limit_error",
+            message:
+              "Your plan does not allow you to create managed data sources.",
+          },
+        });
       }
 
       const dustProject = await DustAPI.createProject();
       if (dustProject.isErr()) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to create internal project for the data source.`,
+            data_source_error: dustProject.error,
+          },
+        });
       }
 
       let description = req.body.description ? req.body.description : null;
       let maxChunkSize = parseInt(req.body.max_chunk_size);
       if (isNaN(maxChunkSize)) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "`max_chunk_size` must be a parseable integer.",
+          },
+        });
       }
 
       const [providers] = await Promise.all([
@@ -101,11 +144,17 @@ async function handler(
       );
 
       if (dustDataSource.isErr()) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create the data source.",
+            data_source_error: dustDataSource.error,
+          },
+        });
       }
 
-      await DataSource.create({
+      let ds = await DataSource.create({
         name: req.body.name,
         description: description,
         visibility: req.body.visibility,
@@ -114,12 +163,26 @@ async function handler(
         workspaceId: owner.id,
       });
 
-      res.redirect(`/${owner.sId}/ds/${req.body.name}`);
+      res.status(201).json({
+        dataSource: {
+          name: ds.name,
+          description: ds.description,
+          visibility: ds.visibility,
+          config: ds.config,
+          dustAPIProjectId: ds.dustAPIProjectId,
+        },
+      });
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
+        },
+      });
   }
 }
 

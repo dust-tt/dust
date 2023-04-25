@@ -82,7 +82,7 @@ async function handler(
       // Only the users that are `builders` for the current workspace can create runs.
       if (!auth.isBuilder()) {
         return apiError(req, res, {
-          status_code: 401,
+          status_code: 403,
           api_error: {
             type: "app_auth_error",
             message:

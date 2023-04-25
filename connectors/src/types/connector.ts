@@ -1,1 +1,1 @@
-export type ConnectorProvider = "slack" | "notion" | "google";
+export type ConnectorProvider = "slack" | "notion";

@@ -306,6 +306,11 @@ const DEFAULT_DATASOURCES_COUNT_LIMIT = 1;
 const DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT = 32;
 const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
 
+/**
+ * Construct the PlanType for the provided workspace.
+ * @param w WorkspaceType the workspace to get the plan for
+ * @returns PlanType
+ */
 export function planForWorkspace(w: Workspace): PlanType {
   let limits = {
     dataSources: {
@@ -314,6 +319,7 @@ export function planForWorkspace(w: Workspace): PlanType {
         count: DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT,
         sizeMb: DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT,
       },
+      managed: false,
     },
   };
 
@@ -349,6 +355,12 @@ export function planForWorkspace(w: Workspace): PlanType {
               plan.limits.dataSources.documents.sizeMb;
           }
         }
+        if (
+          plan.limits.dataSources.managed &&
+          typeof plan.limits.dataSources.managed === "boolean"
+        ) {
+          limits.dataSources.managed = plan.limits.dataSources.managed;
+        }
       }
     }
   }
@@ -358,19 +370,24 @@ export function planForWorkspace(w: Workspace): PlanType {
   };
 }
 
+/**
+ * Retrieves or create a system API key for a given workspace
+ * @param workspace WorkspaceType
+ * @returns Promise<Result<Key, Error>>
+ */
 export async function getOrCreateSystemApiKey(
-  workspaceId: number
+  workspace: WorkspaceType
 ): Promise<Result<Key, Error>> {
   let key = await Key.findOne({
     where: {
-      workspaceId,
+      workspaceId: workspace.id,
       isSystem: true,
     },
   });
   if (!key) {
     let secret = `sk-${new_id().slice(0, 32)}`;
     key = await Key.create({
-      workspaceId,
+      workspaceId: workspace.id,
       isSystem: true,
       secret: secret,
       status: "active",

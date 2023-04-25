@@ -12,9 +12,9 @@ export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 
 export const ConnectorsAPI = {
   async createConnector(
-    provider: string,
+    provider: "slack" | "notion",
     workspaceId: string,
-    APIKey: string,
+    workspaceAPIKey: string,
     dataSourceName: string,
     nangoConnectionId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
@@ -22,10 +22,10 @@ export const ConnectorsAPI = {
       method: "POST",
       headers: getDefaultHeaders(),
       body: JSON.stringify({
-        workspaceId: workspaceId,
-        workspaceAPIKey: APIKey,
-        dataSourceName: dataSourceName,
-        nangoConnectionId: nangoConnectionId,
+        workspaceId,
+        workspaceAPIKey,
+        dataSourceName,
+        nangoConnectionId,
       }),
     });
 

@@ -32,7 +32,7 @@ async function handler(
   }
 
   if (!auth.isAdmin()) {
-    res.status(401).end();
+    res.status(403).end();
     return;
   }
 
