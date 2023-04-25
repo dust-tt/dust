@@ -11,6 +11,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -27,6 +28,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   dataSources: DataSourceType[];
   managedDataSources: DataSourceType[];
+  canUseManagedDataSources: boolean;
   gaTrackingId: string;
   nangoPublicKey: string;
   nangoSlackConnectorId: string;
@@ -59,6 +61,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       dataSources,
       managedDataSources,
+      canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoPublicKey: NANGO_PUBLIC_KEY!,
       nangoSlackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
@@ -102,6 +105,7 @@ export default function DataSourcesView({
   readOnly,
   dataSources,
   managedDataSources,
+  canUseManagedDataSources,
   gaTrackingId,
   nangoPublicKey,
   nangoSlackConnectorId,
@@ -308,13 +312,29 @@ export default function DataSourcesView({
                       {!enabled ? (
                         <Button
                           disabled={!ds.isBuilt}
-                          onClick={() => {
-                            handleEnableManagedDataSource(
-                              ds.connectorProvider as ConnectorProvider
-                            );
-                          }}
+                          onClick={
+                            canUseManagedDataSources
+                              ? () => {
+                                  handleEnableManagedDataSource(
+                                    ds.connectorProvider as ConnectorProvider
+                                  );
+                                }
+                              : () => {
+                                  logger.info(
+                                    {
+                                      workspace: owner.sId,
+                                      connector_provider: ds.connectorProvider,
+                                    },
+                                    "request_early_access_managed_data_source"
+                                  );
+                                }
+                          }
                         >
-                          {ds.isBuilt ? "Setup" : "Coming soon"}
+                          {!ds.isBuilt
+                            ? "Coming soon"
+                            : !canUseManagedDataSources
+                            ? "Get early access"
+                            : "Setup"}
                         </Button>
                       ) : (
                         <p
