@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
+import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorSyncStatus } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -13,7 +14,7 @@ type GetSyncStatusRes =
     }
   | ConnectorsAPIErrorResponse;
 
-export const getConnectorStatusAPIHandler = async (
+const _getConnectorStatusAPIHandler = async (
   req: Request<{ connector_id: string }, GetSyncStatusRes, undefined>,
   res: Response<GetSyncStatusRes>
 ) => {
@@ -46,3 +47,7 @@ export const getConnectorStatusAPIHandler = async (
     });
   }
 };
+
+export const getConnectorStatusAPIHandler = withLogging(
+  _getConnectorStatusAPIHandler
+);

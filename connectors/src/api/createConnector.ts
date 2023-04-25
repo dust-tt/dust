@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import logger from "@connectors/logger/logger";
+import { withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -16,7 +17,7 @@ type ConnectorCreateResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-export const createConnectorAPIHandler = async (
+const _createConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
     ConnectorCreateResBody,
@@ -74,3 +75,7 @@ export const createConnectorAPIHandler = async (
       .send({ error: { message: "Could not create the connector" } });
   }
 };
+
+export const createConnectorAPIHandler = withLogging(
+  _createConnectorAPIHandler
+);

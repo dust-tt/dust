@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import logger from "@connectors/logger/logger";
+import { withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -16,7 +17,7 @@ type ConnectorResumeResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-export const resumeConnectorAPIHandler = async (
+const _resumeConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
     ConnectorResumeResBody,
@@ -69,3 +70,7 @@ export const resumeConnectorAPIHandler = async (
       .send({ error: { message: "Could not resume the connector" } });
   }
 };
+
+export const resumeConnectorAPIHandler = withLogging(
+  _resumeConnectorAPIHandler
+);

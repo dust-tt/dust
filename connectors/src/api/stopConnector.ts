@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import { STOP_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import logger from "@connectors/logger/logger";
+import { withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -14,7 +15,7 @@ type ConnectorStopResBody =
   | { connectorId: string }
   | ConnectorsAPIErrorResponse;
 
-export const stopConnectorAPIHandler = async (
+const _stopConnectorAPIHandler = async (
   req: Request<
     { connector_provider: string },
     ConnectorStopResBody,
@@ -63,3 +64,5 @@ export const stopConnectorAPIHandler = async (
       .send({ error: { message: "Could not stop the connector" } });
   }
 };
+
+export const stopConnectorAPIHandler = withLogging(_stopConnectorAPIHandler);
