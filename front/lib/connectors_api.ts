@@ -9,6 +9,7 @@ export type ConnectorsAPIErrorResponse = {
 const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
+export type ConnectorSyncStatus = "succeeded" | "failed";
 
 export type ConnectorProvider = "slack" | "notion";
 
@@ -30,6 +31,24 @@ export const ConnectorsAPI = {
         nangoConnectionId,
       }),
     });
+
+    return _resultFromResponse(res);
+  },
+
+  async getSyncStatus(connectorId: string): Promise<
+    ConnectorsAPIResponse<{
+      lastSyncStatus: ConnectorSyncStatus;
+      lastSyncStartTime: number;
+      lastSuccessfulSyncTime: number;
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/sync_status/${connectorId}`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      }
+    );
 
     return _resultFromResponse(res);
   },

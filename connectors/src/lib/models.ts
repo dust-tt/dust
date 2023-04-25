@@ -8,7 +8,10 @@ import {
   Sequelize,
 } from "sequelize";
 
-import { type ConnectorProvider } from "../types/connector";
+import {
+  type ConnectorProvider,
+  ConnectorSyncStatus,
+} from "../types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 if (!CONNECTORS_DATABASE_URI) {
@@ -19,6 +22,8 @@ export const sequelize_conn = new Sequelize(
   CONNECTORS_DATABASE_URI as string,
   {}
 );
+
+export type ModelId = number;
 
 export class Connector extends Model<
   InferAttributes<Connector>,
@@ -32,6 +37,11 @@ export class Connector extends Model<
   declare workspaceAPIKey: string;
   declare workspaceId: string;
   declare dataSourceName: string;
+
+  declare lastSyncStatus?: ConnectorSyncStatus;
+  declare lastSyncStartTime?: Date;
+  declare lastSyncFinishTime?: Date;
+  declare lastSyncSuccessfulTime?: Date;
 }
 
 Connector.init(
@@ -70,6 +80,22 @@ Connector.init(
     dataSourceName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    lastSyncStatus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastSyncStartTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastSyncFinishTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastSyncSuccessfulTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
