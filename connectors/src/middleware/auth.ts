@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-import { ConnectorsAPIErrorResponse } from "../types/errors";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const { DUST_CONNECTORS_SECRET } = process.env;
 

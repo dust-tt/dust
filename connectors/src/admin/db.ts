@@ -1,5 +1,5 @@
-import { Connector, SlackConfiguration } from "../lib/models.js";
-import logger from "../logger/logger";
+import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import logger from "@connectors/logger/logger";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
