@@ -1,13 +1,13 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { apiError } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 

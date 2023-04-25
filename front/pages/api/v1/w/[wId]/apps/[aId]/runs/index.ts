@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";

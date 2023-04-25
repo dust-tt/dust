@@ -1,12 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Key, Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";

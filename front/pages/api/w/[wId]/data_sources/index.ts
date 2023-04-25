@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 

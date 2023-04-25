@@ -1,0 +1,42 @@
+import { CredentialsType, ProviderType } from "@app/types/provider";
+
+export const credentialsFromProviders = (
+  providers: ProviderType[]
+): CredentialsType => {
+  let credentials: CredentialsType = {};
+
+  providers.forEach((provider) => {
+    let config = JSON.parse(provider.config) as {
+      api_key: string;
+      endpoint?: string;
+    };
+
+    switch (provider.providerId) {
+      case "openai":
+        credentials["OPENAI_API_KEY"] = config.api_key;
+        break;
+      case "cohere":
+        credentials["COHERE_API_KEY"] = config.api_key;
+        break;
+      case "ai21":
+        credentials["AI21_API_KEY"] = config.api_key;
+        break;
+      case "azure_openai":
+        credentials["AZURE_OPENAI_API_KEY"] = config.api_key;
+        credentials["AZURE_OPENAI_ENDPOINT"] = config.endpoint;
+        break;
+      case "anthropic":
+        credentials["ANTHROPIC_API_KEY"] = config.api_key;
+      case "serpapi":
+        credentials["SERP_API_KEY"] = config.api_key;
+        break;
+      case "serper":
+        credentials["SERPER_API_KEY"] = config.api_key;
+        break;
+      case "browserlessapi":
+        credentials["BROWSERLESS_API_KEY"] = config.api_key;
+        break;
+    }
+  });
+  return credentials;
+};

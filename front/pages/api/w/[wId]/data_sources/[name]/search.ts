@@ -1,12 +1,12 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
-import { credentialsFromProviders } from "@app/lib/providers";
 import { DocumentType } from "@app/types/document";
 
 export type DatasourceSearchQuery = {
