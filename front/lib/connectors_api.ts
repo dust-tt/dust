@@ -9,6 +9,7 @@ export type ConnectorsAPIErrorResponse = {
 const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
+export type ConnectorSyncStatus = "succeeded" | "failed";
 
 export const ConnectorsAPI = {
   async createConnector(
@@ -31,7 +32,13 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
+
+  async conncetorSyncStatus(connectorId: string): Promise<ConnectorsAPIResponse<{lastSyncStatus:ConnectorSyncStatus, lastSuccessfulSyncTime:Date}>> {
+    
+  } 
 };
+
+
 
 function getDefaultHeaders() {
   return {
@@ -57,3 +64,5 @@ async function _resultFromResponse<T>(
 
   return new Ok(jsonResponse);
 }
+
+
