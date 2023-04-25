@@ -203,8 +203,9 @@ function parsePropertyText(
     default:
       // `property` here is `never`
       ((property: never) => {
-        console.warn(
-          `Unknown property type ${(property as { type: string }).type}`
+        logger.warn(
+          { property_type: (property as { type: string }).type },
+          `Unknown property type`
         );
       })(property);
       return null;
@@ -529,7 +530,10 @@ async function parsePageBlock(
     default:
       // `block` here is `never`
       ((block: never) => {
-        console.warn(`Unknown block type: ${(block as { type: string }).type}`);
+        logger.warn(
+          { type: (block as { type: string }).type },
+          "Unknown block type"
+        );
       })(block);
       return [NULL_BLOCK];
   }

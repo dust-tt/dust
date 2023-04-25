@@ -155,7 +155,7 @@ export async function getNotionConnectionStatus(
     };
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
-      console.warn(
+      logger.warn(
         `Notion sync workflow not found for workspace ${dataSourceInfo.workspaceId}`
       );
       return {
