@@ -482,7 +482,7 @@ export class DataSource extends Model<
   declare config?: string;
   declare dustAPIProjectId: string;
   declare connectorId?: string;
-  declare connectorProvider?: "slack" | "notion" | "google";
+  declare connectorProvider?: "slack" | "notion";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
