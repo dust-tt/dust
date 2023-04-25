@@ -65,7 +65,7 @@ const _stopConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).send({
+    return res.status(200).json({
       connectorId: stopRes.value,
     });
   } catch (e) {

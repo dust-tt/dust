@@ -94,8 +94,8 @@ async function handler(
       }
 
       let sourceUrl: string | null = null;
-      if (req.body.sourceUrl) {
-        if (typeof req.body.sourceUrl !== "string") {
+      if (req.body.source_url) {
+        if (typeof req.body.source_url !== "string") {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -107,7 +107,7 @@ async function handler(
         }
 
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
-          validateUrl(req.body.sourceUrl);
+          validateUrl(req.body.source_url);
 
         if (!isSourceUrlValid) {
           return apiError(req, res, {

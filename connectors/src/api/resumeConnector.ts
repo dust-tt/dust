@@ -73,7 +73,7 @@ const _resumeConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).send({
+    return res.status(200).json({
       connectorId: resumeRes.value,
     });
   } catch (e) {

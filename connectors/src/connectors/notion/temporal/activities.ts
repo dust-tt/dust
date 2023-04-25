@@ -23,7 +23,8 @@ export async function notionUpsertPageActivity(
   await upsertToDatasource(
     dataSourceConfig,
     `notion-${parsedPage.id}`,
-    parsedPage.rendered
+    parsedPage.rendered,
+    parsedPage.url
   );
 }
 

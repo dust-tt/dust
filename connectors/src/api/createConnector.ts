@@ -73,6 +73,8 @@ const _createConnectorAPIHandler = async (
         status_code: 500,
       });
     }
+
+    return res.status(200).json({ connectorId: connectorRes.value });
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {

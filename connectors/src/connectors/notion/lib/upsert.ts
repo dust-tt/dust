@@ -12,11 +12,13 @@ if (!DUST_API_URL) {
 export async function upsertToDatasource(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
-  documentText: string
+  documentText: string,
+  documentUrl?: string
 ) {
   const endpoint = `${DUST_API_URL}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources//${dataSourceConfig.dataSourceName}/documents/${documentId}`;
   const dustRequestPayload = {
     text: documentText,
+    source_url: documentUrl,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
