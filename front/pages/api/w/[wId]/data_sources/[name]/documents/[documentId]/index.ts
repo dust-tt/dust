@@ -255,7 +255,7 @@ async function handler(
         });
       }
 
-      res.status(200).end();
+      res.status(204).end();
       return;
 
     default:

@@ -9,6 +9,7 @@ import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -127,8 +128,9 @@ export default function DataSourceNew({
     if (res.ok) {
       router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
     } else {
+      let err = (await res.json()) as { error: APIError };
       setCreating(false);
-      window.alert("Error creating DataSource. Please try again later.");
+      window.alert(`Error creating DataSource: ${err.error.message}`);
     }
   };
 

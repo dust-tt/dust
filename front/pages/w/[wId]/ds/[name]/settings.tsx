@@ -1,7 +1,7 @@
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { isValidElement, useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
@@ -9,6 +9,7 @@ import { Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -73,10 +74,14 @@ export default function DataSourceSettings({
     dataSource.visibility
   );
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const router = useRouter();
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this DataSource?")) {
+      setIsDeleting(true);
       let res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
         {
@@ -85,10 +90,42 @@ export default function DataSourceSettings({
       );
       if (res.ok) {
         router.push(`/w/${owner.sId}/ds`);
+      } else {
+        setIsDeleting(false);
+        let err = (await res.json()) as { error: APIError };
+        window.alert(
+          `Failed to delete the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        );
       }
       return true;
     } else {
       return false;
+    }
+  };
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    let res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description: dataSourceDescription,
+          visibility: dataSourceVisibility,
+        }),
+      }
+    );
+    if (res.ok) {
+      router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+    } else {
+      setIsUpdating(false);
+      let err = (await res.json()) as { error: APIError };
+      window.alert(
+        `Failed to update the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+      );
     }
   };
 
@@ -109,11 +146,7 @@ export default function DataSourceSettings({
         </div>
         <div className="">
           <div className="mx-auto mt-8 max-w-4xl px-2">
-            <form
-              action={`/api/w/${owner.sId}/data_sources/${dataSource.name}`}
-              method="POST"
-              className="mt-8 space-y-8 divide-y divide-gray-200"
-            >
+            <div className="mt-8 space-y-8 divide-y divide-gray-200">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -294,14 +327,24 @@ export default function DataSourceSettings({
 
               <div className="flex pt-6">
                 <div className="flex">
-                  <Button type="submit">Update</Button>
+                  <Button
+                    onClick={handleUpdate}
+                    disabled={isDeleting || isUpdating}
+                  >
+                    Update
+                  </Button>
                 </div>
                 <div className="flex-1"></div>
                 <div className="ml-2 flex">
-                  <Button onClick={handleDelete}>Delete</Button>
+                  <Button
+                    onClick={handleDelete}
+                    disabled={isDeleting || isUpdating}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Button>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>

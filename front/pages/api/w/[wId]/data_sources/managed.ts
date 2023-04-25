@@ -30,8 +30,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -42,7 +42,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "app_auth_error",
+            type: "data_source_auth_error",
             message:
               "Only the users that are `admins` for the current workspace can create a managed data source.",
           },
@@ -69,7 +69,7 @@ async function handler(
         });
       }
 
-      // Enforce plan limits: DataSources count.
+      // Enforce plan limits: managed DataSources.
       if (!owner.plan.limits.dataSources.managed) {
         return apiError(req, res, {
           status_code: 401,
