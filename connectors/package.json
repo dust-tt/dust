@@ -7,9 +7,6 @@
     "lint": "eslint .",
     "build": "tsc",
     "start": "env $(cat .env.local) tsx ./src/start.ts -p 3002",
-    "start-api": "env $(cat .env.local) tsx ./src/api_server.ts -p 3002",
-    "slack-worker": "env $(cat .env.local) tsx ./src/connectors/slack/worker.ts",
-    "notion-worker": "env $(cat .env.local) tsx ./src/connectors/notion/temporal/worker.ts",
     "initdb": "env $(cat .env.local) npx tsx src/admin/db.ts"
   },
   "dependencies": {
