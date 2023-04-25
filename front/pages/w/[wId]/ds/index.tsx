@@ -266,55 +266,75 @@ export default function DataSourcesView({
 
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="">
-            {MANAGED_DATA_SOURCES.map((ds) => (
-              <li key={`managed-${ds.connectorProvider}`} className="px-2 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <p
-                      className={classNames(
-                        "truncate text-base font-bold",
-                        enabledManagedDataSources.has(
-                          ds.connectorProvider as ConnectorProvider
-                        )
-                          ? "text-violet-600"
-                          : "text-slate-400"
+            {MANAGED_DATA_SOURCES.map((ds) => {
+              const enabled = enabledManagedDataSources.has(
+                ds.connectorProvider as ConnectorProvider
+              );
+              return (
+                <li
+                  key={`managed-${ds.connectorProvider}`}
+                  className="px-2 py-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {enabled ? (
+                        <Link
+                          href={`/w/${
+                            owner.sId
+                          }/ds/${`managed-${ds.connectorProvider}`}`}
+                          className="block"
+                        >
+                          <p
+                            className={classNames(
+                              "truncate text-base font-bold",
+                              enabled ? "text-violet-600" : "text-slate-400"
+                            )}
+                          >
+                            {ds.name}
+                          </p>
+                        </Link>
+                      ) : (
+                        <p
+                          className={classNames(
+                            "truncate text-base font-bold",
+                            enabled ? "text-violet-600" : "text-slate-400"
+                          )}
+                        >
+                          {ds.name}
+                        </p>
                       )}
-                    >
-                      {ds.name}
-                    </p>
-                  </div>
-                  <div>
-                    {!enabledManagedDataSources.has(
-                      ds.connectorProvider as ConnectorProvider
-                    ) ? (
-                      <Button
-                        disabled={!ds.isBuilt}
-                        onClick={() => {
-                          handleEnableManagedDataSource(
-                            ds.connectorProvider as ConnectorProvider
-                          );
-                        }}
-                      >
-                        {ds.isBuilt ? "Setup" : "Coming soon"}
-                      </Button>
-                    ) : (
-                      <p
-                        className={classNames(
-                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                          "bg-green-100 text-green-800"
-                          // handle error:
-                          // : "bg-red-100 text-red-800"
-                        )}
-                      >
-                        enabled
-                        {/* handle error:
+                    </div>
+                    <div>
+                      {!enabled ? (
+                        <Button
+                          disabled={!ds.isBuilt}
+                          onClick={() => {
+                            handleEnableManagedDataSource(
+                              ds.connectorProvider as ConnectorProvider
+                            );
+                          }}
+                        >
+                          {ds.isBuilt ? "Setup" : "Coming soon"}
+                        </Button>
+                      ) : (
+                        <p
+                          className={classNames(
+                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                            "bg-green-100 text-green-800"
+                            // handle error:
+                            // : "bg-red-100 text-red-800"
+                          )}
+                        >
+                          enabled
+                          {/* handle error:
                            errored */}
-                      </p>
-                    )}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
