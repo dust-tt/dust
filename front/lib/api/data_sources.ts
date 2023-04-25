@@ -40,6 +40,13 @@ export async function getDataSource(
     visibility: dataSource.visibility,
     config: dataSource.config,
     dustAPIProjectId: dataSource.dustAPIProjectId,
+    connector:
+      dataSource.connectorId && dataSource.connectorProvider
+        ? {
+            id: dataSource.connectorId,
+            provider: dataSource.connectorProvider,
+          }
+        : null,
   };
 }
 
@@ -74,6 +81,13 @@ export async function getDataSources(
       visibility: dataSource.visibility,
       config: dataSource.config,
       dustAPIProjectId: dataSource.dustAPIProjectId,
+      connector:
+        dataSource.connectorId && dataSource.connectorProvider
+          ? {
+              id: dataSource.connectorId,
+              provider: dataSource.connectorProvider,
+            }
+          : null,
     };
   });
 }

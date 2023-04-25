@@ -126,7 +126,7 @@ export default function NewBlock({
               disabled
                 ? "border-gray-200 bg-white text-gray-300"
                 : "border-gray-700 bg-gray-700 text-white hover:bg-gray-800",
-              "shadow-sm focus:outline-none focus:ring-2 focus:ring-0"
+              "shadow-sm focus:outline-none focus:ring-0 focus:ring-2"
             )}
             disabled={disabled}
           >
@@ -151,7 +151,7 @@ export default function NewBlock({
                 onClick(block.type);
               }
             }}
-            className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white py-1 px-0 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+            className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white px-0 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
           >
             {({ active }) => (
               <div className="ml-4 grid max-w-md grid-cols-12 items-center">

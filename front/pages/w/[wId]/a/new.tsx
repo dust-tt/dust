@@ -1,12 +1,15 @@
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
+import { AppType } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -51,6 +54,8 @@ export default function NewApp({
   const [appDescription, setAppDescription] = useState("");
   const [appVisibility, setAppVisibility] = useState("public");
 
+  const [creating, setCreating] = useState(false);
+
   const formValidation = () => {
     if (appName.length == 0) {
       setAppNameError("");
@@ -70,6 +75,31 @@ export default function NewApp({
     setDisabled(!formValidation());
   }, [appName]);
 
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    setCreating(true);
+    const res = await fetch(`/api/w/${owner.sId}/apps`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: appName,
+        description: appDescription,
+        visibility: appVisibility,
+      }),
+    });
+    if (res.ok) {
+      let appRes = (await res.json()) as { app: AppType };
+      router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
+    } else {
+      let err = (await res.json()) as { error: APIError };
+      setCreating(false);
+      window.alert(`Error creating app: ${err.error.message}`);
+    }
+  };
+
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
@@ -78,11 +108,7 @@ export default function NewApp({
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <form
-              action={`/api/w/${owner.sId}/apps`}
-              method="POST"
-              className="mt-8 space-y-8 divide-y divide-gray-200"
-            >
+            <div className="mt-8 space-y-8 divide-y divide-gray-200">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   <h3 className="text-base font-medium leading-6 text-gray-900">
@@ -96,7 +122,7 @@ export default function NewApp({
                   </p>
                 </div>
                 <div>
-                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
                     <div className="sm:col-span-3">
                       <label
                         htmlFor="appName"
@@ -249,12 +275,12 @@ export default function NewApp({
 
               <div className="pt-6">
                 <div className="flex">
-                  <Button disabled={disable} type="submit">
-                    Create
+                  <Button onClick={handleCreate} disabled={disable || creating}>
+                    {creating ? "Creating..." : "Create"}
                   </Button>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>

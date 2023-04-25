@@ -359,7 +359,7 @@ export default function DatasetView({
 
   return (
     <div>
-      <div className="mt-2 grid gap-y-4 gap-x-4 sm:grid-cols-5">
+      <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
         <div className="sm:col-span-1">
           <label
             htmlFor="datasetName"

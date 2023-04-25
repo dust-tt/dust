@@ -24,7 +24,7 @@ async function handler(
   }
 
   if (!auth.isBuilder()) {
-    res.status(401).end();
+    res.status(403).end();
     return;
   }
 
@@ -89,21 +89,28 @@ async function handler(
           return;
 
         case "azure_openai":
-          let deploymentsRes = await fetch(
-            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
-            {
-              method: "GET",
-              headers: {
-                "api-key": config.api_key,
-              },
+          try {
+            let deploymentsRes = await fetch(
+              `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+              {
+                method: "GET",
+                headers: {
+                  "api-key": config.api_key,
+                },
+              }
+            );
+            if (!deploymentsRes.ok) {
+              let err = await deploymentsRes.json();
+              res.status(400).json({ ok: false, error: err.error.message });
+            } else {
+              let deployments = await deploymentsRes.json();
+              res.status(200).json({ ok: true });
             }
-          );
-          if (!deploymentsRes.ok) {
-            let err = await deploymentsRes.json();
-            res.status(400).json({ ok: false, error: err.error.message });
-          } else {
-            let deployments = await deploymentsRes.json();
-            res.status(200).json({ ok: true });
+          } catch (e) {
+            // this can happen if config.endpoint is buggy
+            res
+              .status(400)
+              .json({ ok: false, error: "Invalid Azure endpoint URL" });
           }
           return;
 

@@ -1,3 +1,5 @@
+import { ConnectorProvider } from "@app/lib/connectors_api";
+
 export type DataSourceVisibility = "public" | "private";
 
 export type DataSourceType = {
@@ -6,4 +8,5 @@ export type DataSourceType = {
   visibility: DataSourceVisibility;
   config?: string;
   dustAPIProjectId: string;
+  connector: { id: string; provider: ConnectorProvider } | null;
 };

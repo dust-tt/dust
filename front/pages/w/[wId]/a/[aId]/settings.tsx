@@ -10,6 +10,7 @@ import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { AppType, AppVisibility } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -77,6 +78,9 @@ export default function SettingsView({
   const [appDescription, setAppDescription] = useState(app.description || "");
   const [appVisibility, setAppVisibility] = useState(app.visibility);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const formValidation = () => {
     if (appName.length == 0) {
       setAppNameError("");
@@ -96,15 +100,46 @@ export default function SettingsView({
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this app?")) {
+      setIsDeleting(true);
       let res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
         method: "DELETE",
       });
       if (res.ok) {
         router.push(`/w/${owner.sId}/`);
+      } else {
+        setIsDeleting(false);
+        let err = (await res.json()) as { error: APIError };
+        window.alert(
+          `Failed to delete the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        );
       }
       return true;
     } else {
       return false;
+    }
+  };
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    let res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: appName,
+        description: appDescription,
+        visibility: appVisibility,
+      }),
+    });
+    if (res.ok) {
+      router.push(`/w/${owner.sId}/a/${app.sId}`);
+    } else {
+      setIsUpdating(false);
+      let err = (await res.json()) as { error: APIError };
+      window.alert(
+        `Failed to update the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+      );
     }
   };
 
@@ -122,14 +157,10 @@ export default function SettingsView({
         <div className="mx-auto mt-4 flex w-full max-w-5xl flex-auto">
           <div className="flex flex-1">
             <div className="w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-              <form
-                action={`/api/w/${owner.sId}/apps/${app.sId}`}
-                method="POST"
-                className="mt-8 space-y-8 divide-y divide-gray-200"
-              >
+              <div className="mt-8 space-y-8 divide-y divide-gray-200">
                 <div className="space-y-8 divide-y divide-gray-200">
                   <div>
-                    <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
                       <div className="sm:col-span-3">
                         <label
                           htmlFor="appName"
@@ -289,8 +320,11 @@ export default function SettingsView({
                   </div>
                 </div>
                 <div className="flex pt-6">
-                  <Button disabled={disable} type="submit">
-                    Update
+                  <Button
+                    disabled={disable || isUpdating || isDeleting}
+                    onClick={handleUpdate}
+                  >
+                    {isUpdating ? "Updating..." : "Update"}
                   </Button>
                   <div className="flex-1"></div>
                   <div className="flex">
@@ -299,10 +333,15 @@ export default function SettingsView({
                     </Link>
                   </div>
                   <div className="ml-2 flex">
-                    <Button onClick={handleDelete}>Delete</Button>
+                    <Button
+                      onClick={handleDelete}
+                      disabled={isDeleting || isUpdating}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
                   </div>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

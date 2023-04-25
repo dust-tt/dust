@@ -158,7 +158,7 @@ export default function NewApp({
               </div>
               <div>
                 <div className="mt-8 space-y-8">
-                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-5">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
                     <div className="sm:col-span-3">
                       <label
                         htmlFor="appName"
@@ -258,7 +258,7 @@ export default function NewApp({
 
               <div>
                 <div className="mt-8 space-y-8">
-                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-5">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
                     <div className="sm:col-span-5">
                       <div className="block text-sm font-medium text-gray-800">
                         {members.length} Members
@@ -286,7 +286,7 @@ export default function NewApp({
                                 </div>
                                 {member.provider === "google" ? (
                                   <div className="flex-cols flex text-sm text-gray-500">
-                                    <div className="mt-0.5 mr-1 flex h-4 w-4 flex-initial">
+                                    <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
                                       <img src="/static/google_white_32x32.png"></img>
                                     </div>
                                     <div className="flex flex-1">
@@ -296,7 +296,7 @@ export default function NewApp({
                                 ) : null}
                                 {member.provider === "github" ? (
                                   <div className="flex-cols flex text-sm text-gray-500">
-                                    <div className="mt-0.5 mr-1 flex h-4 w-4 flex-initial">
+                                    <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
                                       <img src="/static/github_black_32x32.png"></img>
                                     </div>
                                     <div className="flex flex-1">

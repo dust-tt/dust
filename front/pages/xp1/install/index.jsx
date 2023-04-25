@@ -49,7 +49,7 @@ export default function InstallExtension({ ga_tracking_id }) {
 
         <div className="leading-16 mx-auto mt-12">
           <div className="mx-auto max-w-xl text-sm text-gray-900">
-            <div className="rounded-t bg-gray-800 py-2 px-3 text-gray-200">
+            <div className="rounded-t bg-gray-800 px-3 py-2 text-gray-200">
               Instructions:
             </div>
             <div className="rounded-b bg-gray-700 py-2 pl-3 pr-1 text-white">

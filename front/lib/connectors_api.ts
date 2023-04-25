@@ -11,11 +11,13 @@ const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
 
+export type ConnectorProvider = "slack" | "notion";
+
 export const ConnectorsAPI = {
   async createConnector(
-    provider: string,
+    provider: ConnectorProvider,
     workspaceId: string,
-    APIKey: string,
+    workspaceAPIKey: string,
     dataSourceName: string,
     nangoConnectionId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
@@ -23,10 +25,10 @@ export const ConnectorsAPI = {
       method: "POST",
       headers: getDefaultHeaders(),
       body: JSON.stringify({
-        workspaceId: workspaceId,
-        workspaceAPIKey: APIKey,
-        dataSourceName: dataSourceName,
-        nangoConnectionId: nangoConnectionId,
+        workspaceId,
+        workspaceAPIKey,
+        dataSourceName,
+        nangoConnectionId,
       }),
     });
 

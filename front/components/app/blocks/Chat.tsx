@@ -256,7 +256,7 @@ export default function Chat({
               className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronDownIcon className="mt-0.5 mr-1 h-4 w-4" />
+                <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
               advanced
             </div>
@@ -266,7 +266,7 @@ export default function Chat({
               className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
             >
               <span>
-                <ChevronRightIcon className="mt-0.5 mr-1 h-4 w-4" />
+                <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
               advanced
             </div>

@@ -119,7 +119,7 @@ export default function Curl({
               <div>
                 <Menu.Button
                   className={classNames(
-                    "inline-flex items-center rounded-md border border-gray-300 bg-gray-50 py-1 px-1 text-sm font-normal",
+                    "inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-1 py-1 text-sm font-normal",
                     "focus:outline-none focus:ring-0",
                     readOnly ? "cursor-default" : "cursor-pointer"
                   )}
@@ -160,7 +160,7 @@ export default function Curl({
               )}
             </Menu>
           </div>
-          <div className="flex flex-initial flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-1 flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-1 font-normal">
               <div className="flex flex-1 rounded-md">
                 <span

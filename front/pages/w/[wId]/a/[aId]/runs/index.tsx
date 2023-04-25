@@ -129,7 +129,7 @@ export default function RunsView({
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-700",
                         tabIdx === 0 ? "rounded-l-md" : "",
                         tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
-                        "flex-1 cursor-pointer border py-1 px-3 text-center text-sm font-medium shadow-sm focus:z-10"
+                        "flex-1 cursor-pointer border px-3 py-1 text-center text-sm font-medium shadow-sm focus:z-10"
                       )}
                       onClick={() => setRunType(tab.runType)}
                     >
@@ -179,7 +179,7 @@ export default function RunsView({
                 <ul role="list" className="space-y-4">
                   {runs.map((run) => (
                     <li key={run.run_id} className="px-0">
-                      <div className="rounded border border-gray-300 py-4 py-4 px-4">
+                      <div className="rounded border border-gray-300 px-4 py-4 py-4">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-initial">
                             <Link
