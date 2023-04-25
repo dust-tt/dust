@@ -1,7 +1,6 @@
+import { Connector, ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
-
-import { Connector, ModelId } from "../lib/models";
-import { ConnectorSyncStatus } from "../types/connector";
+import { ConnectorSyncStatus } from "@connectors/types/connector";
 
 async function syncFinished(
   connectorId: ModelId,

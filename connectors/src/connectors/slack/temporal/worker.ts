@@ -1,19 +1,18 @@
 import { Worker } from "@temporalio/worker";
 
+import * as activities from "@connectors/connectors/slack/temporal/activities";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 
-import * as activities from "./slack.js";
-
-export async function runSlackWorker(): Promise<void> {
+export async function runSlackWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflow"),
+    workflowsPath: require.resolve("./workflows"),
     activities,
-    taskQueue: "slack-sync",
+    taskQueue: "slack-queue",
+    maxConcurrentActivityTaskExecutions: 1,
     connection,
     namespace,
   });
-  await worker.run();
 
-  return;
+  await worker.run();
 }

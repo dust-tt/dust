@@ -47,7 +47,7 @@ const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
   {
     name: "Slack",
     connectorProvider: "slack",
-    isBuilt: false,
+    isBuilt: true,
     logoPath: "/static/slack_32x32.png",
   },
   {
