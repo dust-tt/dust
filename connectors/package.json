@@ -6,9 +6,9 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "build": "tsc",
-    "start-api": "tsx ./src/api_server.ts -p 3002",
-    "slack-worker": "tsx ./src/connectors/slack/worker.ts",
-    "initdb": "npx tsx src/admin/db.ts"
+    "start-api": "env $(cat .env.local) tsx ./src/api_server.ts -p 3002",
+    "slack-worker": "env $(cat .env.local) tsx ./src/connectors/slack/worker.ts",
+    "initdb": "env $(cat .env.local) npx tsx src/admin/db.ts"
   },
   "dependencies": {
     "@nangohq/node": "^0.9.0",

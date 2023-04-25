@@ -8,7 +8,8 @@
     "format:check": "prettier --check .",
     "tsc": "tsc",
     "test": "jest",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "initdb": "env $(cat .env.local) npx tsx admin/db.ts"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.7",
