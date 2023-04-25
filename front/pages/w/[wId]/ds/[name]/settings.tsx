@@ -172,8 +172,8 @@ export default function DataSourceSettings({
                           name="name"
                           id="dataSourceName"
                           className={classNames(
-                            "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
-                            "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                            "block w-full min-w-0 flex-1 rounded-none rounded-r-md border-gray-300 text-sm",
+                            "focus:border-gray-300 focus:ring-0"
                           )}
                           value={dataSource.name}
                           readOnly={true}
@@ -201,7 +201,12 @@ export default function DataSourceSettings({
                           type="text"
                           name="description"
                           id="dataSourceDescription"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
+                          className={classNames(
+                            "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
+                            managed
+                              ? "focus:border-gray-300 focus:ring-0"
+                              : "focus:border-violet-500 focus:ring-violet-500"
+                          )}
                           value={dataSourceDescription}
                           readOnly={managed}
                           onChange={(e) =>
@@ -320,7 +325,7 @@ export default function DataSourceSettings({
                           type="number"
                           name="max_chunk_size"
                           id="dataSourceMaxChunkSize"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
+                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-gray-300 focus:ring-0"
                           value={dataSourceConfig.max_chunk_size}
                           readOnly={true}
                         />
