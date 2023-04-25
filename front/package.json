@@ -34,7 +34,7 @@
     "react-beforeunload": "^2.5.3",
     "react-dom": "^18.2.0",
     "react-textarea-autosize": "^8.4.0",
-    "sequelize": "^6.28.0",
+    "sequelize": "^6.31.0",
     "sqlite3": "^5.1.4",
     "sse.js": "^0.6.1",
     "swr": "^2.0.2",
