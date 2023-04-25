@@ -52,12 +52,6 @@ async function handler(
         });
       }
 
-      const dataSourceName = "managed-slack";
-      const dataSourceDescription = "Managed Data Source for Slack";
-      const dataSourceProviderId = "openai";
-      const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 256;
-
       if (
         !req.body ||
         typeof req.body.nangoConnectionId !== "string" ||
@@ -74,6 +68,12 @@ async function handler(
       }
 
       const provider = req.body.provider as ConnectorProvider;
+
+      const dataSourceName = `managed-${provider}`;
+      const dataSourceDescription = `Managed Data Source for ${provider}`;
+      const dataSourceProviderId = "openai";
+      const dataSourceModelId = "text-embedding-ada-002";
+      const dataSourceMaxChunkSize = 256;
 
       // Enforce plan limits: managed DataSources.
       if (!owner.plan.limits.dataSources.managed) {
@@ -107,7 +107,7 @@ async function handler(
 
       const connectorsRes = await ConnectorsAPI.createConnector(
         provider,
-        owner.id.toString(),
+        owner.sId.toString(),
         systemAPIKeyRes.value.secret,
         dataSourceName,
         req.body.nangoConnectionId

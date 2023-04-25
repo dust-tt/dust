@@ -1,24 +1,36 @@
 import { PlusIcon } from "@heroicons/react/20/solid";
+import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { GA_TRACKING_ID = "" } = process.env;
+const {
+  GA_TRACKING_ID = "",
+  NANGO_SLACK_CONNECTOR_ID,
+  NANGO_NOTION_CONNECTOR_ID,
+  NANGO_PUBLIC_KEY,
+} = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
   dataSources: DataSourceType[];
+  managedDataSources: DataSourceType[];
   gaTrackingId: string;
+  nangoPublicKey: string;
+  nangoSlackConnectorId: string;
+  nangoNotionConnectorId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -36,7 +48,9 @@ export const getServerSideProps: GetServerSideProps<{
 
   const readOnly = !auth.isBuilder();
 
-  let dataSources = await getDataSources(auth);
+  let allDataSources = await getDataSources(auth);
+  const dataSources = allDataSources.filter((ds) => !ds.connector);
+  const managedDataSources = allDataSources.filter((ds) => ds.connector);
 
   return {
     props: {
@@ -44,18 +58,86 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
+      managedDataSources,
       gaTrackingId: GA_TRACKING_ID,
+      nangoPublicKey: NANGO_PUBLIC_KEY!,
+      nangoSlackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
+      nangoNotionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
     },
   };
 };
+
+type ManagedDataSource = {
+  name: string;
+  connectorProvider: "slack" | "notion" | "google_drive" | "github";
+  isBuilt: boolean;
+};
+
+const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
+  {
+    name: "Notion",
+    connectorProvider: "notion",
+    isBuilt: true,
+  },
+  {
+    name: "Slack",
+    connectorProvider: "slack",
+    isBuilt: true,
+  },
+  {
+    name: "Google Drive",
+    connectorProvider: "google_drive",
+    isBuilt: false,
+  },
+  {
+    name: "Github",
+    connectorProvider: "github",
+    isBuilt: false,
+  },
+];
 
 export default function DataSourcesView({
   user,
   owner,
   readOnly,
   dataSources,
+  managedDataSources,
   gaTrackingId,
+  nangoPublicKey,
+  nangoSlackConnectorId,
+  nangoNotionConnectorId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [enabledManagedDataSources, setEnabledManagedDataSources] = useState(
+    new Set(managedDataSources.map((ds) => ds.connector?.provider))
+  );
+
+  const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
+    const nangoConnectorId =
+      provider == "slack" ? nangoSlackConnectorId : nangoNotionConnectorId;
+    const nango = new Nango({ publicKey: nangoPublicKey! });
+    const {
+      connectionId: nangoConnectionId,
+    }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+      nangoConnectorId!,
+      `${provider}-${owner.sId}`
+    );
+
+    const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider,
+        nangoConnectionId,
+      }),
+    });
+
+    if (res.ok) {
+      setEnabledManagedDataSources((prev) => prev.add(provider));
+    }
+  };
+
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
@@ -166,6 +248,74 @@ export default function DataSourcesView({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+        <div className="sm:flex sm:items-center">
+          <div className="mt-16 sm:flex-auto">
+            <h1 className="text-base font-medium text-gray-900">
+              Managed DataSources
+            </h1>
+
+            <p className="text-sm text-gray-500">
+              Fully managed and kept in sync in real-time with the products you
+              use.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 overflow-hidden">
+          <ul role="list" className="">
+            {MANAGED_DATA_SOURCES.map((ds) => (
+              <li key={`managed-${ds.connectorProvider}`} className="px-2 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <p
+                      className={classNames(
+                        "truncate text-base font-bold",
+                        enabledManagedDataSources.has(
+                          ds.connectorProvider as ConnectorProvider
+                        )
+                          ? "text-violet-600"
+                          : "text-slate-400"
+                      )}
+                    >
+                      {ds.name}
+                    </p>
+                  </div>
+                  <div>
+                    {!enabledManagedDataSources.has(
+                      ds.connectorProvider as ConnectorProvider
+                    ) ? (
+                      <Button
+                        disabled={!ds.isBuilt}
+                        onClick={() => {
+                          handleEnableManagedDataSource(
+                            ds.connectorProvider as ConnectorProvider
+                          );
+                        }}
+                      >
+                        {ds.isBuilt ? "Setup" : "Coming soon"}
+                      </Button>
+                    ) : (
+                      <p
+                        className={classNames(
+                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                          "bg-green-100 text-green-800"
+                          // handle error:
+                          // : "bg-red-100 text-red-800"
+                        )}
+                      >
+                        enabled
+                        {/* handle error:
+                           errored */}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </AppLayout>
