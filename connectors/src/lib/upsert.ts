@@ -4,9 +4,9 @@ import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const DUST_API_URL = process.env.DUST_API_URL;
-if (!DUST_API_URL) {
-  throw new Error("DUST_API_URL not set");
+const FRONT_API = process.env.FRONT_API;
+if (!FRONT_API) {
+  throw new Error("FRONT_API not set");
 }
 
 export async function upsertToDatasource(
@@ -16,7 +16,7 @@ export async function upsertToDatasource(
   documentUrl?: string
 ) {
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_API_URL}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestPayload = {
     text: documentText,
     source_url: documentUrl,
