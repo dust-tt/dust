@@ -1,6 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { credentialsFromProviders } from "@app/lib/api/credentials";
+import {
+  credentialsFromProviders,
+  dustManagedCredentials,
+} from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
@@ -138,12 +141,8 @@ async function handler(
         });
       }
 
-      const providers = await Provider.findAll({
-        where: {
-          workspaceId: owner.id,
-        },
-      });
-      let credentials = credentialsFromProviders(providers);
+      // For managed DataSources we use the Dust managed credentials.
+      let credentials = dustManagedCredentials();
 
       const dustDataSource = await DustAPI.createDataSource(
         dustProject.value.project.project_id.toString(),

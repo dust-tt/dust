@@ -77,13 +77,11 @@ export default async function handler(
       }
       const requestPayload = req.query;
 
-      const [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-      ]);
+      const providers = await Provider.findAll({
+        where: {
+          workspaceId: owner.id,
+        },
+      });
       const credentials = credentialsFromProviders(providers);
       const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
 
