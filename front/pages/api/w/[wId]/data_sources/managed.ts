@@ -56,18 +56,21 @@ async function handler(
       const dataSourceMaxChunkSize = 256;
 
       if (
-        !req.body.nangoConnectionId ||
-        typeof req.body.nangoConnectionId !== "string"
+        !req.body ||
+        typeof req.body.nangoConnectionId !== "string" ||
+        !["slack", "notion"].includes(req.body.provider)
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { nangoConnectionId: string }.",
+              "The request body is invalid, expects { nangoConnectionId: string, provider: string }.",
           },
         });
       }
+
+      const provider = req.body.provider as "slack" | "notion";
 
       // Enforce plan limits: managed DataSources.
       if (!owner.plan.limits.dataSources.managed) {
@@ -100,7 +103,7 @@ async function handler(
       }
 
       const connectorsRes = await ConnectorsAPI.createConnector(
-        "slack",
+        provider,
         owner.id.toString(),
         systemAPIKeyRes.value.secret,
         dataSourceName,
@@ -176,7 +179,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         connectorId: connectorsRes.value.connectorId,
-        connectorProvider: "slack",
+        connectorProvider: provider,
       });
 
       return res.status(201).json({
@@ -186,6 +189,10 @@ async function handler(
           visibility: dataSource.visibility,
           config: dataSource.config,
           dustAPIProjectId: dataSource.dustAPIProjectId,
+          connector: {
+            id: connectorsRes.value.connectorId,
+            provider: provider,
+          },
         },
       });
 

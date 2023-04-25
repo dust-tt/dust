@@ -170,6 +170,7 @@ async function handler(
           visibility: ds.visibility,
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
+          connector: null,
         },
       });
       return;

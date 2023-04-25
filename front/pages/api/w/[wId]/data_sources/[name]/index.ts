@@ -123,6 +123,13 @@ async function handler(
           visibility: ds.visibility,
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
+          connector:
+            ds.connectorId && ds.connectorProvider
+              ? {
+                  id: ds.connectorId,
+                  provider: ds.connectorProvider,
+                }
+              : null,
         },
       });
 
