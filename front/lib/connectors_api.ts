@@ -36,6 +36,7 @@ export const ConnectorsAPI = {
   async getSyncStatus(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       lastSyncStatus: ConnectorSyncStatus;
+      lastSyncStartTime: Date;
       lastSuccessfulSyncTime: Date;
     }>
   > {},
