@@ -33,12 +33,15 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async conncetorSyncStatus(connectorId: string): Promise<ConnectorsAPIResponse<{lastSyncStatus:ConnectorSyncStatus, lastSuccessfulSyncTime:Date}>> {
-    
-  } 
+  async conncetorSyncStatus(
+    connectorId: string
+  ): Promise<
+    ConnectorsAPIResponse<{
+      lastSyncStatus: ConnectorSyncStatus;
+      lastSuccessfulSyncTime: Date;
+    }>
+  > {},
 };
-
-
 
 function getDefaultHeaders() {
   return {
@@ -64,5 +67,3 @@ async function _resultFromResponse<T>(
 
   return new Ok(jsonResponse);
 }
-
-
