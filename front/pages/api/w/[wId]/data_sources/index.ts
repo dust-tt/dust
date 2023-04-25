@@ -52,7 +52,7 @@ async function handler(
     case "POST":
       if (!auth.isBuilder()) {
         return apiError(req, res, {
-          status_code: 401,
+          status_code: 403,
           api_error: {
             type: "data_source_auth_error",
             message:

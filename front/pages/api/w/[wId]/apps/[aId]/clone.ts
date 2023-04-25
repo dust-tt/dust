@@ -52,7 +52,7 @@ async function handler(
       );
 
       if (!targetAuth.isBuilder()) {
-        res.status(401).end();
+        res.status(403).end();
         return;
       }
 

@@ -25,7 +25,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(401).end();
+        res.status(403).end();
         return;
       }
 
