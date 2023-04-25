@@ -15,7 +15,8 @@ export async function upsertToDatasource(
   documentText: string,
   documentUrl?: string
 ) {
-  const endpoint = `${DUST_API_URL}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources//${dataSourceConfig.dataSourceName}/documents/${documentId}`;
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_API_URL}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestPayload = {
     text: documentText,
     source_url: documentUrl,
