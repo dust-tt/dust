@@ -108,7 +108,9 @@ async function handler(
             }
           } catch (e) {
             // this can happen if config.endpoint is buggy
-            res.status(400).json({ ok: false, error: "Invalid Azure endpoint URL" });
+            res
+              .status(400)
+              .json({ ok: false, error: "Invalid Azure endpoint URL" });
           }
           return;
 
