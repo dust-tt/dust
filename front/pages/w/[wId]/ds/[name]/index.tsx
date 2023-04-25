@@ -37,14 +37,15 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const readOnly = !auth.isBuilder();
-
   let dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
     };
   }
+
+  // Managed data sources are read-only (you can't add a document).
+  const readOnly = !auth.isBuilder() || dataSource.connector;
 
   return {
     props: {
