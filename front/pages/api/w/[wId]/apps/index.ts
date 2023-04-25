@@ -2,13 +2,19 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
+import { AppType } from "@app/types/app";
+
+export type PostAppResponseBody = {
+  app: AppType;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<void>
+  res: NextApiResponse<PostAppResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -18,15 +24,26 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app was not found.",
+      },
+    });
   }
 
   switch (req.method) {
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(403).end();
-        return;
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can create an app.",
+          },
+        });
       }
 
       if (
@@ -35,15 +52,26 @@ async function handler(
         !(typeof req.body.description == "string") ||
         !["public", "private", "unlisted"].includes(req.body.visibility)
       ) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { name: string, description: string, visibility }.",
+          },
+        });
       }
 
       const p = await DustAPI.createProject();
-
       if (p.isErr()) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to create internal project for the app.`,
+            data_source_error: p.error,
+          },
+        });
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -59,12 +87,30 @@ async function handler(
         workspaceId: owner.id,
       });
 
-      res.redirect(`/w/${owner.sId}/a/${app.sId}`);
+      res.status(201).json({
+        app: {
+          id: app.id,
+          uId: app.uId,
+          sId: app.sId,
+          name: app.name,
+          description: app.description,
+          visibility: app.visibility,
+          savedSpecification: app.savedSpecification,
+          savedConfig: app.savedConfig,
+          savedRun: app.savedRun,
+          dustAPIProjectId: app.dustAPIProjectId,
+        },
+      });
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
   }
 }
 

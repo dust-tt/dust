@@ -331,7 +331,7 @@ export default function DataSourceSettings({
                     onClick={handleUpdate}
                     disabled={isDeleting || isUpdating}
                   >
-                    Update
+                    {isUpdating ? "Updating..." : "Update"}
                   </Button>
                 </div>
                 <div className="flex-1"></div>
