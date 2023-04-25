@@ -54,7 +54,7 @@ export async function saveSuccessSyncActivity(
       lastSyncSuccessfulTime: now,
     });
 
-    transaction.commit();
+    await transaction.commit();
   } catch (e) {
     await transaction.rollback();
     throw e;
@@ -83,7 +83,7 @@ export async function saveStartSyncActivity(
       lastSyncStartTime: new Date(),
     });
 
-    transaction.commit();
+    await transaction.commit();
   } catch (e) {
     await transaction.rollback();
     throw e;

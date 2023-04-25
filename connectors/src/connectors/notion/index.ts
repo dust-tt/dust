@@ -46,7 +46,7 @@ export async function createNotionConnector(
 
     await launchNotionSyncWorkflow(dataSourceConfig, nangoConnectionId);
 
-    transaction.commit();
+    await transaction.commit();
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error("Error creating notion connector", e);
