@@ -33,9 +33,7 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async conncetorSyncStatus(
-    connectorId: string
-  ): Promise<
+  async getSyncStatus(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       lastSyncStatus: ConnectorSyncStatus;
       lastSuccessfulSyncTime: Date;
