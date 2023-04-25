@@ -102,6 +102,16 @@ async function handler(
         });
       }
 
+      if (dataSource.connector && !keyRes.value.isSystem) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You cannot upsert a document on a managed data source.",
+          },
+        });
+      }
+
       if (!req.body || !(typeof req.body.text == "string")) {
         return apiError(req, res, {
           status_code: 400,
@@ -272,6 +282,16 @@ async function handler(
             type: "data_source_auth_error",
             message:
               "You can only alter the data souces of the workspaces for which you are a builder.",
+          },
+        });
+      }
+
+      if (dataSource.connector && !keyRes.value.isSystem) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You cannot delete a document from a managed data source.",
           },
         });
       }

@@ -19,8 +19,8 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  dataSource: DataSourceType;
   readOnly: boolean;
+  dataSource: DataSourceType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -37,8 +37,6 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const readOnly = !auth.isBuilder();
-
   let dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
@@ -46,12 +44,15 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  // Managed data sources are read-only (you can't add a document).
+  const readOnly = !auth.isBuilder() || !!dataSource.connector;
+
   return {
     props: {
       user,
       owner,
-      dataSource,
       readOnly,
+      dataSource,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

@@ -60,6 +60,16 @@ async function handler(
         });
       }
 
+      if (dataSource.connector) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You cannot upsert a document on a managed data source.",
+          },
+        });
+      }
+
       let [providers] = await Promise.all([
         Provider.findAll({
           where: {
@@ -234,6 +244,16 @@ async function handler(
             type: "data_source_auth_error",
             message:
               "You can only alter the data souces of the workspaces for which you are a builder.",
+          },
+        });
+      }
+
+      if (dataSource.connector) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You cannot delete a document from a managed data source.",
           },
         });
       }

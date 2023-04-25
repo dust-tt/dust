@@ -67,6 +67,8 @@ export default function DataSourceSettings({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
+  const managed = !!dataSource.connector;
+
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
   );
@@ -201,6 +203,7 @@ export default function DataSourceSettings({
                           id="dataSourceDescription"
                           className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                           value={dataSourceDescription}
+                          readOnly={managed}
                           onChange={(e) =>
                             setDataSourceDescription(e.target.value)
                           }
@@ -212,68 +215,70 @@ export default function DataSourceSettings({
                       </p>
                     </div>
 
-                    <div className="sm:col-span-6">
-                      <fieldset className="mt-2">
-                        <legend className="contents text-sm font-medium text-gray-700">
-                          Visibility
-                        </legend>
-                        <div className="mt-4 space-y-4">
-                          <div className="flex items-center">
-                            <input
-                              id="dataSourceVisibilityPublic"
-                              name="visibility"
-                              type="radio"
-                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                              value="public"
-                              checked={dataSourceVisibility == "public"}
-                              onChange={(e) => {
-                                if (e.target.value != dataSourceVisibility) {
-                                  setDataSourceVisibility(
-                                    e.target.value as DataSourceVisibility
-                                  );
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor="dataSourceVisibilityPublic"
-                              className="ml-3 block text-sm font-medium text-gray-700"
-                            >
-                              Public
-                              <p className="mt-0 text-sm font-normal text-gray-500">
-                                Anyone on the Internet can discover and access
-                                your DataSource. Only you can edit.
-                              </p>
-                            </label>
+                    {!managed ? (
+                      <div className="sm:col-span-6">
+                        <fieldset className="mt-2">
+                          <legend className="contents text-sm font-medium text-gray-700">
+                            Visibility
+                          </legend>
+                          <div className="mt-4 space-y-4">
+                            <div className="flex items-center">
+                              <input
+                                id="dataSourceVisibilityPublic"
+                                name="visibility"
+                                type="radio"
+                                className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                                value="public"
+                                checked={dataSourceVisibility == "public"}
+                                onChange={(e) => {
+                                  if (e.target.value != dataSourceVisibility) {
+                                    setDataSourceVisibility(
+                                      e.target.value as DataSourceVisibility
+                                    );
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor="dataSourceVisibilityPublic"
+                                className="ml-3 block text-sm font-medium text-gray-700"
+                              >
+                                Public
+                                <p className="mt-0 text-sm font-normal text-gray-500">
+                                  Anyone on the Internet can discover and access
+                                  your DataSource. Only you can edit.
+                                </p>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="dataSourceVisibilityPrivate"
+                                name="visibility"
+                                type="radio"
+                                value="private"
+                                className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                                checked={dataSourceVisibility == "private"}
+                                onChange={(e) => {
+                                  if (e.target.value != dataSourceVisibility) {
+                                    setDataSourceVisibility(
+                                      e.target.value as DataSourceVisibility
+                                    );
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor="dataSourceVisibilityPrivate"
+                                className="ml-3 block text-sm font-medium text-gray-700"
+                              >
+                                Private
+                                <p className="mt-0 text-sm font-normal text-gray-500">
+                                  Only you can see and edit the DataSource.
+                                </p>
+                              </label>
+                            </div>
                           </div>
-                          <div className="flex items-center">
-                            <input
-                              id="dataSourceVisibilityPrivate"
-                              name="visibility"
-                              type="radio"
-                              value="private"
-                              className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                              checked={dataSourceVisibility == "private"}
-                              onChange={(e) => {
-                                if (e.target.value != dataSourceVisibility) {
-                                  setDataSourceVisibility(
-                                    e.target.value as DataSourceVisibility
-                                  );
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor="dataSourceVisibilityPrivate"
-                              className="ml-3 block text-sm font-medium text-gray-700"
-                            >
-                              Private
-                              <p className="mt-0 text-sm font-normal text-gray-500">
-                                Only you can see and edit the DataSource.
-                              </p>
-                            </label>
-                          </div>
-                        </div>
-                      </fieldset>
-                    </div>
+                        </fieldset>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -325,25 +330,27 @@ export default function DataSourceSettings({
                 </div>
               </div>
 
-              <div className="flex pt-6">
-                <div className="flex">
-                  <Button
-                    onClick={handleUpdate}
-                    disabled={isDeleting || isUpdating}
-                  >
-                    {isUpdating ? "Updating..." : "Update"}
-                  </Button>
+              {!managed ? (
+                <div className="flex pt-6">
+                  <div className="flex">
+                    <Button
+                      onClick={handleUpdate}
+                      disabled={isDeleting || isUpdating}
+                    >
+                      {isUpdating ? "Updating..." : "Update"}
+                    </Button>
+                  </div>
+                  <div className="flex-1"></div>
+                  <div className="ml-2 flex">
+                    <Button
+                      onClick={handleDelete}
+                      disabled={isDeleting || isUpdating}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex-1"></div>
-                <div className="ml-2 flex">
-                  <Button
-                    onClick={handleDelete}
-                    disabled={isDeleting || isUpdating}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </Button>
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
         </div>
