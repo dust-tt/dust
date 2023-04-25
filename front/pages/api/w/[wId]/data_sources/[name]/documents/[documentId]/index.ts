@@ -248,6 +248,16 @@ async function handler(
         });
       }
 
+      if (dataSource.connector) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You cannot delete a document from a managed data source.",
+          },
+        });
+      }
+
       const deleteRes = await DustAPI.deleteDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
