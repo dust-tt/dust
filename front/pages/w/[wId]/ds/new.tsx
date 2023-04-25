@@ -111,6 +111,7 @@ export default function DataSourceNew({
   const router = useRouter();
 
   const handleCreate = async () => {
+    setCreating(true);
     const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
       method: "POST",
       headers: {
@@ -348,7 +349,6 @@ export default function DataSourceNew({
                   <Button
                     disabled={disabled || creating}
                     onClick={() => {
-                      setCreating(true);
                       handleCreate();
                     }}
                   >

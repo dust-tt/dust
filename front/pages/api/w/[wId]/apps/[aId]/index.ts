@@ -2,8 +2,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App } from "@app/lib/models";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 
 export type PostAppResponseBody = {
@@ -12,7 +13,7 @@ export type PostAppResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostAppResponseBody>
+  res: NextApiResponse<PostAppResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -22,8 +23,13 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app was not found.",
+      },
+    });
   }
 
   let app = await App.findOne({
@@ -44,15 +50,26 @@ async function handler(
   });
 
   if (!app) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app was not found.",
+      },
+    });
   }
 
   switch (req.method) {
     case "POST":
       if (!auth.isBuilder()) {
-        res.status(403).end();
-        return;
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can modify an app.",
+          },
+        });
       }
 
       if (
@@ -63,8 +80,14 @@ async function handler(
           req.body.visibility
         )
       ) {
-        res.status(400).end();
-        break;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { name: string, description: string, visibility }.",
+          },
+        });
       }
 
       let description = req.body.description ? req.body.description : null;
@@ -73,19 +96,6 @@ async function handler(
         name: req.body.name,
         description,
         visibility: req.body.visibility,
-      });
-
-      res.redirect(`/w/${owner.sId}/a/${app.sId}`);
-      break;
-
-    case "DELETE":
-      if (!auth.isBuilder()) {
-        res.status(403).end();
-        return;
-      }
-
-      await app.update({
-        visibility: "deleted",
       });
 
       res.status(200).json({
@@ -102,11 +112,36 @@ async function handler(
           dustAPIProjectId: app.dustAPIProjectId,
         },
       });
+      break;
+
+    case "DELETE":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can delete an app.",
+          },
+        });
+      }
+
+      await app.update({
+        visibility: "deleted",
+      });
+
+      res.status(204).end();
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, POST or DELETE is expected.",
+        },
+      });
   }
 }
 

@@ -1,6 +1,7 @@
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import MainTab from "@app/components/app/MainTab";
@@ -9,6 +10,7 @@ import { Button } from "@app/components/Button";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { AppType, AppVisibility } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -70,11 +72,10 @@ export default function CloneView({
 
   const [appName, setAppName] = useState(app.name);
   const [appNameError, setAppNameError] = useState("");
-
   const [appDescription, setAppDescription] = useState(app.description || "");
   const [appVisibility, setAppVisibility] = useState("public" as AppVisibility);
-
   const [targetWorkspace, setTargetWorkspace] = useState(user.workspaces[0]);
+  const [cloning, setCloning] = useState(false);
 
   const formValidation = () => {
     if (appName.length == 0) {
@@ -95,6 +96,32 @@ export default function CloneView({
     setDisabled(!formValidation());
   }, [appName]);
 
+  const router = useRouter();
+
+  const handleClone = async () => {
+    setCloning(true);
+    const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}/clone`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: appName,
+        description: appDescription,
+        visibility: appVisibility,
+        wId: targetWorkspace.sId,
+      }),
+    });
+    if (res.ok) {
+      let appRes = (await res.json()) as { app: AppType };
+      router.push(`/w/${targetWorkspace.sId}/a/${appRes.app.sId}`);
+    } else {
+      let err = (await res.json()) as { error: APIError };
+      setCloning(false);
+      window.alert(`Error cloning app: ${err.error.message}`);
+    }
+  };
+
   return (
     <AppLayout user={user} app={app} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="leadingflex flex-col">
@@ -104,11 +131,7 @@ export default function CloneView({
 
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <form
-              action={`/api/w/${owner.sId}/apps/${app.sId}/clone`}
-              method="POST"
-              className="mt-8 space-y-8 divide-y divide-gray-200"
-            >
+            <div className="mt-8 space-y-8 divide-y divide-gray-200">
               <div className="space-y-8 divide-y divide-gray-200">
                 <div>
                   <div>
@@ -152,12 +175,6 @@ export default function CloneView({
                         />
                       </div>
                     ) : null}
-                    <input
-                      type="hidden"
-                      name="wId"
-                      id="wId"
-                      value={targetWorkspace.sId}
-                    />
 
                     <div className="sm:col-span-3">
                       <label
@@ -315,12 +332,12 @@ export default function CloneView({
 
               <div className="pt-6">
                 <div className="flex">
-                  <Button disabled={disable} type="submit">
-                    Clone
+                  <Button disabled={disable || cloning} onClick={handleClone}>
+                    {cloning ? "Cloning..." : "Clone"}
                   </Button>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
