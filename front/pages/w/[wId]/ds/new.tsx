@@ -89,6 +89,11 @@ export default function DataSourceNew({
     } else if (dataSourceName.length == 0) {
       setDataSourceNameError("");
       return false;
+    } else if (dataSourceName.startsWith("managed-")) {
+      setDataSourceNameError(
+        "DataSource name cannot start with the prefix `managed-`"
+      );
+      return false;
     } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDataSourceNameError(
         "DataSource name must only contain letters, numbers, and the characters `._-`"

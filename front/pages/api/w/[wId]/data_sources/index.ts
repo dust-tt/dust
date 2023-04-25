@@ -80,6 +80,16 @@ async function handler(
         });
       }
 
+      if (req.body.name.startsWith("managed-")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The data source name cannot start with `managed-`.",
+          },
+        });
+      }
+
       // Enforce plan limits: DataSources count.
       if (
         owner.plan.limits.dataSources.count != -1 &&
