@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
-import { withLogging } from "@connectors/logger/withlogging";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -33,19 +34,22 @@ const _createConnectorAPIHandler = async (
       !req.body.nangoConnectionId
     ) {
       // We would probably want to return the same error inteface than we use in the /front package. TBD.
-      res.status(400).send({
-        error: {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
           message: `Missing required parameters. Required : workspaceAPIKey, dataSourceName, workspaceId, nangoConnectionId`,
         },
+        status_code: 400,
       });
-      return;
     }
 
     if (!isConnectorProvider(req.params.connector_provider)) {
-      return res.status(400).send({
-        error: {
+      return apiError(req, res, {
+        api_error: {
+          type: "unknown_connector_provider",
           message: `Unknown connector provider ${req.params.connector_provider}`,
         },
+        status_code: 400,
       });
     }
     const connectorCreator =
@@ -61,18 +65,23 @@ const _createConnectorAPIHandler = async (
     );
 
     if (connectorRes.isErr()) {
-      res.status(500).send({ error: { message: connectorRes.error.message } });
-      return;
+      return apiError(req, res, {
+        api_error: {
+          type: "internal_server_error",
+          message: connectorRes.error.message,
+        },
+        status_code: 500,
+      });
     }
-
-    return res.status(200).send({
-      connectorId: connectorRes.value,
-    });
   } catch (e) {
-    logger.error(e, "Failed to create the connector");
-    return res
-      .status(500)
-      .send({ error: { message: "Could not create the connector" } });
+    logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "An unexpected error occured while creating the connector.",
+      },
+      status_code: 500,
+    });
   }
 };
 

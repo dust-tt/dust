@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
+import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -31,7 +32,7 @@ export async function upsertToDatasource(
       dustRequestConfig
     );
   } catch (e) {
-    logger.error(e, "error uploading document to Dust");
+    logger.error(errorFromAny(e), "error uploading document to Dust");
     throw e;
   }
 
