@@ -13,7 +13,13 @@ export async function getTemporalClient(): Promise<Client> {
   return client;
 }
 
-async function getConnectionOptions(): Promise<ConnectionOptions> {
+async function getConnectionOptions(): Promise<
+  | {
+      address: string;
+      tls: ConnectionOptions["tls"];
+    }
+  | Record<string, never>
+> {
   const { NODE_ENV = "development" } = process.env;
   const isDeployed = ["production", "staging"].includes(NODE_ENV);
 
@@ -46,8 +52,5 @@ async function getConnectionOptions(): Promise<ConnectionOptions> {
 
 export async function getTemporalWorkerConnection() {
   const connectionOptions = await getConnectionOptions();
-  return NativeConnection.connect({
-    address: connectionOptions.address,
-    tls: connectionOptions.tls,
-  });
+  return NativeConnection.connect(connectionOptions);
 }
