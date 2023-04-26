@@ -3,7 +3,7 @@ import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
