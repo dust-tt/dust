@@ -40,14 +40,15 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const readOnly = !auth.isBuilder();
-
   let dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
     };
   }
+
+  // if user is not builder or if datasource is managed
+  const readOnly = !auth.isBuilder() || !!dataSource.connector;
 
   return {
     props: {
@@ -205,8 +206,11 @@ export default function DataSourceUpsert({
                         id="document"
                         readOnly={readOnly}
                         className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md text-sm",
-                          "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                          "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
+                          "border-gray-300",
+                          readOnly
+                            ? "focus:border-gray-300 focus:ring-0"
+                            : "focus:border-violet-500 focus:ring-violet-500"
                         )}
                         value={documentId}
                         onChange={(e) => setDocumentId(e.target.value)}
@@ -298,12 +302,15 @@ export default function DataSourceUpsert({
                       name="text"
                       id="text"
                       rows={20}
+                      readOnly={readOnly}
                       className={classNames(
                         "block w-full min-w-0 flex-1 rounded-md font-mono text-xs",
-                        "border-gray-300 focus:border-violet-500 focus:ring-violet-500",
+                        "border-gray-300",
+                        readOnly
+                          ? "focus:border-gray-300 focus:ring-0"
+                          : "focus:border-violet-500 focus:ring-violet-500",
                         downloading ? "text-gray-300" : ""
                       )}
-                      readOnly={readOnly}
                       disabled={downloading}
                       value={downloading ? "Downloading..." : text}
                       onChange={(e) => setText(e.target.value)}
