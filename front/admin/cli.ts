@@ -123,6 +123,16 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         case "dataSources.count":
           plan.limits.dataSources.count = args.value;
           break;
+        case "dataSources.managed":
+          switch (args.value) {
+            case "t":
+            case "true":
+              plan.limits.dataSources.managed = true;
+              break;
+            default:
+              plan.limits.dataSources.managed = false;
+          }
+          break;
         case "dataSources.documents.count":
           if (!plan.limits.dataSources.documents) {
             plan.limits.dataSources.documents = {};
