@@ -33,7 +33,6 @@ const _createConnectorAPIHandler = async (
       !req.body.workspaceId ||
       !req.body.nangoConnectionId
     ) {
-      // We would probably want to return the same error inteface than we use in the /front package. TBD.
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
