@@ -1,7 +1,9 @@
 import parseArgs from "minimist";
 
 import { planForWorkspace } from "@app/lib/auth";
-import { Membership, User, Workspace } from "@app/lib/models";
+import { ConnectorsAPI } from "@app/lib/connectors_api";
+import { DustAPI } from "@app/lib/dust_api";
+import { DataSource, Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
@@ -316,6 +318,55 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "delete-managed": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.provider) {
+        throw new Error("Missing --provider argument");
+      }
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+      if (!workspace) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const dataSource = await DataSource.findOne({
+        where: {
+          workspaceId: workspace.id,
+          connectorProvider: args.provider,
+        },
+      });
+      if (!dataSource) {
+        throw new Error(
+          `DataSource not found: wId='${args.wId}' provider='${args.provider}'`
+        );
+      }
+
+      await ConnectorsAPI.deleteConnector(
+        args.provider,
+        args.wId,
+        dataSource.name
+      );
+      await DustAPI.deleteDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.name
+      );
+      await dataSource.destroy();
+
+      return;
+    }
+
+    default:
+      throw new Error(`Unknown user command: ${command}`);
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -333,6 +384,9 @@ const main = async () => {
       return;
     case "user":
       await user(command, argv);
+      return;
+    case "data-source":
+      await dataSource(command, argv);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);

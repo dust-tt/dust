@@ -35,6 +35,61 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async pauseConnector(
+    provider: ConnectorProvider,
+    workspaceId: string,
+    dataSourceName: string
+  ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/pause/${provider}`, {
+      method: "POST",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({
+        workspaceId,
+        dataSourceName,
+      }),
+    });
+
+    return _resultFromResponse(res);
+  },
+
+  async resumeConnector(
+    provider: ConnectorProvider,
+    workspaceId: string,
+    workspaceAPIKey: string,
+    dataSourceName: string,
+    nangoConnectionId: string
+  ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/resume/${provider}`, {
+      method: "POST",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({
+        workspaceId,
+        workspaceAPIKey,
+        dataSourceName,
+        nangoConnectionId,
+      }),
+    });
+
+    return _resultFromResponse(res);
+  },
+
+  async deleteConnector(
+    provider: ConnectorProvider,
+    workspaceId: string,
+    dataSourceName: string
+  ): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/delete/${provider}`, {
+      method: "DELETE",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({
+        workspaceId,
+        dataSourceName,
+      }),
+    });
+
+    return _resultFromResponse(res);
+  },
+
   async getSyncStatus(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       lastSyncStatus: ConnectorSyncStatus;

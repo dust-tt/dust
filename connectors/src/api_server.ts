@@ -2,6 +2,7 @@ import bodyParser from "body-parser";
 import express from "express";
 
 import { createConnectorAPIHandler } from "@connectors/api/createConnector";
+import { deleteConnectorAPIHandler } from "@connectors/api/deleteConnector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resumeConnector";
 import { stopConnectorAPIHandler } from "@connectors/api/stopConnector";
 import { getConnectorStatusAPIHandler } from "@connectors/api/syncStatus";
@@ -17,6 +18,10 @@ export function startServer(port: number) {
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/stop/:connector_provider", stopConnectorAPIHandler);
   app.post("/connectors/resume/:connector_provider", resumeConnectorAPIHandler);
+  app.delete(
+    "/connectors/delete/:connector_provider",
+    deleteConnectorAPIHandler
+  );
   app.get(
     "/connectors/sync_status/:connector_id",
     getConnectorStatusAPIHandler
