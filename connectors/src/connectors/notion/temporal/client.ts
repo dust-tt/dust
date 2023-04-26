@@ -1,6 +1,4 @@
 import {
-  Client,
-  Connection,
   WorkflowExecutionDescription,
   WorkflowHandle,
   WorkflowNotFoundError,
@@ -10,6 +8,7 @@ import {
   getLastSyncPeriodTsQuery,
   notionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
@@ -32,9 +31,7 @@ export async function launchNotionSyncWorkflow(
     );
   }
 
-  const client = new Client({
-    connection: await Connection.connect(),
-  });
+  const client = await getTemporalClient();
 
   const existingWorkflowStatus = await getNotionConnectionStatus(
     dataSourceConfig
@@ -89,9 +86,7 @@ export async function launchNotionSyncWorkflow(
 export async function stopNotionSyncWorkflow(
   dataSourceConfig: DataSourceInfo
 ): Promise<void> {
-  const client = new Client({
-    connection: await Connection.connect(),
-  });
+  const client = await getTemporalClient();
 
   const existingWorkflowStatus = await getNotionConnectionStatus(
     dataSourceConfig
@@ -141,7 +136,8 @@ export async function getNotionConnectionStatus(
   status: WorkflowExecutionDescription | null;
   lastSyncPeriodTs: number | null;
 }> {
-  const client = new Client({});
+  const client = await getTemporalClient();
+
   const handle: WorkflowHandle<typeof notionSyncWorkflow> =
     client.workflow.getHandle(getWorkflowId(dataSourceInfo));
   try {

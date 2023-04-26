@@ -1,4 +1,4 @@
-import { WorkflowClient } from "@temporalio/client";
+import { getTemporalClient } from "@connectors/lib/temporal_client";
 
 import { printSlackChannelsWorkflow } from "./workflow.js";
 
@@ -8,8 +8,8 @@ import { printSlackChannelsWorkflow } from "./workflow.js";
 export async function slackGetChannelsViaTemporal(
   nangoConnectionId: string
 ): Promise<void> {
-  const client = new WorkflowClient();
-  await client.start(printSlackChannelsWorkflow, {
+  const client = await getTemporalClient();
+  await client.workflow.start(printSlackChannelsWorkflow, {
     workflowId: `getSlackChannelsWorkflow ${new Date().getTime()}`,
     taskQueue: "slack-sync",
     args: [nangoConnectionId],
