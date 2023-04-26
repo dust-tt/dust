@@ -1,4 +1,4 @@
-import { getTemporalClient } from "@connectors/lib/temporal_client";
+import { getTemporalClient } from "@connectors/lib/temporal";
 
 import { printSlackChannelsWorkflow } from "./workflow.js";
 
