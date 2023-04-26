@@ -8,7 +8,7 @@ import {
   getLastSyncPeriodTsQuery,
   notionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
-import { getTemporalClient } from "@connectors/lib/temporal_client";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
