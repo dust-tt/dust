@@ -4,12 +4,14 @@ import * as activities from "@connectors/connectors/notion/temporal/activities";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 
 export async function runNotionWorker() {
+  const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: "notion-queue",
     maxConcurrentActivityTaskExecutions: 3,
-    connection: await getTemporalWorkerConnection(),
+    connection,
+    namespace,
   });
 
   await worker.run();
