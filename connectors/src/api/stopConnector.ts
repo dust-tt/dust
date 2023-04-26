@@ -26,7 +26,6 @@ const _stopConnectorAPIHandler = async (
 ) => {
   try {
     if (!req.body.dataSourceName || !req.body.workspaceId) {
-      // We would probably want to return the same error inteface than we use in the /front package. TBD.
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
