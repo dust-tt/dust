@@ -55,6 +55,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(
         `          sizeMb: ${plan.limits.dataSources.documents.sizeMb}`
       );
+      console.log(`        managed:    ${plan.limits.dataSources.managed}`);
       return;
     }
     case "create": {
