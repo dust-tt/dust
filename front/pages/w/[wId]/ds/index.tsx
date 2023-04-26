@@ -9,7 +9,11 @@ import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ConnectorProvider } from "@app/lib/connectors_api";
+import {
+  ConnectorProvider,
+  ConnectorsAPI,
+  ConnectorSyncStatus,
+} from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
@@ -22,12 +26,52 @@ const {
   NANGO_PUBLIC_KEY,
 } = process.env;
 
+type UpcomingConnectorProvider = "google_drive" | "github";
+
+type ManagedDataSource = {
+  name: string;
+  status?: ConnectorSyncStatus | null;
+  enabled?: boolean | null;
+} & (
+  | {
+      connectorProvider: ConnectorProvider;
+      isBuilt: true;
+    }
+  | {
+      connectorProvider: UpcomingConnectorProvider;
+      isBuilt: false;
+    }
+);
+
+const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
+  {
+    name: "Notion",
+    connectorProvider: "notion",
+    isBuilt: true,
+  },
+  {
+    name: "Slack",
+    connectorProvider: "slack",
+    isBuilt: true,
+  },
+  {
+    name: "Google Drive",
+    connectorProvider: "google_drive",
+    isBuilt: false,
+  },
+  {
+    name: "Github",
+    connectorProvider: "github",
+    isBuilt: false,
+  },
+];
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
   dataSources: DataSourceType[];
-  managedDataSources: DataSourceType[];
+  managedDataSources: ManagedDataSource[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
   nangoPublicKey: string;
@@ -54,13 +98,42 @@ export const getServerSideProps: GetServerSideProps<{
   const dataSources = allDataSources.filter((ds) => !ds.connector);
   const managedDataSources = allDataSources.filter((ds) => ds.connector);
 
+  const connectorStatuses = (
+    await Promise.all(
+      managedDataSources.map(({ connector }) =>
+        ConnectorsAPI.getSyncStatus(connector!.id)
+      )
+    )
+  ).map(
+    (s): ConnectorSyncStatus => (s.isErr() ? "failed" : s.value.lastSyncStatus)
+  );
+
+  const connectorStatusByProvider: Record<
+    ConnectorProvider,
+    ConnectorSyncStatus
+  > = managedDataSources.reduce(
+    (acc, ds, i) =>
+      Object.assign(acc, { [ds.connector!.provider]: connectorStatuses[i] }),
+    {} as Record<ConnectorProvider, ConnectorSyncStatus>
+  );
+
   return {
     props: {
       user,
       owner,
       readOnly,
       dataSources,
-      managedDataSources,
+      managedDataSources: MANAGED_DATA_SOURCES.map((ds) => ({
+        ...ds,
+        enabled:
+          !!connectorStatusByProvider[
+            ds.connectorProvider as ConnectorProvider
+          ],
+        status:
+          connectorStatusByProvider[
+            ds.connectorProvider as ConnectorProvider
+          ] || null,
+      })),
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoPublicKey: NANGO_PUBLIC_KEY!,
@@ -69,35 +142,6 @@ export const getServerSideProps: GetServerSideProps<{
     },
   };
 };
-
-type ManagedDataSource = {
-  name: string;
-  connectorProvider: "slack" | "notion" | "google_drive" | "github";
-  isBuilt: boolean;
-};
-
-const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
-  {
-    name: "Notion",
-    connectorProvider: "notion",
-    isBuilt: true,
-  },
-  {
-    name: "Slack",
-    connectorProvider: "slack",
-    isBuilt: true,
-  },
-  {
-    name: "Google Drive",
-    connectorProvider: "google_drive",
-    isBuilt: false,
-  },
-  {
-    name: "Github",
-    connectorProvider: "github",
-    isBuilt: false,
-  },
-];
 
 export default function DataSourcesView({
   user,
@@ -111,9 +155,12 @@ export default function DataSourcesView({
   nangoSlackConnectorId,
   nangoNotionConnectorId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [enabledManagedDataSources, setEnabledManagedDataSources] = useState(
-    new Set(managedDataSources.map((ds) => ds.connector?.provider))
-  );
+  const [managedDataSourcesLocal, setManagedDataSourcesLocal] =
+    useState(managedDataSources);
+
+  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
+    Record<ConnectorProvider, boolean | undefined>
+  >({} as Record<ConnectorProvider, boolean | undefined>);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     const nangoConnectorId =
@@ -126,19 +173,39 @@ export default function DataSourcesView({
       `${provider}-${owner.sId}`
     );
 
-    const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider,
-        nangoConnectionId,
-      }),
-    });
-
-    if (res.ok) {
-      setEnabledManagedDataSources((prev) => prev.add(provider));
+    setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
+    try {
+      const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider,
+          nangoConnectionId,
+        }),
+      });
+      if (res.ok) {
+        setManagedDataSourcesLocal((prev) =>
+          prev.map((ds) =>
+            ds.connectorProvider == provider
+              ? { ...ds, enabled: true, status: "succeeded" }
+              : ds
+          )
+        );
+      } else {
+        logger.error(
+          {
+            status: res.status,
+            body: await res.text(),
+          },
+          "Failed to enable managed data source"
+        );
+      }
+    } catch (e) {
+      logger.error(e, "Failed to enable managed data source");
+    } finally {
+      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
   };
 
@@ -270,10 +337,7 @@ export default function DataSourcesView({
 
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="">
-            {MANAGED_DATA_SOURCES.map((ds) => {
-              const enabled = enabledManagedDataSources.has(
-                ds.connectorProvider as ConnectorProvider
-              );
+            {managedDataSourcesLocal.map((ds) => {
               return (
                 <li
                   key={`managed-${ds.connectorProvider}`}
@@ -281,7 +345,7 @@ export default function DataSourcesView({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      {enabled ? (
+                      {ds.enabled ? (
                         <Link
                           href={`/w/${
                             owner.sId
@@ -291,7 +355,7 @@ export default function DataSourcesView({
                           <p
                             className={classNames(
                               "truncate text-base font-bold",
-                              enabled ? "text-violet-600" : "text-slate-400"
+                              ds.enabled ? "text-violet-600" : "text-slate-400"
                             )}
                           >
                             {ds.name}
@@ -301,7 +365,7 @@ export default function DataSourcesView({
                         <p
                           className={classNames(
                             "truncate text-base font-bold",
-                            enabled ? "text-violet-600" : "text-slate-400"
+                            ds.enabled ? "text-violet-600" : "text-slate-400"
                           )}
                         >
                           {ds.name}
@@ -309,9 +373,12 @@ export default function DataSourcesView({
                       )}
                     </div>
                     <div>
-                      {!enabled ? (
+                      {!ds.enabled ? (
                         <Button
-                          disabled={!ds.isBuilt}
+                          disabled={
+                            !ds.isBuilt ||
+                            isLoadingByProvider[ds.connectorProvider]
+                          }
                           onClick={
                             canUseManagedDataSources
                               ? () => {
@@ -334,20 +401,20 @@ export default function DataSourcesView({
                             ? "Coming soon"
                             : !canUseManagedDataSources
                             ? "Get early access"
-                            : "Setup"}
+                            : !isLoadingByProvider[ds.connectorProvider]
+                            ? "Setup"
+                            : "Enabling..."}
                         </Button>
                       ) : (
                         <p
                           className={classNames(
                             "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            "bg-green-100 text-green-800"
-                            // handle error:
-                            // : "bg-red-100 text-red-800"
+                            ds.status === "succeeded"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                           )}
                         >
-                          enabled
-                          {/* handle error:
-                           errored */}
+                          {ds.status === "succeeded" ? "enabled" : "errored"}
                         </p>
                       )}
                     </div>
