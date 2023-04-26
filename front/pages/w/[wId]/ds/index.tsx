@@ -406,13 +406,11 @@ export default function DataSourcesView({
                         >
                           {!ds.isBuilt
                             ? "Coming soon"
-                            : !canUseManagedDataSources
-                            ? "Upgrade"
                             : !isLoadingByProvider[
                                 ds.connectorProvider as ConnectorProvider
                               ]
-                            ? "Setup"
-                            : "Enabling..."}
+                            ? "Connect"
+                            : "Connecting..."}
                         </Button>
                       ) : (
                         <p
