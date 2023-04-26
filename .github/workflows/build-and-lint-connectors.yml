@@ -16,5 +16,5 @@ jobs:
           node-version: 18.15.0
           cache: "npm"
           cache-dependency-path: ./connectors/package-lock.json
-      - working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run format:check
+      - working-directory: connectors
+        run: npm install && npm run build && npm run lint && npm run format:check
