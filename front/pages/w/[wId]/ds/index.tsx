@@ -201,7 +201,7 @@ export default function DataSourcesView({
           },
           `Failed to enable managed data source`
         );
-        window.alert(`Failed to enable ${provider}  data source`);
+        window.alert(`Failed to enable ${provider} data source`);
       }
     } catch (e) {
       logger.error(e, "Failed to enable managed data source");
