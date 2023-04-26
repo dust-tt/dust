@@ -392,7 +392,7 @@ export default function DataSourcesView({
                                 }
                               : () => {
                                   window.alert(
-                                    "Please reach out at team@dust.tt !"
+                                    "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
                                   );
                                   logger.info(
                                     {
@@ -407,7 +407,7 @@ export default function DataSourcesView({
                           {!ds.isBuilt
                             ? "Coming soon"
                             : !canUseManagedDataSources
-                            ? "Get early access"
+                            ? "Upgrade"
                             : !isLoadingByProvider[
                                 ds.connectorProvider as ConnectorProvider
                               ]
