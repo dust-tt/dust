@@ -26,6 +26,7 @@ export interface ParsedPage {
   properties: ParsedProperty[];
   blocks: ParsedBlock[];
   rendered: string;
+  createdTime: number;
 }
 type ParsedProperty = {
   key: string;
@@ -140,6 +141,7 @@ export async function getParsedPage(
     properties,
     blocks: parsedBlocks,
     rendered: renderedPage,
+    createdTime: new Date(page.created_time).getTime(),
   };
 }
 

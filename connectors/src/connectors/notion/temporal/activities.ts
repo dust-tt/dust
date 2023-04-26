@@ -24,7 +24,8 @@ export async function notionUpsertPageActivity(
     dataSourceConfig,
     `notion-${parsedPage.id}`,
     parsedPage.rendered,
-    parsedPage.url
+    parsedPage.url,
+    parsedPage.createdTime
   );
 }
 
