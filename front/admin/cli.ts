@@ -125,8 +125,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           break;
         case "dataSources.managed":
           switch (args.value) {
-            case "t":
-            case "true":
+            case 1:
               plan.limits.dataSources.managed = true;
               break;
             default:
