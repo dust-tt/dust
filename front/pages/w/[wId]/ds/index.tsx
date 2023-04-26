@@ -32,16 +32,9 @@ type ManagedDataSource = {
   name: string;
   status?: ConnectorSyncStatus | null;
   enabled?: boolean | null;
-} & (
-  | {
-      connectorProvider: ConnectorProvider;
-      isBuilt: true;
-    }
-  | {
-      connectorProvider: UpcomingConnectorProvider;
-      isBuilt: false;
-    }
-);
+  isBuilt: boolean;
+  connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
+};
 
 const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
   {
@@ -52,7 +45,7 @@ const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
   {
     name: "Slack",
     connectorProvider: "slack",
-    isBuilt: true,
+    isBuilt: false,
   },
   {
     name: "Google Drive",
@@ -74,9 +67,11 @@ export const getServerSideProps: GetServerSideProps<{
   managedDataSources: ManagedDataSource[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
-  nangoPublicKey: string;
-  nangoSlackConnectorId: string;
-  nangoNotionConnectorId: string;
+  nangoConfig: {
+    publicKey: string;
+    slackConnectorId: string;
+    notionConnectorId: string;
+  };
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -136,9 +131,11 @@ export const getServerSideProps: GetServerSideProps<{
       })),
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
-      nangoPublicKey: NANGO_PUBLIC_KEY!,
-      nangoSlackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
-      nangoNotionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
+      nangoConfig: {
+        publicKey: NANGO_PUBLIC_KEY!,
+        slackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
+        notionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
+      },
     },
   };
 };
@@ -151,9 +148,7 @@ export default function DataSourcesView({
   managedDataSources,
   canUseManagedDataSources,
   gaTrackingId,
-  nangoPublicKey,
-  nangoSlackConnectorId,
-  nangoNotionConnectorId,
+  nangoConfig,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [managedDataSourcesLocal, setManagedDataSourcesLocal] =
     useState(managedDataSources);
@@ -164,17 +159,21 @@ export default function DataSourcesView({
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     const nangoConnectorId =
-      provider == "slack" ? nangoSlackConnectorId : nangoNotionConnectorId;
-    const nango = new Nango({ publicKey: nangoPublicKey! });
-    const {
-      connectionId: nangoConnectionId,
-    }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-      nangoConnectorId!,
-      `${provider}-${owner.sId}`
-    );
+      provider == "slack"
+        ? nangoConfig.slackConnectorId
+        : nangoConfig.notionConnectorId;
+    const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-    setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
     try {
+      const {
+        connectionId: nangoConnectionId,
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoConnectorId!,
+        `${provider}-${owner.sId}`
+      );
+
+      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
+
       const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
         method: "POST",
         headers: {
@@ -198,12 +197,15 @@ export default function DataSourcesView({
           {
             status: res.status,
             body: await res.text(),
+            provider,
           },
-          "Failed to enable managed data source"
+          `Failed to enable managed data source`
         );
+        window.alert(`Failed to enable ${provider}  data source`);
       }
     } catch (e) {
       logger.error(e, "Failed to enable managed data source");
+      window.alert(`Failed to enable ${provider}  data source`);
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
@@ -377,7 +379,9 @@ export default function DataSourcesView({
                         <Button
                           disabled={
                             !ds.isBuilt ||
-                            isLoadingByProvider[ds.connectorProvider]
+                            isLoadingByProvider[
+                              ds.connectorProvider as ConnectorProvider
+                            ]
                           }
                           onClick={
                             canUseManagedDataSources
@@ -387,6 +391,9 @@ export default function DataSourcesView({
                                   );
                                 }
                               : () => {
+                                  window.alert(
+                                    "Please reach out at team@dust.tt !"
+                                  );
                                   logger.info(
                                     {
                                       workspace: owner.sId,
@@ -401,7 +408,9 @@ export default function DataSourcesView({
                             ? "Coming soon"
                             : !canUseManagedDataSources
                             ? "Get early access"
-                            : !isLoadingByProvider[ds.connectorProvider]
+                            : !isLoadingByProvider[
+                                ds.connectorProvider as ConnectorProvider
+                              ]
                             ? "Setup"
                             : "Enabling..."}
                         </Button>
