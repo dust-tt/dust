@@ -36,7 +36,7 @@ const _getConnectorStatusAPIHandler = async (
       });
     }
     return res.status(200).send({
-      lastSyncStatus: "failed",
+      lastSyncStatus: connector.lastSyncStatus,
       lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
       lastSuccessfulSyncTime: connector.lastSyncSuccessfulTime?.getTime(),
     });
