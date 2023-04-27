@@ -160,6 +160,7 @@ impl Error {
 pub async fn streamed_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     prompt: &str,
     max_tokens: Option<i32>,
@@ -176,25 +177,28 @@ pub async fn streamed_completion(
 ) -> Result<Completion> {
     let url = uri.to_string();
 
-    let builder = match es::ClientBuilder::for_url(url.as_str()) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.method(String::from("POST")).header(
-        "Authorization",
-        format!("Bearer {}", api_key.clone()).as_str(),
-    ) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.header("Content-Type", "application/json") {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.header("api-key", api_key.clone().as_str()) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
+    let builder = es::ClientBuilder::for_url(url.as_str())
+        .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+
+    let auth_header = format!("Bearer {}", api_key.clone());
+    let headers = [
+        ("Authorization", auth_header.as_str()),
+        ("Content-Type", "application/json"),
+        ("api-key", api_key.as_str()),
+    ];
+
+    let mut builder = headers.iter().fold(Ok(builder), |builder, (key, value)| {
+        builder.and_then(|b| {
+            b.header(*key, *value)
+                .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))
+        })
+    })?;
+
+    if let Some(org_id) = organization_id {
+        builder = builder
+            .header("OpenAI-Organization", org_id.as_str())
+            .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+    }
 
     let mut body = json!({
         "prompt": prompt,
@@ -407,6 +411,7 @@ pub async fn streamed_completion(
 pub async fn completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     prompt: &str,
     max_tokens: Option<i32>,
@@ -447,17 +452,18 @@ pub async fn completion(
 
     // println!("BODY: {}", body.to_string());
 
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
-        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
-        // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -844,6 +850,7 @@ pub async fn chat_completion(
 pub async fn embed(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     text: &str,
     user: Option<String>,
@@ -863,17 +870,18 @@ pub async fn embed(
 
     // println!("BODY: {}", body.to_string());
 
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
-        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
-        // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -917,11 +925,16 @@ pub async fn embed(
 pub struct OpenAILLM {
     id: String,
     api_key: Option<String>,
+    organization_id: Option<String>,
 }
 
 impl OpenAILLM {
     pub fn new(id: String) -> Self {
-        OpenAILLM { id, api_key: None }
+        OpenAILLM {
+            id,
+            api_key: None,
+            organization_id: None,
+        }
     }
 
     fn uri(&self) -> Result<Uri> {
@@ -964,6 +977,21 @@ impl LLM for OpenAILLM {
                 ))?,
             },
         }
+
+        match credentials.get("OPENAI_ORGANIZATION_ID") {
+            Some(organization_id) => {
+                self.organization_id = Some(organization_id.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_ORGANIZATION_ID"))
+                .await?
+            {
+                Ok(org_id) => {
+                    self.organization_id = Some(org_id);
+                }
+                Err(_) => {}
+            },
+        }
+
         Ok(())
     }
 
@@ -1027,6 +1055,7 @@ impl LLM for OpenAILLM {
                 streamed_completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
+                    self.organization_id.clone(),
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1065,6 +1094,7 @@ impl LLM for OpenAILLM {
                 completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
+                    self.organization_id.clone(),
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1299,11 +1329,16 @@ pub struct Embeddings {
 pub struct OpenAIEmbedder {
     id: String,
     api_key: Option<String>,
+    organization_id: Option<String>,
 }
 
 impl OpenAIEmbedder {
     pub fn new(id: String) -> Self {
-        OpenAIEmbedder { id, api_key: None }
+        OpenAIEmbedder {
+            id,
+            api_key: None,
+            organization_id: None,
+        }
     }
 
     fn uri(&self) -> Result<Uri> {
@@ -1346,6 +1381,21 @@ impl Embedder for OpenAIEmbedder {
                 ))?,
             },
         }
+
+        match credentials.get("OPENAI_ORGANIZATION_ID") {
+            Some(organization_id) => {
+                self.organization_id = Some(organization_id.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_ORGANIZATION_ID"))
+                .await?
+            {
+                Ok(org_id) => {
+                    self.organization_id = Some(org_id);
+                }
+                Err(_) => {}
+            },
+        }
+
         Ok(())
     }
 
@@ -1377,6 +1427,7 @@ impl Embedder for OpenAIEmbedder {
         let e = embed(
             self.uri()?,
             self.api_key.clone().unwrap(),
+            self.organization_id.clone(),
             Some(self.id.clone()),
             text,
             match extras {

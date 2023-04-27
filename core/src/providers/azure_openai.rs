@@ -303,6 +303,7 @@ impl LLM for AzureOpenAILLM {
                     self.uri()?,
                     self.api_key.clone().unwrap(),
                     None,
+                    None,
                     prompt.clone(),
                     max_tokens,
                     temperature,
@@ -340,6 +341,7 @@ impl LLM for AzureOpenAILLM {
                 completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
+                    None,
                     None,
                     prompt.clone(),
                     max_tokens,
@@ -598,6 +600,7 @@ impl Embedder for AzureOpenAIEmbedder {
         let e = embed(
             self.uri()?,
             self.api_key.clone().unwrap(),
+            None,
             None,
             text,
             match extras {

@@ -9,6 +9,9 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
+  const [organizationId, setOrganizationId] = useState(
+    config ? config.organization_id : ""
+  );
   const [testSuccessful, setTestSuccessful] = useState(false);
   const [testRunning, setTestRunning] = useState(false);
   const [testError, setTestError] = useState("");
@@ -24,7 +27,10 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider(owner, "openai", { api_key: apiKey });
+    let check = await checkProvider(owner, "openai", {
+      api_key: apiKey,
+      organization_id: organizationId,
+    });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -47,6 +53,7 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
       body: JSON.stringify({
         config: JSON.stringify({
           api_key: apiKey,
+          organization_id: organizationId,
         }),
       }),
     });
@@ -123,6 +130,18 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
                         value={apiKey}
                         onChange={(e) => {
                           setApiKey(e.target.value);
+                          setTestSuccessful(false);
+                        }}
+                      />
+                    </div>
+                    <div className="mt-6">
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                        placeholder="OpenAI Organization ID (optional)"
+                        value={organizationId}
+                        onChange={(e) => {
+                          setOrganizationId(e.target.value);
                           setTestSuccessful(false);
                         }}
                       />

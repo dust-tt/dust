@@ -38,6 +38,7 @@ async function handler(
             method: "GET",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
+              "OpenAI-Organization": config.organization_id,
             },
           });
           if (!modelsRes.ok) {
