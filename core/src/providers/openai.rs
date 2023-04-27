@@ -800,7 +800,7 @@ pub async fn chat_completion(
         .header("api-key", api_key.clone());
 
     if let Some(organization_id) = organization_id {
-        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+        req_builder = req_builder.header("OpenAI-Organization", organization_id.clone());
     }
 
     let req = req_builder.body(Body::from(body.to_string()))?;
