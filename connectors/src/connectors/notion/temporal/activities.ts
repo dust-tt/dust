@@ -7,6 +7,8 @@ import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { getTagsForPage } from "../lib/tags";
+
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
   lastSyncedAt: number | null
@@ -25,7 +27,8 @@ export async function notionUpsertPageActivity(
     `notion-${parsedPage.id}`,
     parsedPage.rendered,
     parsedPage.url,
-    parsedPage.createdTime
+    parsedPage.createdTime,
+    getTagsForPage(parsedPage)
   );
 }
 
