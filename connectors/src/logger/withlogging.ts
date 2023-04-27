@@ -4,6 +4,7 @@ import { APIErrorWithStatusCode } from "@connectors/lib/error";
 
 import logger from "./logger";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const withLogging = (handler: any) => {
   return async (req: Request, res: Response): Promise<void> => {
     const now = new Date();
