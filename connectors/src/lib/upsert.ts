@@ -14,7 +14,8 @@ export async function upsertToDatasource(
   documentId: string,
   documentText: string,
   documentUrl?: string,
-  timestamp?: number
+  timestamp?: number,
+  tags?: string[]
 ) {
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
@@ -22,6 +23,7 @@ export async function upsertToDatasource(
     text: documentText,
     source_url: documentUrl,
     timestamp,
+    tags,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

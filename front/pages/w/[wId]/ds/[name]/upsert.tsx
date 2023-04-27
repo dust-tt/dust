@@ -250,7 +250,10 @@ export default function DataSourceUpsert({
                           readOnly={readOnly}
                           className={classNames(
                             "block w-full min-w-0 flex-1 rounded-md text-sm",
-                            "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                            "border-gray-300",
+                            readOnly
+                              ? "focus:border-gray-300 focus:ring-0"
+                              : "focus:border-violet-500 focus:ring-violet-500"
                           )}
                           value={tag}
                           onChange={(e) =>

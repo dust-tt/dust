@@ -27,8 +27,12 @@ export interface ParsedPage {
   blocks: ParsedBlock[];
   rendered: string;
   createdTime: number;
+  updatedTime: number;
+  author: string;
+  lastEditor: string;
 }
-type ParsedProperty = {
+
+export type ParsedProperty = {
   key: string;
   id: string;
   type: PropertyTypes;
@@ -135,6 +139,19 @@ export async function getParsedPage(
     renderedPage += `${parsedBlock.text}\n`;
   }
 
+  const author =
+    (
+      await notionClient.users.retrieve({
+        user_id: page.created_by.id,
+      })
+    ).name || page.created_by.id;
+  const lastEditor =
+    (
+      await notionClient.users.retrieve({
+        user_id: page.last_edited_by.id,
+      })
+    ).name || page.last_edited_by.id;
+
   return {
     id: page.id,
     url: page.url,
@@ -142,6 +159,9 @@ export async function getParsedPage(
     blocks: parsedBlocks,
     rendered: renderedPage,
     createdTime: new Date(page.created_time).getTime(),
+    updatedTime: new Date(page.last_edited_time).getTime(),
+    author,
+    lastEditor,
   };
 }
 

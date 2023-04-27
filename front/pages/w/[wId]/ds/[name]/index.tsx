@@ -1,7 +1,7 @@
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/AppLayout";
@@ -9,6 +9,7 @@ import { ActionButton, Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -67,10 +68,32 @@ export default function DataSourceView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
-  const [limit, setLimit] = useState(10);
+  const [limit, _setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   let { documents, total } = useDocuments(owner, dataSource, limit, offset);
+
+  const [displayNameByDocId, setDisplayNameByDocId] = useState<
+    Record<string, string>
+  >({});
+
+  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
+
+  useEffect(
+    () =>
+      setDisplayNameByDocId(
+        documents.reduce(
+          (acc, doc) =>
+            Object.assign(acc, {
+              [doc.document_id]:
+                doc.tags.find((t) => t.startsWith("title:"))?.split(":")[1] ??
+                doc.document_id,
+            }),
+          {}
+        )
+      ),
+    [documents]
+  );
 
   let last = offset + limit;
   if (offset + limit > total) {
@@ -204,9 +227,16 @@ export default function DataSourceView({
                       <div className="mx-2 py-4">
                         <div className="grid grid-cols-5 items-center justify-between">
                           <div className="col-span-4">
-                            <p className="truncate text-base font-bold text-violet-600">
-                              {d.document_id}
-                            </p>
+                            <div className="flex">
+                              {documentPoviderIconPath ? (
+                                <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
+                                  <img src={documentPoviderIconPath}></img>
+                                </div>
+                              ) : null}
+                              <p className="truncate text-base font-bold text-violet-600">
+                                {displayNameByDocId[d.document_id]}
+                              </p>
+                            </div>
                           </div>
                           <div className="col-span-1">
                             {readOnly ? null : (

@@ -2,6 +2,7 @@ import {
   getPagesEditedSince,
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
+import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
@@ -25,7 +26,8 @@ export async function notionUpsertPageActivity(
     `notion-${parsedPage.id}`,
     parsedPage.rendered,
     parsedPage.url,
-    parsedPage.createdTime
+    parsedPage.createdTime,
+    getTagsForPage(parsedPage)
   );
 }
 

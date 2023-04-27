@@ -34,6 +34,7 @@ type ManagedDataSource = {
   enabled?: boolean | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
+  logoPath?: string;
 };
 
 const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
@@ -41,21 +42,25 @@ const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
     name: "Notion",
     connectorProvider: "notion",
     isBuilt: true,
+    logoPath: "/static/notion_32x32.png",
   },
   {
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: false,
+    logoPath: "/static/slack_32x32.png",
   },
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
     isBuilt: false,
+    logoPath: "/static/google_drive_32x32.png",
   },
   {
     name: "Github",
     connectorProvider: "github",
     isBuilt: false,
+    logoPath: "/static/github_black_32x32.png",
   },
 ];
 
@@ -347,6 +352,11 @@ export default function DataSourcesView({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
+                      {ds.logoPath ? (
+                        <div className="mr-1 flex h-4 w-4 flex-initial">
+                          <img src={ds.logoPath}></img>
+                        </div>
+                      ) : null}
                       {ds.enabled ? (
                         <Link
                           href={`/w/${
