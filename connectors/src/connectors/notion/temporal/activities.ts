@@ -2,12 +2,11 @@ import {
   getPagesEditedSince,
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
+import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
-
-import { getTagsForPage } from "../lib/tags";
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
