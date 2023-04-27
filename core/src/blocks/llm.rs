@@ -380,7 +380,8 @@ impl Block for LLM {
         if let Some(v) = config {
             if let Some(openai_user) = v.get("openai_user") {
                 extras_map.insert("openai_user", openai_user);
-            } else if let Some(openai_organization_id) = v.get("openai_organization_id") {
+            } 
+            if let Some(openai_organization_id) = v.get("openai_organization_id") {
                 extras_map.insert("openai_organization_id", openai_organization_id);
             }
         }
