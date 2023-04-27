@@ -507,6 +507,7 @@ pub async fn completion(
 pub async fn streamed_chat_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     temperature: f32,
@@ -521,25 +522,28 @@ pub async fn streamed_chat_completion(
 ) -> Result<ChatCompletion> {
     let url = uri.to_string();
 
-    let builder = match es::ClientBuilder::for_url(url.as_str()) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.method(String::from("POST")).header(
-        "Authorization",
-        format!("Bearer {}", api_key.clone()).as_str(),
-    ) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.header("Content-Type", "application/json") {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
-    let builder = match builder.header("api-key", api_key.clone().as_str()) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
-    };
+    let builder = es::ClientBuilder::for_url(url.as_str())
+        .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+
+    let auth_header = format!("Bearer {}", api_key.clone());
+    let headers = [
+        ("Authorization", auth_header.as_str()),
+        ("Content-Type", "application/json"),
+        ("api-key", api_key.as_str()),
+    ];
+
+    let mut builder = headers.iter().fold(Ok(builder), |builder, (key, value)| {
+        builder.and_then(|b| {
+            b.header(*key, *value)
+                .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))
+        })
+    })?;
+
+    if let Some(org_id) = organization_id {
+        builder = builder
+            .header("OpenAI-Organization", org_id.as_str())
+            .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+    }
 
     let mut body = json!({
         "messages": messages,
@@ -750,6 +754,7 @@ pub async fn streamed_chat_completion(
 pub async fn chat_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     temperature: f32,
@@ -785,18 +790,18 @@ pub async fn chat_completion(
     }
 
     // println!("BODY: {}", body.to_string());
-
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
-        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
-        // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -925,16 +930,11 @@ pub async fn embed(
 pub struct OpenAILLM {
     id: String,
     api_key: Option<String>,
-    organization_id: Option<String>,
 }
 
 impl OpenAILLM {
     pub fn new(id: String) -> Self {
-        OpenAILLM {
-            id,
-            api_key: None,
-            organization_id: None,
-        }
+        OpenAILLM { id, api_key: None }
     }
 
     fn uri(&self) -> Result<Uri> {
@@ -975,20 +975,6 @@ impl LLM for OpenAILLM {
                 Err(_) => Err(anyhow!(
                     "Credentials or environment variable `OPENAI_API_KEY` is not set."
                 ))?,
-            },
-        }
-
-        match credentials.get("OPENAI_ORGANIZATION_ID") {
-            Some(organization_id) => {
-                self.organization_id = Some(organization_id.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_ORGANIZATION_ID"))
-                .await?
-            {
-                Ok(org_id) => {
-                    self.organization_id = Some(org_id);
-                }
-                Err(_) => {}
             },
         }
 
@@ -1055,7 +1041,13 @@ impl LLM for OpenAILLM {
                 streamed_completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
-                    self.organization_id.clone(),
+                    match &extras {
+                        Some(ex) => match ex.get("openai_organization_id") {
+                            Some(u) => Some(u.to_string().clone()),
+                            None => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1079,7 +1071,7 @@ impl LLM for OpenAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
                             Some(u) => Some(u.to_string()),
                             None => None,
@@ -1094,7 +1086,13 @@ impl LLM for OpenAILLM {
                 completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
-                    self.organization_id.clone(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1118,7 +1116,7 @@ impl LLM for OpenAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
                             Some(u) => Some(u.to_string()),
                             None => None,
@@ -1231,6 +1229,13 @@ impl LLM for OpenAILLM {
                 streamed_chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     messages,
                     temperature,
@@ -1249,7 +1254,7 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
                             Some(u) => Some(u.to_string()),
                             None => None,
@@ -1264,6 +1269,13 @@ impl LLM for OpenAILLM {
                 chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(u) => Some(u.to_string()),
+                            None => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     messages,
                     temperature,
@@ -1282,7 +1294,7 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
                             Some(u) => Some(u.to_string()),
                             None => None,
@@ -1329,16 +1341,11 @@ pub struct Embeddings {
 pub struct OpenAIEmbedder {
     id: String,
     api_key: Option<String>,
-    organization_id: Option<String>,
 }
 
 impl OpenAIEmbedder {
     pub fn new(id: String) -> Self {
-        OpenAIEmbedder {
-            id,
-            api_key: None,
-            organization_id: None,
-        }
+        OpenAIEmbedder { id, api_key: None }
     }
 
     fn uri(&self) -> Result<Uri> {
@@ -1382,20 +1389,6 @@ impl Embedder for OpenAIEmbedder {
             },
         }
 
-        match credentials.get("OPENAI_ORGANIZATION_ID") {
-            Some(organization_id) => {
-                self.organization_id = Some(organization_id.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_ORGANIZATION_ID"))
-                .await?
-            {
-                Ok(org_id) => {
-                    self.organization_id = Some(org_id);
-                }
-                Err(_) => {}
-            },
-        }
-
         Ok(())
     }
 
@@ -1427,10 +1420,16 @@ impl Embedder for OpenAIEmbedder {
         let e = embed(
             self.uri()?,
             self.api_key.clone().unwrap(),
-            self.organization_id.clone(),
+            match &extras {
+                Some(e) => match e.get("openai_organization_id") {
+                    Some(u) => Some(u.to_string()),
+                    None => None,
+                },
+                None => None,
+            },
             Some(self.id.clone()),
             text,
-            match extras {
+            match &extras {
                 Some(e) => match e.get("openai_user") {
                     Some(u) => Some(u.to_string()),
                     None => None,
