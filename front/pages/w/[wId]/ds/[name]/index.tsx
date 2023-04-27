@@ -9,6 +9,7 @@ import { ActionButton, Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -76,25 +77,7 @@ export default function DataSourceView({
     Record<string, string>
   >({});
 
-  let documentPoviderIconPath: string | null;
-  const provider = dataSource.connector?.provider;
-
-  switch (provider) {
-    case "notion":
-      documentPoviderIconPath = `/static/notion_32x32.png`;
-      break;
-    case "slack":
-      documentPoviderIconPath = `/static/slack_32x32.png`;
-      break;
-    case undefined:
-      documentPoviderIconPath = null;
-      break;
-    default:
-      ((_provider: never) => {
-        // cannot happen
-        // this is to make sure we handle all cases
-      })(provider);
-  }
+  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   useEffect(
     () =>

@@ -6,6 +6,7 @@ import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { UserType } from "@app/types//user";
 import { DataSourceType } from "@app/types/data_source";
@@ -71,6 +72,8 @@ export default function DataSourceView({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
+
+  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   useEffect(
     () =>
@@ -185,16 +188,23 @@ export default function DataSourceView({
                         <div className="grid grid-cols-5 items-center justify-between">
                           <div className="col-span-4">
                             <p className="truncate text-base font-bold text-violet-600">
-                              <Link
-                                href={`/w/${owner.sId}/ds/${
-                                  dataSource.name
-                                }/upsert?documentId=${encodeURIComponent(
-                                  d.document_id
-                                )}`}
-                                className="block"
-                              >
-                                {displayNameByDocId[d.document_id]}
-                              </Link>
+                              <div className="flex">
+                                {documentPoviderIconPath ? (
+                                  <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
+                                    <img src={documentPoviderIconPath}></img>
+                                  </div>
+                                ) : null}
+                                <Link
+                                  href={`/w/${owner.sId}/ds/${
+                                    dataSource.name
+                                  }/upsert?documentId=${encodeURIComponent(
+                                    d.document_id
+                                  )}`}
+                                  className="block"
+                                >
+                                  {displayNameByDocId[d.document_id]}
+                                </Link>
+                              </div>
                             </p>
                           </div>
                           <div className="col-span-1 text-right">
