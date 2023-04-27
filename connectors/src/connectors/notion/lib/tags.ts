@@ -8,8 +8,8 @@ export function getTagsForPage(page: ParsedPage): string[] {
   }
 
   return tags.concat([
-    `lastEditedAt:${page.updatedTime}`,
     `author:${page.author}`,
     `lastEditor:${page.lastEditor}`,
+    `lastEditedAt:${page.updatedTime}`,
   ]);
 }
