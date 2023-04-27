@@ -68,6 +68,25 @@ export default function DataSourceView({
   const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
+  const [displayNameByDocId, setDisplayNameByDocId] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(
+    () =>
+      setDisplayNameByDocId(
+        documents.reduce(
+          (acc, doc) =>
+            Object.assign(acc, {
+              [doc.document_id]:
+                doc.tags.find((t) => t.startsWith("title:"))?.split(":")[1] ??
+                doc.document_id,
+            }),
+          {}
+        )
+      ),
+    [documents]
+  );
 
   useEffect(() => {
     setError(false);
@@ -174,7 +193,7 @@ export default function DataSourceView({
                                 )}`}
                                 className="block"
                               >
-                                {d.document_id}
+                                {displayNameByDocId[d.document_id]}
                               </Link>
                             </p>
                           </div>
