@@ -130,3 +130,58 @@ export async function resumeNotionConnector(
 
   return new Ok(connector.id.toString());
 }
+
+export async function fullResyncNotionConnector(connectorId: string) {
+  const connector = await Connector.findOne({
+    where: { type: "notion", id: connectorId },
+  });
+
+  if (!connector) {
+    logger.error({ connectorId }, "Notion connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  try {
+    await stopNotionConnector({
+      workspaceId: connector.workspaceId,
+      dataSourceName: connector.dataSourceName,
+    });
+  } catch (e) {
+    logger.error(
+      {
+        connectorId,
+        workspaceId: connector.workspaceId,
+        dataSourceName: connector.dataSourceName,
+        e,
+      },
+      "Error stopping notion sync workflow"
+    );
+
+    return new Err(e as Error);
+  }
+
+  try {
+    await launchNotionSyncWorkflow(
+      {
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+        dataSourceName: connector.dataSourceName,
+      },
+      connector.nangoConnectionId,
+      null,
+      true
+    );
+  } catch (e) {
+    logger.error(
+      {
+        connectorId,
+        workspaceId: connector.workspaceId,
+        dataSourceName: connector.dataSourceName,
+        e,
+      },
+      "Error launching notion sync workflow"
+    );
+  }
+
+  return new Ok(connector.id.toString());
+}
