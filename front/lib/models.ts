@@ -12,7 +12,7 @@ import { ConnectorProvider } from "./connectors_api";
 
 const { FRONT_DATABASE_URI } = process.env;
 
-const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   logging: false,
 }); // TODO: type process.env
 

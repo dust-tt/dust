@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
 
-import { App, Run } from "@app/lib/models";
+import { front_sequelize, Run } from "@app/lib/models";
 
 const { CORE_DATABASE_URI } = process.env;
 
@@ -43,9 +43,15 @@ async function main() {
       chunk.map((r) => {
         const dustRun = runById[r.dustRunId];
         if (dustRun) {
-          return r.update({
-            createdAt: new Date(runById[r.dustRunId].created),
-          });
+          return front_sequelize.query(
+            `UPDATE runs SET "createdAt" = :createdAt WHERE id = :id`,
+            {
+              replacements: {
+                createdAt: new Date(dustRun.created),
+                id: r.id,
+              },
+            }
+          );
         }
       })
     );
