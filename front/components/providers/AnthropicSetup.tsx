@@ -44,7 +44,7 @@ export default function AnthropicSetup({
     });
 
     if (!check.ok) {
-      setTestError(check.error);
+      setTestError(check.error || "Unknown error");
       setTestSuccessful(false);
       setTestRunning(false);
     } else {
