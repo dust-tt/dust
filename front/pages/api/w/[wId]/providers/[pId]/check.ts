@@ -134,7 +134,9 @@ async function handler(
 
           if (!testGenerate.ok) {
             let err = await testGenerate.json();
-            res.status(400).json({ ok: false, error: err.message });
+            res
+              .status(400)
+              .json({ ok: false, error: err.message || err.detail });
           } else {
             let test = await testGenerate.json();
             res.status(200).json({ ok: true });
