@@ -403,7 +403,7 @@ async function parsePageBlock(
       return [
         {
           ...commonFields,
-          text: block.table_row.cells.map(parseRichText).join(" | "),
+          text: `||${block.table_row.cells.map(parseRichText).join(" | ")}||`,
         },
       ];
 
