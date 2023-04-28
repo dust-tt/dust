@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
@@ -375,17 +376,19 @@ impl Block for LLM {
             None => false,
         } && event_sender.is_some();
 
-        let extras = match config {
-            Some(v) => match v.get("openai_user") {
-                Some(v) => match v {
-                    Value::String(s) => Some(json!({
-                        "openai_user": s.clone(),
-                    })),
-                    _ => None,
-                },
-                None => None,
-            },
-            None => None,
+        let mut extras_map = HashMap::new();
+        if let Some(v) = config {
+            if let Some(openai_user) = v.get("openai_user") {
+                extras_map.insert("openai_user", openai_user);
+            }
+            if let Some(openai_organization_id) = v.get("openai_organization_id") {
+                extras_map.insert("openai_organization_id", openai_organization_id);
+            }
+        }
+
+        let extras = match extras_map.len() {
+            0 => None,
+            _ => Some(json!(extras_map)),
         };
 
         // if model_id starts with gpt-3.5-turbo or gpt-4 use the chat interface
