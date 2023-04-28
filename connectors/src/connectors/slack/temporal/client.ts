@@ -36,11 +36,6 @@ export async function launchSlackSyncWorkflow(
   } catch (e) {
     return new Err(e as Error);
   }
-
-  logger.info(
-    { workspaceId: dataSourceConfig.workspaceId },
-    `Started Slac sync workflow with id ${workflowId}`
-  );
 }
 
 function getWorkflowId(dataSourceConfig: DataSourceInfo) {

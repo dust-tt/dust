@@ -68,7 +68,10 @@ export async function createSlackConnector(
         { transaction: t }
       );
 
-      await launchSlackSyncWorkflow(connector.id.toString());
+      const launchRes = await launchSlackSyncWorkflow(connector.id.toString());
+      if (launchRes.isErr()) {
+        return new Err(launchRes.error);
+      }
 
       return new Ok(connector);
     }
