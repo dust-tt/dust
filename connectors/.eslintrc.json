@@ -28,7 +28,8 @@
         ]
       }
     ],
-    "simple-import-sort/exports": "error"
+    "simple-import-sort/exports": "error",
+    "@typescript-eslint/no-floating-promises": "error"
   },
   "overrides": [
     {
@@ -38,5 +39,8 @@
   "env": {
     "node": true,
     "es6": true
+  },
+  "parserOptions": {
+    "project": "./tsconfig.json"
   }
 }
