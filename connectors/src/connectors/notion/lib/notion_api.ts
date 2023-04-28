@@ -282,7 +282,7 @@ async function renderChildDatabase(
     }
   }
 
-  return block.child_database.title + "\n" + rows.join("\n");
+  return [block.child_database.title, ...rows].join("\n");
 }
 
 async function parsePageBlock(
