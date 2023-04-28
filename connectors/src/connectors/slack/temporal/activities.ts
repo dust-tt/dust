@@ -67,6 +67,22 @@ export async function getChannels(
   return allChannels;
 }
 
+export async function getChannel(
+  slackAccessToken: string,
+  channelId: string
+): Promise<Channel> {
+  const client = getSlackClient(slackAccessToken);
+  const res = await client.conversations.info({ channel: channelId });
+  if (res.error) {
+    throw new Error(res.error);
+  }
+  if (!res.channel) {
+    throw new Error(`No channel found for id ${channelId}`);
+  }
+
+  return res.channel;
+}
+
 export async function getMessagesForChannel(
   slackAccessToken: string,
   channelId: string,
@@ -159,6 +175,7 @@ export async function syncNonThreaded(
       messages.push(message);
     }
   }
+  messages.reverse();
   const text = await formatMessagesForUpsert(
     channelId,
     messages,

@@ -2,13 +2,27 @@ import { NextFunction, Request, Response } from "express";
 
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-const { DUST_CONNECTORS_SECRET } = process.env;
+const { DUST_CONNECTORS_SECRET, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 if (!DUST_CONNECTORS_SECRET) {
   throw new Error("DUST_CONNECTORS_SECRET is not defined");
 }
+if (!DUST_CONNECTORS_WEBHOOKS_SECRET) {
+  throw new Error("DUST_CONNECTORS_WEBHOOKS_SECRET is not defined");
+}
 
 export const authMiddleware = (
+  req: Request,
+  res: Response<ConnectorsAPIErrorResponse>,
+  next: NextFunction
+) => {
+  if (req.path.startsWith("/webhooks")) {
+    return _authMiddlewareWebhooks(req, res, next);
+  }
+
+  return _authMiddlewareAPI(req, res, next);
+};
+const _authMiddlewareAPI = (
   req: Request,
   res: Response<ConnectorsAPIErrorResponse>,
   next: NextFunction
@@ -39,6 +53,40 @@ export const authMiddleware = (
   }
   if (secret !== DUST_CONNECTORS_SECRET) {
     return res.status(401).send({ error: { message: "Invalid API key" } });
+  }
+  next();
+};
+
+const _authMiddlewareWebhooks = (
+  req: Request,
+  res: Response<ConnectorsAPIErrorResponse>,
+  next: NextFunction
+) => {
+  if (req.path.startsWith("/webhooks")) {
+    const parts = req.path.split("/");
+    const indexOfWebhooks = parts.indexOf("webhooks");
+    if (indexOfWebhooks === -1) {
+      return res.status(500).send({
+        error: {
+          message: "Programming error. Could not find the webhook component",
+        },
+      });
+    }
+    if (parts.length < indexOfWebhooks + 2) {
+      return res.status(400).send({
+        error: {
+          message: "Missing webhook secret",
+        },
+      });
+    }
+    const webhookSecret = parts[indexOfWebhooks + 1];
+    if (webhookSecret !== DUST_CONNECTORS_WEBHOOKS_SECRET) {
+      return res.status(401).send({
+        error: {
+          message: "Invalid webhook secret",
+        },
+      });
+    }
   }
   next();
 };

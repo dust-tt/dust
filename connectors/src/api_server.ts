@@ -10,6 +10,7 @@ import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
 import { syncConnectorAPIHandler } from "./api/syncConnector";
+import { webhookSlackAPIHandler } from "./api/webhooks/webhookSlack";
 
 export function startServer(port: number) {
   const app = express();
@@ -29,6 +30,8 @@ export function startServer(port: number) {
     getConnectorStatusAPIHandler
   );
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
+
+  app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
 
   app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);

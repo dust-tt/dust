@@ -1,5 +1,5 @@
 import { Connector } from "@connectors/lib/models";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import {
@@ -7,11 +7,14 @@ import {
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
 
-import { workspaceFullSync } from "./workflows";
+import { newWebhookSignal } from "./signals";
+import {
+  syncOneMessageDebounced,
+  syncOneThreadDebounced,
+  workspaceFullSync,
+} from "./workflows";
 
-export async function launchSlackSyncWorkflow(
-  connectorId: string
-): Promise<Result<string, Error>> {
+export async function launchSlackSyncWorkflow(connectorId: string) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
@@ -42,6 +45,91 @@ export async function launchSlackSyncWorkflow(
       { workspaceId: dataSourceConfig.workspaceId, error: e },
       `Failed starting the Slack sync. WorkflowId: ${workflowId}`
     );
+    return new Err(e as Error);
+  }
+}
+
+export async function launchSlackSyncOneThreadWorkflow(
+  connectorId: string,
+  channelId: string,
+  threadTs: string
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+  const dataSourceConfig: DataSourceConfig = {
+    workspaceAPIKey: connector.workspaceAPIKey,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  };
+  const nangoConnectionId = connector.nangoConnectionId;
+
+  const workflowId = `slackSyncOneThreadWorkflow-${connectorId}-${threadTs}`;
+  try {
+    const handle = await client.workflow.signalWithStart(
+      syncOneThreadDebounced,
+      {
+        args: [
+          connectorId,
+          dataSourceConfig,
+          nangoConnectionId,
+          channelId,
+          threadTs,
+        ],
+        taskQueue: "slack-queue",
+        workflowId: workflowId,
+        signal: newWebhookSignal,
+        signalArgs: undefined,
+      }
+    );
+
+    return new Ok(handle);
+  } catch (e) {
+    return new Err(e as Error);
+  }
+}
+
+export async function launchSlackSyncOneMessageWorkflow(
+  connectorId: string,
+  channelId: string,
+  threadTs: string
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+
+  const dataSourceConfig: DataSourceConfig = {
+    workspaceAPIKey: connector.workspaceAPIKey,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  };
+  const nangoConnectionId = connector.nangoConnectionId;
+
+  const workflowId = `slackSyncOneMessageWorkflow-${connectorId}-${threadTs}`;
+  try {
+    const handle = await client.workflow.signalWithStart(
+      syncOneMessageDebounced,
+      {
+        args: [
+          connectorId,
+          dataSourceConfig,
+          nangoConnectionId,
+          channelId,
+          threadTs,
+        ],
+        taskQueue: "slack-queue",
+        workflowId: workflowId,
+        signal: newWebhookSignal,
+        signalArgs: undefined,
+      }
+    );
+
+    return new Ok(handle);
+  } catch (e) {
     return new Err(e as Error);
   }
 }
