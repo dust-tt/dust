@@ -456,7 +456,9 @@ pub async fn completion(
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
+        // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
         .header("api-key", api_key.clone());
 
     if let Some(organization_id) = organization_id {
