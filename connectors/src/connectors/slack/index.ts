@@ -33,8 +33,7 @@ export async function createSlackConnector(
       if (teamInfo.ok !== true) {
         return new Err(
           new Error(
-            `Could not get slack team info. Error message: ${
-              teamInfo.error || "unknown"
+            `Could not get slack team info. Error message: ${teamInfo.error || "unknown"
             }`
           )
         );
@@ -42,8 +41,7 @@ export async function createSlackConnector(
       if (!teamInfo.team?.id) {
         return new Err(
           new Error(
-            `Could not get slack team id. Error message: ${
-              teamInfo.error || "unknown"
+            `Could not get slack team id. Error message: ${teamInfo.error || "unknown"
             }`
           )
         );
@@ -68,10 +66,6 @@ export async function createSlackConnector(
         { transaction: t }
       );
 
-      const launchRes = await launchSlackSyncWorkflow(connector.id.toString());
-      if (launchRes.isErr()) {
-        return new Err(launchRes.error);
-      }
 
       return new Ok(connector);
     }
@@ -80,6 +74,12 @@ export async function createSlackConnector(
   if (res.isErr()) {
     return res;
   }
+
+  const launchRes = await launchSlackSyncWorkflow(res.value.id.toString());
+  if (launchRes.isErr()) {
+    return new Err(launchRes.error);
+  }
+
 
   return new Ok(res.value.id.toString());
 }
