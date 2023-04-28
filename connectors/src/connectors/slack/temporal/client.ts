@@ -32,8 +32,16 @@ export async function launchSlackSyncWorkflow(
       taskQueue: "slack-queue",
       workflowId: workflowId,
     });
+    logger.info(
+      { workspaceId: dataSourceConfig.workspaceId },
+      `Started Slack sync workflow with id ${workflowId}`
+    );
     return new Ok(workflowId);
   } catch (e) {
+    logger.error(
+      { workspaceId: dataSourceConfig.workspaceId, error: e },
+      `Failed starting the Slack sync. WorkflowId: ${workflowId}`
+    );
     return new Err(e as Error);
   }
 }
