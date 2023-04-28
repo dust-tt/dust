@@ -360,7 +360,7 @@ export async function fetchUsers(
     }
     for (const member of res.members) {
       if (member.id && member.name) {
-        cacheSet(getUserCacheKey(member.id, connectorId), member.name);
+        await cacheSet(getUserCacheKey(member.id, connectorId), member.name);
       }
     }
     cursor = res.response_metadata?.next_cursor;
@@ -394,7 +394,7 @@ async function getUserName(
   const info = await slackClient.users.info({ user: slackUserId });
 
   if (info.user?.name) {
-    cacheSet(getUserCacheKey(slackUserId, connectorId), info.user.name);
+    await cacheSet(getUserCacheKey(slackUserId, connectorId), info.user.name);
     return info.user.name;
   }
   return;
