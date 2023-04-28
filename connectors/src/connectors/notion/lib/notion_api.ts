@@ -249,6 +249,42 @@ function parsePropertyText(
   }
 }
 
+async function renderChildDatabase(
+  block: BlockObjectResponse & { type: "child_database" },
+  notionClient: Client
+): Promise<string> {
+  const rows: string[] = [];
+  let header: string[] | null = null;
+
+  for await (const page of iteratePaginatedAPI(notionClient.databases.query, {
+    database_id: block.id,
+  })) {
+    if (isFullPage(page)) {
+      if (!header) {
+        header = Object.entries(page.properties).map(([key]) => key);
+        rows.push(`||${header.join(" | ")}||`);
+      }
+
+      const properties: Record<string, string> = Object.entries(page.properties)
+        .map(([key, value]) => ({
+          key,
+          id: value.id,
+          type: value.type,
+          text: parsePropertyText(value),
+        }))
+        .reduce(
+          (acc, property) =>
+            Object.assign(acc, { [property.key]: property.text }),
+          {}
+        );
+
+      rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
+    }
+  }
+
+  return block.child_database.title + "\n" + rows.join("\n");
+}
+
 async function parsePageBlock(
   block: BlockObjectResponse,
   notionClient: Client
@@ -378,6 +414,16 @@ async function parsePageBlock(
           text: `\`\`\`${block.code.language} ${parseRichText(
             block.code.rich_text
           )} \`\`\``,
+        },
+      ];
+
+    // child databases are a special case
+    // we need to fetch all the pages in the database to reconstruct the table
+    case "child_database":
+      return [
+        {
+          ...commonFields,
+          text: await renderChildDatabase(block, notionClient),
         },
       ];
 
@@ -551,13 +597,6 @@ async function parsePageBlock(
 
     // blocks that technically have children but we don't want to recursively parse them
     // because the search endpoint returns them already
-    case "child_database":
-      return [
-        {
-          ...commonFields,
-          text: block.child_database.title,
-        },
-      ];
     case "child_page":
       return [
         {
