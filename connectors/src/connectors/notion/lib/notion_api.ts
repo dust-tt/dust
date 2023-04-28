@@ -342,7 +342,6 @@ async function parsePageBlock(
     case "column_list":
     case "link_to_page":
     case "divider":
-    case "synced_block":
     case "table_of_contents":
     case "unsupported":
       // TODO: check if we want that ?
@@ -546,6 +545,9 @@ async function parsePageBlock(
         },
         block
       );
+
+    case "synced_block":
+      return withPotentialChildren(NULL_BLOCK, block);
 
     // blocks that technically have children but we don't want to recursively parse them
     // because the search endpoint returns them already
