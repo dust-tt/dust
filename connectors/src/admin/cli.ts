@@ -7,6 +7,7 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
+import { Result } from "@connectors/lib/result";
 import { isConnectorProvider } from "@connectors/types/connector";
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -32,41 +33,53 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
       `Could not find connector for provider ${args.provider} and workspace ${args.wId}`
     );
   }
+  const provider = args.provider;
   switch (command) {
     case "stop": {
-      await STOP_CONNECTOR_BY_TYPE[args.provider]({
-        workspaceId: connector.workspaceId,
-        dataSourceName: connector.dataSourceName,
-      });
+      await throwOnError(
+        STOP_CONNECTOR_BY_TYPE[provider]({
+          workspaceId: connector.workspaceId,
+          dataSourceName: connector.dataSourceName,
+        })
+      );
       return;
     }
     case "resume": {
-      await RESUME_CONNECTOR_BY_TYPE[args.provider](
-        {
-          workspaceId: connector.workspaceId,
-          dataSourceName: connector.dataSourceName,
-          workspaceAPIKey: connector.workspaceAPIKey,
-        },
-        connector.nangoConnectionId
+      await throwOnError(
+        RESUME_CONNECTOR_BY_TYPE[provider](
+          {
+            workspaceId: connector.workspaceId,
+            dataSourceName: connector.dataSourceName,
+            workspaceAPIKey: connector.workspaceAPIKey,
+          },
+          connector.nangoConnectionId
+        )
       );
       return;
     }
     case "full-resync": {
-      await SYNC_CONNECTOR_BY_TYPE[args.provider](connector.id.toString());
+      await throwOnError(
+        SYNC_CONNECTOR_BY_TYPE[provider](connector.id.toString())
+      );
       return;
     }
+
     case "restart": {
-      await STOP_CONNECTOR_BY_TYPE[args.provider]({
-        workspaceId: connector.workspaceId,
-        dataSourceName: connector.dataSourceName,
-      });
-      await RESUME_CONNECTOR_BY_TYPE[args.provider](
-        {
+      await throwOnError(
+        STOP_CONNECTOR_BY_TYPE[provider]({
           workspaceId: connector.workspaceId,
           dataSourceName: connector.dataSourceName,
-          workspaceAPIKey: connector.workspaceAPIKey,
-        },
-        connector.nangoConnectionId
+        })
+      );
+      await throwOnError(
+        RESUME_CONNECTOR_BY_TYPE[provider](
+          {
+            workspaceId: connector.workspaceId,
+            dataSourceName: connector.dataSourceName,
+            workspaceAPIKey: connector.workspaceAPIKey,
+          },
+          connector.nangoConnectionId
+        )
       );
       return;
     }
@@ -88,17 +101,21 @@ const notion = async (command: string) => {
       for (const connector of connectors) {
         promises.push(
           queue.add(async () => {
-            await STOP_CONNECTOR_BY_TYPE[connector.type]({
-              workspaceId: connector.workspaceId,
-              dataSourceName: connector.dataSourceName,
-            });
-            await RESUME_CONNECTOR_BY_TYPE[connector.type](
-              {
+            await throwOnError(
+              STOP_CONNECTOR_BY_TYPE[connector.type]({
                 workspaceId: connector.workspaceId,
                 dataSourceName: connector.dataSourceName,
-                workspaceAPIKey: connector.workspaceAPIKey,
-              },
-              connector.nangoConnectionId
+              })
+            );
+            await throwOnError(
+              RESUME_CONNECTOR_BY_TYPE[connector.type](
+                {
+                  workspaceId: connector.workspaceId,
+                  dataSourceName: connector.dataSourceName,
+                  workspaceAPIKey: connector.workspaceAPIKey,
+                },
+                connector.nangoConnectionId
+              )
             );
           })
         );
@@ -174,3 +191,11 @@ main()
     console.log(err);
     process.exit(1);
   });
+
+async function throwOnError<T>(p: Promise<Result<T, Error>>) {
+  const res = await p;
+  if (res.isErr()) {
+    throw res.error;
+  }
+  return res;
+}
