@@ -6,7 +6,10 @@ import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/data_source/MainTab";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDocument,
+  getProviderLogoPathForDataSource,
+} from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { UserType } from "@app/types//user";
 import { DataSourceType } from "@app/types/data_source";
@@ -81,9 +84,7 @@ export default function DataSourceView({
         documents.reduce(
           (acc, doc) =>
             Object.assign(acc, {
-              [doc.document_id]:
-                doc.tags.find((t) => t.startsWith("title:"))?.split(":")[1] ??
-                doc.document_id,
+              [doc.document_id]: getDisplayNameForDocument(doc),
             }),
           {}
         )
