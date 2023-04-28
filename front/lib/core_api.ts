@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
 
 import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 import { Project } from "@app/types/project";
 import { CredentialsType } from "@app/types/provider";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
@@ -255,12 +256,12 @@ export const CoreAPI = {
         if (event.data) {
           try {
             const data = JSON.parse(event.data);
-            if (data.content?.run_id) {
+            if (data.content?.run_id || !hasRunId) {
               hasRunId = true;
               resolveDustRunIdPromise(data.content.run_id);
             }
           } catch (err) {
-            console.error(err);
+            logger.error({ error: err }, "Failed parsing chunk from Core API");
           }
         }
       }
@@ -275,18 +276,18 @@ export const CoreAPI = {
           if (done) {
             break;
           }
-          parser!.feed(new TextDecoder().decode(value));
+          parser.feed(new TextDecoder().decode(value));
           yield value;
         }
         if (!hasRunId) {
           // once the stream is entirely consumed, if we haven't received a run id, reject the promise
           setImmediate(() => {
-            console.error("No run id received");
+            logger.error("No run id received");
             rejectDustRunIdPromise(new Error("No run id received"));
           });
         }
       } catch (e) {
-        console.error(
+        logger.error(
           {
             error: e,
           },

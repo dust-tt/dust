@@ -147,10 +147,10 @@ async function handler(
       }
 
       if (invite) {
-        res.redirect(`/w/${invite.sId}/a`);
+        res.redirect(`/w/${invite.sId}`);
       } else {
         // TODO(spolu): persist latest workspace in session?
-        res.redirect(`/w/${u.workspaces[0].sId}/a`);
+        res.redirect(`/w/${u.workspaces[0].sId}`);
       }
       return;
 

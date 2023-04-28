@@ -1,9 +1,8 @@
 import { Menu } from "@headlessui/react";
 import {
-  KeyIcon,
-  LinkIcon,
+  BellAlertIcon,
   MagnifyingGlassCircleIcon,
-  UsersIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon, CodeBracketIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
@@ -20,8 +19,8 @@ export default function MainTab({
 }) {
   const tabs = [
     {
-      name: "Apps",
-      href: `/w/${owner.sId}/a`,
+      name: "Chat",
+      href: `/w/${owner.sId}/u/chat`,
       icon: (
         <CodeBracketIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -30,8 +29,8 @@ export default function MainTab({
       ),
     },
     {
-      name: "DataSources",
-      href: `/w/${owner.sId}/ds`,
+      name: "Answers",
+      href: `/w/${owner.sId}/u/answers`,
       icon: (
         <MagnifyingGlassCircleIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
@@ -39,45 +38,27 @@ export default function MainTab({
         />
       ),
     },
+    {
+      name: "Notes",
+      href: `/w/${owner.sId}/u/notes`,
+      icon: (
+        <PencilSquareIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
+    {
+      name: "Alerts",
+      href: `/w/${owner.sId}/u/alerts`,
+      icon: (
+        <BellAlertIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
   ] as { name: string; href: string; icon: JSX.Element }[];
-
-  if (owner.role === "builder" || owner.role === "admin") {
-    tabs.push({
-      name: "API keys",
-      href: `/w/${owner.sId}/keys`,
-      icon: (
-        <KeyIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    });
-  }
-
-  if (owner.role === "admin") {
-    tabs.push({
-      name: "Providers",
-      href: `/w/${owner.sId}/providers`,
-      icon: (
-        <LinkIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    });
-    if (owner.type === "team") {
-      tabs.push({
-        name: "Workspace",
-        href: `/w/${owner.sId}/workspace`,
-        icon: (
-          <UsersIcon
-            className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-            aria-hidden="true"
-          />
-        ),
-      });
-    }
-  }
 
   let currTab = tabs.find((tab) => tab.name == currentTab);
 
@@ -119,25 +100,25 @@ export default function MainTab({
             </Menu.Items>
           </Menu>
         </div>
-        {owner.type === "team" ? (
+        {owner.role === "builder" || owner.role === "admin" ? (
           <div className="flex flex-initial">
-            <Link
-              href={`/w/${owner.sId}/u`}
-              className={classNames(
-                "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
-              )}
-            >
-              Use
-            </Link>
             <div
               className={classNames(
                 "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
                 "border-gray-500 font-bold text-gray-700"
               )}
             >
-              Build
+              Use
             </div>
+            <Link
+              href={`/w/${owner.sId}/a`}
+              className={classNames(
+                "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+                "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
+              )}
+            >
+              Build
+            </Link>
           </div>
         ) : null}
       </div>
@@ -163,25 +144,25 @@ export default function MainTab({
               </div>
             ))}
             <div className="flex flex-1"></div>
-            {owner.type === "team" ? (
+            {owner.role === "builder" || owner.role === "admin" ? (
               <div className="flex flex-initial">
-                <Link
-                  href={`/w/${owner.sId}/u`}
-                  className={classNames(
-                    "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                    "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
-                  )}
-                >
-                  Use
-                </Link>
                 <div
                   className={classNames(
                     "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
                     "border-gray-500 font-bold text-gray-700"
                   )}
                 >
-                  Build
+                  Use
                 </div>
+                <Link
+                  href={`/w/${owner.sId}/a`}
+                  className={classNames(
+                    "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+                    "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
+                  )}
+                >
+                  Build
+                </Link>
               </div>
             ) : null}
           </nav>

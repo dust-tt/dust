@@ -70,6 +70,8 @@ export default function MainTab({
         />
       ),
     });
+  }
+  if (owner.role === "builder" || owner.role === "admin") {
     tabs.push({
       name: "Settings",
       href: `/w/${owner.sId}/a/${app.sId}/settings`,
