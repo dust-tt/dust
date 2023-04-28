@@ -36,7 +36,8 @@ const _createConnectorAPIHandler = async (
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
-          message: `Missing required parameters. Required : workspaceAPIKey, dataSourceName, workspaceId, nangoConnectionId`,
+          message: `Missing required parameters. Required : workspaceAPIKey,
+           dataSourceName, workspaceId, nangoConnectionId`,
         },
         status_code: 400,
       });
