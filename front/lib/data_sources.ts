@@ -1,3 +1,4 @@
+import { DustAPIDocument } from "@app/lib/dust_api";
 import { DataSourceType } from "@app/types/data_source";
 
 export function getProviderLogoPathForDataSource(
@@ -23,4 +24,13 @@ export function getProviderLogoPathForDataSource(
       })(provider);
       return null;
   }
+}
+
+export function getDisplayNameForDocument(document: DustAPIDocument): string {
+  const titleTagPrefix = "title:";
+  const titleTag = document.tags.find((tag) => tag.startsWith(titleTagPrefix));
+  if (!titleTag) {
+    return document.document_id;
+  }
+  return titleTag.substring(titleTagPrefix.length);
 }
