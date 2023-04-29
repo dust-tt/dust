@@ -20,6 +20,22 @@
                 }
             },
             "args": [],
-        }
+        },
+        {
+            "type": "node-terminal",
+            "name": "Debug Current TS File (npx tsx)",
+            "request": "launch",
+            "command": "npx tsx -- ${fileBasenameNoExtension}",
+            "cwd": "${fileDirname}",
+            "envFile": "${workspaceFolder}/front/.env.local",
+          },
+          {
+            "type": "node-terminal",
+            "name": "Debug connectors server",
+            "request": "launch",
+            "command": "npm start",
+            "cwd": "${workspaceFolder}/connectors",
+            "envFile": "${workspaceFolder}/front/.env.local",
+          },          
     ]
 }
