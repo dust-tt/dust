@@ -1,15 +1,15 @@
-{
-  "extends": [
+module.exports = {
+  extends: [
     "prettier",
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
   ],
-  "plugins": ["simple-import-sort"],
-  "rules": {
+  plugins: ["simple-import-sort"],
+  rules: {
     "simple-import-sort/imports": [
       "error",
       {
-        "groups": [
+        groups: [
           // Side effect imports.
           ["^\\u0000"],
           // Node.js builtins prefixed with `node:`.
@@ -24,23 +24,24 @@
           ["^"],
           // Relative imports.
           // Anything that starts with a dot.
-          ["^\\."]
-        ]
-      }
+          ["^\\."],
+        ],
+      },
     ],
     "simple-import-sort/exports": "error",
-    "@typescript-eslint/no-floating-promises": "error"
+    "@typescript-eslint/no-floating-promises": "error",
   },
-  "overrides": [
+  overrides: [
     {
-      "files": ["*.jsx", "*.js", "*.ts", "*.tsx"]
-    }
+      files: ["*.jsx", "*.js", "*.ts", "*.tsx"],
+    },
   ],
-  "env": {
-    "node": true,
-    "es6": true
+  env: {
+    node: true,
+    es6: true,
   },
-  "parserOptions": {
-    "project": "./tsconfig.json"
-  }
-}
+  parserOptions: {
+    project: "./tsconfig.json",
+    tsconfigRootDir: __dirname,
+  },
+};

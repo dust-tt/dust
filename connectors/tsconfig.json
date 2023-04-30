@@ -21,6 +21,6 @@
       "@connectors/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "./.eslintrc.js"],
   "exclude": ["node_modules"]
 }
