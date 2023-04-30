@@ -64,23 +64,8 @@ const _authMiddlewareWebhooks = (
 ) => {
   if (req.path.startsWith("/webhooks")) {
     const parts = req.path.split("/");
-    const indexOfWebhooks = parts.indexOf("webhooks");
-    if (indexOfWebhooks === -1) {
-      return res.status(500).send({
-        error: {
-          message: "Programming error. Could not find the webhook component",
-        },
-      });
-    }
-    if (parts.length < indexOfWebhooks + 2) {
-      return res.status(400).send({
-        error: {
-          message: "Missing webhook secret",
-        },
-      });
-    }
-    const webhookSecret = parts[indexOfWebhooks + 1];
-    if (webhookSecret !== DUST_CONNECTORS_WEBHOOKS_SECRET) {
+
+    if (parts.includes(DUST_CONNECTORS_WEBHOOKS_SECRET) === false) {
       return res.status(401).send({
         error: {
           message: "Invalid webhook secret",
