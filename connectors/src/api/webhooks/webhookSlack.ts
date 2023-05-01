@@ -27,7 +27,7 @@ type SlackWebhookResBody =
   | ConnectorsAPIErrorResponse;
 
 const _webhookSlackAPIHandler = async (
-  req: Request<{}, SlackWebhookResBody, SlackWebhookReqBody>,
+  req: Request<null, SlackWebhookResBody, SlackWebhookReqBody>,
   res: Response<SlackWebhookResBody>
 ) => {
   if (req.body.type === "url_verification" && req.body.challenge) {
