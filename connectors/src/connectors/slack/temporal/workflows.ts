@@ -6,10 +6,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal } from "./signals";

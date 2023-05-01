@@ -2,11 +2,9 @@ import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { getWeekStart } from "../lib/utils";
 import { newWebhookSignal } from "./signals";
 import {
   syncOneMessageDebounced,
@@ -16,8 +14,6 @@ import {
   workspaceFullSync,
   workspaceFullSyncWorkflowId,
 } from "./workflows";
-import { getWeekStart } from "../lib/utils";
-import { channel } from "diagnostics_channel";
 
 export async function launchSlackSyncWorkflow(connectorId: string) {
   const connector = await Connector.findByPk(connectorId);
