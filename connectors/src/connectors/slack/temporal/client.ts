@@ -10,9 +10,14 @@ import {
 import { newWebhookSignal } from "./signals";
 import {
   syncOneMessageDebounced,
+  syncOneMessageDebouncedWorkflowId,
   syncOneThreadDebounced,
+  syncOneThreadDebouncedWorkflowId,
   workspaceFullSync,
+  workspaceFullSyncWorkflowId,
 } from "./workflows";
+import { getWeekStart } from "../lib/utils";
+import { channel } from "diagnostics_channel";
 
 export async function launchSlackSyncWorkflow(connectorId: string) {
   const connector = await Connector.findByPk(connectorId);
@@ -28,7 +33,7 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
   };
   const nangoConnectionId = connector.nangoConnectionId;
 
-  const workflowId = getWorkflowId(dataSourceConfig);
+  const workflowId = workspaceFullSyncWorkflowId(connectorId);
   try {
     await client.workflow.start(workspaceFullSync, {
       args: [connectorId, dataSourceConfig, nangoConnectionId],
@@ -66,7 +71,11 @@ export async function launchSlackSyncOneThreadWorkflow(
   };
   const nangoConnectionId = connector.nangoConnectionId;
 
-  const workflowId = `slackSyncOneThreadWorkflow-${connectorId}-${threadTs}`;
+  const workflowId = syncOneThreadDebouncedWorkflowId(
+    connectorId,
+    channelId,
+    threadTs
+  );
   try {
     const handle = await client.workflow.signalWithStart(
       syncOneThreadDebounced,
@@ -109,7 +118,13 @@ export async function launchSlackSyncOneMessageWorkflow(
   };
   const nangoConnectionId = connector.nangoConnectionId;
 
-  const workflowId = `slackSyncOneMessageWorkflow-${connectorId}-${threadTs}`;
+  const messageTs = parseInt(threadTs as string) * 1000;
+  const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
+  const workflowId = syncOneMessageDebouncedWorkflowId(
+    connectorId,
+    channelId,
+    weekStartTsMs
+  );
   try {
     const handle = await client.workflow.signalWithStart(
       syncOneMessageDebounced,
@@ -132,8 +147,4 @@ export async function launchSlackSyncOneMessageWorkflow(
   } catch (e) {
     return new Err(e as Error);
   }
-}
-
-function getWorkflowId(dataSourceConfig: DataSourceInfo) {
-  return `workflow-slack-${dataSourceConfig.workspaceId}-${dataSourceConfig.dataSourceName}`;
 }

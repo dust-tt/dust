@@ -6,7 +6,10 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import {
+  DataSourceConfig,
+  DataSourceInfo,
+} from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal } from "./signals";
@@ -47,7 +50,11 @@ export async function workspaceFullSync(
   await fetchUsers(slackAccessToken, connectorId);
   const channels = await getChannels(slackAccessToken);
   for (const channel of channels) {
+    if (!channel.id) {
+      throw new Error(`Channel ${channel.name} has no id`);
+    }
     await executeChild(syncOneChannel.name, {
+      workflowId: syncOneChanneWorkflowlId(connectorId, channel.id),
       args: [
         connectorId,
         nangoConnectionId,
@@ -222,4 +229,31 @@ export async function syncOneMessageDebounced(
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
+}
+
+export function workspaceFullSyncWorkflowId(connectorId: string) {
+  return `slack-workspaceFullSync-${connectorId}`;
+}
+
+export function syncOneChanneWorkflowlId(
+  connectorId: string,
+  channelId: string
+) {
+  return `slack-syncOneChannel-${connectorId}-${channelId}`;
+}
+
+export function syncOneThreadDebouncedWorkflowId(
+  connectorId: string,
+  channelId: string,
+  threadTs: string
+) {
+  return `lack-syncOneThreadDebounced-${connectorId}-${channelId}-${threadTs}`;
+}
+
+export function syncOneMessageDebouncedWorkflowId(
+  connectorId: string,
+  channelId: string,
+  startTsMs: number
+) {
+  return `slack-syncOneMessageDebounced-${connectorId}-${channelId}-${startTsMs}`;
 }

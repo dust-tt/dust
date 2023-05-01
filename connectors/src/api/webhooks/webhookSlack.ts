@@ -21,18 +21,14 @@ type SlackWebhookReqBody = {
   };
 };
 
-type ConnectorCreateResBody =
+type SlackWebhookResBody =
   | { challenge: string }
-  | { message: string }
+  | null
   | ConnectorsAPIErrorResponse;
 
 const _webhookSlackAPIHandler = async (
-  req: Request<
-    { connector_provider: string },
-    ConnectorCreateResBody,
-    SlackWebhookReqBody
-  >,
-  res: Response<ConnectorCreateResBody>
+  req: Request<{}, SlackWebhookResBody, SlackWebhookReqBody>,
+  res: Response<SlackWebhookResBody>
 ) => {
   if (req.body.type === "url_verification" && req.body.challenge) {
     return res.status(200).send({
@@ -75,7 +71,7 @@ const _webhookSlackAPIHandler = async (
           } else {
             try {
               await workflowRes.value.result();
-              return res.status(200).send({ message: "ok" });
+              return res.status(200).send();
             } catch (e) {
               logger.error("Workflow execution failed", { error: e });
               return res.status(500).send({
@@ -89,7 +85,7 @@ const _webhookSlackAPIHandler = async (
       }
     }
 
-    return res.status(200).send({ message: "ok" });
+    return res.status(200).send();
   }
 };
 
