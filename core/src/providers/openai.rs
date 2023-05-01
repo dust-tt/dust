@@ -160,6 +160,7 @@ impl Error {
 pub async fn streamed_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     prompt: &str,
     max_tokens: Option<i32>,
@@ -176,25 +177,31 @@ pub async fn streamed_completion(
 ) -> Result<Completion> {
     let url = uri.to_string();
 
-    let builder = match es::ClientBuilder::for_url(url.as_str()) {
+    let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.method(String::from("POST")).header(
+    builder = match builder.method(String::from("POST")).header(
         "Authorization",
         format!("Bearer {}", api_key.clone()).as_str(),
     ) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.header("Content-Type", "application/json") {
+    builder = match builder.header("Content-Type", "application/json") {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.header("api-key", api_key.clone().as_str()) {
+    builder = match builder.header("api-key", api_key.clone().as_str()) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
+
+    if let Some(org_id) = organization_id {
+        builder = builder
+            .header("OpenAI-Organization", org_id.as_str())
+            .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+    }
 
     let mut body = json!({
         "prompt": prompt,
@@ -407,6 +414,7 @@ pub async fn streamed_completion(
 pub async fn completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     prompt: &str,
     max_tokens: Option<i32>,
@@ -447,17 +455,20 @@ pub async fn completion(
 
     // println!("BODY: {}", body.to_string());
 
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
         // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
         // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -501,6 +512,7 @@ pub async fn completion(
 pub async fn streamed_chat_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     temperature: f32,
@@ -515,25 +527,31 @@ pub async fn streamed_chat_completion(
 ) -> Result<ChatCompletion> {
     let url = uri.to_string();
 
-    let builder = match es::ClientBuilder::for_url(url.as_str()) {
+    let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.method(String::from("POST")).header(
+    builder = match builder.method(String::from("POST")).header(
         "Authorization",
         format!("Bearer {}", api_key.clone()).as_str(),
     ) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.header("Content-Type", "application/json") {
+    builder = match builder.header("Content-Type", "application/json") {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
-    let builder = match builder.header("api-key", api_key.clone().as_str()) {
+    builder = match builder.header("api-key", api_key.clone().as_str()) {
         Ok(b) => b,
         Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
     };
+
+    if let Some(org_id) = organization_id {
+        builder = builder
+            .header("OpenAI-Organization", org_id.as_str())
+            .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+    }
 
     let mut body = json!({
         "messages": messages,
@@ -744,6 +762,7 @@ pub async fn streamed_chat_completion(
 pub async fn chat_completion(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     temperature: f32,
@@ -779,18 +798,23 @@ pub async fn chat_completion(
     }
 
     // println!("BODY: {}", body.to_string());
-
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
         // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
         // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header(
+            "OpenAI-Organization",
+            &format!("{}", organization_id.clone()),
+        );
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -844,6 +868,7 @@ pub async fn chat_completion(
 pub async fn embed(
     uri: Uri,
     api_key: String,
+    organization_id: Option<String>,
     model_id: Option<String>,
     text: &str,
     user: Option<String>,
@@ -863,17 +888,20 @@ pub async fn embed(
 
     // println!("BODY: {}", body.to_string());
 
-    let req = Request::builder()
+    let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
         // This one is for `openai`.
         .header("Authorization", format!("Bearer {}", api_key.clone()))
         // This one is for `azure_openai`.
-        .header("api-key", api_key.clone())
-        // TODO(spolu): add support for custom organizations
-        // .header("OpenAI-Organization", "openai")
-        .body(Body::from(body.to_string()))?;
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req_builder = req_builder.header("OpenAI-Organization", organization_id);
+    }
+
+    let req = req_builder.body(Body::from(body.to_string()))?;
 
     let res = match timeout(Duration::new(60, 0), cli.request(req)).await {
         Ok(Ok(res)) => res,
@@ -1027,6 +1055,13 @@ impl LLM for OpenAILLM {
                 streamed_completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(ex) => match ex.get("openai_organization_id") {
+                            Some(Value::String(o)) => Some(o.to_string().clone()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1050,10 +1085,10 @@ impl LLM for OpenAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
-                            Some(u) => Some(u.to_string()),
-                            None => None,
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
                         },
                         None => None,
                     },
@@ -1065,6 +1100,13 @@ impl LLM for OpenAILLM {
                 completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(Value::String(o)) => Some(o.to_string()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     prompt.clone(),
                     max_tokens,
@@ -1088,10 +1130,10 @@ impl LLM for OpenAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
-                            Some(u) => Some(u.to_string()),
-                            None => None,
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
                         },
                         None => None,
                     },
@@ -1201,6 +1243,13 @@ impl LLM for OpenAILLM {
                 streamed_chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(Value::String(o)) => Some(o.to_string()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     messages,
                     temperature,
@@ -1219,10 +1268,10 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
-                            Some(u) => Some(u.to_string()),
-                            None => None,
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
                         },
                         None => None,
                     },
@@ -1234,6 +1283,13 @@ impl LLM for OpenAILLM {
                 chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
+                    match &extras {
+                        Some(e) => match e.get("openai_organization_id") {
+                            Some(Value::String(o)) => Some(o.to_string()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
                     Some(self.id.clone()),
                     messages,
                     temperature,
@@ -1252,10 +1308,10 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match extras {
+                    match &extras {
                         Some(e) => match e.get("openai_user") {
-                            Some(u) => Some(u.to_string()),
-                            None => None,
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
                         },
                         None => None,
                     },
@@ -1377,12 +1433,19 @@ impl Embedder for OpenAIEmbedder {
         let e = embed(
             self.uri()?,
             self.api_key.clone().unwrap(),
+            match &extras {
+                Some(e) => match e.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                None => None,
+            },
             Some(self.id.clone()),
             text,
-            match extras {
+            match &extras {
                 Some(e) => match e.get("openai_user") {
-                    Some(u) => Some(u.to_string()),
-                    None => None,
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
                 },
                 None => None,
             },
