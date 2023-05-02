@@ -13,7 +13,7 @@ export async function notionGetPagesToSyncActivity(
   accessToken: string,
   lastSyncedAt: number | null
 ): Promise<string[]> {
-  return getPagesEditedSince(accessToken, lastSyncedAt, 500);
+  return getPagesEditedSince(accessToken, lastSyncedAt);
 }
 
 export async function notionUpsertPageActivity(
