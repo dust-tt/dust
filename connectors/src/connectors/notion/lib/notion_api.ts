@@ -100,6 +100,7 @@ export async function getPagesEditedSince(
     }
     if (sleepMs) {
       logger.info(`Sleeping for ${sleepMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   } while (resultsPage.next_cursor);
 
