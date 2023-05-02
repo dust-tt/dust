@@ -17,7 +17,7 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
-const MAX_CONCURRENCY_LEVEL = 20;
+const MAX_CONCURRENCY_LEVEL = 5;
 
 // Timeout in ms for all network requests;
 const NETWORK_REQUEST_TIMEOUT_MS = 30000;
