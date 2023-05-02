@@ -40,7 +40,7 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
     });
     logger.info(
       {
-        provider: "notion",
+        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
@@ -50,7 +50,7 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
   } catch (e) {
     logger.error(
       {
-        provider: "notion",
+        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
         error: e,
@@ -186,13 +186,22 @@ export async function launchSlackUserJoinedWorkflow(
       workflowId: workflowId,
     });
     logger.info(
-      { workspaceId: dataSourceConfig.workspaceId, workflowId },
+      {
+        provider: "slack",
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
       `Started workflow.`
     );
     return new Ok(workflowId);
   } catch (e) {
     logger.error(
-      { workspaceId: dataSourceConfig.workspaceId, workflowId, error: e },
+      {
+        provider: "slack",
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
       `Failed to start worklfow.`
     );
     return new Err(e as Error);

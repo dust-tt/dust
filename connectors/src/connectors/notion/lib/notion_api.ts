@@ -60,11 +60,11 @@ export async function getPagesEditedSince(
 
   const editedPages: Set<string> = new Set();
   let resultsPage: SearchResponse | null = null;
-  let pageIndex = 0;
+  const pageIndex = 0;
   do {
     logger.info(
-      { provider: "notion" },
-      `Fetching result page ${++pageIndex} from Notion API`
+      { provider: "notion", pageIndex },
+      "Fetching result page from Notion API."
     );
     resultsPage = await notionClient.search({
       sort: sinceTs
@@ -76,8 +76,8 @@ export async function getPagesEditedSince(
       start_cursor: resultsPage?.next_cursor || undefined,
     });
     logger.info(
-      { provider: "notion" },
-      `Got page of ${resultsPage.results.length} results`
+      { provider: "notion", count: resultsPage.results.length, pageIndex },
+      "Received result page from Notion API."
     );
     for (const pageOrDb of resultsPage.results) {
       if (pageOrDb.object === "page") {
@@ -108,7 +108,7 @@ export async function getPagesEditedSince(
       }
     }
     if (sleepMs) {
-      logger.info({ provider: "notion" }, `Sleeping for ${sleepMs}ms`);
+      logger.info({ provider: "notion", sleepMs }, "Sleeping.");
       await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   } while (resultsPage.next_cursor);
