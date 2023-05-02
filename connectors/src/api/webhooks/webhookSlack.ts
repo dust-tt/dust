@@ -32,7 +32,6 @@ const _webhookSlackAPIHandler = async (
   req: Request<null, SlackWebhookResBody, SlackWebhookReqBody>,
   res: Response<SlackWebhookResBody>
 ) => {
-  console.log(req.body);
   if (req.body.type === "url_verification" && req.body.challenge) {
     return res.status(200).send({
       challenge: req.body.challenge,
