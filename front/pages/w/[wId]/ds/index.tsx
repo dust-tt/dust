@@ -104,9 +104,7 @@ export const getServerSideProps: GetServerSideProps<{
         ConnectorsAPI.getSyncStatus(connector!.id)
       )
     )
-  ).map(
-    (s): ConnectorSyncStatus => (s.isErr() ? "failed" : s.value.lastSyncStatus)
-  );
+  ).map((s): ConnectorSyncStatus => (s.isErr() ? "failed" : "succeeded"));
 
   const connectorStatusByProvider: Record<
     ConnectorProvider,
