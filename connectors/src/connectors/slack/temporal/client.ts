@@ -172,13 +172,7 @@ export async function launchSlackUserJoinedWorkflow(
   );
   try {
     await client.workflow.start(memberJoinedChannel, {
-      args: [
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        channelId,
-        userId,
-      ],
+      args: [connectorId, nangoConnectionId, dataSourceConfig, channelId],
       taskQueue: "slack-queue",
       workflowId: workflowId,
     });

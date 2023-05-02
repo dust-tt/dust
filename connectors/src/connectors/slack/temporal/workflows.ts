@@ -22,7 +22,6 @@ const {
   getAccessToken,
   fetchUsers,
   saveSuccessSyncActivity,
-  whoAmI,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -233,28 +232,24 @@ export async function memberJoinedChannel(
   connectorId: string,
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
-  channelId: string,
-  userId: string
+  channelId: string
 ): Promise<void> {
   const slackAccessToken = await getAccessToken(nangoConnectionId);
-  const myUserId = await whoAmI(slackAccessToken);
-  if (myUserId == userId) {
-    const channel = await getChannel(slackAccessToken, channelId);
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
-    }
-    const channelName = channel.name;
-    await executeChild(syncOneChannel.name, {
-      workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-      args: [
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        channelId,
-        channelName,
-      ],
-    });
+  const channel = await getChannel(slackAccessToken, channelId);
+  if (!channel.name) {
+    throw new Error(`Could not find channel name for channel ${channelId}`);
   }
+  const channelName = channel.name;
+  await executeChild(syncOneChannel.name, {
+    workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+    args: [
+      connectorId,
+      nangoConnectionId,
+      dataSourceConfig,
+      channelId,
+      channelName,
+    ],
+  });
 
   await saveSuccessSyncActivity(connectorId);
   console.log(`Workspace sync done for connector ${connectorId}`);

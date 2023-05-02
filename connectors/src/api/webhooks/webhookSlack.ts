@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 
 import {
+  getAccessToken,
+  whoAmI,
+} from "@connectors/connectors/slack/temporal/activities";
+import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
   launchSlackUserJoinedWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
-import { SlackConfiguration } from "@connectors/lib/models";
+import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
@@ -101,6 +105,23 @@ const _webhookSlackAPIHandler = async (
               "Missing channel or user in request body for member_joined_channel event",
           },
         });
+      }
+      const connector = await Connector.findByPk(
+        slackConfiguration.connectorId
+      );
+      if (!connector) {
+        return res.status(500).send({
+          error: {
+            message: `Connector not found for id ${slackConfiguration.connectorId}`,
+          },
+        });
+      }
+      const slackAccessToken = await getAccessToken(
+        connector.nangoConnectionId
+      );
+      const myUserId = await whoAmI(slackAccessToken);
+      if (myUserId !== req.body.event.user) {
+        return res.status(200).send();
       }
       const launchRes = await launchSlackUserJoinedWorkflow(
         slackConfiguration.connectorId.toString(),
