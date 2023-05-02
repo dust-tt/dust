@@ -76,14 +76,14 @@ async function _upsertToDatasource(
       dustRequestConfig
     );
   } catch (e) {
-    logger.error(errorFromAny(e), "error uploading document to Dust");
+    logger.error(errorFromAny(e), "Error uploading document to Dust.");
     throw e;
   }
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     logger.info(
       { documentId, workspaceId: dataSourceConfig.workspaceId },
-      "successfully uploaded document to Dust"
+      "Successfully uploaded document to Dust."
     );
   } else {
     logger.error(
@@ -92,7 +92,7 @@ async function _upsertToDatasource(
         workspaceId: dataSourceConfig.workspaceId,
         status: dustRequestResult.status,
       },
-      "error uploading document to Dust"
+      "Error uploading document to Dust."
     );
     throw new Error(`Error uploading to dust: ${dustRequestResult}`);
   }
