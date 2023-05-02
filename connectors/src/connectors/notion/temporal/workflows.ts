@@ -32,6 +32,8 @@ const MAX_ITERATIONS_PER_WORKFLOW = 50;
 const SYNC_PERIOD_DURATION_MS = 60_000;
 // How often to check for new pages to sync
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
+// How many upsert activities we can launch at once
+const UPSERT_BATCH_SIZE = 100;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -74,11 +76,14 @@ export async function notionSyncWorkflow(
 
     pagesToSync.forEach((p) => pagesSyncedWithinPeriod.add(p));
 
-    await Promise.all(
-      pagesToSync.map((p) =>
-        notionUpsertPageActivity(notionAccessToken, p, dataSourceConfig)
-      )
-    );
+    for (let i = 0; i < pagesToSync.length; i += UPSERT_BATCH_SIZE) {
+      const batch = pagesToSync.slice(i, i + UPSERT_BATCH_SIZE);
+      await Promise.all(
+        batch.map((p) =>
+          notionUpsertPageActivity(notionAccessToken, p, dataSourceConfig)
+        )
+      );
+    }
 
     await saveSuccessSyncActivity(dataSourceConfig);
 
