@@ -1,4 +1,5 @@
 import {
+  APIResponseError,
   Client,
   collectPaginatedAPI,
   isFullBlock,
@@ -196,17 +197,10 @@ export async function getParsedPage(
   const pageHasBody = !parsedBlocks.every((b) => !b.text);
 
   const author =
-    (
-      await notionClient.users.retrieve({
-        user_id: page.created_by.id,
-      })
-    ).name || page.created_by.id;
+    (await getUserName(notionClient, page.created_by.id)) || page.created_by.id;
   const lastEditor =
-    (
-      await notionClient.users.retrieve({
-        user_id: page.last_edited_by.id,
-      })
-    ).name || page.last_edited_by.id;
+    (await getUserName(notionClient, page.last_edited_by.id)) ||
+    page.last_edited_by.id;
 
   return {
     id: page.id,
@@ -309,37 +303,71 @@ function parsePropertyText(
 async function renderChildDatabase(
   block: BlockObjectResponse & { type: "child_database" },
   notionClient: Client
-): Promise<string> {
+): Promise<string | null> {
   const rows: string[] = [];
   let header: string[] | null = null;
+  try {
+    for await (const page of iteratePaginatedAPI(notionClient.databases.query, {
+      database_id: block.id,
+    })) {
+      if (isFullPage(page)) {
+        if (!header) {
+          header = Object.entries(page.properties).map(([key]) => key);
+          rows.push(`||${header.join(" | ")}||`);
+        }
 
-  for await (const page of iteratePaginatedAPI(notionClient.databases.query, {
-    database_id: block.id,
-  })) {
-    if (isFullPage(page)) {
-      if (!header) {
-        header = Object.entries(page.properties).map(([key]) => key);
-        rows.push(`||${header.join(" | ")}||`);
+        const properties: Record<string, string> = Object.entries(
+          page.properties
+        )
+          .map(([key, value]) => ({
+            key,
+            id: value.id,
+            type: value.type,
+            text: parsePropertyText(value),
+          }))
+          .reduce(
+            (acc, property) =>
+              Object.assign(acc, { [property.key]: property.text }),
+            {}
+          );
+
+        rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
       }
-
-      const properties: Record<string, string> = Object.entries(page.properties)
-        .map(([key, value]) => ({
-          key,
-          id: value.id,
-          type: value.type,
-          text: parsePropertyText(value),
-        }))
-        .reduce(
-          (acc, property) =>
-            Object.assign(acc, { [property.key]: property.text }),
-          {}
-        );
-
-      rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
     }
-  }
 
-  return [block.child_database.title, ...rows].join("\n");
+    return [block.child_database.title, ...rows].join("\n");
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      e.code === "object_not_found"
+    ) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+async function getUserName(
+  notionClient: Client,
+  userId: string
+): Promise<string | null> {
+  try {
+    const user = await notionClient.users.retrieve({
+      user_id: userId,
+    });
+    if (!user) {
+      return null;
+    }
+    return user.name;
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      e.code === "object_not_found"
+    ) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 async function parsePageBlock(
