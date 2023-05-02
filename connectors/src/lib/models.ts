@@ -149,3 +149,47 @@ SlackConfiguration.init(
   }
 );
 Connector.hasOne(SlackConfiguration);
+
+export class NotionPage extends Model<
+  InferAttributes<NotionPage>,
+  InferCreationAttributes<NotionPage>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare notionPageId: string;
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionPage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    notionPageId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["notionPageId"], unique: true },
+      { fields: ["connectorId"] },
+    ],
+    modelName: "notion_pages",
+  }
+);
+Connector.hasMany(NotionPage);
