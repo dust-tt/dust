@@ -9,4 +9,4 @@ export DD_LOGS_INJECTION=true
 export DD_RUNTIME_METRICS_ENABLED=true
 export NODE_ENV=production
 
-env $(cat .env.local) npx tsx ./src/start.ts -p 3002 2>&1 | tee /var/log/datadog/connectors_front.log
+env $(cat .env.local) npx tsx ./src/start.ts -p 3002 2>&1 | tee /var/log/datadog/dust_connectors.log
