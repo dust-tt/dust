@@ -60,16 +60,25 @@ export async function getPagesEditedSince(
 
   const editedPages: Set<string> = new Set();
   let resultsPage: SearchResponse | null = null;
+  let pageIndex = 0;
   do {
-    logger.info("Fetching result page from Notion API");
+    logger.info(
+      { provider: "notion" },
+      `Fetching result page ${++pageIndex} from Notion API`
+    );
     resultsPage = await notionClient.search({
-      sort: {
-        timestamp: "last_edited_time",
-        direction: "descending",
-      },
+      sort: sinceTs
+        ? {
+            timestamp: "last_edited_time",
+            direction: "descending",
+          }
+        : undefined,
       start_cursor: resultsPage?.next_cursor || undefined,
     });
-    logger.info(`Got page of ${resultsPage.results.length} results`);
+    logger.info(
+      { provider: "notion" },
+      `Got page of ${resultsPage.results.length} results`
+    );
     for (const pageOrDb of resultsPage.results) {
       if (pageOrDb.object === "page") {
         if (isFullPage(pageOrDb)) {
@@ -99,7 +108,7 @@ export async function getPagesEditedSince(
       }
     }
     if (sleepMs) {
-      logger.info(`Sleeping for ${sleepMs}ms`);
+      logger.info({ provider: "notion" }, `Sleeping for ${sleepMs}ms`);
       await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   } while (resultsPage.next_cursor);
