@@ -121,6 +121,9 @@ export default function DataSourceUpsert({
       );
       return;
     }
+    let fileData = new FileReader();
+    fileData.onloadend = handleFileLoadedEnded;
+    fileData.readAsText(file);
   };
 
   const router = useRouter();
