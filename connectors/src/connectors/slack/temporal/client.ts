@@ -1,7 +1,7 @@
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
@@ -16,6 +16,8 @@ import {
   workspaceFullSync,
   workspaceFullSyncWorkflowId,
 } from "./workflows";
+
+const logger = mainLogger.child({ provider: "slack" });
 
 export async function launchSlackSyncWorkflow(connectorId: string) {
   const connector = await Connector.findByPk(connectorId);
@@ -40,7 +42,6 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
     });
     logger.info(
       {
-        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
@@ -50,7 +51,6 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
   } catch (e) {
     logger.error(
       {
-        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
         error: e,
@@ -187,7 +187,6 @@ export async function launchSlackUserJoinedWorkflow(
     });
     logger.info(
       {
-        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
@@ -197,7 +196,6 @@ export async function launchSlackUserJoinedWorkflow(
   } catch (e) {
     logger.error(
       {
-        provider: "slack",
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
         error: e,

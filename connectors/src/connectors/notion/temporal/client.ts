@@ -9,11 +9,13 @@ import {
   notionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({ provider: "notion" });
 
 function getWorkflowId(dataSourceConfig: DataSourceInfo) {
   return `workflow-notion-${dataSourceConfig.workspaceId}-${dataSourceConfig.dataSourceName}`;
@@ -44,7 +46,6 @@ export async function launchNotionSyncWorkflow(
   ) {
     logger.warn(
       {
-        provider: "notion",
         workspaceId: dataSourceConfig.workspaceId,
       },
       "Notion sync workflow already running."
@@ -60,7 +61,7 @@ export async function launchNotionSyncWorkflow(
     }
 
     logger.info(
-      { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
+      { workspaceId: dataSourceConfig.workspaceId },
       "Cancelling existing Notion sync workflow."
     );
 
@@ -79,7 +80,7 @@ export async function launchNotionSyncWorkflow(
   });
 
   logger.info(
-    { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
+    { workspaceId: dataSourceConfig.workspaceId },
     "Started Notion sync workflow."
   );
 }
@@ -101,7 +102,6 @@ export async function stopNotionSyncWorkflow(
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
-        provider: "notion",
       },
       "Notion sync workflow is not running."
     );
@@ -112,7 +112,6 @@ export async function stopNotionSyncWorkflow(
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
-        provider: "notion",
       },
       "Notion sync workflow not found."
     );
@@ -120,7 +119,7 @@ export async function stopNotionSyncWorkflow(
   }
 
   logger.info(
-    { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
+    { workspaceId: dataSourceConfig.workspaceId },
     "Cancelling existing Notion sync workflow."
   );
 
@@ -155,7 +154,7 @@ export async function getNotionConnectionStatus(
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
       logger.warn(
-        { workspaceId: dataSourceInfo.workspaceId, provider: "notion" },
+        { workspaceId: dataSourceInfo.workspaceId },
         "Notion sync workflow not found for workspace."
       );
       return {

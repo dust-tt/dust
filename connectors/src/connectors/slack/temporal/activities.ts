@@ -11,10 +11,11 @@ import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
+const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 5;
@@ -104,7 +105,6 @@ export async function getMessagesForChannel(
 
   logger.info(
     {
-      provider: "slack",
       messagesCount: c.messages?.length,
       channelId,
     },
@@ -428,7 +428,6 @@ export async function getAccessToken(
 export async function saveSuccessSyncActivity(connectorId: string) {
   logger.info(
     {
-      provider: "slack",
       connectorId,
     },
     "Saving success sync activity for connector"

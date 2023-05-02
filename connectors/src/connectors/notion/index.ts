@@ -6,13 +6,14 @@ import {
 import { Connector } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
+const logger = mainLogger.child({ provider: "notion" });
 
 export async function createNotionConnector(
   dataSourceConfig: DataSourceConfig,
@@ -42,10 +43,7 @@ export async function createNotionConnector(
     await launchNotionSyncWorkflow(dataSourceConfig, nangoConnectionId);
     return new Ok(connector.id.toString());
   } catch (e) {
-    logger.error(
-      { provider: "notion", error: e },
-      "Error creating notion connector."
-    );
+    logger.error({ error: e }, "Error creating notion connector.");
     return new Err(e as Error);
   }
 }
@@ -64,7 +62,6 @@ export async function stopNotionConnector(
   if (!connector) {
     logger.error(
       {
-        provider: "notion",
         workspaceId: dataSourceInfo.workspaceId,
         dataSourceName: dataSourceInfo.dataSourceName,
       },
@@ -79,7 +76,6 @@ export async function stopNotionConnector(
   } catch (e) {
     logger.error(
       {
-        provider: "notion",
         workspaceId: dataSourceInfo.workspaceId,
         dataSourceName: dataSourceInfo.dataSourceName,
         error: e,
@@ -108,7 +104,6 @@ export async function resumeNotionConnector(
   if (!connector) {
     logger.error(
       {
-        provider: "notion",
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
@@ -126,7 +121,6 @@ export async function resumeNotionConnector(
   } catch (e) {
     logger.error(
       {
-        provider: "notion",
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
         error: e,
@@ -144,10 +138,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
   });
 
   if (!connector) {
-    logger.error(
-      { provider: "notion", connectorId },
-      "Notion connector not found."
-    );
+    logger.error({ connectorId }, "Notion connector not found.");
     return new Err(new Error("Connector not found"));
   }
 
@@ -159,7 +150,6 @@ export async function fullResyncNotionConnector(connectorId: string) {
   } catch (e) {
     logger.error(
       {
-        provider: "notion",
         connectorId,
         workspaceId: connector.workspaceId,
         dataSourceName: connector.dataSourceName,
@@ -185,7 +175,6 @@ export async function fullResyncNotionConnector(connectorId: string) {
   } catch (e) {
     logger.error(
       {
-        provider: "notion",
         connectorId,
         workspaceId: connector.workspaceId,
         dataSourceName: connector.dataSourceName,
