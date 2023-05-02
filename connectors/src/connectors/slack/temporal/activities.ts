@@ -377,7 +377,10 @@ export async function fetchUsers(
   let cursor: string | undefined;
   const client = getSlackClient(slackAccessToken);
   do {
-    const res = await client.users.list({});
+    const res = await client.users.list({
+      cursor: cursor,
+      limit: 100,
+    });
     if (res.error) {
       throw new Error(`Failed to fetch users: ${res.error}`);
     }
