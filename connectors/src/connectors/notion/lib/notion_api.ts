@@ -31,6 +31,7 @@ export interface ParsedPage {
   updatedTime: number;
   author: string;
   lastEditor: string;
+  hasBody: boolean;
 }
 
 export type ParsedProperty = {
@@ -161,6 +162,8 @@ export async function getParsedPage(
     renderedPage += `${parsedBlock.text}\n`;
   }
 
+  const pageHasBody = !parsedBlocks.every((b) => !b.text);
+
   const author =
     (
       await notionClient.users.retrieve({
@@ -184,6 +187,7 @@ export async function getParsedPage(
     updatedTime: new Date(page.last_edited_time).getTime(),
     author,
     lastEditor,
+    hasBody: pageHasBody,
   };
 }
 

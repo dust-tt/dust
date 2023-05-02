@@ -6,6 +6,7 @@ import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
+import logger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function notionGetPagesToSyncActivity(
@@ -21,6 +22,18 @@ export async function notionUpsertPageActivity(
   dataSourceConfig: DataSourceConfig
 ) {
   const parsedPage = await getParsedPage(accessToken, pageId);
+  if (!parsedPage.hasBody) {
+    logger.info(
+      {
+        provider: "notion",
+        pageId,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      "Skipping page without body"
+    );
+    return;
+  }
   await upsertToDatasource(
     dataSourceConfig,
     `notion-${parsedPage.id}`,
