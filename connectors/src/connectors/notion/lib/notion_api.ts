@@ -64,6 +64,7 @@ export async function getPagesEditedSince(
       direction: "descending",
     },
   })) {
+    logger.info(`Got notion object ${pageOrDb.id} (${pageOrDb.object})`);
     if (pageOrDb.object === "page") {
       if (isFullPage(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
