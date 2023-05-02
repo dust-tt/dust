@@ -393,6 +393,19 @@ export async function fetchUsers(
   } while (cursor);
 }
 
+export async function whoAmI(slackAccessToken: string) {
+  const client = getSlackClient(slackAccessToken);
+  const authRes = await client.auth.test({});
+  if (authRes.error) {
+    throw new Error(`Failed to fetch auth info: ${authRes.error}`);
+  }
+  if (!authRes.user_id) {
+    throw new Error(`Failed to fetch auth info: user_id is undefined`);
+  }
+
+  return authRes.user_id;
+}
+
 export async function getAccessToken(
   nangoConnectionId: string
 ): Promise<string> {

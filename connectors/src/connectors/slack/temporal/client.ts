@@ -7,6 +7,8 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { getWeekStart } from "../lib/utils";
 import { newWebhookSignal } from "./signals";
 import {
+  memberJoinedChannel,
+  memberJoinedChannelWorkflowId,
   syncOneMessageDebounced,
   syncOneMessageDebouncedWorkflowId,
   syncOneThreadDebounced,
@@ -141,6 +143,49 @@ export async function launchSlackSyncOneMessageWorkflow(
 
     return new Ok(handle);
   } catch (e) {
+    return new Err(e as Error);
+  }
+}
+
+export async function launchSlackUserJoinedWorkflow(
+  connectorId: string,
+  channelId: string,
+  userId: string
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+
+  const dataSourceConfig: DataSourceConfig = {
+    workspaceAPIKey: connector.workspaceAPIKey,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  };
+  const nangoConnectionId = connector.nangoConnectionId;
+
+  const workflowId = memberJoinedChannelWorkflowId(
+    connectorId,
+    channelId,
+    userId
+  );
+  try {
+    await client.workflow.start(memberJoinedChannel, {
+      args: [connectorId, nangoConnectionId, dataSourceConfig, channelId],
+      taskQueue: "slack-queue",
+      workflowId: workflowId,
+    });
+    logger.info(
+      { workspaceId: dataSourceConfig.workspaceId },
+      `Started workflow ${workflowId}`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      { workspaceId: dataSourceConfig.workspaceId, error: e },
+      `Failed to start worklfow: ${workflowId}`
+    );
     return new Err(e as Error);
   }
 }
