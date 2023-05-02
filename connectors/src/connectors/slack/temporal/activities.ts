@@ -182,6 +182,10 @@ export async function syncNonThreaded(
     }
     hasMore = c.has_more;
   } while (hasMore);
+  if (messages.length === 0) {
+    // no non threaded messages, so we're done
+    return;
+  }
   messages.reverse();
   const text = await formatMessagesForUpsert(
     channelId,
