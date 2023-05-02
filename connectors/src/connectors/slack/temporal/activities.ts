@@ -105,7 +105,7 @@ export async function getMessagesForChannel(
   logger.info(
     {
       provider: "slack",
-      messageLength: c.messages?.length,
+      messagesCount: c.messages?.length,
       channelId,
     },
     "Got messages from channel."
