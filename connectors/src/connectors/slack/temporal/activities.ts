@@ -149,32 +149,39 @@ export async function syncNonThreaded(
   const startTsSec = Math.round(startTsMs / 1000);
   const endTsSec = Math.round(endTsMs / 1000);
 
-  const c: ConversationsHistoryResponse = await client.conversations.history({
-    channel: channelId,
-    limit: 300,
-    oldest: `${startTsSec}`,
-    latest: `${endTsSec}`,
-    cursor: nextCursor,
-  });
+  let hasMore: boolean | undefined = undefined;
+  let latestTsSec = endTsSec;
+  do {
+    const c: ConversationsHistoryResponse = await client.conversations.history({
+      channel: channelId,
+      limit: 100,
+      oldest: `${startTsSec}`,
+      latest: `${latestTsSec}`,
+      cursor: nextCursor,
+    });
 
-  if (c.error) {
-    throw new Error(
-      `Failed getting messages for channel ${channelId}: ${c.error}`
-    );
-  }
-  if (c.messages === undefined) {
-    throw new Error(
-      `Failed getting messages for channel ${channelId}: messages is undefined`
-    );
-  }
-  for (const message of c.messages) {
-    if (!message.user) {
-      continue;
+    if (c.error) {
+      throw new Error(
+        `Failed getting messages for channel ${channelId}: ${c.error}`
+      );
     }
-    if (!message.thread_ts) {
-      messages.push(message);
+    if (c.messages === undefined) {
+      throw new Error(
+        `Failed getting messages for channel ${channelId}: messages is undefined`
+      );
     }
-  }
+
+    for (const message of c.messages) {
+      if (!message.user) {
+        continue;
+      }
+      if (!message.thread_ts && message.ts) {
+        messages.push(message);
+        latestTsSec = parseInt(message.ts);
+      }
+    }
+    hasMore = c.has_more;
+  } while (hasMore);
   messages.reverse();
   const text = await formatMessagesForUpsert(
     channelId,
@@ -212,8 +219,6 @@ export async function syncNonThreaded(
     createdAt,
     tags
   );
-
-  return c;
 }
 
 export async function syncThreads(
