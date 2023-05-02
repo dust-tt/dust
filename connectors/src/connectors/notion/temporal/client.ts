@@ -73,7 +73,7 @@ export async function launchNotionSyncWorkflow(
       nangoConnectionId,
       startFromTs || lastSyncedPeriodTs || undefined,
     ],
-    taskQueue: "notion-queue",
+    taskQueue: "notion-queue-v2",
     workflowId: getWorkflowId(dataSourceConfig),
   });
 

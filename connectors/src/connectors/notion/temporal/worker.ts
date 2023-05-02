@@ -8,7 +8,7 @@ export async function runNotionWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
-    taskQueue: "notion-queue",
+    taskQueue: "notion-queue-v2",
     maxConcurrentActivityTaskExecutions: 3,
     connection,
     namespace,
