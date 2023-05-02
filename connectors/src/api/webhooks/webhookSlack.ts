@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
+  launchSlackUserJoinedWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { SlackConfiguration } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
@@ -15,6 +16,7 @@ type SlackWebhookReqBody = {
   team_id?: string;
   event?: {
     channel?: string;
+    user?: string;
     ts?: string; // slack message id
     thread_ts?: string; // slack thread id
     type?: string; // event type (eg: message)
@@ -30,25 +32,34 @@ const _webhookSlackAPIHandler = async (
   req: Request<null, SlackWebhookResBody, SlackWebhookReqBody>,
   res: Response<SlackWebhookResBody>
 ) => {
+  console.log(req.body);
   if (req.body.type === "url_verification" && req.body.challenge) {
     return res.status(200).send({
       challenge: req.body.challenge,
     });
   } else if (req.body.type === "event_callback") {
+    if (!req.body.team_id) {
+      return res.status(400).send({
+        error: {
+          message: "Missing team_id in request body",
+        },
+      });
+    }
+    const slackConfiguration = await SlackConfiguration.findOne({
+      where: {
+        slackTeamId: req.body.team_id,
+      },
+    });
+    if (!slackConfiguration) {
+      return res.status(404).send({
+        error: {
+          message: `Slack configuration not found for teamId ${req.body.team_id}`,
+        },
+      });
+    }
+
     if (req.body.event?.type === "message") {
       if (req.body.team_id) {
-        const slackConfiguration = await SlackConfiguration.findOne({
-          where: {
-            slackTeamId: req.body.team_id,
-          },
-        });
-        if (!slackConfiguration) {
-          return res.status(404).send({
-            error: {
-              message: `Slack configuration not found for teamId ${req.body.team_id}`,
-            },
-          });
-        }
         let workflowRes = null;
         if (req.body.event?.channel && req.body.event?.thread_ts) {
           workflowRes = await launchSlackSyncOneThreadWorkflow(
@@ -83,14 +94,31 @@ const _webhookSlackAPIHandler = async (
           }
         }
       }
+    } else if (req.body.event?.type === "member_joined_channel") {
+      if (!req.body.event?.channel || !req.body.event?.user) {
+        return res.status(400).send({
+          error: {
+            message:
+              "Missing channel or user in request body for member_joined_channel event",
+          },
+        });
+      }
+      await launchSlackUserJoinedWorkflow(
+        slackConfiguration.connectorId.toString(),
+        req.body.event.channel,
+        req.body.event.user
+      );
     }
 
     return res.status(200).send();
   }
+
+  // returns 200 on all non supported messages types because slack will retry
+  // indefinitely otherwise.
+  return res.status(200).end();
 };
 
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
-
 /**
  * Webhhok payload example. Can be handy for working on it.
  * This is what Slack sends us when a new message is posted in a channel.
