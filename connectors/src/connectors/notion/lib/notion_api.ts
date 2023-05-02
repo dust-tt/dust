@@ -10,6 +10,7 @@ import {
   BlockObjectResponse,
   PageObjectResponse,
   RichTextItemResponse,
+  SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
 import logger from "@connectors/logger/logger";
@@ -58,44 +59,49 @@ export async function getPagesEditedSince(
   const notionClient = new Client({ auth: notionAccessToken });
 
   const editedPages: Set<string> = new Set();
-  for await (const pageOrDb of iteratePaginatedAPI(notionClient.search, {
-    sort: {
-      timestamp: "last_edited_time",
-      direction: "descending",
-    },
-  })) {
-    logger.info(`Got notion object ${pageOrDb.id} (${pageOrDb.object})`);
-    if (pageOrDb.object === "page") {
-      if (isFullPage(pageOrDb)) {
-        const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
-        if (sinceTs && lastEditedTime < sinceTs) {
-          break;
-        }
-        editedPages.add(pageOrDb.id);
-      }
-    } else if (pageOrDb.object === "database") {
-      if (isFullDatabase(pageOrDb)) {
-        const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
-        if (sinceTs && lastEditedTime < sinceTs) {
-          break;
-        }
-        for await (const child of iteratePaginatedAPI(
-          notionClient.databases.query,
-          {
-            database_id: pageOrDb.id,
+  let resultsPage: SearchResponse | null = null;
+  do {
+    logger.info("Fetching result page from Notion API");
+    resultsPage = await notionClient.search({
+      sort: {
+        timestamp: "last_edited_time",
+        direction: "descending",
+      },
+      start_cursor: resultsPage?.next_cursor || undefined,
+    });
+    logger.info(`Got page of ${resultsPage.results.length} results`);
+    for (const pageOrDb of resultsPage.results) {
+      if (pageOrDb.object === "page") {
+        if (isFullPage(pageOrDb)) {
+          const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+          if (sinceTs && lastEditedTime < sinceTs) {
+            break;
           }
-        )) {
-          if (isFullPage(child)) {
-            editedPages.add(child.id);
+          editedPages.add(pageOrDb.id);
+        }
+      } else if (pageOrDb.object === "database") {
+        if (isFullDatabase(pageOrDb)) {
+          const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+          if (sinceTs && lastEditedTime < sinceTs) {
+            break;
+          }
+          for await (const child of iteratePaginatedAPI(
+            notionClient.databases.query,
+            {
+              database_id: pageOrDb.id,
+            }
+          )) {
+            if (isFullPage(child)) {
+              editedPages.add(child.id);
+            }
           }
         }
       }
     }
-
     if (sleepMs) {
-      await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      logger.info(`Sleeping for ${sleepMs}ms`);
     }
-  }
+  } while (resultsPage.next_cursor);
 
   return Array.from(editedPages);
 }
