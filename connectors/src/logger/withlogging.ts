@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
+import StatsD from "hot-shots";
 
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
 
 import logger from "./logger";
+
+export const statsDClient = new StatsD();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const withLogging = (handler: any) => {
@@ -24,6 +27,15 @@ export const withLogging = (handler: any) => {
         "Unhandled API Error"
       );
 
+      const tags = [
+        `method:${req.method}`,
+        `url:${req.url}`,
+        `status_code:500`,
+        `error_type:unhandled_internal_server_error`,
+      ];
+
+      statsDClient.increment("api_errors.count", 1, tags);
+
       // Try to return a 500 as it's likely nothing was returned yet.
       res.status(500).json({
         error: {
@@ -35,6 +47,15 @@ export const withLogging = (handler: any) => {
     }
 
     const elapsed = new Date().getTime() - now.getTime();
+
+    const tags = [
+      `method:${req.method}`,
+      `url:${req.url}`,
+      `status_code:${res.statusCode}`,
+    ];
+
+    statsDClient.increment("requests.count", 1, tags);
+    statsDClient.histogram("requests.duration", elapsed, tags);
 
     logger.info(
       {
@@ -62,6 +83,15 @@ export function apiError(
     },
     "API Error"
   );
+
+  const tags = [
+    `method:${req.method}`,
+    `url:${req.url}`,
+    `status_code:${res.statusCode}`,
+    `error_type:${error.api_error.type}`,
+  ];
+
+  statsDClient.increment("api_errors.count", 1, tags);
 
   res.status(error.status_code).json({
     error: error.api_error,
