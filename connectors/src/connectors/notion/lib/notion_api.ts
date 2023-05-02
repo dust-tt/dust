@@ -57,28 +57,62 @@ type ParsedBlock = {
 export async function getPagesEditedSince(
   notionAccessToken: string,
   sinceTs: number | null,
-  sleepMs: number | null = null
+  retry: { retries: number; backoffFactor: number } = {
+    retries: 5,
+    backoffFactor: 2,
+  }
 ): Promise<string[]> {
   const notionClient = new Client({ auth: notionAccessToken });
 
   const editedPages: Set<string> = new Set();
   let resultsPage: SearchResponse | null = null;
   let pageIndex = 0;
+
   do {
-    logger.info({ pageIndex }, "Fetching result page from Notion API.");
-    resultsPage = await notionClient.search({
-      sort: sinceTs
-        ? {
-            timestamp: "last_edited_time",
-            direction: "descending",
-          }
-        : undefined,
-      start_cursor: resultsPage?.next_cursor || undefined,
-    });
-    logger.info(
-      { count: resultsPage.results.length, pageIndex },
-      "Received result page from Notion API."
-    );
+    let tries = 0;
+    while (tries < retry.retries) {
+      logger.info(
+        { pageIndex, tries, maxTries: retry.retries },
+        "Fetching result page from Notion API."
+      );
+      try {
+        resultsPage = await notionClient.search({
+          sort: sinceTs
+            ? {
+                timestamp: "last_edited_time",
+                direction: "descending",
+              }
+            : undefined,
+          start_cursor: resultsPage?.next_cursor || undefined,
+        });
+        logger.info(
+          { count: resultsPage.results.length, pageIndex },
+          "Received result page from Notion API."
+        );
+      } catch (e) {
+        logger.error(
+          { pageIndex, error: e },
+          "Error fetching result page from Notion API."
+        );
+        tries += 1;
+        if (tries >= retry.retries) {
+          throw e;
+        }
+        const sleepTime = 500 * retry.backoffFactor ** tries;
+        logger.info(
+          { sleepTime, pageIndex, tries, maxTries: retry.retries },
+          "Sleeping before retrying."
+        );
+        await new Promise((resolve) => setTimeout(resolve, sleepTime));
+        continue;
+      }
+      break;
+    }
+
+    if (!resultsPage) {
+      throw new Error("No results page returned from Notion API.");
+    }
+
     pageIndex += 1;
 
     for (const pageOrDb of resultsPage.results) {
@@ -108,10 +142,6 @@ export async function getPagesEditedSince(
           }
         }
       }
-    }
-    if (sleepMs) {
-      logger.info({ sleepMs }, "Sleeping.");
-      await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   } while (resultsPage.next_cursor);
 
