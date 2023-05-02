@@ -60,7 +60,7 @@ export async function getPagesEditedSince(
 
   const editedPages: Set<string> = new Set();
   let resultsPage: SearchResponse | null = null;
-  const pageIndex = 0;
+  let pageIndex = 0;
   do {
     logger.info(
       { provider: "notion", pageIndex },
@@ -79,6 +79,8 @@ export async function getPagesEditedSince(
       { provider: "notion", count: resultsPage.results.length, pageIndex },
       "Received result page from Notion API."
     );
+    pageIndex += 1;
+
     for (const pageOrDb of resultsPage.results) {
       if (pageOrDb.object === "page") {
         if (isFullPage(pageOrDb)) {
