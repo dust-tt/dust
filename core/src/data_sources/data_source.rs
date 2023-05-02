@@ -486,9 +486,12 @@ impl DataSource {
                 )
             })
             .collect::<Vec<_>>();
-        let _ = qdrant_client
-            .upsert_points(self.qdrant_collection(), points, None)
-            .await?;
+
+        if points.len() > 0 {
+            let _ = qdrant_client
+                .upsert_points(self.qdrant_collection(), points, None)
+                .await?;
+        }
 
         utils::done(&format!(
             "Inserted vectors in Qdrant: data_source_id={} document_id={}",
