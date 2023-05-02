@@ -18,10 +18,9 @@ if (!CONNECTORS_DATABASE_URI) {
   throw new Error("CONNECTORS_DATABASE_URI is not defined");
 }
 
-export const sequelize_conn = new Sequelize(
-  CONNECTORS_DATABASE_URI as string,
-  {}
-);
+export const sequelize_conn = new Sequelize(CONNECTORS_DATABASE_URI as string, {
+  logging: false,
+});
 
 export type ModelId = number;
 

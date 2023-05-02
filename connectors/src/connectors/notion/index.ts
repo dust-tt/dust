@@ -6,13 +6,14 @@ import {
 import { Connector } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
+const logger = mainLogger.child({ provider: "notion" });
 
 export async function createNotionConnector(
   dataSourceConfig: DataSourceConfig,
@@ -42,7 +43,7 @@ export async function createNotionConnector(
     await launchNotionSyncWorkflow(dataSourceConfig, nangoConnectionId);
     return new Ok(connector.id.toString());
   } catch (e) {
-    logger.error("Error creating notion connector", e);
+    logger.error({ error: e }, "Error creating notion connector.");
     return new Err(e as Error);
   }
 }
@@ -64,7 +65,7 @@ export async function stopNotionConnector(
         workspaceId: dataSourceInfo.workspaceId,
         dataSourceName: dataSourceInfo.dataSourceName,
       },
-      "Notion connector not found"
+      "Notion connector not found."
     );
 
     return new Err(new Error("Connector not found"));
@@ -77,7 +78,7 @@ export async function stopNotionConnector(
       {
         workspaceId: dataSourceInfo.workspaceId,
         dataSourceName: dataSourceInfo.dataSourceName,
-        e,
+        error: e,
       },
       "Error stopping notion sync workflow"
     );
@@ -106,7 +107,7 @@ export async function resumeNotionConnector(
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
-      "Notion connector not found"
+      "Notion connector not found."
     );
     return new Err(new Error("Connector not found"));
   }
@@ -122,9 +123,9 @@ export async function resumeNotionConnector(
       {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
-        e,
+        error: e,
       },
-      "Error launching notion sync workflow"
+      "Error launching notion sync workflow."
     );
   }
 
@@ -137,7 +138,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
   });
 
   if (!connector) {
-    logger.error({ connectorId }, "Notion connector not found");
+    logger.error({ connectorId }, "Notion connector not found.");
     return new Err(new Error("Connector not found"));
   }
 
@@ -154,7 +155,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
         dataSourceName: connector.dataSourceName,
         e,
       },
-      "Error stopping notion sync workflow"
+      "Error stopping notion sync workflow."
     );
 
     return new Err(e as Error);
@@ -177,9 +178,9 @@ export async function fullResyncNotionConnector(connectorId: string) {
         connectorId,
         workspaceId: connector.workspaceId,
         dataSourceName: connector.dataSourceName,
-        e,
+        error: e,
       },
-      "Error launching notion sync workflow"
+      "Error launching notion sync workflow."
     );
   }
 

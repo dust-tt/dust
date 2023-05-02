@@ -13,7 +13,9 @@ import {
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
+
+const logger = mainLogger.child({ provider: "notion" });
 
 // notion SDK types
 type PageObjectProperties = PageObjectResponse["properties"];
@@ -63,10 +65,7 @@ export async function getPagesEditedSince(
   let resultsPage: SearchResponse | null = null;
   let pageIndex = 0;
   do {
-    logger.info(
-      { provider: "notion" },
-      `Fetching result page ${++pageIndex} from Notion API`
-    );
+    logger.info({ pageIndex }, "Fetching result page from Notion API.");
     resultsPage = await notionClient.search({
       sort: sinceTs
         ? {
@@ -77,9 +76,11 @@ export async function getPagesEditedSince(
       start_cursor: resultsPage?.next_cursor || undefined,
     });
     logger.info(
-      { provider: "notion" },
-      `Got page of ${resultsPage.results.length} results`
+      { count: resultsPage.results.length, pageIndex },
+      "Received result page from Notion API."
     );
+    pageIndex += 1;
+
     for (const pageOrDb of resultsPage.results) {
       if (pageOrDb.object === "page") {
         if (isFullPage(pageOrDb)) {
@@ -109,7 +110,7 @@ export async function getPagesEditedSince(
       }
     }
     if (sleepMs) {
-      logger.info({ provider: "notion" }, `Sleeping for ${sleepMs}ms`);
+      logger.info({ sleepMs }, "Sleeping.");
       await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   } while (resultsPage.next_cursor);
@@ -129,7 +130,7 @@ export async function getParsedPage(
     throw new Error("Page is not a full page");
   }
 
-  logger.info(`Parsing page ${page.url} (${page.id}))`);
+  logger.info({ pageUrl: page.url, pageId: page.id }, "Parsing page.");
   const properties = Object.entries(page.properties).map(([key, value]) => ({
     key,
     id: value.id,
@@ -268,7 +269,7 @@ function parsePropertyText(
       ((property: never) => {
         logger.warn(
           { property_type: (property as { type: string }).type },
-          `Unknown property type`
+          "Unknown property type."
         );
       })(property);
       return null;
@@ -636,7 +637,7 @@ async function parsePageBlock(
       ((block: never) => {
         logger.warn(
           { type: (block as { type: string }).type },
-          "Unknown block type"
+          "Unknown block type."
         );
       })(block);
       return [NULL_BLOCK];

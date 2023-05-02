@@ -1,7 +1,7 @@
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
@@ -16,6 +16,8 @@ import {
   workspaceFullSync,
   workspaceFullSyncWorkflowId,
 } from "./workflows";
+
+const logger = mainLogger.child({ provider: "slack" });
 
 export async function launchSlackSyncWorkflow(connectorId: string) {
   const connector = await Connector.findByPk(connectorId);
@@ -39,14 +41,21 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
       workflowId: workflowId,
     });
     logger.info(
-      { workspaceId: dataSourceConfig.workspaceId },
-      `Started Slack sync workflow with id ${workflowId}`
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
+      `Started Slack sync workflow.`
     );
     return new Ok(workflowId);
   } catch (e) {
     logger.error(
-      { workspaceId: dataSourceConfig.workspaceId, error: e },
-      `Failed starting the Slack sync. WorkflowId: ${workflowId}`
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
+      `Failed starting the Slack sync.`
     );
     return new Err(e as Error);
   }
@@ -177,14 +186,21 @@ export async function launchSlackUserJoinedWorkflow(
       workflowId: workflowId,
     });
     logger.info(
-      { workspaceId: dataSourceConfig.workspaceId },
-      `Started workflow ${workflowId}`
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
+      `Started workflow.`
     );
     return new Ok(workflowId);
   } catch (e) {
     logger.error(
-      { workspaceId: dataSourceConfig.workspaceId, error: e },
-      `Failed to start worklfow: ${workflowId}`
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
+      `Failed to start worklfow.`
     );
     return new Err(e as Error);
   }

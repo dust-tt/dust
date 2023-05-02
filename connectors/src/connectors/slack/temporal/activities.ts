@@ -11,10 +11,11 @@ import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
+const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 5;
@@ -25,12 +26,12 @@ const NETWORK_REQUEST_TIMEOUT_MS = 30000;
 /**
  * Slack API rate limit TLDR:
  * Slack has different rate limits for different endpoints.
- * Broadly, you'll encounter limits like these, applied on a 
+ * Broadly, you'll encounter limits like these, applied on a
  * "per API method per app per workspace" basis.
  * Tier 1: ~1 request per minute
  * Tier 2: ~20 request per minute (conversations.history)
  * Tier 3: ~50 request per minute (conversations.replies)
- * 
+ *
 
  */
 
@@ -102,7 +103,13 @@ export async function getMessagesForChannel(
     );
   }
 
-  logger.info(`Got ${c.messages?.length} messages for channel ${channelId}`);
+  logger.info(
+    {
+      messagesCount: c.messages?.length,
+      channelId,
+    },
+    "Got messages from channel."
+  );
   return c;
 }
 
@@ -419,7 +426,12 @@ export async function getAccessToken(
 }
 
 export async function saveSuccessSyncActivity(connectorId: string) {
-  logger.info(`Saving success sync activity for connector ${connectorId}`);
+  logger.info(
+    {
+      connectorId,
+    },
+    "Saving success sync activity for connector"
+  );
   await syncSucceeded(parseInt(connectorId));
 }
 
