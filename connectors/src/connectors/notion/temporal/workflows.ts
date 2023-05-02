@@ -10,7 +10,7 @@ import type * as activities from "@connectors/connectors/notion/temporal/activit
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { notionGetPagesToSyncActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "1 minute",
+  startToCloseTimeout: "15 minute",
 });
 const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
