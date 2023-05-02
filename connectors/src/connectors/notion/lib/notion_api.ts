@@ -52,7 +52,8 @@ type ParsedBlock = {
  */
 export async function getPagesEditedSince(
   notionAccessToken: string,
-  sinceTs: number | null
+  sinceTs: number | null,
+  sleepMs: number | null = null
 ): Promise<string[]> {
   const notionClient = new Client({ auth: notionAccessToken });
 
@@ -88,6 +89,10 @@ export async function getPagesEditedSince(
           }
         }
       }
+    }
+
+    if (sleepMs) {
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   }
 
