@@ -102,11 +102,18 @@ const _webhookSlackAPIHandler = async (
           },
         });
       }
-      await launchSlackUserJoinedWorkflow(
+      const launchRes = await launchSlackUserJoinedWorkflow(
         slackConfiguration.connectorId.toString(),
         req.body.event.channel,
         req.body.event.user
       );
+      if (launchRes.isErr()) {
+        return res.status(500).send({
+          error: {
+            message: launchRes.error.message,
+          },
+        });
+      }
     }
 
     return res.status(200).send();
