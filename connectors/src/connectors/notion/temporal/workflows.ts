@@ -36,7 +36,7 @@ const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
 // Temporal has a hard limit of 2k activities in the queue per workflow
 // however, we have much less workers and having a lot of pending activities
 // makes it harder to use the temporal UI
-const MAX_PENDING_ACTIVITY_COUNT = 500;
+const MAX_PENDING_ACTIVITY_COUNT = 3;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
