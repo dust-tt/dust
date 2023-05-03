@@ -220,7 +220,7 @@ export function syncOneThreadDebouncedWorkflowId(
   channelId: string,
   threadTs: string
 ) {
-  return `lack-syncOneThreadDebounced-${connectorId}-${channelId}-${threadTs}`;
+  return `slack-syncOneThreadDebounced-${connectorId}-${channelId}-${threadTs}`;
 }
 
 export function syncOneMessageDebouncedWorkflowId(
