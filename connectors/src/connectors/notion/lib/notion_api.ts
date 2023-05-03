@@ -16,6 +16,7 @@ import {
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
+import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -388,12 +389,20 @@ async function getUserName(
   notionClient: Client,
   userId: string
 ): Promise<string | null> {
+  const nameFromCache = await cacheGet(`notion-user-name:${userId}`);
+  if (nameFromCache) {
+    return nameFromCache;
+  }
+
   try {
     const user = await notionClient.users.retrieve({
       user_id: userId,
     });
     if (!user) {
       return null;
+    }
+    if (user.name) {
+      await cacheSet(`notion-user-name:${userId}`, user.name);
     }
     return user.name;
   } catch (e) {
