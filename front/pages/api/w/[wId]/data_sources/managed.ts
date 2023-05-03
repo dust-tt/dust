@@ -1,9 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  credentialsFromProviders,
-  dustManagedCredentials,
-} from "@app/lib/api/credentials";
+import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
@@ -105,30 +102,6 @@ async function handler(
         });
       }
 
-      const connectorsRes = await ConnectorsAPI.createConnector(
-        provider,
-        owner.sId,
-        systemAPIKeyRes.value.secret,
-        dataSourceName,
-        req.body.nangoConnectionId
-      );
-      if (connectorsRes.isErr()) {
-        logger.error(
-          {
-            error: connectorsRes.error,
-          },
-          "Failed to create the connector"
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to create the connector.",
-            connectors_error: connectorsRes.error,
-          },
-        });
-      }
-
       const dustProject = await DustAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
@@ -170,13 +143,53 @@ async function handler(
         });
       }
 
-      const dataSource = await DataSource.create({
+      let dataSource = await DataSource.create({
         name: dataSourceName,
         description: dataSourceDescription,
         visibility: "private",
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
+      });
+
+      const connectorsRes = await ConnectorsAPI.createConnector(
+        provider,
+        owner.sId,
+        systemAPIKeyRes.value.secret,
+        dataSourceName,
+        req.body.nangoConnectionId
+      );
+      if (connectorsRes.isErr()) {
+        logger.error(
+          {
+            error: connectorsRes.error,
+          },
+          "Failed to create the connector"
+        );
+        await dataSource.destroy();
+        const deleteRes = await DustAPI.deleteDataSource(
+          dustProject.value.project.project_id.toString(),
+          dustDataSource.value.data_source.data_source_id
+        );
+        if (deleteRes.isErr()) {
+          logger.error(
+            {
+              error: deleteRes.error,
+            },
+            "Failed to delete the data source"
+          );
+        }
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create the connector.",
+            connectors_error: connectorsRes.error,
+          },
+        });
+      }
+
+      dataSource = await dataSource.update({
         connectorId: connectorsRes.value.connectorId,
         connectorProvider: provider,
       });

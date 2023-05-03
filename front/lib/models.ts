@@ -537,6 +537,7 @@ DataSource.init(
     indexes: [
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "name", "visibility"] },
+      { fields: ["workspaceId", "name"], unique: true },
     ],
   }
 );
