@@ -3,11 +3,14 @@ import {
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
 import logger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import {
+  DataSourceConfig,
+  DataSourceInfo,
+} from "@connectors/types/data_source_config";
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
@@ -123,4 +126,58 @@ export async function getNotionAccessTokenActivity(
   )) as string;
 
   return notionAccessToken;
+}
+
+export async function registerPageSeenActivity(
+  dataSourceInfo: DataSourceInfo,
+  notionPageId: string,
+  ts: number
+) {
+  const transaction = await sequelize_conn.transaction();
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+    transaction,
+  });
+
+  if (!connector) {
+    await transaction.rollback();
+    throw new Error("Could not find connector");
+  }
+
+  try {
+    const existingPage = await NotionPage.findOne({
+      where: {
+        notionPageId,
+        connectorId: connector?.id,
+      },
+      transaction,
+    });
+
+    if (existingPage) {
+      await existingPage.update(
+        {
+          lastSeenTs: ts,
+        },
+        { transaction }
+      );
+    } else {
+      await NotionPage.create(
+        {
+          notionPageId,
+          connectorId: connector?.id,
+          lastSeenTs: ts,
+        },
+        { transaction }
+      );
+    }
+
+    await transaction.commit();
+  } catch (e) {
+    await transaction.rollback();
+    throw e;
+  }
 }
