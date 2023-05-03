@@ -76,15 +76,32 @@ const _webhookSlackAPIHandler = async (
             req.body.event.channel,
             req.body.event.ts
           );
-          if (workflowRes.isErr()) {
-            return res.status(500).send({
-              error: {
-                message: workflowRes.error.message,
-              },
-            });
-          } else {
-            return res.status(200).send();
-          }
+        } else {
+          return res.status(400).send({
+            error: {
+              message: `Webhook message without thread id or message id.`,
+            },
+          });
+        }
+
+        if (workflowRes.isErr()) {
+          return res.status(500).send({
+            error: {
+              message: workflowRes.error.message,
+            },
+          });
+        } else {
+          logger.info(
+            {
+              type: req.body.event.type,
+              channel: req.body.event.channel,
+              ts: req.body.event.ts,
+              thread_ts: req.body.event.thread_ts,
+              user: req.body.event.user,
+            },
+            `Successfully processed Slack Webhook`
+          );
+          return res.status(200).send();
         }
       }
     } else if (req.body.event?.type === "member_joined_channel") {
@@ -117,6 +134,14 @@ const _webhookSlackAPIHandler = async (
         slackConfiguration.connectorId.toString(),
         req.body.event.channel,
         req.body.event.user
+      );
+      logger.info(
+        {
+          type: req.body.event.type,
+          channel: req.body.event.channel,
+          user: req.body.event.user,
+        },
+        `Successfully processed Slack Webhook`
       );
       if (launchRes.isErr()) {
         return res.status(500).send({
