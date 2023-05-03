@@ -83,17 +83,7 @@ const _webhookSlackAPIHandler = async (
               },
             });
           } else {
-            try {
-              await workflowRes.value.result();
-              return res.status(200).send();
-            } catch (e) {
-              logger.error("Workflow execution failed", { error: e });
-              return res.status(500).send({
-                error: {
-                  message: "Workflow execution failed",
-                },
-              });
-            }
+            return res.status(200).send();
           }
         }
       }
