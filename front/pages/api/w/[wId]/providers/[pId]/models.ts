@@ -110,7 +110,14 @@ async function handler(
           return;
 
         case "cohere":
-          let cohereModels = [{ id: "xlarge" }, { id: "medium" }];
+          let cohereModels = [
+            { id: "command" },
+            { id: "command-light" },
+            { id: "command-nightly" },
+            { id: "command-light-nightly" },
+            { id: "base" },
+            { id: "base-light" },
+          ];
           res.status(200).json({ models: cohereModels });
           return;
 
