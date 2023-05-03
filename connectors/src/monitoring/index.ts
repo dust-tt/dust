@@ -4,12 +4,16 @@ import StatsDClient from "hot-shots";
 import mainlogger from "@connectors/logger/logger";
 const logger = mainlogger.child({ module: "temporal-monitoring" });
 
-type asyncF<T> = (...args: unknown[]) => Promise<T>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type monitoredAsyncFunction<T> = (...args: any[]) => Promise<T>;
 
 export const statsDClient = new StatsDClient({});
 
-export function withMonitoring<T>(fn: asyncF<T>): asyncF<T> {
-  return async (...args: unknown[]): Promise<T> => {
+export function withMonitoring<T>(
+  fn: monitoredAsyncFunction<T>
+): monitoredAsyncFunction<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (...args: any[]): Promise<T> => {
     let result: T | undefined = undefined;
 
     try {
