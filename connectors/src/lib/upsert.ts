@@ -1,6 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
-import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
