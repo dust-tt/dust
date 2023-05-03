@@ -19,6 +19,7 @@ const {
   saveSuccessSyncActivity,
   saveStartSyncActivity,
   getNotionAccessTokenActivity,
+  registerPageSeenActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -33,10 +34,8 @@ const SYNC_PERIOD_DURATION_MS = 60_000;
 // How long to wait before checking for new pages again
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
 
-// Temporal has a hard limit of 2k activities in the queue per workflow
-// however, we have much less workers and having a lot of pending activities
-// makes it harder to use the temporal UI
-const MAX_PENDING_ACTIVITY_COUNT = 3;
+const MAX_PENDING_UPSERT_ACTIVITIES = 3;
+const MAX_PENDING_DB_ACTIVITIES = 10;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -74,7 +73,13 @@ export async function notionSyncWorkflow(
 
     let cursor: string | null = null;
     let pageIndex = 0;
-    const queue = new PQueue({ concurrency: MAX_PENDING_ACTIVITY_COUNT });
+    const upsertQueue = new PQueue({
+      concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+    });
+    const dbQueue = new PQueue({
+      concurrency: MAX_PENDING_DB_ACTIVITIES,
+    });
+
     const promises: Promise<void>[] = [];
 
     do {
@@ -97,7 +102,17 @@ export async function notionSyncWorkflow(
         }
 
         promises.push(
-          queue.add(() =>
+          dbQueue.add(() =>
+            registerPageSeenActivity(
+              dataSourceConfig,
+              pageId,
+              nextSyncedPeriodTs
+            )
+          )
+        );
+
+        promises.push(
+          upsertQueue.add(() =>
             notionUpsertPageActivity(
               notionAccessToken,
               pageId,

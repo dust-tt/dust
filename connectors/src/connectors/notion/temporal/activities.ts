@@ -3,11 +3,16 @@ import {
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
-import logger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import mainLogger from "@connectors/logger/logger";
+import {
+  DataSourceConfig,
+  DataSourceInfo,
+} from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({ provider: "notion" });
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
@@ -27,7 +32,6 @@ export async function notionUpsertPageActivity(
   if (!parsedPage || !parsedPage.hasBody) {
     logger.info(
       {
-        provider: "notion",
         pageId,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
@@ -36,14 +40,46 @@ export async function notionUpsertPageActivity(
     );
     return;
   }
+  const documentId = `notion-${parsedPage.id}`;
   await upsertToDatasource(
     dataSourceConfig,
-    `notion-${parsedPage.id}`,
+    documentId,
     parsedPage.rendered,
     parsedPage.url,
     parsedPage.createdTime,
     getTagsForPage(parsedPage)
   );
+
+  const notionPage = await NotionPage.findOne({
+    where: {
+      notionPageId: pageId,
+    },
+  });
+
+  if (!notionPage) {
+    logger.warn(
+      {
+        pageId,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      "notionUpsertPageActivity: Could not find notion page in DB."
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      pageId,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    "notionUpsertPageActivity: Updating notion page in DB."
+  );
+  await notionPage.update({
+    lastUpsertedTs: new Date(),
+    dustDatasourceDocumentId: documentId,
+  });
 }
 
 export async function saveSuccessSyncActivity(
@@ -123,4 +159,58 @@ export async function getNotionAccessTokenActivity(
   )) as string;
 
   return notionAccessToken;
+}
+
+export async function registerPageSeenActivity(
+  dataSourceInfo: DataSourceInfo,
+  notionPageId: string,
+  ts: number
+) {
+  const transaction = await sequelize_conn.transaction();
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+    transaction,
+  });
+
+  if (!connector) {
+    await transaction.rollback();
+    throw new Error("Could not find connector");
+  }
+
+  try {
+    const existingPage = await NotionPage.findOne({
+      where: {
+        notionPageId,
+        connectorId: connector?.id,
+      },
+      transaction,
+    });
+
+    if (existingPage) {
+      await existingPage.update(
+        {
+          lastSeenTs: new Date(ts),
+        },
+        { transaction }
+      );
+    } else {
+      await NotionPage.create(
+        {
+          notionPageId,
+          connectorId: connector?.id,
+          lastSeenTs: new Date(ts),
+        },
+        { transaction }
+      );
+    }
+
+    await transaction.commit();
+  } catch (e) {
+    await transaction.rollback();
+    throw e;
+  }
 }
