@@ -116,7 +116,9 @@ export async function resumeNotionConnector(
     await launchNotionSyncWorkflow(
       dataSourceConfig,
       nangoConnectionId,
-      connector?.lastSyncSuccessfulTime?.getTime()
+      connector.lastSyncSuccessfulTime
+        ? connector.lastSyncStartTime?.getTime()
+        : null
     );
   } catch (e) {
     logger.error(
