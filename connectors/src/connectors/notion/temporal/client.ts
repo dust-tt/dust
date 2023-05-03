@@ -5,10 +5,7 @@ import {
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
-import {
-  getLastSyncPeriodTsQuery,
-  notionSyncWorkflow,
-} from "@connectors/connectors/notion/temporal/workflows";
+import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import {
@@ -25,145 +22,90 @@ function getWorkflowId(dataSourceConfig: DataSourceInfo) {
 export async function launchNotionSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   nangoConnectionId: string,
-  startFromTs: number | null = null,
-  forceStartFromScratch = false
+  startFromTs: number | null = null
 ) {
-  if (startFromTs && forceStartFromScratch) {
-    throw new Error(
-      "Cannot specify both startFromTs and forceStartFromScratch"
-    );
-  }
-
   const client = await getTemporalClient();
 
-  const existingWorkflowStatus = await getNotionConnectionStatus(
-    dataSourceConfig
-  );
+  const workflow = await getNotionWorkflow(dataSourceConfig);
 
-  if (
-    existingWorkflowStatus &&
-    existingWorkflowStatus.status &&
-    existingWorkflowStatus.status.status.name === "RUNNING"
-  ) {
+  if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
       },
-      "Notion sync workflow already running."
+      "launchNotionSyncWorkflow: Notion sync workflow already running."
     );
     return;
   }
 
-  let lastSyncedPeriodTs: number | null = null;
-
-  if (existingWorkflowStatus.status) {
-    if (!forceStartFromScratch) {
-      lastSyncedPeriodTs = existingWorkflowStatus.lastSyncPeriodTs;
-    }
-
-    logger.info(
-      { workspaceId: dataSourceConfig.workspaceId },
-      "Cancelling existing Notion sync workflow."
-    );
-
-    const handle = client.workflow.getHandle(getWorkflowId(dataSourceConfig));
-    await handle.cancel();
-  }
-
   await client.workflow.start(notionSyncWorkflow, {
-    args: [
-      dataSourceConfig,
-      nangoConnectionId,
-      startFromTs || lastSyncedPeriodTs || undefined,
-    ],
+    args: [dataSourceConfig, nangoConnectionId, startFromTs || undefined],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
   });
 
   logger.info(
     { workspaceId: dataSourceConfig.workspaceId },
-    "Started Notion sync workflow."
+    "launchNotionSyncWorkflow: Started Notion sync workflow."
   );
 }
 
 export async function stopNotionSyncWorkflow(
   dataSourceConfig: DataSourceInfo
 ): Promise<void> {
-  const client = await getTemporalClient();
+  const workflow = await getNotionWorkflow(dataSourceConfig);
 
-  const existingWorkflowStatus = await getNotionConnectionStatus(
-    dataSourceConfig
-  );
-
-  if (
-    existingWorkflowStatus &&
-    existingWorkflowStatus.status &&
-    existingWorkflowStatus.status.status.name !== "RUNNING"
-  ) {
+  if (!workflow) {
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
       },
-      "Notion sync workflow is not running."
+      "stopNotionSyncWorkflow: Notion sync workflow not found."
     );
     return;
   }
 
-  if (!existingWorkflowStatus.status) {
+  const { executionDescription: existingWorkflowExecution, handle } = workflow;
+
+  if (existingWorkflowExecution.status.name !== "RUNNING") {
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
       },
-      "Notion sync workflow not found."
+      "stopNotionSyncWorkflow: Notion sync workflow is not running."
     );
     return;
   }
 
   logger.info(
     { workspaceId: dataSourceConfig.workspaceId },
-    "Cancelling existing Notion sync workflow."
+    "Terminating existing Notion sync workflow."
   );
 
-  const handle = client.workflow.getHandle(getWorkflowId(dataSourceConfig));
-  await handle.cancel();
+  await handle.terminate();
 
   logger.info(
-    { workspaceId: dataSourceConfig.workspaceId, provier: "notion" },
-    "Cancelled Notion sync workflow."
+    { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
+    "Terminated Notion sync workflow."
   );
 }
 
-export async function getNotionConnectionStatus(
+export async function getNotionWorkflow(
   dataSourceInfo: DataSourceInfo
 ): Promise<{
-  status: WorkflowExecutionDescription | null;
-  lastSyncPeriodTs: number | null;
-}> {
+  executionDescription: WorkflowExecutionDescription;
+  handle: WorkflowHandle;
+} | null> {
   const client = await getTemporalClient();
 
   const handle: WorkflowHandle<typeof notionSyncWorkflow> =
     client.workflow.getHandle(getWorkflowId(dataSourceInfo));
   try {
-    const [execStatusRes, lastSyncPeriodTsRes] = await Promise.all([
-      handle.describe(),
-      handle.query(getLastSyncPeriodTsQuery),
-    ]);
-    return {
-      status: execStatusRes,
-      lastSyncPeriodTs: lastSyncPeriodTsRes,
-    };
+    return { executionDescription: await handle.describe(), handle };
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
-      logger.warn(
-        { workspaceId: dataSourceInfo.workspaceId },
-        "Notion sync workflow not found for workspace."
-      );
-      return {
-        status: null,
-        lastSyncPeriodTs: null,
-      };
+      return null;
     }
-
     throw e;
   }
 }
