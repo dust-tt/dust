@@ -77,7 +77,7 @@ export async function notionUpsertPageActivity(
     "notionUpsertPageActivity: Updating notion page in DB."
   );
   await notionPage.update({
-    lastUpsertedTs: new Date().getTime(),
+    lastUpsertedTs: new Date(),
     dustDatasourceDocumentId: documentId,
   });
 }
@@ -193,7 +193,7 @@ export async function registerPageSeenActivity(
     if (existingPage) {
       await existingPage.update(
         {
-          lastSeenTs: ts,
+          lastSeenTs: new Date(ts),
         },
         { transaction }
       );
@@ -202,7 +202,7 @@ export async function registerPageSeenActivity(
         {
           notionPageId,
           connectorId: connector?.id,
-          lastSeenTs: ts,
+          lastSeenTs: new Date(ts),
         },
         { transaction }
       );

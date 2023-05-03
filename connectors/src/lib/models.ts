@@ -158,8 +158,8 @@ export class NotionPage extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare notionPageId: string;
-  declare lastSeenTs: number;
-  declare lastUpsertedTs?: number;
+  declare lastSeenTs: Date;
+  declare lastUpsertedTs?: Date;
   declare dustDatasourceDocumentId?: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
@@ -187,8 +187,12 @@ NotionPage.init(
       allowNull: false,
     },
     lastSeenTs: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DATE,
       allowNull: false,
+    },
+    lastUpsertedTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
