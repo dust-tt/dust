@@ -10,6 +10,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
+import { getWorkflowId } from "@connectors/connectors/notion/temporal/client";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { notionUpsertPageActivity, notionGetPagesToSyncActivity } =
@@ -107,10 +108,13 @@ export async function notionSyncWorkflow(
         pagesToSync.forEach((pageId) => pagesSyncedWithinPeriod.add(pageId));
       }
 
+      const workflowId = `${getWorkflowId(
+        dataSourceConfig
+      )}-result-page-${pageIndex}`;
       promises.push(
         childWorkflowQueue.add(() =>
           executeChild(notionSyncResultPageWorkflow.name, {
-            workflowId: `workflow-notion-${dataSourceConfig.workspaceId}-${dataSourceConfig.dataSourceName}-result-page-${pageIndex}`,
+            workflowId,
             args: [
               dataSourceConfig,
               notionAccessToken,
