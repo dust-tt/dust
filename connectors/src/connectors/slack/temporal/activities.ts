@@ -14,6 +14,8 @@ import { upsertToDatasource } from "@connectors/lib/upsert";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { getWeekEnd, getWeekStart } from "../lib/utils";
+
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -82,6 +84,72 @@ export async function getChannel(
   }
 
   return res.channel;
+}
+
+export async function syncChannel(
+  slackAccessToken: string,
+  channelId: string,
+  channelName: string,
+  dataSourceConfig: DataSourceConfig,
+  connectorId: string,
+  messagesCursor?: string
+): Promise<string | undefined> {
+  const threadsToSync: string[] = [];
+  const unthreadedTimeframesToSync = new Map<
+    string,
+    { startTsMs: number; endTsMs: number }
+  >();
+  const messages = await getMessagesForChannel(
+    slackAccessToken,
+    channelId,
+    100,
+    messagesCursor
+  );
+  if (!messages.messages) {
+    // This should never happen because we throw an exception in the activity if we get an error
+    // from the Slack API, but we need to make typescript happy.
+    return messages.response_metadata?.next_cursor;
+  }
+  for (const message of messages.messages) {
+    if (!message.user) {
+      // We do not support messages not posted by users for now
+      continue;
+    }
+    if (message.thread_ts) {
+      if (threadsToSync.indexOf(message.thread_ts) === -1) {
+        // We can end up getting two messages from the same thread if a message from a thread
+        // has also been "posted to channel".
+        threadsToSync.push(message.thread_ts);
+      }
+    } else {
+      const messageTs = parseInt(message.ts as string, 10) * 1000;
+      const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
+      const weekEndTsMss = getWeekEnd(new Date(messageTs)).getTime();
+
+      unthreadedTimeframesToSync.set(`${weekStartTsMs}-${weekEndTsMss}`, {
+        startTsMs: weekStartTsMs,
+        endTsMs: weekEndTsMss,
+      });
+    }
+  }
+  await syncThreads(
+    dataSourceConfig,
+    slackAccessToken,
+    channelId,
+    channelName,
+    threadsToSync,
+    connectorId
+  );
+  await syncMultipleNoNThreaded(
+    slackAccessToken,
+    dataSourceConfig,
+    channelId,
+    channelName,
+    Array.from(unthreadedTimeframesToSync.values()),
+    connectorId
+  );
+
+  return messages.response_metadata?.next_cursor;
 }
 
 export async function getMessagesForChannel(
