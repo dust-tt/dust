@@ -12,6 +12,7 @@ import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
 import mainLogger from "@connectors/logger/logger";
+import { withMonitoring } from "@connectors/monitoring";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
@@ -37,9 +38,7 @@ const NETWORK_REQUEST_TIMEOUT_MS = 30000;
 
  */
 
-export async function getChannels(
-  slackAccessToken: string
-): Promise<Channel[]> {
+async function _getChannels(slackAccessToken: string): Promise<Channel[]> {
   const client = getSlackClient(slackAccessToken);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
@@ -69,6 +68,7 @@ export async function getChannels(
 
   return allChannels;
 }
+export const getChannels = withMonitoring(_getChannels);
 
 export async function getChannel(
   slackAccessToken: string,
@@ -300,7 +300,7 @@ export async function syncNonThreaded(
   );
 }
 
-export async function syncThreads(
+async function syncThreads(
   dataSourceConfig: DataSourceConfig,
   slackAccessToken: string,
   channelId: string,
@@ -325,7 +325,7 @@ export async function syncThreads(
   }
 }
 
-export async function syncThread(
+async function _syncThread(
   dataSourceConfig: DataSourceConfig,
   slackAccessToken: string,
   channelId: string,
@@ -391,6 +391,8 @@ export async function syncThread(
     tags
   );
 }
+
+export const syncThread = withMonitoring(_syncThread);
 
 async function processMessageForMentions(
   message: string,
