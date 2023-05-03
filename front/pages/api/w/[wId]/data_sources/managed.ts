@@ -166,6 +166,19 @@ async function handler(
           },
           "Failed to create the connector"
         );
+        await dataSource.destroy();
+        const deleteRes = await DustAPI.deleteDataSource(
+          dustProject.value.project.project_id.toString(),
+          dustDataSource.value.data_source.data_source_id
+        );
+        if (deleteRes.isErr()) {
+          logger.error(
+            {
+              error: deleteRes.error,
+            },
+            "Failed to delete the data source"
+          );
+        }
         return apiError(req, res, {
           status_code: 500,
           api_error: {
