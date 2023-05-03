@@ -2,6 +2,7 @@ import {
   continueAsNew,
   defineQuery,
   executeChild,
+  ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
@@ -116,6 +117,7 @@ export async function notionSyncWorkflow(
               pagesToSync,
               nextSyncedPeriodTs,
             ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           })
         )
       );
