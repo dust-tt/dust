@@ -1,6 +1,7 @@
 import {
   continueAsNew,
   defineQuery,
+  executeChild,
   proxyActivities,
   setHandler,
   sleep,
@@ -34,6 +35,7 @@ const SYNC_PERIOD_DURATION_MS = 60_000;
 // How long to wait before checking for new pages again
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
 
+const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PENDING_UPSERT_ACTIVITIES = 3;
 const MAX_PENDING_DB_ACTIVITIES = 10;
 
@@ -64,6 +66,8 @@ export async function notionSyncWorkflow(
     nangoConnectionId
   );
 
+  const isInitialSync = !lastSyncedPeriodTs;
+
   do {
     await saveStartSyncActivity(dataSourceConfig);
     const nextSyncedPeriodTs = preProcessTimestampForNotion(Date.now());
@@ -73,13 +77,9 @@ export async function notionSyncWorkflow(
 
     let cursor: string | null = null;
     let pageIndex = 0;
-    const upsertQueue = new PQueue({
-      concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+    const childWorkflowQueue = new PQueue({
+      concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
-    const dbQueue = new PQueue({
-      concurrency: MAX_PENDING_DB_ACTIVITIES,
-    });
-
     const promises: Promise<void>[] = [];
 
     do {
@@ -96,39 +96,29 @@ export async function notionSyncWorkflow(
       cursor = nextCursor;
       pageIndex += 1;
 
-      for (const pageId of pageIds) {
-        if (pagesSyncedWithinPeriod.has(pageId)) {
-          continue;
-        }
-
-        promises.push(
-          dbQueue.add(() =>
-            registerPageSeenActivity(
-              dataSourceConfig,
-              pageId,
-              nextSyncedPeriodTs
-            )
-          )
-        );
-
-        promises.push(
-          upsertQueue.add(() =>
-            notionUpsertPageActivity(
-              notionAccessToken,
-              pageId,
-              dataSourceConfig,
-              {
-                dataSourceName: dataSourceConfig.dataSourceName,
-                workspaceId: dataSourceConfig.workspaceId,
-              }
-            )
-          )
-        );
-
-        if (lastSyncedPeriodTs) {
-          pagesSyncedWithinPeriod.add(pageId);
-        }
+      const pagesToSync = pageIds.filter(
+        (pageId) => !pagesSyncedWithinPeriod.has(pageId)
+      );
+      if (!pagesToSync.length) {
+        continue;
       }
+      if (lastSyncedPeriodTs) {
+        pagesToSync.forEach((pageId) => pagesSyncedWithinPeriod.add(pageId));
+      }
+
+      promises.push(
+        childWorkflowQueue.add(() =>
+          executeChild(notionSyncResultPageWorkflow.name, {
+            workflowId: `workflow-notion-${dataSourceConfig.workspaceId}-${dataSourceConfig.dataSourceName}-result-page-${pageIndex}`,
+            args: [
+              dataSourceConfig,
+              notionAccessToken,
+              pagesToSync,
+              nextSyncedPeriodTs,
+            ],
+          })
+        )
+      );
     } while (cursor);
 
     await Promise.all(promises);
@@ -138,8 +128,8 @@ export async function notionSyncWorkflow(
 
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   } while (
-    iterations < MAX_ITERATIONS_PER_WORKFLOW ||
-    pagesSyncedWithinPeriod.size
+    !isInitialSync &&
+    (iterations < MAX_ITERATIONS_PER_WORKFLOW || pagesSyncedWithinPeriod.size)
   );
 
   await continueAsNew<typeof notionSyncWorkflow>(
@@ -147,4 +137,39 @@ export async function notionSyncWorkflow(
     nangoConnectionId,
     lastSyncedPeriodTs
   );
+}
+
+export async function notionSyncResultPageWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  pageIds: string[],
+  nextSyncedPeriodTs: number
+) {
+  const upsertQueue = new PQueue({
+    concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+  });
+  const dbQueue = new PQueue({
+    concurrency: MAX_PENDING_DB_ACTIVITIES,
+  });
+
+  const promises: Promise<void>[] = [];
+
+  for (const pageId of pageIds) {
+    promises.push(
+      dbQueue.add(() =>
+        registerPageSeenActivity(dataSourceConfig, pageId, nextSyncedPeriodTs)
+      )
+    );
+
+    promises.push(
+      upsertQueue.add(() =>
+        notionUpsertPageActivity(notionAccessToken, pageId, dataSourceConfig, {
+          dataSourceName: dataSourceConfig.dataSourceName,
+          workspaceId: dataSourceConfig.workspaceId,
+        })
+      )
+    );
+  }
+
+  await Promise.all(promises);
 }
