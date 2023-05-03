@@ -5,22 +5,21 @@ import {
   setHandler,
   sleep,
 } from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { notionGetPagesToSyncActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "60 minute",
-});
-const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minute",
-});
-const { saveSuccessSyncActivity, saveStartSyncActivity } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "1 minute",
-});
-const { getNotionAccessTokenActivity } = proxyActivities<typeof activities>({
+const { notionUpsertPageActivity, notionGetPagesToSyncActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minute",
+  });
+
+const {
+  saveSuccessSyncActivity,
+  saveStartSyncActivity,
+  getNotionAccessTokenActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
 
@@ -30,10 +29,14 @@ const MAX_ITERATIONS_PER_WORKFLOW = 50;
 
 // Notion's "last edited" timestamp is precise to the minute
 const SYNC_PERIOD_DURATION_MS = 60_000;
-// How often to check for new pages to sync
+
+// How long to wait before checking for new pages again
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
-// How many upsert activities we can launch at once
-const UPSERT_BATCH_SIZE = 100;
+
+// Temporal has a hard limit of 2k activities in the queue per workflow
+// however, we have much less workers and having a lot of pending activities
+// makes it harder to use the temporal UI
+const MAX_PENDING_ACTIVITY_COUNT = 500;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -65,31 +68,55 @@ export async function notionSyncWorkflow(
   do {
     await saveStartSyncActivity(dataSourceConfig);
     const nextSyncedPeriodTs = preProcessTimestampForNotion(Date.now());
-
     if (nextSyncedPeriodTs !== lastSyncedPeriodTs) {
       pagesSyncedWithinPeriod = new Set();
     }
 
-    const pagesToSync = (
-      await notionGetPagesToSyncActivity(notionAccessToken, lastSyncedPeriodTs)
-    ).filter((p) => !pagesSyncedWithinPeriod.has(p));
+    let cursor: string | null = null;
+    let pageIndex = 0;
+    const queue = new PQueue({ concurrency: MAX_PENDING_ACTIVITY_COUNT });
+    const promises: Promise<void>[] = [];
 
-    pagesToSync.forEach((p) => pagesSyncedWithinPeriod.add(p));
-
-    for (let i = 0; i < pagesToSync.length; i += UPSERT_BATCH_SIZE) {
-      const batch = pagesToSync.slice(i, i + UPSERT_BATCH_SIZE);
-      await Promise.all(
-        batch.map((p) =>
-          notionUpsertPageActivity(notionAccessToken, p, dataSourceConfig)
-        )
+    do {
+      const { pageIds, nextCursor } = await notionGetPagesToSyncActivity(
+        notionAccessToken,
+        lastSyncedPeriodTs,
+        cursor,
+        {
+          pageIndex,
+          dataSourceName: dataSourceConfig.dataSourceName,
+          workspaceId: dataSourceConfig.workspaceId,
+        }
       );
-    }
+      cursor = nextCursor;
+      pageIndex += 1;
 
+      for (const pageId of pageIds) {
+        if (pagesSyncedWithinPeriod.has(pageId)) {
+          continue;
+        }
+
+        promises.push(
+          queue.add(() =>
+            notionUpsertPageActivity(
+              notionAccessToken,
+              pageId,
+              dataSourceConfig
+            )
+          )
+        );
+
+        if (lastSyncedPeriodTs) {
+          pagesSyncedWithinPeriod.add(pageId);
+        }
+      }
+    } while (cursor);
+
+    await Promise.all(promises);
     await saveSuccessSyncActivity(dataSourceConfig);
-
     lastSyncedPeriodTs = nextSyncedPeriodTs;
-
     iterations += 1;
+
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   } while (
     iterations < MAX_ITERATIONS_PER_WORKFLOW ||

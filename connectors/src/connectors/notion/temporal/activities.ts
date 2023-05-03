@@ -11,9 +11,11 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
-  lastSyncedAt: number | null
-): Promise<string[]> {
-  return getPagesEditedSince(accessToken, lastSyncedAt);
+  lastSyncedAt: number | null,
+  cursor: string | null,
+  loggerArgs: Record<string, string | number>
+): Promise<{ pageIds: string[]; nextCursor: string | null }> {
+  return getPagesEditedSince(accessToken, lastSyncedAt, cursor, loggerArgs);
 }
 
 export async function notionUpsertPageActivity(
@@ -22,7 +24,7 @@ export async function notionUpsertPageActivity(
   dataSourceConfig: DataSourceConfig
 ) {
   const parsedPage = await getParsedPage(accessToken, pageId);
-  if (!parsedPage.hasBody) {
+  if (!parsedPage || !parsedPage.hasBody) {
     logger.info(
       {
         provider: "notion",
