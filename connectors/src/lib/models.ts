@@ -159,6 +159,8 @@ export class NotionPage extends Model<
 
   declare notionPageId: string;
   declare lastSeenTs: number;
+  declare lastUpsertedTs?: number;
+  declare dustDatasourceDocumentId?: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -197,7 +199,6 @@ NotionPage.init(
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["notionPageId"], unique: true },
-      { fields: ["dustDatasourceDocumentId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
     ],

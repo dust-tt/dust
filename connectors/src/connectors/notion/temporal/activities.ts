@@ -6,11 +6,13 @@ import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({ provider: "notion" });
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
@@ -30,7 +32,6 @@ export async function notionUpsertPageActivity(
   if (!parsedPage || !parsedPage.hasBody) {
     logger.info(
       {
-        provider: "notion",
         pageId,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
@@ -39,14 +40,46 @@ export async function notionUpsertPageActivity(
     );
     return;
   }
+  const documentId = `notion-${parsedPage.id}`;
   await upsertToDatasource(
     dataSourceConfig,
-    `notion-${parsedPage.id}`,
+    documentId,
     parsedPage.rendered,
     parsedPage.url,
     parsedPage.createdTime,
     getTagsForPage(parsedPage)
   );
+
+  const notionPage = await NotionPage.findOne({
+    where: {
+      notionPageId: pageId,
+    },
+  });
+
+  if (!notionPage) {
+    logger.warn(
+      {
+        pageId,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      "notionUpsertPageActivity: Could not find notion page in DB."
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      pageId,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    "notionUpsertPageActivity: Updating notion page in DB."
+  );
+  await notionPage.update({
+    lastUpsertedTs: new Date().getTime(),
+    dustDatasourceDocumentId: documentId,
+  });
 }
 
 export async function saveSuccessSyncActivity(
