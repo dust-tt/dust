@@ -17,7 +17,8 @@ export async function upsertToDatasource(
   timestamp?: number,
   tags?: string[],
   retries = 3,
-  delayBetweenRetriesMs = 500
+  delayBetweenRetriesMs = 500,
+  loggerArgs: Record<string, string | number> = {}
 ) {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
@@ -31,7 +32,8 @@ export async function upsertToDatasource(
         documentText,
         documentUrl,
         timestamp,
-        tags
+        tags,
+        loggerArgs
       );
 
       return upsertRes;
@@ -52,8 +54,11 @@ async function _upsertToDatasource(
   documentText: string,
   documentUrl?: string,
   timestamp?: number,
-  tags?: string[]
+  tags?: string[],
+  loggerArgs: Record<string, string | number> = {}
 ) {
+  const localLogger = logger.child({ ...loggerArgs, documentId });
+
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestPayload = {
@@ -76,20 +81,15 @@ async function _upsertToDatasource(
       dustRequestConfig
     );
   } catch (e) {
-    logger.error(errorFromAny(e), "Error uploading document to Dust.");
+    localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    logger.info(
-      { documentId, workspaceId: dataSourceConfig.workspaceId },
-      "Successfully uploaded document to Dust."
-    );
+    localLogger.info("Successfully uploaded document to Dust.");
   } else {
-    logger.error(
+    localLogger.error(
       {
-        documentId,
-        workspaceId: dataSourceConfig.workspaceId,
         status: dustRequestResult.status,
       },
       "Error uploading document to Dust."

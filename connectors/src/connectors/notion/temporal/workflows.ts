@@ -116,7 +116,11 @@ export async function notionSyncWorkflow(
             notionUpsertPageActivity(
               notionAccessToken,
               pageId,
-              dataSourceConfig
+              dataSourceConfig,
+              {
+                dataSourceName: dataSourceConfig.dataSourceName,
+                workspaceId: dataSourceConfig.workspaceId,
+              }
             )
           )
         );
