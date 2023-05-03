@@ -190,10 +190,6 @@ NotionPage.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
   },
   {
     sequelize: sequelize_conn,
