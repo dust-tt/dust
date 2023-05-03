@@ -207,8 +207,9 @@ export async function getParsedPage(
       e.code === "object_not_found"
     ) {
       blocks = [];
+    } else {
+      throw e;
     }
-    throw e;
   }
 
   let parsedBlocks: ParsedBlock[] = [];
