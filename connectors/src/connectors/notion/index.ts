@@ -169,8 +169,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
         dataSourceName: connector.dataSourceName,
       },
       connector.nangoConnectionId,
-      null,
-      true
+      null
     );
   } catch (e) {
     logger.error(
