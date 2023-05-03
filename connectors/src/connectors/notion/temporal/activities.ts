@@ -26,18 +26,13 @@ export async function notionGetPagesToSyncActivity(
 export async function notionUpsertPageActivity(
   accessToken: string,
   pageId: string,
-  dataSourceConfig: DataSourceConfig
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number>
 ) {
-  const parsedPage = await getParsedPage(accessToken, pageId);
+  const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
+  const localLogger = logger.child({ ...loggerArgs, pageId });
   if (!parsedPage || !parsedPage.hasBody) {
-    logger.info(
-      {
-        pageId,
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-      },
-      "Skipping page without body"
-    );
+    localLogger.info("Skipping page without body");
     return;
   }
   const documentId = `notion-${parsedPage.id}`;
@@ -47,7 +42,10 @@ export async function notionUpsertPageActivity(
     parsedPage.rendered,
     parsedPage.url,
     parsedPage.createdTime,
-    getTagsForPage(parsedPage)
+    getTagsForPage(parsedPage),
+    3,
+    500,
+    loggerArgs
   );
 
   const notionPage = await NotionPage.findOne({
@@ -57,25 +55,13 @@ export async function notionUpsertPageActivity(
   });
 
   if (!notionPage) {
-    logger.warn(
-      {
-        pageId,
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-      },
+    localLogger.warn(
       "notionUpsertPageActivity: Could not find notion page in DB."
     );
     return;
   }
 
-  logger.info(
-    {
-      pageId,
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-    "notionUpsertPageActivity: Updating notion page in DB."
-  );
+  localLogger.info("notionUpsertPageActivity: Updating notion page in DB.");
   await notionPage.update({
     lastUpsertedTs: new Date(),
     dustDatasourceDocumentId: documentId,

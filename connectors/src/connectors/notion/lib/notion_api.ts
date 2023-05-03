@@ -15,6 +15,7 @@ import {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { Logger } from "pino";
 
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import mainLogger from "@connectors/logger/logger";
@@ -164,29 +165,37 @@ export async function getPagesEditedSince(
 
 export async function getParsedPage(
   notionAccessToken: string,
-  pageId: string
+  pageId: string,
+  loggerArgs: Record<string, string | number> = {}
 ): Promise<ParsedPage | null> {
+  const localLogger = logger.child({ ...loggerArgs, pageId });
+
   const notionClient = new Client({ auth: notionAccessToken });
 
   let page: GetPageResponse | null = null;
 
   try {
+    localLogger.info("Fetching page from Notion API.");
     page = await notionClient.pages.retrieve({ page_id: pageId });
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
       e.code === "object_not_found"
     ) {
+      localLogger.info("Page not found.");
       return null;
     }
     throw e;
   }
 
   if (!isFullPage(page)) {
-    throw new Error("Page is not a full page");
+    localLogger.info("Page is not a full page.");
+    return null;
   }
 
-  logger.info({ pageUrl: page.url, pageId: page.id }, "Parsing page.");
+  const pageLogger = localLogger.child({ pageUrl: page.url });
+
+  pageLogger.info("Parsing page.");
   const properties = Object.entries(page.properties).map(([key, value]) => ({
     key,
     id: value.id,
@@ -207,6 +216,7 @@ export async function getParsedPage(
       e.code === "object_not_found"
     ) {
       blocks = [];
+      pageLogger.info("Couldn't get page blocks.");
     } else {
       throw e;
     }
@@ -216,7 +226,7 @@ export async function getParsedPage(
   for (const block of blocks) {
     if (isFullBlock(block)) {
       parsedBlocks = parsedBlocks.concat(
-        await parsePageBlock(block, notionClient)
+        await parsePageBlock(block, notionClient, pageLogger)
       );
     }
   }
@@ -236,9 +246,10 @@ export async function getParsedPage(
   const pageHasBody = !parsedBlocks.every((b) => !b.text);
 
   const author =
-    (await getUserName(notionClient, page.created_by.id)) || page.created_by.id;
+    (await getUserName(notionClient, page.created_by.id, pageLogger)) ||
+    page.created_by.id;
   const lastEditor =
-    (await getUserName(notionClient, page.last_edited_by.id)) ||
+    (await getUserName(notionClient, page.last_edited_by.id, pageLogger)) ||
     page.last_edited_by.id;
 
   return {
@@ -341,7 +352,8 @@ function parsePropertyText(
 
 async function renderChildDatabase(
   block: BlockObjectResponse & { type: "child_database" },
-  notionClient: Client
+  notionClient: Client,
+  pageLogger: Logger
 ): Promise<string | null> {
   const rows: string[] = [];
   let header: string[] | null = null;
@@ -380,6 +392,10 @@ async function renderChildDatabase(
       APIResponseError.isAPIResponseError(e) &&
       e.code === "object_not_found"
     ) {
+      pageLogger.info(
+        { database_id: block.id },
+        "Couln't query child database."
+      );
       return null;
     }
     throw e;
@@ -388,14 +404,17 @@ async function renderChildDatabase(
 
 async function getUserName(
   notionClient: Client,
-  userId: string
+  userId: string,
+  pageLogger: Logger
 ): Promise<string | null> {
   const nameFromCache = await cacheGet(`notion-user-name:${userId}`);
   if (nameFromCache) {
+    pageLogger.info({ user_id: userId }, "Got user name from cache.");
     return nameFromCache;
   }
 
   try {
+    pageLogger.info({ user_id: userId }, "Fetching user name from Notion API.");
     const user = await notionClient.users.retrieve({
       user_id: userId,
     });
@@ -411,6 +430,7 @@ async function getUserName(
       APIResponseError.isAPIResponseError(e) &&
       e.code === "object_not_found"
     ) {
+      pageLogger.info({ user_id: userId }, "Couln't find user.");
       return null;
     }
     throw e;
@@ -419,7 +439,8 @@ async function getUserName(
 
 async function parsePageBlock(
   block: BlockObjectResponse,
-  notionClient: Client
+  notionClient: Client,
+  pageLogger: Logger
 ): Promise<ParsedBlock[]> {
   function parseRichText(text: RichTextItemResponse[]): string {
     const parsed = text.map((t) => t.plain_text).join(" ");
@@ -485,6 +506,7 @@ async function parsePageBlock(
         APIResponseError.isAPIResponseError(e) &&
         e.code === "object_not_found"
       ) {
+        pageLogger.info({ blockId: block.id }, "Couln't get block's children.");
         return parsedBlocks;
       }
       throw e;
@@ -494,7 +516,7 @@ async function parsePageBlock(
       await Promise.all(
         children.map(async (child) => {
           if (isFullBlock(child)) {
-            return parsePageBlock(child, notionClient);
+            return parsePageBlock(child, notionClient, pageLogger);
           }
           return [];
         })
@@ -565,7 +587,7 @@ async function parsePageBlock(
       return [
         {
           ...commonFields,
-          text: await renderChildDatabase(block, notionClient),
+          text: await renderChildDatabase(block, notionClient, pageLogger),
         },
       ];
 
