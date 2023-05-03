@@ -9,7 +9,9 @@ import {
 } from "@notionhq/client";
 import {
   BlockObjectResponse,
+  GetPageResponse,
   PageObjectResponse,
+  PartialBlockObjectResponse,
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
@@ -53,84 +55,83 @@ type ParsedBlock = {
  * @param notionAccessToken the access token to use to access the Notion API
  * @param sinceTs a millisecond timestamp representing the minimum last edited time of
  * pages to return. If null, all pages will be returned.
- * @returns a promise that resolves to an array of page IDs
+ * @param cursor a cursor to use to fetch the next page of results. If null, the first
+ * page of results will be returned.
+ * @param loggerArgs arguments to pass to the logger
+ * @param retry options for retrying the request
+ * @returns a promise that resolves to an array of page IDs and the next cursor
  */
 export async function getPagesEditedSince(
   notionAccessToken: string,
   sinceTs: number | null,
+  cursor: string | null,
+  loggerArgs: Record<string, string | number> = {},
   retry: { retries: number; backoffFactor: number } = {
     retries: 5,
     backoffFactor: 2,
   }
-): Promise<string[]> {
-  const notionClient = new Client({ auth: notionAccessToken });
+): Promise<{ pageIds: string[]; nextCursor: string | null }> {
+  const localLogger = logger.child(loggerArgs);
 
+  const notionClient = new Client({ auth: notionAccessToken });
   const editedPages: Set<string> = new Set();
   let resultsPage: SearchResponse | null = null;
-  let pageIndex = 0;
 
-  do {
-    let tries = 0;
-    while (tries < retry.retries) {
-      logger.info(
-        { pageIndex, tries, maxTries: retry.retries },
-        "Fetching result page from Notion API."
+  let tries = 0;
+  while (tries < retry.retries) {
+    const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
+    tryLogger.info("Fetching result page from Notion API.");
+    try {
+      resultsPage = await notionClient.search({
+        sort: sinceTs
+          ? {
+              timestamp: "last_edited_time",
+              direction: "descending",
+            }
+          : undefined,
+        start_cursor: cursor || undefined,
+      });
+      tryLogger.info(
+        { count: resultsPage.results.length },
+        "Received result page from Notion API."
       );
-      try {
-        resultsPage = await notionClient.search({
-          sort: sinceTs
-            ? {
-                timestamp: "last_edited_time",
-                direction: "descending",
-              }
-            : undefined,
-          start_cursor: resultsPage?.next_cursor || undefined,
-        });
-        logger.info(
-          { count: resultsPage.results.length, pageIndex },
-          "Received result page from Notion API."
-        );
-      } catch (e) {
-        logger.error(
-          { pageIndex, error: e },
-          "Error fetching result page from Notion API."
-        );
-        tries += 1;
-        if (tries >= retry.retries) {
-          throw e;
-        }
-        const sleepTime = 500 * retry.backoffFactor ** tries;
-        logger.info(
-          { sleepTime, pageIndex, tries, maxTries: retry.retries },
-          "Sleeping before retrying."
-        );
-        await new Promise((resolve) => setTimeout(resolve, sleepTime));
-        continue;
+    } catch (e) {
+      tryLogger.error(
+        { error: e },
+        "Error fetching result page from Notion API."
+      );
+      tries += 1;
+      if (tries >= retry.retries) {
+        throw e;
       }
-      break;
+      const sleepTime = 500 * retry.backoffFactor ** tries;
+      tryLogger.info({ sleepTime }, "Sleeping before retrying.");
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
+      continue;
     }
+    break;
+  }
 
-    if (!resultsPage) {
-      throw new Error("No results page returned from Notion API.");
-    }
+  if (!resultsPage) {
+    throw new Error("No results page returned from Notion API.");
+  }
 
-    pageIndex += 1;
-
-    for (const pageOrDb of resultsPage.results) {
-      if (pageOrDb.object === "page") {
-        if (isFullPage(pageOrDb)) {
-          const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
-          if (sinceTs && lastEditedTime < sinceTs) {
-            break;
-          }
-          editedPages.add(pageOrDb.id);
+  for (const pageOrDb of resultsPage.results) {
+    if (pageOrDb.object === "page") {
+      if (isFullPage(pageOrDb)) {
+        const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+        if (sinceTs && lastEditedTime < sinceTs) {
+          break;
         }
-      } else if (pageOrDb.object === "database") {
-        if (isFullDatabase(pageOrDb)) {
-          const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
-          if (sinceTs && lastEditedTime < sinceTs) {
-            break;
-          }
+        editedPages.add(pageOrDb.id);
+      }
+    } else if (pageOrDb.object === "database") {
+      if (isFullDatabase(pageOrDb)) {
+        const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+        if (sinceTs && lastEditedTime < sinceTs) {
+          break;
+        }
+        try {
           for await (const child of iteratePaginatedAPI(
             notionClient.databases.query,
             {
@@ -141,21 +142,44 @@ export async function getPagesEditedSince(
               editedPages.add(child.id);
             }
           }
+        } catch (e) {
+          if (
+            APIResponseError.isAPIResponseError(e) &&
+            e.code === "object_not_found"
+          ) {
+            continue;
+          }
+          throw e;
         }
       }
     }
-  } while (resultsPage.next_cursor);
+  }
 
-  return Array.from(editedPages);
+  return {
+    pageIds: Array.from(editedPages),
+    nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
+  };
 }
 
 export async function getParsedPage(
   notionAccessToken: string,
   pageId: string
-): Promise<ParsedPage> {
+): Promise<ParsedPage | null> {
   const notionClient = new Client({ auth: notionAccessToken });
 
-  const page = await notionClient.pages.retrieve({ page_id: pageId });
+  let page: GetPageResponse | null = null;
+
+  try {
+    page = await notionClient.pages.retrieve({ page_id: pageId });
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      e.code === "object_not_found"
+    ) {
+      return null;
+    }
+    throw e;
+  }
 
   if (!isFullPage(page)) {
     throw new Error("Page is not a full page");
@@ -169,9 +193,22 @@ export async function getParsedPage(
     text: parsePropertyText(value),
   }));
 
-  const blocks = await collectPaginatedAPI(notionClient.blocks.children.list, {
-    block_id: page.id,
-  });
+  let blocks: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
+    null;
+
+  try {
+    blocks = await collectPaginatedAPI(notionClient.blocks.children.list, {
+      block_id: page.id,
+    });
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      e.code === "object_not_found"
+    ) {
+      blocks = [];
+    }
+    throw e;
+  }
 
   let parsedBlocks: ParsedBlock[] = [];
   for (const block of blocks) {
@@ -427,12 +464,22 @@ async function parsePageBlock(
       return parsedBlocks;
     }
 
-    const children = await collectPaginatedAPI(
-      notionClient.blocks.children.list,
-      {
+    let children: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
+      null;
+    try {
+      children = await collectPaginatedAPI(notionClient.blocks.children.list, {
         block_id: block.id,
+      });
+    } catch (e) {
+      if (
+        APIResponseError.isAPIResponseError(e) &&
+        e.code === "object_not_found"
+      ) {
+        return parsedBlocks;
       }
-    );
+      throw e;
+    }
+
     const parsedChildren = (
       await Promise.all(
         children.map(async (child) => {
