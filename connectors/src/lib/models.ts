@@ -41,6 +41,10 @@ export class Connector extends Model<
   declare lastSyncStartTime?: Date;
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
+  declare firstSuccessfulSyncTime?: Date;
+
+  declare lastGarbageCollectionStartTime?: Date;
+  declare lastGarbageCollectionFinishTime?: Date;
 }
 
 Connector.init(
@@ -93,6 +97,18 @@ Connector.init(
       allowNull: true,
     },
     lastSyncSuccessfulTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastGarbageCollectionStartTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastGarbageCollectionFinishTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    firstSuccessfulSyncTime: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -160,7 +176,6 @@ export class NotionPage extends Model<
   declare notionPageId: string;
   declare lastSeenTs: Date;
   declare lastUpsertedTs?: Date;
-  declare dustDatasourceDocumentId?: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }

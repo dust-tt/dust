@@ -9,8 +9,8 @@ import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/Conve
 
 import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
+import { upsertToDatasource } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
-import { upsertToDatasource } from "@connectors/lib/upsert";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 

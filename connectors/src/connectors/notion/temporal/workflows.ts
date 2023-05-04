@@ -14,15 +14,26 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
 
-const { notionUpsertPageActivity, notionGetPagesToSyncActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "60 minute",
-  });
+const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "60 minute",
+});
+
+const {
+  notionGetPagesToSyncActivity,
+  markExistingPagesAsVisitedDuringRunActivity,
+  filterOutExistingPagesActivity,
+  deletePagesNotVisitedInRunActivity,
+  saveSuccessGarbageCollectionActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minute",
+});
 
 const {
   saveSuccessSyncActivity,
   saveStartSyncActivity,
   getNotionAccessTokenActivity,
+  shouldGarbageCollectActivity,
+  saveStartGarbageCollectionActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -61,8 +72,6 @@ export async function notionSyncWorkflow(
     ? preProcessTimestampForNotion(startFromTs)
     : null;
 
-  let pagesSyncedWithinPeriod: Set<string> = new Set();
-
   setHandler(getLastSyncPeriodTsQuery, () => lastSyncedPeriodTs);
 
   const notionAccessToken = await getNotionAccessTokenActivity(
@@ -71,13 +80,18 @@ export async function notionSyncWorkflow(
 
   const isInitialSync = !lastSyncedPeriodTs;
 
-  do {
-    await saveStartSyncActivity(dataSourceConfig);
-    const runTimestamp = preProcessTimestampForNotion(Date.now());
+  const isGargageCollectionRun = await shouldGarbageCollectActivity(
+    dataSourceConfig
+  );
 
-    if (runTimestamp !== lastSyncedPeriodTs) {
-      pagesSyncedWithinPeriod = new Set();
+  do {
+    if (!isGargageCollectionRun) {
+      await saveStartSyncActivity(dataSourceConfig);
+    } else {
+      await saveStartGarbageCollectionActivity(dataSourceConfig);
     }
+
+    const runTimestamp = preProcessTimestampForNotion(Date.now());
 
     let cursor: string | null = null;
     let pageIndex = 0;
@@ -89,25 +103,44 @@ export async function notionSyncWorkflow(
     do {
       const { pageIds, nextCursor } = await notionGetPagesToSyncActivity(
         notionAccessToken,
-        lastSyncedPeriodTs,
+        // if we're doing a garbage collection run, we want to fetch all pages
+        !isGargageCollectionRun ? lastSyncedPeriodTs : null,
         cursor,
         {
           pageIndex,
           dataSourceName: dataSourceConfig.dataSourceName,
           workspaceId: dataSourceConfig.workspaceId,
+          runType: isGargageCollectionRun
+            ? "garbageCollection"
+            : isInitialSync
+            ? "initialSync"
+            : "incrementalSync",
         }
       );
       cursor = nextCursor;
       pageIndex += 1;
 
-      const pagesToSync = pageIds.filter(
-        (pageId) => !pagesSyncedWithinPeriod.has(pageId)
-      );
+      let pagesToSync: string[] = [];
+
+      if (isGargageCollectionRun) {
+        // mark pages as visited to avoid deleting them
+        await markExistingPagesAsVisitedDuringRunActivity(
+          dataSourceConfig,
+          pageIds,
+          runTimestamp
+        );
+
+        // sync the pages found that haven't been synced yet
+        pagesToSync = await filterOutExistingPagesActivity(
+          dataSourceConfig,
+          pageIds
+        );
+      } else {
+        pagesToSync = pageIds;
+      }
+
       if (!pagesToSync.length) {
         continue;
-      }
-      if (lastSyncedPeriodTs) {
-        pagesToSync.forEach((pageId) => pagesSyncedWithinPeriod.add(pageId));
       }
 
       for (
@@ -119,7 +152,9 @@ export async function notionSyncWorkflow(
         const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
         const workflowId = `${getWorkflowId(
           dataSourceConfig
-        )}-result-page-${pageIndex}-${batchIndex}`;
+        )}-result-page-${pageIndex}-${batchIndex}${
+          isGargageCollectionRun ? "-gc" : ""
+        }`;
         promises.push(
           childWorkflowQueue.add(() =>
             executeChild(notionSyncResultPageWorkflow.name, {
@@ -133,21 +168,37 @@ export async function notionSyncWorkflow(
       }
     } while (cursor);
 
+    // wait for all child workflows to finish
     await Promise.all(promises);
-    await saveSuccessSyncActivity(dataSourceConfig);
-    lastSyncedPeriodTs = runTimestamp;
-    iterations += 1;
 
+    if (!isGargageCollectionRun) {
+      await saveSuccessSyncActivity(dataSourceConfig);
+      lastSyncedPeriodTs = runTimestamp;
+    } else {
+      // garbage collect the pages -- can be done non-blocking
+      void executeChild(notionGarbageCollectWorkflow.name, {
+        workflowId: `${getWorkflowId(dataSourceConfig)}-garbage-collection`,
+        args: [dataSourceConfig, runTimestamp],
+        // we don't want to wait for the garbage collection to finish
+        // and we don't want the child workflow to be terminated if the parent
+        // is cont'd as new
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
+      });
+    }
+
+    iterations += 1;
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   } while (
     !isInitialSync &&
-    (iterations < MAX_ITERATIONS_PER_WORKFLOW || pagesSyncedWithinPeriod.size)
+    !isGargageCollectionRun &&
+    iterations < MAX_ITERATIONS_PER_WORKFLOW
   );
 
   await continueAsNew<typeof notionSyncWorkflow>(
     dataSourceConfig,
     nangoConnectionId,
-    lastSyncedPeriodTs
+    // cannot actually be undefined, but TS doesn't know that
+    lastSyncedPeriodTs ?? undefined
   );
 }
 
@@ -183,4 +234,12 @@ export async function notionSyncResultPageWorkflow(
   }
 
   await Promise.all(promises);
+}
+
+export async function notionGarbageCollectWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  runTimestamp: number
+) {
+  await deletePagesNotVisitedInRunActivity(dataSourceConfig, runTimestamp);
+  await saveSuccessGarbageCollectionActivity(dataSourceConfig);
 }

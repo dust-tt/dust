@@ -99,3 +99,39 @@ async function _upsertToDatasource(
     throw new Error(`Error uploading to dust: ${dustRequestResult}`);
   }
 }
+
+export async function deleteFromDataSource(
+  dataSourceConfig: DataSourceConfig,
+  documentId: string,
+  loggerArgs: Record<string, string | number> = {}
+) {
+  const localLogger = logger.child({ ...loggerArgs, documentId });
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error deleting document from Dust.");
+    throw e;
+  }
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    localLogger.info("Successfully deleted document from Dust.");
+  } else {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+      },
+      "Error deleting document from Dust."
+    );
+    throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}

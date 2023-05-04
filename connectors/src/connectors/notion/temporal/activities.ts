@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import {
   getNotionPageFromConnectorsDb,
   upsertNotionPageInConnectorsDb,
@@ -7,13 +9,21 @@ import {
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import {
+  deleteFromDataSource,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
+import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
-import { upsertToDatasource } from "@connectors/lib/upsert";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import {
+  DataSourceConfig,
+  DataSourceInfo,
+} from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+const GARBAGE_COLLECTION_INTERVAL_HOURS = 24;
 
 export async function notionGetPagesToSyncActivity(
   accessToken: string,
@@ -94,10 +104,13 @@ export async function saveSuccessSyncActivity(
 
     const now = new Date();
 
+    const firstSuccessfulSyncTime = connector.firstSuccessfulSyncTime || now;
+
     await connector.update({
       lastSyncStatus: "succeeded",
       lastSyncFinishTime: now,
       lastSyncSuccessfulTime: now,
+      firstSuccessfulSyncTime,
     });
 
     await transaction.commit();
@@ -151,4 +164,181 @@ export async function getNotionAccessTokenActivity(
   )) as string;
 
   return notionAccessToken;
+}
+
+export async function shouldGarbageCollectActivity(
+  dataSourceConfig: DataSourceConfig
+): Promise<boolean> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  // If we have never finished a full sync, we should not garbage collect
+  const firstSuccessfulSyncTime = connector.firstSuccessfulSyncTime;
+  if (!firstSuccessfulSyncTime) {
+    return false;
+  }
+
+  const now = new Date().getTime();
+
+  // If we have never done a garbage collection, we should start one
+  // if it has been more than GARBAGE_COLLECTION_INTERVAL_HOURS since the first successful sync
+  if (!connector.lastGarbageCollectionStartTime) {
+    return (
+      now - firstSuccessfulSyncTime.getTime() >=
+      GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
+    );
+  }
+
+  const lastGarbageCollectionStartTime =
+    connector.lastGarbageCollectionStartTime.getTime();
+
+  // If we have started a garbage collection, we should not start another one
+  if (!connector.lastGarbageCollectionFinishTime) {
+    return false;
+  }
+  const lastGarbageCollectionFinishTime =
+    connector.lastGarbageCollectionFinishTime.getTime();
+  if (lastGarbageCollectionStartTime > lastGarbageCollectionFinishTime) {
+    return false;
+  }
+
+  // if we garbage collected less than GARBAGE_COLLECTION_INTERVAL_HOURS ago, we should not start another one
+  if (
+    now - lastGarbageCollectionFinishTime <=
+    GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function saveStartGarbageCollectionActivity(
+  dataSourceConfig: DataSourceConfig
+) {
+  const transaction = await sequelize_conn.transaction();
+
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        type: "notion",
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+    });
+
+    if (!connector) {
+      throw new Error("Could not find connector");
+    }
+
+    await connector.update({
+      lastGarbageCollectionStartTime: new Date(),
+    });
+
+    await transaction.commit();
+  } catch (e) {
+    await transaction.rollback();
+    throw e;
+  }
+}
+
+export async function markExistingPagesAsVisitedDuringRunActivity(
+  dataSourceInfo: DataSourceInfo,
+  pageIds: string[],
+  runTimestamp: number
+) {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  await NotionPage.update(
+    { lastSeenTs: new Date(runTimestamp) },
+    { where: { notionPageId: pageIds, connectorId: connector.id } }
+  );
+}
+
+export async function filterOutExistingPagesActivity(
+  dataSourceInfo: DataSourceInfo,
+  pageIds: string[]
+): Promise<string[]> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const existingPageIds = new Set(
+    (
+      await NotionPage.findAll({
+        where: { notionPageId: pageIds, connectorId: connector.id },
+        attributes: ["notionPageId"],
+      })
+    ).map((page) => page.notionPageId)
+  );
+
+  return pageIds.filter((pageId) => !existingPageIds.has(pageId));
+}
+
+export async function deletePagesNotVisitedInRunActivity(
+  dataSourceConfig: DataSourceConfig,
+  runTimestamp: number
+) {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const pagesToDelete = await NotionPage.findAll({
+    where: {
+      connectorId: connector.id,
+      lastSeenTs: {
+        [Op.lt]: new Date(runTimestamp),
+      },
+    },
+  });
+  for (const page of pagesToDelete) {
+    await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
+    await page.destroy();
+  }
+}
+
+export async function saveSuccessGarbageCollectionActivity(
+  dataSourceInfo: DataSourceInfo
+) {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  await connector.update({
+    lastGarbageCollectionFinishTime: new Date(),
+  });
 }
