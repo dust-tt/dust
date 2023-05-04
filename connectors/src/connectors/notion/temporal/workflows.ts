@@ -91,7 +91,7 @@ export async function notionSyncWorkflow(
       await saveStartGarbageCollectionActivity(dataSourceConfig);
     }
 
-    const runTimestamp = preProcessTimestampForNotion(Date.now());
+    const runTimestamp = Date.now();
 
     let cursor: string | null = null;
     let pageIndex = 0;
@@ -173,7 +173,7 @@ export async function notionSyncWorkflow(
 
     if (!isGargageCollectionRun) {
       await saveSuccessSyncActivity(dataSourceConfig);
-      lastSyncedPeriodTs = runTimestamp;
+      lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
     } else {
       // garbage collect the pages -- can be done non-blocking
       void executeChild(notionGarbageCollectWorkflow.name, {
