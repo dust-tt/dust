@@ -275,6 +275,11 @@ export async function filterOutExistingPagesActivity(
   dataSourceInfo: DataSourceInfo,
   pageIds: string[]
 ): Promise<string[]> {
+  const localLogger = logger.child({
+    dataSourceName: dataSourceInfo.dataSourceName,
+    workspaceId: dataSourceInfo.workspaceId,
+  });
+
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -294,13 +299,24 @@ export async function filterOutExistingPagesActivity(
     ).map((page) => page.notionPageId)
   );
 
-  return pageIds.filter((pageId) => !existingPageIds.has(pageId));
+  const newPageIds = pageIds.filter((pageId) => !existingPageIds.has(pageId));
+  localLogger.info(
+    { newPagesCount: newPageIds.length },
+    "Found new pages to sync."
+  );
+
+  return newPageIds;
 }
 
 export async function deletePagesNotVisitedInRunActivity(
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number
 ) {
+  const localLogger = logger.child({
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceName: dataSourceConfig.dataSourceName,
+  });
+
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -319,8 +335,20 @@ export async function deletePagesNotVisitedInRunActivity(
       },
     },
   });
+  localLogger.info(
+    { pagesToDeleteCount: pagesToDelete.length },
+    "Found pages to delete."
+  );
   for (const page of pagesToDelete) {
+    localLogger.info(
+      { pageId: page.notionPageId },
+      "Deleting page from data source."
+    );
     await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
+    localLogger.info(
+      { pageId: page.notionPageId },
+      "Deleting page from database."
+    );
     await page.destroy();
   }
 }
