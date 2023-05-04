@@ -116,9 +116,10 @@ export async function notionSyncWorkflow(
         i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
       ) {
         const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+        const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
         const workflowId = `${getWorkflowId(
           dataSourceConfig
-        )}-result-page-${pageIndex}-${i}`;
+        )}-result-page-${pageIndex}-${batchIndex}`;
         promises.push(
           childWorkflowQueue.add(() =>
             executeChild(notionSyncResultPageWorkflow.name, {
