@@ -9,7 +9,11 @@ import type * as activities from "@connectors/connectors/slack/temporal/activiti
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
-import { newWebhookSignal } from "./signals";
+import {
+  botJoinedChanelSignal,
+  botJoinedChanelSignalInput,
+  newWebhookSignal,
+} from "./signals";
 
 const {
   getChannel,
@@ -87,6 +91,7 @@ export async function syncOneChannel(
   } while (messagesCursor);
 
   console.log(`Syncing channel ${channelName} (${channelId}) done`);
+  await saveSuccessSyncActivity(connectorId);
 }
 
 export async function syncOneThreadDebounced(
@@ -180,28 +185,39 @@ export async function syncOneMessageDebounced(
 export async function memberJoinedChannel(
   connectorId: string,
   nangoConnectionId: string,
-  dataSourceConfig: DataSourceConfig,
-  channelId: string
+  dataSourceConfig: DataSourceConfig
 ): Promise<void> {
-  const slackAccessToken = await getAccessToken(nangoConnectionId);
-  const channel = await getChannel(slackAccessToken, channelId);
-  if (!channel.name) {
-    throw new Error(`Could not find channel name for channel ${channelId}`);
-  }
-  const channelName = channel.name;
-  await executeChild(syncOneChannel.name, {
-    workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-    args: [
-      connectorId,
-      nangoConnectionId,
-      dataSourceConfig,
-      channelId,
-      channelName,
-    ],
-  });
+  const channelsToJoin: string[] = [];
+  setHandler(
+    botJoinedChanelSignal,
+    ({ channelId }: botJoinedChanelSignalInput) => {
+      if (channelsToJoin.indexOf(channelId) === -1) {
+        channelsToJoin.push(channelId);
+      }
+    }
+  );
 
-  await saveSuccessSyncActivity(connectorId);
-  console.log(`Workspace sync done for connector ${connectorId}`);
+  let channelId: string | undefined;
+  while ((channelId = channelsToJoin.shift())) {
+    const slackAccessToken = await getAccessToken(nangoConnectionId);
+    const channel = await getChannel(slackAccessToken, channelId);
+    if (!channel.name) {
+      throw new Error(`Could not find channel name for channel ${channelId}`);
+    }
+    const channelName = channel.name;
+    await executeChild(syncOneChannel.name, {
+      workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+      args: [
+        connectorId,
+        nangoConnectionId,
+        dataSourceConfig,
+        channelId,
+        channelName,
+      ],
+    });
+  }
+  // /!\ Any signal received outside of the while loop will be lost, so don't make any async
+  // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
 export function workspaceFullSyncWorkflowId(connectorId: string) {
@@ -231,10 +247,6 @@ export function syncOneMessageDebouncedWorkflowId(
   return `slack-syncOneMessageDebounced-${connectorId}-${channelId}-${startTsMs}`;
 }
 
-export function memberJoinedChannelWorkflowId(
-  connectorId: string,
-  channelId: string,
-  userId: string
-) {
-  return `slack-memberJoinedChannel-${connectorId}-${channelId}-${userId}`;
+export function botJoinedChannelWorkflowId(connectorId: string) {
+  return `slack-memberJoinedChannel-${connectorId}`;
 }

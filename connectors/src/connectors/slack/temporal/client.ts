@@ -5,10 +5,10 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
-import { newWebhookSignal } from "./signals";
+import { botJoinedChanelSignal, newWebhookSignal } from "./signals";
 import {
+  botJoinedChannelWorkflowId,
   memberJoinedChannel,
-  memberJoinedChannelWorkflowId,
   syncOneMessageDebounced,
   syncOneMessageDebouncedWorkflowId,
   syncOneThreadDebounced,
@@ -156,10 +156,9 @@ export async function launchSlackSyncOneMessageWorkflow(
   }
 }
 
-export async function launchSlackUserJoinedWorkflow(
+export async function launchSlackBotJoinedWorkflow(
   connectorId: string,
-  channelId: string,
-  userId: string
+  channelId: string
 ) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -174,16 +173,14 @@ export async function launchSlackUserJoinedWorkflow(
   };
   const nangoConnectionId = connector.nangoConnectionId;
 
-  const workflowId = memberJoinedChannelWorkflowId(
-    connectorId,
-    channelId,
-    userId
-  );
+  const workflowId = botJoinedChannelWorkflowId(connectorId);
   try {
-    await client.workflow.start(memberJoinedChannel, {
-      args: [connectorId, nangoConnectionId, dataSourceConfig, channelId],
+    await client.workflow.signalWithStart(memberJoinedChannel, {
+      args: [connectorId, nangoConnectionId, dataSourceConfig],
       taskQueue: "slack-queue",
       workflowId: workflowId,
+      signal: botJoinedChanelSignal,
+      signalArgs: [{ channelId: channelId }],
     });
     logger.info(
       {
