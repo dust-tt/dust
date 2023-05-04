@@ -30,8 +30,7 @@ const {
 const {
   saveSuccessSyncActivity,
   saveStartSyncActivity,
-  getNotionAccessTokenActivity,
-  shouldGarbageCollectActivity,
+  getInitialWorkflowParamsActivity,
   saveStartGarbageCollectionActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
@@ -73,15 +72,10 @@ export async function notionSyncWorkflow(
 
   setHandler(getLastSyncPeriodTsQuery, () => lastSyncedPeriodTs);
 
-  const notionAccessToken = await getNotionAccessTokenActivity(
-    nangoConnectionId
-  );
+  const { notionAccessToken, shouldGargageCollect: isGargageCollectionRun } =
+    await getInitialWorkflowParamsActivity(dataSourceConfig, nangoConnectionId);
 
   const isInitialSync = !lastSyncedPeriodTs;
-
-  const isGargageCollectionRun = await shouldGarbageCollectActivity(
-    dataSourceConfig
-  );
 
   do {
     if (!isGargageCollectionRun) {
@@ -101,14 +95,16 @@ export async function notionSyncWorkflow(
 
     do {
       const { pageIds, nextCursor } = await notionGetPagesToSyncActivity(
+        dataSourceConfig,
         notionAccessToken,
         // if we're doing a garbage collection run, we want to fetch all pages
         !isGargageCollectionRun ? lastSyncedPeriodTs : null,
         cursor,
+        // if not in a garbage collection run, we don't  want to sync pages
+        // that are already up to date
+        !isGargageCollectionRun,
         {
           pageIndex,
-          dataSourceName: dataSourceConfig.dataSourceName,
-          workspaceId: dataSourceConfig.workspaceId,
           runType: isGargageCollectionRun
             ? "garbageCollection"
             : isInitialSync

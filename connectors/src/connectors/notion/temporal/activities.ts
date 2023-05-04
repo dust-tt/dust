@@ -26,12 +26,78 @@ const logger = mainLogger.child({ provider: "notion" });
 const GARBAGE_COLLECTION_INTERVAL_HOURS = 24;
 
 export async function notionGetPagesToSyncActivity(
+  dataSourceInfo: DataSourceInfo,
   accessToken: string,
   lastSyncedAt: number | null,
   cursor: string | null,
+  excludeUpToDatePages: boolean,
   loggerArgs: Record<string, string | number>
 ): Promise<{ pageIds: string[]; nextCursor: string | null }> {
-  return getPagesEditedSince(accessToken, lastSyncedAt, cursor, loggerArgs);
+  const localLogger = logger.child({
+    ...loggerArgs,
+    dataSourceName: dataSourceInfo.dataSourceName,
+    workspaceId: dataSourceInfo.workspaceId,
+  });
+
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const { pages, nextCursor } = await getPagesEditedSince(
+    accessToken,
+    lastSyncedAt,
+    cursor,
+    {
+      ...loggerArgs,
+      dataSourceName: dataSourceInfo.dataSourceName,
+      workspaceId: dataSourceInfo.workspaceId,
+    }
+  );
+
+  if (!excludeUpToDatePages) {
+    return {
+      pageIds: pages.map((p) => p.id),
+      nextCursor,
+    };
+  }
+
+  const existingPages = await NotionPage.findAll({
+    where: {
+      notionPageId: pages.map((p) => p.id),
+      connectorId: connector.id,
+    },
+    attributes: ["notionPageId", "lastSeenTs"],
+  });
+  localLogger.info({ count: existingPages.length }, "Found existing pages");
+  const lastSeenTsByPageId = new Map<string, number>();
+  for (const page of existingPages) {
+    lastSeenTsByPageId.set(page.notionPageId, page.lastSeenTs.getTime());
+  }
+  const filteredPageIds = pages
+    .filter(({ id, lastEditedTs }) => {
+      const ts = lastSeenTsByPageId.get(id);
+      return !ts || ts < lastEditedTs;
+    })
+    .map((p) => p.id);
+
+  localLogger.info(
+    {
+      count: existingPages.length - filteredPageIds.length,
+    },
+    "Filtered out pages already up to date."
+  );
+
+  return {
+    pageIds: filteredPageIds,
+    nextCursor,
+  };
 }
 
 export async function notionUpsertPageActivity(
@@ -149,7 +215,20 @@ export async function saveStartSyncActivity(
   }
 }
 
-export async function getNotionAccessTokenActivity(
+export async function getInitialWorkflowParamsActivity(
+  dataSourceConfig: DataSourceConfig,
+  nangoConnectionId: string
+): Promise<{
+  notionAccessToken: string;
+  shouldGargageCollect: boolean;
+}> {
+  return {
+    notionAccessToken: await getNotionAccessToken(nangoConnectionId),
+    shouldGargageCollect: await shouldGarbageCollect(dataSourceConfig),
+  };
+}
+
+async function getNotionAccessToken(
   nangoConnectionId: string
 ): Promise<string> {
   const { NANGO_NOTION_CONNECTOR_ID } = process.env;
@@ -166,7 +245,7 @@ export async function getNotionAccessTokenActivity(
   return notionAccessToken;
 }
 
-export async function shouldGarbageCollectActivity(
+async function shouldGarbageCollect(
   dataSourceConfig: DataSourceConfig
 ): Promise<boolean> {
   const connector = await Connector.findOne({
