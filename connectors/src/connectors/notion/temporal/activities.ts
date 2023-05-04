@@ -1,10 +1,13 @@
 import {
+  getNotionPageFromConnectorsDb,
+  upsertNotionPageInConnectorsDb,
+} from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import {
   getPagesEditedSince,
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
-import { registerPageSeen } from "@connectors/connectors/notion/lib/register_page_seen";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { upsertToDatasource } from "@connectors/lib/upsert";
 import mainLogger from "@connectors/logger/logger";
@@ -30,7 +33,7 @@ export async function notionUpsertPageActivity(
 ) {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
-  const alreadySeenInRun = !(await registerPageSeen(
+  const alreadySeenInRun = !!(await getNotionPageFromConnectorsDb(
     dataSourceConfig,
     pageId,
     runTimestamp
@@ -41,43 +44,34 @@ export async function notionUpsertPageActivity(
     return;
   }
 
+  let upsertTs: number | undefined = undefined;
+
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
-
-  if (!parsedPage || !parsedPage.hasBody) {
-    localLogger.info("Skipping page without body");
-    return;
-  }
-  const documentId = `notion-${parsedPage.id}`;
-  await upsertToDatasource(
-    dataSourceConfig,
-    documentId,
-    parsedPage.rendered,
-    parsedPage.url,
-    parsedPage.createdTime,
-    getTagsForPage(parsedPage),
-    3,
-    500,
-    loggerArgs
-  );
-
-  const notionPage = await NotionPage.findOne({
-    where: {
-      notionPageId: pageId,
-    },
-  });
-
-  if (!notionPage) {
-    localLogger.warn(
-      "notionUpsertPageActivity: Could not find notion page in DB."
+  if (parsedPage && parsedPage.hasBody) {
+    upsertTs = new Date().getTime();
+    const documentId = `notion-${parsedPage.id}`;
+    await upsertToDatasource(
+      dataSourceConfig,
+      documentId,
+      parsedPage.rendered,
+      parsedPage.url,
+      parsedPage.createdTime,
+      getTagsForPage(parsedPage),
+      3,
+      500,
+      loggerArgs
     );
-    return;
+  } else {
+    localLogger.info("Skipping page without body");
   }
 
-  localLogger.info("notionUpsertPageActivity: Updating notion page in DB.");
-  await notionPage.update({
-    lastUpsertedTs: new Date(),
-    dustDatasourceDocumentId: documentId,
-  });
+  localLogger.info("notionUpsertPageActivity: Upserting notion page in DB.");
+  await upsertNotionPageInConnectorsDb(
+    dataSourceConfig,
+    pageId,
+    runTimestamp,
+    upsertTs
+  );
 }
 
 export async function saveSuccessSyncActivity(
