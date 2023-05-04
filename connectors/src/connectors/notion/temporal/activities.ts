@@ -250,30 +250,10 @@ export async function saveStartGarbageCollectionActivity(
   }
 }
 
-export async function markExistingPagesAsVisitedDuringRunActivity(
+export async function syncGarbageCollectorPagesActivity(
   dataSourceInfo: DataSourceInfo,
   pageIds: string[],
   runTimestamp: number
-) {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-  await NotionPage.update(
-    { lastSeenTs: new Date(runTimestamp) },
-    { where: { notionPageId: pageIds, connectorId: connector.id } }
-  );
-}
-
-export async function filterOutExistingPagesActivity(
-  dataSourceInfo: DataSourceInfo,
-  pageIds: string[]
 ): Promise<string[]> {
   const localLogger = logger.child({
     dataSourceName: dataSourceInfo.dataSourceName,
@@ -290,6 +270,12 @@ export async function filterOutExistingPagesActivity(
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  await NotionPage.update(
+    { lastSeenTs: new Date(runTimestamp) },
+    { where: { notionPageId: pageIds, connectorId: connector.id } }
+  );
+
   const existingPageIds = new Set(
     (
       await NotionPage.findAll({

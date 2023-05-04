@@ -20,8 +20,7 @@ const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
 
 const {
   notionGetPagesToSyncActivity,
-  markExistingPagesAsVisitedDuringRunActivity,
-  filterOutExistingPagesActivity,
+  syncGarbageCollectorPagesActivity,
   deletePagesNotVisitedInRunActivity,
   saveSuccessGarbageCollectionActivity,
 } = proxyActivities<typeof activities>({
@@ -123,17 +122,12 @@ export async function notionSyncWorkflow(
       let pagesToSync: string[] = [];
 
       if (isGargageCollectionRun) {
-        // mark pages as visited to avoid deleting them
-        await markExistingPagesAsVisitedDuringRunActivity(
+        // mark pages as visited to avoid deleting them and return
+        // pages that are new
+        pagesToSync = await syncGarbageCollectorPagesActivity(
           dataSourceConfig,
           pageIds,
           runTimestamp
-        );
-
-        // sync the pages found that haven't been synced yet
-        pagesToSync = await filterOutExistingPagesActivity(
-          dataSourceConfig,
-          pageIds
         );
       } else {
         pagesToSync = pageIds;
