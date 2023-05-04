@@ -15,6 +15,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     logger.info("Done");
+    process.exit(0);
   })
   .catch((err) => {
     logger.error(
