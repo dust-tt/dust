@@ -16,7 +16,7 @@ import { getWorkflowId } from "./utils";
 
 const { notionUpsertPageActivity, notionGetPagesToSyncActivity } =
   proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minute",
+    startToCloseTimeout: "10 minute",
   });
 
 const {
