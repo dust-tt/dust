@@ -216,8 +216,6 @@ export async function memberJoinedChannel(
       ],
     });
   }
-  await saveSuccessSyncActivity(connectorId);
-  console.log(`Workspace sync done for connector ${connectorId}`);
 }
 
 export function workspaceFullSyncWorkflowId(connectorId: string) {
