@@ -216,6 +216,8 @@ export async function memberJoinedChannel(
       ],
     });
   }
+  // /!\ Any signal received outside of the while loop will be lost, so don't make any async
+  // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
 export function workspaceFullSyncWorkflowId(connectorId: string) {
