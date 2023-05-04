@@ -3,7 +3,7 @@ import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
-import { Connector } from "@connectors/lib/models";
+import { Connector, NotionPage } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
@@ -186,4 +186,25 @@ export async function fullResyncNotionConnector(connectorId: string) {
   }
 
   return new Ok(connector.id.toString());
+}
+
+export async function cleanupNotionConnector(
+  connectorId: string
+): Promise<Result<void, Error>> {
+  const connector = await Connector.findOne({
+    where: { type: "notion", id: connectorId },
+  });
+
+  if (!connector) {
+    logger.error({ connectorId }, "Notion connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await NotionPage.destroy({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+
+  return new Ok(undefined);
 }
