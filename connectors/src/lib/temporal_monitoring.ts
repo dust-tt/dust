@@ -8,14 +8,12 @@ import StatsDClient from "hot-shots";
 
 import logger, { Logger } from "@connectors/logger/logger";
 
-import { WorkflowErrorType } from "./error";
-
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export const statsDClient = new StatsDClient({});
+const statsDClient = new StatsDClient({});
 
 export class ActivityInboundLogInterceptor
   implements ActivityInboundCallsInterceptor
@@ -62,20 +60,22 @@ export class ActivityInboundLogInterceptor
     } finally {
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
-        const errorType: WorkflowErrorType = error.type
-          ? error.type
-          : "unhandled_internal_activity_error";
-
-        this.logger.error(
-          {
-            durationMs: durationMs,
-            error: {
-              type: errorType,
-              message: error.message,
+        let errorType = "unhandled_internal_activity_error";
+        if (error.__is_dust_error !== undefined) {
+          // this is a dust error
+          errorType = error.type;
+          this.logger.error({ error, durationMs }, "Activity failed");
+        } else {
+          // unknown error type
+          this.logger.error(
+            {
+              error,
+              error_stack: error?.stack,
+              durationMs: durationMs,
             },
-          },
-          `Activity failed.`
-        );
+            "Activity failed"
+          );
+        }
 
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);

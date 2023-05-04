@@ -26,6 +26,7 @@ export function errorFromAny(e: any): Error {
 export type WorkflowErrorType = "unhandled_internal_activity_error";
 
 export type WorkflowError = {
-  type: string;
+  type: WorkflowErrorType;
   message: string;
+  __is_dust_error: boolean;
 };
