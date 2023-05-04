@@ -39,7 +39,7 @@ const SYNC_PERIOD_DURATION_MS = 60_000;
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
 
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
-const MAX_PENDING_UPSERT_ACTIVITIES = 3;
+const MAX_PENDING_UPSERT_ACTIVITIES = 5;
 const MAX_PENDING_DB_ACTIVITIES = 10;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
