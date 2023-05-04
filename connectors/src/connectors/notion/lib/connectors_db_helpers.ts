@@ -6,7 +6,7 @@ export async function upsertNotionPageInConnectorsDb(
   notionPageId: string,
   lastSeenTs: number,
   lastUpsertedTs?: number
-) {
+): Promise<NotionPage> {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -32,9 +32,9 @@ export async function upsertNotionPageInConnectorsDb(
   }
 
   if (page) {
-    await page.update(updateParams);
+    return page.update(updateParams);
   } else {
-    await NotionPage.create({
+    return NotionPage.create({
       notionPageId,
       connectorId: connector.id,
       ...updateParams,
