@@ -2,3 +2,4 @@
 *.sqlite
 .DS_Store
 test.sh
+.env.local
