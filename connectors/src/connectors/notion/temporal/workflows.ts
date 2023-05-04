@@ -23,7 +23,6 @@ const {
   saveSuccessSyncActivity,
   saveStartSyncActivity,
   getNotionAccessTokenActivity,
-  registerPageSeenActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -39,8 +38,9 @@ const SYNC_PERIOD_DURATION_MS = 60_000;
 const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
 
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
+const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
+
 const MAX_PENDING_UPSERT_ACTIVITIES = 5;
-const MAX_PENDING_DB_ACTIVITIES = 10;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -73,8 +73,9 @@ export async function notionSyncWorkflow(
 
   do {
     await saveStartSyncActivity(dataSourceConfig);
-    const nextSyncedPeriodTs = preProcessTimestampForNotion(Date.now());
-    if (nextSyncedPeriodTs !== lastSyncedPeriodTs) {
+    const runTimestamp = preProcessTimestampForNotion(Date.now());
+
+    if (runTimestamp !== lastSyncedPeriodTs) {
       pagesSyncedWithinPeriod = new Set();
     }
 
@@ -109,28 +110,31 @@ export async function notionSyncWorkflow(
         pagesToSync.forEach((pageId) => pagesSyncedWithinPeriod.add(pageId));
       }
 
-      const workflowId = `${getWorkflowId(
-        dataSourceConfig
-      )}-result-page-${pageIndex}`;
-      promises.push(
-        childWorkflowQueue.add(() =>
-          executeChild(notionSyncResultPageWorkflow.name, {
-            workflowId,
-            args: [
-              dataSourceConfig,
-              notionAccessToken,
-              pagesToSync,
-              nextSyncedPeriodTs,
-            ],
-            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-          })
-        )
-      );
+      for (
+        let i = 0;
+        i < pagesToSync.length;
+        i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+      ) {
+        const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+        const workflowId = `${getWorkflowId(
+          dataSourceConfig
+        )}-result-page-${pageIndex}-${i}`;
+        promises.push(
+          childWorkflowQueue.add(() =>
+            executeChild(notionSyncResultPageWorkflow.name, {
+              workflowId,
+              args: [dataSourceConfig, notionAccessToken, batch, runTimestamp],
+              parentClosePolicy:
+                ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            })
+          )
+        );
+      }
     } while (cursor);
 
     await Promise.all(promises);
     await saveSuccessSyncActivity(dataSourceConfig);
-    lastSyncedPeriodTs = nextSyncedPeriodTs;
+    lastSyncedPeriodTs = runTimestamp;
     iterations += 1;
 
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
@@ -150,24 +154,15 @@ export async function notionSyncResultPageWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   pageIds: string[],
-  nextSyncedPeriodTs: number
+  runTimestamp: number
 ) {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
-  });
-  const dbQueue = new PQueue({
-    concurrency: MAX_PENDING_DB_ACTIVITIES,
   });
 
   const promises: Promise<void>[] = [];
 
   for (const [pageIndex, pageId] of pageIds.entries()) {
-    promises.push(
-      dbQueue.add(() =>
-        registerPageSeenActivity(dataSourceConfig, pageId, nextSyncedPeriodTs)
-      )
-    );
-
     const loggerArgs = {
       dataSourceName: dataSourceConfig.dataSourceName,
       workspaceId: dataSourceConfig.workspaceId,
@@ -179,6 +174,7 @@ export async function notionSyncResultPageWorkflow(
           notionAccessToken,
           pageId,
           dataSourceConfig,
+          runTimestamp,
           loggerArgs
         )
       )
