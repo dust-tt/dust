@@ -326,15 +326,8 @@ export async function deletePagesNotVisitedInRunActivity(
     "Found pages to delete."
   );
   for (const page of pagesToDelete) {
-    localLogger.info(
-      { pageId: page.notionPageId },
-      "Deleting page from data source."
-    );
+    localLogger.info({ pageId: page.notionPageId }, "Deleting page.");
     await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
-    localLogger.info(
-      { pageId: page.notionPageId },
-      "Deleting page from database."
-    );
     await page.destroy();
   }
 }
