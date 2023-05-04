@@ -22,3 +22,11 @@ export function errorFromAny(e: any): Error {
     stack: e.stack || "No stack trace",
   };
 }
+
+export type WorkflowErrorType = "unhandled_internal_activity_error";
+
+export type WorkflowError = {
+  type: WorkflowErrorType;
+  message: string;
+  __is_dust_error: boolean;
+};
