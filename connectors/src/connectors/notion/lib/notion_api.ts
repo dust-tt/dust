@@ -495,12 +495,20 @@ async function parsePageBlock(
       return parsedBlocks;
     }
 
-    let children: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
-      null;
+    const parsedChildren: ParsedBlock[] = [];
     try {
-      children = await collectPaginatedAPI(notionClient.blocks.children.list, {
-        block_id: block.id,
-      });
+      for await (const child of iteratePaginatedAPI(
+        notionClient.blocks.children.list,
+        {
+          block_id: block.id,
+        }
+      )) {
+        if (isFullBlock(child)) {
+          parsedChildren.push(
+            ...(await parsePageBlock(child, notionClient, pageLogger))
+          );
+        }
+      }
     } catch (e) {
       if (
         APIResponseError.isAPIResponseError(e) &&
@@ -511,17 +519,6 @@ async function parsePageBlock(
       }
       throw e;
     }
-
-    const parsedChildren = (
-      await Promise.all(
-        children.map(async (child) => {
-          if (isFullBlock(child)) {
-            return parsePageBlock(child, notionClient, pageLogger);
-          }
-          return [];
-        })
-      )
-    ).flat();
 
     return parsedBlocks.concat(indentBlocks(parsedChildren));
   }

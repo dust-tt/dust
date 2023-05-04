@@ -10,8 +10,9 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { getWorkflowId } from "@connectors/connectors/notion/temporal/client";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+
+import { getWorkflowId } from "./utils";
 
 const { notionUpsertPageActivity, notionGetPagesToSyncActivity } =
   proxyActivities<typeof activities>({
@@ -160,19 +161,26 @@ export async function notionSyncResultPageWorkflow(
 
   const promises: Promise<void>[] = [];
 
-  for (const pageId of pageIds) {
+  for (const [pageIndex, pageId] of pageIds.entries()) {
     promises.push(
       dbQueue.add(() =>
         registerPageSeenActivity(dataSourceConfig, pageId, nextSyncedPeriodTs)
       )
     );
 
+    const loggerArgs = {
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
+      pageIndex,
+    };
     promises.push(
       upsertQueue.add(() =>
-        notionUpsertPageActivity(notionAccessToken, pageId, dataSourceConfig, {
-          dataSourceName: dataSourceConfig.dataSourceName,
-          workspaceId: dataSourceConfig.workspaceId,
-        })
+        notionUpsertPageActivity(
+          notionAccessToken,
+          pageId,
+          dataSourceConfig,
+          loggerArgs
+        )
       )
     );
   }

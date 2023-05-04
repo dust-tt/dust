@@ -5,6 +5,7 @@ import {
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
+import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -14,10 +15,6 @@ import {
 } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
-
-export function getWorkflowId(dataSourceInfo: DataSourceInfo) {
-  return `workflow-notion-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
-}
 
 export async function launchNotionSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
