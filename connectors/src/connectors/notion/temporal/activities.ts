@@ -28,7 +28,6 @@ export async function notionUpsertPageActivity(
   runTimestamp: number,
   loggerArgs: Record<string, string | number>
 ) {
-  const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
   const alreadySeenInRun = !(await registerPageSeen(
@@ -41,6 +40,8 @@ export async function notionUpsertPageActivity(
     localLogger.info("Skipping page already seen in this run");
     return;
   }
+
+  const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
 
   if (!parsedPage || !parsedPage.hasBody) {
     localLogger.info("Skipping page without body");
