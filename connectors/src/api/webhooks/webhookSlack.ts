@@ -5,9 +5,9 @@ import {
   whoAmI,
 } from "@connectors/connectors/slack/temporal/activities";
 import {
+  launchSlackBotJoinedWorkflow,
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
-  launchSlackUserJoinedWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
@@ -130,10 +130,9 @@ const _webhookSlackAPIHandler = async (
       if (myUserId !== req.body.event.user) {
         return res.status(200).send();
       }
-      const launchRes = await launchSlackUserJoinedWorkflow(
+      const launchRes = await launchSlackBotJoinedWorkflow(
         slackConfiguration.connectorId.toString(),
-        req.body.event.channel,
-        req.body.event.user
+        req.body.event.channel
       );
       logger.info(
         {
