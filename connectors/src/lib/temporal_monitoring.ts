@@ -54,9 +54,7 @@ export class ActivityInboundLogInterceptor
     ];
 
     try {
-      const result = await next(input);
-
-      return result;
+      return await next(input);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error = err;
