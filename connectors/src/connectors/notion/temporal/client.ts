@@ -15,8 +15,8 @@ import {
 
 const logger = mainLogger.child({ provider: "notion" });
 
-function getWorkflowId(dataSourceConfig: DataSourceInfo) {
-  return `workflow-notion-${dataSourceConfig.workspaceId}-${dataSourceConfig.dataSourceName}`;
+export function getWorkflowId(dataSourceInfo: DataSourceInfo) {
+  return `workflow-notion-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
 }
 
 export async function launchNotionSyncWorkflow(
