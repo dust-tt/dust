@@ -1,4 +1,5 @@
 import {
+  cleanupNotionConnector,
   createNotionConnector,
   fullResyncNotionConnector,
   resumeNotionConnector,
@@ -6,7 +7,7 @@ import {
 } from "@connectors/connectors/notion";
 import { createSlackConnector } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Result } from "@connectors/lib/result";
+import { Ok, Result } from "@connectors/lib/result";
 import { ConnectorProvider } from "@connectors/types/connector";
 import {
   DataSourceConfig,
@@ -38,6 +39,19 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   notion: stopNotionConnector,
+};
+
+// Should cleanup any state/resources associated with the connector
+type ConnectorCleaner = (connectorId: string) => Promise<Result<void, Error>>;
+export const CLEAN_CONNECTOR_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorCleaner
+> = {
+  slack: async () => {
+    // no-op
+    return new Ok(undefined);
+  },
+  notion: cleanupNotionConnector,
 };
 
 type ConnectorResumer = (

@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 
-import { STOP_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import {
+  CLEAN_CONNECTOR_BY_TYPE,
+  STOP_CONNECTOR_BY_TYPE,
+} from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
@@ -77,6 +80,19 @@ const _deleteConnectorAPIHandler = async (
         api_error: {
           type: "internal_server_error",
           message: "Could not find the connector",
+        },
+        status_code: 500,
+      });
+    }
+
+    const connectorCleaner =
+      CLEAN_CONNECTOR_BY_TYPE[req.params.connector_provider];
+    const cleanRes = await connectorCleaner(connector.id.toString());
+    if (cleanRes.isErr()) {
+      return apiError(req, res, {
+        api_error: {
+          type: "internal_server_error",
+          message: cleanRes.error.message,
         },
         status_code: 500,
       });
