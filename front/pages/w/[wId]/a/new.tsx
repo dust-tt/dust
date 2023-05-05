@@ -85,8 +85,8 @@ export default function NewApp({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: appName,
-        description: appDescription,
+        name: appName.slice(0, 255),
+        description: appDescription.slice(0, 255),
         visibility: appVisibility,
       }),
     });

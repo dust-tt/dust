@@ -325,9 +325,9 @@ export default function DatasetView({
     setDatasetData(data);
     setDatasetTypes([]);
     onUpdate(datasetInitializing, datasetTypesValidation(), {
-      name: datasetName,
+      name: datasetName.slice(0, 255),
       // keys: datasetKeys,
-      description: datasetDescription || "",
+      description: (datasetDescription || "").slice(0, 255),
       data: datasetData,
     });
   };
@@ -349,9 +349,9 @@ export default function DatasetView({
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
       onUpdate(datasetInitializing, valid, {
-        name: datasetName,
+        name: datasetName.slice(0, 255),
         // keys: datasetKeys,
-        description: datasetDescription || "",
+        description: (datasetDescription || "").slice(0, 255),
         data: exportDataset(),
       });
     }
