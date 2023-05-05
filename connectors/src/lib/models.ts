@@ -42,8 +42,6 @@ export class Connector extends Model<
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
-
-  declare notionConnectorState?: NotionConnectorState;
 }
 
 Connector.init(
@@ -203,10 +201,7 @@ NotionConnectorState.init(
   }
 );
 
-Connector.hasOne(NotionConnectorState, {
-  as: "notionConnectorState",
-  foreignKey: "connectorId",
-});
+Connector.hasOne(NotionConnectorState);
 
 export class NotionPage extends Model<
   InferAttributes<NotionPage>,

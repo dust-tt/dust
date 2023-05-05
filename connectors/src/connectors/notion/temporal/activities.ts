@@ -259,12 +259,15 @@ async function shouldGarbageCollect(
       workspaceId: dataSourceConfig.workspaceId,
       dataSourceName: dataSourceConfig.dataSourceName,
     },
-    include: { model: NotionConnectorState, as: "notionConnectorState" },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const notionConnectorState = connector.notionConnectorState;
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
   if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
@@ -322,18 +325,23 @@ export async function saveStartGarbageCollectionActivity(
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
-      include: { model: NotionConnectorState, as: "notionConnectorState" },
     });
 
     if (!connector) {
       throw new Error("Could not find connector");
     }
 
-    if (!connector.notionConnectorState) {
+    const notionConnectorState = await NotionConnectorState.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    if (!notionConnectorState) {
       throw new Error("Could not find notionConnectorState");
     }
 
-    await connector.notionConnectorState.update({
+    await notionConnectorState.update({
       lastGarbageCollectionStartTime: new Date(),
     });
 
@@ -435,15 +443,19 @@ export async function saveSuccessGarbageCollectionActivity(
       workspaceId: dataSourceInfo.workspaceId,
       dataSourceName: dataSourceInfo.dataSourceName,
     },
-    include: { model: NotionConnectorState, as: "notionConnectorState" },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  if (!connector.notionConnectorState) {
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
-  await connector.notionConnectorState.update({
+  await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
 }
