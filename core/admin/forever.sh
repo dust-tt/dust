@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export $(cat _core.env.local | xargs)
+export $(cat .env.local | xargs)
 
 until cargo run --release --bin dust-api
 do
