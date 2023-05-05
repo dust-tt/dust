@@ -9,6 +9,7 @@ import {
   getParsedPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
+import { syncStarted, syncSucceeded } from "@connectors/connectors/sync_status";
 import {
   deleteFromDataSource,
   upsertToDatasource,
@@ -158,65 +159,41 @@ export async function notionUpsertPageActivity(
 export async function saveSuccessSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const transaction = await sequelize_conn.transaction();
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
 
-  try {
-    const connector = await Connector.findOne({
-      where: {
-        type: "notion",
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-      },
-    });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
 
-    if (!connector) {
-      throw new Error("Could not find connector");
-    }
-
-    const now = new Date();
-
-    const firstSuccessfulSyncTime = connector.firstSuccessfulSyncTime || now;
-
-    await connector.update({
-      lastSyncStatus: "succeeded",
-      lastSyncFinishTime: now,
-      lastSyncSuccessfulTime: now,
-      firstSuccessfulSyncTime,
-    });
-
-    await transaction.commit();
-  } catch (e) {
-    await transaction.rollback();
-    throw e;
+  const res = await syncSucceeded(connector.id);
+  if (res.isErr()) {
+    throw res.error;
   }
 }
 
 export async function saveStartSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const transaction = await sequelize_conn.transaction();
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
 
-  try {
-    const connector = await Connector.findOne({
-      where: {
-        type: "notion",
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-      },
-    });
-
-    if (!connector) {
-      throw new Error("Could not find connector");
-    }
-
-    await connector.update({
-      lastSyncStartTime: new Date(),
-    });
-
-    await transaction.commit();
-  } catch (e) {
-    await transaction.rollback();
-    throw e;
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const res = await syncStarted(connector.id);
+  if (res.isErr()) {
+    throw res.error;
   }
 }
 
