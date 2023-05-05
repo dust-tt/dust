@@ -8,8 +8,8 @@ import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { useMembers } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
+import { classNames, isEmailValid } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -61,8 +61,10 @@ export default function NewApp({
       ? `${url}/?signIn=google&wId=${owner.sId}`
       : null
   );
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const { members, isMembersLoading } = useMembers(owner);
+  const { invitations } = useWorkspaceInvitations(owner);
 
   const formValidation = () => {
     let valid = true;
@@ -121,6 +123,40 @@ export default function NewApp({
     }
   };
 
+  const handleSendInvitation = async () => {
+    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inviteEmail,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to invite new member to workspace.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  };
+
+  const handleRevokeInvitation = async (invitationId: number) => {
+    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "revoked",
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to revoke member's invitation.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  };
+
   const handleMemberRoleChange = async (member: UserType, role: string) => {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
       method: "POST",
@@ -152,21 +188,23 @@ export default function NewApp({
                   Workspace settings
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  A workspace lets you collaborate with your team. Use this
-                  panel to manage memberships and generate an invite link for a
-                  specific email domain.
+                  A workspace lets you collaborate with your team. Manage your
+                  workspace name and whitelist a domain to allow users with an
+                  email from that domain to join this workspace.
                 </p>
               </div>
               <div>
                 <div className="mt-8 space-y-8">
-                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
-                    <div className="sm:col-span-3">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-6">
                       <label
                         htmlFor="appName"
                         className="block text-sm font-medium text-gray-700"
                       >
                         Workspace Name
                       </label>
+                    </div>
+                    <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <input
                           type="text"
@@ -186,19 +224,33 @@ export default function NewApp({
                         Think GitHub repository names, short and memorable.
                       </p>
                     </div>
-
                     <div className="sm:col-span-3">
-                      <div className="flex justify-between">
-                        <label
-                          htmlFor="appDescription"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Allowed Email Domain
-                        </label>
-                        <div className="text-sm font-normal text-gray-400">
-                          optional
+                      <div className="flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="flex">
+                          <Button
+                            disabled={disable}
+                            type="submit"
+                            onClick={handleUpdateWorkspace}
+                          >
+                            Update
+                          </Button>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-8 space-y-8">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-6">
+                      <label
+                        htmlFor="appName"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Whitelist domain for workspace
+                      </label>
+                    </div>
+                    <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <input
                           type="text"
@@ -221,8 +273,8 @@ export default function NewApp({
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Allow users with the specific email domain to join this
-                        workspace.
+                        Allow users with an email from a specific domain to join
+                        this workspace.
                       </p>
                       {inviteLink ? (
                         <div className="mt-2">
@@ -240,164 +292,251 @@ export default function NewApp({
                         </div>
                       ) : null}
                     </div>
-                  </div>
-
-                  <div className="flex flex-row">
-                    <div className="flex flex-1"></div>
-                    <div className="flex">
-                      <Button
-                        disabled={disable}
-                        type="submit"
-                        onClick={handleUpdateWorkspace}
-                      >
-                        Update
-                      </Button>
+                    <div className="sm:col-span-3">
+                      <div className="flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="flex">
+                          <Button
+                            disabled={disable}
+                            type="submit"
+                            onClick={handleUpdateWorkspace}
+                          >
+                            Update
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-
+            </div>
+            <div className="mt-20 space-y-8 divide-y divide-gray-200">
               <div>
-                <div className="mt-8 space-y-8">
-                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
-                    <div className="sm:col-span-5">
-                      <div className="block text-sm font-medium text-gray-800">
-                        {members.length} Members
-                        {isMembersLoading ? (
-                          <span className="ml-2 text-xs text-gray-400">
-                            loading...
-                          </span>
-                        ) : null}
+                <h3 className="text-base font-medium leading-6 text-gray-900">
+                  Workspace members
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Manage active members and invitations to your workspace.
+                </p>
+              </div>
+              <div className="mt-8 space-y-8">
+                <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                  <div className="sm:col-span-6">
+                    <label
+                      htmlFor="appName"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Invite per email
+                    </label>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                      <input
+                        type="text"
+                        name="inviteEmail"
+                        id="inviteEmail"
+                        className={classNames(
+                          "block w-full min-w-0 flex-1 rounded-md text-sm",
+                          allowedDomainError
+                            ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
+                            : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                        )}
+                        value={inviteEmail || ""}
+                        onChange={(e) => {
+                          if (e.target.value.length > 0) {
+                            setInviteEmail(e.target.value);
+                          } else {
+                            setInviteEmail("");
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <div className="flex flex-row">
+                      <div className="flex flex-1"></div>
+                      <div className="flex">
+                        <Button
+                          disabled={!inviteEmail || !isEmailValid(inviteEmail)}
+                          type="submit"
+                          onClick={handleSendInvitation}
+                        >
+                          Send Invite
+                        </Button>
                       </div>
-                      <ul className="mt-6 space-y-4">
-                        {members.map((member) => (
-                          <li
-                            key={member.id}
-                            className="mt-2 flex items-center justify-between"
-                          >
-                            <div className="flex items-center">
-                              <div className="">
-                                <div className="text-sm font-medium text-gray-500">
-                                  {member.name}{" "}
-                                  {member.id === user?.id ? (
-                                    <span className="ml-1 rounded-sm bg-gray-200 px-1 py-0.5 text-xs font-bold text-gray-900">
-                                      you
-                                    </span>
-                                  ) : null}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
+                  <div className="sm:col-span-5">
+                    <div className="block text-sm font-medium text-gray-800">
+                      Members: {invitations.length} pending invitation(s),{" "}
+                      {members.length} active member(s).
+                      {isMembersLoading ? (
+                        <span className="ml-2 text-xs text-gray-400">
+                          loading...
+                        </span>
+                      ) : null}
+                    </div>
+                    <ul className="mt-6 space-y-4">
+                      {invitations.map((invitation) => (
+                        <li
+                          key={invitation.id}
+                          className="mt-2 flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <div className="">
+                              <div className="text-sm font-medium text-gray-500">
+                                {invitation.inviteEmail}
+                              </div>
+                              <div className="flex-cols flex text-sm text-gray-500">
+                                <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
+                                  <img src="/static/favicon.png"></img>
                                 </div>
-                                {member.provider === "google" ? (
-                                  <div className="flex-cols flex text-sm text-gray-500">
-                                    <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
-                                      <img src="/static/google_white_32x32.png"></img>
-                                    </div>
-                                    <div className="flex flex-1">
-                                      {member.email}
-                                    </div>
-                                  </div>
-                                ) : null}
-                                {member.provider === "github" ? (
-                                  <div className="flex-cols flex text-sm text-gray-500">
-                                    <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
-                                      <img src="/static/github_black_32x32.png"></img>
-                                    </div>
-                                    <div className="flex flex-1">
-                                      {member.username}
-                                    </div>
-                                  </div>
-                                ) : null}
+                                <div className="flex flex-1">[pending]</div>
                               </div>
                             </div>
-                            <div className="w-28 flex-shrink-0 text-sm text-gray-500">
-                              {member.id !== user?.id ? (
-                                <Listbox
-                                  value={member.workspaces[0].role}
-                                  onChange={async (role) => {
-                                    await handleMemberRoleChange(member, role);
-                                  }}
-                                >
-                                  {() => (
-                                    <>
-                                      <div className="relative">
-                                        <Listbox.Button className="relative w-full cursor-default cursor-pointer rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-1">
-                                          <span className="block truncate">
-                                            {member.workspaces[0].role ===
-                                            "none"
-                                              ? "revoked"
-                                              : member.workspaces[0].role}
-                                          </span>
-                                          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                            <ChevronUpDownIcon
-                                              className="h-5 w-5 text-gray-400"
-                                              aria-hidden="true"
-                                            />
-                                          </span>
-                                        </Listbox.Button>
+                          </div>
+                          <div className="flex-shrink-0 text-sm text-gray-500">
+                            <Button
+                              type="submit"
+                              onClick={() =>
+                                handleRevokeInvitation(invitation.id)
+                              }
+                            >
+                              Revoke invitation
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <ul className="mt-6 space-y-4">
+                      {members.map((member) => (
+                        <li
+                          key={member.id}
+                          className="mt-2 flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <div className="">
+                              <div className="text-sm font-medium text-gray-500">
+                                {member.name}{" "}
+                                {member.id === user?.id ? (
+                                  <span className="ml-1 rounded-sm bg-gray-200 px-1 py-0.5 text-xs font-bold text-gray-900">
+                                    you
+                                  </span>
+                                ) : null}
+                              </div>
+                              {member.provider === "google" ? (
+                                <div className="flex-cols flex text-sm text-gray-500">
+                                  <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
+                                    <img src="/static/google_white_32x32.png"></img>
+                                  </div>
+                                  <div className="flex flex-1">
+                                    {member.email}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {member.provider === "github" ? (
+                                <div className="flex-cols flex text-sm text-gray-500">
+                                  <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
+                                    <img src="/static/github_black_32x32.png"></img>
+                                  </div>
+                                  <div className="flex flex-1">
+                                    {member.username}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="w-28 flex-shrink-0 text-sm text-gray-500">
+                            {member.id !== user?.id ? (
+                              <Listbox
+                                value={member.workspaces[0].role}
+                                onChange={async (role) => {
+                                  await handleMemberRoleChange(member, role);
+                                }}
+                              >
+                                {() => (
+                                  <>
+                                    <div className="relative">
+                                      <Listbox.Button className="relative w-full cursor-default cursor-pointer rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-1">
+                                        <span className="block truncate">
+                                          {member.workspaces[0].role === "none"
+                                            ? "revoked"
+                                            : member.workspaces[0].role}
+                                        </span>
+                                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                          <ChevronUpDownIcon
+                                            className="h-5 w-5 text-gray-400"
+                                            aria-hidden="true"
+                                          />
+                                        </span>
+                                      </Listbox.Button>
 
-                                        <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                          {[
-                                            "admin",
-                                            "builder",
-                                            "user",
-                                            "revoked",
-                                          ].map((role) => (
-                                            <Listbox.Option
-                                              key={role}
-                                              className={({ active }) =>
-                                                classNames(
-                                                  active
-                                                    ? "cursor-pointer font-semibold"
-                                                    : "",
-                                                  "text-gray-900",
-                                                  "relative cursor-default select-none py-1 pl-3 pr-9"
-                                                )
-                                              }
-                                              value={role}
-                                            >
-                                              {({ selected }) => (
-                                                <>
+                                      <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                        {[
+                                          "admin",
+                                          "builder",
+                                          "user",
+                                          "revoked",
+                                        ].map((role) => (
+                                          <Listbox.Option
+                                            key={role}
+                                            className={({ active }) =>
+                                              classNames(
+                                                active
+                                                  ? "cursor-pointer font-semibold"
+                                                  : "",
+                                                "text-gray-900",
+                                                "relative cursor-default select-none py-1 pl-3 pr-9"
+                                              )
+                                            }
+                                            value={role}
+                                          >
+                                            {({ selected }) => (
+                                              <>
+                                                <span
+                                                  className={classNames(
+                                                    selected
+                                                      ? "font-semibold"
+                                                      : "",
+                                                    "block truncate"
+                                                  )}
+                                                >
+                                                  {role}
+                                                </span>
+
+                                                {selected ? (
                                                   <span
                                                     className={classNames(
-                                                      selected
-                                                        ? "font-semibold"
-                                                        : "",
-                                                      "block truncate"
+                                                      "text-violet-600",
+                                                      "absolute inset-y-0 right-0 flex items-center pr-4"
                                                     )}
                                                   >
-                                                    {role}
+                                                    <CheckIcon
+                                                      className="h-4 w-4"
+                                                      aria-hidden="true"
+                                                    />
                                                   </span>
-
-                                                  {selected ? (
-                                                    <span
-                                                      className={classNames(
-                                                        "text-violet-600",
-                                                        "absolute inset-y-0 right-0 flex items-center pr-4"
-                                                      )}
-                                                    >
-                                                      <CheckIcon
-                                                        className="h-4 w-4"
-                                                        aria-hidden="true"
-                                                      />
-                                                    </span>
-                                                  ) : null}
-                                                </>
-                                              )}
-                                            </Listbox.Option>
-                                          ))}
-                                        </Listbox.Options>
-                                      </div>
-                                    </>
-                                  )}
-                                </Listbox>
-                              ) : (
-                                <span className="ml-2 italic text-gray-900">
-                                  admin
-                                </span>
-                              )}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                                                ) : null}
+                                              </>
+                                            )}
+                                          </Listbox.Option>
+                                        ))}
+                                      </Listbox.Options>
+                                    </div>
+                                  </>
+                                )}
+                              </Listbox>
+                            ) : (
+                              <span className="ml-2 italic text-gray-900">
+                                admin
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </div>

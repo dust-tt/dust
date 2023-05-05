@@ -5,6 +5,7 @@ import {
   DataSource,
   Key,
   Membership,
+  MembershipInvitation,
   Provider,
   Run,
   User,
@@ -17,6 +18,7 @@ async function main() {
   await User.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await Membership.sync({ alter: true });
+  await MembershipInvitation.sync({ alter: true });
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });

@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
-import { Membership, User } from "@app/lib/models";
+import {Membership, MembershipInvitation, User} from "@app/lib/models";
 import { UserType } from "@app/types/user";
 
 /**
@@ -53,4 +53,25 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
       workspaces: [{ ...owner, role }],
     };
   });
+}
+
+/**
+ * Returns the users members of the workspace associated with the authenticator (without listing
+ * their own workspaces).
+ * @param auth Authenticator
+ * @returns UserType[] members of the workspace
+ */
+export async function getInvitations(auth: Authenticator): Promise<MembershipInvitation[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+
+  return MembershipInvitation.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "pending",
+    },
+  });
+
 }

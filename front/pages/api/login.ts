@@ -1,13 +1,17 @@
+import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Membership, User, Workspace } from "@app/lib/models";
+import {Membership, MembershipInvitation, User, Workspace} from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
+
+const { WORKSPACE_INVITE_TOKEN_SECRET } = process.env;
+
 
 async function handler(
   req: NextApiRequest,
@@ -22,12 +26,34 @@ async function handler(
   switch (req.method) {
     case "GET":
       let invite: null | Workspace = null;
+      let membershipInvite: MembershipInvitation | null = null;
       if (req.query.wId) {
         invite = await Workspace.findOne({
           where: {
             sId: req.query.wId as string,
           },
         });
+      }
+
+      if (req.query.inviteToken) {
+        const inviteToken = req.query.inviteToken as string;
+        const decodedToken = verify(inviteToken, WORKSPACE_INVITE_TOKEN_SECRET!) as { workspaceId: string, inviteEmail: string};
+        membershipInvite = await MembershipInvitation.findOne({
+            where: {
+              workspaceId: decodedToken.workspaceId,
+              inviteEmail: decodedToken.inviteEmail,
+            }
+        });
+        if (!membershipInvite) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The invite token is invalid.",
+            },
+          });
+        }
       }
 
       if (invite) {
@@ -99,6 +125,25 @@ async function handler(
             });
           }
         }
+        if (membershipInvite) {
+          let m = await Membership.findOne({
+            where: {
+              userId: user.id,
+              workspaceId: membershipInvite.workspaceId,
+            },
+          });
+
+          if (!m) {
+            m = await Membership.create({
+              role: "user",
+              userId: user.id,
+              workspaceId: membershipInvite.workspaceId,
+            });
+          }
+          membershipInvite.status = "consumed"
+          membershipInvite.invitedUserId = user.id
+          await membershipInvite.save()
+        }
       }
       if (!user) {
         const uId = new_id();
@@ -117,6 +162,15 @@ async function handler(
             userId: user.id,
             workspaceId: invite.id,
           });
+        } else if (membershipInvite) {
+          const m = await Membership.create({
+            role: "user",
+            userId: user.id,
+            workspaceId: membershipInvite.id,
+          });
+          membershipInvite.status = "consumed"
+          membershipInvite.invitedUserId = user.id
+          await membershipInvite.save()
         } else {
           const w = await Workspace.create({
             uId,
