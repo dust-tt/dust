@@ -1,0 +1,24 @@
+services:
+
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+          - dustvolume:/postgres
+    ports:
+      - 5432:5432
+  qdrant:
+    image: qdrant/qdrant
+    volumes:
+      - dustvolume:/qdrant
+    ports:
+      - 6334:6334
+
+
+volumes:
+  dustvolume:
+    
+    
