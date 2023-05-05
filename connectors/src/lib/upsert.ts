@@ -80,6 +80,9 @@ async function _upsertToDatasource(
       dustRequestConfig
     );
   } catch (e) {
+    if (axios.isAxiosError(e) && e.config.data) {
+      e.config.data = "[REDACTED]";
+    }
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }

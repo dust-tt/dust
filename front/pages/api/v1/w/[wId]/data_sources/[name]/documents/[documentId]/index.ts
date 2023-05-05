@@ -15,6 +15,14 @@ import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "8mb",
+    },
+  },
+};
+
 export type GetDocumentResponseBody = {
   document: DocumentType;
 };
