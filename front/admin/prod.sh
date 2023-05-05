@@ -11,4 +11,4 @@ export DD_LOGS_INJECTION=true
 export DD_RUNTIME_METRICS_ENABLED=true
 export NODE_ENV=production
 
-npx next start 2>&1 | tee /var/log/datadog/dust_front.log
+npx next start 2>&1 | tee -i /var/log/datadog/dust_front.log
