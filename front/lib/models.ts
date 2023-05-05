@@ -16,8 +16,6 @@ export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   logging: false,
 }); // TODO: type process.env
 
-export const MODELS_STRING_MAX_LENGTH = 255;
-
 export class User extends Model<
   InferAttributes<User>,
   InferCreationAttributes<User>
