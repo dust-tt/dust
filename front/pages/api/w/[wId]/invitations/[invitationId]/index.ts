@@ -87,7 +87,14 @@ async function handler(
 
       invitation.status = req.body.status;
       await invitation.save();
-      return
+      res.status(200).json({
+        invitations: [{
+          id: invitation.id,
+          status: invitation.status,
+          inviteEmail: invitation.inviteEmail,
+        }],
+      });
+      return;
 
     default:
       return apiError(req, res, {
