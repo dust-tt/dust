@@ -12,6 +12,7 @@ import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
+import {GetWorkspaceInvitationsResponseBody} from "@app/pages/api/w/[wId]/invitations";
 
 export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
@@ -165,5 +166,16 @@ export function useMembers(owner: WorkspaceType) {
     members: data ? data.members : [],
     isMembersLoading: !error && !data,
     isMembersError: error,
+  };
+}
+
+export function useWorkspaceInvitations(owner: WorkspaceType) {
+  const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> = fetcher;
+  const { data, error } = useSWR(`/api/w/${owner.sId}/invitations`, workspaceInvitationsFetcher);
+
+  return {
+    invitations: data ? data.invitations : [],
+    isInvitationsLoading: !error && !data,
+    isInvitationsError: error,
   };
 }

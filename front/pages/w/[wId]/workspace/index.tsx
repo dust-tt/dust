@@ -1,4 +1,4 @@
-import { Listbox, Transition } from "@headlessui/react";
+import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
@@ -9,8 +9,8 @@ import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { useMembers } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { useMembers,useWorkspaceInvitations} from "@app/lib/swr";
+import { classNames, isEmailValid } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -62,8 +62,10 @@ export default function NewApp({
       ? `${url}/?signIn=google&wId=${owner.sId}`
       : null
   );
+  const [inviteEmail, setInviteEmail] = useState("");
 
   let { members, isMembersLoading } = useMembers(owner);
+  let { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
   const formValidation = () => {
     let valid = true;
@@ -120,6 +122,40 @@ export default function NewApp({
     }
   };
 
+  const handleSendInvitation = async () => {
+    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inviteEmail,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to invite new member to workspace.");
+    } else {
+      mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+
+  const handleRevokeInvitation = async (invitationId: int) => {
+    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "revoked",
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to revoke member's invitation.");
+    } else {
+      mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+
   const handleMemberRoleChange = async (member: UserType, role: string) => {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
       method: "POST",
@@ -158,14 +194,16 @@ export default function NewApp({
               </div>
               <div>
                 <div className="mt-8 space-y-8">
-                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
-                    <div className="sm:col-span-3">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-6" >
                       <label
-                        htmlFor="appName"
-                        className="block text-sm font-medium text-gray-700"
-                      >
+                          htmlFor="appName"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                         Workspace Name
                       </label>
+                    </div>
+                    <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <input
                           type="text"
@@ -185,19 +223,35 @@ export default function NewApp({
                         Think GitHub repository names, short and memorable.
                       </p>
                     </div>
-
                     <div className="sm:col-span-3">
-                      <div className="flex justify-between">
-                        <label
-                          htmlFor="appDescription"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Allowed Email Domain
-                        </label>
-                        <div className="text-sm font-normal text-gray-400">
-                          optional
+                      <div className="flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="flex">
+                          <Button
+                            disabled={disable}
+                            type="submit"
+                            onClick={handleUpdateWorkspace}
+                          >
+                            Update
+                          </Button>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="mt-8 space-y-8">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-6">
+                      <label
+                          htmlFor="appName"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                        Invite link on specific email domain
+                      </label>
+                    </div>
+                    <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
                         <input
                           type="text"
@@ -239,18 +293,68 @@ export default function NewApp({
                         </div>
                       ) : null}
                     </div>
+                    <div className="sm:col-span-3">
+                      <div className="flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="flex">
+                          <Button
+                            disabled={disable}
+                            type="submit"
+                            onClick={handleUpdateWorkspace}
+                          >
+                            Update
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex flex-row">
-                    <div className="flex flex-1"></div>
-                    <div className="flex">
-                      <Button
-                        disabled={disable}
-                        type="submit"
-                        onClick={handleUpdateWorkspace}
-                      >
-                        Update
-                      </Button>
+                </div>
+                <div className="mt-8 space-y-8">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
+                    <div className="sm:col-span-6">
+                      <label
+                          htmlFor="appName"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                        Invite per email
+                      </label>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <div className="mt-1 flex rounded-md shadow-sm">
+                        <input
+                          type="text"
+                          name="inviteEmail"
+                          id="inviteEmail"
+                          className={classNames(
+                            "block w-full min-w-0 flex-1 rounded-md text-sm",
+                            allowedDomainError
+                              ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
+                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                          )}
+                          value={inviteEmail || ""}
+                          onChange={(e) => {
+                            if (e.target.value.length > 0) {
+                              setInviteEmail(e.target.value);
+                            } else {
+                              setInviteEmail("");
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <div className="flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="flex">
+                          <Button
+                            disabled={!inviteEmail || !isEmailValid(inviteEmail)}
+                            type="submit"
+                            onClick={handleSendInvitation}
+                          >
+                            Send Invite
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -261,13 +365,47 @@ export default function NewApp({
                   <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
                     <div className="sm:col-span-5">
                       <div className="block text-sm font-medium text-gray-800">
-                        {members.length} Members
+                        Members: {invitations.length} pending invitation(s), {members.length} active member(s).
                         {isMembersLoading ? (
                           <span className="ml-2 text-xs text-gray-400">
                             loading...
                           </span>
                         ) : null}
                       </div>
+
+
+                      <ul className="mt-6 space-y-4">
+                        {invitations.map((invitation) => (
+                          <li
+                            key={invitation.id}
+                            className="mt-2 flex items-center justify-between"
+                          >
+                            <div className="flex items-center">
+                              <div className="">
+                                <div className="text-sm font-medium text-gray-500">
+                                  {invitation.inviteEmail}
+                                </div>
+                                <div className="flex-cols flex text-sm text-gray-500">
+                                  <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
+                                    <img src="/static/favicon.png"></img>
+                                  </div>
+                                  <div className="flex flex-1">
+                                    [pending]
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 text-sm text-gray-500">
+                              <Button
+                                type="submit"
+                                onClick={() => handleRevokeInvitation(invitation.id)}
+                              >
+                              Revoke invitation
+                            </Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                       <ul className="mt-6 space-y-4">
                         {members.map((member) => (
                           <li
