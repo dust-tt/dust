@@ -181,15 +181,16 @@ export default function NewApp({
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+
             <div className="mt-8 space-y-8 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace settings
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  A workspace lets you collaborate with your team. Use this
-                  panel to manage memberships and generate an invite link for a
-                  specific email domain.
+                  A workspace lets you collaborate with your team.
+                  Manage your workspace name and whitelist a domain
+                  to allow users with an email from that domain to join this workspace.
                 </p>
               </div>
               <div>
@@ -239,8 +240,6 @@ export default function NewApp({
                     </div>
                   </div>
                 </div>
-              </div>
-              <div>
                 <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
                     <div className="sm:col-span-6">
@@ -248,7 +247,7 @@ export default function NewApp({
                           htmlFor="appName"
                           className="block text-sm font-medium text-gray-700"
                         >
-                        Invite link on specific email domain
+                        Whitelist domain for workspace
                       </label>
                     </div>
                     <div className="sm:col-span-3">
@@ -274,8 +273,7 @@ export default function NewApp({
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Allow users with the specific email domain to join this
-                        workspace.
+                        Allow users with an email from a specific domain to join this workspace.
                       </p>
                       {inviteLink ? (
                         <div className="mt-2">
@@ -308,6 +306,17 @@ export default function NewApp({
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+              <div className="mt-20 space-y-8 divide-y divide-gray-200">
+                <div>
+                  <h3 className="text-base font-medium leading-6 text-gray-900">
+                    Workspace members
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Manage active members and invitations to your workspace.
+                  </p>
                 </div>
                 <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
@@ -357,11 +366,6 @@ export default function NewApp({
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
                     <div className="sm:col-span-5">
                       <div className="block text-sm font-medium text-gray-800">
@@ -372,8 +376,6 @@ export default function NewApp({
                           </span>
                         ) : null}
                       </div>
-
-
                       <ul className="mt-6 space-y-4">
                         {invitations.map((invitation) => (
                           <li
@@ -538,7 +540,6 @@ export default function NewApp({
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       </div>
