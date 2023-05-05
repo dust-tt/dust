@@ -1,6 +1,8 @@
 import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
+export const MODELS_STRING_MAX_LENGTH = 255;
+
 export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
