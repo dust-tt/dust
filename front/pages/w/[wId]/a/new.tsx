@@ -8,7 +8,7 @@ import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { classNames,MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
 
