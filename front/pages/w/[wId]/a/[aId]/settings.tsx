@@ -11,7 +11,7 @@ import { Button } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { classNames } from "@app/lib/utils";
+import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { AppType, AppVisibility } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -127,8 +127,8 @@ export default function SettingsView({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: appName.slice(0, 255),
-        description: appDescription.slice(0, 255),
+        name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
+        description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
         visibility: appVisibility,
       }),
     });

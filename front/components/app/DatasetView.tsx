@@ -16,6 +16,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { Button } from "@app/components/Button";
 import { checkDatasetData } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
+import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import { DatasetEntry, DatasetType } from "@app/types/dataset";
 
@@ -325,9 +326,12 @@ export default function DatasetView({
     setDatasetData(data);
     setDatasetTypes([]);
     onUpdate(datasetInitializing, datasetTypesValidation(), {
-      name: datasetName.slice(0, 255),
+      name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
       // keys: datasetKeys,
-      description: (datasetDescription || "").slice(0, 255),
+      description: (datasetDescription || "").slice(
+        0,
+        MODELS_STRING_MAX_LENGTH
+      ),
       data: datasetData,
     });
   };
@@ -349,9 +353,12 @@ export default function DatasetView({
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
       onUpdate(datasetInitializing, valid, {
-        name: datasetName.slice(0, 255),
+        name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
         // keys: datasetKeys,
-        description: (datasetDescription || "").slice(0, 255),
+        description: (datasetDescription || "").slice(
+          0,
+          MODELS_STRING_MAX_LENGTH
+        ),
         data: exportDataset(),
       });
     }
