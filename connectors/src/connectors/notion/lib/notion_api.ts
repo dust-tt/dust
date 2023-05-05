@@ -123,7 +123,10 @@ export async function getPagesEditedSince(
       if (isFullPage(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
         if (sinceTs && lastEditedTime < sinceTs) {
-          break;
+          return {
+            pageIds: Array.from(editedPages),
+            nextCursor: null,
+          };
         }
         editedPages.add(pageOrDb.id);
       }
@@ -131,7 +134,10 @@ export async function getPagesEditedSince(
       if (isFullDatabase(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
         if (sinceTs && lastEditedTime < sinceTs) {
-          break;
+          return {
+            pageIds: Array.from(editedPages),
+            nextCursor: null,
+          };
         }
         try {
           for await (const child of iteratePaginatedAPI(
