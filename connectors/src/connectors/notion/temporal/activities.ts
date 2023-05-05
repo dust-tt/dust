@@ -13,7 +13,12 @@ import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector, NotionPage, sequelize_conn } from "@connectors/lib/models";
+import {
+  Connector,
+  NotionConnectorState,
+  NotionPage,
+  sequelize_conn,
+} from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
 import {
@@ -254,9 +259,14 @@ async function shouldGarbageCollect(
       workspaceId: dataSourceConfig.workspaceId,
       dataSourceName: dataSourceConfig.dataSourceName,
     },
+    include: { model: NotionConnectorState, as: "notionConnectorState" },
   });
   if (!connector) {
     throw new Error("Could not find connector");
+  }
+  const notionConnectorState = connector.notionConnectorState;
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
   }
 
   // If we have never finished a full sync, we should not garbage collect
@@ -269,7 +279,7 @@ async function shouldGarbageCollect(
 
   // If we have never done a garbage collection, we should start one
   // if it has been more than GARBAGE_COLLECTION_INTERVAL_HOURS since the first successful sync
-  if (!connector.lastGarbageCollectionStartTime) {
+  if (!notionConnectorState.lastGarbageCollectionStartTime) {
     return (
       now - firstSuccessfulSyncTime.getTime() >=
       GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
@@ -277,14 +287,14 @@ async function shouldGarbageCollect(
   }
 
   const lastGarbageCollectionStartTime =
-    connector.lastGarbageCollectionStartTime.getTime();
+    notionConnectorState.lastGarbageCollectionStartTime.getTime();
 
   // If we have started a garbage collection, we should not start another one
-  if (!connector.lastGarbageCollectionFinishTime) {
+  if (!notionConnectorState.lastGarbageCollectionFinishTime) {
     return false;
   }
   const lastGarbageCollectionFinishTime =
-    connector.lastGarbageCollectionFinishTime.getTime();
+    notionConnectorState.lastGarbageCollectionFinishTime.getTime();
   if (lastGarbageCollectionStartTime > lastGarbageCollectionFinishTime) {
     return false;
   }
@@ -312,13 +322,18 @@ export async function saveStartGarbageCollectionActivity(
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
+      include: { model: NotionConnectorState, as: "notionConnectorState" },
     });
 
     if (!connector) {
       throw new Error("Could not find connector");
     }
 
-    await connector.update({
+    if (!connector.notionConnectorState) {
+      throw new Error("Could not find notionConnectorState");
+    }
+
+    await connector.notionConnectorState.update({
       lastGarbageCollectionStartTime: new Date(),
     });
 
@@ -420,11 +435,15 @@ export async function saveSuccessGarbageCollectionActivity(
       workspaceId: dataSourceInfo.workspaceId,
       dataSourceName: dataSourceInfo.dataSourceName,
     },
+    include: { model: NotionConnectorState, as: "notionConnectorState" },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  await connector.update({
+  if (!connector.notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+  await connector.notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
 }

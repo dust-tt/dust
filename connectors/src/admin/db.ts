@@ -1,5 +1,6 @@
 import {
   Connector,
+  NotionConnectorState,
   NotionPage,
   SlackConfiguration,
 } from "@connectors/lib/models";
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
   await Connector.sync({ alter: true });
   await SlackConfiguration.sync({ alter: true });
   await NotionPage.sync({ alter: true });
+  await NotionConnectorState.sync({ alter: true });
   return;
 }
 

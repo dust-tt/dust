@@ -43,8 +43,7 @@ export class Connector extends Model<
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
 
-  declare lastGarbageCollectionStartTime?: Date;
-  declare lastGarbageCollectionFinishTime?: Date;
+  declare notionConnectorState?: NotionConnectorState;
 }
 
 Connector.init(
@@ -97,14 +96,6 @@ Connector.init(
       allowNull: true,
     },
     lastSyncSuccessfulTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastGarbageCollectionStartTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastGarbageCollectionFinishTime: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -164,6 +155,58 @@ SlackConfiguration.init(
   }
 );
 Connector.hasOne(SlackConfiguration);
+
+export class NotionConnectorState extends Model<
+  InferAttributes<NotionConnectorState>,
+  InferCreationAttributes<NotionConnectorState>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare lastGarbageCollectionStartTime?: Date;
+  declare lastGarbageCollectionFinishTime?: Date;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionConnectorState.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastGarbageCollectionStartTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastGarbageCollectionFinishTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "notion_connector_states",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+
+Connector.hasOne(NotionConnectorState, {
+  as: "notionConnectorState",
+  foreignKey: "connectorId",
+});
 
 export class NotionPage extends Model<
   InferAttributes<NotionPage>,
