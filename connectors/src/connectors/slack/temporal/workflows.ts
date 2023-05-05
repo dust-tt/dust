@@ -248,5 +248,5 @@ export function syncOneMessageDebouncedWorkflowId(
 }
 
 export function botJoinedChannelWorkflowId(connectorId: string) {
-  return `slack-memberJoinedChannel-${connectorId}`;
+  return `slack-botJoinedChannel-${connectorId}`;
 }
