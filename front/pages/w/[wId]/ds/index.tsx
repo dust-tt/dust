@@ -98,13 +98,21 @@ export const getServerSideProps: GetServerSideProps<{
   const dataSources = allDataSources.filter((ds) => !ds.connector);
   const managedDataSources = allDataSources.filter((ds) => ds.connector);
 
-  const connectorStatuses = (
-    await Promise.all(
-      managedDataSources.map(({ connector }) =>
-        ConnectorsAPI.getSyncStatus(connector!.id)
+  let connectorStatuses = managedDataSources.map(() => "failed");
+  try {
+    connectorStatuses = (
+      await Promise.all(
+        managedDataSources.map(({ connector }) =>
+          ConnectorsAPI.getSyncStatus(connector!.id)
+        )
       )
-    )
-  ).map((s): ConnectorSyncStatus => (s.isErr() ? "failed" : "succeeded"));
+    ).map((s): ConnectorSyncStatus => (s.isErr() ? "failed" : "succeeded"));
+  } catch (e) {
+    // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
+    // displaying the datasources (eventual actions will fail but a 500 just at display is not
+    // desirable). When that happens the managed data sources are shown as failed.
+    logger.error({ error: e }, "Failed to retrieve connector status");
+  }
 
   const connectorStatusByProvider: Record<
     ConnectorProvider,
