@@ -12,7 +12,6 @@ export async function runSlackWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: "slack-queue",
-    maxConcurrentActivityTaskExecutions: 1,
     connection,
     namespace,
     interceptors: {
@@ -24,5 +23,16 @@ export async function runSlackWorker() {
     },
   });
 
-  await worker.run();
+  const workerPromise = worker.run();
+  const statusReportInterval = setInterval(() => {
+    const status = worker.getStatus();
+
+    logger.info(
+      {
+        ...status,
+      },
+      "Worker status report"
+    );
+  }, 30000);
+  await workerPromise.finally(() => clearInterval(statusReportInterval));
 }

@@ -536,9 +536,13 @@ export function formatDateForUpsert(date: Date) {
   return `${year}${month}${day} ${hours}:${minutes}`;
 }
 
-function getSlackClient(slackAccessToken: string): WebClient {
+export function getSlackClient(slackAccessToken: string): WebClient {
   return new WebClient(slackAccessToken, {
     timeout: NETWORK_REQUEST_TIMEOUT_MS,
+    retryConfig: {
+      retries: 1,
+      factor: 1,
+    },
   });
 }
 
