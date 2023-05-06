@@ -247,12 +247,14 @@ export async function syncNonThreaded(
     }
 
     for (const message of c.messages) {
+      if (message.ts) {
+        latestTsSec = parseInt(message.ts);
+      }
       if (!message.user) {
         continue;
       }
       if (!message.thread_ts && message.ts) {
         messages.push(message);
-        latestTsSec = parseInt(message.ts);
       }
     }
     hasMore = c.has_more;
