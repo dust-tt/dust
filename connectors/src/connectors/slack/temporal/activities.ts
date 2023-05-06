@@ -102,7 +102,7 @@ export async function syncChannel(
   const messages = await getMessagesForChannel(
     slackAccessToken,
     channelId,
-    100,
+    20,
     messagesCursor
   );
   if (!messages.messages) {
