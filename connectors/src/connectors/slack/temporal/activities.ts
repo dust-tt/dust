@@ -20,7 +20,7 @@ const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
-const MAX_CONCURRENCY_LEVEL = 5;
+const MAX_CONCURRENCY_LEVEL = 2;
 
 // Timeout in ms for all network requests;
 const NETWORK_REQUEST_TIMEOUT_MS = 30000;
