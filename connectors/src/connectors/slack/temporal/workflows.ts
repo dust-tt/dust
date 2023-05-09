@@ -78,16 +78,22 @@ export async function syncOneChannel(
 
   const slackAccessToken = await getAccessToken(nangoConnectionId);
   let messagesCursor: string | undefined = undefined;
+  let weeksSynced: Record<number, boolean> = {};
 
   do {
-    messagesCursor = await syncChannel(
+    const syncChannelRes = await syncChannel(
       slackAccessToken,
       channelId,
       channelName,
       dataSourceConfig,
       connectorId,
+      weeksSynced,
       messagesCursor
     );
+    if (syncChannelRes) {
+      messagesCursor = syncChannelRes.nextCursor;
+      weeksSynced = syncChannelRes.weeksSynced;
+    }
   } while (messagesCursor);
 
   console.log(`Syncing channel ${channelName} (${channelId}) done`);
