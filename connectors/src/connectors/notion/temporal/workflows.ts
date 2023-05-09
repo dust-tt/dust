@@ -41,7 +41,7 @@ const MAX_ITERATIONS_PER_WORKFLOW = 50;
 const SYNC_PERIOD_DURATION_MS = 60_000;
 
 // How long to wait before checking for new pages again
-const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
+const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
 
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
