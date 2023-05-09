@@ -352,7 +352,6 @@ export async function syncThread(
   threadTs: string,
   connectorId: string
 ) {
-  console.log(`~~~~~~~~syncing thread ${threadTs}`);
   const client = getSlackClient(slackAccessToken);
 
   let allMessages: Message[] = [];
