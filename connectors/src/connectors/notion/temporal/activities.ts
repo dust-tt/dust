@@ -372,7 +372,11 @@ export async function garbageCollectActivity(
   );
   for (const page of pagesToDelete) {
     if (
-      await isPageAccessibleAndUnarchived(notionAccessToken, page.notionPageId)
+      await isPageAccessibleAndUnarchived(
+        notionAccessToken,
+        page.notionPageId,
+        localLogger
+      )
     ) {
       localLogger.info(
         { pageId: page.notionPageId },
