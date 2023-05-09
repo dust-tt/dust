@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { RunType } from "@app/types/run";
@@ -44,7 +44,7 @@ async function handler(
         return;
       }
 
-      const run = await DustAPI.getRunStatus(
+      const run = await CoreAPI.getRunStatus(
         app.dustAPIProjectId,
         runId as string
       );

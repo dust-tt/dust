@@ -3,7 +3,7 @@ import { NextApiResponse } from "next";
 import logger from "@app/logger/logger";
 
 import { ConnectorsAPIErrorResponse } from "./connectors_api";
-import { DustAPIErrorResponse } from "./dust_api";
+import { CoreAPIErrorResponse } from "./dust_api";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -36,9 +36,9 @@ export type APIErrorType =
 export type APIError = {
   type: APIErrorType;
   message: string;
-  data_source_error?: DustAPIErrorResponse;
-  run_error?: DustAPIErrorResponse;
-  app_error?: DustAPIErrorResponse;
+  data_source_error?: CoreAPIErrorResponse;
+  run_error?: CoreAPIErrorResponse;
+  app_error?: CoreAPIErrorResponse;
   connectors_error?: ConnectorsAPIErrorResponse;
 };
 

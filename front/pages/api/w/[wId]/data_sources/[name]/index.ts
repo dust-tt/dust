@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -145,7 +145,7 @@ async function handler(
         });
       }
 
-      const dustDataSource = await DustAPI.deleteDataSource(
+      const dustDataSource = await CoreAPI.deleteDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name
       );

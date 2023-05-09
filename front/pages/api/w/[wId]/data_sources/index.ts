@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Provider } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -105,7 +105,7 @@ async function handler(
         });
       }
 
-      const dustProject = await DustAPI.createProject();
+      const dustProject = await CoreAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -138,7 +138,7 @@ async function handler(
       ]);
       let credentials = credentialsFromProviders(providers);
 
-      const dustDataSource = await DustAPI.createDataSource(
+      const dustDataSource = await CoreAPI.createDataSource(
         dustProject.value.project.project_id.toString(),
         {
           dataSourceId: req.body.name as string,

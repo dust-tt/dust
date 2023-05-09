@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -155,7 +155,7 @@ async function handler(
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
-        const runRes = await DustAPI.createRunStream(
+        const runRes = await CoreAPI.createRunStream(
           app.dustAPIProjectId,
           owner,
           {
@@ -224,7 +224,7 @@ async function handler(
         return;
       }
 
-      const runRes = await DustAPI.createRun(app.dustAPIProjectId, owner, {
+      const runRes = await CoreAPI.createRun(app.dustAPIProjectId, owner, {
         runType: "deploy",
         specificationHash: specificationHash,
         config: { blocks: config },
@@ -260,7 +260,7 @@ async function handler(
         try {
           await poll({
             fn: async () => {
-              const run = await DustAPI.getRunStatus(
+              const run = await CoreAPI.getRunStatus(
                 app!.dustAPIProjectId,
                 runId
               );
@@ -292,7 +292,7 @@ async function handler(
         }
 
         // Finally refresh the run object.
-        const runRes = await DustAPI.getRun(app!.dustAPIProjectId, runId);
+        const runRes = await CoreAPI.getRun(app!.dustAPIProjectId, runId);
         if (runRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,
