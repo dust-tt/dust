@@ -2,7 +2,7 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
@@ -161,12 +161,17 @@ export default function DataSourcesView({
   gaTrackingId,
   nangoConfig,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [managedDataSourcesLocal, setManagedDataSourcesLocal] =
-    useState(managedDataSources);
+  const [managedDataSourcesLocal, setManagedDataSourcesLocal] = useState<
+    ManagedDataSource[]
+  >([]);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
+
+  useEffect(() => {
+    setManagedDataSourcesLocal(managedDataSources);
+  }, [managedDataSources]);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     const nangoConnectorId =
