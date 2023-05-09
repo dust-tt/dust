@@ -6,7 +6,7 @@ import { CredentialsType } from "@app/types/provider";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
-const { DUST_API: DUST_API_URL } = process.env;
+const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
 export type CoreAPIErrorResponse = {
   message: string;
@@ -117,7 +117,7 @@ type CoreAPIUpsertDocumentPayload = {
 
 export const CoreAPI = {
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
-    const response = await fetch(`${DUST_API_URL}/projects`, {
+    const response = await fetch(`${CORE_API}/projects`, {
       method: "POST",
     });
     return _resultFromResponse(response);
@@ -126,15 +126,12 @@ export const CoreAPI = {
   async getDatasets(
     projectId: string
   ): Promise<CoreAPIResponse<GetDatasetsResponse>> {
-    const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/datasets`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
     return _resultFromResponse(response);
   },
@@ -145,7 +142,7 @@ export const CoreAPI = {
     datasetHash: string
   ): Promise<CoreAPIResponse<GetDatasetResponse>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/datasets/${datasetName}/${datasetHash}`,
+      `${CORE_API}/projects/${projectId}/datasets/${datasetName}/${datasetHash}`,
       {
         method: "GET",
         headers: {
@@ -162,19 +159,16 @@ export const CoreAPI = {
     datasetId: string,
     data: any[]
   ): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
-    const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/datasets`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dataset_id: datasetId,
-          data,
-        }),
-      }
-    );
+    const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dataset_id: datasetId,
+        data,
+      }),
+    });
 
     return _resultFromResponse(response);
   },
@@ -182,12 +176,9 @@ export const CoreAPI = {
   async cloneProject(
     projectId: string
   ): Promise<CoreAPIResponse<{ project: Project }>> {
-    const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/clone`,
-      {
-        method: "POST",
-      }
-    );
+    const response = await fetch(`${CORE_API}/projects/${projectId}/clone`, {
+      method: "POST",
+    });
 
     return _resultFromResponse(response);
   },
@@ -197,7 +188,7 @@ export const CoreAPI = {
     owner: WorkspaceType,
     payload: CoreAPICreateRunPayload
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(`${DUST_API_URL}/projects/${projectId}/runs`, {
+    const response = await fetch(`${CORE_API}/projects/${projectId}/runs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -228,7 +219,7 @@ export const CoreAPI = {
     }>
   > {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs/stream`,
+      `${CORE_API}/projects/${projectId}/runs/stream`,
       {
         method: "POST",
         headers: {
@@ -314,7 +305,7 @@ export const CoreAPI = {
     dustRunIds: string[]
   ): Promise<CoreAPIResponse<{ runs: { [key: string]: CoreAPIRun } }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs/batch`,
+      `${CORE_API}/projects/${projectId}/runs/batch`,
       {
         method: "POST",
         headers: {
@@ -334,7 +325,7 @@ export const CoreAPI = {
     runId: string
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs/${runId}`,
+      `${CORE_API}/projects/${projectId}/runs/${runId}`,
       {
         method: "GET",
       }
@@ -348,7 +339,7 @@ export const CoreAPI = {
     runId: string
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs/${runId}/status`,
+      `${CORE_API}/projects/${projectId}/runs/${runId}/status`,
       {
         method: "GET",
       }
@@ -364,7 +355,7 @@ export const CoreAPI = {
     CoreAPIResponse<{ specification: { created: number; data: string } }>
   > {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/specifications/${specificationHash}`,
+      `${CORE_API}/projects/${projectId}/specifications/${specificationHash}`,
       {
         method: "GET",
       }
@@ -380,7 +371,7 @@ export const CoreAPI = {
     blockName: string
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/runs/${runId}/blocks/${runType}/${blockName}`,
+      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${runType}/${blockName}`,
       {
         method: "GET",
       }
@@ -394,7 +385,7 @@ export const CoreAPI = {
     payload: CoreAPICreateDataSourcePayload
   ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources`,
+      `${CORE_API}/projects/${projectId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -416,7 +407,7 @@ export const CoreAPI = {
     dataSourceName: string
   ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}`,
       {
         method: "DELETE",
       }
@@ -446,7 +437,7 @@ export const CoreAPI = {
     }
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/search`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/search`,
       {
         method: "POST",
         headers: {
@@ -479,7 +470,7 @@ export const CoreAPI = {
     }>
   > {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }
@@ -499,7 +490,7 @@ export const CoreAPI = {
     }>
   > {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId
       )}`,
       {
@@ -521,7 +512,7 @@ export const CoreAPI = {
     }>
   > {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
       {
         method: "POST",
         headers: {
@@ -547,7 +538,7 @@ export const CoreAPI = {
     documentId: string
   ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${DUST_API_URL}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId
       )}`,
       {
