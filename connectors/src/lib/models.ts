@@ -41,6 +41,7 @@ export class Connector extends Model<
   declare lastSyncStartTime?: Date;
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
+  declare firstSuccessfulSyncTime?: Date;
 }
 
 Connector.init(
@@ -93,6 +94,10 @@ Connector.init(
       allowNull: true,
     },
     lastSyncSuccessfulTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    firstSuccessfulSyncTime: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -149,6 +154,55 @@ SlackConfiguration.init(
 );
 Connector.hasOne(SlackConfiguration);
 
+export class NotionConnectorState extends Model<
+  InferAttributes<NotionConnectorState>,
+  InferCreationAttributes<NotionConnectorState>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare lastGarbageCollectionStartTime?: Date;
+  declare lastGarbageCollectionFinishTime?: Date;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionConnectorState.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastGarbageCollectionStartTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastGarbageCollectionFinishTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "notion_connector_states",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+
+Connector.hasOne(NotionConnectorState);
+
 export class NotionPage extends Model<
   InferAttributes<NotionPage>,
   InferCreationAttributes<NotionPage>
@@ -160,7 +214,6 @@ export class NotionPage extends Model<
   declare notionPageId: string;
   declare lastSeenTs: Date;
   declare lastUpsertedTs?: Date;
-  declare dustDatasourceDocumentId?: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }

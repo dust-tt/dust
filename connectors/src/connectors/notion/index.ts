@@ -3,7 +3,12 @@ import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
-import { Connector, NotionPage } from "@connectors/lib/models";
+import {
+  Connector,
+  NotionConnectorState,
+  NotionPage,
+  sequelize_conn,
+} from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
@@ -32,18 +37,30 @@ export async function createNotionConnector(
     return new Err(new Error("Notion access token is invalid"));
   }
 
+  const transaction = await sequelize_conn.transaction();
   try {
-    const connector = await Connector.create({
-      type: "notion",
-      nangoConnectionId,
-      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    });
+    const connector = await Connector.create(
+      {
+        type: "notion",
+        nangoConnectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      { transaction }
+    );
+    await NotionConnectorState.create(
+      {
+        connectorId: connector.id,
+      },
+      { transaction }
+    );
     await launchNotionSyncWorkflow(dataSourceConfig, nangoConnectionId);
+    await transaction.commit();
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
+    await transaction.rollback();
     return new Err(e as Error);
   }
 }

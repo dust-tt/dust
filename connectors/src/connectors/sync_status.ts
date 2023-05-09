@@ -14,6 +14,9 @@ async function syncFinished(
   connector.lastSyncStatus = status;
   connector.lastSyncFinishTime = finishedAt;
   if (status === "succeeded") {
+    if (!connector.firstSuccessfulSyncTime) {
+      connector.firstSuccessfulSyncTime = finishedAt;
+    }
     connector.lastSyncSuccessfulTime = finishedAt;
   }
 

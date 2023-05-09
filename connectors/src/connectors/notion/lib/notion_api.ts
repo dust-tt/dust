@@ -72,11 +72,14 @@ export async function getPagesEditedSince(
     retries: 5,
     backoffFactor: 2,
   }
-): Promise<{ pageIds: string[]; nextCursor: string | null }> {
+): Promise<{
+  pages: { id: string; lastEditedTs: number }[];
+  nextCursor: string | null;
+}> {
   const localLogger = logger.child(loggerArgs);
 
   const notionClient = new Client({ auth: notionAccessToken });
-  const editedPages: Set<string> = new Set();
+  const editedPages: Record<string, number> = {};
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
@@ -124,18 +127,24 @@ export async function getPagesEditedSince(
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
         if (sinceTs && lastEditedTime < sinceTs) {
           return {
-            pageIds: Array.from(editedPages),
+            pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
+              id,
+              lastEditedTs,
+            })),
             nextCursor: null,
           };
         }
-        editedPages.add(pageOrDb.id);
+        editedPages[pageOrDb.id] = lastEditedTime;
       }
     } else if (pageOrDb.object === "database") {
       if (isFullDatabase(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
         if (sinceTs && lastEditedTime < sinceTs) {
           return {
-            pageIds: Array.from(editedPages),
+            pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
+              id,
+              lastEditedTs,
+            })),
             nextCursor: null,
           };
         }
@@ -147,7 +156,7 @@ export async function getPagesEditedSince(
             }
           )) {
             if (isFullPage(child)) {
-              editedPages.add(child.id);
+              editedPages[child.id] = lastEditedTime;
             }
           }
         } catch (e) {
@@ -164,7 +173,10 @@ export async function getPagesEditedSince(
   }
 
   return {
-    pageIds: Array.from(editedPages),
+    pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
+      id,
+      lastEditedTs,
+    })),
     nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
   };
 }
