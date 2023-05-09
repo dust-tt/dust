@@ -2,6 +2,7 @@ import { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/notion/temporal/activities";
+import { NotionCastKnownErrorsInterceptor } from "@connectors/connectors/notion/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
@@ -21,6 +22,7 @@ export async function runNotionWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new NotionCastKnownErrorsInterceptor(),
       ],
     },
   });
