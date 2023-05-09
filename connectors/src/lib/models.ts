@@ -210,6 +210,8 @@ export class NotionPage extends Model<
   declare lastSeenTs: Date;
   declare lastUpsertedTs?: Date;
 
+  declare skipReason?: string | null;
+
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -240,6 +242,10 @@ NotionPage.init(
     },
     lastUpsertedTs: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

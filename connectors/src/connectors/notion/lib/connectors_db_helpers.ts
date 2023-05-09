@@ -5,7 +5,8 @@ export async function upsertNotionPageInConnectorsDb(
   dataSourceInfo: DataSourceInfo,
   notionPageId: string,
   lastSeenTs: number,
-  lastUpsertedTs?: number
+  lastUpsertedTs?: number,
+  skipReason?: string
 ): Promise<NotionPage> {
   const connector = await Connector.findOne({
     where: {
@@ -24,11 +25,18 @@ export async function upsertNotionPageInConnectorsDb(
     },
   });
 
-  const updateParams: { lastSeenTs: Date; lastUpsertedTs?: Date } = {
+  const updateParams: {
+    lastSeenTs: Date;
+    lastUpsertedTs?: Date;
+    skipReason?: string;
+  } = {
     lastSeenTs: new Date(lastSeenTs),
   };
   if (lastUpsertedTs) {
     updateParams.lastUpsertedTs = new Date(lastUpsertedTs);
+  }
+  if (skipReason) {
+    updateParams.skipReason = skipReason;
   }
 
   if (page) {
