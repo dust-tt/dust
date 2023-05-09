@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App, Provider, Run } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";
@@ -117,7 +117,7 @@ async function handler(
             });
           }
 
-          const streamRes = await DustAPI.createRunStream(
+          const streamRes = await CoreAPI.createRunStream(
             app.dustAPIProjectId,
             owner,
             {
@@ -203,7 +203,7 @@ async function handler(
             });
           }
 
-          const datasets = await DustAPI.getDatasets(app.dustAPIProjectId);
+          const datasets = await CoreAPI.getDatasets(app.dustAPIProjectId);
           if (datasets.isErr()) {
             return apiError(req, res, {
               status_code: 500,
@@ -228,7 +228,7 @@ async function handler(
             ? inputConfigEntry.dataset
             : null;
 
-          const dustRun = await DustAPI.createRun(app.dustAPIProjectId, owner, {
+          const dustRun = await CoreAPI.createRun(app.dustAPIProjectId, owner, {
             runType: "local",
             specification: dumpSpecification(
               JSON.parse(req.body.specification),
@@ -309,7 +309,7 @@ async function handler(
       });
       const userDustRunIds = userRuns.map((r) => r.dustRunId);
 
-      const dustRuns = await DustAPI.getRunsBatch(
+      const dustRuns = await CoreAPI.getRunsBatch(
         app.dustAPIProjectId,
         userDustRunIds
       );

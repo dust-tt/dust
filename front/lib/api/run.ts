@@ -3,7 +3,7 @@ import path from "path";
 import peg from "pegjs";
 
 import { Authenticator } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunConfig, RunType } from "@app/types/run";
 
@@ -22,7 +22,7 @@ export async function getRun(
   config: RunConfig;
   run: RunType;
 } | null> {
-  const r = await DustAPI.getRunStatus(app.dustAPIProjectId, runId as string);
+  const r = await CoreAPI.getRunStatus(app.dustAPIProjectId, runId as string);
   if (r.isErr()) {
     return null;
   }
@@ -32,7 +32,7 @@ export async function getRun(
   // Retrieve specification and parse it.
   const specHash = run.app_hash;
 
-  const s = await DustAPI.getSpecification(
+  const s = await CoreAPI.getSpecification(
     app.dustAPIProjectId,
     specHash as string
   );

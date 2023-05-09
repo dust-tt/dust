@@ -6,7 +6,10 @@ export type ConnectorsAPIErrorResponse = {
   };
 };
 
-const { CONNECTORS_API = "", DUST_CONNECTORS_SECRET = "" } = process.env;
+const {
+  CONNECTORS_API = "http://127.0.0.1:3002",
+  DUST_CONNECTORS_SECRET = "",
+} = process.env;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";

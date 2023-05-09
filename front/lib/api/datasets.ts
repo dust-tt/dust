@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { Dataset } from "@app/lib/models";
 import { AppType } from "@app/types/app";
 import { DatasetType } from "@app/types/dataset";
@@ -81,7 +81,7 @@ export async function getDatasetHash(
 
   // Translate latest if needed.
   if (hash == "latest") {
-    const apiDatasets = await DustAPI.getDatasets(app.dustAPIProjectId);
+    const apiDatasets = await CoreAPI.getDatasets(app.dustAPIProjectId);
 
     if (apiDatasets.isErr()) {
       return null;
@@ -96,7 +96,7 @@ export async function getDatasetHash(
     hash = apiDatasets.value.datasets[dataset.name][0].hash;
   }
 
-  const apiDataset = await DustAPI.getDataset(
+  const apiDataset = await CoreAPI.getDataset(
     app.dustAPIProjectId,
     dataset.name,
     hash

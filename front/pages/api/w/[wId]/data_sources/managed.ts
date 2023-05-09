@@ -4,7 +4,7 @@ import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Key, Provider } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -102,7 +102,7 @@ async function handler(
         });
       }
 
-      const dustProject = await DustAPI.createProject();
+      const dustProject = await CoreAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -117,7 +117,7 @@ async function handler(
       // Dust managed credentials: managed data source.
       let credentials = dustManagedCredentials();
 
-      const dustDataSource = await DustAPI.createDataSource(
+      const dustDataSource = await CoreAPI.createDataSource(
         dustProject.value.project.project_id.toString(),
         {
           dataSourceId: dataSourceName,
@@ -167,7 +167,7 @@ async function handler(
           "Failed to create the connector"
         );
         await dataSource.destroy();
-        const deleteRes = await DustAPI.deleteDataSource(
+        const deleteRes = await CoreAPI.deleteDataSource(
           dustProject.value.project.project_id.toString(),
           dustDataSource.value.data_source.data_source_id
         );

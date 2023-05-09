@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -70,7 +70,7 @@ async function handler(
       // TODO(spolu): This is borderline security-wise as it allows to recover a full run from the
       // runId assuming the app is public. We should use getRun and also enforce in getRun that we
       // retrieve only our own runs. Basically this assumes the `runId` as a secret.
-      const runRes = await DustAPI.getRun(app.dustAPIProjectId, runId);
+      const runRes = await CoreAPI.getRun(app.dustAPIProjectId, runId);
       if (runRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,

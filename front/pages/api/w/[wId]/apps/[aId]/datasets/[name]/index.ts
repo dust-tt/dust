@@ -2,8 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { CoreAPI } from "@app/lib/core_api";
 import { checkDatasetData } from "@app/lib/datasets";
-import { DustAPI } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -116,7 +116,7 @@ async function handler(
       });
 
       // Register dataset with the Dust internal API.
-      const d = await DustAPI.createDataset(
+      const d = await CoreAPI.createDataset(
         app.dustAPIProjectId,
         req.body.name,
         data

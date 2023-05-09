@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
@@ -134,7 +134,7 @@ async function handler(
       }
 
       // Enforce plan limits.
-      const documents = await DustAPI.getDataSourceDocuments(
+      const documents = await CoreAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
         dataSource.name,
         1,
@@ -185,7 +185,7 @@ async function handler(
       let credentials = credentialsFromProviders(providers);
 
       // Create document with the Dust internal API.
-      const data = await DustAPI.upsertDataSourceDocument(
+      const data = await CoreAPI.upsertDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
         {
@@ -213,7 +213,7 @@ async function handler(
       return;
 
     case "GET":
-      const document = await DustAPI.getDataSourceDocument(
+      const document = await CoreAPI.getDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
         req.query.documentId as string
@@ -258,7 +258,7 @@ async function handler(
         });
       }
 
-      const deleteRes = await DustAPI.deleteDataSourceDocument(
+      const deleteRes = await CoreAPI.deleteDataSourceDocument(
         dataSource.dustAPIProjectId,
         dataSource.name,
         req.query.documentId as string

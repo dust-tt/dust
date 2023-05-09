@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
@@ -39,7 +39,7 @@ async function handler(
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
-      const documents = await DustAPI.getDataSourceDocuments(
+      const documents = await CoreAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,
         dataSource.name,
         limit,

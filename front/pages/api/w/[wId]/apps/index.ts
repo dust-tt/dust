@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
@@ -62,7 +62,7 @@ async function handler(
         });
       }
 
-      const p = await DustAPI.createProject();
+      const p = await CoreAPI.createProject();
       if (p.isErr()) {
         return apiError(req, res, {
           status_code: 500,
