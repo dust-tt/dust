@@ -6,6 +6,7 @@ import {
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
+import PQueue from "p-queue";
 
 import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
@@ -86,29 +87,35 @@ export async function getChannel(
   return res.channel;
 }
 
+interface SyncChannelRes {
+  nextCursor?: string;
+  weeksSynced: Record<number, boolean>;
+}
+
 export async function syncChannel(
   slackAccessToken: string,
   channelId: string,
   channelName: string,
   dataSourceConfig: DataSourceConfig,
   connectorId: string,
+  weeksSynced: Record<number, boolean>,
   messagesCursor?: string
-): Promise<string | undefined> {
+): Promise<SyncChannelRes | undefined> {
   const threadsToSync: string[] = [];
-  const unthreadedTimeframesToSync = new Map<
-    string,
-    { startTsMs: number; endTsMs: number }
-  >();
+  let unthreadedTimeframesToSync: number[] = [];
   const messages = await getMessagesForChannel(
     slackAccessToken,
     channelId,
-    20,
+    100,
     messagesCursor
   );
   if (!messages.messages) {
     // This should never happen because we throw an exception in the activity if we get an error
     // from the Slack API, but we need to make typescript happy.
-    return messages.response_metadata?.next_cursor;
+    return {
+      nextCursor: messages.response_metadata?.next_cursor,
+      weeksSynced: weeksSynced,
+    };
   }
   for (const message of messages.messages) {
     if (!message.user) {
@@ -124,12 +131,10 @@ export async function syncChannel(
     } else {
       const messageTs = parseInt(message.ts as string, 10) * 1000;
       const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
-      const weekEndTsMss = getWeekEnd(new Date(messageTs)).getTime();
-
-      unthreadedTimeframesToSync.set(`${weekStartTsMs}-${weekEndTsMss}`, {
-        startTsMs: weekStartTsMs,
-        endTsMs: weekEndTsMss,
-      });
+      // const weekEndTsMss = getWeekEnd(new Date(messageTs)).getTime();
+      if (unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
+        unthreadedTimeframesToSync.push(weekStartTsMs);
+      }
     }
   }
   await syncThreads(
@@ -140,6 +145,11 @@ export async function syncChannel(
     threadsToSync,
     connectorId
   );
+
+  unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
+    (t) => !(t in weeksSynced)
+  );
+
   await syncMultipleNoNThreaded(
     slackAccessToken,
     dataSourceConfig,
@@ -148,8 +158,12 @@ export async function syncChannel(
     Array.from(unthreadedTimeframesToSync.values()),
     connectorId
   );
+  unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
 
-  return messages.response_metadata?.next_cursor;
+  return {
+    nextCursor: messages.response_metadata?.next_cursor,
+    weeksSynced: weeksSynced,
+  };
 }
 
 export async function getMessagesForChannel(
@@ -186,26 +200,27 @@ export async function syncMultipleNoNThreaded(
   dataSourceConfig: DataSourceConfig,
   channelId: string,
   channelName: string,
-  timestampsMs: { startTsMs: number; endTsMs: number }[],
+  timestampsMs: number[],
   connectorId: string
 ) {
-  while (timestampsMs.length > 0) {
-    const _timetampsMs = timestampsMs.splice(0, MAX_CONCURRENCY_LEVEL);
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
 
-    await Promise.all(
-      _timetampsMs.map((t) =>
-        syncNonThreaded(
-          slackAccessToken,
-          dataSourceConfig,
-          channelId,
-          channelName,
-          t.startTsMs,
-          t.endTsMs,
-          connectorId
-        )
+  const promises = [];
+  for (const startTsMs of timestampsMs) {
+    const p = queue.add(() =>
+      syncNonThreaded(
+        slackAccessToken,
+        dataSourceConfig,
+        channelId,
+        channelName,
+        startTsMs,
+        getWeekEnd(new Date(startTsMs)).getTime(),
+        connectorId
       )
     );
+    promises.push(p);
   }
+  return await Promise.all(promises);
 }
 
 export async function syncNonThreaded(
@@ -310,21 +325,23 @@ export async function syncThreads(
   threadsTs: string[],
   connectorId: string
 ) {
-  while (threadsTs.length > 0) {
-    const _threadsTs = threadsTs.splice(0, MAX_CONCURRENCY_LEVEL);
-    await Promise.all(
-      _threadsTs.map((t) =>
-        syncThread(
-          dataSourceConfig,
-          slackAccessToken,
-          channelId,
-          channelName,
-          t,
-          connectorId
-        )
-      )
-    );
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+
+  const promises = [];
+  for (const threadTs of threadsTs) {
+    const p = queue.add(() => {
+      return syncThread(
+        dataSourceConfig,
+        slackAccessToken,
+        channelId,
+        channelName,
+        threadTs,
+        connectorId
+      );
+    });
+    promises.push(p);
   }
+  return await Promise.all(promises);
 }
 
 export async function syncThread(
