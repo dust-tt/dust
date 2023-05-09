@@ -185,7 +185,7 @@ export async function isPageAccessibleAndUnarchived(
   notionAccessToken: string,
   pageId: string,
   localLogger?: Logger
-) {
+): Promise<boolean> {
   const notionClient = new Client({ auth: notionAccessToken });
   const maxTries = 5;
   let tries = 0;
@@ -196,6 +196,7 @@ export async function isPageAccessibleAndUnarchived(
       maxTries,
       pageId,
     });
+
     try {
       tryLogger.info("Checking if page is accessible and unarchived.");
       const page = await notionClient.pages.retrieve({ page_id: pageId });
@@ -213,14 +214,24 @@ export async function isPageAccessibleAndUnarchived(
           );
           await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** tries));
           tries += 1;
+          if (tries >= maxTries) {
+            throw e;
+          }
           continue;
         }
+        if (
+          ["object_not_found", "unauthorized", "restricted_resource"].includes(
+            e.code
+          )
+        ) {
+          return false;
+        }
       }
-      return false;
+      throw e;
     }
   }
 
-  return false;
+  throw new Error("Unreachable.");
 }
 
 export async function getParsedPage(
