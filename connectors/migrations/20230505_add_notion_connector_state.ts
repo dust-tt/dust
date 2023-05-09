@@ -2,15 +2,15 @@ import { Connector, NotionConnectorState } from "@connectors/lib/models";
 
 async function main() {
   const connectors = await Connector.findAll();
-  console.log("Found ${connectors.length} connectors");
+  console.log(`Found ${connectors.length} connectors`);
   for (const connector of connectors) {
-    console.log("Processing connector ${connector.id} (${connector.type})...");
+    console.log(`Processing connector ${connector.id} (${connector.type})...`);
     if (
       connector.lastSyncSuccessfulTime &&
       !connector.firstSuccessfulSyncTime
     ) {
       console.log(
-        "Backfilling firstSuccessfulSyncTime for connector ${connector.id}..."
+        `Backfilling firstSuccessfulSyncTime for connector ${connector.id}...`
       );
 
       await connector.update({
@@ -24,7 +24,7 @@ async function main() {
       });
       if (!notionState) {
         console.log(
-          "Creating NotionConnectorState for connector ${connector.id}..."
+          `Creating NotionConnectorState for connector ${connector.id}...`
         );
         await NotionConnectorState.create({ connectorId: connector.id });
       }
