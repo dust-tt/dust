@@ -190,7 +190,7 @@ async function handler(
       }
 
       dataSource = await dataSource.update({
-        connectorId: connectorsRes.value.connectorId,
+        connectorId: connectorsRes.value.id,
         connectorProvider: provider,
       });
 
@@ -202,9 +202,10 @@ async function handler(
           config: dataSource.config,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connector: {
-            id: connectorsRes.value.connectorId,
+            id: connectorsRes.value.id,
             provider: provider,
           },
+          connectorType: connectorsRes.value,
         },
       });
 

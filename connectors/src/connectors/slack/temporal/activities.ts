@@ -8,10 +8,13 @@ import {
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import PQueue from "p-queue";
 
-import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { upsertToDatasource } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
+import {
+  reportInitialSyncProgress,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -520,6 +523,13 @@ export async function saveSuccessSyncActivity(connectorId: string) {
     "Saving success sync activity for connector"
   );
   await syncSucceeded(parseInt(connectorId));
+}
+
+export async function reportInitialSyncProgressActivity(
+  connectorId: string,
+  progress: string
+) {
+  await reportInitialSyncProgress(parseInt(connectorId), progress);
 }
 
 async function getUserName(

@@ -25,6 +25,20 @@ async function syncFinished(
   return new Ok(undefined);
 }
 
+export async function reportInitialSyncProgress(
+  connectorId: ModelId,
+  progress: string
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error("Connector not found"));
+  }
+  connector.firstSyncProgress = progress;
+  await connector.save();
+
+  return new Ok(undefined);
+}
+
 /**
  * Signal that a sync has succeeded.
  * This function can be used by the sync worker itself or by the supervisor.

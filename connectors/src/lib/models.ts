@@ -42,6 +42,7 @@ export class Connector extends Model<
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
+  declare firstSyncProgress?: string;
 }
 
 Connector.init(
@@ -99,6 +100,10 @@ Connector.init(
     },
     firstSuccessfulSyncTime: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    firstSyncProgress: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

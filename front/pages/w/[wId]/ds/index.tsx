@@ -2,7 +2,7 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
@@ -12,9 +12,10 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
   ConnectorProvider,
   ConnectorsAPI,
-  ConnectorSyncStatus,
+  ConnectorType,
 } from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -30,8 +31,7 @@ type UpcomingConnectorProvider = "google_drive" | "github";
 
 type ManagedDataSource = {
   name: string;
-  status?: ConnectorSyncStatus | null;
-  enabled?: boolean | null;
+  connectorType?: ConnectorType | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
   logoPath?: string;
@@ -97,30 +97,20 @@ export const getServerSideProps: GetServerSideProps<{
   let allDataSources = await getDataSources(auth);
   const dataSources = allDataSources.filter((ds) => !ds.connector);
   const managedDataSources = allDataSources.filter((ds) => ds.connector);
-
-  let connectorStatuses = managedDataSources.map(() => "failed");
-  try {
-    connectorStatuses = (
-      await Promise.all(
-        managedDataSources.map(({ connector }) =>
-          ConnectorsAPI.getSyncStatus(connector!.id)
-        )
-      )
-    ).map((s): ConnectorSyncStatus => (s.isErr() ? "failed" : "succeeded"));
-  } catch (e) {
-    // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
-    // displaying the datasources (eventual actions will fail but a 500 just at display is not
-    // desirable). When that happens the managed data sources are shown as failed.
-    logger.error({ error: e }, "Failed to retrieve connector status");
-  }
-
-  const connectorStatusByProvider: Record<
-    ConnectorProvider,
-    ConnectorSyncStatus
-  > = managedDataSources.reduce(
-    (acc, ds, i) =>
-      Object.assign(acc, { [ds.connector!.provider]: connectorStatuses[i] }),
-    {} as Record<ConnectorProvider, ConnectorSyncStatus>
+  const provider2Connector = await Promise.all(
+    managedDataSources.map(async (mds) => {
+      const statusRes = await ConnectorsAPI.getConnector(mds.connector!.id);
+      if (statusRes.isErr()) {
+        return {
+          provider: mds.connector!.provider,
+          connectorType: undefined,
+        };
+      }
+      return {
+        provider: mds.connector!.provider,
+        connectorType: statusRes.value,
+      };
+    })
   );
 
   return {
@@ -129,17 +119,15 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
-      managedDataSources: MANAGED_DATA_SOURCES.map((ds) => ({
-        ...ds,
-        enabled:
-          !!connectorStatusByProvider[
-            ds.connectorProvider as ConnectorProvider
-          ],
-        status:
-          connectorStatusByProvider[
-            ds.connectorProvider as ConnectorProvider
-          ] || null,
-      })),
+      managedDataSources: MANAGED_DATA_SOURCES.map((managedDs) => {
+        return {
+          ...managedDs,
+          connectorType:
+            provider2Connector.find(
+              (p) => p.provider == managedDs.connectorProvider
+            )?.connectorType || null,
+        };
+      }),
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
@@ -196,12 +184,13 @@ export default function DataSourcesView({
         }),
       });
       if (res.ok) {
+        const dataSourceUpdated: DataSourceType = (await res.json()).dataSource;
         setManagedDataSourcesLocal((prev) =>
-          prev.map((ds) =>
-            ds.connectorProvider == provider
-              ? { ...ds, enabled: true, status: "succeeded" }
-              : ds
-          )
+          prev.map((ds) => {
+            return ds.connectorProvider == provider
+              ? { ...ds, connectorType: dataSourceUpdated.connectorType }
+              : ds;
+          })
         );
       } else {
         logger.error(
@@ -221,6 +210,10 @@ export default function DataSourcesView({
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
   };
+
+  useEffect(() => {
+    setManagedDataSourcesLocal(managedDataSources);
+  }, [managedDataSources]);
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
@@ -338,7 +331,7 @@ export default function DataSourcesView({
         <div className="sm:flex sm:items-center">
           <div className="mt-16 sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">
-              Managed DataSources
+              Managed Data Sources
             </h1>
 
             <p className="text-sm text-gray-500">
@@ -363,7 +356,7 @@ export default function DataSourcesView({
                           <img src={ds.logoPath}></img>
                         </div>
                       ) : null}
-                      {ds.enabled ? (
+                      {ds.connectorType ? (
                         <Link
                           href={`/w/${
                             owner.sId
@@ -373,7 +366,9 @@ export default function DataSourcesView({
                           <p
                             className={classNames(
                               "truncate text-base font-bold",
-                              ds.enabled ? "text-violet-600" : "text-slate-400"
+                              ds.connectorType
+                                ? "text-violet-600"
+                                : "text-slate-400"
                             )}
                           >
                             {ds.name}
@@ -383,7 +378,9 @@ export default function DataSourcesView({
                         <p
                           className={classNames(
                             "truncate text-base font-bold",
-                            ds.enabled ? "text-violet-600" : "text-slate-400"
+                            ds.connectorType
+                              ? "text-violet-600"
+                              : "text-slate-400"
                           )}
                         >
                           {ds.name}
@@ -391,7 +388,7 @@ export default function DataSourcesView({
                       )}
                     </div>
                     <div>
-                      {!ds.enabled ? (
+                      {!ds.connectorType ? (
                         <Button
                           disabled={
                             !ds.isBuilt ||
@@ -428,18 +425,38 @@ export default function DataSourcesView({
                             ? "Connect"
                             : "Connecting..."}
                         </Button>
-                      ) : (
-                        <p
-                          className={classNames(
-                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            ds.status === "succeeded"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          )}
-                        >
-                          {ds.status === "succeeded" ? "enabled" : "errored"}
-                        </p>
-                      )}
+                      ) : null}
+                      {(() => {
+                        if (!ds || !ds.connectorType) {
+                          return null;
+                        }
+                        if (!ds.connectorType?.firstSuccessfulSyncTime) {
+                          return (
+                            <div className="flex-col justify-items-end text-right">
+                              <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
+                                Synchronizing (
+                                {ds.connectorType?.firstSyncProgress})
+                              </p>
+                            </div>
+                          );
+                        } else if (ds.connectorType.lastSyncSuccessfulTime) {
+                          return (
+                            <>
+                              <div className="flex-col justify-items-end text-right">
+                                <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
+                                  Synchronized
+                                </p>
+                                <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
+                                  {timeAgoFrom(
+                                    ds.connectorType.lastSyncSuccessfulTime
+                                  )}{" "}
+                                  ago
+                                </p>
+                              </div>
+                            </>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                 </li>

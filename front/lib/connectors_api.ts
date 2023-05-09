@@ -13,8 +13,18 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-
 export type ConnectorProvider = "slack" | "notion";
+export type ConnectorType = {
+  id: string;
+  type: ConnectorProvider;
+
+  lastSyncStatus?: ConnectorSyncStatus;
+  lastSyncStartTime?: number;
+  lastSyncFinishTime?: number;
+  lastSyncSuccessfulTime?: number;
+  firstSuccessfulSyncTime?: number;
+  firstSyncProgress?: string;
+};
 
 export const ConnectorsAPI = {
   async createConnector(
@@ -23,7 +33,7 @@ export const ConnectorsAPI = {
     workspaceAPIKey: string,
     dataSourceName: string,
     nangoConnectionId: string
-  ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
       headers: getDefaultHeaders(),
@@ -93,20 +103,13 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async getSyncStatus(connectorId: string): Promise<
-    ConnectorsAPIResponse<{
-      lastSyncStatus: ConnectorSyncStatus;
-      lastSyncStartTime: number;
-      lastSuccessfulSyncTime: number;
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/sync_status/${connectorId}`,
-      {
-        method: "GET",
-        headers: getDefaultHeaders(),
-      }
-    );
+  async getConnector(
+    connectorId: string
+  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/${connectorId}`, {
+      method: "GET",
+      headers: getDefaultHeaders(),
+    });
 
     return _resultFromResponse(res);
   },

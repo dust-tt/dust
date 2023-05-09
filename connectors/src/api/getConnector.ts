@@ -3,20 +3,14 @@ import { Request, Response } from "express";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
-import { ConnectorSyncStatus } from "@connectors/types/connector";
+import { ConnectorType } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type GetSyncStatusRes =
-  | {
-      lastSyncStatus?: ConnectorSyncStatus;
-      lastSyncStartTime?: number;
-      lastSuccessfulSyncTime?: number;
-    }
-  | ConnectorsAPIErrorResponse;
+type GetConnectorRes = ConnectorType | ConnectorsAPIErrorResponse;
 
-const _getConnectorStatusAPIHandler = async (
-  req: Request<{ connector_id: string }, GetSyncStatusRes, undefined>,
-  res: Response<GetSyncStatusRes>
+const _getConnector = async (
+  req: Request<{ connector_id: string }, GetConnectorRes, undefined>,
+  res: Response<GetConnectorRes>
 ) => {
   try {
     if (!req.params.connector_id) {
@@ -36,18 +30,20 @@ const _getConnectorStatusAPIHandler = async (
       });
     }
     return res.status(200).send({
+      id: connector.id,
+      type: connector.type,
       lastSyncStatus: connector.lastSyncStatus,
       lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
-      lastSuccessfulSyncTime: connector.lastSyncSuccessfulTime?.getTime(),
+      lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
+      firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
+      firstSyncProgress: connector.firstSyncProgress,
     });
   } catch (e) {
-    logger.error({ error: e }, "Error while getting the connector's status.");
+    logger.error({ error: e }, "Error while getting the connector.");
     res.status(500).send({
-      error: { message: "Error while getting the connector's status." },
+      error: { message: "Error while getting the connector." },
     });
   }
 };
 
-export const getConnectorStatusAPIHandler = withLogging(
-  _getConnectorStatusAPIHandler
-);
+export const getConnector = withLogging(_getConnector);

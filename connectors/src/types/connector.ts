@@ -6,3 +6,15 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
 }
 
 export type ConnectorSyncStatus = "succeeded" | "failed";
+
+export type ConnectorType = {
+  id: number;
+  type: ConnectorProvider;
+
+  lastSyncStatus?: ConnectorSyncStatus;
+  lastSyncStartTime?: number;
+  lastSyncFinishTime?: number;
+  lastSyncSuccessfulTime?: number;
+  firstSuccessfulSyncTime?: number;
+  firstSyncProgress?: string;
+};

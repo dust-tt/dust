@@ -30,7 +30,7 @@ export default function MainTab({
       ),
     },
     {
-      name: "DataSources",
+      name: "Data Sources",
       href: `/w/${owner.sId}/ds`,
       icon: (
         <MagnifyingGlassCircleIcon
