@@ -3,7 +3,7 @@ import path from "path";
 import peg from "pegjs";
 
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunConfig, RunType } from "@app/types/run";
 

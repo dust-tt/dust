@@ -4,7 +4,7 @@ import MainTab from "@app/components/app/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { dumpSpecification } from "@app/lib/specification";
 import { AppType } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";

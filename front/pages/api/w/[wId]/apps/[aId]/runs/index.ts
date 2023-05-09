@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App, Provider, Run } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";

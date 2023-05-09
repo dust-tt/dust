@@ -17,7 +17,7 @@ import { ActionButton, Button } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { CoreAPIErrorResponse } from "@app/lib/dust_api";
+import { CoreAPIErrorResponse } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   addBlock,

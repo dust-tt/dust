@@ -2,7 +2,7 @@ import parseArgs from "minimist";
 
 import { planForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { DataSource, Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 

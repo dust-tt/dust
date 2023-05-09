@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/dust_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Provider } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
