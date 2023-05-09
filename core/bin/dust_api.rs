@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use axum::{
     extract,
+    extract::DefaultBodyLimit,
     http::header::HeaderMap,
     response::{
         sse::{Event, KeepAlive, Sse},
@@ -1576,6 +1577,7 @@ async fn main() -> Result<()> {
             delete(data_sources_delete),
         )
         // Extensions
+        .layer(DefaultBodyLimit::disable())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
