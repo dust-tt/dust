@@ -23,16 +23,5 @@ export async function runSlackWorker() {
     },
   });
 
-  const workerPromise = worker.run();
-  const statusReportInterval = setInterval(() => {
-    const status = worker.getStatus();
-
-    logger.info(
-      {
-        ...status,
-      },
-      "Worker status report"
-    );
-  }, 30000);
-  await workerPromise.finally(() => clearInterval(statusReportInterval));
+  await worker.run();
 }
