@@ -115,20 +115,44 @@ export async function notionUpsertPageActivity(
 ) {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
-  const alreadySeenInRun = !!(await getNotionPageFromConnectorsDb(
+  const notionPage = await getNotionPageFromConnectorsDb(
     dataSourceConfig,
-    pageId,
-    runTimestamp
-  ));
+    pageId
+  );
+
+  const alreadySeenInRun = notionPage?.lastSeenTs?.getTime() === runTimestamp;
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping page already seen in this run");
     return;
   }
 
+  const isSkipped = !!notionPage?.skipReason;
+
+  if (isSkipped) {
+    localLogger.info(
+      { skipReason: notionPage.skipReason },
+      "Skipping page with skip reason"
+    );
+    return;
+  }
+
   let upsertTs: number | undefined = undefined;
 
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
+
+  if (parsedPage && parsedPage.rendered.length > 1000000) {
+    localLogger.info("Skipping page with too large body");
+    await upsertNotionPageInConnectorsDb(
+      dataSourceConfig,
+      pageId,
+      runTimestamp,
+      upsertTs,
+      "body_too_large"
+    );
+    return;
+  }
+
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
@@ -309,7 +333,13 @@ export async function syncGarbageCollectorPagesActivity(
   const existingPageIds = new Set(
     (
       await NotionPage.findAll({
-        where: { notionPageId: pageIds, connectorId: connector.id },
+        where: {
+          notionPageId: pageIds,
+          connectorId: connector.id,
+          skipReason: {
+            [Op.is]: null,
+          },
+        },
         attributes: ["notionPageId"],
       })
     ).map((page) => page.notionPageId)
