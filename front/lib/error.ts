@@ -3,7 +3,7 @@ import { NextApiResponse } from "next";
 import logger from "@app/logger/logger";
 
 import { ConnectorsAPIErrorResponse } from "./connectors_api";
-import { CoreAPIErrorResponse } from "./dust_api";
+import { CoreAPIErrorResponse } from "./core_api";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
