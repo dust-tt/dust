@@ -6,6 +6,7 @@ import {
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
+import PQueue from "p-queue";
 
 import { syncSucceeded } from "@connectors/connectors/sync_status";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
@@ -20,7 +21,7 @@ const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
-const MAX_CONCURRENCY_LEVEL = 10;
+const MAX_CONCURRENCY_LEVEL = 2;
 
 // Timeout in ms for all network requests;
 const NETWORK_REQUEST_TIMEOUT_MS = 30000;
@@ -202,23 +203,24 @@ export async function syncMultipleNoNThreaded(
   timestampsMs: number[],
   connectorId: string
 ) {
-  while (timestampsMs.length > 0) {
-    const _timetampsMs = timestampsMs.splice(0, MAX_CONCURRENCY_LEVEL);
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
 
-    await Promise.all(
-      _timetampsMs.map((startTsMs) =>
-        syncNonThreaded(
-          slackAccessToken,
-          dataSourceConfig,
-          channelId,
-          channelName,
-          startTsMs,
-          getWeekEnd(new Date(startTsMs)).getTime(),
-          connectorId
-        )
+  const promises = [];
+  for (const startTsMs of timestampsMs) {
+    const p = queue.add(() =>
+      syncNonThreaded(
+        slackAccessToken,
+        dataSourceConfig,
+        channelId,
+        channelName,
+        startTsMs,
+        getWeekEnd(new Date(startTsMs)).getTime(),
+        connectorId
       )
     );
+    promises.push(p);
   }
+  return await Promise.all(promises);
 }
 
 export async function syncNonThreaded(
@@ -323,21 +325,23 @@ export async function syncThreads(
   threadsTs: string[],
   connectorId: string
 ) {
-  while (threadsTs.length > 0) {
-    const _threadsTs = threadsTs.splice(0, MAX_CONCURRENCY_LEVEL);
-    await Promise.all(
-      _threadsTs.map((t) =>
-        syncThread(
-          dataSourceConfig,
-          slackAccessToken,
-          channelId,
-          channelName,
-          t,
-          connectorId
-        )
-      )
-    );
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+
+  const promises = [];
+  for (const threadTs of threadsTs) {
+    const p = queue.add(() => {
+      return syncThread(
+        dataSourceConfig,
+        slackAccessToken,
+        channelId,
+        channelName,
+        threadTs,
+        connectorId
+      );
+    });
+    promises.push(p);
   }
+  return await Promise.all(promises);
 }
 
 export async function syncThread(
@@ -348,6 +352,7 @@ export async function syncThread(
   threadTs: string,
   connectorId: string
 ) {
+  console.log(`~~~~~~~~syncing thread ${threadTs}`);
   const client = getSlackClient(slackAccessToken);
 
   let allMessages: Message[] = [];
