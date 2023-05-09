@@ -181,6 +181,59 @@ export async function getPagesEditedSince(
   };
 }
 
+export async function isPageAccessibleAndUnarchived(
+  notionAccessToken: string,
+  pageId: string,
+  localLogger?: Logger
+): Promise<boolean> {
+  const notionClient = new Client({ auth: notionAccessToken });
+  const maxTries = 5;
+  let tries = 0;
+
+  while (tries < maxTries) {
+    const tryLogger = (localLogger || logger).child({
+      tries,
+      maxTries,
+      pageId,
+    });
+
+    try {
+      tryLogger.info("Checking if page is accessible and unarchived.");
+      const page = await notionClient.pages.retrieve({ page_id: pageId });
+      if (!isFullPage(page)) {
+        return false;
+      }
+      return !page.archived;
+    } catch (e) {
+      if (APIResponseError.isAPIResponseError(e)) {
+        if (["rate_limited", "internal_server_error"].includes(e.code)) {
+          const waitTime = 500 * 2 ** tries;
+          tryLogger.info(
+            { waitTime },
+            "Got potentially transient error. Trying again."
+          );
+          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** tries));
+          tries += 1;
+          if (tries >= maxTries) {
+            throw e;
+          }
+          continue;
+        }
+        if (
+          ["object_not_found", "unauthorized", "restricted_resource"].includes(
+            e.code
+          )
+        ) {
+          return false;
+        }
+      }
+      throw e;
+    }
+  }
+
+  throw new Error("Unreachable.");
+}
+
 export async function getParsedPage(
   notionAccessToken: string,
   pageId: string,

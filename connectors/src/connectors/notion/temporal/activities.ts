@@ -7,6 +7,7 @@ import {
 import {
   getPagesEditedSince,
   getParsedPage,
+  isPageAccessibleAndUnarchived,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import { syncStarted, syncSucceeded } from "@connectors/connectors/sync_status";
@@ -18,7 +19,6 @@ import {
   Connector,
   NotionConnectorState,
   NotionPage,
-  sequelize_conn,
 } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
@@ -259,25 +259,15 @@ async function shouldGarbageCollect(
 
   // If we have never done a garbage collection, we should start one
   // if it has been more than GARBAGE_COLLECTION_INTERVAL_HOURS since the first successful sync
-  if (!notionConnectorState.lastGarbageCollectionStartTime) {
+  if (!notionConnectorState.lastGarbageCollectionFinishTime) {
     return (
       now - firstSuccessfulSyncTime.getTime() >=
       GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
     );
   }
 
-  const lastGarbageCollectionStartTime =
-    notionConnectorState.lastGarbageCollectionStartTime.getTime();
-
-  // If we have started a garbage collection, we should not start another one
-  if (!notionConnectorState.lastGarbageCollectionFinishTime) {
-    return false;
-  }
   const lastGarbageCollectionFinishTime =
     notionConnectorState.lastGarbageCollectionFinishTime.getTime();
-  if (lastGarbageCollectionStartTime > lastGarbageCollectionFinishTime) {
-    return false;
-  }
 
   // if we garbage collected less than GARBAGE_COLLECTION_INTERVAL_HOURS ago, we should not start another one
   if (
@@ -288,45 +278,6 @@ async function shouldGarbageCollect(
   }
 
   return true;
-}
-
-export async function saveStartGarbageCollectionActivity(
-  dataSourceConfig: DataSourceConfig
-) {
-  const transaction = await sequelize_conn.transaction();
-
-  try {
-    const connector = await Connector.findOne({
-      where: {
-        type: "notion",
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-      },
-    });
-
-    if (!connector) {
-      throw new Error("Could not find connector");
-    }
-
-    const notionConnectorState = await NotionConnectorState.findOne({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-
-    if (!notionConnectorState) {
-      throw new Error("Could not find notionConnectorState");
-    }
-
-    await notionConnectorState.update({
-      lastGarbageCollectionStartTime: new Date(),
-    });
-
-    await transaction.commit();
-  } catch (e) {
-    await transaction.rollback();
-    throw e;
-  }
 }
 
 export async function syncGarbageCollectorPagesActivity(
@@ -373,7 +324,11 @@ export async function syncGarbageCollectorPagesActivity(
   return newPageIds;
 }
 
-export async function deletePagesNotVisitedInRunActivity(
+// - look at pages that have a lastSeenTs < runTimestamp
+// - for each page, query notion API and check if the page still exists
+// - if the page does not exist, delete it from the database
+// - update the lastGarbageCollectionFinishTime
+export async function garbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number
 ) {
@@ -392,6 +347,14 @@ export async function deletePagesNotVisitedInRunActivity(
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
   const pagesToDelete = await NotionPage.findAll({
     where: {
       connectorId: connector.id,
@@ -404,33 +367,26 @@ export async function deletePagesNotVisitedInRunActivity(
     { pagesToDeleteCount: pagesToDelete.length },
     "Found pages to delete."
   );
+  const notionAccessToken = await getNotionAccessToken(
+    connector.nangoConnectionId
+  );
   for (const page of pagesToDelete) {
+    if (
+      await isPageAccessibleAndUnarchived(
+        notionAccessToken,
+        page.notionPageId,
+        localLogger
+      )
+    ) {
+      localLogger.info(
+        { pageId: page.notionPageId },
+        "Page is still accessible, not deleting."
+      );
+      continue;
+    }
     localLogger.info({ pageId: page.notionPageId }, "Deleting page.");
     await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
     await page.destroy();
-  }
-}
-
-export async function saveSuccessGarbageCollectionActivity(
-  dataSourceInfo: DataSourceInfo
-) {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-  const notionConnectorState = await NotionConnectorState.findOne({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-  if (!notionConnectorState) {
-    throw new Error("Could not find notionConnectorState");
   }
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),

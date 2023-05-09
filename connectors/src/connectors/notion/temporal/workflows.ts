@@ -14,24 +14,21 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
 
-const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
+const { notionUpsertPageActivity, garbageCollectActivity } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "60 minute",
 });
 
-const {
-  notionGetPagesToSyncActivity,
-  syncGarbageCollectorPagesActivity,
-  deletePagesNotVisitedInRunActivity,
-  saveSuccessGarbageCollectionActivity,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
-});
+const { notionGetPagesToSyncActivity, syncGarbageCollectorPagesActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minute",
+  });
 
 const {
   saveSuccessSyncActivity,
   saveStartSyncActivity,
   getInitialWorkflowParamsActivity,
-  saveStartGarbageCollectionActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -44,7 +41,7 @@ const MAX_ITERATIONS_PER_WORKFLOW = 50;
 const SYNC_PERIOD_DURATION_MS = 60_000;
 
 // How long to wait before checking for new pages again
-const INTERVAL_BETWEEN_SYNCS_MS = 10_000;
+const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
 
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
@@ -80,8 +77,6 @@ export async function notionSyncWorkflow(
   do {
     if (!isGargageCollectionRun) {
       await saveStartSyncActivity(dataSourceConfig);
-    } else {
-      await saveStartGarbageCollectionActivity(dataSourceConfig);
     }
 
     const runTimestamp = Date.now();
@@ -165,15 +160,9 @@ export async function notionSyncWorkflow(
       await saveSuccessSyncActivity(dataSourceConfig);
       lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
     } else {
-      // garbage collect the pages -- can be done non-blocking
-      void executeChild(notionGarbageCollectWorkflow.name, {
-        workflowId: `${getWorkflowId(dataSourceConfig)}-garbage-collection`,
-        args: [dataSourceConfig, runTimestamp],
-        // we don't want to wait for the garbage collection to finish
-        // and we don't want the child workflow to be terminated if the parent
-        // is cont'd as new
-        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
-      });
+      // look at pages that were not visited in this run, check with the notion API
+      // if they were really deleted and delete them from the database if they were
+      await garbageCollectActivity(dataSourceConfig, runTimestamp);
     }
 
     iterations += 1;
@@ -224,12 +213,4 @@ export async function notionSyncResultPageWorkflow(
   }
 
   await Promise.all(promises);
-}
-
-export async function notionGarbageCollectWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  runTimestamp: number
-) {
-  await deletePagesNotVisitedInRunActivity(dataSourceConfig, runTimestamp);
-  await saveSuccessGarbageCollectionActivity(dataSourceConfig);
 }

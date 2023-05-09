@@ -162,7 +162,6 @@ export class NotionConnectorState extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare lastGarbageCollectionStartTime?: Date;
   declare lastGarbageCollectionFinishTime?: Date;
 
   declare connectorId: ForeignKey<Connector["id"]>;
@@ -184,10 +183,6 @@ NotionConnectorState.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    lastGarbageCollectionStartTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
     lastGarbageCollectionFinishTime: {
       type: DataTypes.DATE,
