@@ -29,7 +29,7 @@ const {
 
 type UpcomingConnectorProvider = "google_drive" | "github";
 
-type ConnectorSupported = {
+type DataSourceIntegration = {
   name: string;
   connector?: ConnectorType | null;
   fetchConnectorError: boolean | null;
@@ -38,7 +38,7 @@ type ConnectorSupported = {
   logoPath?: string;
 };
 
-const CONNECTORS_SUPPORTED: ConnectorSupported[] = [
+const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
   {
     name: "Notion",
     connectorProvider: "notion",
@@ -74,7 +74,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   readOnly: boolean;
   dataSources: DataSourceType[];
-  managedDataSources: ConnectorSupported[];
+  integrations: DataSourceIntegration[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
   nangoConfig: {
@@ -119,7 +119,12 @@ export const getServerSideProps: GetServerSideProps<{
           fetchConnectorError: false,
         };
       } catch (e) {
-        logger.error(e, "Failed to get connector");
+        logger.error(
+          {
+            error: e,
+          },
+          "Failed to get connector"
+        );
         return {
           provider: mds.connectorProvider,
           connector: undefined,
@@ -135,8 +140,8 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
-      managedDataSources: CONNECTORS_SUPPORTED.map(
-        (managedDs): ConnectorSupported => {
+      integrations: DATA_SOURCE_INTEGRATIONS.map(
+        (managedDs): DataSourceIntegration => {
           const p2c = provider2Connector.find(
             (p) => p.provider == managedDs.connectorProvider
           );
@@ -166,13 +171,12 @@ export default function DataSourcesView({
   owner,
   readOnly,
   dataSources,
-  managedDataSources,
+  integrations,
   canUseManagedDataSources,
   gaTrackingId,
   nangoConfig,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [managedDataSourcesLocal, setManagedDataSourcesLocal] =
-    useState(managedDataSources);
+  const [localIntegrations, setLocalIntegrations] = useState(integrations);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
@@ -210,7 +214,7 @@ export default function DataSourcesView({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
-        setManagedDataSourcesLocal((prev) =>
+        setLocalIntegrations((prev) =>
           prev.map((ds) => {
             return ds.connectorProvider == provider
               ? { ...ds, connector: createdManagedDataSource.connector }
@@ -237,8 +241,8 @@ export default function DataSourcesView({
   };
 
   useEffect(() => {
-    setManagedDataSourcesLocal(managedDataSources);
-  }, [managedDataSources]);
+    setLocalIntegrations(localIntegrations);
+  }, [localIntegrations]);
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
@@ -368,7 +372,7 @@ export default function DataSourcesView({
 
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="">
-            {managedDataSourcesLocal.map((ds) => {
+            {localIntegrations.map((ds) => {
               return (
                 <li
                   key={`managed-${ds.connectorProvider}`}

@@ -85,12 +85,10 @@ const _createConnectorAPIHandler = async (
         status_code: 500,
       });
     }
-    if (connector.type !== "notion") {
-      await reportInitialSyncProgress(parseInt(connectorRes.value), "0%");
-    }
+
     await connector.reload();
 
-    const aa = {
+    return res.status(200).json({
       id: connector.id,
       type: connector.type,
       lastSyncStatus: connector.lastSyncStatus,
@@ -98,10 +96,7 @@ const _createConnectorAPIHandler = async (
       lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
       firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: connector.firstSyncProgress,
-    };
-    console.log("returning first connector creation object:", aa);
-
-    return res.status(200).json(aa);
+    });
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {
