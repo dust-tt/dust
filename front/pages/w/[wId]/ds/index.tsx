@@ -119,6 +119,9 @@ export const getServerSideProps: GetServerSideProps<{
           fetchConnectorError: false,
         };
       } catch (e) {
+        // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
+        // displaying the datasources (eventual actions will fail but a 500 just at display is not
+        // desirable). When that happens the managed data sources are shown as failed.
         logger.error(
           {
             error: e,
