@@ -1,4 +1,4 @@
-import { Listbox, Transition } from "@headlessui/react";
+import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
@@ -7,7 +7,6 @@ import { mutate } from "swr";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
-import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";

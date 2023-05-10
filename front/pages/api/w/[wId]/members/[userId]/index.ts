@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator, getSession, RoleType } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership, User } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { UserType } from "@app/types/user";

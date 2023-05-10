@@ -6,7 +6,7 @@ import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { DataSource, Key, Provider } from "@app/lib/models";
+import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
