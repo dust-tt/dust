@@ -1,7 +1,9 @@
 export type APIErrorType =
   | "internal_server_error"
   | "unknown_connector_provider"
-  | "invalid_request_error";
+  | "invalid_request_error"
+  | "connector_not_found"
+  | "connector_configugration_not_found";
 
 export type APIError = {
   type: APIErrorType;

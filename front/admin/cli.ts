@@ -347,12 +347,13 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           `DataSource not found: wId='${args.wId}' provider='${args.provider}'`
         );
       }
+      if (!dataSource.connectorId) {
+        throw new Error(
+          `DataSource does not have a connector: wId='${args.wId}' connectorId='${args.connectorId}'`
+        );
+      }
 
-      await ConnectorsAPI.deleteConnector(
-        args.provider,
-        args.wId,
-        dataSource.name
-      );
+      await ConnectorsAPI.deleteConnector(dataSource.connectorId.toString());
       await CoreAPI.deleteDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name

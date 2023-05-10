@@ -8,7 +8,6 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorDeleteReqBody = {
@@ -20,42 +19,27 @@ type ConnectorDeleteResBody = { success: true } | ConnectorsAPIErrorResponse;
 
 const _deleteConnectorAPIHandler = async (
   req: Request<
-    { connector_provider: string },
+    { connector_id: string },
     ConnectorDeleteResBody,
     ConnectorDeleteReqBody
   >,
   res: Response<ConnectorDeleteResBody>
 ) => {
   try {
-    if (!req.body.dataSourceName || !req.body.workspaceId) {
-      // We would probably want to return the same error inteface than we use in the /front package. TBD.
+    const connector = await Connector.findByPk(req.params.connector_id);
+    if (!connector) {
       return apiError(req, res, {
         api_error: {
-          type: "invalid_request_error",
-          message:
-            "Missing required parameters. Required : dataSourceName, workspaceId",
+          type: "connector_not_found",
+          message: "Connector not found",
         },
-        status_code: 400,
+        status_code: 404,
       });
     }
 
-    if (!isConnectorProvider(req.params.connector_provider)) {
-      return apiError(req, res, {
-        api_error: {
-          type: "unknown_connector_provider",
-          message: `Unknown connector provider ${req.params.connector_provider}`,
-        },
-        status_code: 400,
-      });
-    }
+    const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
 
-    const connectorStopper =
-      STOP_CONNECTOR_BY_TYPE[req.params.connector_provider];
-
-    const stopRes = await connectorStopper({
-      dataSourceName: req.body.dataSourceName,
-      workspaceId: req.body.workspaceId,
-    });
+    const stopRes = await connectorStopper(connector.id.toString());
 
     if (stopRes.isErr()) {
       return apiError(req, res, {
@@ -67,14 +51,6 @@ const _deleteConnectorAPIHandler = async (
       });
     }
 
-    const connector = await Connector.findOne({
-      where: {
-        type: "notion",
-        workspaceId: req.body.workspaceId,
-        dataSourceName: req.body.dataSourceName,
-      },
-    });
-
     if (!connector) {
       return apiError(req, res, {
         api_error: {
@@ -85,8 +61,7 @@ const _deleteConnectorAPIHandler = async (
       });
     }
 
-    const connectorCleaner =
-      CLEAN_CONNECTOR_BY_TYPE[req.params.connector_provider];
+    const connectorCleaner = CLEAN_CONNECTOR_BY_TYPE[connector.type];
     const cleanRes = await connectorCleaner(connector.id.toString());
     if (cleanRes.isErr()) {
       return apiError(req, res, {

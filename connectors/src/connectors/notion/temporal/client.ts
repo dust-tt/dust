@@ -7,21 +7,25 @@ import {
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+import { DataSourceInfo } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
 export async function launchNotionSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string,
+  connectorId: string,
   startFromTs: number | null = null
 ) {
   const client = await getTemporalClient();
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const nangoConnectionId = connector.nangoConnectionId;
 
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
@@ -48,8 +52,13 @@ export async function launchNotionSyncWorkflow(
 }
 
 export async function stopNotionSyncWorkflow(
-  dataSourceConfig: DataSourceInfo
+  connectorId: string
 ): Promise<void> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
   if (!workflow) {
