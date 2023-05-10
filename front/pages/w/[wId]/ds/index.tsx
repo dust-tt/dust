@@ -29,38 +29,43 @@ const {
 
 type UpcomingConnectorProvider = "google_drive" | "github";
 
-type ManagedDataSource = {
+type ConnectorSupported = {
   name: string;
   connector?: ConnectorType | null;
+  fetchConnectorError: boolean | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
   logoPath?: string;
 };
 
-const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
+const CONNECTORS_SUPPORTED: ConnectorSupported[] = [
   {
     name: "Notion",
     connectorProvider: "notion",
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
     isBuilt: false,
     logoPath: "/static/google_drive_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Github",
     connectorProvider: "github",
     isBuilt: false,
     logoPath: "/static/github_black_32x32.png",
+    fetchConnectorError: null,
   },
 ];
 
@@ -69,7 +74,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   readOnly: boolean;
   dataSources: DataSourceType[];
-  managedDataSources: ManagedDataSource[];
+  managedDataSources: ConnectorSupported[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
   nangoConfig: {
@@ -99,17 +104,28 @@ export const getServerSideProps: GetServerSideProps<{
   const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
   const provider2Connector = await Promise.all(
     managedDataSources.map(async (mds) => {
-      const statusRes = await ConnectorsAPI.getConnector(mds.connectorId!);
-      if (statusRes.isErr()) {
+      try {
+        const statusRes = await ConnectorsAPI.getConnector(mds.connectorId!);
+        if (statusRes.isErr()) {
+          return {
+            provider: mds.connectorProvider,
+            connector: undefined,
+            fetchConnectorError: true,
+          };
+        }
+        return {
+          provider: mds.connectorProvider,
+          connector: statusRes.value,
+          fetchConnectorError: false,
+        };
+      } catch (e) {
+        logger.error(e, "Failed to get connector");
         return {
           provider: mds.connectorProvider,
           connector: undefined,
+          fetchConnectorError: true,
         };
       }
-      return {
-        provider: mds.connectorProvider,
-        connector: statusRes.value,
-      };
     })
   );
 
@@ -119,14 +135,18 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
-      managedDataSources: MANAGED_DATA_SOURCES.map(
-        (managedDs): ManagedDataSource => {
+      managedDataSources: CONNECTORS_SUPPORTED.map(
+        (managedDs): ConnectorSupported => {
+          const p2c = provider2Connector.find(
+            (p) => p.provider == managedDs.connectorProvider
+          );
           return {
             ...managedDs,
-            connector:
-              provider2Connector.find(
-                (p) => p.provider == managedDs.connectorProvider
-              )?.connector || null,
+            connector: p2c?.connector || null,
+            fetchConnectorError:
+              p2c?.fetchConnectorError === undefined
+                ? null
+                : p2c.fetchConnectorError,
           };
         }
       ),
@@ -391,48 +411,57 @@ export default function DataSourcesView({
                       )}
                     </div>
                     <div>
-                      {!ds.connector ? (
-                        <Button
-                          disabled={
-                            !ds.isBuilt ||
-                            isLoadingByProvider[
-                              ds.connectorProvider as ConnectorProvider
-                            ]
-                          }
-                          onClick={
-                            canUseManagedDataSources
-                              ? () => {
-                                  handleEnableManagedDataSource(
-                                    ds.connectorProvider as ConnectorProvider
-                                  );
-                                }
-                              : () => {
-                                  window.alert(
-                                    "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                                  );
-                                  logger.info(
-                                    {
-                                      workspace: owner.sId,
-                                      connector_provider: ds.connectorProvider,
-                                    },
-                                    "request_early_access_managed_data_source"
-                                  );
-                                }
-                          }
-                        >
-                          {!ds.isBuilt
-                            ? "Coming soon"
-                            : !isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ]
-                            ? "Connect"
-                            : "Connecting..."}
-                        </Button>
-                      ) : null}
                       {(() => {
-                        if (!ds || !ds.connector) {
-                          return null;
+                        if (ds.fetchConnectorError) {
+                          return (
+                            <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
+                              errored
+                            </p>
+                          );
                         }
+
+                        if (!ds || !ds.connector) {
+                          return (
+                            <Button
+                              disabled={
+                                !ds.isBuilt ||
+                                isLoadingByProvider[
+                                  ds.connectorProvider as ConnectorProvider
+                                ]
+                              }
+                              onClick={
+                                canUseManagedDataSources
+                                  ? () => {
+                                      handleEnableManagedDataSource(
+                                        ds.connectorProvider as ConnectorProvider
+                                      );
+                                    }
+                                  : () => {
+                                      window.alert(
+                                        "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                                      );
+                                      logger.info(
+                                        {
+                                          workspace: owner.sId,
+                                          connector_provider:
+                                            ds.connectorProvider,
+                                        },
+                                        "request_early_access_managed_data_source"
+                                      );
+                                    }
+                              }
+                            >
+                              {!ds.isBuilt
+                                ? "Coming soon"
+                                : !isLoadingByProvider[
+                                    ds.connectorProvider as ConnectorProvider
+                                  ] && !ds.fetchConnectorError
+                                ? "Connect"
+                                : "Connecting..."}
+                            </Button>
+                          );
+                        }
+
                         if (!ds.connector?.firstSuccessfulSyncTime) {
                           return (
                             <div className="flex-col justify-items-end text-right">
