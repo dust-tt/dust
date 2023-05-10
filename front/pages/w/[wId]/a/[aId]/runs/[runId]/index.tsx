@@ -8,7 +8,6 @@ import { useState } from "react";
 import MainTab from "@app/components/app/MainTab";
 import SpecRunView from "@app/components/app/SpecRunView";
 import AppLayout from "@app/components/AppLayout";
-import { Button } from "@app/components/Button";
 import { ActionButton } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
