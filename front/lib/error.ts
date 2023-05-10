@@ -1,5 +1,3 @@
-
-
 import { ConnectorsAPIErrorResponse } from "./connectors_api";
 import { CoreAPIErrorResponse } from "./core_api";
 
