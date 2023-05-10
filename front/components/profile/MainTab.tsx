@@ -18,7 +18,7 @@ export default function MainTab({
   currentTab: string;
   owner: WorkspaceType;
 }) {
-  const tabs = [
+  const tabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
       name: "Apps",
       href: `/w/${owner.sId}/a`,
@@ -39,7 +39,7 @@ export default function MainTab({
         />
       ),
     },
-  ] as { name: string; href: string; icon: JSX.Element }[];
+  ];
 
   if (owner.role === "builder" || owner.role === "admin") {
     tabs.push({

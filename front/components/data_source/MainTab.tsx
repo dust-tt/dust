@@ -20,7 +20,7 @@ export default function MainTab({
   currentTab: string;
   owner: WorkspaceType;
 }) {
-  const tabs = [
+  const tabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
       name: "Documents",
       href: `/w/${owner.sId}/ds/${dataSource.name}`,

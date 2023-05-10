@@ -22,7 +22,7 @@ export default function MainTab({
   currentTab: string;
   owner: WorkspaceType;
 }) {
-  let tabs = [
+  const tabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
       name: "Specification",
       href: `/w/${owner.sId}/a/${app.sId}`,
@@ -43,7 +43,7 @@ export default function MainTab({
         />
       ),
     },
-  ] as { name: string; href: string; icon: JSX.Element }[];
+  ];
 
   if (
     owner.role === "user" ||

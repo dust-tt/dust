@@ -17,7 +17,7 @@ export default function MainTab({
   currentTab: string;
   owner: WorkspaceType;
 }) {
-  const tabs = [
+  const tabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
       name: "Chat",
       href: `/w/${owner.sId}/u/chat`,
@@ -58,7 +58,7 @@ export default function MainTab({
         />
       ),
     },
-  ] as { name: string; href: string; icon: JSX.Element }[];
+  ];
 
   let currTab = tabs.find((tab) => tab.name == currentTab);
 
