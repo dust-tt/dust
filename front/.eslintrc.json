@@ -12,7 +12,7 @@
     "plugin:@typescript-eslint/recommended"
     */
   ],
-  "plugins": ["simple-import-sort"],
+  "plugins": ["simple-import-sort", "unused-imports"],
   "rules": {
     /**
     "@typescript-eslint/naming-convention": [
@@ -23,6 +23,7 @@
       }
     ],
     */
+    "unused-imports/no-unused-imports": "error",
     "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
