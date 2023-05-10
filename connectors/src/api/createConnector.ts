@@ -2,8 +2,10 @@ import { Request, Response } from "express";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
+import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorType } from "@connectors/types/connector";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -14,9 +16,7 @@ type ConnectorCreateReqBody = {
   nangoConnectionId: string;
 };
 
-type ConnectorCreateResBody =
-  | { connectorId: string }
-  | ConnectorsAPIErrorResponse;
+type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
 
 const _createConnectorAPIHandler = async (
   req: Request<
@@ -74,7 +74,28 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).json({ connectorId: connectorRes.value });
+    const connector = await Connector.findByPk(connectorRes.value);
+    if (!connector) {
+      return apiError(req, res, {
+        api_error: {
+          type: "internal_server_error",
+          message: `Created connector not found in database. Connector id: ${connectorRes.value}`,
+        },
+        status_code: 500,
+      });
+    }
+
+    await connector.reload();
+
+    return res.status(200).json({
+      id: connector.id,
+      type: connector.type,
+      lastSyncStatus: connector.lastSyncStatus,
+      lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
+      lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
+      firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
+      firstSyncProgress: connector.firstSyncProgress,
+    });
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {

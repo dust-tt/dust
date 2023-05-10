@@ -2,7 +2,7 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
@@ -12,9 +12,10 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
   ConnectorProvider,
   ConnectorsAPI,
-  ConnectorSyncStatus,
+  ConnectorType,
 } from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -28,39 +29,43 @@ const {
 
 type UpcomingConnectorProvider = "google_drive" | "github";
 
-type ManagedDataSource = {
+type DataSourceIntegration = {
   name: string;
-  status?: ConnectorSyncStatus | null;
-  enabled?: boolean | null;
+  connector?: ConnectorType | null;
+  fetchConnectorError: boolean | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
   logoPath?: string;
 };
 
-const MANAGED_DATA_SOURCES: ManagedDataSource[] = [
+const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
   {
     name: "Notion",
     connectorProvider: "notion",
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
     isBuilt: false,
     logoPath: "/static/google_drive_32x32.png",
+    fetchConnectorError: null,
   },
   {
     name: "Github",
     connectorProvider: "github",
     isBuilt: false,
     logoPath: "/static/github_black_32x32.png",
+    fetchConnectorError: null,
   },
 ];
 
@@ -69,7 +74,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   readOnly: boolean;
   dataSources: DataSourceType[];
-  managedDataSources: ManagedDataSource[];
+  integrations: DataSourceIntegration[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
   nangoConfig: {
@@ -95,32 +100,41 @@ export const getServerSideProps: GetServerSideProps<{
   const readOnly = !auth.isBuilder();
 
   let allDataSources = await getDataSources(auth);
-  const dataSources = allDataSources.filter((ds) => !ds.connector);
-  const managedDataSources = allDataSources.filter((ds) => ds.connector);
-
-  let connectorStatuses = managedDataSources.map(() => "failed");
-  try {
-    connectorStatuses = (
-      await Promise.all(
-        managedDataSources.map(({ connector }) =>
-          ConnectorsAPI.getSyncStatus(connector!.id)
-        )
-      )
-    ).map((s): ConnectorSyncStatus => (s.isErr() ? "failed" : "succeeded"));
-  } catch (e) {
-    // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
-    // displaying the datasources (eventual actions will fail but a 500 just at display is not
-    // desirable). When that happens the managed data sources are shown as failed.
-    logger.error({ error: e }, "Failed to retrieve connector status");
-  }
-
-  const connectorStatusByProvider: Record<
-    ConnectorProvider,
-    ConnectorSyncStatus
-  > = managedDataSources.reduce(
-    (acc, ds, i) =>
-      Object.assign(acc, { [ds.connector!.provider]: connectorStatuses[i] }),
-    {} as Record<ConnectorProvider, ConnectorSyncStatus>
+  const dataSources = allDataSources.filter((ds) => !ds.connectorId);
+  const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
+  const provider2Connector = await Promise.all(
+    managedDataSources.map(async (mds) => {
+      try {
+        const statusRes = await ConnectorsAPI.getConnector(mds.connectorId!);
+        if (statusRes.isErr()) {
+          return {
+            provider: mds.connectorProvider,
+            connector: undefined,
+            fetchConnectorError: true,
+          };
+        }
+        return {
+          provider: mds.connectorProvider,
+          connector: statusRes.value,
+          fetchConnectorError: false,
+        };
+      } catch (e) {
+        // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
+        // displaying the datasources (eventual actions will fail but a 500 just at display is not
+        // desirable). When that happens the managed data sources are shown as failed.
+        logger.error(
+          {
+            error: e,
+          },
+          "Failed to get connector"
+        );
+        return {
+          provider: mds.connectorProvider,
+          connector: undefined,
+          fetchConnectorError: true,
+        };
+      }
+    })
   );
 
   return {
@@ -129,17 +143,21 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
-      managedDataSources: MANAGED_DATA_SOURCES.map((ds) => ({
-        ...ds,
-        enabled:
-          !!connectorStatusByProvider[
-            ds.connectorProvider as ConnectorProvider
-          ],
-        status:
-          connectorStatusByProvider[
-            ds.connectorProvider as ConnectorProvider
-          ] || null,
-      })),
+      integrations: DATA_SOURCE_INTEGRATIONS.map(
+        (managedDs): DataSourceIntegration => {
+          const p2c = provider2Connector.find(
+            (p) => p.provider == managedDs.connectorProvider
+          );
+          return {
+            ...managedDs,
+            connector: p2c?.connector || null,
+            fetchConnectorError:
+              p2c?.fetchConnectorError === undefined
+                ? null
+                : p2c.fetchConnectorError,
+          };
+        }
+      ),
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
@@ -156,13 +174,12 @@ export default function DataSourcesView({
   owner,
   readOnly,
   dataSources,
-  managedDataSources,
+  integrations,
   canUseManagedDataSources,
   gaTrackingId,
   nangoConfig,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [managedDataSourcesLocal, setManagedDataSourcesLocal] =
-    useState(managedDataSources);
+  const [localIntegrations, setLocalIntegrations] = useState(integrations);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
@@ -196,12 +213,16 @@ export default function DataSourcesView({
         }),
       });
       if (res.ok) {
-        setManagedDataSourcesLocal((prev) =>
-          prev.map((ds) =>
-            ds.connectorProvider == provider
-              ? { ...ds, enabled: true, status: "succeeded" }
-              : ds
-          )
+        const createdManagedDataSource: {
+          dataSource: DataSourceType;
+          connector: ConnectorType;
+        } = await res.json();
+        setLocalIntegrations((prev) =>
+          prev.map((ds) => {
+            return ds.connectorProvider == provider
+              ? { ...ds, connector: createdManagedDataSource.connector }
+              : ds;
+          })
         );
       } else {
         logger.error(
@@ -222,11 +243,15 @@ export default function DataSourcesView({
     }
   };
 
+  useEffect(() => {
+    setLocalIntegrations(localIntegrations);
+  }, [localIntegrations]);
+
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="DataSources" owner={owner} />
+          <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
@@ -338,7 +363,7 @@ export default function DataSourcesView({
         <div className="sm:flex sm:items-center">
           <div className="mt-16 sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">
-              Managed DataSources
+              Managed Data Sources
             </h1>
 
             <p className="text-sm text-gray-500">
@@ -350,7 +375,7 @@ export default function DataSourcesView({
 
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="">
-            {managedDataSourcesLocal.map((ds) => {
+            {localIntegrations.map((ds) => {
               return (
                 <li
                   key={`managed-${ds.connectorProvider}`}
@@ -363,7 +388,7 @@ export default function DataSourcesView({
                           <img src={ds.logoPath}></img>
                         </div>
                       ) : null}
-                      {ds.enabled ? (
+                      {ds.connector ? (
                         <Link
                           href={`/w/${
                             owner.sId
@@ -373,7 +398,9 @@ export default function DataSourcesView({
                           <p
                             className={classNames(
                               "truncate text-base font-bold",
-                              ds.enabled ? "text-violet-600" : "text-slate-400"
+                              ds.connector
+                                ? "text-violet-600"
+                                : "text-slate-400"
                             )}
                           >
                             {ds.name}
@@ -383,7 +410,7 @@ export default function DataSourcesView({
                         <p
                           className={classNames(
                             "truncate text-base font-bold",
-                            ds.enabled ? "text-violet-600" : "text-slate-400"
+                            ds.connector ? "text-violet-600" : "text-slate-400"
                           )}
                         >
                           {ds.name}
@@ -391,55 +418,86 @@ export default function DataSourcesView({
                       )}
                     </div>
                     <div>
-                      {!ds.enabled ? (
-                        <Button
-                          disabled={
-                            !ds.isBuilt ||
-                            isLoadingByProvider[
-                              ds.connectorProvider as ConnectorProvider
-                            ]
-                          }
-                          onClick={
-                            canUseManagedDataSources
-                              ? () => {
-                                  handleEnableManagedDataSource(
+                      {(() => {
+                        if (ds.fetchConnectorError) {
+                          return (
+                            <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
+                              errored
+                            </p>
+                          );
+                        }
+
+                        if (!ds || !ds.connector) {
+                          return (
+                            <Button
+                              disabled={
+                                !ds.isBuilt ||
+                                isLoadingByProvider[
+                                  ds.connectorProvider as ConnectorProvider
+                                ]
+                              }
+                              onClick={
+                                canUseManagedDataSources
+                                  ? () => {
+                                      handleEnableManagedDataSource(
+                                        ds.connectorProvider as ConnectorProvider
+                                      );
+                                    }
+                                  : () => {
+                                      window.alert(
+                                        "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                                      );
+                                      logger.info(
+                                        {
+                                          workspace: owner.sId,
+                                          connector_provider:
+                                            ds.connectorProvider,
+                                        },
+                                        "request_early_access_managed_data_source"
+                                      );
+                                    }
+                              }
+                            >
+                              {!ds.isBuilt
+                                ? "Coming soon"
+                                : !isLoadingByProvider[
                                     ds.connectorProvider as ConnectorProvider
-                                  );
-                                }
-                              : () => {
-                                  window.alert(
-                                    "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                                  );
-                                  logger.info(
-                                    {
-                                      workspace: owner.sId,
-                                      connector_provider: ds.connectorProvider,
-                                    },
-                                    "request_early_access_managed_data_source"
-                                  );
-                                }
-                          }
-                        >
-                          {!ds.isBuilt
-                            ? "Coming soon"
-                            : !isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ]
-                            ? "Connect"
-                            : "Connecting..."}
-                        </Button>
-                      ) : (
-                        <p
-                          className={classNames(
-                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            ds.status === "succeeded"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          )}
-                        >
-                          {ds.status === "succeeded" ? "enabled" : "errored"}
-                        </p>
-                      )}
+                                  ] && !ds.fetchConnectorError
+                                ? "Connect"
+                                : "Connecting..."}
+                            </Button>
+                          );
+                        }
+
+                        if (!ds.connector?.firstSuccessfulSyncTime) {
+                          return (
+                            <div className="flex-col justify-items-end text-right">
+                              <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
+                                Synchronizing
+                                {ds.connector?.firstSyncProgress
+                                  ? ` (${ds.connector?.firstSyncProgress})`
+                                  : null}
+                              </p>
+                            </div>
+                          );
+                        } else if (ds.connector.lastSyncSuccessfulTime) {
+                          return (
+                            <>
+                              <div className="flex-col justify-items-end text-right">
+                                <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
+                                  Synchronized
+                                </p>
+                                <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
+                                  {timeAgoFrom(
+                                    ds.connector.lastSyncSuccessfulTime
+                                  )}{" "}
+                                  ago
+                                </p>
+                              </div>
+                            </>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                 </li>

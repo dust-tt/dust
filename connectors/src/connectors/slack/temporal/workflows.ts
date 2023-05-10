@@ -24,6 +24,7 @@ const {
   getAccessToken,
   fetchUsers,
   saveSuccessSyncActivity,
+  reportInitialSyncProgressActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -48,6 +49,7 @@ export async function workspaceFullSync(
   const slackAccessToken = await getAccessToken(nangoConnectionId);
   await fetchUsers(slackAccessToken, connectorId);
   const channels = await getChannels(slackAccessToken);
+  let i = 0;
   for (const channel of channels) {
     if (!channel.id) {
       throw new Error(`Channel ${channel.name} has no id`);
@@ -60,8 +62,12 @@ export async function workspaceFullSync(
         dataSourceConfig,
         channel.id,
         channel.name,
+        false,
       ],
     });
+    i++;
+    const percentSync = Math.round((i / channels.length) * 100);
+    await reportInitialSyncProgressActivity(connectorId, `${percentSync}%`);
   }
   await saveSuccessSyncActivity(connectorId);
   console.log(`Workspace sync done for connector ${connectorId}`);
@@ -72,7 +78,8 @@ export async function syncOneChannel(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   channelId: string,
-  channelName: string
+  channelName: string,
+  updateSyncStatus: boolean
 ) {
   console.log(`Syncing channel ${channelName} (${channelId})`);
 
@@ -97,7 +104,9 @@ export async function syncOneChannel(
   } while (messagesCursor);
 
   console.log(`Syncing channel ${channelName} (${channelId}) done`);
-  await saveSuccessSyncActivity(connectorId);
+  if (updateSyncStatus) {
+    await saveSuccessSyncActivity(connectorId);
+  }
 }
 
 export async function syncOneThreadDebounced(
@@ -137,6 +146,7 @@ export async function syncOneThreadDebounced(
       threadTs,
       connectorId
     );
+    await saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
@@ -183,6 +193,7 @@ export async function syncOneMessageDebounced(
       endTsMs,
       connectorId
     );
+    await saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
@@ -219,6 +230,7 @@ export async function memberJoinedChannel(
         dataSourceConfig,
         channelId,
         channelName,
+        true,
       ],
     });
   }

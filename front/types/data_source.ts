@@ -8,5 +8,6 @@ export type DataSourceType = {
   visibility: DataSourceVisibility;
   config?: string;
   dustAPIProjectId: string;
-  connector: { id: string; provider: ConnectorProvider } | null;
+  connectorId?: string;
+  connectorProvider?: ConnectorProvider;
 };

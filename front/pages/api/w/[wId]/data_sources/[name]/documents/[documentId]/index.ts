@@ -60,7 +60,7 @@ async function handler(
         });
       }
 
-      if (dataSource.connector) {
+      if (dataSource.connectorId) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -248,7 +248,7 @@ async function handler(
         });
       }
 
-      if (dataSource.connector) {
+      if (dataSource.connectorId) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

@@ -3,7 +3,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
-import { ConnectorProvider, ConnectorsAPI } from "@app/lib/connectors_api";
+import {
+  ConnectorProvider,
+  ConnectorsAPI,
+  ConnectorType,
+} from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
@@ -13,6 +17,7 @@ import { DataSourceType } from "@app/types/data_source";
 
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;
+  connector: ConnectorType;
 };
 
 async function handler(
@@ -190,7 +195,7 @@ async function handler(
       }
 
       dataSource = await dataSource.update({
-        connectorId: connectorsRes.value.connectorId,
+        connectorId: connectorsRes.value.id,
         connectorProvider: provider,
       });
 
@@ -201,11 +206,10 @@ async function handler(
           visibility: dataSource.visibility,
           config: dataSource.config,
           dustAPIProjectId: dataSource.dustAPIProjectId,
-          connector: {
-            id: connectorsRes.value.connectorId,
-            provider: provider,
-          },
+          connectorId: connectorsRes.value.id,
+          connectorProvider: provider,
         },
+        connector: connectorsRes.value,
       });
 
     default:

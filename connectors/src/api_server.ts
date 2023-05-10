@@ -3,9 +3,9 @@ import express from "express";
 
 import { createConnectorAPIHandler } from "@connectors/api/createConnector";
 import { deleteConnectorAPIHandler } from "@connectors/api/deleteConnector";
+import { getConnector } from "@connectors/api/getConnector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resumeConnector";
 import { stopConnectorAPIHandler } from "@connectors/api/stopConnector";
-import { getConnectorStatusAPIHandler } from "@connectors/api/syncStatus";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
@@ -25,10 +25,7 @@ export function startServer(port: number) {
     "/connectors/delete/:connector_provider",
     deleteConnectorAPIHandler
   );
-  app.get(
-    "/connectors/sync_status/:connector_id",
-    getConnectorStatusAPIHandler
-  );
+  app.get("/connectors/:connector_id", getConnector);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);

@@ -110,7 +110,7 @@ async function handler(
         });
       }
 
-      if (dataSource.connector && !keyRes.value.isSystem) {
+      if (dataSource.connectorId && !keyRes.value.isSystem) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -294,7 +294,7 @@ async function handler(
         });
       }
 
-      if (dataSource.connector && !keyRes.value.isSystem) {
+      if (dataSource.connectorId && !keyRes.value.isSystem) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

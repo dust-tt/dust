@@ -10,7 +10,6 @@ import {
   isPageAccessibleAndUnarchived,
 } from "@connectors/connectors/notion/lib/notion_api";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { syncStarted, syncSucceeded } from "@connectors/connectors/sync_status";
 import {
   deleteFromDataSource,
   upsertToDatasource,
@@ -21,6 +20,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
+import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import {
   DataSourceConfig,

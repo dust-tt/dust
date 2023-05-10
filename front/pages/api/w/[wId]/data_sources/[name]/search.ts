@@ -82,7 +82,7 @@ export default async function handler(
       const requestPayload = req.query;
 
       let credentials: CredentialsType | null = null;
-      if (dataSource.connector) {
+      if (dataSource.connectorId) {
         // Dust managed credentials: managed data source.
         credentials = dustManagedCredentials();
       } else {

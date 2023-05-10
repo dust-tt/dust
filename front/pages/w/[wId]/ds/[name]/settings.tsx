@@ -67,7 +67,7 @@ export default function DataSourceSettings({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
-  const managed = !!dataSource.connector;
+  const managed = !!dataSource.connectorId;
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
