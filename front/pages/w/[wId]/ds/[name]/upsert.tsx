@@ -48,7 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   // if user is not builder or if datasource is managed
-  const readOnly = !auth.isBuilder() || !!dataSource.connector;
+  const readOnly = !auth.isBuilder() || !!dataSource.connectorId;
 
   return {
     props: {

@@ -4,7 +4,7 @@ import { DataSourceType } from "@app/types/data_source";
 export function getProviderLogoPathForDataSource(
   ds: DataSourceType
 ): string | null {
-  const provider = ds.connector?.provider;
+  const provider = ds.connectorProvider;
 
   if (!provider) {
     return null;

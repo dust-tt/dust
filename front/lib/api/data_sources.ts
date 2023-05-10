@@ -40,13 +40,8 @@ export async function getDataSource(
     visibility: dataSource.visibility,
     config: dataSource.config,
     dustAPIProjectId: dataSource.dustAPIProjectId,
-    connector:
-      dataSource.connectorId && dataSource.connectorProvider
-        ? {
-            id: dataSource.connectorId,
-            provider: dataSource.connectorProvider,
-          }
-        : null,
+    connectorId: dataSource.connectorId,
+    connectorProvider: dataSource.connectorProvider,
   };
 }
 
@@ -74,20 +69,15 @@ export async function getDataSources(
     order: [["updatedAt", "DESC"]],
   });
 
-  return dataSources.map((dataSource) => {
+  return dataSources.map((dataSource): DataSourceType => {
     return {
       name: dataSource.name,
       description: dataSource.description,
       visibility: dataSource.visibility,
       config: dataSource.config,
       dustAPIProjectId: dataSource.dustAPIProjectId,
-      connector:
-        dataSource.connectorId && dataSource.connectorProvider
-          ? {
-              id: dataSource.connectorId,
-              provider: dataSource.connectorProvider,
-            }
-          : null,
+      connectorId: dataSource.connectorId,
+      connectorProvider: dataSource.connectorProvider,
     };
   });
 }

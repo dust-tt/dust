@@ -144,7 +144,7 @@ export default function DataSourceNew({
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="DataSources" owner={owner} />
+          <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">

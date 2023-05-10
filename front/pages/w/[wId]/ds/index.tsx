@@ -31,7 +31,7 @@ type UpcomingConnectorProvider = "google_drive" | "github";
 
 type ManagedDataSource = {
   name: string;
-  connectorType?: ConnectorType | null;
+  connector?: ConnectorType | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
   logoPath?: string;
@@ -95,20 +95,20 @@ export const getServerSideProps: GetServerSideProps<{
   const readOnly = !auth.isBuilder();
 
   let allDataSources = await getDataSources(auth);
-  const dataSources = allDataSources.filter((ds) => !ds.connector);
-  const managedDataSources = allDataSources.filter((ds) => ds.connector);
+  const dataSources = allDataSources.filter((ds) => !ds.connectorId);
+  const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
   const provider2Connector = await Promise.all(
     managedDataSources.map(async (mds) => {
-      const statusRes = await ConnectorsAPI.getConnector(mds.connector!.id);
+      const statusRes = await ConnectorsAPI.getConnector(mds.connectorId!);
       if (statusRes.isErr()) {
         return {
-          provider: mds.connector!.provider,
-          connectorType: undefined,
+          provider: mds.connectorProvider,
+          connector: undefined,
         };
       }
       return {
-        provider: mds.connector!.provider,
-        connectorType: statusRes.value,
+        provider: mds.connectorProvider,
+        connector: statusRes.value,
       };
     })
   );
@@ -119,15 +119,17 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       dataSources,
-      managedDataSources: MANAGED_DATA_SOURCES.map((managedDs) => {
-        return {
-          ...managedDs,
-          connectorType:
-            provider2Connector.find(
-              (p) => p.provider == managedDs.connectorProvider
-            )?.connectorType || null,
-        };
-      }),
+      managedDataSources: MANAGED_DATA_SOURCES.map(
+        (managedDs): ManagedDataSource => {
+          return {
+            ...managedDs,
+            connector:
+              provider2Connector.find(
+                (p) => p.provider == managedDs.connectorProvider
+              )?.connector || null,
+          };
+        }
+      ),
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
@@ -184,11 +186,14 @@ export default function DataSourcesView({
         }),
       });
       if (res.ok) {
-        const dataSourceUpdated: DataSourceType = (await res.json()).dataSource;
+        const createdManagedDataSource: {
+          dataSource: DataSourceType;
+          connector: ConnectorType;
+        } = await res.json();
         setManagedDataSourcesLocal((prev) =>
           prev.map((ds) => {
             return ds.connectorProvider == provider
-              ? { ...ds, connectorType: dataSourceUpdated.connectorType }
+              ? { ...ds, connector: createdManagedDataSource.connector }
               : ds;
           })
         );
@@ -219,7 +224,7 @@ export default function DataSourcesView({
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="DataSources" owner={owner} />
+          <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
@@ -356,7 +361,7 @@ export default function DataSourcesView({
                           <img src={ds.logoPath}></img>
                         </div>
                       ) : null}
-                      {ds.connectorType ? (
+                      {ds.connector ? (
                         <Link
                           href={`/w/${
                             owner.sId
@@ -366,7 +371,7 @@ export default function DataSourcesView({
                           <p
                             className={classNames(
                               "truncate text-base font-bold",
-                              ds.connectorType
+                              ds.connector
                                 ? "text-violet-600"
                                 : "text-slate-400"
                             )}
@@ -378,9 +383,7 @@ export default function DataSourcesView({
                         <p
                           className={classNames(
                             "truncate text-base font-bold",
-                            ds.connectorType
-                              ? "text-violet-600"
-                              : "text-slate-400"
+                            ds.connector ? "text-violet-600" : "text-slate-400"
                           )}
                         >
                           {ds.name}
@@ -388,7 +391,7 @@ export default function DataSourcesView({
                       )}
                     </div>
                     <div>
-                      {!ds.connectorType ? (
+                      {!ds.connector ? (
                         <Button
                           disabled={
                             !ds.isBuilt ||
@@ -427,19 +430,21 @@ export default function DataSourcesView({
                         </Button>
                       ) : null}
                       {(() => {
-                        if (!ds || !ds.connectorType) {
+                        if (!ds || !ds.connector) {
                           return null;
                         }
-                        if (!ds.connectorType?.firstSuccessfulSyncTime) {
+                        if (!ds.connector?.firstSuccessfulSyncTime) {
                           return (
                             <div className="flex-col justify-items-end text-right">
                               <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
-                                Synchronizing (
-                                {ds.connectorType?.firstSyncProgress})
+                                Synchronizing
+                                {ds.connector?.firstSyncProgress
+                                  ? ` (${ds.connector?.firstSyncProgress})`
+                                  : null}
                               </p>
                             </div>
                           );
-                        } else if (ds.connectorType.lastSyncSuccessfulTime) {
+                        } else if (ds.connector.lastSyncSuccessfulTime) {
                           return (
                             <>
                               <div className="flex-col justify-items-end text-right">
@@ -448,7 +453,7 @@ export default function DataSourcesView({
                                 </p>
                                 <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
                                   {timeAgoFrom(
-                                    ds.connectorType.lastSyncSuccessfulTime
+                                    ds.connector.lastSyncSuccessfulTime
                                   )}{" "}
                                   ago
                                 </p>

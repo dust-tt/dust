@@ -49,7 +49,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   // Managed data sources are read-only (you can't add a document).
-  const readOnly = !auth.isBuilder() || !!dataSource.connector;
+  const readOnly = !auth.isBuilder() || !!dataSource.connectorId;
 
   return {
     props: {
