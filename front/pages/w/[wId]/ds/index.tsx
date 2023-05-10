@@ -469,7 +469,7 @@ export default function DataSourcesView({
                           );
                         }
 
-                        if (!ds.connector?.firstSuccessfulSyncTime) {
+                        if (!ds.connector?.lastSyncSuccessfulTime) {
                           return (
                             <div className="flex-col justify-items-end text-right">
                               <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
@@ -480,7 +480,7 @@ export default function DataSourcesView({
                               </p>
                             </div>
                           );
-                        } else if (ds.connector.lastSyncSuccessfulTime) {
+                        } else {
                           return (
                             <>
                               <div className="flex-col justify-items-end text-right">
