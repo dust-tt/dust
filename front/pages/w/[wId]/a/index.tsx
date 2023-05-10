@@ -11,7 +11,7 @@ import { classNames, communityApps } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { URL, GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;

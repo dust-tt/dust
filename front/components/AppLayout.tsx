@@ -93,7 +93,7 @@ export default function AppLayout({
                             workspace={owner}
                             readOnly={false}
                             onWorkspaceUpdate={(workspace) => {
-                              router.push(`/w/${workspace.sId}/a`);
+                              router.push(`/w/${workspace.sId}`);
                             }}
                           />
                         ) : (
