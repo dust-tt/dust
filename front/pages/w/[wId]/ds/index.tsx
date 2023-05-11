@@ -36,6 +36,7 @@ type DataSourceIntegration = {
   isBuilt: boolean;
   connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
   logoPath?: string;
+  synchronizedAgo?: string | null;
 };
 
 const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
@@ -155,6 +156,9 @@ export const getServerSideProps: GetServerSideProps<{
               p2c?.fetchConnectorError === undefined
                 ? null
                 : p2c.fetchConnectorError,
+            synchronizedAgo: p2c?.connector?.lastSyncSuccessfulTime
+              ? timeAgoFrom(p2c.connector.lastSyncSuccessfulTime)
+              : null,
           };
         }
       ),
@@ -488,10 +492,7 @@ export default function DataSourcesView({
                                   Synchronized
                                 </p>
                                 <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
-                                  {timeAgoFrom(
-                                    ds.connector.lastSyncSuccessfulTime
-                                  )}{" "}
-                                  ago
+                                  {ds.synchronizedAgo} ago
                                 </p>
                               </div>
                             </>
