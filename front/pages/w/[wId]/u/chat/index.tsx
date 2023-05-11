@@ -6,19 +6,40 @@ import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import MainTab from "@app/components/use/MainTab";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import {
+  Authenticator,
+  getSession,
+  getUserFromSession,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { DustAppType, prodAPIForOwner } from "@app/lib/dust_api";
+import { DustAPI, DustAPICredentials, DustAppType } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-const DustProdRegistry: { [key: string]: DustAppType } = {
+const DustProdRegistry: { [key: string]: { app: DustAppType; config: any } } = {
   main: {
-    workspaceId: "78bda07b39",
-    appId: "6fe1383f11",
-    appHash: "49aa079dc31b9a3fdf53f9ed281d0fa7cb746a578da5dc172ed85b6e116a14f4",
+    app: {
+      workspaceId: "78bda07b39",
+      appId: "6fe1383f11",
+      appHash:
+        "49aa079dc31b9a3fdf53f9ed281d0fa7cb746a578da5dc172ed85b6e116a14f4",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        use_cache: true,
+      },
+      DATASOURCE: {
+        data_sources: [],
+        top_k: 8,
+        filter: { tags: null, timestamp: null },
+        use_cache: false,
+      },
+    },
   },
 };
 
@@ -38,6 +59,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   managedDataSources: ManagedDataSource[];
+  prodCredentials: DustAPICredentials;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -54,7 +76,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const prodAPI = await prodAPIForOwner(owner);
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const prodAPI = new DustAPI(prodCredentials);
 
   const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
   if (dsRes.isErr()) {
@@ -89,6 +112,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       managedDataSources,
+      prodCredentials,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -150,12 +174,15 @@ export default function AppChat({
   user,
   owner,
   managedDataSources,
+  prodCredentials,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const isMac =
     typeof window !== "undefined"
       ? navigator.platform.toUpperCase().indexOf("MAC") >= 0
       : false;
+
+  const prodAPI = new DustAPI(prodCredentials);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -193,6 +220,33 @@ export default function AppChat({
     setMessages(m);
     setMessage("");
     setLoading(true);
+
+    let config = {
+      MODEL: { ...DustProdRegistry.main.config.MODEL },
+      DATASOURCE: { ...DustProdRegistry.main.config.DATASOURCE },
+    };
+    config.DATASOURCE.data_sources = managedDataSources
+      .filter((ds) => ds.selected)
+      .map((ds) => {
+        return {
+          workspace_id: prodAPI.workspaceId(),
+          data_source_id: ds.name,
+        };
+      });
+
+    let r = await prodAPI.runAppStreamed(DustProdRegistry.main.app, config, [
+      messages,
+    ]);
+    if (r.isErr()) {
+      console.log("ERROR", r.error);
+      // TODO(spolu): error reporting
+      setLoading(false);
+      return;
+    }
+    let { eventStream, dustRunId } = r.value;
+    for await (let event of eventStream) {
+      console.log("EVENT", event);
+    }
   };
 
   return (
@@ -227,9 +281,9 @@ export default function AppChat({
             <div className="my-2">
               <TextareaAutosize
                 minRows={1}
-                placeholder={"Ask anything"}
+                placeholder={"Ask anything..."}
                 className={classNames(
-                  "block w-full resize-none rounded-sm bg-slate-50 px-2 py-2 font-mono text-[13px] font-normal ring-0 focus:ring-0",
+                  "block w-full resize-none rounded-sm bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                   "border-slate-200 focus:border-slate-300 focus:ring-0"
                 )}
                 value={message}
