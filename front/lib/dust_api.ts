@@ -3,8 +3,16 @@ import { createParser } from "eventsource-parser";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
+import { WorkspaceType } from "@app/types/user";
 
-const { DUST_API = "http://localhost:3000" } = process.env;
+import { getOrCreateSystemApiKey } from "./auth";
+
+const {
+  DUST_API = "https://dust.tt",
+  DUST_DEVELOPMENT_WORKSPACE_ID,
+  DUST_DEVELOPMENT_SYSTEM_API_KEY,
+  NODE_ENV,
+} = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
@@ -13,7 +21,6 @@ export type DustAPIErrorResponse = {
 export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
 
 export type DustAppType = {
-  name: string;
   workspaceId: string;
   appId: string;
   appHash: string;
@@ -83,9 +90,19 @@ export type DustAppRunTokensEvent = {
 
 export class DustAPI {
   _apiKey: string;
+  _workspaceId: string;
 
-  constructor(apiKey: string) {
+  /**
+   * @param apiKey string the API key to use for API calls.
+   * @param workspaceId string the workspaceId associated with the API key.
+   */
+  constructor(apiKey: string, workspaceId: string) {
     this._apiKey = apiKey;
+    this._workspaceId = workspaceId;
+  }
+
+  workspaceId(): string {
+    return this._workspaceId;
   }
 
   async runAppStreamed(
@@ -274,4 +291,47 @@ export class DustAPI {
     }
     return new Ok(json.data_sources);
   }
+}
+
+/**
+ * Retrieves a system API key for the given owner, creating one if needed.
+ *
+ * In development mode, we retrieve the system API key from the environment variable
+ * `DUST_DEVELOPMENT_SYSTEM_API_KEY`, so that we always use our own `dust` workspace in production
+ * to iterate on the design of the packaged apps. When that's the case, the `owner` paramater (which
+ * is local) is ignored.
+ *
+ * @param owner WorkspaceType
+ */
+export async function prodAPIForOwner(owner: WorkspaceType): Promise<DustAPI> {
+  if (!NODE_ENV) {
+    throw new Error("NODE_ENV is not defined");
+  }
+
+  if (NODE_ENV === "development") {
+    if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
+      throw new Error("DUST_DEVELOPMENT_SYSTEM_API_KEY is not defined");
+    }
+    if (!DUST_DEVELOPMENT_WORKSPACE_ID) {
+      throw new Error("DUST_DEVELOPMENT_WORKSPACE_ID is not defined");
+    }
+    return new DustAPI(
+      DUST_DEVELOPMENT_SYSTEM_API_KEY,
+      DUST_DEVELOPMENT_WORKSPACE_ID
+    );
+  }
+
+  const systemAPIKeyRes = await getOrCreateSystemApiKey(owner);
+  if (systemAPIKeyRes.isErr()) {
+    logger.error(
+      {
+        owner,
+        error: systemAPIKeyRes.error,
+      },
+      "Could not create system API key for workspace"
+    );
+    throw new Error(`Could not create system API key for workspace`);
+  }
+
+  return new DustAPI(systemAPIKeyRes.value.secret, owner.sId);
 }
