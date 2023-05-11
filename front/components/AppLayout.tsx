@@ -93,7 +93,17 @@ export default function AppLayout({
                             workspace={owner}
                             readOnly={false}
                             onWorkspaceUpdate={(workspace) => {
-                              router.push(`/w/${workspace.sId}`);
+                              if (workspace.id === owner.id) {
+                                if (dataSource) {
+                                  router.push(`/w/${workspace.sId}/ds`);
+                                } else if (app) {
+                                  router.push(`/w/${workspace.sId}/a`);
+                                } else {
+                                  router.push(`/w/${workspace.sId}`);
+                                }
+                              } else {
+                                router.push(`/w/${workspace.sId}`);
+                              }
                             }}
                           />
                         ) : (
@@ -101,7 +111,9 @@ export default function AppLayout({
                             href={
                               dataSource
                                 ? `/w/${owner.sId}/ds`
-                                : `/w/${owner.sId}/a`
+                                : app
+                                ? `/w/${owner.sId}/a`
+                                : `/w/${owner.sId}`
                             }
                             className="text-base font-bold text-gray-800"
                           >

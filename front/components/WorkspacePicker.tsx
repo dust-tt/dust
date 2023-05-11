@@ -1,6 +1,5 @@
 import { Menu } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -29,8 +28,14 @@ export default function WorkspacePicker({
           >
             {workspace ? (
               <>
-                <div className="text-base font-bold text-gray-800">
-                  <Link href={`/w/${workspace.sId}`}>{workspace.name}</Link>
+                <div
+                  className="text-base font-bold text-gray-800"
+                  onClick={(e) => {
+                    onWorkspaceUpdate(workspace);
+                    e.preventDefault();
+                  }}
+                >
+                  {workspace.name}
                 </div>
                 <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
               </>
