@@ -1,0 +1,4 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE AS worker
+
+CMD ["npm", "run", "start:worker"]

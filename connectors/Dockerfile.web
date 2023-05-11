@@ -1,0 +1,5 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE AS web
+
+EXPOSE 3002
+CMD ["npm", "run", "start:web"]

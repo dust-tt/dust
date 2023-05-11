@@ -1,0 +1,15 @@
+node_modules
+
+# misc
+.DS_Store
+*.pem
+
+
+.env
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+Dockerfile*
+.dockerignore

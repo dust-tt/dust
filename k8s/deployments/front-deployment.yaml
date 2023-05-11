@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front
+  template:
+    metadata:
+      labels:
+        app: front
+    spec:
+      containers:
+        - name: web
+          # placeholder image that does nothing
+          image: k8s.gcr.io/pause:3.1
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: front-config
+
+      imagePullSecrets:
+        - name: gcr-json-key

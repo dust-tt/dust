@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectors-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: connectors-web
+  template:
+    metadata:
+      labels:
+        app: connectors-web
+    spec:
+      containers:
+        - name: web
+          # placeholder image that does nothing
+          image: k8s.gcr.io/pause:3.1
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: connectors-config
+
+      imagePullSecrets:
+        - name: gcr-json-key
