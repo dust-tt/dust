@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
-import { withLogging } from "@connectors/logger/withlogging";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorType } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -23,10 +23,12 @@ const _getConnector = async (
     }
     const connector = await Connector.findByPk(req.params.connector_id);
     if (!connector) {
-      return res.status(404).send({
-        error: {
-          message: `Connector not found`,
+      return apiError(req, res, {
+        api_error: {
+          type: "connector_not_found",
+          message: "Connector not found",
         },
+        status_code: 404,
       });
     }
     return res.status(200).send({
@@ -46,4 +48,4 @@ const _getConnector = async (
   }
 };
 
-export const getConnector = withLogging(_getConnector);
+export const getConnectorAPIHandler = withLogging(_getConnector);

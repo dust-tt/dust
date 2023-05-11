@@ -49,56 +49,43 @@ export const ConnectorsAPI = {
   },
 
   async pauseConnector(
-    provider: ConnectorProvider,
-    workspaceId: string,
-    dataSourceName: string
+    connectorId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
-    const res = await fetch(`${CONNECTORS_API}/connectors/pause/${provider}`, {
-      method: "POST",
-      headers: getDefaultHeaders(),
-      body: JSON.stringify({
-        workspaceId,
-        dataSourceName,
-      }),
-    });
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/pause/${connectorId}`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+      }
+    );
 
     return _resultFromResponse(res);
   },
 
   async resumeConnector(
-    provider: ConnectorProvider,
-    workspaceId: string,
-    workspaceAPIKey: string,
-    dataSourceName: string,
-    nangoConnectionId: string
+    connectorId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
-    const res = await fetch(`${CONNECTORS_API}/connectors/resume/${provider}`, {
-      method: "POST",
-      headers: getDefaultHeaders(),
-      body: JSON.stringify({
-        workspaceId,
-        workspaceAPIKey,
-        dataSourceName,
-        nangoConnectionId,
-      }),
-    });
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/resume/${connectorId}`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+      }
+    );
 
     return _resultFromResponse(res);
   },
 
   async deleteConnector(
-    provider: ConnectorProvider,
-    workspaceId: string,
-    dataSourceName: string
+    connectorId: string
   ): Promise<ConnectorsAPIResponse<{ success: true }>> {
-    const res = await fetch(`${CONNECTORS_API}/connectors/delete/${provider}`, {
-      method: "DELETE",
-      headers: getDefaultHeaders(),
-      body: JSON.stringify({
-        workspaceId,
-        dataSourceName,
-      }),
-    });
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/delete/${connectorId}`,
+      {
+        method: "DELETE",
+        headers: getDefaultHeaders(),
+      }
+    );
 
     return _resultFromResponse(res);
   },

@@ -37,23 +37,13 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "stop": {
       await throwOnError(
-        STOP_CONNECTOR_BY_TYPE[provider]({
-          workspaceId: connector.workspaceId,
-          dataSourceName: connector.dataSourceName,
-        })
+        STOP_CONNECTOR_BY_TYPE[provider](connector.id.toString())
       );
       return;
     }
     case "resume": {
       await throwOnError(
-        RESUME_CONNECTOR_BY_TYPE[provider](
-          {
-            workspaceId: connector.workspaceId,
-            dataSourceName: connector.dataSourceName,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
-          connector.nangoConnectionId
-        )
+        RESUME_CONNECTOR_BY_TYPE[provider](connector.id.toString())
       );
       return;
     }
@@ -66,20 +56,10 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
 
     case "restart": {
       await throwOnError(
-        STOP_CONNECTOR_BY_TYPE[provider]({
-          workspaceId: connector.workspaceId,
-          dataSourceName: connector.dataSourceName,
-        })
+        STOP_CONNECTOR_BY_TYPE[provider](connector.id.toString())
       );
       await throwOnError(
-        RESUME_CONNECTOR_BY_TYPE[provider](
-          {
-            workspaceId: connector.workspaceId,
-            dataSourceName: connector.dataSourceName,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
-          connector.nangoConnectionId
-        )
+        RESUME_CONNECTOR_BY_TYPE[provider](connector.id.toString())
       );
       return;
     }
@@ -102,20 +82,10 @@ const notion = async (command: string) => {
         promises.push(
           queue.add(async () => {
             await throwOnError(
-              STOP_CONNECTOR_BY_TYPE[connector.type]({
-                workspaceId: connector.workspaceId,
-                dataSourceName: connector.dataSourceName,
-              })
+              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id.toString())
             );
             await throwOnError(
-              RESUME_CONNECTOR_BY_TYPE[connector.type](
-                {
-                  workspaceId: connector.workspaceId,
-                  dataSourceName: connector.dataSourceName,
-                  workspaceAPIKey: connector.workspaceAPIKey,
-                },
-                connector.nangoConnectionId
-              )
+              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id.toString())
             );
           })
         );

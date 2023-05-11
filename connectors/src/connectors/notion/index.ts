@@ -3,6 +3,7 @@ import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   Connector,
   NotionConnectorState,
@@ -12,10 +13,7 @@ import {
 import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -55,8 +53,8 @@ export async function createNotionConnector(
       },
       { transaction }
     );
-    await launchNotionSyncWorkflow(dataSourceConfig, nangoConnectionId);
     await transaction.commit();
+    await launchNotionSyncWorkflow(connector.id.toString());
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
@@ -66,21 +64,14 @@ export async function createNotionConnector(
 }
 
 export async function stopNotionConnector(
-  dataSourceInfo: DataSourceInfo
+  connectorId: string
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
+  const connector = await Connector.findByPk(connectorId);
 
   if (!connector) {
     logger.error(
       {
-        workspaceId: dataSourceInfo.workspaceId,
-        dataSourceName: dataSourceInfo.dataSourceName,
+        connectorId: connectorId,
       },
       "Notion connector not found."
     );
@@ -89,12 +80,11 @@ export async function stopNotionConnector(
   }
 
   try {
-    await stopNotionSyncWorkflow(dataSourceInfo);
+    await stopNotionSyncWorkflow(connector.id.toString());
   } catch (e) {
     logger.error(
       {
-        workspaceId: dataSourceInfo.workspaceId,
-        dataSourceName: dataSourceInfo.dataSourceName,
+        connectorId: connector.id,
         error: e,
       },
       "Error stopping notion sync workflow"
@@ -107,32 +97,24 @@ export async function stopNotionConnector(
 }
 
 export async function resumeNotionConnector(
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  connectorId: string
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-  });
+  const connector = await Connector.findByPk(connectorId);
 
   if (!connector) {
     logger.error(
       {
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
+        connectorId: connectorId,
       },
       "Notion connector not found."
     );
     return new Err(new Error("Connector not found"));
   }
 
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   try {
     await launchNotionSyncWorkflow(
-      dataSourceConfig,
-      nangoConnectionId,
+      connector.id.toString(),
       connector.lastSyncSuccessfulTime
         ? connector.lastSyncStartTime?.getTime()
         : null
@@ -162,10 +144,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
   }
 
   try {
-    await stopNotionConnector({
-      workspaceId: connector.workspaceId,
-      dataSourceName: connector.dataSourceName,
-    });
+    await stopNotionConnector(connector.id.toString());
   } catch (e) {
     logger.error(
       {
@@ -181,15 +160,7 @@ export async function fullResyncNotionConnector(connectorId: string) {
   }
 
   try {
-    await launchNotionSyncWorkflow(
-      {
-        workspaceId: connector.workspaceId,
-        workspaceAPIKey: connector.workspaceAPIKey,
-        dataSourceName: connector.dataSourceName,
-      },
-      connector.nangoConnectionId,
-      null
-    );
+    await launchNotionSyncWorkflow(connector.id.toString(), null);
   } catch (e) {
     logger.error(
       {

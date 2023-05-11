@@ -8,11 +8,9 @@ import {
 import { createSlackConnector } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Ok, Result } from "@connectors/lib/result";
+import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
@@ -27,16 +25,17 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   notion: createNotionConnector,
 };
 
-type ConnectorStopper = (
-  dataSourceInfo: DataSourceInfo
-) => Promise<Result<string, Error>>;
+type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;
 
 export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorStopper
 > = {
-  slack: async () => {
-    throw new Error("Not implemented");
+  slack: async (connectorId: string) => {
+    logger.info(
+      `Stopping Slack connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(connectorId);
   },
   notion: stopNotionConnector,
 };
@@ -54,17 +53,17 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
   notion: cleanupNotionConnector,
 };
 
-type ConnectorResumer = (
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
-) => Promise<Result<string, Error>>;
+type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
 
 export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResumer
 > = {
-  slack: async () => {
-    throw new Error("Not implemented");
+  slack: async (connectorId: string) => {
+    logger.info(
+      `Resuming Slack connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(connectorId);
   },
   notion: resumeNotionConnector,
 };
