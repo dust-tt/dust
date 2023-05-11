@@ -257,7 +257,7 @@ NotionPage.init(
   {
     sequelize: sequelize_conn,
     indexes: [
-      { fields: ["notionPageId"], unique: true },
+      { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
     ],
