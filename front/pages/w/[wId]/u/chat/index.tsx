@@ -3,6 +3,7 @@ import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
+import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import MainTab from "@app/components/use/MainTab";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -17,7 +18,7 @@ const DustProdRegistry: { [key: string]: DustAppType } = {
   main: {
     workspaceId: "78bda07b39",
     appId: "6fe1383f11",
-    appHash: "390d89f3dc3bb4d6c1fc183507b033a8d2676a042e83d33b95eebf35b3e81173",
+    appHash: "49aa079dc31b9a3fdf53f9ed281d0fa7cb746a578da5dc172ed85b6e116a14f4",
   },
 };
 
@@ -105,6 +106,46 @@ type Message = {
   retrievals: RetrievedDocument[];
 };
 
+export function MessageView({
+  user,
+  message,
+  loading,
+}: {
+  user: UserType | null;
+  message: Message;
+  loading: boolean;
+}) {
+  return (
+    <div className="">
+      <div className="my-2 flex flex-row items-start">
+        <div
+          className={classNames(
+            "min-w-6 flex h-8 w-8 flex-initial rounded-md",
+            message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
+          )}
+        >
+          {message.role === "assistant" ? (
+            <div className="flex scale-50 pl-2">
+              <PulseLogo animated={loading}></PulseLogo>
+            </div>
+          ) : (
+            <div className="flex">
+              <img
+                className="h-8 w-8 rounded-md"
+                src={user?.image || "https://gravatar.com/avatar/anonymous"}
+                alt=""
+              />
+            </div>
+          )}
+        </div>
+        <div className="ml-2 flex flex-1 flex-col whitespace-pre-wrap leading-8 text-gray-700">
+          {message.message}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppChat({
   user,
   owner,
@@ -116,7 +157,13 @@ export default function AppChat({
       ? navigator.platform.toUpperCase().indexOf("MAC") >= 0
       : false;
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      message: "Hi! How can I help you today?",
+      retrievals: [],
+    },
+  ]);
   const [dataSources, setDataSources] = useState(managedDataSources);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -159,8 +206,16 @@ export default function AppChat({
             <div className="text-sm">
               {messages.map((m, i) => {
                 return (
-                  <div key={i} className="whitespace-pre-wrap border">
-                    {m.message}
+                  <div key={i}>
+                    <MessageView
+                      user={user}
+                      message={m}
+                      loading={
+                        loading &&
+                        i === messages.length - 1 &&
+                        m.role === "assistant"
+                      }
+                    ></MessageView>
                   </div>
                 );
               })}
