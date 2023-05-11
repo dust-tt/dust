@@ -24,8 +24,7 @@ export async function getApp(
         }
       : {
           workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
+          visibility: ["public", "unlisted"],
           sId: aId,
         },
   });
