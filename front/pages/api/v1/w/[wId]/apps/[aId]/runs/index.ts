@@ -1,13 +1,17 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
-import { credentialsFromProviders } from "@app/lib/api/credentials";
+import {
+  credentialsFromProviders,
+  dustManagedCredentials,
+} from "@app/lib/api/credentials";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { CredentialsType } from "@app/types/provider";
 import { RunType } from "@app/types/run";
 
 export type PostRunResponseBody = {
@@ -140,7 +144,13 @@ async function handler(
         }
       }
 
-      let credentials = credentialsFromProviders(providers);
+      let credentials: CredentialsType | null = null;
+      if (keyRes.value.isSystem) {
+        // Dust managed credentials: system API key (packaged apps).
+        credentials = dustManagedCredentials();
+      } else {
+        credentials = credentialsFromProviders(providers);
+      }
 
       logger.info(
         {
