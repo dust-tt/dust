@@ -624,7 +624,12 @@ export async function getChannelsToGarbageCollect(
   slackAccessToken: string,
   connectorId: string
 ) {
-  const remoteChannels = await getChannels(slackAccessToken);
+  const remoteChannels = new Set(
+    (await getChannels(slackAccessToken))
+      .filter((c) => c.id)
+      .map((c) => c.id as string)
+  );
+
   const localChannels = await SlackMessages.findAll({
     attributes: [
       [Sequelize.fn("DISTINCT", Sequelize.col("channelId")), "channelId"],
@@ -636,7 +641,7 @@ export async function getChannelsToGarbageCollect(
 
   const localChannelsIds = localChannels.map((c) => c.channelId);
   const channelsToDeleteLocally = localChannelsIds.filter((lc) => {
-    return remoteChannels.find((rc) => rc.id === lc) === undefined;
+    return remoteChannels.has(lc) === false;
   });
 
   return channelsToDeleteLocally;
