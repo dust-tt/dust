@@ -23,18 +23,18 @@ export default function DataSourcePicker({
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => void;
 }) {
-  let hasDataSource =
+  const hasDataSource =
     currentDataSources.length > 0 &&
     currentDataSources[0].workspace_id &&
     currentDataSources[0].workspace_id.length > 0 &&
     currentDataSources[0].data_source_id &&
     currentDataSources[0].data_source_id.length > 0;
 
-  let [name, setName] = useState(
+  const [name, setName] = useState(
     hasDataSource ? currentDataSources[0].data_source_id : null
   );
 
-  let { dataSources, isDataSourcesLoading, isDataSourcesError } = readOnly
+  const { dataSources, isDataSourcesLoading, isDataSourcesError } = readOnly
     ? {
         dataSources: [],
         isDataSourcesLoading: false,

@@ -31,7 +31,7 @@ async function handler(
       }
 
       if (invite) {
-        let allowedDomain = invite.allowedDomain;
+        const allowedDomain = invite.allowedDomain;
         if (!allowedDomain) {
           return apiError(req, res, {
             status_code: 400,
@@ -70,7 +70,7 @@ async function handler(
         }
       }
 
-      let user = await User.findOne({
+      const user = await User.findOne({
         where: {
           provider: session.provider.provider,
           providerId: session.provider.id.toString(),
@@ -101,7 +101,7 @@ async function handler(
         }
       }
       if (!user) {
-        let uId = new_id();
+        const uId = new_id();
 
         const user = await User.create({
           provider: session.provider.provider,
@@ -133,7 +133,7 @@ async function handler(
         }
       }
 
-      let u = await getUserFromSession(session);
+      const u = await getUserFromSession(session);
 
       if (!u || u.workspaces.length === 0) {
         return apiError(req, res, {

@@ -101,10 +101,10 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
-      let uId = new_id();
+      const description = req.body.description ? req.body.description : null;
+      const uId = new_id();
 
-      let [cloned] = await Promise.all([
+      const [cloned] = await Promise.all([
         App.create({
           uId,
           sId: uId.slice(0, 10),

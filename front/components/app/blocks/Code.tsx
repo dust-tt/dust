@@ -46,7 +46,7 @@ export default function Code({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleCodeChange = (code: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.code = code;
     onBlockUpdate(b);
   };

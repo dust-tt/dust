@@ -64,7 +64,7 @@ const TABS = [
 ] as { name: string; runType: RunRunType; ownerOwnly: boolean }[];
 
 const inputCount = (status: RunStatus) => {
-  for (var i = 0; i < status.blocks.length; i++) {
+  for (let i = 0; i < status.blocks.length; i++) {
     if (status.blocks[i].block_type == "input") {
       return (
         status.blocks[i].error_count || 0 + status.blocks[i].success_count || 0
@@ -96,7 +96,7 @@ export default function RunsView({
     );
   }, [readOnly]);
 
-  let { runs, total, isRunsLoading, isRunsError } = useRuns(
+  const { runs, total, isRunsLoading, isRunsError } = useRuns(
     owner,
     app,
     limit,

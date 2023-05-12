@@ -1,8 +1,8 @@
 import { BlockRunConfig, SpecificationType } from "@app/types/app";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
-  let c = {} as { [key: string]: any };
-  for (var i = 0; i < spec.length; i++) {
+  const c = {} as { [key: string]: any };
+  for (let i = 0; i < spec.length; i++) {
     switch (spec[i].type) {
       case "llm":
         c[spec[i].name] = {
@@ -35,7 +35,7 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
         };
         break;
       case "data_source":
-        let top_k = parseInt(spec[i].config ? spec[i].config.top_k : "");
+        const top_k = parseInt(spec[i].config ? spec[i].config.top_k : "");
         c[spec[i].name] = {
           type: "data_source",
           data_sources: spec[i].config ? spec[i].config.data_sources : [],

@@ -152,7 +152,7 @@ function ExecuteOutputLine({
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
-  let traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
+  const traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
 
   return (
     <div className="leading-none">

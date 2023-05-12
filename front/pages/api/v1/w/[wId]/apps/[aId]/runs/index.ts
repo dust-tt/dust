@@ -79,11 +79,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<PostRunResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
@@ -96,7 +96,7 @@ async function handler(
     });
   }
 
-  let [app, providers] = await Promise.all([
+  const [app, providers] = await Promise.all([
     getApp(auth, req.query.aId as string),
     Provider.findAll({
       where: {
@@ -133,9 +133,9 @@ async function handler(
         });
       }
 
-      let config = req.body.config;
-      let inputs = req.body.inputs;
-      let specificationHash = req.body.specification_hash;
+      const config = req.body.config;
+      const inputs = req.body.inputs;
+      const specificationHash = req.body.specification_hash;
 
       for (const name in config) {
         const c = config[name];
@@ -266,7 +266,7 @@ async function handler(
 
       // If `blocking` is set, poll for run completion.
       if (req.body.blocking) {
-        let runId = run.run_id;
+        const runId = run.run_id;
         try {
           await poll({
             fn: async () => {

@@ -90,7 +90,7 @@ async function handler(
       }
 
       // Check that dataset does not already exist.
-      let existing = await Dataset.findAll({
+      const existing = await Dataset.findAll({
         where: {
           workspaceId: owner.id,
           appId: app.id,
@@ -128,7 +128,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      let data = req.body.data.map((d: any) => {
+      const data = req.body.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -153,7 +153,7 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
+      const description = req.body.description ? req.body.description : null;
 
       await Dataset.create({
         name: req.body.name,

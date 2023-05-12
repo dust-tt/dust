@@ -104,7 +104,7 @@ const isRunnable = (
 
   for (const name in spec) {
     block_count += 1;
-    let block = spec[name];
+    const block = spec[name];
     switch (block.type) {
       case "data":
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
@@ -146,7 +146,7 @@ export default function AppView({
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null as null | CoreAPIErrorResponse);
 
-  let { run, isRunLoading, isRunError } = useSavedRunStatus(
+  const { run, isRunLoading, isRunError } = useSavedRunStatus(
     owner,
     app,
     (data) => {
@@ -189,7 +189,7 @@ export default function AppView({
   };
 
   const update = (s: SpecificationType) => {
-    let c = extractConfig(s);
+    const c = extractConfig(s);
     setRunnable(isRunnable(readOnly, s, c));
     setSpec(s);
     setConfig(c);
@@ -200,7 +200,7 @@ export default function AppView({
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
-    let s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
+    const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
     update(s);
     if (idx === null) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -208,22 +208,22 @@ export default function AppView({
   };
 
   const handleDeleteBlock = (idx: number) => {
-    let s = deleteBlock(spec, idx);
+    const s = deleteBlock(spec, idx);
     update(s);
   };
 
   const handleMoveBlockUp = (idx: number) => {
-    let s = moveBlockUp(spec, idx);
+    const s = moveBlockUp(spec, idx);
     update(s);
   };
 
   const handleMoveBlockDown = (idx: number) => {
-    let s = moveBlockDown(spec, idx);
+    const s = moveBlockDown(spec, idx);
     update(s);
   };
 
   const handleSetBlock = (idx: number, block: SpecificationBlockType) => {
-    let s = spec.map((b) => b);
+    const s = spec.map((b) => b);
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
       for (var i = idx; i < s.length; i++) {

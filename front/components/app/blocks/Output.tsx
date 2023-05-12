@@ -90,7 +90,7 @@ function ValueViewer({
     }
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
       let flat = true;
-      let keys = Object.keys(value);
+      const keys = Object.keys(value);
       for (let i = 0; i < keys.length; i++) {
         if (isExpandable(value[keys[i]])) {
           flat = false;
@@ -278,7 +278,7 @@ export default function Output({
   runId: string;
   app: AppType;
 }) {
-  let { run, isRunLoading, isRunError } = useRunBlock(
+  const { run, isRunLoading, isRunError } = useRunBlock(
     owner,
     app,
     runId,

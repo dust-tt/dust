@@ -14,11 +14,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDataSourcesResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const dataSources = await getDataSources(auth);
 

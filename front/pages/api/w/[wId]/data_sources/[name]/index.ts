@@ -104,9 +104,9 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
+      const description = req.body.description ? req.body.description : null;
 
-      let ds = await dataSource.update({
+      const ds = await dataSource.update({
         description,
         visibility: req.body.visibility,
       });

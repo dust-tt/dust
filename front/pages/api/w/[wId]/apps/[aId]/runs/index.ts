@@ -51,7 +51,7 @@ async function handler(
     });
   }
 
-  let app = await App.findOne({
+  const app = await App.findOne({
     where: auth.isUser()
       ? {
           workspaceId: owner.id,
@@ -214,7 +214,7 @@ async function handler(
             });
           }
 
-          let latestDatasets: { [key: string]: string } = {};
+          const latestDatasets: { [key: string]: string } = {};
           for (const d in datasets.value.datasets) {
             latestDatasets[d] = datasets.value.datasets[d][0].hash;
           }
@@ -287,9 +287,9 @@ async function handler(
         });
       }
 
-      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-      let runType = req.query.runType ? req.query.runType : "local";
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const runType = req.query.runType ? req.query.runType : "local";
 
       const where = {
         runType,

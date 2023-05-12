@@ -32,7 +32,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let providers = await Provider.findAll({
+      const providers = await Provider.findAll({
         where: {
           workspaceId: owner.id,
         },

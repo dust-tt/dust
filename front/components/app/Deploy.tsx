@@ -23,8 +23,8 @@ const cleanUpConfig = (config: RunConfig) => {
   if (!config) {
     return "{}";
   }
-  let c = {} as { [key: string]: any };
-  for (var key in config.blocks) {
+  const c = {} as { [key: string]: any };
+  for (const key in config.blocks) {
     if (config.blocks[key].type !== "input") {
       c[key] = config.blocks[key];
       delete c[key].type;
@@ -50,8 +50,8 @@ export default function Deploy({
 }) {
   const [open, setOpen] = useState(false);
 
-  let { keys } = useKeys(owner);
-  let activeKey = keys.find((k) => k.status === "active");
+  const { keys } = useKeys(owner);
+  const activeKey = keys.find((k) => k.status === "active");
   const [copyButtonText, setCopyButtonText] = useState("Copy");
 
   // Prepare the cURL request
@@ -63,7 +63,7 @@ export default function Deploy({
         ? activeKey.secret
         : `sk-...${activeKey.secret.slice(-5)}`;
     }
-    let cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
+    const cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer ${cURLKey}" \\
     -H "Content-Type: application/json" \\
     -d '{

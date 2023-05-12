@@ -28,7 +28,7 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
   });
 
   return users.map((u) => {
-    let m = memberships.find((m) => m.userId === u.id);
+    const m = memberships.find((m) => m.userId === u.id);
     let role = "none" as RoleType;
     if (m) {
       switch (m.role) {

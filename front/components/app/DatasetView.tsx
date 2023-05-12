@@ -168,13 +168,13 @@ export default function DatasetView({
 
   // Export the dataset with correct types (post-editing and validation)
   const exportDataset = () => {
-    let finalDataset = [] as any[];
+    const finalDataset = [] as any[];
 
     datasetData.map((d, i) => {
-      let entry = {} as any;
+      const entry = {} as any;
       datasetKeys.map((k) => {
         entry[k] = datasetData[i][k];
-        let type = datasetTypes[datasetKeys.indexOf(k)];
+        const type = datasetTypes[datasetKeys.indexOf(k)];
         try {
           // Save objects, numbers, and booleans with their proper types
           if (type !== "string") {
@@ -203,12 +203,12 @@ export default function DatasetView({
 
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
-    let data = datasetData.map((d) => {
+    const data = datasetData.map((d) => {
       d[newKey] = d[oldKey];
       delete d[oldKey];
       return d;
     });
-    let keys = datasetKeys.map((k, j) => {
+    const keys = datasetKeys.map((k, j) => {
       if (i == j) {
         return newKey;
       }
@@ -219,7 +219,7 @@ export default function DatasetView({
   };
 
   const newKey = () => {
-    let base = "new_key";
+    const base = "new_key";
     let idx = 0;
     for (let i = 0; i < datasetKeys.length; i++) {
       if (`${base}_${idx}` == datasetKeys[i]) {
@@ -231,29 +231,29 @@ export default function DatasetView({
   };
 
   const handleNewKey = (i: number) => {
-    let keys = datasetKeys.map((k) => k);
-    let n = newKey();
+    const keys = datasetKeys.map((k) => k);
+    const n = newKey();
     keys.splice(i + 1, 0, newKey());
 
-    let data = datasetData.map((d) => {
+    const data = datasetData.map((d) => {
       d[n] = "";
       return d;
     });
     setDatasetData(data);
     setDatasetKeys(keys);
 
-    let types = datasetTypes;
+    const types = datasetTypes;
     types[i + 1] = "string";
     setDatasetTypes(types);
   };
 
   const handleDeleteKey = (i: number) => {
-    let data = datasetData.map((d) => {
+    const data = datasetData.map((d) => {
       delete d[datasetKeys[i]];
       return d;
     });
 
-    let keys = datasetKeys.map((k) => k);
+    const keys = datasetKeys.map((k) => k);
     keys.splice(i, 1);
 
     setDatasetData(data);
@@ -261,7 +261,7 @@ export default function DatasetView({
   };
 
   const handleValueChange = (i: number, k: string, value: any) => {
-    let data = datasetData.map((d, j) => {
+    const data = datasetData.map((d, j) => {
       if (i == j) {
         d[k] = value;
       }
@@ -271,10 +271,10 @@ export default function DatasetView({
   };
 
   const handleNewEntry = (i: number) => {
-    let data = datasetData.map((d) => {
+    const data = datasetData.map((d) => {
       return d;
     });
-    let entry = {} as DatasetEntry;
+    const entry = {} as DatasetEntry;
     datasetKeys.forEach((k) => {
       entry[k] = "";
     });
@@ -283,7 +283,7 @@ export default function DatasetView({
   };
 
   const handleDeleteEntry = (i: number) => {
-    let data = datasetData.map((d) => {
+    const data = datasetData.map((d) => {
       return d;
     });
     data.splice(i, 1);
@@ -341,14 +341,14 @@ export default function DatasetView({
       window.alert("JSONL upload size is currently limited to 512KB");
       return;
     }
-    let fileData = new FileReader();
+    const fileData = new FileReader();
     fileData.onloadend = handleFileLoaded;
     fileData.readAsText(file);
   };
 
   useEffect(() => {
     // Validate the dataset types and dataset name
-    let valid = datasetTypesValidation() && datasetNameValidation();
+    const valid = datasetTypesValidation() && datasetNameValidation();
 
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
@@ -489,7 +489,7 @@ export default function DatasetView({
                             "px-1 py-1 font-mono text-[13px]"
                           )}
                           onClick={(e) => {
-                            let types = [...datasetTypes];
+                            const types = [...datasetTypes];
                             types[j] = type;
                             setDatasetTypes(types);
                           }}
@@ -624,14 +624,14 @@ export default function DatasetView({
               <div className="ml-2 flex-initial">
                 <Button
                   onClick={() => {
-                    var dataStr =
+                    const dataStr =
                       "data:text/jsonl;charset=utf-8," +
                       encodeURIComponent(
                         exportDataset()
                           .map((d) => JSON.stringify(d))
                           .join("\n")
                       );
-                    var downloadAnchorNode = document.createElement("a");
+                    const downloadAnchorNode = document.createElement("a");
                     downloadAnchorNode.setAttribute("href", dataStr);
                     downloadAnchorNode.setAttribute(
                       "download",

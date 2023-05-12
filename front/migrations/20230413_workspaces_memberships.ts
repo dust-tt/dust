@@ -2,7 +2,7 @@ import { Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 
 async function main() {
-  let users = await User.findAll();
+  const users = await User.findAll();
 
   const chunks = [];
   for (let i = 0; i < users.length; i += 16) {
@@ -15,14 +15,14 @@ async function main() {
     await Promise.all(
       chunk.map((u) => {
         return (async () => {
-          let m = await Membership.findOne({
+          const m = await Membership.findOne({
             where: {
               userId: u.id,
             },
           });
 
           if (!m) {
-            let uId = new_id();
+            const uId = new_id();
 
             const w = await Workspace.create({
               uId,

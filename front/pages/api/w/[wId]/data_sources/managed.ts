@@ -120,7 +120,7 @@ async function handler(
       }
 
       // Dust managed credentials: managed data source.
-      let credentials = dustManagedCredentials();
+      const credentials = dustManagedCredentials();
 
       const dustDataSource = await CoreAPI.createDataSource(
         dustProject.value.project.project_id.toString(),

@@ -39,7 +39,7 @@ export default function AnthropicSetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider(owner, "anthropic", {
+    const check = await checkProvider(owner, "anthropic", {
       api_key: apiKey,
     });
 
@@ -56,7 +56,7 @@ export default function AnthropicSetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -67,17 +67,17 @@ export default function AnthropicSetup({
         }),
       }),
     });
-    let data = await res.json();
+    const data = await res.json();
     setEnableRunning(false);
     mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
       method: "DELETE",
     });
-    let data = await res.json();
+    const data = await res.json();
     mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };

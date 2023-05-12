@@ -8,33 +8,33 @@ export function classNames(...classes: string[]) {
 }
 
 export function new_id() {
-  let u = uuidv4();
-  let b = blake3(u);
+  const u = uuidv4();
+  const b = blake3(u);
   return Buffer.from(b).toString("hex");
 }
 
 export const shallowBlockClone = (block: any) => {
-  let b = Object.assign({}, block);
+  const b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
   b.config = Object.assign({}, block.config || {});
   return b;
 };
 
 export const utcDateFrom = (millisSinceEpoch: number | string | Date) => {
-  let d = new Date(millisSinceEpoch);
+  const d = new Date(millisSinceEpoch);
   return d.toUTCString();
 };
 
 export const timeAgoFrom = (millisSinceEpoch: number) => {
   // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
-  let now = new Date().getTime();
-  let diff = now - millisSinceEpoch;
-  let seconds = Math.floor(diff / 1000);
-  let minutes = Math.floor(seconds / 60);
-  let hours = Math.floor(minutes / 60);
-  let days = Math.floor(hours / 24);
-  let months = Math.floor(days / 30);
-  let years = Math.floor(days / 365);
+  const now = new Date().getTime();
+  const diff = now - millisSinceEpoch;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
   if (years > 0) {
     return years + "y";
   }

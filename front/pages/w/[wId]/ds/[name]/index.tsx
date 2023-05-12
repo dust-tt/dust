@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -74,13 +74,13 @@ export default function DataSourceView({
   const [limit, _setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
-  let { documents, total } = useDocuments(owner, dataSource, limit, offset);
+  const { documents, total } = useDocuments(owner, dataSource, limit, offset);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
 
-  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
+  const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   useEffect(
     () =>
@@ -107,7 +107,7 @@ export default function DataSourceView({
         "Are you sure you you want to delete this document (and associated chunks)?"
       )
     ) {
-      let r = await fetch(
+      const r = await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,

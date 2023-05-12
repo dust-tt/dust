@@ -32,7 +32,7 @@ async function handler(
     });
   }
 
-  let app = await App.findOne({
+  const app = await App.findOne({
     where: auth.isUser()
       ? {
           workspaceId: owner.id,
@@ -90,7 +90,7 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
+      const description = req.body.description ? req.body.description : null;
 
       await app.update({
         name: req.body.name,

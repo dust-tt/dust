@@ -100,7 +100,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const readOnly = !auth.isBuilder();
 
-  let allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSources(auth);
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
   const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
   const provider2Connector = await Promise.all(

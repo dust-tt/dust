@@ -9,11 +9,11 @@ export const statsDClient = new StatsD();
 
 export const withLogging = (handler: any) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
-    let now = new Date();
+    const now = new Date();
     try {
       await handler(req, res);
     } catch (err) {
-      let elapsed = new Date().getTime() - now.getTime();
+      const elapsed = new Date().getTime() - now.getTime();
       logger.error(
         {
           method: req.method,
@@ -45,7 +45,7 @@ export const withLogging = (handler: any) => {
       return;
     }
 
-    let elapsed = new Date().getTime() - now.getTime();
+    const elapsed = new Date().getTime() - now.getTime();
 
     const tags = [
       `method:${req.method}`,

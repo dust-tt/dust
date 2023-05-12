@@ -50,12 +50,12 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let latestDatasets = {} as { [key: string]: string };
+  const latestDatasets = {} as { [key: string]: string };
   for (const d in datasets.value.datasets) {
     latestDatasets[d] = datasets.value.datasets[d][0].hash;
   }
 
-  let spec = dumpSpecification(
+  const spec = dumpSpecification(
     JSON.parse(app.savedSpecification || "[]"),
     latestDatasets
   );

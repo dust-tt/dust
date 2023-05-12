@@ -46,13 +46,13 @@ export function While({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleConditionCodeChange = (conditionCode: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.condition_code = conditionCode;
     onBlockUpdate(b);
   };
 
   const handleMaxIterationsChange = (maxIterations: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.max_iterations = maxIterations;
     onBlockUpdate(b);
   };

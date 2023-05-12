@@ -53,26 +53,26 @@ export default function LLM({
     provider_id: string;
     model_id: string;
   }) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.provider_id = model.provider_id;
     b.config.model_id = model.model_id;
     onBlockUpdate(b);
   };
 
   const handleTemperatureChange = (temperature: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.temperature = temperature;
     onBlockUpdate(b);
   };
 
   const handleMaxTokensChange = (max_tokens: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.max_tokens = max_tokens;
     onBlockUpdate(b);
   };
 
   const handleAddStop = (stop: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.stop.push(stop);
     onBlockUpdate(b);
     setNewStop("");
@@ -80,56 +80,56 @@ export default function LLM({
 
   const handleRemoveStop = () => {
     if (block.spec.stop.length > 0) {
-      let b = shallowBlockClone(block);
+      const b = shallowBlockClone(block);
       b.spec.stop.splice(b.spec.stop.length - 1, 1);
       onBlockUpdate(b);
     }
   };
 
   const handlePresencePenaltyChange = (presence_penalty: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.presence_penalty = presence_penalty;
     onBlockUpdate(b);
   };
 
   const handleFrequencyPenaltyChange = (frequency_penalty: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.frequency_penalty = frequency_penalty;
     onBlockUpdate(b);
   };
 
   const handleTopLogprobsChange = (top_logprobs: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.top_logprobs = top_logprobs;
     onBlockUpdate(b);
   };
 
   const handleTopPChange = (top_p: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.top_p = top_p;
     onBlockUpdate(b);
   };
 
   const handlePromptChange = (prompt: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.prompt = prompt;
     onBlockUpdate(b);
   };
 
   const handleFewShotPrePromptChange = (prompt: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.few_shot_preprompt = prompt;
     onBlockUpdate(b);
   };
 
   const handleFewShotPromptChange = (prompt: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.few_shot_prompt = prompt;
     onBlockUpdate(b);
   };
 
   const handleFewShotCountChange = (count: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.few_shot_count = count;
     onBlockUpdate(b);
   };
@@ -257,7 +257,7 @@ export default function LLM({
                     }}
                     onKeyDown={(e) => {
                       // @ts-expect-error
-                      let stop = e.target.value as string;
+                      const stop = e.target.value as string;
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
                         stop.trim().length > 0

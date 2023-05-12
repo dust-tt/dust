@@ -91,10 +91,10 @@ export default function NewApp({
       }),
     });
     if (res.ok) {
-      let appRes = (await res.json()) as { app: AppType };
+      const appRes = (await res.json()) as { app: AppType };
       router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
     } else {
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       setCreating(false);
       window.alert(`Error creating app: ${err.error.message}`);
     }

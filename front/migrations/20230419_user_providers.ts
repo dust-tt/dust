@@ -1,7 +1,7 @@
 import { User } from "@app/lib/models";
 
 async function main() {
-  let users = await User.findAll();
+  const users = await User.findAll();
 
   const chunks = [];
   for (let i = 0; i < users.length; i += 16) {

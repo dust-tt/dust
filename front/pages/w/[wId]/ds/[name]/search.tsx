@@ -44,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -76,7 +76,7 @@ export default function DataSourceView({
     Record<string, string>
   >({});
 
-  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
+  const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   useEffect(
     () =>

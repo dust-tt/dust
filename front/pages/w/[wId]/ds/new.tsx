@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSources = await getDataSources(auth);
+  const dataSources = await getDataSources(auth);
 
   return {
     props: {
@@ -134,7 +134,7 @@ export default function DataSourceNew({
     if (res.ok) {
       router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
     } else {
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       setCreating(false);
       window.alert(`Error creating DataSource: ${err.error.message}`);
     }

@@ -18,8 +18,8 @@ export default function NewBlock({
   direction: "up" | "down";
   small: boolean;
 }) {
-  let containsInput = spec.filter((block) => block.type == "input").length > 0;
-  let blocks = [
+  const containsInput = spec.filter((block) => block.type == "input").length > 0;
+  const blocks = [
     {
       type: "llm",
       typeNames: ["llm"],

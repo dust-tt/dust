@@ -51,25 +51,25 @@ export default function Curl({
   const availableMethods = ["GET", "POST", "PUT", "PATCH"];
 
   const handleSchemeChange = (scheme: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.scheme = scheme;
     onBlockUpdate(b);
   };
 
   const handleHeadersCodeChange = (headersCode: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.headers_code = headersCode;
     onBlockUpdate(b);
   };
 
   const handleBodyCodeChange = (bodyCode: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.body_code = bodyCode;
     onBlockUpdate(b);
   };
 
   const handleUrlChange = (url: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     // if url begins with http:// or https://, remove it
     if (url.startsWith("http://")) {
       url = url.substring(7);
@@ -84,7 +84,7 @@ export default function Curl({
   };
 
   const handleMethodChange = (method: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.method = method;
     onBlockUpdate(b);
   };

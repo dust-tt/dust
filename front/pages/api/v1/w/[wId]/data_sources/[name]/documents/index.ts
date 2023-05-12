@@ -16,11 +16,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDocumentsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
@@ -36,8 +36,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
       const documents = await CoreAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,

@@ -84,7 +84,7 @@ export default function MainTab({
     });
   }
 
-  let currTab = tabs.find((tab) => tab.name == currentTab);
+  const currTab = tabs.find((tab) => tab.name == currentTab);
 
   return (
     <div className="w-full">

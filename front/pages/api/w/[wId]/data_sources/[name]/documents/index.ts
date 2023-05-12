@@ -36,8 +36,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      let offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
       const documents = await CoreAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,

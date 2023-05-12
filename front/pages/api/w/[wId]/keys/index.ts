@@ -37,7 +37,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let keys = await Key.findAll({
+      const keys = await Key.findAll({
         where: {
           workspaceId: owner.id,
           isSystem: false,
@@ -57,9 +57,9 @@ async function handler(
       return;
 
     case "POST":
-      let secret = `sk-${new_id().slice(0, 32)}`;
+      const secret = `sk-${new_id().slice(0, 32)}`;
 
-      let key = await Key.create({
+      const key = await Key.create({
         secret: secret,
         status: "active",
         workspaceId: owner.id,

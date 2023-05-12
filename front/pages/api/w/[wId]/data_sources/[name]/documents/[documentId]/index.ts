@@ -70,7 +70,7 @@ async function handler(
         });
       }
 
-      let [providers] = await Promise.all([
+      const [providers] = await Promise.all([
         Provider.findAll({
           where: {
             workspaceId: owner.id,
@@ -182,7 +182,7 @@ async function handler(
         });
       }
 
-      let credentials = credentialsFromProviders(providers);
+      const credentials = credentialsFromProviders(providers);
 
       // Create document with the Dust internal API.
       const data = await CoreAPI.upsertDataSourceDocument(

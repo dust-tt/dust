@@ -74,10 +74,10 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
-      let uId = new_id();
+      const description = req.body.description ? req.body.description : null;
+      const uId = new_id();
 
-      let app = await App.create({
+      const app = await App.create({
         uId,
         sId: uId.slice(0, 10),
         name: req.body.name,

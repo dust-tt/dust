@@ -63,7 +63,7 @@ async function handler(
         });
       }
 
-      let w = await Workspace.findOne({
+      const w = await Workspace.findOne({
         where: { id: owner.id },
       });
       if (!w) {

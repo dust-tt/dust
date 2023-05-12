@@ -34,7 +34,7 @@ async function handler(
     return;
   }
 
-  let [provider] = await Promise.all([
+  const [provider] = await Promise.all([
     Provider.findOne({
       where: {
         workspaceId: owner.id,
@@ -52,22 +52,22 @@ async function handler(
     case "GET":
       var chat = req.query.chat === "true" ? true : false;
       var embed = req.query.embed === "true" ? true : false;
-      let config = JSON.parse(provider.config);
+      const config = JSON.parse(provider.config);
 
       switch (req.query.pId) {
         case "openai":
-          let modelsRes = await fetch("https://api.openai.com/v1/models", {
+          const modelsRes = await fetch("https://api.openai.com/v1/models", {
             method: "GET",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
             },
           });
           if (!modelsRes.ok) {
-            let err = await modelsRes.json();
+            const err = await modelsRes.json();
             res.status(400).json({ error: err.error });
           } else {
-            let models = await modelsRes.json();
-            let mList = models.data.map((m: any) => {
+            const models = await modelsRes.json();
+            const mList = models.data.map((m: any) => {
               return { id: m.id as string };
             }) as Array<{ id: string }>;
 
@@ -110,7 +110,7 @@ async function handler(
           return;
 
         case "cohere":
-          let cohereModels = [
+          const cohereModels = [
             { id: "command" },
             { id: "command-light" },
             { id: "command-nightly" },
@@ -122,7 +122,7 @@ async function handler(
           return;
 
         case "ai21":
-          let ai21Models = [
+          const ai21Models = [
             { id: "j1-large" },
             { id: "j1-grande" },
             { id: "j1-jumbo" },
@@ -131,7 +131,7 @@ async function handler(
           return;
 
         case "azure_openai":
-          let deploymentsRes = await fetch(
+          const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
               method: "GET",
@@ -142,11 +142,11 @@ async function handler(
           );
 
           if (!deploymentsRes.ok) {
-            let err = await deploymentsRes.json();
+            const err = await deploymentsRes.json();
             res.status(400).json({ error: err.error });
           } else {
-            let deployments = await deploymentsRes.json();
-            let mList = deployments.data.map((m: any) => {
+            const deployments = await deploymentsRes.json();
+            const mList = deployments.data.map((m: any) => {
               return { id: m.id, model: m.model };
             }) as Array<{ model: string; id: string }>;
 

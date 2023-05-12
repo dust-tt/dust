@@ -16,8 +16,8 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
-  let session = await getSession(context.req, context.res);
-  let user = await getUserFromSession(session);
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
 
   if (user && user.workspaces.length > 0) {
     // TODO(spolu): persist latest workspace in session?

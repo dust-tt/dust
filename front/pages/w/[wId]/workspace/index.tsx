@@ -62,7 +62,7 @@ export default function NewApp({
       : null
   );
 
-  let { members, isMembersLoading } = useMembers(owner);
+  const { members, isMembersLoading } = useMembers(owner);
 
   const formValidation = () => {
     let valid = true;

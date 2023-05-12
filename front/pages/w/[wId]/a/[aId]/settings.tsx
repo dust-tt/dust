@@ -101,14 +101,14 @@ export default function SettingsView({
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this app?")) {
       setIsDeleting(true);
-      let res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
+      const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
         method: "DELETE",
       });
       if (res.ok) {
         router.push(`/w/${owner.sId}/`);
       } else {
         setIsDeleting(false);
-        let err = (await res.json()) as { error: APIError };
+        const err = (await res.json()) as { error: APIError };
         window.alert(
           `Failed to delete the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
         );
@@ -121,7 +121,7 @@ export default function SettingsView({
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    let res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
+    const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -136,7 +136,7 @@ export default function SettingsView({
       router.push(`/w/${owner.sId}/a/${app.sId}`);
     } else {
       setIsUpdating(false);
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       window.alert(
         `Failed to update the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );

@@ -22,11 +22,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetRunResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
@@ -39,7 +39,7 @@ async function handler(
     });
   }
 
-  let app = await getApp(auth, req.query.aId as string);
+  const app = await getApp(auth, req.query.aId as string);
 
   if (!app) {
     return apiError(req, res, {
@@ -53,7 +53,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let runId = req.query.runId as string;
+      const runId = req.query.runId as string;
 
       logger.info(
         {
@@ -81,7 +81,7 @@ async function handler(
           },
         });
       }
-      let run: RunType = runRes.value.run;
+      const run: RunType = runRes.value.run;
       run.specification_hash = run.app_hash;
       delete run.app_hash;
 

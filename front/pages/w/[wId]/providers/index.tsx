@@ -75,12 +75,12 @@ export default function ProfileProviders({
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
-  let { providers, isProvidersLoading, isProvidersError } = useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } = useProviders(owner);
 
-  let configs = {} as any;
+  const configs = {} as any;
 
   if (!isProvidersLoading && !isProvidersError) {
-    for (var i = 0; i < providers.length; i++) {
+    for (let i = 0; i < providers.length; i++) {
       configs[providers[i].providerId] = JSON.parse(providers[i].config);
     }
   }

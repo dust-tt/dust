@@ -53,7 +53,7 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
     return [];
   }
 
-  let apps = await App.findAll({
+  const apps = await App.findAll({
     where: auth.isUser()
       ? {
           workspaceId: owner.id,

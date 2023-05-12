@@ -64,32 +64,32 @@ async function updateObjects(
 }
 
 async function updateApps() {
-  let apps = await App.findAll();
+  const apps = await App.findAll();
   await updateObjects(apps);
 }
 
 async function updateDatasets() {
-  let datasets = await Dataset.findAll();
+  const datasets = await Dataset.findAll();
   await updateObjects(datasets);
 }
 
 async function updateProviders() {
-  let providers = await Provider.findAll();
+  const providers = await Provider.findAll();
   await updateObjects(providers);
 }
 
 async function updateKeys() {
-  let keys = await Key.findAll();
+  const keys = await Key.findAll();
   await updateObjects(keys);
 }
 
 async function updateDataSources() {
-  let dataSources = await DataSource.findAll();
+  const dataSources = await DataSource.findAll();
   await updateObjects(dataSources);
 }
 
 async function updateRuns() {
-  let runs = await Run.findAll();
+  const runs = await Run.findAll();
   await updateObjects(runs);
 }
 

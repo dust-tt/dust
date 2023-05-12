@@ -113,10 +113,10 @@ export default function CloneView({
       }),
     });
     if (res.ok) {
-      let appRes = (await res.json()) as { app: AppType };
+      const appRes = (await res.json()) as { app: AppType };
       router.push(`/w/${targetWorkspace.sId}/a/${appRes.app.sId}`);
     } else {
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       setCloning(false);
       window.alert(`Error cloning app: ${err.error.message}`);
     }

@@ -58,7 +58,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -66,7 +66,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   let connector: ConnectorType | null = null;
-  let fetchConnectorError: boolean = false;
+  let fetchConnectorError = false;
   if (dataSource.connectorId) {
     const connectorRes = await ConnectorsAPI.getConnector(
       dataSource.connectorId
@@ -138,7 +138,7 @@ function StandardDataSourceSettings({
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }) {
-  let dataSourceConfig = JSON.parse(dataSource.config || "{}");
+  const dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
@@ -155,7 +155,7 @@ function StandardDataSourceSettings({
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this DataSource?")) {
       setIsDeleting(true);
-      let res = await fetch(
+      const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
         {
           method: "DELETE",
@@ -165,7 +165,7 @@ function StandardDataSourceSettings({
         router.push(`/w/${owner.sId}/ds`);
       } else {
         setIsDeleting(false);
-        let err = (await res.json()) as { error: APIError };
+        const err = (await res.json()) as { error: APIError };
         window.alert(
           `Failed to delete the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
         );
@@ -178,7 +178,7 @@ function StandardDataSourceSettings({
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    let res = await fetch(
+    const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
       {
         method: "POST",
@@ -195,7 +195,7 @@ function StandardDataSourceSettings({
       router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
     } else {
       setIsUpdating(false);
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       window.alert(
         `Failed to update the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
@@ -473,7 +473,7 @@ function ManagedDataSourceSettings({
       dataSource.connectorProvider.slice(1)
     : "";
 
-  let { total } = useDocuments(owner, dataSource, 0, 0);
+  const { total } = useDocuments(owner, dataSource, 0, 0);
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
