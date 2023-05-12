@@ -159,6 +159,64 @@ SlackConfiguration.init(
 );
 Connector.hasOne(SlackConfiguration);
 
+export class SlackMessages extends Model<
+  InferAttributes<SlackMessages>,
+  InferCreationAttributes<SlackMessages>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare channelId: string;
+  declare messageTs?: string;
+  declare documentId: string;
+}
+
+SlackMessages.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    messageTs: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "slack_messages",
+    indexes: [
+      { fields: ["connectorId", "channelId", "messageTs"], unique: true },
+    ],
+  }
+);
+
+Connector.hasOne(SlackMessages);
+
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,
   InferCreationAttributes<NotionConnectorState>
