@@ -1,4 +1,7 @@
-import { UnknownHTTPResponseError } from "@notionhq/client";
+import {
+  RequestTimeoutError,
+  UnknownHTTPResponseError,
+} from "@notionhq/client";
 import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import {
   ActivityExecuteInput,
@@ -42,6 +45,12 @@ export class NotionCastKnownErrorsInterceptor
             status_code: err.status,
           };
         }
+      } else if (RequestTimeoutError.isRequestTimeoutError(err)) {
+        throw {
+          __is_dust_error: true,
+          message: err.message,
+          type: "notion_request_timeout",
+        };
       }
       throw err;
     }
