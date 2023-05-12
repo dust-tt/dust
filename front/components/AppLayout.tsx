@@ -97,24 +97,20 @@ export default function AppLayout({
                                 if (dataSource) {
                                   router
                                     .push(`/w/${workspace.sId}/ds`)
-                                    .then((e) => console.log(e))
-                                    .catch((e) => console.log(e));
+                                    .catch(console.error);
                                 } else if (app) {
                                   router
                                     .push(`/w/${workspace.sId}/a`)
-                                    .then((e) => console.log(e))
-                                    .catch((e) => console.log(e));
+                                    .catch(console.error);
                                 } else {
                                   router
                                     .push(`/w/${workspace.sId}`)
-                                    .then((e) => console.log(e))
-                                    .catch((e) => console.log(e));
+                                    .catch(console.error);
                                 }
                               } else {
                                 router
                                   .push(`/w/${workspace.sId}`)
-                                  .then((e) => console.log(e))
-                                  .catch((e) => console.log(e));
+                                  .catch(console.error);
                               }
                             }}
                           />
