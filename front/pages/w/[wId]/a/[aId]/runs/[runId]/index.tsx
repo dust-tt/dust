@@ -101,11 +101,18 @@ export default function AppRun({
 
     setIsLoading(true);
 
-    // we clear out the config for input blocks because the dataset might
-    // have changed or might not exist anymore
     for (const block of spec) {
+      // we clear out the config for input blocks because the dataset might
+      // have changed or might not exist anymore
       if (block.type === "input") {
         block.config = {};
+      }
+
+      // we have to remove the hash and ID of the dataset in data blocks
+      // to prevent the app from becoming un-runable
+      if (block.type === "data") {
+        delete block.spec.dataset_id;
+        delete block.spec.hash;
       }
     }
 
