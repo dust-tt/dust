@@ -25,7 +25,7 @@ const {
   fetchUsers,
   saveSuccessSyncActivity,
   reportInitialSyncProgressActivity,
-  getChannelsGargabeCollect,
+  getChannelsToGarbageCollect,
   deleteChannel,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -247,7 +247,7 @@ export async function slackGarbageCollectorWorkflow(
 ): Promise<void> {
   const slackAccessToken = await getAccessToken(nangoConnectionId);
 
-  const channelIds = await getChannelsGargabeCollect(
+  const channelIds = await getChannelsToGarbageCollect(
     slackAccessToken,
     connectorId
   );

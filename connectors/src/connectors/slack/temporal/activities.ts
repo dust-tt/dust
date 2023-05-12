@@ -64,7 +64,7 @@ export async function getChannels(
     }
     if (c.channels === undefined) {
       throw new Error(
-        "There was no channels in the response for cursor " +
+        "The channels list was undefined." +
           c?.response_metadata?.next_cursor +
           ""
       );
@@ -620,7 +620,7 @@ export function formatDateForThreadTitle(date: Date) {
   return `${year}-${month}-${day}_${hours}h${minutes}`;
 }
 
-export async function getChannelsGargabeCollect(
+export async function getChannelsToGarbageCollect(
   slackAccessToken: string,
   connectorId: string
 ) {
@@ -635,11 +635,11 @@ export async function getChannelsGargabeCollect(
   });
 
   const localChannelsIds = localChannels.map((c) => c.channelId);
-  const channelToDeleteLocally = localChannelsIds.filter((lc) => {
+  const channelsToDeleteLocally = localChannelsIds.filter((lc) => {
     return remoteChannels.find((rc) => rc.id === lc) === undefined;
   });
 
-  return channelToDeleteLocally;
+  return channelsToDeleteLocally;
 }
 
 export async function deleteChannel(
@@ -648,6 +648,7 @@ export async function deleteChannel(
   connectorId: string
 ) {
   const maxMessages = 1000;
+  let nbDeleted = 0;
 
   let slackMessages: SlackMessages[] = [];
   do {
@@ -661,6 +662,11 @@ export async function deleteChannel(
     for (const slackMessage of slackMessages) {
       await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
       await slackMessage.destroy();
+      nbDeleted++;
     }
   } while (slackMessages.length === maxMessages);
+  logger.info(
+    { nbDeleted, channelId },
+    "Deleted documents from datasource while garbage collecting."
+  );
 }
