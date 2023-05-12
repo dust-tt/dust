@@ -18,6 +18,8 @@ module.exports = {
     */
     "unused-imports/no-unused-imports": "error",
     "react/no-unescaped-entities": 0,
+    "@typescript-eslint/no-explicit-any":0,
+    "no-case-declarations": 0,
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
