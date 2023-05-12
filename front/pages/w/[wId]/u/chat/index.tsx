@@ -110,7 +110,7 @@ type RetrievedDocument = {
 
 type Message = {
   role: "user" | "assistant";
-  message: string;
+  content: string;
   retrievals: RetrievedDocument[];
 };
 
@@ -146,8 +146,13 @@ export function MessageView({
             </div>
           )}
         </div>
-        <div className="ml-2 flex flex-1 flex-col whitespace-pre-wrap leading-8 text-gray-700">
-          {message.message}
+        <div
+          className={classNames(
+            "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
+            message.role === "user" ? "italic text-gray-500" : "text-gray-700"
+          )}
+        >
+          {message.content}
         </div>
       </div>
     </div>
@@ -168,16 +173,11 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      message: "Hi! How can I help you today?",
-      retrievals: [],
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [dataSources, setDataSources] = useState(managedDataSources);
-  const [message, setMessage] = useState("");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [response, setResponse] = useState<Message | null>(null);
 
   const handleSwitchDataSourceSelection = (name: string) => {
     const newSelection = dataSources.map((ds) => {
@@ -198,12 +198,18 @@ export default function AppChat({
     const m = [...messages];
     m.push({
       role: "user",
-      message,
+      content: input,
       retrievals: [],
     });
     setMessages(m);
-    setMessage("");
+    setInput("");
     setLoading(true);
+    let r: Message = {
+      role: "assistant",
+      content: "",
+      retrievals: [],
+    };
+    setResponse(r);
 
     const config = cloneBaseConfig(DustProdActionRegistry["chat-main"].config);
     config.DATASOURCE.data_sources = managedDataSources
@@ -215,17 +221,33 @@ export default function AppChat({
         };
       });
 
-    let r = await runActionStreamed(owner, "chat-main", config, [{ messages }]);
-    if (r.isErr()) {
-      console.log("ERROR", r.error);
+    let res = await runActionStreamed(owner, "chat-main", config, [
+      { messages: m },
+    ]);
+    if (res.isErr()) {
+      console.log("ERROR", res.error);
       // TODO(spolu): error reporting
       setLoading(false);
       return;
     }
-    let { eventStream, dustRunId } = r.value;
+    let { eventStream, dustRunId } = res.value;
     for await (let event of eventStream) {
-      console.log("EVENT", event);
+      // console.log("EVENT", event);
+      if (event.type === "tokens") {
+        const content = r.content + event.content.tokens.text;
+        setResponse({ ...r, content });
+        r.content = content;
+      }
+      if (event.type === "error") {
+        // TODO(spolu): error reporting
+        console.log("ERROR event", event);
+      }
     }
+
+    m.push(r);
+    setMessages(m);
+    setResponse(null);
+    setLoading(false);
   };
 
   return (
@@ -243,15 +265,20 @@ export default function AppChat({
                     <MessageView
                       user={user}
                       message={m}
-                      loading={
-                        loading &&
-                        i === messages.length - 1 &&
-                        m.role === "assistant"
-                      }
+                      loading={false}
                     ></MessageView>
                   </div>
                 );
               })}
+              {response ? (
+                <div key={messages.length}>
+                  <MessageView
+                    user={user}
+                    message={response}
+                    loading={true}
+                  ></MessageView>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -260,14 +287,14 @@ export default function AppChat({
             <div className="my-2">
               <TextareaAutosize
                 minRows={1}
-                placeholder={"Ask anything..."}
+                placeholder={`Ask anything about ${owner.name}...`}
                 className={classNames(
                   "block w-full resize-none rounded-sm bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                   "border-slate-200 focus:border-slate-300 focus:ring-0"
                 )}
-                value={message}
+                value={input}
                 onChange={(e) => {
-                  setMessage(e.target.value);
+                  setInput(e.target.value);
                 }}
                 onKeyDown={(e) => {
                   if (e.ctrlKey || e.metaKey) {
