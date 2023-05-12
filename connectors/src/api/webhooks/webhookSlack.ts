@@ -12,7 +12,7 @@ import {
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
-import { withLogging } from "@connectors/logger/withlogging";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type SlackWebhookReqBody = {
@@ -34,7 +34,11 @@ type SlackWebhookResBody =
   | ConnectorsAPIErrorResponse;
 
 const _webhookSlackAPIHandler = async (
-  req: Request<null, SlackWebhookResBody, SlackWebhookReqBody>,
+  req: Request<
+    Record<string, string>,
+    SlackWebhookResBody,
+    SlackWebhookReqBody
+  >,
   res: Response<SlackWebhookResBody>
 ) => {
   if (req.body.type === "url_verification" && req.body.challenge) {
@@ -155,21 +159,25 @@ const _webhookSlackAPIHandler = async (
       ["channel_left", "channel_deleted"].includes(req.body.event?.type)
     ) {
       if (!req.body.event?.channel) {
-        return res.status(400).send({
-          error: {
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
             message:
-              "Missing channel in request body for member_joined_channel event",
+              "Missing channel in request body for [channel_left, channel_deleted] event",
           },
+          status_code: 400,
         });
       }
       const launchRes = await launchSlackGarbageCollectWorkflow(
         slackConfiguration.connectorId.toString()
       );
       if (launchRes.isErr()) {
-        return res.status(500).send({
-          error: {
+        return apiError(req, res, {
+          api_error: {
+            type: "internal_server_error",
             message: launchRes.error.message,
           },
+          status_code: 500,
         });
       }
       return res.status(200).send();
