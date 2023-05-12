@@ -101,7 +101,10 @@ export default function AppRun({
 
     setIsLoading(true);
 
-    for (const block of spec) {
+    // hacky way to make a deep copy of the spec
+    const specCopy = JSON.parse(JSON.stringify(spec));
+
+    for (const block of specCopy) {
       // we clear out the config for input blocks because the dataset might
       // have changed or might not exist anymore
       if (block.type === "input") {
@@ -122,7 +125,7 @@ export default function AppRun({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        specification: JSON.stringify(spec),
+        specification: JSON.stringify(specCopy),
         config: JSON.stringify(run.config.blocks),
         run: run.run_id,
       }),
