@@ -83,7 +83,10 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  let { auth, keyWorkspaceId } = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
 
   const owner = auth.workspace();
   if (!owner) {
@@ -167,7 +170,7 @@ async function handler(
       if (req.body.stream) {
         const runRes = await CoreAPI.createRunStream(
           app.dustAPIProjectId,
-          owner,
+          keyWorkspaceId,
           {
             runType: "deploy",
             specificationHash: specificationHash,
@@ -234,13 +237,17 @@ async function handler(
         return;
       }
 
-      const runRes = await CoreAPI.createRun(app.dustAPIProjectId, owner, {
-        runType: "deploy",
-        specificationHash: specificationHash,
-        config: { blocks: config },
-        inputs,
-        credentials,
-      });
+      const runRes = await CoreAPI.createRun(
+        app.dustAPIProjectId,
+        keyWorkspaceId,
+        {
+          runType: "deploy",
+          specificationHash: specificationHash,
+          config: { blocks: config },
+          inputs,
+          credentials,
+        }
+      );
 
       if (runRes.isErr()) {
         return apiError(req, res, {

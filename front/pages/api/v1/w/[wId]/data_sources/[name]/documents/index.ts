@@ -20,7 +20,10 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  let { auth } = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
