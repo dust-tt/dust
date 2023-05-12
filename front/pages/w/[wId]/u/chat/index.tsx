@@ -7,41 +7,25 @@ import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import MainTab from "@app/components/use/MainTab";
 import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions_registry";
+import {
   Authenticator,
   getSession,
   getUserFromSession,
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { DustAPI, DustAPICredentials, DustAppType } from "@app/lib/dust_api";
+import {
+  DustAPI,
+  DustAPICredentials,
+  runActionStreamed,
+} from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-const DustProdRegistry: { [key: string]: { app: DustAppType; config: any } } = {
-  main: {
-    app: {
-      workspaceId: "78bda07b39",
-      appId: "6fe1383f11",
-      appHash:
-        "49aa079dc31b9a3fdf53f9ed281d0fa7cb746a578da5dc172ed85b6e116a14f4",
-    },
-    config: {
-      MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
-        use_cache: true,
-      },
-      DATASOURCE: {
-        data_sources: [],
-        top_k: 8,
-        filter: { tags: null, timestamp: null },
-        use_cache: false,
-      },
-    },
-  },
-};
 
 const PROVIDER_LOGO_PATH = {
   notion: "/static/notion_32x32.png",
@@ -221,10 +205,7 @@ export default function AppChat({
     setMessage("");
     setLoading(true);
 
-    let config = {
-      MODEL: { ...DustProdRegistry.main.config.MODEL },
-      DATASOURCE: { ...DustProdRegistry.main.config.DATASOURCE },
-    };
+    const config = cloneBaseConfig(DustProdActionRegistry["chat-main"].config);
     config.DATASOURCE.data_sources = managedDataSources
       .filter((ds) => ds.selected)
       .map((ds) => {
@@ -234,9 +215,7 @@ export default function AppChat({
         };
       });
 
-    let r = await prodAPI.runAppStreamed(DustProdRegistry.main.app, config, [
-      messages,
-    ]);
+    let r = await runActionStreamed(owner, "chat-main", config, [messages]);
     if (r.isErr()) {
       console.log("ERROR", r.error);
       // TODO(spolu): error reporting
