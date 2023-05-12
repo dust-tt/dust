@@ -7,9 +7,14 @@ import {
 } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import PQueue from "p-queue";
+import { Sequelize } from "sequelize";
 
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
-import { upsertToDatasource } from "@connectors/lib/data_sources";
+import {
+  deleteFromDataSource,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
+import { SlackMessages } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
   reportInitialSyncProgress,
@@ -57,7 +62,7 @@ export async function getChannels(
     if (c.error) {
       throw new Error(c.error);
     }
-    if (!c.channels) {
+    if (c.channels === undefined) {
       throw new Error(
         "There was no channels in the response for cursor " +
           c?.response_metadata?.next_cursor +
@@ -310,6 +315,12 @@ export async function syncNonThreaded(
   }
 
   const tags = getTagsForPage(channelId, channelName);
+  await SlackMessages.create({
+    connectorId: parseInt(connectorId),
+    channelId: channelId,
+    messageTs: undefined,
+    documentId: documentId,
+  });
   await upsertToDatasource(
     dataSourceConfig,
     documentId,
@@ -404,6 +415,12 @@ export async function syncThread(
 
   const tags = getTagsForPage(channelId, channelName, threadTs);
 
+  await SlackMessages.create({
+    connectorId: parseInt(connectorId),
+    channelId: channelId,
+    messageTs: threadTs,
+    documentId: documentId,
+  });
   await upsertToDatasource(
     dataSourceConfig,
     documentId,
@@ -601,4 +618,49 @@ export function formatDateForThreadTitle(date: Date) {
   const minutes = date.getMinutes().toString().padStart(2, "0");
 
   return `${year}-${month}-${day}_${hours}h${minutes}`;
+}
+
+export async function getChannelsGargabeCollect(
+  slackAccessToken: string,
+  connectorId: string
+) {
+  const remoteChannels = await getChannels(slackAccessToken);
+  const localChannels = await SlackMessages.findAll({
+    attributes: [
+      [Sequelize.fn("DISTINCT", Sequelize.col("channelId")), "channelId"],
+    ],
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  const localChannelsIds = localChannels.map((c) => c.channelId);
+  const channelToDeleteLocally = localChannelsIds.filter((lc) => {
+    return remoteChannels.find((rc) => rc.id === lc) === undefined;
+  });
+
+  return channelToDeleteLocally;
+}
+
+export async function deleteChannel(
+  channelId: string,
+  dataSourceConfig: DataSourceConfig,
+  connectorId: string
+) {
+  const maxMessages = 1000;
+
+  let slackMessages: SlackMessages[] = [];
+  do {
+    slackMessages = await SlackMessages.findAll({
+      where: {
+        channelId: channelId,
+        connectorId: connectorId,
+      },
+      limit: maxMessages,
+    });
+    for (const slackMessage of slackMessages) {
+      await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
+      await slackMessage.destroy();
+    }
+  } while (slackMessages.length === maxMessages);
 }

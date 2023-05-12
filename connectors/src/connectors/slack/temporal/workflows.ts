@@ -25,6 +25,8 @@ const {
   fetchUsers,
   saveSuccessSyncActivity,
   reportInitialSyncProgressActivity,
+  getChannelsGargabeCollect,
+  deleteChannel,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -238,6 +240,22 @@ export async function memberJoinedChannel(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
+export async function slackGarbageCollectorWorkflow(
+  connectorId: string,
+  dataSourceConfig: DataSourceConfig,
+  nangoConnectionId: string
+): Promise<void> {
+  const slackAccessToken = await getAccessToken(nangoConnectionId);
+
+  const channelIds = await getChannelsGargabeCollect(
+    slackAccessToken,
+    connectorId
+  );
+  for (const channelId of channelIds) {
+    await deleteChannel(channelId, dataSourceConfig, connectorId);
+  }
+}
+
 export function workspaceFullSyncWorkflowId(connectorId: string) {
   return `slack-workspaceFullSync-${connectorId}`;
 }
@@ -267,4 +285,8 @@ export function syncOneMessageDebouncedWorkflowId(
 
 export function botJoinedChannelWorkflowId(connectorId: string) {
   return `slack-botJoinedChannel-${connectorId}`;
+}
+
+export function slackGarbageCollectorWorkflowId(connectorId: string) {
+  return `slack-GarbageCollector-${connectorId}`;
 }

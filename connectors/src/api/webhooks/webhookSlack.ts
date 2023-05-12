@@ -9,6 +9,7 @@ import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
+import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -149,9 +150,30 @@ const _webhookSlackAPIHandler = async (
           },
         });
       }
+    } else if (
+      req.body.event?.type &&
+      ["channel_left", "channel_deleted"].includes(req.body.event?.type)
+    ) {
+      if (!req.body.event?.channel) {
+        return res.status(400).send({
+          error: {
+            message:
+              "Missing channel in request body for member_joined_channel event",
+          },
+        });
+      }
+      const launchRes = await launchSlackGarbageCollectWorkflow(
+        slackConfiguration.connectorId.toString()
+      );
+      if (launchRes.isErr()) {
+        return res.status(500).send({
+          error: {
+            message: launchRes.error.message,
+          },
+        });
+      }
+      return res.status(200).send();
     }
-
-    return res.status(200).send();
   }
 
   // returns 200 on all non supported messages types because slack will retry
