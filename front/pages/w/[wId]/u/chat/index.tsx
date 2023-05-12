@@ -215,7 +215,7 @@ export default function AppChat({
         };
       });
 
-    let r = await runActionStreamed(owner, "chat-main", config, [messages]);
+    let r = await runActionStreamed(owner, "chat-main", config, [{ messages }]);
     if (r.isErr()) {
       console.log("ERROR", r.error);
       // TODO(spolu): error reporting
