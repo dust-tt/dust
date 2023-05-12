@@ -5,7 +5,6 @@ import logger from "@app/logger/logger";
 import { Project } from "@app/types/project";
 import { CredentialsType } from "@app/types/provider";
 import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
@@ -186,14 +185,14 @@ export const CoreAPI = {
 
   async createRun(
     projectId: string,
-    owner: WorkspaceType,
+    runAsWorkspaceId: string,
     payload: CoreAPICreateRunPayload
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/runs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Dust-Workspace-Id": owner.sId,
+        "X-Dust-Workspace-Id": runAsWorkspaceId,
       },
       body: JSON.stringify({
         run_type: payload.runType,
@@ -211,7 +210,7 @@ export const CoreAPI = {
 
   async createRunStream(
     projectId: string,
-    owner: WorkspaceType,
+    runAsWorkspaceId: string,
     payload: CoreAPICreateRunPayload
   ): Promise<
     CoreAPIResponse<{
@@ -225,7 +224,7 @@ export const CoreAPI = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": owner.sId,
+          "X-Dust-Workspace-Id": runAsWorkspaceId,
         },
         body: JSON.stringify({
           run_type: payload.runType,
