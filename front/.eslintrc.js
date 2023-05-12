@@ -1,19 +1,12 @@
-{
-  "extends": [
+module.exports = {
+  extends: [
     "next/core-web-vitals",
-    "prettier"
-
-    //The following 2 lines will be uncommented in the future once our javascript
-    // app can build without errors.
-    // If you wish to enforce the eslint presets and the camelCase naming convention,
-    // uncomment the following lines temporarily.
-    /**
+    "prettier",
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
-    */
+    "plugin:@typescript-eslint/recommended",
   ],
-  "plugins": ["simple-import-sort", "unused-imports"],
-  "rules": {
+  plugins: ["simple-import-sort", "unused-imports"],
+  rules: {
     /**
     "@typescript-eslint/naming-convention": [
       "error",
@@ -28,11 +21,12 @@
     "react-hooks/rules-of-hooks": 0,
     "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
+    "@typescript-eslint/no-floating-promises": "error",
     "jsx-a11y/alt-text": 0,
     "simple-import-sort/imports": [
       "error",
       {
-        "groups": [
+        groups: [
           // Side effect imports.
           ["^\\u0000"],
           // Node.js builtins prefixed with `node:`.
@@ -47,21 +41,25 @@
           ["^"],
           // Relative imports.
           // Anything that starts with a dot.
-          ["^\\."]
-        ]
-      }
+          ["^\\."],
+        ],
+      },
     ],
-    "simple-import-sort/exports": "error"
+    "simple-import-sort/exports": "error",
   },
-  "overrides": [
+  overrides: [
     {
-      "files": ["*.jsx", "*.js", "*.ts", "*.tsx"]
-    }
+      files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
+    },
   ],
-  "env": {
-    "browser": true,
-    "node": true,
-    "es6": true,
-    "jest": true
-  }
-}
+  env: {
+    browser: true,
+    node: true,
+    es6: true,
+    jest: true,
+  },
+  parserOptions: {
+    project: "./tsconfig.json",
+    tsconfigRootDir: __dirname,
+  },
+};
