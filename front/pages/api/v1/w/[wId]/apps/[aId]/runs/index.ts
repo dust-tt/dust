@@ -222,7 +222,6 @@ async function handler(
             },
             "Error streaming from Dust API"
           );
-          res.end();
           return;
         }
 
@@ -233,7 +232,6 @@ async function handler(
           workspaceId: keyRes.value.workspaceId,
         });
 
-        res.end();
         return;
       }
 
