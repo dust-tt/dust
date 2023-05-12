@@ -57,7 +57,7 @@ async function handler(
 
       logger.info(
         {
-          worskapce: {
+          workspace: {
             sId: owner.sId,
             name: owner.name,
           },

@@ -160,6 +160,7 @@ async function handler(
               "Error streaming from Dust API"
             );
           }
+          res.end();
 
           let dustRunId: string;
           try {
@@ -172,18 +173,16 @@ async function handler(
               },
               "Error streaming from Dust API"
             );
-            res.end();
             return;
           }
 
-          Run.create({
+          await Run.create({
             dustRunId,
             appId: app.id,
             runType: "execute",
             workspaceId: owner.id,
           });
 
-          res.end();
           return;
 
         // Run creation as part of the app design process (Specification pane).
@@ -250,7 +249,7 @@ async function handler(
             });
           }
 
-          Run.create({
+          await Run.create({
             dustRunId: dustRun.value.run.run_id,
             appId: app.id,
             runType: "local",

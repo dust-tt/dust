@@ -154,7 +154,7 @@ async function handler(
 
       logger.info(
         {
-          worskapce: {
+          workspace: {
             sId: owner.sId,
             name: owner.name,
           },
@@ -223,7 +223,7 @@ async function handler(
           return;
         }
 
-        Run.create({
+        await Run.create({
           dustRunId,
           appId: app.id,
           runType: "deploy",
@@ -253,7 +253,7 @@ async function handler(
         });
       }
 
-      Run.create({
+      await Run.create({
         dustRunId: runRes.value.run.run_id,
         appId: app.id,
         runType: "deploy",

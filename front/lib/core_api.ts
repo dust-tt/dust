@@ -256,7 +256,7 @@ export const CoreAPI = {
         if (event.data) {
           try {
             const data = JSON.parse(event.data);
-            if (data.content?.run_id || !hasRunId) {
+            if (data.content?.run_id && !hasRunId) {
               hasRunId = true;
               resolveDustRunIdPromise(data.content.run_id);
             }
