@@ -96,7 +96,10 @@ export class Authenticator {
     return new Authenticator(workspace, role);
   }
 
-  static async fromKey(key: Key, wId: string): Promise<Authenticator> {
+  static async fromKey(
+    key: Key,
+    wId: string
+  ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
         return await Workspace.findOne({
@@ -116,13 +119,16 @@ export class Authenticator {
 
     let role = "none" as RoleType;
 
-    if (workspace && keyWorkspace) {
-      if (keyWorkspace.id === workspace.id) {
+    if (workspace) {
+      if (keyWorkspace!.id === workspace.id) {
         role = "builder";
       }
     }
 
-    return new Authenticator(workspace, role);
+    return {
+      auth: new Authenticator(workspace, role),
+      keyWorkspaceId: keyWorkspace!.sId,
+    };
   }
 
   role(): RoleType {
