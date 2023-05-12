@@ -67,7 +67,7 @@ export default function AnthropicSetup({
         }),
       }),
     });
-    const data = await res.json();
+    await res.json();
     setEnableRunning(false);
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
@@ -77,7 +77,7 @@ export default function AnthropicSetup({
     const res = await fetch(`/api/w/${owner.sId}/providers/anthropic`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    await res.json();
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };

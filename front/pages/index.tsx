@@ -270,7 +270,7 @@ export default function Home({
         </div>
 
         <div className="mx-auto my-10 max-w-3xl text-center text-sm text-gray-400">
-          Dust © 2022 – 2023
+          Dust © 2022 – 2023
         </div>
         <>
           <Script

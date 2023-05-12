@@ -112,7 +112,7 @@ async function handler(
         });
 
         if (invite) {
-          const m = await Membership.create({
+          await Membership.create({
             role: "user",
             userId: user.id,
             workspaceId: invite.id,
@@ -125,7 +125,7 @@ async function handler(
             type: "personal",
           });
 
-          const m = await Membership.create({
+           await Membership.create({
             role: "admin",
             userId: user.id,
             workspaceId: w.id,

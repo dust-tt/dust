@@ -15,7 +15,7 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    session: async ({ session, token, user }) => {
+    session: async ({ session, token }) => {
       // console.log("TOKEN", token);
       // console.log("SESSION", session);
       // Legacy support for old tokens.
@@ -36,7 +36,7 @@ export const authOptions = {
       // console.log("FINAL SESSION", session);
       return session;
     },
-    async jwt({ token, user, account, profile, isNewUser }) {
+    async jwt({ token, account, profile }) {
       // console.log("JWT TOKEN", token);
       // console.log("JWT USER", user);
       // console.log("JWT ACCOUNT", account);

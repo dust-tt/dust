@@ -44,7 +44,7 @@ async function handler(
             const err = await modelsRes.json();
             res.status(400).json({ ok: false, error: err.error.code });
           } else {
-            const models = await modelsRes.json();
+            await modelsRes.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -62,7 +62,7 @@ async function handler(
             const err = await testRes.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            const test = await testRes.json();
+            await testRes.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -83,7 +83,7 @@ async function handler(
             const err = await testTokenize.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            const test = await testTokenize.json();
+            await testTokenize.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -103,7 +103,7 @@ async function handler(
               const err = await deploymentsRes.json();
               res.status(400).json({ ok: false, error: err.error.message });
             } else {
-              const deployments = await deploymentsRes.json();
+              await deploymentsRes.json();
               res.status(200).json({ ok: true });
             }
           } catch (e) {
@@ -138,7 +138,7 @@ async function handler(
               .status(400)
               .json({ ok: false, error: err.message || err.detail });
           } else {
-            const test = await testGenerate.json();
+            await testGenerate.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -154,7 +154,7 @@ async function handler(
             const err = await testSearch.json();
             res.status(400).json({ ok: false, error: err.error });
           } else {
-            const test = await testSearch.json();
+            await testSearch.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -176,7 +176,7 @@ async function handler(
             const err = await testSearchSerper.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            const test = await testSearchSerper.json();
+            await testSearchSerper.json();
             res.status(200).json({ ok: true });
           }
           return;
@@ -201,7 +201,7 @@ async function handler(
             const err = await testScrape.text();
             res.status(400).json({ ok: false, error: err });
           } else {
-            const test = await testScrape.json();
+            await testScrape.json();
             res.status(200).json({ ok: true });
           }
           return;

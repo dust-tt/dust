@@ -29,6 +29,7 @@ export const credentialsFromProviders = (
         break;
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
+        break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
         break;

@@ -72,7 +72,7 @@ export default function DatasetsView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const handleDelete = async (datasetName: string) => {
     if (confirm("Are you sure you want to delete this dataset entirely?")) {
-      const res = await fetch(
+      await fetch(
         `/api/w/${owner.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",

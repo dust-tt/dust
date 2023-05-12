@@ -299,7 +299,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error
+                            // @ts-expect-error TS thinks e.target.value does not exists
                             const tag = e.target.value as string;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&
@@ -362,7 +362,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error
+                            // @ts-expect-error TS thinks e.target.value does not exists
                             const tag = e.target.value as string;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&

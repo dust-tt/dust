@@ -12,10 +12,8 @@ import { useEffect } from "react";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 
-const { URL } = process.env;
-
 // load local file ./run.json into variable RUN
-const RUN = require("./run.json");
+import RUN from "./run.json";
 
 function Result({ documentId, summary, facts, timestamp, score }) {
   let [issue, article] = documentId.split("-").slice(1);
@@ -99,7 +97,7 @@ export default function DemoQA({ run }) {
     results[i].score = documents[i].chunks[0].score;
   }
 
-  const [query, setQuery] = useState(run.traces[0][1][0][0].value.question);
+  const query = run.traces[0][1][0][0].value.question;
   const [answer, setAnswer] = useState("short");
   const [sortedResults, setSortedResults] = useState(results);
   const [sort, setSort] = useState("score");
@@ -124,7 +122,7 @@ export default function DemoQA({ run }) {
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
       <Disclosure as="nav" className="bg-white">
-        {({ open }) => (
+        {() => (
           <>
             <div className="mx-auto px-4">
               <div className="relative flex h-12 items-center">

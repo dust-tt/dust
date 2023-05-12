@@ -60,13 +60,13 @@ export default function ProfileKeys({
   owner,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { keys, isKeysLoading, isKeysError } = useKeys(owner);
+  const { keys } = useKeys(owner);
   const [isRevealed, setIsRevealed] = useState(
     {} as { [key: string]: boolean }
   );
 
   const handleGenerate = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/keys`, {
+    await fetch(`/api/w/${owner.sId}/keys`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +77,7 @@ export default function ProfileKeys({
   };
 
   const handleDisable = async (key: KeyType) => {
-    const res = await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
+    await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

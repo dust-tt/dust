@@ -69,6 +69,7 @@ export default function NewApp({
     if (allowedDomain === null) {
       setAllowedDomainError("");
     } else {
+      // eslint-disable-next-line no-useless-escape
       if (!allowedDomain.match(/^[a-z0-9\.\-]+$/)) {
         setAllowedDomainError("Allowed domain must be a valid domain name.");
         valid = false;
@@ -80,6 +81,7 @@ export default function NewApp({
     if (workspaceName.length == 0) {
       setWorkspaceNameError("");
       valid = false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!workspaceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setWorkspaceNameError(
         "Workspace name must only contain letters, numbers, and the characters `._-`"
@@ -313,7 +315,7 @@ export default function NewApp({
                                     await handleMemberRoleChange(member, role);
                                   }}
                                 >
-                                  {({ open }) => (
+                                  {() => (
                                     <>
                                       <div className="relative">
                                         <Listbox.Button className="relative w-full cursor-default cursor-pointer rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-1">
@@ -351,7 +353,7 @@ export default function NewApp({
                                               }
                                               value={role}
                                             >
-                                              {({ selected, active }) => (
+                                              {({ selected }) => (
                                                 <>
                                                   <span
                                                     className={classNames(

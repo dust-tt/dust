@@ -229,7 +229,7 @@ export default function Chat({
                       }
                     }}
                     onKeyDown={(e) => {
-                      // @ts-expect-error
+                      // @ts-expect-error ts thinks e.target.value does not exists
                       const stop = e.target.value as string;
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
@@ -372,7 +372,7 @@ export default function Chat({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
               >
                 <CodeEditor

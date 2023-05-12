@@ -50,8 +50,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      var chat = req.query.chat === "true" ? true : false;
-      var embed = req.query.embed === "true" ? true : false;
+      const chat = req.query.chat === "true" ? true : false;
+      const embed = req.query.embed === "true" ? true : false;
       const config = JSON.parse(provider.config);
 
       switch (req.query.pId) {

@@ -116,7 +116,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
+    case "POST": 
       if (
         !req.body ||
         !(typeof req.body.specification_hash === "string") ||
@@ -196,7 +196,7 @@ async function handler(
         try {
           for await (const chunk of runRes.value.chunkStream) {
             res.write(chunk);
-            // @ts-expect-error
+            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
             res.flush();
           }
         } catch (err) {
@@ -271,7 +271,7 @@ async function handler(
           await poll({
             fn: async () => {
               const run = await CoreAPI.getRunStatus(
-                app!.dustAPIProjectId,
+                app.dustAPIProjectId,
                 runId
               );
               if (run.isErr()) {
@@ -302,7 +302,7 @@ async function handler(
         }
 
         // Finally refresh the run object.
-        const runRes = await CoreAPI.getRun(app!.dustAPIProjectId, runId);
+        const runRes = await CoreAPI.getRun(app.dustAPIProjectId, runId);
         if (runRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

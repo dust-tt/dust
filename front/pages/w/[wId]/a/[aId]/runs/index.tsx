@@ -82,7 +82,7 @@ export default function RunsView({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState("local" as RunRunType);
-  const [limit, setLimit] = useState(10);
+  const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   const [tabs, setTabs] = useState(
@@ -96,13 +96,7 @@ export default function RunsView({
     );
   }, [readOnly]);
 
-  const { runs, total, isRunsLoading, isRunsError } = useRuns(
-    owner,
-    app,
-    limit,
-    offset,
-    runType
-  );
+  const { runs, total } = useRuns(owner, app, limit, offset, runType);
 
   let last = offset + limit;
   if (offset + limit > total) {

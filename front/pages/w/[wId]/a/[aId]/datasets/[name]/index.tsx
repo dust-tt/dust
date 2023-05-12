@@ -136,7 +136,7 @@ export default function ViewDatasetView({
         body: JSON.stringify(updatedDataset),
       }
     );
-    const data = await res.json();
+    await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };

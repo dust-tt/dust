@@ -109,7 +109,7 @@ export default function NewDatasetView({
       },
       body: JSON.stringify(dataset),
     });
-    const data = await res.json();
+    await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };

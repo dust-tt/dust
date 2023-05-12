@@ -4,8 +4,6 @@ import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 
-const {} = process.env;
-
 async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({

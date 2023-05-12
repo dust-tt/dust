@@ -149,7 +149,7 @@ async function handler(
           try {
             for await (const chunk of streamRes.value.chunkStream) {
               res.write(chunk);
-              // @ts-expect-error
+              // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
               res.flush();
             }
           } catch (e) {
