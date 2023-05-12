@@ -315,7 +315,7 @@ export async function syncNonThreaded(
   }
 
   const tags = getTagsForPage(channelId, channelName);
-  await SlackMessages.create({
+  await SlackMessages.upsert({
     connectorId: parseInt(connectorId),
     channelId: channelId,
     messageTs: undefined,
@@ -415,7 +415,7 @@ export async function syncThread(
 
   const tags = getTagsForPage(channelId, channelName, threadTs);
 
-  await SlackMessages.create({
+  await SlackMessages.upsert({
     connectorId: parseInt(connectorId),
     channelId: channelId,
     messageTs: threadTs,
@@ -660,6 +660,8 @@ export async function deleteChannel(
       limit: maxMessages,
     });
     for (const slackMessage of slackMessages) {
+      // We delete from the remote datasource first because we would rather double delete remotely
+      // than miss one.
       await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
       await slackMessage.destroy();
       nbDeleted++;
