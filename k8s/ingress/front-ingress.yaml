@@ -11,8 +11,7 @@ metadata:
     nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
 spec:
   rules:
-    - host: front-kube.dust.tt
-      http:
+    - http:
         paths:
           - pathType: Prefix
             path: "/"
