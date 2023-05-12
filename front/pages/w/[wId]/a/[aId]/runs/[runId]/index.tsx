@@ -12,7 +12,6 @@ import { ActionButton } from "@app/components/Button";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -101,11 +100,21 @@ export default function AppRun({
 
     setIsLoading(true);
 
-    // we clear out the config for input blocks because the dataset might
-    // have changed or might not exist anymore
-    for (const block of spec) {
+    // hacky way to make a deep copy of the spec
+    const specCopy = JSON.parse(JSON.stringify(spec));
+
+    for (const block of specCopy) {
+      // we clear out the config for input blocks because the dataset might
+      // have changed or might not exist anymore
       if (block.type === "input") {
         block.config = {};
+      }
+
+      // we have to remove the hash and ID of the dataset in data blocks
+      // to prevent the app from becoming un-runable
+      if (block.type === "data") {
+        delete block.spec.dataset_id;
+        delete block.spec.hash;
       }
     }
 
@@ -115,7 +124,7 @@ export default function AppRun({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        specification: JSON.stringify(spec),
+        specification: JSON.stringify(specCopy),
         config: JSON.stringify(run.config.blocks),
         run: run.run_id,
       }),
@@ -123,13 +132,6 @@ export default function AppRun({
 
     setIsLoading(false);
     setSavedRunId(run.run_id);
-    logger.info(
-      {
-        app: app.sId,
-        run: run.run_id,
-      },
-      "Restored app to previous run"
-    );
   };
 
   return (
