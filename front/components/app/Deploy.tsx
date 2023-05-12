@@ -76,8 +76,8 @@ export default function Deploy({
   };
 
   // Copy the cURL request to the clipboard
-  const handleCopyClick = () => {
-    navigator.clipboard.writeText(cURLRequest(true));
+  const handleCopyClick = async () => {
+    await navigator.clipboard.writeText(cURLRequest(true));
     setCopyButtonText("Copied!");
   };
 

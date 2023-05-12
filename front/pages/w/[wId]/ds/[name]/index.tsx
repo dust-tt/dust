@@ -115,7 +115,7 @@ export default function DataSourceView({
           method: "DELETE",
         }
       );
-      mutate(
+      await mutate(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`
       );
     }
@@ -246,9 +246,9 @@ export default function DataSourceView({
                                 <div className="flex flex-initial">
                                   <TrashIcon
                                     className="hidden h-4 w-4 text-gray-400 hover:text-red-700 group-hover:block"
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.preventDefault();
-                                      handleDelete(d.document_id);
+                                      await handleDelete(d.document_id);
                                     }}
                                   />
                                 </div>

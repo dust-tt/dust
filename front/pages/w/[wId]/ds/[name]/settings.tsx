@@ -162,7 +162,7 @@ function StandardDataSourceSettings({
         }
       );
       if (res.ok) {
-        router.push(`/w/${owner.sId}/ds`);
+        await router.push(`/w/${owner.sId}/ds`);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -192,7 +192,7 @@ function StandardDataSourceSettings({
       }
     );
     if (res.ok) {
-      router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
     } else {
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };
@@ -354,7 +354,9 @@ function StandardDataSourceSettings({
                         provider_id: dataSourceConfig.provider_id || "",
                         model_id: dataSourceConfig.model_id || "",
                       }}
-                      onModelUpdate={(model) => {}}
+                      onModelUpdate={() => {
+                        Function.prototype();
+                      }}
                       chatOnly={false}
                       embedOnly={true}
                     />

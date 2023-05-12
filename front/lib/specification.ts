@@ -253,7 +253,7 @@ export function deleteBlock(
     switch (s[index].type) {
       case "map":
         s.splice(index, 1);
-        for (var i = index; i < s.length; i++) {
+        for (let i = index; i < s.length; i++) {
           if (s[i].type == "reduce") {
             s.splice(i, 1);
             break;
@@ -262,7 +262,7 @@ export function deleteBlock(
         break;
       case "while":
         s.splice(index, 1);
-        for (var i = index; i < s.length; i++) {
+        for (let i = index; i < s.length; i++) {
           if (s[i].type == "end") {
             s.splice(i, 1);
             break;
@@ -271,7 +271,7 @@ export function deleteBlock(
         break;
       case "reduce":
         s.splice(index, 1);
-        for (var i = index - 1; i >= 0; i--) {
+        for (let i = index - 1; i >= 0; i--) {
           if (s[i].type == "map") {
             s.splice(i, 1);
             break;
@@ -280,7 +280,7 @@ export function deleteBlock(
         break;
       case "end":
         s.splice(index, 1);
-        for (var i = index - 1; i >= 0; i--) {
+        for (let i = index - 1; i >= 0; i--) {
           if (s[i].type == "while") {
             s.splice(i, 1);
             break;

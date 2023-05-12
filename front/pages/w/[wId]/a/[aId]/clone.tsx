@@ -114,7 +114,7 @@ export default function CloneView({
     });
     if (res.ok) {
       const appRes = (await res.json()) as { app: AppType };
-      router.push(`/w/${targetWorkspace.sId}/a/${appRes.app.sId}`);
+      await router.push(`/w/${targetWorkspace.sId}/a/${appRes.app.sId}`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setCloning(false);

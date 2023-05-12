@@ -130,7 +130,7 @@ export default function DataSourceView({
         setError(true);
         setDocuments([]);
       }
-    })();
+    })().catch(console.error);
 
     return () => {
       isCancelled = true;

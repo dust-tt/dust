@@ -105,7 +105,7 @@ export default function SettingsView({
         method: "DELETE",
       });
       if (res.ok) {
-        router.push(`/w/${owner.sId}/`);
+        await router.push(`/w/${owner.sId}/`);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -133,7 +133,7 @@ export default function SettingsView({
       }),
     });
     if (res.ok) {
-      router.push(`/w/${owner.sId}/a/${app.sId}`);
+      await router.push(`/w/${owner.sId}/a/${app.sId}`);
     } else {
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };

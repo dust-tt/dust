@@ -34,7 +34,11 @@ export default function ModelPicker({
         isProvidersError: false,
       }
     : useProviders(owner);
-  const modelProviders = filterModelProviders(providers, !!chatOnly, !!embedOnly);
+  const modelProviders = filterModelProviders(
+    providers,
+    !!chatOnly,
+    !!embedOnly
+  );
 
   const [models, setModels] = useState(null as any[] | null);
 
@@ -56,10 +60,10 @@ export default function ModelPicker({
     });
   }
 
-  const refreshModels = () => {
+  const refreshModels = async () => {
     const provider = providers.find((p) => p.providerId == model.provider_id);
     if (provider) {
-      getProviderLLMModels(
+      await getProviderLLMModels(
         owner,
         provider.providerId,
         !!chatOnly,
@@ -81,7 +85,7 @@ export default function ModelPicker({
       model.provider_id.length > 0
     ) {
       if (models === null) {
-        refreshModels();
+        refreshModels().catch((e) => console.error(e));
       }
     }
   });

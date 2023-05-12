@@ -132,7 +132,7 @@ export default function DataSourceNew({
       }),
     });
     if (res.ok) {
-      router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
+      await router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setCreating(false);
@@ -353,8 +353,8 @@ export default function DataSourceNew({
                 <div className="flex">
                   <Button
                     disabled={disabled || creating}
-                    onClick={() => {
-                      handleCreate();
+                    onClick={async () => {
+                      await handleCreate();
                     }}
                   >
                     {creating ? "Creating..." : "Create"}

@@ -98,7 +98,7 @@ export default function ViewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`).catch(console.error);
     }
   }, [isFinishedEditing]);
 
@@ -155,7 +155,13 @@ export default function ViewDatasetView({
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
                   dataset={updatedDataset}
-                  onUpdate={readOnly ? () => {} : onUpdate}
+                  onUpdate={
+                    readOnly
+                      ? () => {
+                          Function.prototype();
+                        }
+                      : onUpdate
+                  }
                   nameDisabled={true}
                 />
 

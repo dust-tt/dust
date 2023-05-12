@@ -95,14 +95,26 @@ export default function AppLayout({
                             onWorkspaceUpdate={(workspace) => {
                               if (workspace.id === owner.id) {
                                 if (dataSource) {
-                                  router.push(`/w/${workspace.sId}/ds`);
+                                  router
+                                    .push(`/w/${workspace.sId}/ds`)
+                                    .then((e) => console.log(e))
+                                    .catch((e) => console.log(e));
                                 } else if (app) {
-                                  router.push(`/w/${workspace.sId}/a`);
+                                  router
+                                    .push(`/w/${workspace.sId}/a`)
+                                    .then((e) => console.log(e))
+                                    .catch((e) => console.log(e));
                                 } else {
-                                  router.push(`/w/${workspace.sId}`);
+                                  router
+                                    .push(`/w/${workspace.sId}`)
+                                    .then((e) => console.log(e))
+                                    .catch((e) => console.log(e));
                                 }
                               } else {
-                                router.push(`/w/${workspace.sId}`);
+                                router
+                                  .push(`/w/${workspace.sId}`)
+                                  .then((e) => console.log(e))
+                                  .catch((e) => console.log(e));
                               }
                             }}
                           />

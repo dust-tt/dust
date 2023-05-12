@@ -52,7 +52,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
     });
     let data = await res.json();
     setEnableRunning(false);
-    mutate(`/api/w/${owner.sId}/providers`);
+    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
@@ -61,7 +61,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
       method: "DELETE",
     });
     let data = await res.json();
-    mutate(`/api/w/${owner.sId}/providers`);
+    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 

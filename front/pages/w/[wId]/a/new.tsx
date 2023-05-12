@@ -92,7 +92,7 @@ export default function NewApp({
     });
     if (res.ok) {
       const appRes = (await res.json()) as { app: AppType };
-      router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
+      await router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setCreating(false);

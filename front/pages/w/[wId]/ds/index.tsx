@@ -442,8 +442,8 @@ export default function DataSourcesView({
                               }
                               onClick={
                                 canUseManagedDataSources
-                                  ? () => {
-                                      handleEnableManagedDataSource(
+                                  ? async () => {
+                                      await handleEnableManagedDataSource(
                                         ds.connectorProvider as ConnectorProvider
                                       );
                                     }

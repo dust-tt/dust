@@ -132,7 +132,7 @@ export default function NewApp({
     if (!res.ok) {
       window.alert("Failed to update membership.");
     } else {
-      mutate(`/api/w/${owner.sId}/members`);
+      await mutate(`/api/w/${owner.sId}/members`);
     }
   };
 
@@ -309,8 +309,8 @@ export default function NewApp({
                               {member.id !== user?.id ? (
                                 <Listbox
                                   value={member.workspaces[0].role}
-                                  onChange={(role) => {
-                                    handleMemberRoleChange(member, role);
+                                  onChange={async (role) => {
+                                    await handleMemberRoleChange(member, role);
                                   }}
                                 >
                                   {({ open }) => (

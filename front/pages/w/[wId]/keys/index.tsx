@@ -61,7 +61,9 @@ export default function ProfileKeys({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { keys, isKeysLoading, isKeysError } = useKeys(owner);
-  const [isRevealed, setIsRevealed] = useState({} as { [key: string]: boolean });
+  const [isRevealed, setIsRevealed] = useState(
+    {} as { [key: string]: boolean }
+  );
 
   const handleGenerate = async () => {
     const res = await fetch(`/api/w/${owner.sId}/keys`, {
@@ -71,7 +73,7 @@ export default function ProfileKeys({
       },
     });
     // const data = await res.json();
-    mutate(`/api/w/${owner.sId}/keys`);
+    await mutate(`/api/w/${owner.sId}/keys`);
   };
 
   const handleDisable = async (key: KeyType) => {
@@ -82,7 +84,7 @@ export default function ProfileKeys({
       },
     });
     // const data = await res.json();
-    mutate(`/api/w/${owner.sId}/keys`);
+    await mutate(`/api/w/${owner.sId}/keys`);
   };
 
   return (
@@ -110,8 +112,8 @@ export default function ProfileKeys({
                 </p>
                 <div className="mb-2 mt-4 sm:flex sm:items-center">
                   <Button
-                    onClick={() => {
-                      handleGenerate();
+                    onClick={async () => {
+                      await handleGenerate();
                     }}
                   >
                     Create new secret key
@@ -179,8 +181,8 @@ export default function ProfileKeys({
                       <div>
                         <Button
                           disabled={key.status != "active"}
-                          onClick={() => {
-                            handleDisable(key);
+                          onClick={async () => {
+                            await handleDisable(key);
                           }}
                         >
                           Disable

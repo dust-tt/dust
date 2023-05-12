@@ -58,7 +58,7 @@ export default function SerpAPISetup({
     });
     let data = await res.json();
     setEnableRunning(false);
-    mutate(`/api/w/${owner.sId}/providers`);
+    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 
@@ -67,7 +67,7 @@ export default function SerpAPISetup({
       method: "DELETE",
     });
     let data = await res.json();
-    mutate(`/api/w/${owner.sId}/providers`);
+    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };
 

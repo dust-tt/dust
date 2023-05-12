@@ -110,6 +110,7 @@ const isRunnable = (
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
           return false;
         }
+        break;
       default:
         if (
           !block.name ||
@@ -188,45 +189,45 @@ export default function AppView({
     }, 1000);
   };
 
-  const update = (s: SpecificationType) => {
+  const update = async (s: SpecificationType) => {
     const c = extractConfig(s);
     setRunnable(isRunnable(readOnly, s, c));
     setSpec(s);
     setConfig(c);
-    saveState(s, c);
+    await saveState(s, c);
   };
 
-  const handleNewBlock = (
+  const handleNewBlock = async (
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
     const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
-    update(s);
+    await update(s);
     if (idx === null) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const handleDeleteBlock = (idx: number) => {
+  const handleDeleteBlock = async (idx: number) => {
     const s = deleteBlock(spec, idx);
-    update(s);
+    await update(s);
   };
 
-  const handleMoveBlockUp = (idx: number) => {
+  const handleMoveBlockUp = async (idx: number) => {
     const s = moveBlockUp(spec, idx);
-    update(s);
+    await update(s);
   };
 
-  const handleMoveBlockDown = (idx: number) => {
+  const handleMoveBlockDown = async (idx: number) => {
     const s = moveBlockDown(spec, idx);
-    update(s);
+    await update(s);
   };
 
-  const handleSetBlock = (idx: number, block: SpecificationBlockType) => {
+  const handleSetBlock = async (idx: number, block: SpecificationBlockType) => {
     const s = spec.map((b) => b);
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
-      for (var i = idx; i < s.length; i++) {
+      for (let i = idx; i < s.length; i++) {
         if (s[i].type == "reduce" && s[i].name == s[idx].name) {
           s[i].name = block.name;
           break;
@@ -234,7 +235,7 @@ export default function AppView({
       }
     }
     if (block.type == "reduce" && block.name != s[idx].name) {
-      for (var i = idx; i >= 0; i--) {
+      for (let i = idx; i >= 0; i--) {
         if (s[i].type == "map" && s[i].name == s[idx].name) {
           s[i].name = block.name;
           break;
@@ -242,7 +243,7 @@ export default function AppView({
       }
     }
     s[idx] = block;
-    update(s);
+    await update(s);
   };
 
   const handleRun = () => {
@@ -279,13 +280,13 @@ export default function AppView({
         const [run] = await Promise.all([runRes.json()]);
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-        mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
+        await mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
-        spec.forEach((block) => {
+        spec.forEach(async (block) => {
           mutate(
             `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
-          );
+          ).catch(console.error);
         });
       }
     }, 0);
@@ -303,8 +304,8 @@ export default function AppView({
               <div className="flex-initial">
                 <NewBlock
                   disabled={readOnly}
-                  onClick={(blockType) => {
-                    handleNewBlock(null, blockType);
+                  onClick={async (blockType) => {
+                    await handleNewBlock(null, blockType);
                   }}
                   spec={spec}
                   direction="down"
@@ -412,8 +413,8 @@ export default function AppView({
                 <div className="flex">
                   <NewBlock
                     disabled={readOnly}
-                    onClick={(blockType) => {
-                      handleNewBlock(null, blockType);
+                    onClick={async (blockType) => {
+                      await handleNewBlock(null, blockType);
                     }}
                     spec={spec}
                     direction="up"
