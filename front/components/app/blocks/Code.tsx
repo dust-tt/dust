@@ -76,7 +76,7 @@ export default function Code({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
                 style={{
                   minHeight: "80px",

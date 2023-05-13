@@ -229,8 +229,7 @@ export default function Chat({
                       }
                     }}
                     onKeyDown={(e) => {
-                      // @ts-expect-error ts thinks e.target.value does not exists
-                      const stop = e.target.value as string;
+                      const stop = e.currentTarget.value;
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
                         stop.trim().length > 0

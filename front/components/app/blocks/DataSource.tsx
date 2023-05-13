@@ -299,8 +299,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error TS thinks e.target.value does not exists
-                            const tag = e.target.value as string;
+                            const tag = e.currentTarget.value;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&
                               tag.trim().length > 0
@@ -362,8 +361,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error TS thinks e.target.value does not exists
-                            const tag = e.target.value as string;
+                            const tag = e.currentTarget.value;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&
                               tag.trim().length > 0

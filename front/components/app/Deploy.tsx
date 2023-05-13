@@ -36,7 +36,6 @@ const cleanUpConfig = (config: RunConfig) => {
 export default function Deploy({
   owner,
   app,
-  spec,
   run,
   disabled,
   url,

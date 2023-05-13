@@ -50,7 +50,7 @@ export default function AI21Setup({ owner, open, setOpen, config, enabled }) {
         }),
       }),
     });
-    let data = await res.json();
+    await res.json();
     setEnableRunning(false);
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
@@ -60,7 +60,7 @@ export default function AI21Setup({ owner, open, setOpen, config, enabled }) {
     let res = await fetch(`/api/w/${owner.sId}/providers/ai21`, {
       method: "DELETE",
     });
-    let data = await res.json();
+    await res.json();
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };

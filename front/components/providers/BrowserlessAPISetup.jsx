@@ -58,7 +58,7 @@ export default function BrowserlessAPISetup({
         }),
       }),
     });
-    let data = await res.json();
+    await res.json();
     setEnableRunning(false);
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
@@ -68,7 +68,7 @@ export default function BrowserlessAPISetup({
     let res = await fetch(`/api/w/${owner.sId}/providers/browserlessapi`, {
       method: "DELETE",
     });
-    let data = await res.json();
+    await res.json();
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };

@@ -256,8 +256,7 @@ export default function LLM({
                       }
                     }}
                     onKeyDown={(e) => {
-                      // @ts-expect-error
-                      const stop = e.target.value as string;
+                      const stop = e.currentTarget.value;
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
                         stop.trim().length > 0

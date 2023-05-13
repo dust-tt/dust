@@ -18,7 +18,8 @@ export default function NewBlock({
   direction: "up" | "down";
   small: boolean;
 }) {
-  const containsInput = spec.filter((block) => block.type == "input").length > 0;
+  const containsInput =
+    spec.filter((block) => block.type == "input").length > 0;
   const blocks = [
     {
       type: "llm",
@@ -153,7 +154,7 @@ export default function NewBlock({
             }}
             className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white px-0 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
           >
-            {({ active }) => (
+            {() => (
               <div className="ml-4 grid max-w-md grid-cols-12 items-center">
                 <div className="col-span-4 sm:col-span-3">
                   <div className="flex text-base font-medium text-gray-900">

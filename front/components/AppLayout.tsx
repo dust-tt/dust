@@ -62,7 +62,7 @@ export default function AppLayout({
         ) : null}
       </Head>
       <Disclosure as="nav" className="bg-white">
-        {({ open }) => (
+        {() => (
           <>
             <div className="mx-auto px-4">
               <div className="relative flex h-12 items-center">

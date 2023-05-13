@@ -135,6 +135,7 @@ export default function DatasetView({
     } else if (datasetName.length == 0) {
       setDatasetNameError("");
       valid = false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!datasetName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDatasetNameError(
         "Dataset name must only contain letters, numbers, and the characters `._-`"
@@ -452,7 +453,7 @@ export default function DatasetView({
                           <div className="flex w-4 flex-initial">
                             <XCircleIcon
                               className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                              onClick={(e) => {
+                              onClick={() => {
                                 handleDeleteKey(j);
                               }}
                             />
@@ -461,7 +462,7 @@ export default function DatasetView({
                         <div className="mr-2 flex w-4 flex-initial">
                           <PlusCircleIcon
                             className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
-                            onClick={(e) => {
+                            onClick={() => {
                               handleNewKey(j);
                             }}
                           />
@@ -488,7 +489,7 @@ export default function DatasetView({
                               : "font-normal text-gray-700 hover:text-gray-900",
                             "px-1 py-1 font-mono text-[13px]"
                           )}
-                          onClick={(e) => {
+                          onClick={() => {
                             const types = [...datasetTypes];
                             types[j] = type;
                             setDatasetTypes(types);
@@ -589,7 +590,7 @@ export default function DatasetView({
                           <div className="flex-initial">
                             <XCircleIcon
                               className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
-                              onClick={(e) => {
+                              onClick={() => {
                                 handleDeleteEntry(i);
                               }}
                             />
@@ -598,7 +599,7 @@ export default function DatasetView({
                         <div className="flex-initial">
                           <PlusCircleIcon
                             className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
-                            onClick={(e) => {
+                            onClick={() => {
                               handleNewEntry(i);
                             }}
                           />

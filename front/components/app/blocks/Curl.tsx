@@ -201,7 +201,7 @@ export default function Curl({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
               >
                 <CodeEditor
@@ -229,7 +229,7 @@ export default function Curl({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
               >
                 <CodeEditor

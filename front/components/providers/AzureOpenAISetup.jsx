@@ -64,7 +64,7 @@ export default function AzureOpenAISetup({
         }),
       }),
     });
-    let data = await res.json();
+    await res.json();
     setEnableRunning(false);
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
@@ -74,7 +74,7 @@ export default function AzureOpenAISetup({
     let res = await fetch(`/api/w/${owner.sId}/providers/azure_openai`, {
       method: "DELETE",
     });
-    let data = await res.json();
+    await res.json();
     await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
   };

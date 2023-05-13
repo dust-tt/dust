@@ -22,7 +22,7 @@ export function ObjectViewer({
 }) {
   return (
     <div className="flex flex-col">
-      {Object.keys(value).map((key, index) => (
+      {Object.keys(value).map((key) => (
         <ValueViewer
           key={key}
           block={block}
@@ -186,7 +186,7 @@ export function StringViewer({ value }: { value: any }) {
         {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
         <span
           className="cursor-pointer font-bold text-violet-600 hover:text-violet-500"
-          onClick={(e) => setExpanded(!expanded)}
+          onClick={() => setExpanded(!expanded)}
         >
           show all
         </span>
@@ -278,7 +278,7 @@ export default function Output({
   runId: string;
   app: AppType;
 }) {
-  const { run, isRunLoading, isRunError } = useRunBlock(
+  const { run } = useRunBlock(
     owner,
     app,
     runId,
