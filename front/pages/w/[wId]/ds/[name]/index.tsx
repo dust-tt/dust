@@ -71,7 +71,7 @@ export default function DataSourceView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
-  const [limit, _setLimit] = useState(10);
+  const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   const { documents, total } = useDocuments(owner, dataSource, limit, offset);
@@ -107,7 +107,7 @@ export default function DataSourceView({
         "Are you sure you you want to delete this document (and associated chunks)?"
       )
     ) {
-      const r = await fetch(
+      await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,

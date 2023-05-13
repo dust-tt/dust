@@ -20,9 +20,9 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
-  NANGO_SLACK_CONNECTOR_ID,
-  NANGO_NOTION_CONNECTOR_ID,
-  NANGO_PUBLIC_KEY,
+  NANGO_SLACK_CONNECTOR_ID = "",
+  NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_PUBLIC_KEY = "",
 } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
@@ -87,9 +87,9 @@ export const getServerSideProps: GetServerSideProps<{
       fetchConnectorError,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY!,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
+        publicKey: NANGO_PUBLIC_KEY,
+        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
+        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
       },
     },
   };
@@ -470,6 +470,9 @@ function ManagedDataSourceSettings({
   };
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
+  if (!logo) {
+    throw new Error(`No logo for data source ${dataSource.name}`);
+  }
   const dataSourceName = dataSource.connectorProvider
     ? dataSource.connectorProvider.charAt(0).toUpperCase() +
       dataSource.connectorProvider.slice(1)
@@ -490,7 +493,7 @@ function ManagedDataSourceSettings({
 
     const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-    await nango.auth(nangoConnectorId!, `${provider}-${owner.sId}`);
+    await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
   };
 
   return (
@@ -503,7 +506,7 @@ function ManagedDataSourceSettings({
                 <div className="sm:col-span-3">
                   <div className="flex flex-row items-center">
                     <div className="mr-1 flex h-4 w-4 ">
-                      <img src={logo!}></img>
+                      <img src={logo}></img>
                     </div>
                     <label
                       htmlFor="dataSourceName"

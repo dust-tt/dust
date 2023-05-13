@@ -94,6 +94,7 @@ export default function DataSourceNew({
         "DataSource name cannot start with the prefix `managed-`"
       );
       return false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDataSourceNameError(
         "DataSource name must only contain letters, numbers, and the characters `._-`"

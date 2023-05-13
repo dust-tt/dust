@@ -169,8 +169,7 @@ export default function DataSourceView({
                   className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
                   onKeyDown={(e) => {
                     if (e.key == "Enter") {
-                      // @ts-expect-error e.target.value is not recognized as a property in this context. I don't know why.
-                      setSearchQuery(e.target.value);
+                      setSearchQuery(e.currentTarget.value);
                     }
                   }}
                   placeholder="Search query..."

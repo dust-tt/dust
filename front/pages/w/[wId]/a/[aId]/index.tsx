@@ -147,21 +147,17 @@ export default function AppView({
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null as null | CoreAPIErrorResponse);
 
-  const { run, isRunLoading, isRunError } = useSavedRunStatus(
-    owner,
-    app,
-    (data) => {
-      if (data && data.run) {
-        switch (data?.run.status.run) {
-          case "running":
-            return 100;
-          default:
-            return 0;
-        }
+  const { run } = useSavedRunStatus(owner, app, (data) => {
+    if (data && data.run) {
+      switch (data?.run.status.run) {
+        case "running":
+          return 100;
+        default:
+          return 0;
       }
-      return 0;
     }
-  );
+    return 0;
+  });
 
   const bottomRef = useRef<HTMLDivElement>(null);
 

@@ -216,7 +216,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
   );
 }
 
-export async function getServerSideProps(context) {
+export async function getServerSideProps() {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,

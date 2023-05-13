@@ -85,6 +85,7 @@ export default function SettingsView({
     if (appName.length == 0) {
       setAppNameError("");
       return false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!appName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setAppNameError(
         "App name must only contain letters, numbers, and the characters `._-`"
