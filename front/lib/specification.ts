@@ -308,6 +308,7 @@ export function moveBlockUp(
         if (["map", "reduce", "while", "end"].includes(s[index - 1].type)) {
           break;
         }
+        // eslint-disable-next-line no-fallthrough
       default:
         const tmp = s[index - 1];
         s[index - 1] = s[index];
@@ -332,6 +333,7 @@ export function moveBlockDown(
         if (["map", "reduce", "while", "end"].includes(s[index + 1].type)) {
           break;
         }
+      // eslint-disable-next-line no-fallthrough
       default:
         const tmp = s[index + 1];
         s[index + 1] = s[index];

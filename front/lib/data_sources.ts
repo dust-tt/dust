@@ -18,10 +18,6 @@ export function getProviderLogoPathForDataSource(
       return `/static/slack_32x32.png`;
 
     default:
-      ((_provider: never) => {
-        // cannot happen
-        // this is to make sure we handle all cases
-      })(provider);
       return null;
   }
 }

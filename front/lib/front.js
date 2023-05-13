@@ -19,7 +19,7 @@ export function useRegisterUnloadHandlers(
   // Add handler for next.js router events that don't load a new page in the browser.
   const router = useRouter();
   useEffect(
-    (e) => {
+    () => {
       const confirmBrowseAway = () => {
         if (!editorDirty) return;
         if (window.confirm(unloadWarning)) return;
