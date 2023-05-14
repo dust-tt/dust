@@ -17,7 +17,7 @@ async function main() {
           if (!u.provider) {
             await u.update({
               provider: "github",
-              // @ts-expect-error
+              // @ts-expect-error old code, not sure what is going on here, but githubId is not a property of u:User
               providerId: u.githubId,
             });
             console.log(`+ ${u.id}`);

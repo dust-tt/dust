@@ -31,7 +31,7 @@ async function main() {
               type: "personal",
             });
 
-            const m = await Membership.create({
+            await Membership.create({
               role: "admin",
               userId: u.id,
               workspaceId: w.id,
