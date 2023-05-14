@@ -188,7 +188,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!u) {
         throw new Error(`User not found: userId='${args.userId}'`);
       }
-      const m = await Membership.create({
+      await Membership.create({
         role,
         workspaceId: w.id,
         userId: u.id,

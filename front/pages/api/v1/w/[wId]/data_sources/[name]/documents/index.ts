@@ -20,7 +20,10 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
@@ -37,7 +40,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string)
+        : 0;
 
       const documents = await CoreAPI.getDataSourceDocuments(
         dataSource.dustAPIProjectId,

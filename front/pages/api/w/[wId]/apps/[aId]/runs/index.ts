@@ -288,7 +288,9 @@ async function handler(
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string)
+        : 0;
       const runType = req.query.runType ? req.query.runType : "local";
 
       const where = {

@@ -18,6 +18,13 @@
       "@app/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.jsx", "**/*.js", "./.eslintrc.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.jsx",
+    "**/*.js",
+    "./.eslintrc.js"
+  ],
   "exclude": ["node_modules"]
 }

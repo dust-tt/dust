@@ -9,7 +9,6 @@ export const sendActivationKey = async (user: XP1User) => {
     throw new Error("Missing SENDGRID_API_KEY env variable");
   }
   sgMail.setApiKey(SENDGRID_API_KEY);
-``
   const msg = {
     to: user.email,
     from: "team@dust.tt",

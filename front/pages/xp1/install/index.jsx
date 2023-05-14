@@ -15,7 +15,7 @@ export default function InstallExtension({ ga_tracking_id }) {
       let verRes = await fetch(`/api/xp1/version`);
       let version = await verRes.json();
       setVersion(version);
-    })().catch((err) => console.error(err))
+    })().catch((err) => console.error(err));
   }, []);
 
   return (

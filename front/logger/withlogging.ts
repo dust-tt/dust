@@ -20,7 +20,7 @@ export const withLogging = (handler: any) => {
           url: req.url,
           duration: `${elapsed} ms`,
           error: err,
-          // @ts-expect-error
+          // @ts-expect-error not sure how to do taht properly and make TS happy.
           error_stack: err?.stack,
         },
         "Unhandled API Error"

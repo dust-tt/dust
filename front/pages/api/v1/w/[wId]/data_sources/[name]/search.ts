@@ -51,7 +51,10 @@ export default async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 

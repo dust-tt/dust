@@ -83,7 +83,10 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const auth = await Authenticator.fromKey(keyRes.value, req.query.wId as string);
+  const auth = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
 
   const owner = auth.workspace();
   if (!owner) {
@@ -116,7 +119,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST": 
+    case "POST":
       if (
         !req.body ||
         !(typeof req.body.specification_hash === "string") ||

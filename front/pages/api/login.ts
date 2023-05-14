@@ -125,7 +125,7 @@ async function handler(
             type: "personal",
           });
 
-           await Membership.create({
+          await Membership.create({
             role: "admin",
             userId: user.id,
             workspaceId: w.id,

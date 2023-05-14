@@ -75,7 +75,8 @@ export default function ProfileProviders({
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
-  const { providers, isProvidersLoading, isProvidersError } = useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } =
+    useProviders(owner);
 
   const configs = {} as any;
 
