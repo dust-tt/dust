@@ -58,8 +58,8 @@ export default function SerpAPISetup({
     });
     await res.json();
     setEnableRunning(false);
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   const handleDisable = async () => {
@@ -67,8 +67,8 @@ export default function SerpAPISetup({
       method: "DELETE",
     });
     await res.json();
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   return (

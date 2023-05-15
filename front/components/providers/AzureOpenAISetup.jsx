@@ -66,8 +66,9 @@ export default function AzureOpenAISetup({
     });
     await res.json();
     setEnableRunning(false);
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
+    
   };
 
   const handleDisable = async () => {
@@ -75,8 +76,9 @@ export default function AzureOpenAISetup({
       method: "DELETE",
     });
     await res.json();
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
+    
   };
 
   return (

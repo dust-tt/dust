@@ -52,8 +52,8 @@ export default function CohereSetup({ owner, open, setOpen, config, enabled }) {
     });
     await res.json();
     setEnableRunning(false);
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   const handleDisable = async () => {
@@ -61,8 +61,8 @@ export default function CohereSetup({ owner, open, setOpen, config, enabled }) {
       method: "DELETE",
     });
     await res.json();
-    await mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   return (
