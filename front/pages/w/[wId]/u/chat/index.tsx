@@ -75,11 +75,14 @@ export const getServerSideProps: GetServerSideProps<{
   const managedDataSources = dataSources
     .filter((ds) => ds.connectorProvider)
     .map((ds) => {
+      if (!ds.connectorProvider) {
+        throw new Error("provider not defined for the data source");
+      }
       return {
         name: ds.name,
-        provider: ds.connectorProvider!,
+        provider: ds.connectorProvider,
         selected: true,
-        logoPath: PROVIDER_LOGO_PATH[ds.connectorProvider!],
+        logoPath: PROVIDER_LOGO_PATH[ds.connectorProvider],
       };
     });
 
