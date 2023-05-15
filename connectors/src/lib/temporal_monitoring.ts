@@ -74,7 +74,7 @@ export class ActivityInboundLogInterceptor
               error_stack: error?.stack,
               durationMs: durationMs,
             },
-            "Activity failed"
+            "Unhandled activity error"
           );
         }
 
