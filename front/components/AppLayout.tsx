@@ -64,7 +64,7 @@ export default function AppLayout({
       <div className="flex h-full flex-col">
         <div className="w-full flex-initial">
           <Disclosure as="nav" className="bg-white">
-            {({ open }) => (
+            {() => (
               <>
                 <div className="mx-auto px-4">
                   <div className="relative flex h-12 items-center">
@@ -97,14 +97,16 @@ export default function AppLayout({
                                 onWorkspaceUpdate={(workspace) => {
                                   if (workspace.id === owner.id) {
                                     if (dataSource) {
-                                      router.push(`/w/${workspace.sId}/ds`);
+                                      void router.push(
+                                        `/w/${workspace.sId}/ds`
+                                      );
                                     } else if (app) {
-                                      router.push(`/w/${workspace.sId}/a`);
+                                      void router.push(`/w/${workspace.sId}/a`);
                                     } else {
-                                      router.push(`/w/${workspace.sId}`);
+                                      void router.push(`/w/${workspace.sId}`);
                                     }
                                   } else {
-                                    router.push(`/w/${workspace.sId}`);
+                                    void router.push(`/w/${workspace.sId}`);
                                   }
                                 }}
                               />

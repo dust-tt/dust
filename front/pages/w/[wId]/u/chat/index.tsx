@@ -275,11 +275,7 @@ export default function AppChat({
                   {messages.map((m, i) => {
                     return (
                       <div key={i}>
-                        <MessageView
-                          user={user}
-                          message={m}
-                          loading={false}
-                        ></MessageView>
+                        <MessageView user={user} message={m} loading={false} />
                       </div>
                     );
                   })}
@@ -289,7 +285,7 @@ export default function AppChat({
                         user={user}
                         message={response}
                         loading={true}
-                      ></MessageView>
+                      />
                     </div>
                   ) : null}
                 </div>
