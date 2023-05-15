@@ -62,7 +62,6 @@ export default function BrowserlessAPISetup({
     setEnableRunning(false);
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   const handleDisable = async () => {
@@ -72,7 +71,6 @@ export default function BrowserlessAPISetup({
     await res.json();
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   return (

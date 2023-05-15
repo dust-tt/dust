@@ -72,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const dataSources = dsRes.value;
 
-  let managedDataSources = dataSources
+  const managedDataSources = dataSources
     .filter((ds) => ds.connectorProvider)
     .map((ds) => {
       return {
@@ -204,7 +204,7 @@ export default function AppChat({
     setMessages(m);
     setInput("");
     setLoading(true);
-    let r: Message = {
+    const r: Message = {
       role: "assistant",
       content: "",
       retrievals: [],
@@ -221,7 +221,7 @@ export default function AppChat({
         };
       });
 
-    let res = await runActionStreamed(owner, "chat-main", config, [
+    const res = await runActionStreamed(owner, "chat-main", config, [
       { messages: m },
     ]);
     if (res.isErr()) {
@@ -230,8 +230,8 @@ export default function AppChat({
       setLoading(false);
       return;
     }
-    let { eventStream, dustRunId } = res.value;
-    for await (let event of eventStream) {
+    const { eventStream } = res.value;
+    for await (const event of eventStream) {
       // console.log("EVENT", event);
       if (event.type === "tokens") {
         const content = r.content + event.content.tokens.text;
@@ -299,7 +299,7 @@ export default function AppChat({
                 onKeyDown={(e) => {
                   if (e.ctrlKey || e.metaKey) {
                     if (e.key === "Enter" && !loading) {
-                      handleSubmitMessage();
+                      void handleSubmitMessage();
                       e.preventDefault();
                     }
                   }

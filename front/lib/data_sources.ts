@@ -19,7 +19,8 @@ export function getProviderLogoPathForDataSource(
 
     default:
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ((_provider: never) => {   // cannot happen
+      ((_provider: never) => {
+        // cannot happen
         // this is to make sure we handle all cases
       })(provider);
       return null;

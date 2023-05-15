@@ -54,7 +54,6 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
     setEnableRunning(false);
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   const handleDisable = async () => {
@@ -64,7 +63,6 @@ export default function OpenAISetup({ owner, open, setOpen, config, enabled }) {
     await res.json();
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   return (

@@ -68,7 +68,6 @@ export default function AzureOpenAISetup({
     setEnableRunning(false);
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   const handleDisable = async () => {
@@ -78,7 +77,6 @@ export default function AzureOpenAISetup({
     await res.json();
     setOpen(false);
     await mutate(`/api/w/${owner.sId}/providers`);
-    
   };
 
   return (
