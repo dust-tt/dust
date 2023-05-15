@@ -118,16 +118,18 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
-
+    if (!keyWorkspace) {
+      throw new Error("Key workspace not found");
+    }
     if (workspace) {
-      if (keyWorkspace!.id === workspace.id) {
+      if (keyWorkspace.id === workspace.id) {
         role = "builder";
       }
     }
 
     return {
       auth: new Authenticator(workspace, role),
-      keyWorkspaceId: keyWorkspace!.sId,
+      keyWorkspaceId: keyWorkspace.sId,
     };
   }
 
