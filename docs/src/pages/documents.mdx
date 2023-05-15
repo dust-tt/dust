@@ -1,9 +1,9 @@
 export const description =
-  "On this page, we’ll dive into the Documents endpoints you can use to manage data sources programmatically.";
+  "On this page, we’ll dive into the Documents endpoints you can use to manage Data Sources programmatically.";
 
 # Documents
 
-On this page we'll dive into the DataSources endpoint you can use to manage data sources
+On this page we'll dive into the Data Sources endpoint you can use to manage Data Sources
 programmatically. We'll look at how to insert, retrieve, list and delete documents from a [data
 source](/data-sources-overview). {{ className: 'lead' }}
 
@@ -15,7 +15,7 @@ key in your account's **API keys** panel.
 
 ## The Chunk model
 
-The Chunk model represents a chunk from a document. See the [data sources
+The Chunk model represents a chunk from a document. See the [Data Sources
 overview](/data-sources-overview) to better understand how documents are chunked as part of a data
 source to enable semantic search.
 
@@ -41,7 +41,7 @@ source to enable semantic search.
 
 ## The Document model
 
-The Document model represents a [data source](/data-sources-overview) document.
+The Document model represents a [Data Source](/data-sources-overview) document.
 
 ### Properties
 
@@ -54,12 +54,12 @@ The Document model represents a [data source](/data-sources-overview) document.
   </Property>
   <Property name="timestamp" type="integer">
     User specified timestamp (epoch in ms) for the document. Can be used to
-    filter documents when querying the data source based on their timestamp. If
+    filter documents when querying the Data Source based on their timestamp. If
     not specified, defaults to the value of _created_.
   </Property>
   <Property name="tags" type="[]string">
     User specified list of string tags. Can be used to filter the results by
-    tags when querying the data source. See the
+    tags when querying the Data Source. See the
     [`data_source`](core-blocks#data-source-block) block for more details. If
     not specified, defaults to the empty list.{" "}
   </Property>
@@ -90,18 +90,18 @@ The Document model represents a [data source](/data-sources-overview) document.
 <Row>
   <Col>
 
-    This endpoint enables you to insert a new document to a data source. The semantic of this
+    This endpoint enables you to insert a new document to a Data Source. The semantic of this
     endpoint is an _upsert_: if the `document_id` does not exists it gets replaced, otherwise it
-    gets replaced. You can only insert documents to the data sources you own.
+    gets replaced. You can only insert documents to the Data Sources you own.
 
     ### URL attributes
 
     <Properties>
       <Property name="workspace_id" type="string">
-        The ID of the data source's workspace (can be found in the data source's URL)
+        The ID of the Data Source's workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to insert a document to.
+        The name of the Data Source you want to insert a document to.
       </Property>
       <Property name="document_id" type="string">
         The ID of the document you want to insert or replace (upsert). This can be anything, make
@@ -204,10 +204,10 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     <Properties>
       <Property name="workspace_id" type="string">
-        The ID of the data source's workspace (can be found in the data source's URL)
+        The ID of the Data Source's workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to insert a document to.
+        The name of the Data Source you want to insert a document to.
       </Property>
       <Property name="document_id" type="string">
         The ID of the document you want to insert or replace (upsert). This can be anything, make
@@ -256,16 +256,16 @@ The Document model represents a [data source](/data-sources-overview) document.
   <Col>
 
     This endpoint enables you to delete a document by ID. All data relative to the document will be
-    deleted (and associated chunks removed from the data source vector search database).
+    deleted (and associated chunks removed from the Data Source vector search database).
 
     ### URL attributes
 
     <Properties>
       <Property name="workspace_id" type="string">
-        The ID of the data source's workspace (can be found in the data source's URL)
+        The ID of the Data Source's workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to insert a document to.
+        The name of the Data Source you want to insert a document to.
       </Property>
       <Property name="document_id" type="string">
         The ID of the document you want to insert or replace (upsert). This can be anything, make
@@ -303,16 +303,16 @@ The Document model represents a [data source](/data-sources-overview) document.
 <Row>
   <Col>
 
-    This endpoint enables you to list the documents of a data source.
+    This endpoint enables you to list the documents of a Data Source.
 
     ### URL attributes
 
     <Properties>
       <Property name="workspace_id" type="string">
-        The ID of the data source's workspace (can be found in the data source's URL)
+        The ID of the Data Source's workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to insert a document to.
+        The name of the Data Source you want to insert a document to.
       </Property>
     </Properties>
 
@@ -322,10 +322,10 @@ The Document model represents a [data source](/data-sources-overview) document.
 
     <Properties>
       <Property name="offset" type="integer">
-        The offset to use to retrieve the documents from the data source, for paging.
+        The offset to use to retrieve the documents from the Data Source, for paging.
       </Property>
       <Property name="limit" type="integer">
-        The maximum number of documents to retrieve from the data source, for paging.
+        The maximum number of documents to retrieve from the Data Source, for paging.
       </Property>
     </Properties>
 
@@ -381,16 +381,16 @@ The Document model represents a [data source](/data-sources-overview) document.
 <Row>
   <Col>
 
-    This endpoint enables you to perform a semantic search on your data source's documents.
+    This endpoint enables you to perform a semantic search on your Data Source's documents.
 
     ### URL attributes
 
     <Properties>
       <Property name="workspace_id" type="string">
-        The ID of the data source's workspace (can be found in the data source's URL)
+        The ID of the Data Source's workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the data source you want to perform your search against.
+        The name of the Data Source you want to perform your search against.
       </Property>
     </Properties>
 

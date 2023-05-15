@@ -322,7 +322,7 @@ export default function AppChat({
             </div>
             <div className="mb-4 flex flex-row text-xs">
               <div className="flex flex-initial text-gray-400">
-                data sources:
+                Data Sources:
               </div>
               <div className="flex flex-row">
                 {dataSources.map((ds) => {

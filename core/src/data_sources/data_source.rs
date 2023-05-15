@@ -759,7 +759,7 @@ impl DataSource {
         });
 
         utils::done(&format!(
-            "Searched data source: data_source_id={} document_count={} chunk_count={}",
+            "Searched Data Source: data_source_id={} document_count={} chunk_count={}",
             self.data_source_id,
             documents.len(),
             documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
@@ -867,13 +867,13 @@ impl DataSource {
             self.data_source_id,
         ));
 
-        // Delete data source and documents (SQL)
+        // Delete Data Source and documents (SQL)
         store
             .delete_data_source(&self.project, &self.data_source_id)
             .await?;
 
         utils::done(&format!(
-            "Deleted data source records: data_source_id={}",
+            "Deleted Data Source records: data_source_id={}",
             self.data_source_id,
         ));
 

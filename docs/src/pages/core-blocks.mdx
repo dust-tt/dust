@@ -337,15 +337,15 @@ contain an array of 4 `{ "foo": "bar" }` objects.
 
 ## DataSource block
 
-The `data_source` block provides an interface to query a [data source](/data-sources-overview) and
+The `data_source` block provides an interface to query a [Data Source](/data-sources-overview) and
 return chunks that are semantically similar to the query provided. When executed, the query is
-embedded using the embedding model set on the data source and the resulting enmbedding vector
-is used to perform semantic search on the data source's chunks.
+embedded using the embedding model set on the Data Source and the resulting enmbedding vector
+is used to perform semantic search on the Data Source's chunks.
 
 The output of the `data_source` block is a list of [Document](/documents#the-document-model)
 objects. Each document may include one or more [Chunks](/documents#the-chunk-model) (only those
 that were returned from the search). The documents are sorted by decreasing order of the max of
-their retrieved chunks score. Please refer to the [data sources overview](/data-sources-overview)
+their retrieved chunks score. Please refer to the [Data Sources overview](/data-sources-overview)
 for more details about how documents are chunked to enable semantic search.
 
 ### Specification
@@ -375,11 +375,11 @@ for more details about how documents are chunked to enable semantic search.
     retrieved chunks.
   </Property>
   <Property name="data_sources" type="[]{username, data_source_id}">
-    An array of objects representing the data sources to query. Note that the
-    Dust interface currently only supports adding one data source to a block,
+    An array of objects representing the Data Sources to query. Note that the
+    Dust interface currently only supports adding one Data Source to a block,
     but you can pass many by API. The objects must have the following
-    properties: `username`, the username of the user who owns the data source,
-    and, `data_source_id`, The name of the data source.
+    properties: `username`, the username of the user who owns the Data Source,
+    and, `data_source_id`, The name of the Data Source.
   </Property>
   <Property
     name="filter"
