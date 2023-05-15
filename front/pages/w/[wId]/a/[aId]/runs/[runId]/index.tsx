@@ -184,19 +184,19 @@ export default function AppRun({
               run={run}
               runRequested={false}
               handleSetBlock={() => {
-                Function.prototype();
+                // no-op
               }}
               handleDeleteBlock={() => {
-                Function.prototype();
+                // no-op
               }}
               handleMoveBlockUp={() => {
-                Function.prototype();
+                // no-op
               }}
               handleMoveBlockDown={() => {
-                Function.prototype();
+                // no-op
               }}
               handleNewBlock={() => {
-                Function.prototype();
+                // no-op
               }}
             />
           </div>

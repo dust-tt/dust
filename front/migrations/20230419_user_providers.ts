@@ -17,7 +17,7 @@ async function main() {
           if (!u.provider) {
             await u.update({
               provider: "github",
-              // @ts-expect-error old code, not sure what is going on here, but githubId is not a property of u:User
+              // @ts-expect-error old migration code kept for reference
               providerId: u.githubId,
             });
             console.log(`+ ${u.id}`);

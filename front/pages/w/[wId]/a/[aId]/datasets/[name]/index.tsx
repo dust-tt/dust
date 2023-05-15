@@ -98,7 +98,7 @@ export default function ViewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`).catch(console.error);
+      void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
   }, [isFinishedEditing]);
 

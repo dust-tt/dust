@@ -1,4 +1,4 @@
-// @ts-expect-error old code, not sure what is going on here.
+// @ts-expect-error old migration code kept for reference
 import { personalWorkspace } from "@app/lib/auth";
 import {
   App,
@@ -14,25 +14,25 @@ async function addWorkspaceToObject(
   object: App | Dataset | Provider | Key | DataSource | Run
 ) {
   if (object.workspaceId) {
-    // @ts-expect-error old code, not sure what is going on here.
+    // @ts-expect-error old migration code kept for reference
     console.log(`o ${object.id} ${object.userId} ${object.workspaceId}`);
     return;
   }
 
   const user = await User.findOne({
     where: {
-      // @ts-expect-error old code, not sure what is going on here.
+      // @ts-expect-error old migration code kept for reference
       id: object.userId,
     },
   });
   if (!user) {
-    // @ts-expect-error old code, not sure what is going on here.
+    // @ts-expect-error old migration code kept for reference
     throw new Error(`User id=${object.userId} not found`);
   }
   const ownerRes = await personalWorkspace(user);
 
   if (ownerRes.isErr()) {
-    // @ts-expect-error old code, not sure what is going on here.
+    // @ts-expect-error old migration code kept for reference
     throw new Error(`Workspace not found for user id=${object.userId}`);
   }
 

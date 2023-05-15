@@ -539,27 +539,20 @@ export default function ExecuteView({
     }, 0);
   };
 
-  const documentHandleKeyPress = (event: KeyboardEvent) => {
+  const handleKeyPress = (event: KeyboardEvent | React.KeyboardEvent) => {
     if (event.metaKey === true && event.key === "Enter" && canRun()) {
       handleRun();
-      return;
-    }
-  };
-
-  const reactHandleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.metaKey === true && event.key === "Enter" && canRun()) {
-      handleRun();
-      return;
+      return false;
     }
   };
 
   useEffect(() => {
-    document.addEventListener("keydown", documentHandleKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
 
     return () => {
-      document.removeEventListener("keydown", documentHandleKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
     };
-  }, [reactHandleKeyPress]);
+  }, [handleKeyPress]);
 
   return (
     <AppLayout user={user} owner={owner} app={app} gaTrackingId={gaTrackingId}>
@@ -618,7 +611,7 @@ export default function ExecuteView({
                         inputValue={inputData[k]}
                         onChange={(value) => handleValueChange(k, value)}
                         inputType={datasetTypes[k]}
-                        onKeyDown={reactHandleKeyPress}
+                        onKeyDown={handleKeyPress}
                       />
                     </li>
                   ))}

@@ -280,9 +280,9 @@ export default function AppView({
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         spec.forEach(async (block) => {
-          mutate(
+          return await mutate(
             `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
-          ).catch(console.error);
+          );
         });
       }
     }, 0);

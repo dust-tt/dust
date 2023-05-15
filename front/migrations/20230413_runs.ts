@@ -71,7 +71,7 @@ async function main() {
         if (!app) {
           console.warn(`No app found for project ${projectId}`);
         }
-        // @ts-expect-error old code - no idea what's going on here. But userId does not exists on app.
+        // @ts-expect-error old migration code kept for reference
         const userId = app?.userId;
         const appId = app?.id;
         return {

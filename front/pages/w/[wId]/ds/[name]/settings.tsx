@@ -355,7 +355,7 @@ function StandardDataSourceSettings({
                         model_id: dataSourceConfig.model_id || "",
                       }}
                       onModelUpdate={() => {
-                        Function.prototype();
+                        // no-op
                       }}
                       chatOnly={false}
                       embedOnly={true}

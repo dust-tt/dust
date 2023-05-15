@@ -18,6 +18,10 @@ export function getProviderLogoPathForDataSource(
       return `/static/slack_32x32.png`;
 
     default:
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ((_provider: never) => {   // cannot happen
+        // this is to make sure we handle all cases
+      })(provider);
       return null;
   }
 }

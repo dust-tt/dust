@@ -60,7 +60,7 @@ export default function ModelPicker({
     });
   }
 
-  const refreshModels = async () => {
+  const refreshModels = () => {
     const provider = providers.find((p) => p.providerId == model.provider_id);
     if (provider) {
       getProviderLLMModels(owner, provider.providerId, !!chatOnly, !!embedOnly)
@@ -82,7 +82,7 @@ export default function ModelPicker({
       model.provider_id.length > 0
     ) {
       if (models === null) {
-        refreshModels().catch((e) => console.error(e));
+        refreshModels();
       }
     }
   });

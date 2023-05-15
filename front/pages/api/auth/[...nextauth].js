@@ -15,7 +15,8 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    session: async ({ session, token }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    session: async ({ session, token, user }) => { 
       // console.log("TOKEN", token);
       // console.log("SESSION", session);
       // Legacy support for old tokens.
