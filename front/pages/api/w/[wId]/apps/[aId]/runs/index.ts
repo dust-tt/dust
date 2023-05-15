@@ -119,7 +119,7 @@ async function handler(
 
           const streamRes = await CoreAPI.createRunStream(
             app.dustAPIProjectId,
-            owner,
+            owner.sId,
             {
               runType: "execute",
               specificationHash: req.body.specificationHash,
@@ -227,16 +227,20 @@ async function handler(
             ? inputConfigEntry.dataset
             : null;
 
-          const dustRun = await CoreAPI.createRun(app.dustAPIProjectId, owner, {
-            runType: "local",
-            specification: dumpSpecification(
-              JSON.parse(req.body.specification),
-              latestDatasets
-            ),
-            datasetId: inputDataset,
-            config: { blocks: config },
-            credentials: credentialsFromProviders(providers),
-          });
+          const dustRun = await CoreAPI.createRun(
+            app.dustAPIProjectId,
+            owner.sId,
+            {
+              runType: "local",
+              specification: dumpSpecification(
+                JSON.parse(req.body.specification),
+                latestDatasets
+              ),
+              datasetId: inputDataset,
+              config: { blocks: config },
+              credentials: credentialsFromProviders(providers),
+            }
+          );
 
           if (dustRun.isErr()) {
             return apiError(req, res, {

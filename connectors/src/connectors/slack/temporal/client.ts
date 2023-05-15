@@ -1,3 +1,4 @@
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -9,6 +10,8 @@ import { botJoinedChanelSignal, newWebhookSignal } from "./signals";
 import {
   botJoinedChannelWorkflowId,
   memberJoinedChannel,
+  slackGarbageCollectorWorkflow,
+  slackGarbageCollectorWorkflowId,
   syncOneMessageDebounced,
   syncOneMessageDebouncedWorkflowId,
   syncOneThreadDebounced,
@@ -198,6 +201,45 @@ export async function launchSlackBotJoinedWorkflow(
         error: e,
       },
       `Failed to start worklfow.`
+    );
+    return new Err(e as Error);
+  }
+}
+
+export async function launchSlackGarbageCollectWorkflow(connectorId: string) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+
+  const dataSourceConfig: DataSourceConfig =
+    dataSourceConfigFromConnector(connector);
+  const nangoConnectionId = connector.nangoConnectionId;
+
+  const workflowId = slackGarbageCollectorWorkflowId(connectorId);
+  try {
+    await client.workflow.start(slackGarbageCollectorWorkflow, {
+      args: [connectorId, dataSourceConfig, nangoConnectionId],
+      taskQueue: "slack-queue",
+      workflowId: workflowId,
+    });
+    logger.info(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
+      `Started slackGarbageCollector workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
+      `Failed starting slackGarbageCollector workflow.`
     );
     return new Err(e as Error);
   }

@@ -3,12 +3,14 @@ import {
   NotionConnectorState,
   NotionPage,
   SlackConfiguration,
+  SlackMessages,
 } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
   await SlackConfiguration.sync({ alter: true });
+  await SlackMessages.sync({ alter: true });
   await NotionPage.sync({ alter: true });
   await NotionConnectorState.sync({ alter: true });
   return;

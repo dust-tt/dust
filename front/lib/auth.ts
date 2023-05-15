@@ -13,7 +13,14 @@ import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
+import { DustAPICredentials } from "./dust_api";
 import { Key, Membership, User, Workspace } from "./models";
+
+const {
+  DUST_DEVELOPMENT_WORKSPACE_ID,
+  DUST_DEVELOPMENT_SYSTEM_API_KEY,
+  NODE_ENV,
+} = process.env;
 
 export type RoleType = "admin" | "builder" | "user" | "none";
 
@@ -89,7 +96,10 @@ export class Authenticator {
     return new Authenticator(workspace, role);
   }
 
-  static async fromKey(key: Key, wId: string): Promise<Authenticator> {
+  static async fromKey(
+    key: Key,
+    wId: string
+  ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
         return await Workspace.findOne({
@@ -109,13 +119,16 @@ export class Authenticator {
 
     let role = "none" as RoleType;
 
-    if (workspace && keyWorkspace) {
-      if (keyWorkspace.id === workspace.id) {
+    if (workspace) {
+      if (keyWorkspace!.id === workspace.id) {
         role = "builder";
       }
     }
 
-    return new Authenticator(workspace, role);
+    return {
+      auth: new Authenticator(workspace, role),
+      keyWorkspaceId: keyWorkspace!.sId,
+    };
   }
 
   role(): RoleType {
@@ -398,4 +411,53 @@ export async function getOrCreateSystemApiKey(
   }
 
   return new Ok(key);
+}
+
+/**
+ * Retrieves a system API key for the given owner, creating one if needed.
+ *
+ * In development mode, we retrieve the system API key from the environment variable
+ * `DUST_DEVELOPMENT_SYSTEM_API_KEY`, so that we always use our own `dust` workspace in production
+ * to iterate on the design of the packaged apps. When that's the case, the `owner` paramater (which
+ * is local) is ignored.
+ *
+ * @param owner WorkspaceType
+ * @returns DustAPICredentials
+ */
+export async function prodAPICredentialsForOwner(
+  owner: WorkspaceType
+): Promise<DustAPICredentials> {
+  if (!NODE_ENV) {
+    throw new Error("NODE_ENV is not defined");
+  }
+
+  if (NODE_ENV === "development") {
+    if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
+      throw new Error("DUST_DEVELOPMENT_SYSTEM_API_KEY is not defined");
+    }
+    if (!DUST_DEVELOPMENT_WORKSPACE_ID) {
+      throw new Error("DUST_DEVELOPMENT_WORKSPACE_ID is not defined");
+    }
+    return {
+      apiKey: DUST_DEVELOPMENT_SYSTEM_API_KEY,
+      workspaceId: DUST_DEVELOPMENT_WORKSPACE_ID,
+    };
+  }
+
+  const systemAPIKeyRes = await getOrCreateSystemApiKey(owner);
+  if (systemAPIKeyRes.isErr()) {
+    logger.error(
+      {
+        owner,
+        error: systemAPIKeyRes.error,
+      },
+      "Could not create system API key for workspace"
+    );
+    throw new Error(`Could not create system API key for workspace`);
+  }
+
+  return {
+    apiKey: systemAPIKeyRes.value.secret,
+    workspaceId: owner.sId,
+  };
 }

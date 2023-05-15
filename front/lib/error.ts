@@ -27,6 +27,8 @@ export type APIErrorType =
   | "method_not_supported_error"
   | "personal_workspace_not_found"
   | "workspace_not_found"
+  | "action_unknown_error"
+  | "action_api_error"
   | "plan_limit_error";
 
 export type APIError = {

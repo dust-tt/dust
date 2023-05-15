@@ -83,7 +83,7 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const auth = await Authenticator.fromKey(
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -170,7 +170,7 @@ async function handler(
       if (req.body.stream) {
         const runRes = await CoreAPI.createRunStream(
           app.dustAPIProjectId,
-          owner,
+          keyWorkspaceId,
           {
             runType: "deploy",
             specificationHash: specificationHash,
@@ -222,7 +222,6 @@ async function handler(
             },
             "Error streaming from Dust API"
           );
-          res.end();
           return;
         }
 
@@ -233,17 +232,20 @@ async function handler(
           workspaceId: keyRes.value.workspaceId,
         });
 
-        res.end();
         return;
       }
 
-      const runRes = await CoreAPI.createRun(app.dustAPIProjectId, owner, {
-        runType: "deploy",
-        specificationHash: specificationHash,
-        config: { blocks: config },
-        inputs,
-        credentials,
-      });
+      const runRes = await CoreAPI.createRun(
+        app.dustAPIProjectId,
+        keyWorkspaceId,
+        {
+          runType: "deploy",
+          specificationHash: specificationHash,
+          config: { blocks: config },
+          inputs,
+          credentials,
+        }
+      );
 
       if (runRes.isErr()) {
         return apiError(req, res, {
