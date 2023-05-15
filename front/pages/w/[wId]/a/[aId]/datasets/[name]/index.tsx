@@ -155,13 +155,15 @@ export default function ViewDatasetView({
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
                   dataset={updatedDataset}
-                  onUpdate={
-                    readOnly
-                      ? () => {
-                          Function.prototype();
-                        }
-                      : onUpdate
-                  }
+                  onUpdate={(
+                    initializing: boolean,
+                    valid: boolean,
+                    currentDatasetInEditor: DatasetType
+                  ) => {
+                    if (!readOnly) {
+                      onUpdate(initializing, valid, currentDatasetInEditor);
+                    }
+                  }}
                   nameDisabled={true}
                 />
 

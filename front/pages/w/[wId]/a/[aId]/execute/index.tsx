@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 // TODO: type sse.js or use something else
-// @ts-expect-error no types for sse.js :/
+// @ts-expect-error there are no types for sse.js.
 import { SSE } from "sse.js";
 
 import { Execution } from "@app/components/app/blocks/Output";
