@@ -194,7 +194,7 @@ export default function DataSourceView({
                         ) {
                           e.preventDefault();
                           window.alert(
-                            "DataSources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
+                            "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
                           );
                           return;
                         }
@@ -277,14 +277,14 @@ export default function DataSourceView({
                   <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                     {readOnly ? (
                       <>
-                        <p>No documents found for this data source.</p>
+                        <p>No documents found for this Data Source.</p>
                         <p className="mt-2">
-                          Sign-in to create your own data source.
+                          Sign-in to create your own Data Source.
                         </p>
                       </>
                     ) : (
                       <>
-                        <p>No documents found for this data source.</p>
+                        <p>No documents found for this Data Source.</p>
                         <p className="mt-2">
                           You can upload documents manually or by API.
                         </p>

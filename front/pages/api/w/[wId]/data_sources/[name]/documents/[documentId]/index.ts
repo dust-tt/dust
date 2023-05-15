@@ -30,7 +30,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        message: "The Data Source you requested was not found.",
       },
     });
   }
@@ -42,7 +42,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        message: "The Data Source you requested was not found.",
       },
     });
   }
@@ -65,7 +65,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message: "You cannot upsert a document on a managed data source.",
+            message: "You cannot upsert a document on a managed Data Source.",
           },
         });
       }
@@ -145,7 +145,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "There was an error retrieving the data source.",
+            message: "There was an error retrieving the Data Source.",
             data_source_error: documents.error,
           },
         });
@@ -225,7 +225,7 @@ async function handler(
           api_error: {
             type: "data_source_error",
             message:
-              "There was an error retrieving the data source's document.",
+              "There was an error retrieving the Data Source's document.",
             data_source_error: document.error,
           },
         });
@@ -253,7 +253,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message: "You cannot delete a document from a managed data source.",
+            message: "You cannot delete a document from a managed Data Source.",
           },
         });
       }

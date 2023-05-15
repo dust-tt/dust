@@ -32,7 +32,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        message: "The Data Source you requested was not found.",
       },
     });
   }
@@ -53,7 +53,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "There was an error retrieving the data source documents.",
+            message: "There was an error retrieving the Data Source documents.",
             data_source_error: documents.error,
           },
         });

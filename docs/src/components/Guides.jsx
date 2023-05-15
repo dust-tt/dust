@@ -21,7 +21,7 @@ const guides = [
     href: "/guide-document-qa",
     name: "Document Q&A",
     description:
-      "Step-by-step guide to creating a document Q&A app using DataSources.",
+      "Step-by-step guide to creating a document Q&A app using Data Sources.",
   },
   // {
   //   href: '/webhooks',
