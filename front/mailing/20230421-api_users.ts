@@ -98,9 +98,9 @@ async function main() {
   process.exit(0);
 }
 
-main()
+void main()
   .then(() => {
     console.log("DONE");
     process.exit(0);
   })
-  .catch(console.error);
+  

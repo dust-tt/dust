@@ -95,7 +95,7 @@ export default function DataSourceView({
   useEffect(() => {
     setError(false);
     let isCancelled = false;
-    (async () => {
+    void (async () => {
       if (searchQuery.trim().length == 0) {
         setDocuments([]);
 
@@ -130,7 +130,7 @@ export default function DataSourceView({
         setError(true);
         setDocuments([]);
       }
-    })().catch(console.error);
+    })();
 
     return () => {
       isCancelled = true;
