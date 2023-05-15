@@ -235,13 +235,13 @@ export default function DataSourcesView({
             body: await res.text(),
             provider,
           },
-          `Failed to enable managed data source`
+          `Failed to enable managed Data Source`
         );
-        window.alert(`Failed to enable ${provider} data source`);
+        window.alert(`Failed to enable ${provider} Data Source`);
       }
     } catch (e) {
-      logger.error(e, "Failed to enable managed data source");
-      window.alert(`Failed to enable ${provider}  data source`);
+      logger.error(e, "Failed to enable managed Data Source");
+      window.alert(`Failed to enable ${provider}  Data Source`);
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
@@ -259,37 +259,21 @@ export default function DataSourcesView({
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div>
-              {readOnly ? null : (
-                <div className="sm:flex sm:items-center">
-                  <div className="sm:flex-auto"></div>
-                  <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-                    <Link
-                      href={`/w/${owner.sId}/ds/new`}
-                      onClick={(e) => {
-                        // Enforce plan limits: DataSources count.
-                        if (
-                          owner.plan.limits.dataSources.count != -1 &&
-                          dataSources.length >=
-                            owner.plan.limits.dataSources.count
-                        ) {
-                          e.preventDefault();
-                          window.alert(
-                            "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                          );
-                          return;
-                        }
-                      }}
-                    >
-                      <Button>
-                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                        New DataSource
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
+            <div className="mt-16 sm:flex-auto">
+              <h1 className="text-base font-medium text-gray-900">
+                Uploaded Data Sources
+              </h1>
 
+              <p className="text-sm text-gray-500">
+                You can upload documents as Data Sources to then perform
+                semantic searches on them using a{" "}
+                <span className="rounded-md bg-gray-200 px-1 py-0.5">
+                  data_source
+                </span>{" "}
+                block.
+              </p>
+            </div>
+            <div className="mt-4">
               <div className="mt-8 overflow-hidden">
                 <ul role="list" className="">
                   {dataSources.map((ds) => (
@@ -335,30 +319,46 @@ export default function DataSourcesView({
                       {readOnly ? (
                         <>
                           <p>
-                            Welcome to Dust DataSources 🔎 This user has not
-                            created any data source yet 🙃
+                            Welcome to Dust Data Sources 🔎 This user has not
+                            created any Data Source yet 🙃
                           </p>
                           <p className="mt-2">
-                            Sign-in to create your own data sources.
+                            Sign-in to create your own Data Sources.
                           </p>
                         </>
                       ) : (
-                        <>
-                          <p>Welcome to Dust DataSources 🔎</p>
-                          <p className="mt-2">
-                            Data sources let you upload documents to perform
-                            semantic searches on them (
-                            <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                              data_source
-                            </span>{" "}
-                            block).
-                          </p>
-                        </>
+                        <></>
                       )}
                     </div>
                   ) : null}
                 </ul>
               </div>
+              {!readOnly && (
+                <div className="text-center">
+                  <Link
+                    href={`/w/${owner.sId}/ds/new`}
+                    onClick={(e) => {
+                      // Enforce plan limits: DataSources count.
+                      if (
+                        owner.plan.limits.dataSources.count != -1 &&
+                        dataSources.length >=
+                          owner.plan.limits.dataSources.count
+                      ) {
+                        e.preventDefault();
+                        window.alert(
+                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                        );
+                        return;
+                      }
+                    }}
+                  >
+                    <Button>
+                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                      New Data Source
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -370,8 +370,8 @@ export default function DataSourcesView({
               Managed Data Sources
             </h1>
 
-            <p className="text-sm text-gray-500">
-              Fully managed and kept in sync in real-time with the products you
+            <p className="text-sm text-gray-500 ">
+              Managed by Dust to remain synchronized with the products you use
               use.
             </p>
           </div>
@@ -449,7 +449,7 @@ export default function DataSourcesView({
                                     }
                                   : () => {
                                       window.alert(
-                                        "Managed DataSources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                                        "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
                                       );
                                       logger.info(
                                         {
