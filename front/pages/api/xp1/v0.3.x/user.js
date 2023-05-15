@@ -2,6 +2,15 @@ import { XP1User } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";
 
 async function handler(req, res) {
+  if (typeof req.body.secret !== "string" || !req.body.secret) {
+    return res.status(404).json({
+      error: {
+        code: "user_not_found",
+        message: "User not found",
+      },
+    });
+  }
+
   let user = await XP1User.findOne({
     where: {
       secret: req.body.secret,
