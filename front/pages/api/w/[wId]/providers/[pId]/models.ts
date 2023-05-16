@@ -195,7 +195,9 @@ async function handler(
         case "anthropic":
           const anthropic_models = [
             { id: "claude-v1" },
+            { id: "claude-v1-100k" },
             { id: "claude-instant-v1" },
+            { id: "claude-instant-v1-100k" },
           ];
           res.status(200).json({ models: anthropic_models });
           return;
