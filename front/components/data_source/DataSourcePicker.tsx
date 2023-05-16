@@ -59,6 +59,8 @@ export default function DataSourcePicker({
       currentDataSources[0].data_source_id.length > 0
     ) {
       setName(currentDataSources[0].data_source_id);
+    } else {
+      setName(null);
     }
   }, [currentDataSources]);
 

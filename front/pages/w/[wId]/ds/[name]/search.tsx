@@ -187,7 +187,7 @@ export default function DataSourceView({
                       <div className="mx-2 py-4">
                         <div className="grid grid-cols-5 items-center justify-between">
                           <div className="col-span-4">
-                            <p className="truncate text-base font-bold text-violet-600">
+                            <div className="truncate text-base font-bold text-violet-600">
                               <div className="flex">
                                 {documentPoviderIconPath ? (
                                   <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
@@ -205,7 +205,7 @@ export default function DataSourceView({
                                   {displayNameByDocId[d.document_id]}
                                 </Link>
                               </div>
-                            </p>
+                            </div>
                           </div>
                           <div className="col-span-1 text-right">
                             <p className="text-align-right text-sm text-gray-500">

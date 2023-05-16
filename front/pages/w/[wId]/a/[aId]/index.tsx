@@ -279,11 +279,13 @@ export default function AppView({
         await mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
-        spec.forEach(async (block) => {
-          return await mutate(
-            `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
-          );
-        });
+        await Promise.all(
+          spec.map(async (block) => {
+            return mutate(
+              `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
+            );
+          })
+        );
       }
     }, 0);
   };

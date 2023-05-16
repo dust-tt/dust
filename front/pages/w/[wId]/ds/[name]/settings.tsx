@@ -3,6 +3,7 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
+import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
@@ -162,6 +163,7 @@ function StandardDataSourceSettings({
         }
       );
       if (res.ok) {
+        await mutate(`/api/w/${owner.sId}/data_sources`);
         await router.push(`/w/${owner.sId}/ds`);
       } else {
         setIsDeleting(false);

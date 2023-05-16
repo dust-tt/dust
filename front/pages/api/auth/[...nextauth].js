@@ -37,7 +37,8 @@ export const authOptions = {
       // console.log("FINAL SESSION", session);
       return session;
     },
-    async jwt({ token, account, profile }) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async jwt({ token, user, account, profile, isNewUser }) {
       // console.log("JWT TOKEN", token);
       // console.log("JWT USER", user);
       // console.log("JWT ACCOUNT", account);

@@ -518,7 +518,7 @@ export default function ExecuteView({
                 }
               } else {
                 if (!outputByBlockTypeName[blockTypeName]) {
-                  outputByBlockTypeName[blockTypeName] = [];
+                  outputByBlockTypeName[blockTypeName] = [parsedEvent];
                 } else {
                   outputByBlockTypeName[blockTypeName]?.push(parsedEvent);
                 }
