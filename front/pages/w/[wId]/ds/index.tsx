@@ -310,7 +310,7 @@ export default function DataSourcesView({
                     {readOnly ? (
                       <>
                         <p>
-                          Welcome to Dust DataSources 🔎 This user has not
+                          Welcome to Dust Data Sources 🔎 This user has not
                           created any data source yet 🙃
                         </p>
                         <p className="mt-2">
@@ -319,7 +319,7 @@ export default function DataSourcesView({
                       </>
                     ) : (
                       <>
-                        <p>Welcome to Dust DataSources 🔎</p>
+                        <p>Welcome to Dust Data Sources 🔎</p>
                         <p className="mt-2">
                           Data sources let you upload documents to perform
                           semantic searches on them (
