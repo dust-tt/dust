@@ -1,4 +1,4 @@
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import { mutate } from "swr";
@@ -96,8 +96,8 @@ export default function ProfileKeys({
 
         <div className="">
           <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div className="sm:flex sm:items-center">
-              <div className="mt-8 sm:flex-auto">
+            <div className="mt-16 flex flex-col justify-between lg:flex-row lg:items-center">
+              <div className="">
                 <h1 className="text-base font-medium text-gray-900">
                   API keys
                 </h1>
@@ -110,18 +110,18 @@ export default function ProfileKeys({
                   keys with others, or expose it in the browser or client-side
                   code.
                 </p>
-                <div className="mb-2 mt-4 sm:flex sm:items-center">
-                  <Button
-                    onClick={async () => {
-                      await handleGenerate();
-                    }}
-                  >
-                    Create new secret key
-                  </Button>
-                </div>
+              </div>
+              <div className="mr-2 mt-2 whitespace-nowrap  lg:ml-12">
+                <Button
+                  onClick={async () => {
+                    await handleGenerate();
+                  }}
+                >
+                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                  Create new secret key
+                </Button>
               </div>
             </div>
-
             <ul role="list" className="">
               {keys.map((key) => (
                 <li key={key.secret} className="px-2 py-4">
