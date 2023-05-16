@@ -373,32 +373,6 @@ export default function DataSourcesView({
                   ))}
                 </ul>
               </div>
-              {!readOnly && (
-                <div className="text-center">
-                  <Link
-                    href={`/w/${owner.sId}/ds/new`}
-                    onClick={(e) => {
-                      // Enforce plan limits: DataSources count.
-                      if (
-                        owner.plan.limits.dataSources.count != -1 &&
-                        dataSources.length >=
-                          owner.plan.limits.dataSources.count
-                      ) {
-                        e.preventDefault();
-                        window.alert(
-                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                        );
-                        return;
-                      }
-                    }}
-                  >
-                    <Button>
-                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                      New Data Source
-                    </Button>
-                  </Link>
-                </div>
-              )}
             </div>
           </div>
         </div>
