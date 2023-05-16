@@ -1,16 +1,15 @@
 import bodyParser from "body-parser";
 import express from "express";
 
-import { createConnectorAPIHandler } from "@connectors/api/createConnector";
-import { deleteConnectorAPIHandler } from "@connectors/api/deleteConnector";
-import { resumeConnectorAPIHandler } from "@connectors/api/resumeConnector";
-import { stopConnectorAPIHandler } from "@connectors/api/stopConnector";
+import { createConnectorAPIHandler } from "@connectors/api/create_connector";
+import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
+import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
+import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
+import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
+import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
-
-import { getConnectorAPIHandler } from "./api/getConnector";
-import { syncConnectorAPIHandler } from "./api/syncConnector";
-import { webhookSlackAPIHandler } from "./api/webhooks/webhookSlack";
 
 export function startServer(port: number) {
   const app = express();
