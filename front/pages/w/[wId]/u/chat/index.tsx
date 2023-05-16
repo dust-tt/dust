@@ -131,10 +131,8 @@ type Message = {
 };
 
 export function RetrievalsView({
-  user,
   message,
 }: {
-  user: UserType | null;
   message: Message;
 }) {
   const [summary, setSummary] = useState<{ [provider: string]: number }>({});
@@ -268,7 +266,7 @@ export function MessageView({
     <div className="">
       <div className="flex flex-row">
         {message.role === "assistant" && (
-          <RetrievalsView user={user} message={message} />
+          <RetrievalsView message={message} />
         )}
       </div>
       <div className="my-2 flex flex-row items-start">
