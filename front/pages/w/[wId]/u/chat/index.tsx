@@ -130,11 +130,7 @@ type Message = {
   retrievals: RetrievedDocument[];
 };
 
-export function RetrievalsView({
-  message,
-}: {
-  message: Message;
-}) {
+export function RetrievalsView({ message }: { message: Message }) {
   const [summary, setSummary] = useState<{ [provider: string]: number }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
@@ -265,9 +261,7 @@ export function MessageView({
   return (
     <div className="">
       <div className="flex flex-row">
-        {message.role === "assistant" && (
-          <RetrievalsView message={message} />
-        )}
+        {message.role === "assistant" && <RetrievalsView message={message} />}
       </div>
       <div className="my-2 flex flex-row items-start">
         <div
