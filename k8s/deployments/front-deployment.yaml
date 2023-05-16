@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: front
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: front
@@ -14,13 +14,15 @@ spec:
     spec:
       containers:
         - name: web
-          # placeholder image that does nothing
-          image: k8s.gcr.io/pause:3.1
+          image: gcr.io/or1g1n-186209/front-image:195aeba4
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           envFrom:
             - configMapRef:
                 name: front-config
+            - secretRef:
+                name: front-secrets
 
       imagePullSecrets:
         - name: gcr-json-key
