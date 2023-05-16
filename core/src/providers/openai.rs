@@ -137,6 +137,10 @@ impl Error {
     pub fn retryable(&self) -> bool {
         match self.error._type.as_str() {
             "requests" => true,
+            "server_error" => match &self.error.internal_message {
+                Some(message) if message.contains("retry") => true,
+                _ => false,
+            },
             _ => false,
         }
     }

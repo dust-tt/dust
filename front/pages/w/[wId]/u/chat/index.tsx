@@ -1,5 +1,5 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -182,6 +182,14 @@ export default function AppChat({
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Message | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, response]);
+
   const handleSwitchDataSourceSelection = (name: string) => {
     const newSelection = dataSources.map((ds) => {
       if (ds.name === name) {
@@ -255,37 +263,40 @@ export default function AppChat({
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
-      <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
+      <div className="flex h-full flex-col">
+        <div className="mt-2">
           <MainTab currentTab="Chat" owner={owner} />
         </div>
-        <div className="">
-          <div className="mx-auto mt-8 max-w-2xl px-6">
-            <div className="text-sm">
-              {messages.map((m, i) => {
-                return (
-                  <div key={i}>
-                    <MessageView
-                      user={user}
-                      message={m}
-                      loading={false}
-                    ></MessageView>
-                  </div>
-                );
-              })}
-              {response ? (
-                <div key={messages.length}>
-                  <MessageView
-                    user={user}
-                    message={response}
-                    loading={true}
-                  ></MessageView>
+        <div className="flex-1">
+          <div
+            className="h-full max-h-full grow-0 overflow-y-auto"
+            ref={scrollRef}
+          >
+            <div className="max-h-0">
+              <div className="mx-auto max-w-2xl px-6 py-2">
+                <div className="text-sm">
+                  {messages.map((m, i) => {
+                    return (
+                      <div key={i}>
+                        <MessageView user={user} message={m} loading={false} />
+                      </div>
+                    );
+                  })}
+                  {response ? (
+                    <div key={messages.length}>
+                      <MessageView
+                        user={user}
+                        message={response}
+                        loading={true}
+                      />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
           </div>
         </div>
-        <div className="fixed bottom-0 left-0 z-50 w-full border text-sm">
+        <div className="z-50 w-full flex-initial border bg-white text-sm">
           <div className="mx-auto mt-8 max-w-2xl px-6">
             <div className="my-2">
               <TextareaAutosize
