@@ -46,7 +46,7 @@ export default function Code({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleCodeChange = (code: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.code = code;
     onBlockUpdate(b);
   };
@@ -76,7 +76,7 @@ export default function Code({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
                 style={{
                   minHeight: "80px",

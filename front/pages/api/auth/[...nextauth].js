@@ -15,6 +15,7 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     session: async ({ session, token, user }) => {
       // console.log("TOKEN", token);
       // console.log("SESSION", session);
@@ -36,6 +37,7 @@ export const authOptions = {
       // console.log("FINAL SESSION", session);
       return session;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async jwt({ token, user, account, profile, isNewUser }) {
       // console.log("JWT TOKEN", token);
       // console.log("JWT USER", user);

@@ -60,6 +60,7 @@ export default function NewApp({
     if (appName.length == 0) {
       setAppNameError("");
       return false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!appName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setAppNameError(
         "App name must only contain letters, numbers, and the characters `._-`"
@@ -91,10 +92,10 @@ export default function NewApp({
       }),
     });
     if (res.ok) {
-      let appRes = (await res.json()) as { app: AppType };
-      router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
+      const appRes = (await res.json()) as { app: AppType };
+      await router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
     } else {
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       setCreating(false);
       window.alert(`Error creating app: ${err.error.message}`);
     }

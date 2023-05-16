@@ -2,8 +2,8 @@ import { SpecificationType } from "@app/types/app";
 import { BlockType } from "@app/types/run";
 
 export function recomputeIndents(spec: SpecificationType): SpecificationType {
-  var indent = 0;
-  for (var i = 0; i < spec.length; i++) {
+  let indent = 0;
+  for (let i = 0; i < spec.length; i++) {
     switch (spec[i].type) {
       case "map":
         spec[i].indent = indent;
@@ -49,7 +49,7 @@ export function addBlock(
   idx: number,
   blockType: BlockType | "map_reduce" | "while_end"
 ): SpecificationType {
-  let s = spec.map((b) => b);
+  const s = spec.map((b) => b);
   switch (blockType) {
     case "input":
       // TODO(spolu): prevent if we already have an input
@@ -248,12 +248,12 @@ export function deleteBlock(
   spec: SpecificationType,
   index: number
 ): SpecificationType {
-  let s = spec.map((b) => b);
+  const s = spec.map((b) => b);
   if (index > -1 && index < spec.length) {
     switch (s[index].type) {
       case "map":
         s.splice(index, 1);
-        for (var i = index; i < s.length; i++) {
+        for (let i = index; i < s.length; i++) {
           if (s[i].type == "reduce") {
             s.splice(i, 1);
             break;
@@ -262,7 +262,7 @@ export function deleteBlock(
         break;
       case "while":
         s.splice(index, 1);
-        for (var i = index; i < s.length; i++) {
+        for (let i = index; i < s.length; i++) {
           if (s[i].type == "end") {
             s.splice(i, 1);
             break;
@@ -271,7 +271,7 @@ export function deleteBlock(
         break;
       case "reduce":
         s.splice(index, 1);
-        for (var i = index - 1; i >= 0; i--) {
+        for (let i = index - 1; i >= 0; i--) {
           if (s[i].type == "map") {
             s.splice(i, 1);
             break;
@@ -280,7 +280,7 @@ export function deleteBlock(
         break;
       case "end":
         s.splice(index, 1);
-        for (var i = index - 1; i >= 0; i--) {
+        for (let i = index - 1; i >= 0; i--) {
           if (s[i].type == "while") {
             s.splice(i, 1);
             break;
@@ -298,7 +298,7 @@ export function moveBlockUp(
   spec: SpecificationType,
   index: number
 ): SpecificationType {
-  let s = spec.map((b) => b);
+  const s = spec.map((b) => b);
   if (index > 0 && index < spec.length) {
     switch (s[index].type) {
       case "map":
@@ -308,8 +308,9 @@ export function moveBlockUp(
         if (["map", "reduce", "while", "end"].includes(s[index - 1].type)) {
           break;
         }
+      // eslint-disable-next-line no-fallthrough
       default:
-        let tmp = s[index - 1];
+        const tmp = s[index - 1];
         s[index - 1] = s[index];
         s[index] = tmp;
         break;
@@ -322,7 +323,7 @@ export function moveBlockDown(
   spec: SpecificationType,
   index: number
 ): SpecificationType {
-  let s = spec.map((b) => b);
+  const s = spec.map((b) => b);
   if (index > -1 && index < spec.length - 1) {
     switch (s[index].type) {
       case "map":
@@ -332,8 +333,9 @@ export function moveBlockDown(
         if (["map", "reduce", "while", "end"].includes(s[index + 1].type)) {
           break;
         }
+      // eslint-disable-next-line no-fallthrough
       default:
-        let tmp = s[index + 1];
+        const tmp = s[index + 1];
         s[index + 1] = s[index];
         s[index] = tmp;
     }
@@ -352,10 +354,10 @@ export function dumpSpecification(
   spec: SpecificationType,
   latestDatasets: { [key: string]: string }
 ): string {
-  var out = "";
+  let out = "";
 
-  for (var i = 0; i < spec.length; i++) {
-    let block = spec[i];
+  for (let i = 0; i < spec.length; i++) {
+    const block = spec[i];
     switch (block.type) {
       case "input": {
         out += `input ${block.name} { }\n`;

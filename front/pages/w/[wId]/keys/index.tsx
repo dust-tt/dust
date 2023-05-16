@@ -60,29 +60,31 @@ export default function ProfileKeys({
   owner,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  let { keys, isKeysLoading, isKeysError } = useKeys(owner);
-  let [isRevealed, setIsRevealed] = useState({} as { [key: string]: boolean });
+  const { keys } = useKeys(owner);
+  const [isRevealed, setIsRevealed] = useState(
+    {} as { [key: string]: boolean }
+  );
 
   const handleGenerate = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/keys`, {
+    await fetch(`/api/w/${owner.sId}/keys`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
     });
     // const data = await res.json();
-    mutate(`/api/w/${owner.sId}/keys`);
+    await mutate(`/api/w/${owner.sId}/keys`);
   };
 
   const handleDisable = async (key: KeyType) => {
-    const res = await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
+    await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
     });
     // const data = await res.json();
-    mutate(`/api/w/${owner.sId}/keys`);
+    await mutate(`/api/w/${owner.sId}/keys`);
   };
 
   return (
@@ -110,8 +112,8 @@ export default function ProfileKeys({
                 </p>
                 <div className="mb-2 mt-4 sm:flex sm:items-center">
                   <Button
-                    onClick={() => {
-                      handleGenerate();
+                    onClick={async () => {
+                      await handleGenerate();
                     }}
                   >
                     Create new secret key
@@ -179,8 +181,8 @@ export default function ProfileKeys({
                       <div>
                         <Button
                           disabled={key.status != "active"}
-                          onClick={() => {
-                            handleDisable(key);
+                          onClick={async () => {
+                            await handleDisable(key);
                           }}
                         >
                           Disable

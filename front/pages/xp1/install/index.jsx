@@ -15,7 +15,7 @@ export default function InstallExtension({ ga_tracking_id }) {
       let verRes = await fetch(`/api/xp1/version`);
       let version = await verRes.json();
       setVersion(version);
-    })();
+    })().catch((err) => console.error(err));
   }, []);
 
   return (
@@ -93,7 +93,7 @@ export default function InstallExtension({ ga_tracking_id }) {
   );
 }
 
-export async function getServerSideProps(context) {
+export async function getServerSideProps() {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,

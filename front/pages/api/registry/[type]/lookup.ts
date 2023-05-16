@@ -38,12 +38,12 @@ async function handler(
     return;
   }
 
-  let parse = req.headers.authorization.match(/Bearer ([a-zA-Z0-9]+)/);
+  const parse = req.headers.authorization.match(/Bearer ([a-zA-Z0-9]+)/);
   if (!parse || !parse[1]) {
     res.status(401).end();
     return;
   }
-  let secret = parse[1];
+  const secret = parse[1];
 
   if (secret !== DUST_REGISTRY_SECRET) {
     res.status(401).end();
@@ -55,7 +55,7 @@ async function handler(
     return;
   }
 
-  let dustWorkspaceId = req.headers["x-dust-workspace-id"] as string;
+  const dustWorkspaceId = req.headers["x-dust-workspace-id"] as string;
 
   switch (req.method) {
     case "GET":
@@ -69,7 +69,7 @@ async function handler(
             return;
           }
 
-          let owner = await Workspace.findOne({
+          const owner = await Workspace.findOne({
             where: {
               sId: req.query.workspace_id,
             },
@@ -80,7 +80,7 @@ async function handler(
             return;
           }
 
-          let dataSource = await DataSource.findOne({
+          const dataSource = await DataSource.findOne({
             where: {
               workspaceId: owner.id,
               name: req.query.data_source_id,

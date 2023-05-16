@@ -46,13 +46,13 @@ export function While({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleConditionCodeChange = (conditionCode: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.condition_code = conditionCode;
     onBlockUpdate(b);
   };
 
   const handleMaxIterationsChange = (maxIterations: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.max_iterations = maxIterations;
     onBlockUpdate(b);
   };
@@ -102,7 +102,7 @@ export function While({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
               >
                 <CodeEditor

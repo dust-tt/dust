@@ -16,6 +16,7 @@ export default function Activate({ ga_tracking_id }) {
     if (!email || email.length === 0) return false;
     if (!name || name.length === 0) return false;
 
+    // eslint-disable-next-line no-useless-escape
     var r = /^\w+([\+\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
     if (!email.match(r)) {
       return false;
@@ -119,7 +120,7 @@ export default function Activate({ ga_tracking_id }) {
   );
 }
 
-export async function getServerSideProps(context) {
+export async function getServerSideProps() {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,

@@ -44,7 +44,7 @@ export async function getRun(
   // TODO(spolu): check type compatibility at run time.
   let spec = specParser.parse(s.value.specification.data) as SpecificationType;
 
-  for (var i = 0; i < spec.length; i++) {
+  for (let i = 0; i < spec.length; i++) {
     if (spec[i].name in config.blocks) {
       spec[i].config = { ...config.blocks[spec[i].name] };
       delete spec[i].config.type;

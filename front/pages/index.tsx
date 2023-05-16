@@ -16,8 +16,8 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
-  let session = await getSession(context.req, context.res);
-  let user = await getUserFromSession(session);
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
 
   if (user && user.workspaces.length > 0) {
     // TODO(spolu): persist latest workspace in session?
@@ -270,7 +270,7 @@ export default function Home({
         </div>
 
         <div className="mx-auto my-10 max-w-3xl text-center text-sm text-gray-400">
-          Dust © 2022 – 2023
+          Dust © 2022 – 2023
         </div>
         <>
           <Script

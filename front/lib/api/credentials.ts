@@ -5,10 +5,10 @@ const { DUST_MANAGED_OPENAI_API_KEY = "" } = process.env;
 export const credentialsFromProviders = (
   providers: ProviderType[]
 ): CredentialsType => {
-  let credentials: CredentialsType = {};
+  const credentials: CredentialsType = {};
 
   providers.forEach((provider) => {
-    let config = JSON.parse(provider.config) as {
+    const config = JSON.parse(provider.config) as {
       api_key: string;
       endpoint?: string;
     };
@@ -29,6 +29,7 @@ export const credentialsFromProviders = (
         break;
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
+        break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
         break;

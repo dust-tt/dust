@@ -7,7 +7,6 @@ import { UserType, WorkspaceType } from "@app/types/user";
 export default function WorkspacePicker({
   user,
   workspace,
-  readOnly,
   onWorkspaceUpdate,
 }: {
   user: UserType;

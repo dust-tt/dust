@@ -37,13 +37,13 @@ export function Map({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleFromChange = (from: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.from = from.toUpperCase();
     onBlockUpdate(b);
   };
 
   const handleRepeatChange = (repeat: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.repeat = repeat;
     onBlockUpdate(b);
   };

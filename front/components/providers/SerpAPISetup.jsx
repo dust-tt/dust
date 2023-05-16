@@ -56,19 +56,19 @@ export default function SerpAPISetup({
         }),
       }),
     });
-    let data = await res.json();
+    await res.json();
     setEnableRunning(false);
-    mutate(`/api/w/${owner.sId}/providers`);
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   const handleDisable = async () => {
     let res = await fetch(`/api/w/${owner.sId}/providers/serpapi`, {
       method: "DELETE",
     });
-    let data = await res.json();
-    mutate(`/api/w/${owner.sId}/providers`);
+    await res.json();
     setOpen(false);
+    await mutate(`/api/w/${owner.sId}/providers`);
   };
 
   return (

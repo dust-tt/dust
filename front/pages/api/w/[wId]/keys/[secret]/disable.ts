@@ -30,7 +30,7 @@ async function handler(
     return;
   }
 
-  let [key] = await Promise.all([
+  const [key] = await Promise.all([
     Key.findOne({
       where: {
         secret: req.query.secret,

@@ -42,7 +42,7 @@ export default function Browser({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  let { providers, isProvidersLoading, isProvidersError } = readOnly
+  const { providers, isProvidersLoading, isProvidersError } = readOnly
     ? {
         providers: [],
         isProvidersLoading: false,
@@ -50,8 +50,8 @@ export default function Browser({
       }
     : useProviders(owner);
 
-  let serviceProviders = filterServiceProviders(providers);
-  let browserlessAPIProvider = serviceProviders.find(
+  const serviceProviders = filterServiceProviders(providers);
+  const browserlessAPIProvider = serviceProviders.find(
     (p) => p.providerId == "browserlessapi"
   );
 
@@ -62,7 +62,7 @@ export default function Browser({
       browserlessAPIProvider
     ) {
       setTimeout(() => {
-        let b = shallowBlockClone(block);
+        const b = shallowBlockClone(block);
         b.config.provider_id = "browserlessapi";
         onBlockUpdate(b);
       });
@@ -73,7 +73,7 @@ export default function Browser({
       !browserlessAPIProvider
     ) {
       setTimeout(() => {
-        let b = shallowBlockClone(block);
+        const b = shallowBlockClone(block);
         b.config.provider_id = "";
         onBlockUpdate(b);
       });
@@ -81,37 +81,37 @@ export default function Browser({
   }
 
   const handleUrlChange = (url: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.url = url;
     onBlockUpdate(b);
   };
 
   const handleSelectorChange = (selector: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.selector = selector;
     onBlockUpdate(b);
   };
 
   const handleTimeoutChange = (timeout: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.timeout = timeout;
     onBlockUpdate(b);
   };
 
   const handleWaitUntilChange = (wait_until: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.wait_until = wait_until;
     onBlockUpdate(b);
   };
 
   const handleWaitForChange = (wait_for: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.wait_for = wait_for;
     onBlockUpdate(b);
   };
 
   const handleErrorAsOutputChange = (error_as_output: boolean) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.error_as_output = error_as_output;
     onBlockUpdate(b);
   };

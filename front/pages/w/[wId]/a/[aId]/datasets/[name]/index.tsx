@@ -98,7 +98,7 @@ export default function ViewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
   }, [isFinishedEditing]);
 
@@ -136,7 +136,7 @@ export default function ViewDatasetView({
         body: JSON.stringify(updatedDataset),
       }
     );
-    const data = await res.json();
+    await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };
@@ -155,7 +155,15 @@ export default function ViewDatasetView({
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
                   dataset={updatedDataset}
-                  onUpdate={readOnly ? () => {} : onUpdate}
+                  onUpdate={(
+                    initializing: boolean,
+                    valid: boolean,
+                    currentDatasetInEditor: DatasetType
+                  ) => {
+                    if (!readOnly) {
+                      onUpdate(initializing, valid, currentDatasetInEditor);
+                    }
+                  }}
                   nameDisabled={true}
                 />
 

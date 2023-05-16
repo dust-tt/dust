@@ -87,9 +87,9 @@ async function handler(
         });
       }
 
-      let action = DustProdActionRegistry[req.query.action];
-      let config = req.body.config as DustAppConfigType;
-      let inputs = req.body.inputs as Array<any>;
+      const action = DustProdActionRegistry[req.query.action];
+      const config = req.body.config as DustAppConfigType;
+      const inputs = req.body.inputs as Array<any>;
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
 
@@ -125,7 +125,7 @@ async function handler(
       );
 
       if (!apiRes.ok && apiRes.body) {
-        let body = await apiRes.text();
+        const body = await apiRes.text();
         console.log("BODY", body);
         return apiError(req, res, {
           status_code: 400,
@@ -155,13 +155,14 @@ async function handler(
       const reader = apiRes.body.getReader();
 
       try {
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
             break;
           }
           res.write(value);
-          // @ts-expect-error
+          // @ts-expect-error - We need it for streaming but it does not exists in the types.
           res.flush();
         }
       } catch (e) {

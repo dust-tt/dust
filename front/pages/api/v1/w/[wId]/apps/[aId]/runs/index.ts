@@ -79,11 +79,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<PostRunResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let { auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -99,7 +99,7 @@ async function handler(
     });
   }
 
-  let [app, providers] = await Promise.all([
+  const [app, providers] = await Promise.all([
     getApp(auth, req.query.aId as string),
     Provider.findAll({
       where: {
@@ -136,9 +136,9 @@ async function handler(
         });
       }
 
-      let config = req.body.config;
-      let inputs = req.body.inputs;
-      let specificationHash = req.body.specification_hash;
+      const config = req.body.config;
+      const inputs = req.body.inputs;
+      const specificationHash = req.body.specification_hash;
 
       for (const name in config) {
         const c = config[name];
@@ -199,7 +199,7 @@ async function handler(
         try {
           for await (const chunk of runRes.value.chunkStream) {
             res.write(chunk);
-            // @ts-expect-error
+            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
             res.flush();
           }
         } catch (err) {
@@ -271,12 +271,12 @@ async function handler(
 
       // If `blocking` is set, poll for run completion.
       if (req.body.blocking) {
-        let runId = run.run_id;
+        const runId = run.run_id;
         try {
           await poll({
             fn: async () => {
               const run = await CoreAPI.getRunStatus(
-                app!.dustAPIProjectId,
+                app.dustAPIProjectId,
                 runId
               );
               if (run.isErr()) {
@@ -307,7 +307,7 @@ async function handler(
         }
 
         // Finally refresh the run object.
-        const runRes = await CoreAPI.getRun(app!.dustAPIProjectId, runId);
+        const runRes = await CoreAPI.getRun(app.dustAPIProjectId, runId);
         if (runRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

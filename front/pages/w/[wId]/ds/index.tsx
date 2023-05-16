@@ -22,9 +22,9 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
-  NANGO_SLACK_CONNECTOR_ID,
-  NANGO_NOTION_CONNECTOR_ID,
-  NANGO_PUBLIC_KEY,
+  NANGO_SLACK_CONNECTOR_ID = "",
+  NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_PUBLIC_KEY = "",
 } = process.env;
 
 type UpcomingConnectorProvider = "google_drive" | "github";
@@ -100,13 +100,19 @@ export const getServerSideProps: GetServerSideProps<{
 
   const readOnly = !auth.isBuilder();
 
-  let allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSources(auth);
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
   const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
   const provider2Connector = await Promise.all(
     managedDataSources.map(async (mds) => {
+      if (!mds.connectorId) {
+        throw new Error(
+          // Should never happen, but we need to make eslint happy
+          "Unexpected empty connectorId for managed data sources"
+        );
+      }
       try {
-        const statusRes = await ConnectorsAPI.getConnector(mds.connectorId!);
+        const statusRes = await ConnectorsAPI.getConnector(mds.connectorId);
         if (statusRes.isErr()) {
           return {
             provider: mds.connectorProvider,
@@ -165,9 +171,9 @@ export const getServerSideProps: GetServerSideProps<{
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY!,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
+        publicKey: NANGO_PUBLIC_KEY,
+        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
+        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
       },
     },
   };
@@ -200,7 +206,7 @@ export default function DataSourcesView({
       const {
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoConnectorId!,
+        nangoConnectorId,
         `${provider}-${owner.sId}`
       );
 
@@ -442,8 +448,8 @@ export default function DataSourcesView({
                               }
                               onClick={
                                 canUseManagedDataSources
-                                  ? () => {
-                                      handleEnableManagedDataSource(
+                                  ? async () => {
+                                      await handleEnableManagedDataSource(
                                         ds.connectorProvider as ConnectorProvider
                                       );
                                     }

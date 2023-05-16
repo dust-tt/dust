@@ -55,7 +55,7 @@ export default function DataSource({
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   const handleAddTagsIn = (tag: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
     }
@@ -74,7 +74,7 @@ export default function DataSource({
   };
 
   const handleRemoveTagsIn = () => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
     }
@@ -96,7 +96,7 @@ export default function DataSource({
   };
 
   const handleAddTagsNot = (tag: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
     }
@@ -115,7 +115,7 @@ export default function DataSource({
   };
 
   const handleRemoveTagsNot = () => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
     }
@@ -140,25 +140,25 @@ export default function DataSource({
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => {
     console.log("DS CHANGE", dataSources);
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.data_sources = dataSources;
     onBlockUpdate(b);
   };
 
   const handleTopKChange = (top_k: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.top_k = top_k;
     onBlockUpdate(b);
   };
 
   const handleFullTextChange = (full_text: boolean) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.full_text = full_text;
     onBlockUpdate(b);
   };
 
   const handleQueryChange = (query: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.query = query;
     onBlockUpdate(b);
   };
@@ -299,8 +299,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error
-                            let tag = e.target.value as string;
+                            const tag = e.currentTarget.value;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&
                               tag.trim().length > 0
@@ -362,8 +361,7 @@ export default function DataSource({
                             }
                           }}
                           onKeyDown={(e) => {
-                            // @ts-expect-error
-                            let tag = e.target.value as string;
+                            const tag = e.currentTarget.value;
                             if (
                               (e.key === "Tab" || e.key == "Enter") &&
                               tag.trim().length > 0

@@ -36,7 +36,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const readOnly = !auth.isBuilder();
 
-  let apps = await getApps(auth);
+  const apps = await getApps(auth);
 
   return {
     props: {

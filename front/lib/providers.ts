@@ -156,14 +156,14 @@ export async function getProviderLLMModels(
   chat: boolean,
   embed: boolean
 ): Promise<{ models?: any[]; error?: any }> {
-  let modelsRes = await fetch(
+  const modelsRes = await fetch(
     `/api/w/${owner.sId}/providers/${providerId}/models?chat=${chat}&embed=${embed}`
   );
   if (!modelsRes.ok) {
-    let err = await modelsRes.json();
+    const err = await modelsRes.json();
     console.log(`Error fetching models for ${providerId}:`, err);
     return { models: [] };
   }
-  let models = await modelsRes.json();
+  const models = await modelsRes.json();
   return { models: models.models };
 }

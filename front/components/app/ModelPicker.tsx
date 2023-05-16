@@ -27,16 +27,20 @@ export default function ModelPicker({
   chatOnly?: boolean;
   embedOnly?: boolean;
 }) {
-  let { providers, isProvidersLoading, isProvidersError } = readOnly
+  const { providers, isProvidersLoading, isProvidersError } = readOnly
     ? {
         providers: [],
         isProvidersLoading: false,
         isProvidersError: false,
       }
     : useProviders(owner);
-  let modelProviders = filterModelProviders(providers, !!chatOnly, !!embedOnly);
+  const modelProviders = filterModelProviders(
+    providers,
+    !!chatOnly,
+    !!embedOnly
+  );
 
-  let [models, setModels] = useState(null as any[] | null);
+  const [models, setModels] = useState(null as any[] | null);
 
   // Remove the model if its provider was disabled.
   if (
@@ -57,9 +61,9 @@ export default function ModelPicker({
   }
 
   const refreshModels = () => {
-    let provider = providers.find((p) => p.providerId == model.provider_id);
+    const provider = providers.find((p) => p.providerId == model.provider_id);
     if (provider) {
-      getProviderLLMModels(
+      void getProviderLLMModels(
         owner,
         provider.providerId,
         !!chatOnly,

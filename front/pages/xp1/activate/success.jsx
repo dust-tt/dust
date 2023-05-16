@@ -68,7 +68,7 @@ export default function ActivateSuccess({
   );
 }
 
-export async function getServerSideProps(context) {
+export async function getServerSideProps() {
   return {
     props: {
       ga_tracking_id: GA_TRACKING_ID,

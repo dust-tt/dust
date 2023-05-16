@@ -20,7 +20,7 @@ export default function DatasetPicker({
   readOnly: boolean;
   onDatasetUpdate: (dataset: string) => void;
 }) {
-  let { datasets, isDatasetsLoading, isDatasetsError } = readOnly
+  const { datasets, isDatasetsLoading, isDatasetsError } = readOnly
     ? {
         datasets: [],
         isDatasetsLoading: false,

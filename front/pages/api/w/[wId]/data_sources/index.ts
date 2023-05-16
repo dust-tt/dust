@@ -42,7 +42,7 @@ async function handler(
     });
   }
 
-  let dataSources = await getDataSources(auth);
+  const dataSources = await getDataSources(auth);
 
   switch (req.method) {
     case "GET":
@@ -117,8 +117,8 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
-      let maxChunkSize = parseInt(req.body.max_chunk_size);
+      const description = req.body.description ? req.body.description : null;
+      const maxChunkSize = parseInt(req.body.max_chunk_size);
       if (isNaN(maxChunkSize)) {
         return apiError(req, res, {
           status_code: 400,
@@ -136,7 +136,7 @@ async function handler(
           },
         }),
       ]);
-      let credentials = credentialsFromProviders(providers);
+      const credentials = credentialsFromProviders(providers);
 
       const dustDataSource = await CoreAPI.createDataSource(
         dustProject.value.project.project_id.toString(),
@@ -164,7 +164,7 @@ async function handler(
         });
       }
 
-      let ds = await DataSource.create({
+      const ds = await DataSource.create({
         name: req.body.name,
         description: description,
         visibility: req.body.visibility,

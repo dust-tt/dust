@@ -51,13 +51,13 @@ export default function Block({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleNameChange = (name: string) => {
-    let b = Object.assign({}, block);
+    const b = Object.assign({}, block);
     b.name = name;
     onBlockUpdate(b);
   };
 
   const handleUseCacheChange = (useCache: boolean) => {
-    let b = Object.assign({}, block);
+    const b = Object.assign({}, block);
     b.config.use_cache = useCache;
     onBlockUpdate(b);
   };

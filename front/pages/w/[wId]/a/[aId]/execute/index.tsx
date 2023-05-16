@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 // TODO: type sse.js or use something else
-// @ts-ignore
+// @ts-expect-error there are no types for sse.js.
 import { SSE } from "sse.js";
 
 import { Execution } from "@app/components/app/blocks/Output";
@@ -38,7 +38,7 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
-const { URL, GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 type Event = {
   content: {
@@ -152,7 +152,7 @@ function ExecuteOutputLine({
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
-  let traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
+  const traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
 
   return (
     <div className="leading-none">
@@ -214,13 +214,16 @@ function ExecuteOutput({
           executionLogs.lastStatusEventByBlockTypeName[blockTypeName];
         const outputForBlock =
           executionLogs.outputByBlockTypeName[blockTypeName];
+        if (!lastEventForBlock) {
+          throw new Error(`No last event for block ${blockTypeName}`);
+        }
         return (
           <ExecuteOutputLine
             key={blockTypeName}
             blockType={blockType}
             blockName={blockName}
             outputForBlock={outputForBlock}
-            lastEventForBlock={lastEventForBlock!}
+            lastEventForBlock={lastEventForBlock}
             expanded={expandedByBlockTypeName[blockTypeName]}
             onToggleExpand={() => onToggleExpand(blockTypeName)}
           />
@@ -285,7 +288,7 @@ function ExecuteInput({
   inputValue: string;
   onChange: (value: string) => void;
   inputType: string;
-  onKeyDown: (e: KeyboardEvent) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }) {
   return (
     <div key={inputName} className="grid grid-cols-10">
@@ -328,7 +331,6 @@ function ExecuteInput({
                 "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
               backgroundColor: "rgb(241 245 249)",
             }}
-            // @ts-ignore
             onKeyDown={onKeyDown}
           />
         ) : (
@@ -340,7 +342,6 @@ function ExecuteInput({
             )}
             value={inputValue || ""}
             onChange={(e) => onChange(e.target.value)}
-            // @ts-ignore
             onKeyDown={onKeyDown}
           />
         )}
@@ -355,13 +356,12 @@ export default function ExecuteView({
   app,
   config,
   inputDataset,
-  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [inputDatasetKeys, _setInputDatasetKeys] = useState(
+  const [inputDatasetKeys] = useState(
     inputDataset ? checkDatasetData(inputDataset.data) : []
   );
-  const [datasetTypes, _setDatasetTypes] = useState(
+  const [datasetTypes] = useState(
     inputDatasetKeys.length
       ? getDatasetTypes(
           inputDatasetKeys,
@@ -520,7 +520,7 @@ export default function ExecuteView({
                 if (!outputByBlockTypeName[blockTypeName]) {
                   outputByBlockTypeName[blockTypeName] = [parsedEvent];
                 } else {
-                  outputByBlockTypeName[blockTypeName]!.push(parsedEvent);
+                  outputByBlockTypeName[blockTypeName]?.push(parsedEvent);
                 }
               }
               return {
@@ -539,7 +539,7 @@ export default function ExecuteView({
     }, 0);
   };
 
-  const handleKeyPress = (event: KeyboardEvent) => {
+  const handleKeyPress = (event: KeyboardEvent | React.KeyboardEvent) => {
     if (event.metaKey === true && event.key === "Enter" && canRun()) {
       handleRun();
       return false;

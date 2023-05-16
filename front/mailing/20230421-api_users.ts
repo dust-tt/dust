@@ -54,7 +54,7 @@ of always allowing you to build with better tools.</p>
 };
 
 async function main() {
-  let users = await User.findAll({
+  const users = await User.findAll({
     where: {
       username: Object.keys(legacyUserToWorkspace),
     },
@@ -67,7 +67,7 @@ async function main() {
   });
 
   // split users in chunks of 16
-  let chunks = [];
+  const chunks = [];
   let chunk = [];
   for (let i = 0; i < users.length; i++) {
     chunk.push(users[i]);
@@ -98,7 +98,7 @@ async function main() {
   process.exit(0);
 }
 
-main().then(() => {
+void main().then(() => {
   console.log("DONE");
   process.exit(0);
 });

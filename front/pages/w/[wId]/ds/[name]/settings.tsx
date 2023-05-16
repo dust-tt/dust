@@ -3,6 +3,7 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
+import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
@@ -20,9 +21,9 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
-  NANGO_SLACK_CONNECTOR_ID,
-  NANGO_NOTION_CONNECTOR_ID,
-  NANGO_PUBLIC_KEY,
+  NANGO_SLACK_CONNECTOR_ID = "",
+  NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_PUBLIC_KEY = "",
 } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
@@ -58,7 +59,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -66,7 +67,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   let connector: ConnectorType | null = null;
-  let fetchConnectorError: boolean = false;
+  let fetchConnectorError = false;
   if (dataSource.connectorId) {
     const connectorRes = await ConnectorsAPI.getConnector(
       dataSource.connectorId
@@ -87,9 +88,9 @@ export const getServerSideProps: GetServerSideProps<{
       fetchConnectorError,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY!,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID!,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID!,
+        publicKey: NANGO_PUBLIC_KEY,
+        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
+        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
       },
     },
   };
@@ -138,7 +139,7 @@ function StandardDataSourceSettings({
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }) {
-  let dataSourceConfig = JSON.parse(dataSource.config || "{}");
+  const dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
@@ -155,17 +156,18 @@ function StandardDataSourceSettings({
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this DataSource?")) {
       setIsDeleting(true);
-      let res = await fetch(
+      const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
         {
           method: "DELETE",
         }
       );
       if (res.ok) {
-        router.push(`/w/${owner.sId}/ds`);
+        await mutate(`/api/w/${owner.sId}/data_sources`);
+        await router.push(`/w/${owner.sId}/ds`);
       } else {
         setIsDeleting(false);
-        let err = (await res.json()) as { error: APIError };
+        const err = (await res.json()) as { error: APIError };
         window.alert(
           `Failed to delete the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
         );
@@ -178,7 +180,7 @@ function StandardDataSourceSettings({
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    let res = await fetch(
+    const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
       {
         method: "POST",
@@ -192,10 +194,10 @@ function StandardDataSourceSettings({
       }
     );
     if (res.ok) {
-      router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
     } else {
       setIsUpdating(false);
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       window.alert(
         `Failed to update the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
@@ -354,7 +356,9 @@ function StandardDataSourceSettings({
                         provider_id: dataSourceConfig.provider_id || "",
                         model_id: dataSourceConfig.model_id || "",
                       }}
-                      onModelUpdate={(model) => {}}
+                      onModelUpdate={() => {
+                        // no-op
+                      }}
                       chatOnly={false}
                       embedOnly={true}
                     />
@@ -468,12 +472,15 @@ function ManagedDataSourceSettings({
   };
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
+  if (!logo) {
+    throw new Error(`No logo for data source ${dataSource.name}`);
+  }
   const dataSourceName = dataSource.connectorProvider
     ? dataSource.connectorProvider.charAt(0).toUpperCase() +
       dataSource.connectorProvider.slice(1)
     : "";
 
-  let { total } = useDocuments(owner, dataSource, 0, 0);
+  const { total } = useDocuments(owner, dataSource, 0, 0);
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
@@ -488,7 +495,7 @@ function ManagedDataSourceSettings({
 
     const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-    await nango.auth(nangoConnectorId!, `${provider}-${owner.sId}`);
+    await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
   };
 
   return (
@@ -501,7 +508,7 @@ function ManagedDataSourceSettings({
                 <div className="sm:col-span-3">
                   <div className="flex flex-row items-center">
                     <div className="mr-1 flex h-4 w-4 ">
-                      <img src={logo!}></img>
+                      <img src={logo}></img>
                     </div>
                     <label
                       htmlFor="dataSourceName"

@@ -93,13 +93,6 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-type GetRunsResponse = {
-  offset: number;
-  limit: number;
-  total: number;
-  runs: CoreAPIRun[];
-};
-
 type CoreAPICreateDataSourcePayload = {
   dataSourceId: string;
   config: CoreAPIDataSourceConfig;

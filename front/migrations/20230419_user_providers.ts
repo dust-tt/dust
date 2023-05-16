@@ -1,7 +1,7 @@
 import { User } from "@app/lib/models";
 
 async function main() {
-  let users = await User.findAll();
+  const users = await User.findAll();
 
   const chunks = [];
   for (let i = 0; i < users.length; i += 16) {
@@ -17,7 +17,7 @@ async function main() {
           if (!u.provider) {
             await u.update({
               provider: "github",
-              // @ts-expect-error
+              // @ts-expect-error old migration code kept for reference
               providerId: u.githubId,
             });
             console.log(`+ ${u.id}`);

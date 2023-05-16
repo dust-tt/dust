@@ -72,7 +72,7 @@ export default function DatasetsView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const handleDelete = async (datasetName: string) => {
     if (confirm("Are you sure you want to delete this dataset entirely?")) {
-      const res = await fetch(
+      await fetch(
         `/api/w/${owner.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",
@@ -81,7 +81,7 @@ export default function DatasetsView({
           },
         }
       );
-      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      await Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
   };
 
@@ -122,9 +122,9 @@ export default function DatasetsView({
                               <div className="ml-2 flex flex-shrink-0">
                                 <TrashIcon
                                   className="hidden h-4 w-4 text-gray-400 hover:text-red-700 group-hover:block"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.preventDefault();
-                                    handleDelete(d.name);
+                                    await handleDelete(d.name);
                                   }}
                                 />
                               </div>

@@ -104,12 +104,13 @@ const isRunnable = (
 
   for (const name in spec) {
     block_count += 1;
-    let block = spec[name];
+    const block = spec[name];
     switch (block.type) {
       case "data":
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
           return false;
         }
+        break;
       default:
         if (
           !block.name ||
@@ -146,21 +147,17 @@ export default function AppView({
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null as null | CoreAPIErrorResponse);
 
-  let { run, isRunLoading, isRunError } = useSavedRunStatus(
-    owner,
-    app,
-    (data) => {
-      if (data && data.run) {
-        switch (data?.run.status.run) {
-          case "running":
-            return 100;
-          default:
-            return 0;
-        }
+  const { run } = useSavedRunStatus(owner, app, (data) => {
+    if (data && data.run) {
+      switch (data?.run.status.run) {
+        case "running":
+          return 100;
+        default:
+          return 0;
       }
-      return 0;
     }
-  );
+    return 0;
+  });
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -188,45 +185,45 @@ export default function AppView({
     }, 1000);
   };
 
-  const update = (s: SpecificationType) => {
-    let c = extractConfig(s);
+  const update = async (s: SpecificationType) => {
+    const c = extractConfig(s);
     setRunnable(isRunnable(readOnly, s, c));
     setSpec(s);
     setConfig(c);
-    saveState(s, c);
+    await saveState(s, c);
   };
 
-  const handleNewBlock = (
+  const handleNewBlock = async (
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
-    let s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
-    update(s);
+    const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
+    await update(s);
     if (idx === null) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const handleDeleteBlock = (idx: number) => {
-    let s = deleteBlock(spec, idx);
-    update(s);
+  const handleDeleteBlock = async (idx: number) => {
+    const s = deleteBlock(spec, idx);
+    await update(s);
   };
 
-  const handleMoveBlockUp = (idx: number) => {
-    let s = moveBlockUp(spec, idx);
-    update(s);
+  const handleMoveBlockUp = async (idx: number) => {
+    const s = moveBlockUp(spec, idx);
+    await update(s);
   };
 
-  const handleMoveBlockDown = (idx: number) => {
-    let s = moveBlockDown(spec, idx);
-    update(s);
+  const handleMoveBlockDown = async (idx: number) => {
+    const s = moveBlockDown(spec, idx);
+    await update(s);
   };
 
-  const handleSetBlock = (idx: number, block: SpecificationBlockType) => {
-    let s = spec.map((b) => b);
+  const handleSetBlock = async (idx: number, block: SpecificationBlockType) => {
+    const s = spec.map((b) => b);
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
-      for (var i = idx; i < s.length; i++) {
+      for (let i = idx; i < s.length; i++) {
         if (s[i].type == "reduce" && s[i].name == s[idx].name) {
           s[i].name = block.name;
           break;
@@ -234,7 +231,7 @@ export default function AppView({
       }
     }
     if (block.type == "reduce" && block.name != s[idx].name) {
-      for (var i = idx; i >= 0; i--) {
+      for (let i = idx; i >= 0; i--) {
         if (s[i].type == "map" && s[i].name == s[idx].name) {
           s[i].name = block.name;
           break;
@@ -242,7 +239,7 @@ export default function AppView({
       }
     }
     s[idx] = block;
-    update(s);
+    await update(s);
   };
 
   const handleRun = () => {
@@ -279,14 +276,16 @@ export default function AppView({
         const [run] = await Promise.all([runRes.json()]);
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-        mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
+        await mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
-        spec.forEach((block) => {
-          mutate(
-            `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
-          );
-        });
+        await Promise.all(
+          spec.map(async (block) => {
+            return mutate(
+              `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
+            );
+          })
+        );
       }
     }, 0);
   };
@@ -303,8 +302,8 @@ export default function AppView({
               <div className="flex-initial">
                 <NewBlock
                   disabled={readOnly}
-                  onClick={(blockType) => {
-                    handleNewBlock(null, blockType);
+                  onClick={async (blockType) => {
+                    await handleNewBlock(null, blockType);
                   }}
                   spec={spec}
                   direction="down"
@@ -412,8 +411,8 @@ export default function AppView({
                 <div className="flex">
                   <NewBlock
                     disabled={readOnly}
-                    onClick={(blockType) => {
-                      handleNewBlock(null, blockType);
+                    onClick={async (blockType) => {
+                      await handleNewBlock(null, blockType);
                     }}
                     spec={spec}
                     direction="up"

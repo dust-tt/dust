@@ -45,7 +45,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  name: ${w.name}`);
       console.log(`  type: ${w.type}`);
 
-      let plan = planForWorkspace(w);
+      const plan = planForWorkspace(w);
       console.log(`  plan:`);
       console.log(`    limits:`);
       console.log(`      dataSources:`);
@@ -65,7 +65,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      let uId = new_id();
+      const uId = new_id();
 
       const w = await Workspace.create({
         uId,
@@ -170,7 +170,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!["admin", "builder", "user"].includes(args.role)) {
         throw new Error(`Invalid --role: ${args.role}`);
       }
-      let role = args.role as "admin" | "builder" | "user";
+      const role = args.role as "admin" | "builder" | "user";
 
       const w = await Workspace.findOne({
         where: {
@@ -188,7 +188,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!u) {
         throw new Error(`User not found: userId='${args.userId}'`);
       }
-      const m = await Membership.create({
+      await Membership.create({
         role,
         workspaceId: w.id,
         userId: u.id,
@@ -208,7 +208,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!["admin", "builder", "user", "revoked"].includes(args.role)) {
         throw new Error(`Invalid --role: ${args.role}`);
       }
-      let role = args.role as "admin" | "builder" | "user" | "revoked";
+      const role = args.role as "admin" | "builder" | "user" | "revoked";
 
       const w = await Workspace.findOne({
         where: {
@@ -303,7 +303,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  workspaces:`);
 
       workspaces.forEach((w) => {
-        let m = memberships.find((m) => m.workspaceId === w.id);
+        const m = memberships.find((m) => m.workspaceId === w.id);
         console.log(`    - wId: ${w.sId}`);
         console.log(`      name: ${w.name}`);
         if (m) {

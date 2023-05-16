@@ -1,4 +1,4 @@
-// @ts-expect-error
+// @ts-expect-error old migration code kept for reference
 import { personalWorkspace } from "@app/lib/auth";
 import {
   App,
@@ -14,25 +14,25 @@ async function addWorkspaceToObject(
   object: App | Dataset | Provider | Key | DataSource | Run
 ) {
   if (object.workspaceId) {
-    // @ts-expect-error
+    // @ts-expect-error old migration code kept for reference
     console.log(`o ${object.id} ${object.userId} ${object.workspaceId}`);
     return;
   }
 
   const user = await User.findOne({
     where: {
-      // @ts-expect-error
+      // @ts-expect-error old migration code kept for reference
       id: object.userId,
     },
   });
   if (!user) {
-    // @ts-expect-error
+    // @ts-expect-error old migration code kept for reference
     throw new Error(`User id=${object.userId} not found`);
   }
   const ownerRes = await personalWorkspace(user);
 
   if (ownerRes.isErr()) {
-    // @ts-expect-error
+    // @ts-expect-error old migration code kept for reference
     throw new Error(`Workspace not found for user id=${object.userId}`);
   }
 
@@ -64,32 +64,32 @@ async function updateObjects(
 }
 
 async function updateApps() {
-  let apps = await App.findAll();
+  const apps = await App.findAll();
   await updateObjects(apps);
 }
 
 async function updateDatasets() {
-  let datasets = await Dataset.findAll();
+  const datasets = await Dataset.findAll();
   await updateObjects(datasets);
 }
 
 async function updateProviders() {
-  let providers = await Provider.findAll();
+  const providers = await Provider.findAll();
   await updateObjects(providers);
 }
 
 async function updateKeys() {
-  let keys = await Key.findAll();
+  const keys = await Key.findAll();
   await updateObjects(keys);
 }
 
 async function updateDataSources() {
-  let dataSources = await DataSource.findAll();
+  const dataSources = await DataSource.findAll();
   await updateObjects(dataSources);
 }
 
 async function updateRuns() {
-  let runs = await Run.findAll();
+  const runs = await Run.findAll();
   await updateObjects(runs);
 }
 

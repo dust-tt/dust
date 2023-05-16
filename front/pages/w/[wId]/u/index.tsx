@@ -1,6 +1,6 @@
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { GetServerSideProps } from "next";
 
-export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
   return {
     redirect: {
       destination: `/w/${context.query.wId}/u/chat`,
@@ -9,8 +9,6 @@ export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
   };
 };
 
-export default function Redirect({}: InferGetServerSidePropsType<
-  typeof getServerSideProps
->) {
+export default function Redirect() {
   return <></>;
 }

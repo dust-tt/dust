@@ -47,11 +47,11 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let { auth } = await Authenticator.fromKey(
+  const { auth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -82,7 +82,7 @@ export default async function handler(
         // Dust managed credentials: system API key (managed data source).
         credentials = dustManagedCredentials();
       } else {
-        let providers = await Provider.findAll({
+        const providers = await Provider.findAll({
           where: {
             workspaceId: keyRes.value.workspaceId,
           },

@@ -52,26 +52,26 @@ export default function Chat({
     provider_id: string;
     model_id: string;
   }) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.provider_id = model.provider_id;
     b.config.model_id = model.model_id;
     onBlockUpdate(b);
   };
 
   const handleTemperatureChange = (temperature: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.temperature = temperature;
     onBlockUpdate(b);
   };
 
   const handleMaxTokensChange = (max_tokens: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.max_tokens = max_tokens;
     onBlockUpdate(b);
   };
 
   const handleAddStop = (stop: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.stop.push(stop);
     onBlockUpdate(b);
     setNewStop("");
@@ -79,38 +79,38 @@ export default function Chat({
 
   const handleRemoveStop = () => {
     if (block.spec.stop.length > 0) {
-      let b = shallowBlockClone(block);
+      const b = shallowBlockClone(block);
       b.spec.stop.splice(b.spec.stop.length - 1, 1);
       onBlockUpdate(b);
     }
   };
 
   const handlePresencePenaltyChange = (presence_penalty: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.presence_penalty = presence_penalty;
     onBlockUpdate(b);
   };
 
   const handleFrequencyPenaltyChange = (frequency_penalty: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.frequency_penalty = frequency_penalty;
     onBlockUpdate(b);
   };
 
   const handleTopPChange = (top_p: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.top_p = top_p;
     onBlockUpdate(b);
   };
 
   const handleInstructionsChange = (instructions: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.instructions = instructions;
     onBlockUpdate(b);
   };
 
   const handleMessagesCodeChange = (messagesCode: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.messages_code = messagesCode;
     onBlockUpdate(b);
   };
@@ -229,8 +229,7 @@ export default function Chat({
                       }
                     }}
                     onKeyDown={(e) => {
-                      // @ts-expect-error
-                      let stop = e.target.value as string;
+                      const stop = e.currentTarget.value;
                       if (
                         (e.key === "Tab" || e.key == "Enter") &&
                         stop.trim().length > 0
@@ -372,7 +371,7 @@ export default function Chat({
               <div
                 className={classNames(
                   "border bg-slate-100",
-                  false ? "border-red-500" : "border-slate-100"
+                  "border-slate-100"
                 )}
               >
                 <CodeEditor

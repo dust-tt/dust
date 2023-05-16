@@ -34,23 +34,23 @@ async function handler(
 
       switch (req.query.pId) {
         case "openai":
-          let modelsRes = await fetch("https://api.openai.com/v1/models", {
+          const modelsRes = await fetch("https://api.openai.com/v1/models", {
             method: "GET",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
             },
           });
           if (!modelsRes.ok) {
-            let err = await modelsRes.json();
+            const err = await modelsRes.json();
             res.status(400).json({ ok: false, error: err.error.code });
           } else {
-            let models = await modelsRes.json();
+            await modelsRes.json();
             res.status(200).json({ ok: true });
           }
           return;
 
         case "cohere":
-          let testRes = await fetch("https://api.cohere.ai/tokenize", {
+          const testRes = await fetch("https://api.cohere.ai/tokenize", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${config.api_key}`,
@@ -59,16 +59,16 @@ async function handler(
             body: JSON.stringify({ text: "Hello World" }),
           });
           if (!testRes.ok) {
-            let err = await testRes.json();
+            const err = await testRes.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            let test = await testRes.json();
+            await testRes.json();
             res.status(200).json({ ok: true });
           }
           return;
 
         case "ai21":
-          let testTokenize = await fetch(
+          const testTokenize = await fetch(
             "https://api.ai21.com/studio/v1/tokenize",
             {
               method: "POST",
@@ -80,17 +80,17 @@ async function handler(
             }
           );
           if (!testTokenize.ok) {
-            let err = await testTokenize.json();
+            const err = await testTokenize.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            let test = await testTokenize.json();
+            await testTokenize.json();
             res.status(200).json({ ok: true });
           }
           return;
 
         case "azure_openai":
           try {
-            let deploymentsRes = await fetch(
+            const deploymentsRes = await fetch(
               `${config.endpoint}openai/deployments?api-version=2022-12-01`,
               {
                 method: "GET",
@@ -100,10 +100,10 @@ async function handler(
               }
             );
             if (!deploymentsRes.ok) {
-              let err = await deploymentsRes.json();
+              const err = await deploymentsRes.json();
               res.status(400).json({ ok: false, error: err.error.message });
             } else {
-              let deployments = await deploymentsRes.json();
+              await deploymentsRes.json();
               res.status(200).json({ ok: true });
             }
           } catch (e) {
@@ -115,7 +115,7 @@ async function handler(
           return;
 
         case "anthropic":
-          let testGenerate = await fetch(
+          const testGenerate = await fetch(
             "https://api.anthropic.com/v1/complete",
             {
               method: "POST",
@@ -133,33 +133,33 @@ async function handler(
           );
 
           if (!testGenerate.ok) {
-            let err = await testGenerate.json();
+            const err = await testGenerate.json();
             res
               .status(400)
               .json({ ok: false, error: err.message || err.detail });
           } else {
-            let test = await testGenerate.json();
+            await testGenerate.json();
             res.status(200).json({ ok: true });
           }
           return;
 
         case "serpapi":
-          let testSearch = await fetch(
+          const testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
             {
               method: "GET",
             }
           );
           if (!testSearch.ok) {
-            let err = await testSearch.json();
+            const err = await testSearch.json();
             res.status(400).json({ ok: false, error: err.error });
           } else {
-            let test = await testSearch.json();
+            await testSearch.json();
             res.status(200).json({ ok: true });
           }
           return;
         case "serper":
-          let testSearchSerper = await fetch(
+          const testSearchSerper = await fetch(
             `https://google.serper.dev/search`,
             {
               method: "POST",
@@ -173,16 +173,16 @@ async function handler(
             }
           );
           if (!testSearchSerper.ok) {
-            let err = await testSearchSerper.json();
+            const err = await testSearchSerper.json();
             res.status(400).json({ ok: false, error: err.message });
           } else {
-            let test = await testSearchSerper.json();
+            await testSearchSerper.json();
             res.status(200).json({ ok: true });
           }
           return;
 
         case "browserlessapi":
-          let testScrape = await fetch(
+          const testScrape = await fetch(
             `https://chrome.browserless.io/scrape?token=${config.api_key}`,
             {
               method: "POST",
@@ -198,10 +198,10 @@ async function handler(
           );
           if (!testScrape.ok) {
             // Browserless API returns errors just as plain text, not as JSON.
-            let err = await testScrape.text();
+            const err = await testScrape.text();
             res.status(400).json({ ok: false, error: err });
           } else {
-            let test = await testScrape.json();
+            await testScrape.json();
             res.status(200).json({ ok: true });
           }
           return;

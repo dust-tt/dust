@@ -31,7 +31,7 @@ async function handler(
     });
   }
 
-  let app = await App.findOne({
+  const app = await App.findOne({
     where: auth.isUser()
       ? {
           workspaceId: owner.id,

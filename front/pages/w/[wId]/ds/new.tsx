@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSources = await getDataSources(auth);
+  const dataSources = await getDataSources(auth);
 
   return {
     props: {
@@ -94,6 +94,7 @@ export default function DataSourceNew({
         "DataSource name cannot start with the prefix `managed-`"
       );
       return false;
+      // eslint-disable-next-line no-useless-escape
     } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDataSourceNameError(
         "DataSource name must only contain letters, numbers, and the characters `._-`"
@@ -132,9 +133,9 @@ export default function DataSourceNew({
       }),
     });
     if (res.ok) {
-      router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
+      await router.push(`/w/${owner.sId}/ds/${dataSourceName}`);
     } else {
-      let err = (await res.json()) as { error: APIError };
+      const err = (await res.json()) as { error: APIError };
       setCreating(false);
       window.alert(`Error creating DataSource: ${err.error.message}`);
     }
@@ -353,8 +354,8 @@ export default function DataSourceNew({
                 <div className="flex">
                   <Button
                     disabled={disabled || creating}
-                    onClick={() => {
-                      handleCreate();
+                    onClick={async () => {
+                      await handleCreate();
                     }}
                   >
                     {creating ? "Creating..." : "Create"}

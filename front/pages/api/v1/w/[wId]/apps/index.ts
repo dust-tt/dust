@@ -14,16 +14,16 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetAppsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  let { auth } = await Authenticator.fromKey(
+  const { auth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  let apps = await getApps(auth);
+  const apps = await getApps(auth);
 
   switch (req.method) {
     case "GET":

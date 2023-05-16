@@ -42,7 +42,7 @@ export default function Search({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  let { providers, isProvidersLoading, isProvidersError } = readOnly
+  const { providers, isProvidersLoading, isProvidersError } = readOnly
     ? {
         providers: [],
         isProvidersLoading: false,
@@ -62,7 +62,7 @@ export default function Search({
   if (!readOnly && !isProvidersLoading && !isProvidersError) {
     if (!!block.config.provider_id && !currentProvider) {
       setTimeout(() => {
-        let b = shallowBlockClone(block);
+        const b = shallowBlockClone(block);
         b.config.provider_id = "";
         onBlockUpdate(b);
       });
@@ -70,13 +70,13 @@ export default function Search({
   }
 
   const handleQueryChange = (query: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.query = query;
     onBlockUpdate(b);
   };
 
   const handleNumChange = (num: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.spec.num = num;
     onBlockUpdate(b);
   };
@@ -135,14 +135,14 @@ export default function Search({
               <Menu.Button
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                  !!currentProvider?.providerId ? "px-0" : "border px-3",
+                  currentProvider?.providerId ? "px-0" : "border px-3",
                   readOnly
                     ? "border-white text-gray-300"
                     : "border-orange-400 text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
               >
-                {!!currentProvider?.providerId ? (
+                {currentProvider?.providerId ? (
                   <>
                     {currentProvider.providerId}&nbsp;
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />

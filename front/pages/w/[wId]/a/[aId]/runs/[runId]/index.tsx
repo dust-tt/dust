@@ -50,7 +50,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let r = await getRun(auth, app, context.params?.runId as string);
+  const r = await getRun(auth, app, context.params?.runId as string);
   if (!r) {
     return {
       notFound: true,
@@ -183,11 +183,21 @@ export default function AppRun({
               spec={spec}
               run={run}
               runRequested={false}
-              handleSetBlock={() => {}}
-              handleDeleteBlock={() => {}}
-              handleMoveBlockUp={() => {}}
-              handleMoveBlockDown={() => {}}
-              handleNewBlock={() => {}}
+              handleSetBlock={() => {
+                // no-op
+              }}
+              handleDeleteBlock={() => {
+                // no-op
+              }}
+              handleMoveBlockUp={() => {
+                // no-op
+              }}
+              handleMoveBlockDown={() => {
+                // no-op
+              }}
+              handleNewBlock={() => {
+                // no-op
+              }}
             />
           </div>
         </div>

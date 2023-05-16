@@ -15,7 +15,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetAppsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  let wId = legacyUserToWorkspace[req.query.user as string];
+  const wId = legacyUserToWorkspace[req.query.user as string];
   if (!wId) {
     return apiError(req, res, {
       status_code: 404,

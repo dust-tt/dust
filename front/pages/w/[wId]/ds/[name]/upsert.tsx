@@ -40,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -93,15 +93,17 @@ export default function DataSourceUpsert({
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
         }/documents/${encodeURIComponent(loadDocumentId)}`
-      ).then(async (res) => {
-        if (res.ok) {
-          const document = await res.json();
-          setDisabled(false);
-          setDownloading(false);
-          setText(document.document.text);
-          setTags(document.document.tags);
-        }
-      });
+      )
+        .then(async (res) => {
+          if (res.ok) {
+            const document = await res.json();
+            setDisabled(false);
+            setDownloading(false);
+            setText(document.document.text);
+            setTags(document.document.tags);
+          }
+        })
+        .catch((e) => console.error(e));
     }
   }, [loadDocumentId]);
 
@@ -121,7 +123,7 @@ export default function DataSourceUpsert({
       );
       return;
     }
-    let fileData = new FileReader();
+    const fileData = new FileReader();
     fileData.onloadend = handleFileLoadedEnded;
     fileData.readAsText(file);
   };
@@ -147,9 +149,9 @@ export default function DataSourceUpsert({
     );
 
     if (res.ok) {
-      router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
     } else {
-      let data = await res.json();
+      const data = await res.json();
       console.log("UPSERT Error", data.error);
       window.alert(`Error upserting document: ${data.error.message}`);
       setLoading(false);
@@ -362,8 +364,8 @@ export default function DataSourceUpsert({
               <div className="flex-initial">
                 <ActionButton
                   disabled={disabled || loading || readOnly}
-                  onClick={() => {
-                    handleUpsert();
+                  onClick={async () => {
+                    await handleUpsert();
                   }}
                 >
                   {loading ? "Embeding..." : "Upsert"}

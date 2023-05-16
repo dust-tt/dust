@@ -1,10 +1,10 @@
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { GetServerSideProps } from "next";
 
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
-export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
+  await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -33,8 +33,6 @@ export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
   };
 };
 
-export default function Redirect({}: InferGetServerSidePropsType<
-  typeof getServerSideProps
->) {
+export default function Redirect() {
   return <></>;
 }

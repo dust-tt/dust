@@ -118,16 +118,18 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
-
+    if (!keyWorkspace) {
+      throw new Error("Key workspace not found");
+    }
     if (workspace) {
-      if (keyWorkspace!.id === workspace.id) {
+      if (keyWorkspace.id === workspace.id) {
         role = "builder";
       }
     }
 
     return {
       auth: new Authenticator(workspace, role),
-      keyWorkspaceId: keyWorkspace!.sId,
+      keyWorkspaceId: keyWorkspace.sId,
     };
   }
 
@@ -238,7 +240,7 @@ export async function getUserFromSession(
     name: user.name,
     image: session.user ? session.user.image : null,
     workspaces: workspaces.map((w) => {
-      let m = memberships.find((m) => m.workspaceId === w.id);
+      const m = memberships.find((m) => m.workspaceId === w.id);
       let role = "none" as RoleType;
       if (m) {
         switch (m.role) {
@@ -283,7 +285,7 @@ export async function getAPIKey(
     });
   }
 
-  let parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
+  const parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
   if (!parse || !parse[1] || !parse[1].startsWith("sk-")) {
     return new Err({
       status_code: 401,
@@ -294,7 +296,7 @@ export async function getAPIKey(
     });
   }
 
-  let [key] = await Promise.all([
+  const [key] = await Promise.all([
     Key.findOne({
       where: {
         secret: parse[1],
@@ -325,7 +327,7 @@ const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
  * @returns PlanType
  */
 export function planForWorkspace(w: Workspace): PlanType {
-  let limits = {
+  const limits = {
     dataSources: {
       count: DEFAULT_DATASOURCES_COUNT_LIMIT,
       documents: {
@@ -398,7 +400,7 @@ export async function getOrCreateSystemApiKey(
     },
   });
   if (!key) {
-    let secret = `sk-${new_id().slice(0, 32)}`;
+    const secret = `sk-${new_id().slice(0, 32)}`;
     key = await Key.create({
       workspaceId: workspace.id,
       isSystem: true,

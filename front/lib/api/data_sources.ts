@@ -53,7 +53,7 @@ export async function getDataSources(
     return [];
   }
 
-  let dataSources = await DataSource.findAll({
+  const dataSources = await DataSource.findAll({
     where: auth.isUser()
       ? {
           workspaceId: owner.id,

@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -71,16 +71,16 @@ export default function DataSourceView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
-  const [limit, _setLimit] = useState(10);
+  const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
-  let { documents, total } = useDocuments(owner, dataSource, limit, offset);
+  const { documents, total } = useDocuments(owner, dataSource, limit, offset);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
 
-  let documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
+  const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   useEffect(
     () =>
@@ -107,7 +107,7 @@ export default function DataSourceView({
         "Are you sure you you want to delete this document (and associated chunks)?"
       )
     ) {
-      let r = await fetch(
+      await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,
@@ -115,7 +115,7 @@ export default function DataSourceView({
           method: "DELETE",
         }
       );
-      mutate(
+      await mutate(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`
       );
     }
@@ -246,9 +246,9 @@ export default function DataSourceView({
                                 <div className="flex flex-initial">
                                   <TrashIcon
                                     className="hidden h-4 w-4 text-gray-400 hover:text-red-700 group-hover:block"
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.preventDefault();
-                                      handleDelete(d.document_id);
+                                      await handleDelete(d.document_id);
                                     }}
                                   />
                                 </div>

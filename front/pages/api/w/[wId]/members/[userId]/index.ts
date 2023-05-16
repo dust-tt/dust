@@ -41,7 +41,7 @@ async function handler(
     });
   }
 
-  let userId = parseInt(req.query.userId as string);
+  const userId = parseInt(req.query.userId as string);
   if (isNaN(userId)) {
     return apiError(req, res, {
       status_code: 404,
@@ -52,7 +52,7 @@ async function handler(
     });
   }
 
-  let [user, membership] = await Promise.all([
+  const [user, membership] = await Promise.all([
     User.findOne({
       where: {
         id: userId,
@@ -96,7 +96,7 @@ async function handler(
         role: req.body.role,
       });
 
-      let w = { ...owner };
+      const w = { ...owner };
       w.role = "none";
 
       switch (req.body.role) {

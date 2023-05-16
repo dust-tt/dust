@@ -82,7 +82,7 @@ export default function NewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
   }, [isFinishedEditing]);
 
@@ -109,7 +109,7 @@ export default function NewDatasetView({
       },
       body: JSON.stringify(dataset),
     });
-    const data = await res.json();
+    await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };

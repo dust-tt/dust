@@ -43,7 +43,7 @@ async function handler(
     });
   }
 
-  let [dataset] = await Promise.all([
+  const [dataset] = await Promise.all([
     Dataset.findOne({
       where: {
         workspaceId: owner.id,
@@ -106,7 +106,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      let data = req.body.data.map((d: any) => {
+      const data = req.body.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -132,7 +132,7 @@ async function handler(
         });
       }
 
-      let description = req.body.description ? req.body.description : null;
+      const description = req.body.description ? req.body.description : null;
 
       await dataset.update({
         name: req.body.name,

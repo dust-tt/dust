@@ -38,7 +38,7 @@ export default function Input({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const handleSetDataset = (dataset: string) => {
-    let b = shallowBlockClone(block);
+    const b = shallowBlockClone(block);
     b.config.dataset = dataset;
     onBlockUpdate(b);
   };
