@@ -64,22 +64,27 @@ export default function Apps({
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div>
-              {readOnly ? null : (
-                <div className="sm:flex sm:items-center">
-                  <div className="sm:flex-auto"></div>
-                  <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-                    <Link href={`/w/${owner.sId}/a/new`}>
-                      <Button>
-                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                        New App
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
+            <div className="mt-16 flex flex-col justify-between lg:flex-row lg:items-center">
+              <div className="">
+                <h1 className="text-base font-medium text-gray-900">Apps</h1>
 
-              <div className="mt-8 overflow-hidden">
+                <p className="text-sm text-gray-500">
+                  Your Large Language Model apps.
+                </p>
+              </div>
+              <div className="mt-2 whitespace-nowrap lg:ml-12">
+                {!readOnly && (
+                  <Link href={`/w/${owner.sId}/a/new`}>
+                    <Button>
+                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                      New App
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="mb-8 mt-8 overflow-hidden">
                 <ul role="list" className="">
                   {apps.map((app) => (
                     <li key={app.sId} className="px-2">
