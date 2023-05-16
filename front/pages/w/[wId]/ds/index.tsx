@@ -275,7 +275,7 @@ export default function DataSourcesView({
                   Upload documents to perform semantic searches.
                 </p>
               </div>
-              <div className="mt-2 whitespace-nowrap lg:ml-12">
+              <div className="mr-2 mt-2 whitespace-nowrap lg:ml-12">
                 {!readOnly && (
                   <Link
                     className="ml-auto"

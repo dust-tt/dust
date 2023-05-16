@@ -1,4 +1,4 @@
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import { mutate } from "swr";
@@ -111,12 +111,13 @@ export default function ProfileKeys({
                   code.
                 </p>
               </div>
-              <div className="mt-2 whitespace-nowrap lg:ml-12">
+              <div className="mr-2 mt-2 whitespace-nowrap  lg:ml-12">
                 <Button
                   onClick={async () => {
                     await handleGenerate();
                   }}
                 >
+                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
                   Create new secret key
                 </Button>
               </div>

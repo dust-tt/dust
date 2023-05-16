@@ -69,10 +69,10 @@ export default function Apps({
                 <h1 className="text-base font-medium text-gray-900">Apps</h1>
 
                 <p className="text-sm text-gray-500">
-                  Your Large Language Model apps.
+                  Build custom Large Language Model apps.
                 </p>
               </div>
-              <div className="mt-2 whitespace-nowrap lg:ml-12">
+              <div className="mr-2 mt-2 whitespace-nowrap lg:ml-12">
                 {!readOnly && (
                   <Link href={`/w/${owner.sId}/a/new`}>
                     <Button>
