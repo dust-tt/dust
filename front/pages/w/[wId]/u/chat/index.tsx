@@ -1,3 +1,5 @@
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -27,7 +29,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-const PROVIDER_LOGO_PATH = {
+const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
 };
@@ -109,6 +111,17 @@ type RetrievedDocument = {
   sourceUrl: string;
   title: string;
   provider: ConnectorProvider;
+  score: number;
+  document: {
+    channelName?: string;
+    timestamp: string;
+    title?: string;
+    lastEditedAt?: string;
+    chunks: {
+      text: string;
+      offset: number;
+    }[];
+  };
 };
 
 type Message = {
@@ -116,6 +129,125 @@ type Message = {
   content: string;
   retrievals: RetrievedDocument[];
 };
+
+export function RetrievalsView({ message }: { message: Message }) {
+  const [summary, setSummary] = useState<{ [provider: string]: number }>({});
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (message.retrievals.length > 0) {
+      const summary = {} as { [key: string]: number };
+      message.retrievals.forEach((r) => {
+        if (r.provider in summary) {
+          summary[r.provider] += 1;
+        } else {
+          summary[r.provider] = 1;
+        }
+      });
+      setSummary(summary);
+    }
+  }, [message.retrievals]);
+
+  return (
+    <div className="ml-10 flex flex-col">
+      <div className="flex flex-row items-center">
+        <div
+          className={classNames(
+            "flex flex-initial flex-row items-center space-x-2",
+            "rounded bg-orange-100 px-2 py-1",
+            "text-xs font-bold text-gray-700"
+          )}
+        >
+          {message.retrievals.length > 0 ? (
+            <>
+              <div className="flex flex-initial">Retrieved</div>
+              {Object.keys(summary).map((k) => {
+                return (
+                  <div
+                    key={k}
+                    className="flex flex-initial flex-row items-center"
+                  >
+                    <div className={classNames("mr-1 flex h-4 w-4")}>
+                      <img src={PROVIDER_LOGO_PATH[k]}></img>
+                    </div>
+                    <div className="flex-initial text-gray-700">
+                      {summary[k]}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex flex-initial">
+                {expanded ? (
+                  <ChevronDownIcon
+                    className="h-4 w-4 cursor-pointer"
+                    onClick={() => {
+                      setExpanded(false);
+                    }}
+                  />
+                ) : (
+                  <ChevronRightIcon
+                    className="h-4 w-4 cursor-pointer"
+                    onClick={() => {
+                      setExpanded(true);
+                    }}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="">Loading...</div>
+          )}
+        </div>
+      </div>
+      {expanded && (
+        <div className="ml-4 mt-2 flex flex-col space-y-1">
+          {message.retrievals.map((r, i) => {
+            return (
+              <div key={i} className="flex flex-row items-center text-xs">
+                <div className="flex flex-initial rounded-md bg-gray-100 px-1 py-0.5">
+                  {r.score.toFixed(2)}
+                </div>
+                <div className="ml-2 flex flex-initial">
+                  <div className={classNames("mr-1 flex h-4 w-4")}>
+                    <img src={PROVIDER_LOGO_PATH[r.provider]}></img>
+                  </div>
+                </div>
+                {r.provider === "slack" && (
+                  <div className="flex flex-initial">
+                    <a
+                      href={r.sourceUrl}
+                      target={"_blank"}
+                      className="font-bold text-gray-600"
+                    >
+                      #{r.document.channelName}
+                    </a>
+                    <span className="ml-1 text-gray-400">
+                      {r.document.timestamp}
+                    </span>
+                  </div>
+                )}
+                {r.provider === "notion" && (
+                  <div className="flex flex-initial">
+                    <a
+                      href={r.sourceUrl}
+                      target={"_blank"}
+                      className="text-gray-600"
+                    >
+                      {r.document.title}
+                    </a>
+                    <span className="ml-1 text-gray-400">
+                      {r.document.timestamp.split(" ")[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MessageView({
   user,
@@ -128,6 +260,9 @@ export function MessageView({
 }) {
   return (
     <div className="">
+      <div className="flex flex-row">
+        {message.role === "assistant" && <RetrievalsView message={message} />}
+      </div>
       <div className="my-2 flex flex-row items-start">
         <div
           className={classNames(
@@ -243,7 +378,7 @@ export default function AppChat({
     }
     const { eventStream } = res.value;
     for await (const event of eventStream) {
-      // console.log("EVENT", event);
+      console.log("EVENT", event);
       if (event.type === "tokens") {
         const content = r.content + event.content.tokens.text;
         setResponse({ ...r, content });
@@ -253,11 +388,24 @@ export default function AppChat({
         // TODO(spolu): error reporting
         console.log("ERROR event", event);
       }
+      if (event.type === "block_execution") {
+        if (event.content.block_name === "RETRIEVALS") {
+          const e = event.content.execution[0][0];
+          if (!e.error) {
+            r.retrievals = e.value;
+          }
+        }
+        if (event.content.block_name === "OUTPUT") {
+          const e = event.content.execution[0][0];
+          if (!e.error) {
+            m.push(e.value);
+            setMessages(m);
+            setResponse(null);
+          }
+        }
+      }
     }
 
-    m.push(r);
-    setMessages(m);
-    setResponse(null);
     setLoading(false);
   };
 
@@ -299,26 +447,51 @@ export default function AppChat({
         <div className="z-50 w-full flex-initial border bg-white text-sm">
           <div className="mx-auto mt-8 max-w-2xl px-6">
             <div className="my-2">
-              <TextareaAutosize
-                minRows={1}
-                placeholder={`Ask anything about ${owner.name}...`}
-                className={classNames(
-                  "block w-full resize-none rounded-sm bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                  "border-slate-200 focus:border-slate-300 focus:ring-0"
-                )}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey || e.metaKey) {
-                    if (e.key === "Enter" && !loading) {
-                      void handleSubmitMessage();
-                      e.preventDefault();
+              <div className="flex flex-row items-end">
+                <TextareaAutosize
+                  minRows={1}
+                  placeholder={`Ask anything about \`${owner.name}\``}
+                  className={classNames(
+                    "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
+                    "rounded-sm",
+                    "border",
+                    "border-slate-200 focus:border-slate-300 focus:ring-0",
+                    "placeholder-gray-400",
+                    "pr-7"
+                  )}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                      if (e.key === "Enter" && !loading) {
+                        void handleSubmitMessage();
+                        e.preventDefault();
+                      }
                     }
-                  }
-                }}
-              />
+                  }}
+                  autoFocus={true}
+                />
+                <div
+                  className={classNames(
+                    "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
+                  )}
+                >
+                  {!loading ? (
+                    <ArrowRightCircleIcon
+                      className="h-5 w-5 cursor-pointer text-violet-500"
+                      onClick={() => {
+                        void handleSubmitMessage();
+                      }}
+                    />
+                  ) : (
+                    <div className="mb-1 ml-1">
+                      <Spinner />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="mb-4 flex flex-row text-xs">
               <div className="flex flex-initial text-gray-400">
@@ -345,19 +518,13 @@ export default function AppChat({
               </div>
               <div className="flex flex-1 text-gray-400"></div>
               <div className="flex flex-initial text-gray-400">
-                {loading ? (
-                  <div className="mr-1">
-                    <Spinner />
-                  </div>
-                ) : (
-                  <>
-                    <span className="font-bold">
-                      {isMac ? "⌘" : "ctrl"}
-                      +⏎
-                    </span>
-                    <span className="ml-1 text-gray-300">to submit</span>
-                  </>
-                )}
+                <>
+                  <span className="font-bold">
+                    {isMac ? "⌘" : "ctrl"}
+                    +⏎
+                  </span>
+                  <span className="ml-1 text-gray-300">to submit</span>
+                </>
               </div>
             </div>
           </div>
