@@ -39,7 +39,7 @@ We will use a Data Source to automatically chunk, embed and index 4 IPCC reports
   [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6) in the rest of the guide.
 </Note>
 
-You can create your first Data Source from your Dust home page by selecting the **DataSources** tab
+You can create your first Data Source from your Dust home page by selecting the **Data Sources** tab
 and clicking on the **New DataSource** button. You'll need to provide a name and description as well
 as select OpenAI's embedding model `text-embedding-ada-002`. Finally, it is important to pick a
 `max_chunk_size` value. We decided to use `max_chunk_size=256` for this example (in tokens), to be
@@ -55,9 +55,9 @@ use case and the model you use (as an example, `gpt-4` has 8192 tokens of contex
 
 <Image
   src="/guide_document_qa_newdatasource.png"
-  alt="Dust data source creation panel"
+  alt="Dust Data Source creation panel"
 >
-  _The Dust data source creation panel. The `name` should be short and
+  _The Dust Data Source creation panel. The `name` should be short and
   memorable, lowercase without spaces._
 </Image>
 
@@ -74,21 +74,21 @@ if it already existed for the provided identifier.
 
 <Image
   src="/guide_document_qa_insertdocument.png"
-  alt="Dust data source document insertion"
+  alt="Dust Data Source document insertion"
 >
-  _The Dust data source document insertion interface. Tags are optional and
+  _The Dust Data Source document insertion interface. Tags are optional and
   arbitrary. The text content was filled here using the **Upload** button._
 </Image>
 
 Once the 4 documents are inserted, you should be able to see them in the Data Source interface. You
-can review the public [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6) data source as an
+can review the public [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6) Data Source as an
 example.
 
 <Image
   src="/guide_document_qa_datasource.png"
-  alt="Dust data source document list"
+  alt="Dust Data Source document list"
 >
-  _The Dust data source documents list. You can inspect and edit each of the
+  _The Dust Data Source documents list. You can inspect and edit each of the
   document from this interface. The size of each document and the resulting
   number of chunks that were created, embedded and indexed is also reported._
 </Image>
@@ -109,20 +109,20 @@ From your home screen create a new app by clicking the **Apps** tab and then the
 
 Assuming you've already covered our [Quickstart guide](/quickstart#add-your-first-block), add an
 input block and associate it with a new dataset with a few questions that might be relevant to the
-data source:
+Data Source:
 
 <Image
   src="/guide_document_qa_devdataset.png"
   alt="Dust dev dataset to associate to input block"
 >
-  _An example dataset with questions relative to the data source we plan to use.
+  _An example dataset with questions relative to the Data Source we plan to use.
   Each question is a different input against which we will design our app._
 </Image>
 
 ### `data_source` block
 
 Once the `input` block points to your new dataset you can add a `data_source` block and select your
-data source. If you want to use the publicly available data source
+Data Source. If you want to use the publicly available Data Source
 [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6), edit the user name to `spolu` and then select
 `ipcc-ar6`. You should set `top_k` to 12, meaning that we'll consume 3072 tokens of context to
 present chunks to the model.
@@ -135,7 +135,7 @@ value:
 ```
 
 <Image src="/guide_document_qa_ds_block.png" alt="Dust `data_source` block">
-  _The Dust `data_source` block pointing to the public `ipcc-ar6` data source.
+  _The Dust `data_source` block pointing to the public `ipcc-ar6` Data Source.
   The query is set to the input value question field using templating._
 </Image>
 

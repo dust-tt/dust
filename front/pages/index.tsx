@@ -71,7 +71,7 @@ const features = [
     description: "Deploy to an API endpoint or use directly from Dust.",
   },
   {
-    name: "DataSources",
+    name: "Data Sources",
     built: true,
     description:
       "Fully managed semantic search engines you can query from your workflows.",
@@ -80,7 +80,7 @@ const features = [
     name: "Connections",
     built: false,
     description:
-      "Connect your team's Notion, Google Docs or Slack to managed DataSources that are kept up-to-date automatically.",
+      "Connect your team's Notion, Google Docs or Slack to managed Data Sources that are kept up-to-date automatically.",
   },
 ];
 

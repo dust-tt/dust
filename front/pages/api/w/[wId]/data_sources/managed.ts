@@ -36,7 +36,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        message: "The Data Source you requested was not found.",
       },
     });
   }
@@ -49,7 +49,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can create a managed data source.",
+              "Only the users that are `admins` for the current workspace can create a managed Data Source.",
           },
         });
       }
@@ -84,7 +84,7 @@ async function handler(
           api_error: {
             type: "plan_limit_error",
             message:
-              "Your plan does not allow you to create managed data sources.",
+              "Your plan does not allow you to create managed Data Sources.",
           },
         });
       }
@@ -102,7 +102,7 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             message:
-              "Could not create a system API key for the managed data source.",
+              "Could not create a system API key for the managed Data Source.",
           },
         });
       }
@@ -113,7 +113,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to create internal project for the data source.`,
+            message: `Failed to create internal project for the Data Source.`,
             data_source_error: dustProject.error,
           },
         });
@@ -142,7 +142,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to create the data source.",
+            message: "Failed to create the Data Source.",
             data_source_error: dustDataSource.error,
           },
         });
@@ -181,7 +181,7 @@ async function handler(
             {
               error: deleteRes.error,
             },
-            "Failed to delete the data source"
+            "Failed to delete the Data Source"
           );
         }
         return apiError(req, res, {

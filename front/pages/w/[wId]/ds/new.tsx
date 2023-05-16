@@ -156,7 +156,7 @@ export default function DataSourceNew({
                     Create a new DataSource
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    A data source enables you to upload text documents (by API
+                    A Data Source enables you to upload text documents (by API
                     or manually) to perform semantic search on them. The
                     documents are automatically chunked and embedded using the
                     model you specify here.
@@ -224,7 +224,7 @@ export default function DataSourceNew({
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
                         A good description will help others discover and
-                        understand the purpose of your data source.
+                        understand the purpose of your Data Source.
                       </p>
                     </div>
 

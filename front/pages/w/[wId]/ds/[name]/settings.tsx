@@ -169,7 +169,7 @@ function StandardDataSourceSettings({
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
         window.alert(
-          `Failed to delete the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+          `Failed to delete the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
         );
       }
       return true;
@@ -199,7 +199,7 @@ function StandardDataSourceSettings({
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to update the data source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to update the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
   };
@@ -270,7 +270,7 @@ function StandardDataSourceSettings({
                   </div>
                   <p className="mt-2 text-sm text-gray-500">
                     A good description will help others discover and understand
-                    the purpose of your data source.
+                    the purpose of your Data Source.
                   </p>
                 </div>
 

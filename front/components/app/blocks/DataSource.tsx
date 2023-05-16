@@ -183,7 +183,7 @@ export default function DataSource({
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="mr-1 flex flex-initial">data source:</div>
+            <div className="mr-1 flex flex-initial">Data Source:</div>
             <DataSourcePicker
               owner={owner}
               readOnly={readOnly}
