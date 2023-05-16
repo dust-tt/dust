@@ -11,6 +11,10 @@ spec:
     metadata:
       labels:
         app: front
+        name: front-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-kube","tags": ["env:prod"]}]'
     spec:
       containers:
         - name: web
