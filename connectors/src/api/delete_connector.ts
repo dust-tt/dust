@@ -4,9 +4,7 @@ import {
   CLEAN_CONNECTOR_BY_TYPE,
   STOP_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import { errorFromAny } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
-import logger from "@connectors/logger/logger";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -25,8 +23,10 @@ const _deleteConnectorAPIHandler = async (
   >,
   res: Response<ConnectorDeleteResBody>
 ) => {
-  try {
-    const connector = await Connector.findByPk(req.params.connector_id);
+  return await sequelize_conn.transaction(async (t) => {
+    const connector = await Connector.findByPk(req.params.connector_id, {
+      transaction: t,
+    });
     if (!connector) {
       return apiError(req, res, {
         api_error: {
@@ -62,7 +62,7 @@ const _deleteConnectorAPIHandler = async (
     }
 
     const connectorCleaner = CLEAN_CONNECTOR_BY_TYPE[connector.type];
-    const cleanRes = await connectorCleaner(connector.id.toString());
+    const cleanRes = await connectorCleaner(connector.id.toString(), t);
     if (cleanRes.isErr()) {
       return apiError(req, res, {
         api_error: {
@@ -73,21 +73,12 @@ const _deleteConnectorAPIHandler = async (
       });
     }
 
-    await connector.destroy();
+    await connector.destroy({ transaction: t });
 
     return res.json({
       success: true,
     });
-  } catch (e) {
-    logger.error(errorFromAny(e), "Failed to delete the connector");
-    return apiError(req, res, {
-      api_error: {
-        type: "internal_server_error",
-        message: "Could not delete the connector",
-      },
-      status_code: 500,
-    });
-  }
+  });
 };
 
 export const deleteConnectorAPIHandler = withLogging(
