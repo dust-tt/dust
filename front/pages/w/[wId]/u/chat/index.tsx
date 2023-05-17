@@ -229,7 +229,7 @@ export function RetrievalsView({ message }: { message: Message }) {
                       #{r.document.channelName}
                     </a>
                     <span className="ml-1 text-gray-400">
-                      {r.document.timestamp}
+                      {r.document.timestamp.split(" ")[0]}
                     </span>
                   </div>
                 )}
