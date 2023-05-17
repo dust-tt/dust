@@ -314,7 +314,7 @@ export async function syncNonThreaded(
     }
   }
 
-  const tags = getTagsForPage(channelId, channelName);
+  const tags = getTagsForPage(documentId, channelId, channelName);
   await SlackMessages.upsert({
     connectorId: parseInt(connectorId),
     channelId: channelId,
@@ -413,7 +413,7 @@ export async function syncThread(
     }
   }
 
-  const tags = getTagsForPage(channelId, channelName, threadTs);
+  const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 
   await SlackMessages.upsert({
     connectorId: parseInt(connectorId),
@@ -593,6 +593,7 @@ export function getSlackClient(slackAccessToken: string): WebClient {
 }
 
 function getTagsForPage(
+  documentId: string,
   channelId: string,
   channelName: string,
   threadTs?: string
@@ -606,6 +607,9 @@ function getTagsForPage(
     const threadDate = new Date(parseInt(threadTs) * 1000);
     const dateForTitle = formatDateForThreadTitle(threadDate);
     tags.push(`title:${channelName}-thread-${dateForTitle}`);
+  } else {
+    // For non-threaded message, the documentId is human-friendly, we copy it as title tag.
+    tags.push(`title:${documentId}`);
   }
   return tags;
 }
