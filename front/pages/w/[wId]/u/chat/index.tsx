@@ -358,7 +358,7 @@ export default function AppChat({
     setResponse(r);
 
     const config = cloneBaseConfig(DustProdActionRegistry["chat-main"].config);
-    config.DATASOURCE.data_sources = managedDataSources
+    config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
       .map((ds) => {
         return {

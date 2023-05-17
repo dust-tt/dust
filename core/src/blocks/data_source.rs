@@ -9,6 +9,7 @@ use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
 use pest::iterators::Pair;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::io::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
 use url::Url;
@@ -72,6 +73,8 @@ impl DataSource {
         Ok(query)
     }
 
+    /// This helper searches one Data Source (multiple can be searched in parallel) and return the
+    /// documents retrieved from the search.
     async fn search_data_source(
         &self,
         env: &Env,
@@ -198,6 +201,50 @@ impl DataSource {
 
         Ok(documents)
     }
+
+    /// This function is in charge given a set of Documents with scored chunks possibly coming from
+    /// multiple data sources, to return the documents associated with the `top_k` chunks (including
+    /// only these `top_k` chunks), sorted by top chunk.
+    fn top_k_sorted_documents(top_k: usize, documents: &Vec<Document>) -> Vec<Document> {
+        // Extract all chunks, keeping their source `document_id`.
+        let mut chunks = documents
+            .iter()
+            .map(|d| d.chunks.iter().map(|c| (d.document_id.clone(), c.clone())))
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // Sort them by score and truncate to `top_k`
+        chunks.sort_by(|a, b| b.1.score.partial_cmp(&a.1.score).unwrap());
+        chunks.truncate(top_k);
+
+        // Get the documents without chunks.
+        let mut documents = documents
+            .iter()
+            .map(|d| {
+                let mut d = d.clone();
+                d.chunks = vec![];
+                (d.document_id.clone(), d)
+            })
+            .collect::<HashMap<_, _>>();
+
+        // Reinsert the `top_k` chunks in their respective documents.
+        for (document_id, chunk) in chunks {
+            documents.get_mut(&document_id).unwrap().chunks.push(chunk);
+        }
+
+        // Remove all documents that have no chunks.
+        let mut d = documents
+            .into_iter()
+            .filter(|(_, d)| d.chunks.len() > 0)
+            .map(|(_, d)| d)
+            .collect::<Vec<_>>();
+
+        // Order documents by top chunk score.
+        d.sort_by(|a, b| b.chunks[0].score.partial_cmp(&a.chunks[0].score).unwrap());
+        d.truncate(top_k);
+
+        return d;
+    }
 }
 
 #[async_trait]
@@ -292,10 +339,10 @@ impl Block for DataSource {
                 documents.push(doc);
             }
         }
-        documents.sort_by(|a, b| b.chunks[0].score.partial_cmp(&a.chunks[0].score).unwrap());
-        documents.truncate(top_k);
 
-        Ok(serde_json::to_value(documents)?)
+        Ok(serde_json::to_value(Self::top_k_sorted_documents(
+            top_k, &documents,
+        ))?)
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
