@@ -127,15 +127,23 @@ type RetrievedDocument = {
 type Message = {
   role: "user" | "assistant";
   content: string;
-  retrievals: RetrievedDocument[];
+  retrievals: RetrievedDocument[] | null;
 };
+
+type ErrorMessage = {
+  message: string;
+};
+
+function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
+  return (m as ErrorMessage).message !== undefined;
+}
 
 export function RetrievalsView({ message }: { message: Message }) {
   const [summary, setSummary] = useState<{ [provider: string]: number }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (message.retrievals.length > 0) {
+    if (message.retrievals && message.retrievals.length > 0) {
       const summary = {} as { [key: string]: number };
       message.retrievals.forEach((r) => {
         if (r.provider in summary) {
@@ -148,7 +156,7 @@ export function RetrievalsView({ message }: { message: Message }) {
     }
   }, [message.retrievals]);
 
-  return (
+  return !(message.retrievals && message.retrievals.length === 0) ? (
     <div className="ml-10 flex flex-col">
       <div className="flex flex-row items-center">
         <div
@@ -158,7 +166,7 @@ export function RetrievalsView({ message }: { message: Message }) {
             "text-xs font-bold text-gray-700"
           )}
         >
-          {message.retrievals.length > 0 ? (
+          {message.retrievals && message.retrievals.length > 0 && (
             <>
               <div className="flex flex-initial">Retrieved</div>
               {Object.keys(summary).map((k) => {
@@ -194,12 +202,11 @@ export function RetrievalsView({ message }: { message: Message }) {
                 )}
               </div>
             </>
-          ) : (
-            <div className="">Loading...</div>
           )}
+          {!message.retrievals && <div className="">Loading...</div>}
         </div>
       </div>
-      {expanded && (
+      {expanded && message.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
           {message.retrievals.map((r, i) => {
             return (
@@ -222,7 +229,7 @@ export function RetrievalsView({ message }: { message: Message }) {
                       #{r.document.channelName}
                     </a>
                     <span className="ml-1 text-gray-400">
-                      {r.document.timestamp}
+                      {r.document.timestamp.split(" ")[0]}
                     </span>
                   </div>
                 )}
@@ -246,7 +253,7 @@ export function RetrievalsView({ message }: { message: Message }) {
         </div>
       )}
     </div>
-  );
+  ) : null;
 }
 
 export function MessageView({
@@ -311,7 +318,7 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<(Message | ErrorMessage)[]>([]);
   const [dataSources, setDataSources] = useState(managedDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -353,7 +360,7 @@ export default function AppChat({
     const r: Message = {
       role: "assistant",
       content: "",
-      retrievals: [],
+      retrievals: null,
     };
     setResponse(r);
 
@@ -377,26 +384,45 @@ export default function AppChat({
       return;
     }
     const { eventStream } = res.value;
+
+    let skip = false;
     for await (const event of eventStream) {
-      console.log("EVENT", event);
+      if (skip) continue;
+      // console.log("EVENT", event);
       if (event.type === "tokens") {
         const content = r.content + event.content.tokens.text;
         setResponse({ ...r, content });
         r.content = content;
       }
       if (event.type === "error") {
-        // TODO(spolu): error reporting
         console.log("ERROR event", event);
+        m.push({
+          message: event.content.message,
+        } as ErrorMessage);
+        setMessages(m);
+        setResponse(null);
+        skip = true;
       }
       if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
         if (event.content.block_name === "RETRIEVALS") {
-          const e = event.content.execution[0][0];
           if (!e.error) {
             r.retrievals = e.value;
+            setResponse({ ...r });
+          }
+        }
+        if (event.content.block_name === "MODEL") {
+          if (e.error) {
+            console.log("MODEL event wiht error", event);
+            m.push({
+              message: e.error,
+            } as ErrorMessage);
+            setMessages(m);
+            setResponse(null);
+            skip = true;
           }
         }
         if (event.content.block_name === "OUTPUT") {
-          const e = event.content.execution[0][0];
           if (!e.error) {
             m.push(e.value);
             setMessages(m);
@@ -424,7 +450,23 @@ export default function AppChat({
               <div className="mx-auto max-w-2xl px-6 py-2">
                 <div className="text-sm">
                   {messages.map((m, i) => {
-                    return (
+                    return isErrorMessage(m) ? (
+                      <div key={i}>
+                        <div className="my-2 ml-12 flex flex-col">
+                          <div className="flex-initial text-xs font-bold text-red-500">
+                            Oops! An error occured (and the team has been
+                            notified).
+                          </div>
+                          <div className="flex-initial text-xs text-gray-500">
+                            Please give it another try, and don't hesitate to
+                            reach out if the problem persists.
+                          </div>
+                          <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                            {m.message}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
                       <div key={i}>
                         <MessageView user={user} message={m} loading={false} />
                       </div>

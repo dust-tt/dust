@@ -60,6 +60,10 @@ export default function AppLayout({
             />
           </>
         ) : null}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
       </Head>
       <div className="flex h-full flex-col">
         <div className="w-full flex-initial">
