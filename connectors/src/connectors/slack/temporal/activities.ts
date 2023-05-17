@@ -1,6 +1,13 @@
-import { WebClient } from "@slack/web-api";
-import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { ConversationsHistoryResponse } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import {
+  CodedError,
+  ErrorCode,
+  WebAPIHTTPError,
+  WebClient,
+} from "@slack/web-api";
+import {
+  ConversationsHistoryResponse,
+  Message,
+} from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import {
   Channel,
   ConversationsListResponse,
@@ -14,6 +21,7 @@ import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { WorkflowError } from "@connectors/lib/error";
 import { SlackMessages } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
@@ -583,13 +591,44 @@ export function formatDateForUpsert(date: Date) {
 }
 
 export function getSlackClient(slackAccessToken: string): WebClient {
-  return new WebClient(slackAccessToken, {
+  const slackClient = new WebClient(slackAccessToken, {
     timeout: NETWORK_REQUEST_TIMEOUT_MS,
     retryConfig: {
       retries: 1,
       factor: 1,
     },
   });
+
+  const handler: ProxyHandler<WebClient> = {
+    get: function (target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+
+      return new Proxy(value, handler);
+    },
+    apply: async function (target, thisArg, argumentsList) {
+      try {
+        // @ts-expect-error can't get typescript to be happy with this, but it works.
+        return await Reflect.apply(target, thisArg, argumentsList);
+      } catch (e) {
+        const slackError = e as CodedError;
+        if (slackError.code === ErrorCode.HTTPError) {
+          const httpError = slackError as WebAPIHTTPError;
+          if (httpError.statusCode === 503) {
+            const workflowError: WorkflowError = {
+              type: "slack_is_down",
+              message: httpError.message,
+              __is_dust_error: true,
+            };
+            throw workflowError;
+          }
+        }
+      }
+    },
+  };
+
+  const proxied = new Proxy(slackClient, handler);
+
+  return proxied;
 }
 
 function getTagsForPage(
