@@ -1,10 +1,11 @@
 import { Menu } from "@headlessui/react";
 import {
   BellAlertIcon,
+  ChatBubbleLeftIcon,
   MagnifyingGlassCircleIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
-import { ChevronDownIcon, CodeBracketIcon } from "@heroicons/react/24/solid";
+import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 
 import { classNames } from "@app/lib/utils";
@@ -22,7 +23,7 @@ export default function MainTab({
       name: "Chat",
       href: `/w/${owner.sId}/u/chat`,
       icon: (
-        <CodeBracketIcon
+        <ChatBubbleLeftIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />

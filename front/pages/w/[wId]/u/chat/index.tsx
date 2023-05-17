@@ -489,49 +489,54 @@ export default function AppChat({
         <div className="z-50 w-full flex-initial border bg-white text-sm">
           <div className="mx-auto mt-8 max-w-2xl px-6">
             <div className="my-2">
-              <div className="flex flex-row items-end">
-                <TextareaAutosize
-                  minRows={1}
-                  placeholder={`Ask anything about \`${owner.name}\``}
-                  className={classNames(
-                    "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                    "rounded-sm",
-                    "border",
-                    "border-slate-200 focus:border-slate-300 focus:ring-0",
-                    "placeholder-gray-400",
-                    "pr-7"
-                  )}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) {
-                      if (e.key === "Enter" && !loading) {
-                        void handleSubmitMessage();
-                        e.preventDefault();
+              <div className="flex flex-row items-center">
+                <div className="-ml-14 mr-2 rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 hidden md:block">
+                  alpha
+                </div>
+                <div className="flex flex-1 flex-row items-end">
+                  <TextareaAutosize
+                    minRows={1}
+                    placeholder={`Ask anything about \`${owner.name}\``}
+                    className={classNames(
+                      "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
+                      "rounded-sm",
+                      "border",
+                      "border-slate-200 focus:border-slate-300 focus:ring-0",
+                      "placeholder-gray-400",
+                      "pr-7"
+                    )}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) {
+                        if (e.key === "Enter" && !loading) {
+                          void handleSubmitMessage();
+                          e.preventDefault();
+                        }
                       }
-                    }
-                  }}
-                  autoFocus={true}
-                />
-                <div
-                  className={classNames(
-                    "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                  )}
-                >
-                  {!loading ? (
-                    <ArrowRightCircleIcon
-                      className="h-5 w-5 cursor-pointer text-violet-500"
-                      onClick={() => {
-                        void handleSubmitMessage();
-                      }}
-                    />
-                  ) : (
-                    <div className="mb-1 ml-1">
-                      <Spinner />
-                    </div>
-                  )}
+                    }}
+                    autoFocus={true}
+                  />
+                  <div
+                    className={classNames(
+                      "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
+                    )}
+                  >
+                    {!loading ? (
+                      <ArrowRightCircleIcon
+                        className="h-5 w-5 cursor-pointer text-violet-500"
+                        onClick={() => {
+                          void handleSubmitMessage();
+                        }}
+                      />
+                    ) : (
+                      <div className="mb-1 ml-1">
+                        <Spinner />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
