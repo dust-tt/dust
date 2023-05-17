@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
+import { getApp } from "@app/lib/api/app";
 import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
@@ -51,22 +51,8 @@ async function handler(
     });
   }
 
-  const app = await App.findOne({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
-          },
-          sId: req.query.aId,
-        }
-      : {
-          workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
-          sId: req.query.aId,
-        },
-  });
+  const app = await getApp(auth, req.query.aId as string);
+
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -253,18 +239,26 @@ async function handler(
             });
           }
 
-          await Run.create({
-            dustRunId: dustRun.value.run.run_id,
-            appId: app.id,
-            runType: "local",
-            workspaceId: owner.id,
-          });
-
-          await app.update({
-            savedSpecification: req.body.specification,
-            savedConfig: req.body.config,
-            savedRun: dustRun.value.run.run_id,
-          });
+          await Promise.all([
+            Run.create({
+              dustRunId: dustRun.value.run.run_id,
+              appId: app.id,
+              runType: "local",
+              workspaceId: owner.id,
+            }),
+            App.update(
+              {
+                savedSpecification: req.body.specification,
+                savedConfig: req.body.config,
+                savedRun: dustRun.value.run.run_id,
+              },
+              {
+                where: {
+                  id: app.id,
+                },
+              }
+            ),
+          ]);
 
           res.status(200).json({ run: dustRun.value.run });
           return;
