@@ -452,15 +452,16 @@ export default function AppChat({
                   {messages.map((m, i) => {
                     return isErrorMessage(m) ? (
                       <div key={i}>
-                        <div className="ml-12 my-2 flex flex-col">
+                        <div className="my-2 ml-12 flex flex-col">
                           <div className="flex-initial text-xs font-bold text-red-500">
-                            Oops! An error occured (and the team has been notified).
+                            Oops! An error occured (and the team has been
+                            notified).
                           </div>
                           <div className="flex-initial text-xs text-gray-500">
-                            Please give it another try, and don't hesitate to reach out
-                            if the problem persists.
+                            Please give it another try, and don't hesitate to
+                            reach out if the problem persists.
                           </div>
-                          <div className="border-l-4 pl-1 border-gray-200 ml-1 flex-initial text-xs italic text-gray-400">
+                          <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
                             {m.message}
                           </div>
                         </div>
