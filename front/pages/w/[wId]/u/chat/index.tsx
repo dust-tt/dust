@@ -448,40 +448,77 @@ export default function AppChat({
           >
             <div className="max-h-0">
               <div className="mx-auto max-w-2xl px-6 py-2">
-                <div className="text-sm">
-                  {messages.map((m, i) => {
-                    return isErrorMessage(m) ? (
-                      <div key={i}>
-                        <div className="my-2 ml-12 flex flex-col">
-                          <div className="flex-initial text-xs font-bold text-red-500">
-                            Oops! An error occured (and the team has been
-                            notified).
-                          </div>
-                          <div className="flex-initial text-xs text-gray-500">
-                            Please give it another try, and don't hesitate to
-                            reach out if the problem persists.
-                          </div>
-                          <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                            {m.message}
+                {messages.length > 0 ? (
+                  <div className="text-sm">
+                    {messages.map((m, i) => {
+                      return isErrorMessage(m) ? (
+                        <div key={i}>
+                          <div className="my-2 ml-12 flex flex-col">
+                            <div className="flex-initial text-xs font-bold text-red-500">
+                              Oops! An error occured (and the team has been
+                              notified).
+                            </div>
+                            <div className="flex-initial text-xs text-gray-500">
+                              Please give it another try, and don't hesitate to
+                              reach out if the problem persists.
+                            </div>
+                            <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                              {m.message}
+                            </div>
                           </div>
                         </div>
+                      ) : (
+                        <div key={i}>
+                          <MessageView
+                            user={user}
+                            message={m}
+                            loading={false}
+                          />
+                        </div>
+                      );
+                    })}
+                    {response ? (
+                      <div key={messages.length}>
+                        <MessageView
+                          user={user}
+                          message={response}
+                          loading={true}
+                        />
                       </div>
-                    ) : (
-                      <div key={i}>
-                        <MessageView user={user} message={m} loading={false} />
-                      </div>
-                    );
-                  })}
-                  {response ? (
-                    <div key={messages.length}>
-                      <MessageView
-                        user={user}
-                        message={response}
-                        loading={true}
-                      />
-                    </div>
-                  ) : null}
-                </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                    <p>💬 Welcome to Chat!</p>
+                    <p className="mt-8">
+                      👩🏼‍🔬 This is an early exploration of a conversational agent
+                      with context on your team's Slack & Notion. For each
+                      interaction, semantically relevant chunks of documents are
+                      retrieved and presented to Chat to help it answer your
+                      questions.
+                    </p>
+                    <p className="mt-4">
+                      📈 You should expect better performance on general,
+                      qualitative, and thematic questions. Precise or
+                      quantitative questions won't work as well.
+                    </p>
+                    <p className="mt-4">
+                      🔗 You can presume the last few answers are in context for
+                      your dialogue with Chat: don't hesitate to ask follow-up
+                      questions. Only the latest documents retrieved are visible
+                      to Chat. Context is limited so don't be surprised if Chat
+                      moves on after a while.
+                    </p>
+                    <p className="mt-4">
+                      🧞‍♂️ Please share feedback with us on what's working well
+                      and what else you would like Chat to do via Slack or
+                      email:{" "}
+                      <a href="mailto:team@dust.tt" className="font-bold">
+                        team@dust.tt
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -490,7 +527,7 @@ export default function AppChat({
           <div className="mx-auto mt-8 max-w-2xl px-6">
             <div className="my-2">
               <div className="flex flex-row items-center">
-                <div className="-ml-14 mr-2 rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 hidden md:block">
+                <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
                   alpha
                 </div>
                 <div className="flex flex-1 flex-row items-end">
