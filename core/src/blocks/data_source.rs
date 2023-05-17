@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
-use crate::data_sources::data_source::{Chunk, Document, SearchFilter};
+use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
 use crate::Rule;
 use anyhow::{anyhow, Result};
