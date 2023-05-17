@@ -15,6 +15,6 @@ echo "-----------------------------------"
 image_tag=$(git rev-parse --short HEAD)
 gcloud_project_id=$(gcloud config get-value project)
 
-kubectl set image deployment/front web=gcr.io/$gcloud_project_id/front-image:$image_tag
+kubectl set image deployment/front-deployment web=gcr.io/$gcloud_project_id/front-image:$image_tag
 echo "Updated front image to: gcr.io/$gcloud_project_id/front-image:$image_tag"
 

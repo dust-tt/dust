@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: front
+  name: front-deployment
 spec:
   replicas: 2
   selector:
@@ -14,7 +14,7 @@ spec:
         name: front-pod
         admission.datadoghq.com/enabled: "true"
       annotations:
-        ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-kube","tags": ["env:prod"]}]'
+        ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-edge","tags": ["env:prod"]}]'
     spec:
       containers:
         - name: web

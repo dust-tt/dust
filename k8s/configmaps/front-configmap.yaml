@@ -4,7 +4,7 @@ metadata:
   name: front-config
 data:
   DD_ENV: "prod"
-  DD_SERVICE: "front-kube"
+  DD_SERVICE: "front-edge"
   NODE_OPTIONS: "-r dd-trace/init"
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"

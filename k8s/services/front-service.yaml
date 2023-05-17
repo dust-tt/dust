@@ -5,6 +5,7 @@ metadata:
 spec:
   selector:
     app: front
+    name: front-pod
   ports:
     - protocol: TCP
       port: 80
