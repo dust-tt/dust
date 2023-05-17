@@ -138,7 +138,13 @@ function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
   return (m as ErrorMessage).message !== undefined;
 }
 
-export function RetrievalsView({ message }: { message: Message }) {
+export function RetrievalsView({
+  message,
+  isLatest,
+}: {
+  message: Message;
+  isLatest: boolean;
+}) {
   const [summary, setSummary] = useState<{ [provider: string]: number }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
@@ -162,8 +168,9 @@ export function RetrievalsView({ message }: { message: Message }) {
         <div
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
-            "rounded bg-orange-100 px-2 py-1",
-            "text-xs font-bold text-gray-700"
+            "rounded px-2 py-1",
+            "text-xs font-bold text-gray-700",
+            isLatest ? "bg-orange-100" : "bg-gray-100"
           )}
         >
           {message.retrievals && message.retrievals.length > 0 && (
@@ -260,15 +267,19 @@ export function MessageView({
   user,
   message,
   loading,
+  isLatest,
 }: {
   user: UserType | null;
   message: Message;
   loading: boolean;
+  isLatest: boolean;
 }) {
   return (
     <div className="">
       <div className="flex flex-row">
-        {message.role === "assistant" && <RetrievalsView message={message} />}
+        {message.role === "assistant" && (
+          <RetrievalsView message={message} isLatest={isLatest} />
+        )}
       </div>
       <div className="my-2 flex flex-row items-start">
         <div
@@ -473,6 +484,7 @@ export default function AppChat({
                             user={user}
                             message={m}
                             loading={false}
+                            isLatest={!response && i === messages.length - 1}
                           />
                         </div>
                       );
@@ -483,6 +495,7 @@ export default function AppChat({
                           user={user}
                           message={response}
                           loading={true}
+                          isLatest={true}
                         />
                       </div>
                     ) : null}
@@ -491,11 +504,11 @@ export default function AppChat({
                   <div className="mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
                     <p>💬 Welcome to Chat!</p>
                     <p className="mt-8">
-                      👩🏼‍🔬 This is an early exploration of a conversational agent
-                      with context on your team's Slack & Notion. For each
-                      interaction, semantically relevant chunks of documents are
-                      retrieved and presented to Chat to help it answer your
-                      questions.
+                      👩🏼‍🔬 This is an early exploration of a conversational
+                      assistant with context on your team's Slack & Notion. For
+                      each interaction, semantically relevant chunks of
+                      documents are retrieved and presented to Chat to help it
+                      answer your queries.
                     </p>
                     <p className="mt-4">
                       📈 You should expect better performance on general,
