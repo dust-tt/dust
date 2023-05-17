@@ -1,3 +1,5 @@
+import { Transaction } from "sequelize";
+
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -177,10 +179,12 @@ export async function fullResyncNotionConnector(connectorId: string) {
 }
 
 export async function cleanupNotionConnector(
-  connectorId: string
+  connectorId: string,
+  transaction: Transaction
 ): Promise<Result<void, Error>> {
   const connector = await Connector.findOne({
     where: { type: "notion", id: connectorId },
+    transaction: transaction,
   });
 
   if (!connector) {
@@ -192,6 +196,13 @@ export async function cleanupNotionConnector(
     where: {
       connectorId: connector.id,
     },
+    transaction: transaction,
+  });
+  await NotionConnectorState.destroy({
+    where: {
+      connectorId: connector.id,
+    },
+    transaction: transaction,
   });
 
   return new Ok(undefined);

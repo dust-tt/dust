@@ -1,3 +1,5 @@
+import { Transaction } from "sequelize";
+
 import {
   cleanupNotionConnector,
   createNotionConnector,
@@ -5,6 +7,7 @@ import {
   resumeNotionConnector,
   stopNotionConnector,
 } from "@connectors/connectors/notion";
+import { cleanupSlackConnector } from "@connectors/connectors/slack";
 import { createSlackConnector } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Ok, Result } from "@connectors/lib/result";
@@ -41,15 +44,16 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
 };
 
 // Should cleanup any state/resources associated with the connector
-type ConnectorCleaner = (connectorId: string) => Promise<Result<void, Error>>;
+type ConnectorCleaner = (
+  connectorId: string,
+  transaction: Transaction
+) => Promise<Result<void, Error>>;
+
 export const CLEAN_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
 > = {
-  slack: async () => {
-    // no-op
-    return new Ok(undefined);
-  },
+  slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
 };
 

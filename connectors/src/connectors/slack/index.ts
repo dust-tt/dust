@@ -4,14 +4,20 @@ import {
   Connector,
   sequelize_conn,
   SlackConfiguration,
+  SlackMessages,
 } from "@connectors/lib/models.js";
 import { nango_client } from "@connectors/lib/nango_client.js";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 export type NangoConnectionId = string;
+import { Transaction } from "sequelize";
+
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 
-const { NANGO_SLACK_CONNECTOR_ID } = process.env;
+import { getAccessToken, getSlackClient } from "./temporal/activities";
+
+const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
+  process.env;
 
 export async function createSlackConnector(
   dataSourceConfig: DataSourceConfig,
@@ -82,4 +88,53 @@ export async function createSlackConnector(
   }
 
   return new Ok(res.value.id.toString());
+}
+
+export async function cleanupSlackConnector(
+  connectorId: string,
+  transaction: Transaction
+): Promise<Result<void, Error>> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
+  if (!NANGO_SLACK_CONNECTOR_ID) {
+    return new Err(new Error("NANGO_SLACK_CONNECTOR_ID is not defined"));
+  }
+  if (!SLACK_CLIENT_ID) {
+    return new Err(new Error("SLACK_CLIENT_ID is not defined"));
+  }
+  if (!SLACK_CLIENT_SECRET) {
+    return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
+  }
+  const accessToken = await getAccessToken(connector.nangoConnectionId);
+  const slackClient = getSlackClient(accessToken);
+  const deleteRes = await slackClient.apps.uninstall({
+    client_id: SLACK_CLIENT_ID,
+    client_secret: SLACK_CLIENT_SECRET,
+  });
+  if (!deleteRes.ok) {
+    return new Err(
+      new Error(
+        `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
+      )
+    );
+  }
+
+  await SlackMessages.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+    transaction: transaction,
+  });
+  await SlackConfiguration.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+    transaction: transaction,
+  });
+
+  return new Ok(undefined);
 }
