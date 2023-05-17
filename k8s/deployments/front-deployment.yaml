@@ -27,6 +27,10 @@ spec:
                 name: front-config
             - secretRef:
                 name: front-secrets
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
 
       imagePullSecrets:
         - name: gcr-json-key
