@@ -138,7 +138,13 @@ function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
   return (m as ErrorMessage).message !== undefined;
 }
 
-export function RetrievalsView({ message }: { message: Message }) {
+export function RetrievalsView({
+  message,
+  isLatest,
+}: {
+  message: Message;
+  isLatest: boolean;
+}) {
   const [summary, setSummary] = useState<{ [provider: string]: number }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
@@ -162,8 +168,9 @@ export function RetrievalsView({ message }: { message: Message }) {
         <div
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
-            "rounded bg-orange-100 px-2 py-1",
-            "text-xs font-bold text-gray-700"
+            "rounded px-2 py-1",
+            "text-xs font-bold text-gray-700",
+            isLatest ? "bg-orange-100" : "bg-gray-100"
           )}
         >
           {message.retrievals && message.retrievals.length > 0 && (
@@ -260,15 +267,19 @@ export function MessageView({
   user,
   message,
   loading,
+  isLatest,
 }: {
   user: UserType | null;
   message: Message;
   loading: boolean;
+  isLatest: boolean;
 }) {
   return (
     <div className="">
       <div className="flex flex-row">
-        {message.role === "assistant" && <RetrievalsView message={message} />}
+        {message.role === "assistant" && (
+          <RetrievalsView message={message} isLatest={isLatest} />
+        )}
       </div>
       <div className="my-2 flex flex-row items-start">
         <div
@@ -448,40 +459,79 @@ export default function AppChat({
           >
             <div className="max-h-0">
               <div className="mx-auto max-w-2xl px-6 py-2">
-                <div className="text-sm">
-                  {messages.map((m, i) => {
-                    return isErrorMessage(m) ? (
-                      <div key={i}>
-                        <div className="my-2 ml-12 flex flex-col">
-                          <div className="flex-initial text-xs font-bold text-red-500">
-                            Oops! An error occured (and the team has been
-                            notified).
-                          </div>
-                          <div className="flex-initial text-xs text-gray-500">
-                            Please give it another try, and don't hesitate to
-                            reach out if the problem persists.
-                          </div>
-                          <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                            {m.message}
+                {messages.length > 0 ? (
+                  <div className="text-sm">
+                    {messages.map((m, i) => {
+                      return isErrorMessage(m) ? (
+                        <div key={i}>
+                          <div className="my-2 ml-12 flex flex-col">
+                            <div className="flex-initial text-xs font-bold text-red-500">
+                              Oops! An error occured (and the team has been
+                              notified).
+                            </div>
+                            <div className="flex-initial text-xs text-gray-500">
+                              Please give it another try, and don't hesitate to
+                              reach out if the problem persists.
+                            </div>
+                            <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                              {m.message}
+                            </div>
                           </div>
                         </div>
+                      ) : (
+                        <div key={i}>
+                          <MessageView
+                            user={user}
+                            message={m}
+                            loading={false}
+                            isLatest={!response && i === messages.length - 1}
+                          />
+                        </div>
+                      );
+                    })}
+                    {response ? (
+                      <div key={messages.length}>
+                        <MessageView
+                          user={user}
+                          message={response}
+                          loading={true}
+                          isLatest={true}
+                        />
                       </div>
-                    ) : (
-                      <div key={i}>
-                        <MessageView user={user} message={m} loading={false} />
-                      </div>
-                    );
-                  })}
-                  {response ? (
-                    <div key={messages.length}>
-                      <MessageView
-                        user={user}
-                        message={response}
-                        loading={true}
-                      />
-                    </div>
-                  ) : null}
-                </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                    <p>💬 Welcome to Chat!</p>
+                    <p className="mt-8">
+                      👩🏼‍🔬 This is an early exploration of a conversational
+                      assistant with context on your team's Slack & Notion. For
+                      each interaction, semantically relevant chunks of
+                      documents are retrieved and presented to Chat to help it
+                      answer your queries.
+                    </p>
+                    <p className="mt-4">
+                      📈 You should expect better performance on general,
+                      qualitative, and thematic questions. Precise or
+                      quantitative questions won't work as well.
+                    </p>
+                    <p className="mt-4">
+                      🔗 You can presume the last few answers are in context for
+                      your dialogue with Chat: don't hesitate to ask follow-up
+                      questions. Only the latest documents retrieved are visible
+                      to Chat. Context is limited so don't be surprised if Chat
+                      moves on after a while.
+                    </p>
+                    <p className="mt-4">
+                      🧞‍♂️ Please share feedback with us on what's working well
+                      and what else you would like Chat to do via Slack or
+                      email:{" "}
+                      <a href="mailto:team@dust.tt" className="font-bold">
+                        team@dust.tt
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -489,49 +539,54 @@ export default function AppChat({
         <div className="z-50 w-full flex-initial border bg-white text-sm">
           <div className="mx-auto mt-8 max-w-2xl px-6">
             <div className="my-2">
-              <div className="flex flex-row items-end">
-                <TextareaAutosize
-                  minRows={1}
-                  placeholder={`Ask anything about \`${owner.name}\``}
-                  className={classNames(
-                    "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                    "rounded-sm",
-                    "border",
-                    "border-slate-200 focus:border-slate-300 focus:ring-0",
-                    "placeholder-gray-400",
-                    "pr-7"
-                  )}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) {
-                      if (e.key === "Enter" && !loading) {
-                        void handleSubmitMessage();
-                        e.preventDefault();
+              <div className="flex flex-row items-center">
+                <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
+                  alpha
+                </div>
+                <div className="flex flex-1 flex-row items-end">
+                  <TextareaAutosize
+                    minRows={1}
+                    placeholder={`Ask anything about \`${owner.name}\``}
+                    className={classNames(
+                      "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
+                      "rounded-sm",
+                      "border",
+                      "border-slate-200 focus:border-slate-300 focus:ring-0",
+                      "placeholder-gray-400",
+                      "pr-7"
+                    )}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) {
+                        if (e.key === "Enter" && !loading) {
+                          void handleSubmitMessage();
+                          e.preventDefault();
+                        }
                       }
-                    }
-                  }}
-                  autoFocus={true}
-                />
-                <div
-                  className={classNames(
-                    "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                  )}
-                >
-                  {!loading ? (
-                    <ArrowRightCircleIcon
-                      className="h-5 w-5 cursor-pointer text-violet-500"
-                      onClick={() => {
-                        void handleSubmitMessage();
-                      }}
-                    />
-                  ) : (
-                    <div className="mb-1 ml-1">
-                      <Spinner />
-                    </div>
-                  )}
+                    }}
+                    autoFocus={true}
+                  />
+                  <div
+                    className={classNames(
+                      "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
+                    )}
+                  >
+                    {!loading ? (
+                      <ArrowRightCircleIcon
+                        className="h-5 w-5 cursor-pointer text-violet-500"
+                        onClick={() => {
+                          void handleSubmitMessage();
+                        }}
+                      />
+                    ) : (
+                      <div className="mb-1 ml-1">
+                        <Spinner />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
