@@ -64,7 +64,7 @@ export default function Apps({
         </div>
         <div className="">
           <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div className="mt-16 flex flex-col justify-between lg:flex-row lg:items-center">
+            <div className="mt-8 flex flex-col justify-between lg:flex-row lg:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">Apps</h1>
 
@@ -83,72 +83,68 @@ export default function Apps({
                 )}
               </div>
             </div>
-            <div className="mt-4">
-              <div className="mb-8 mt-8 overflow-hidden">
-                <ul role="list" className="">
-                  {apps.map((app) => (
-                    <li key={app.sId} className="px-2">
-                      <div className="py-4">
-                        <div className="flex items-center justify-between">
-                          <Link
-                            href={`/w/${owner.sId}/a/${app.sId}`}
-                            className="block"
+            <div className="my-4">
+              <ul role="list" className="pt-4">
+                {apps.map((app) => (
+                  <li key={app.sId} className="px-2">
+                    <div className="py-4">
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/w/${owner.sId}/a/${app.sId}`}
+                          className="block"
+                        >
+                          <p className="truncate text-base font-bold text-violet-600">
+                            {app.name}
+                          </p>
+                        </Link>
+                        <div className="ml-2 flex flex-shrink-0">
+                          <p
+                            className={classNames(
+                              "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                              app.visibility == "public"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            )}
                           >
-                            <p className="truncate text-base font-bold text-violet-600">
-                              {app.name}
-                            </p>
-                          </Link>
-                          <div className="ml-2 flex flex-shrink-0">
-                            <p
-                              className={classNames(
-                                "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                                app.visibility == "public"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
-                              )}
-                            >
-                              {app.visibility}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 sm:flex sm:justify-between">
-                          <div className="sm:flex">
-                            <p className="flex items-center text-sm text-gray-700">
-                              {app.description}
-                            </p>
-                          </div>
-                          <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                            <p>{app.sId}</p>
-                          </div>
+                            {app.visibility}
+                          </p>
                         </div>
                       </div>
-                    </li>
-                  ))}
-                  {apps.length == 0 ? (
-                    <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                      {readOnly ? (
-                        <>
-                          <p>
-                            Welcome to Dust 🔥 This user has not created any app
-                            yet 🙃
+                      <div className="mt-2 sm:flex sm:justify-between">
+                        <div className="sm:flex">
+                          <p className="flex items-center text-sm text-gray-700">
+                            {app.description}
                           </p>
-                          <p className="mt-2">
-                            Sign-in to create your own apps.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p>Welcome to Dust 🔥</p>
-                          <p className="mt-2">
-                            Setup your Providers, explore example apps below or
-                            create your first app to get started.
-                          </p>
-                        </>
-                      )}
+                        </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                          <p>{app.sId}</p>
+                        </div>
+                      </div>
                     </div>
-                  ) : null}
-                </ul>
-              </div>
+                  </li>
+                ))}
+                {apps.length == 0 ? (
+                  <div className="mt-12 flex flex-col items-center justify-center text-sm text-gray-500">
+                    {readOnly ? (
+                      <>
+                        <p>
+                          Welcome to Dust 🔥 This user has not created any app
+                          yet 🙃
+                        </p>
+                        <p className="mt-2">Sign-in to create your own apps.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Welcome to Dust 🔥</p>
+                        <p className="mt-2">
+                          Setup your Providers, explore example apps below or
+                          create your first app to get started.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </ul>
             </div>
           </div>
 
@@ -169,8 +165,8 @@ export default function Apps({
                 </div>
               </div>
 
-              <div className="mt-8 overflow-hidden">
-                <ul role="list" className="mb-8">
+              <div className="mt-8">
+                <ul role="list" className="pt-4 mb-8">
                   {communityApps.map((app) => (
                     <li key={app.sId} className="px-2">
                       <div className="py-4">
