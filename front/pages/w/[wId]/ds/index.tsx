@@ -305,7 +305,7 @@ export default function DataSourcesView({
             </div>
             <div className="my-4">
               {dataSources.length == 0 ? (
-                <div className="mt-12 flex flex-col items-center justify-center text-sm text-gray-500">
+                <div className="mt-12 flex flex-col items-center justify-center pt-4 text-sm text-gray-500">
                   {readOnly ? (
                     <>
                       <p>
@@ -363,9 +363,7 @@ export default function DataSourcesView({
                             {ds.description}
                           </p>
                         </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                          <p></p>
-                        </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0"></div>
                       </div>
                     </div>
                   </li>
@@ -377,7 +375,7 @@ export default function DataSourcesView({
       </div>
       <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
         <div className="sm:flex sm:items-center">
-          <div className="mt-16 sm:flex-auto">
+          <div className="mt-8 sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">
               Managed Data Sources
             </h1>
