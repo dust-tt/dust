@@ -383,7 +383,7 @@ export default function DataSourcesView({
             </h1>
 
             <p className="text-sm text-gray-500 ">
-              Managed by Dust to remain synchronized with the products you use
+              Fully managed and synchronized in real-time with the products you
               use.
             </p>
           </div>
