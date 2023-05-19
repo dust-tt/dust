@@ -166,7 +166,7 @@ export default function Apps({
               </div>
 
               <div className="mt-8">
-                <ul role="list" className="pt-4 mb-8">
+                <ul role="list" className="mb-8 pt-4">
                   {communityApps.map((app) => (
                     <li key={app.sId} className="px-2">
                       <div className="py-4">
