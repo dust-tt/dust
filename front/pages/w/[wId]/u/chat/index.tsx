@@ -458,7 +458,7 @@ export default function AppChat({
             ref={scrollRef}
           >
             <div className="max-h-0">
-              <div className="mx-auto max-w-2xl px-6 py-2">
+              <div className="mx-auto max-w-4xl px-6 py-2">
                 {messages.length > 0 ? (
                   <div className="text-sm">
                     {messages.map((m, i) => {
@@ -501,7 +501,7 @@ export default function AppChat({
                     ) : null}
                   </div>
                 ) : (
-                  <div className="mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                  <div className="mt-8 flex mx-auto max-w-xl flex-col items-center justify-center text-sm text-gray-500">
                     <p>💬 Welcome to Chat!</p>
                     <p className="mt-8">
                       👩🏼‍🔬 This is an early exploration of a conversational
@@ -537,7 +537,7 @@ export default function AppChat({
           </div>
         </div>
         <div className="z-50 w-full flex-initial border bg-white text-sm">
-          <div className="mx-auto mt-8 max-w-2xl px-6">
+          <div className="mx-auto mt-8 max-w-2xl xl:max-w-4xl px-6 xl:px-12">
             <div className="my-2">
               <div className="flex flex-row items-center">
                 <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">

@@ -151,7 +151,7 @@ export default function ProfileProviders({
         />
 
         <div className="">
-          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 max-w-4xl">
             <div className="sm:flex sm:items-center">
               <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">
@@ -231,7 +231,7 @@ export default function ProfileProviders({
             </ul>
           </div>
 
-          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 max-w-4xl">
             <div className="sm:flex sm:items-center">
               <div className="mt-8 sm:flex-auto">
                 <h1 className="text-base font-medium text-gray-900">

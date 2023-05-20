@@ -264,8 +264,8 @@ export default function DataSourcesView({
           <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="">
-          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div className="mt-8 flex flex-col justify-between lg:flex-row lg:items-center">
+          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 max-w-4xl">
+            <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">
                   Data Sources
@@ -275,7 +275,7 @@ export default function DataSourcesView({
                   Upload documents to perform semantic searches.
                 </p>
               </div>
-              <div className="mr-2 mt-2 whitespace-nowrap lg:ml-12">
+              <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
                 {!readOnly && (
                   <Link
                     className="ml-auto"
@@ -373,7 +373,7 @@ export default function DataSourcesView({
           </div>
         </div>
       </div>
-      <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+      <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 max-w-4xl">
         <div className="sm:flex sm:items-center">
           <div className="mt-8 sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">
