@@ -211,7 +211,7 @@ export default function Home({
           <Features />
         </div>
 
-        <div className="mx-auto mt-8 space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
+        <div className="mx-auto mt-8 max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
           <div className="sm:flex sm:items-center">
             <div className="mt-8 sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">

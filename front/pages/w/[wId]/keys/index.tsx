@@ -96,8 +96,8 @@ export default function ProfileKeys({
         </div>
 
         <div className="">
-          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 sm:max-w-2xl lg:max-w-4xl">
-            <div className="mt-8 flex flex-col justify-between lg:flex-row lg:items-center">
+          <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
+            <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">
                   API keys
@@ -112,7 +112,7 @@ export default function ProfileKeys({
                   code.
                 </p>
               </div>
-              <div className="mr-2 mt-2 whitespace-nowrap  lg:ml-12">
+              <div className="mr-2 mt-2 whitespace-nowrap  md:ml-12">
                 <Button
                   onClick={async () => {
                     await handleGenerate();

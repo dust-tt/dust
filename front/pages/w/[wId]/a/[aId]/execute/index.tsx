@@ -561,8 +561,7 @@ export default function ExecuteView({
           <MainTab app={app} currentTab="Use" owner={owner} />
         </div>
         <div className="mx-auto mt-6 w-full max-w-5xl">
-          <div className="mx-8 max-w-4xl"></div>
-          <div className="mx-8 mt-2 flex flex-col">
+          <div className="mx-4 mt-2 flex flex-col">
             <div className="mb-6 flex w-full flex-row">
               <div className="flex flex-initial items-center text-sm leading-snug text-gray-400">
                 <div>

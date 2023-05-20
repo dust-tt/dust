@@ -93,7 +93,7 @@ export default function DatasetsView({
         </div>
         <div className="mx-auto mt-4 w-full max-w-5xl">
           <div className="flex flex-1">
-            <div className="mx-2 my-4 flex flex-auto flex-col sm:mx-4 lg:mx-8">
+            <div className="mx-4 my-4 flex flex-auto flex-col sm:mx-4 lg:mx-8">
               <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/new`}>
                 <ActionButton disabled={readOnly}>
                   <PlusIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />

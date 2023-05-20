@@ -150,7 +150,7 @@ export default function DataSourceView({
         </div>
 
         <div className="">
-          <div className="mx-auto mt-8 max-w-4xl px-2">
+          <div className="mx-auto mt-8 max-w-4xl px-4">
             <div className="sm:col-span-6">
               <div className="flex justify-between">
                 <label

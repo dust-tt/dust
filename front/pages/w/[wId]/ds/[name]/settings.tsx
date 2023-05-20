@@ -206,7 +206,7 @@ function StandardDataSourceSettings({
 
   return (
     <div className="">
-      <div className="mx-auto mt-8 max-w-4xl px-2">
+      <div className="mx-auto mt-8 max-w-4xl px-4">
         <div className="mt-8 space-y-8 divide-y divide-gray-200">
           <div className="space-y-8 divide-y divide-gray-200">
             <div>
@@ -500,7 +500,7 @@ function ManagedDataSourceSettings({
 
   return (
     <div className="">
-      <div className="mx-auto mt-8 max-w-4xl px-2">
+      <div className="mx-auto mt-8 max-w-4xl px-4">
         <div className="-200 mt-8 space-y-8">
           <div className="-200">
             <div>
