@@ -36,7 +36,7 @@ export default function WorkspacePicker({
                 >
                   {workspace.name}
                 </div>
-                <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                <ChevronDownIcon className="ml-1 mt-0.5 h-4 w-4 hover:text-gray-700" />
               </>
             ) : (
               "Select workspace"

@@ -137,49 +137,47 @@ export default function DataSourceView({
           />
         </div>
         <div className="">
-          <div className="mx-auto mt-8 max-w-4xl px-2">
+          <div className="mx-auto mt-8 max-w-4xl px-4">
             <div className="flex flex-row">
               <div className="flex flex-initial"></div>
               <div className="flex flex-1">
-                {documents.length > 0 ? (
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <div className="flex flex-initial">
-                        <div className="flex">
-                          <Button
-                            disabled={offset < limit}
-                            onClick={() => {
-                              if (offset >= limit) {
-                                setOffset(offset - limit);
-                              } else {
-                                setOffset(0);
-                              }
-                            }}
-                          >
-                            Previous
-                          </Button>
-                        </div>
-                        <div className="ml-2 flex">
-                          <Button
-                            disabled={offset + limit >= total}
-                            onClick={() => {
-                              if (offset + limit < total) {
-                                setOffset(offset + limit);
-                              }
-                            }}
-                          >
-                            Next
-                          </Button>
-                        </div>
+                <div className="flex flex-col">
+                  <div className="flex flex-row">
+                    <div className="flex flex-initial">
+                      <div className="flex">
+                        <Button
+                          disabled={offset < limit}
+                          onClick={() => {
+                            if (offset >= limit) {
+                              setOffset(offset - limit);
+                            } else {
+                              setOffset(0);
+                            }
+                          }}
+                        >
+                          Previous
+                        </Button>
+                      </div>
+                      <div className="ml-2 flex">
+                        <Button
+                          disabled={offset + limit >= total}
+                          onClick={() => {
+                            if (offset + limit < total) {
+                              setOffset(offset + limit);
+                            }
+                          }}
+                        >
+                          Next
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
-                      Showing documents {offset + 1} - {last} of {total}{" "}
-                      documents
-                    </div>
                   </div>
-                ) : null}
+
+                  <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
+                    Showing documents {Math.min(documents.length, offset + 1)} -{" "}
+                    {last} of {total} documents
+                  </div>
+                </div>
               </div>
               {readOnly ? null : (
                 <div className="">
@@ -211,7 +209,7 @@ export default function DataSourceView({
             </div>
           </div>
 
-          <div className="mx-auto mt-8 max-w-4xl px-2">
+          <div className="mx-auto mt-8 max-w-4xl px-4">
             <div className="mt-8 overflow-hidden">
               <ul role="list" className="space-y-4">
                 {documents.map((d) => (
