@@ -96,7 +96,7 @@ export default function ProfileKeys({
         </div>
 
         <div className="">
-          <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 max-w-4xl">
+          <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
             <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">

@@ -63,7 +63,7 @@ export default function Apps({
           <MainTab currentTab="Apps" owner={owner} />
         </div>
         <div className="">
-          <div className="mx-auto mt-8 divide-y divide-gray-200 px-6 max-w-4xl">
+          <div className="mx-auto mt-8 max-w-4xl divide-y divide-gray-200 px-6">
             <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">Apps</h1>
@@ -149,7 +149,7 @@ export default function Apps({
           </div>
 
           {!readOnly ? (
-            <div className="mx-auto space-y-4 divide-y divide-gray-200 px-6 max-w-4xl">
+            <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
               <div className="sm:flex sm:items-center">
                 <div className="mt-8 sm:flex-auto">
                   <h1 className="text-base font-medium text-gray-900">
