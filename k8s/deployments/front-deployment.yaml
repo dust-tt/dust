@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: gcr.io/or1g1n-186209/front-image:195aeba4
+          image: gcr.io/or1g1n-186209/front-image:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -30,7 +30,7 @@ spec:
           resources:
             requests:
               cpu: 200m
-              memory: 256Mi
+              memory: 512Mi
 
       imagePullSecrets:
         - name: gcr-json-key

@@ -1,15 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: front-ingress
+  name: dust-ingress
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/affinity: "cookie"
-    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
-    nginx.ingress.kubernetes.io/session-cookie-name: "route"
-    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
-    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    kubernetes.io/ingress.global-static-ip-name: dust-kube-ingress-ip-address
     networking.gke.io/managed-certificates: front-edge-managed-cert
+    kubernetes.io/ingress.class: "gce"
 spec:
   rules:
     - host: front-edge.dust.tt

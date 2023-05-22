@@ -1,0 +1,29 @@
+datadog:
+  logs:
+    enabled: true
+    containerCollectAll: false
+    containerExcludeLogs:
+      - "name:datadog-agent"
+  site: datadoghq.eu
+
+  apm:
+    socketEnabled: false
+
+  dogstatsd:
+    useDogStatsDSocketVolume: false
+
+  ignoreAutoConfig:
+    - cilium
+
+clusterAgent:
+  enabled: true
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  replicas: 2
+  createPodDisruptionBudget: true
+
+providers:
+  gke:
+    autopilot: true
