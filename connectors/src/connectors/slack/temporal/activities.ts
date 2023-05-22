@@ -602,8 +602,11 @@ export function getSlackClient(slackAccessToken: string): WebClient {
   const handler: ProxyHandler<WebClient> = {
     get: function (target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
+      if (["function", "object"].indexOf(typeof value) > -1) {
+        return new Proxy(value, handler);
+      }
 
-      return new Proxy(value, handler);
+      return Reflect.get(target, prop, receiver);
     },
     apply: async function (target, thisArg, argumentsList) {
       try {
