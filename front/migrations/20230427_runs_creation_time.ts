@@ -18,8 +18,8 @@ async function main() {
     [key: string]: {
       run_id: string;
       run_type: string;
-      project: number;
-      created: number;
+      project: string;
+      created: string;
     };
   };
   core_runs_rows.forEach((r) => {
@@ -47,7 +47,7 @@ async function main() {
             `UPDATE runs SET "createdAt" = :createdAt WHERE id = :id`,
             {
               replacements: {
-                createdAt: new Date(dustRun.created),
+                createdAt: new Date(parseInt(dustRun.created)),
                 id: r.id,
               },
             }
