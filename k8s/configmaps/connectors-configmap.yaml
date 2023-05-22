@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: connectors-config
-data:
-  DATABASE_URL: "your_database_connection_string"
