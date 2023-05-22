@@ -67,19 +67,21 @@ async function main() {
 
           const newDocumentId = [...pre, ...post].join("-");
 
-          console.log(`Updating ${d.document_id}`);
-          console.log(`  document_id: ${newDocumentId}`);
+          if (newDocumentId !== d.document_id) {
+            console.log(`Updating ${d.document_id}`);
+            console.log(`  document_id: ${newDocumentId}`);
 
-          if (LIVE) {
-            return core_sequelize.query(
-              `UPDATE data_sources_documents SET "document_id" = :documentId WHERE id = :id`,
-              {
-                replacements: {
-                  documentId: newDocumentId,
-                  id: d.id,
-                },
-              }
-            );
+            if (LIVE) {
+              return core_sequelize.query(
+                `UPDATE data_sources_documents SET "document_id" = :documentId WHERE id = :id`,
+                {
+                  replacements: {
+                    documentId: newDocumentId,
+                    id: d.id,
+                  },
+                }
+              );
+            }
           }
         })();
       })
