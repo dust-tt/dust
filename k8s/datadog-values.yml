@@ -30,6 +30,7 @@ clusterAgent:
   createPodDisruptionBudget: true
 
 agents:
+  priorityClassCreate: true
   containers:
     agent:
       resources:
