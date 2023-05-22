@@ -37,15 +37,9 @@ async function main() {
         return (async () => {
           const tags = JSON.parse(d.tags_json) as string[];
           if (tags.length === 0) {
-            if (!LIVE) {
-              console.log(`Skipping (no tags): ${d.document_id}`);
-            }
             return;
           }
           if (!d.document_id.startsWith("slack-")) {
-            if (!LIVE) {
-              console.log(`Skipping (not slack): ${d.document_id}`);
-            }
             return;
           }
 
