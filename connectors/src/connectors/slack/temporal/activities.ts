@@ -612,7 +612,7 @@ function getTagsForPage(
     // title with non-threaded time boundaries present in the documentId, but the channelName
     // instead of the channelId).
     const parts = documentId.split("-").slice(1);
-    parts[1] = channelName;
+    parts[0] = channelName;
     const title = parts.join("-");
     tags.push(`title:${title}`);
   }
