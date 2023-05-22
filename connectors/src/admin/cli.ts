@@ -6,7 +6,7 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import { Connector } from "@connectors/lib/models";
+import { Connector, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 import { isConnectorProvider } from "@connectors/types/connector";
 
@@ -68,7 +68,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const notion = async (command: string) => {
+const notion = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "restart-all": {
       const queue = new PQueue({ concurrency: 10 });
@@ -119,6 +119,50 @@ const notion = async (command: string) => {
 
       return;
     }
+
+    case "skip-page": {
+      if (!args.pageId) {
+        throw new Error("Missing --pageId argument");
+      }
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      const pageId = args.pageId as string;
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "notion",
+          workspaceId: args.wId,
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and type notion`
+        );
+      }
+      const connectorId = connector.id;
+      const existingPage = await NotionPage.findOne({
+        where: {
+          notionPageId: pageId,
+        },
+      });
+
+      const skipReason = args.reason || "blacklisted";
+
+      if (existingPage) {
+        await existingPage.update({
+          skipReason,
+        });
+      } else {
+        await NotionPage.create({
+          notionPageId: pageId,
+          skipReason,
+          connectorId,
+          lastSeenTs: new Date(),
+        });
+      }
+      return;
+    }
   }
 };
 
@@ -144,7 +188,7 @@ const main = async () => {
       await connectors(command, argv);
       return;
     case "notion":
-      await notion(command);
+      await notion(command, argv);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);
