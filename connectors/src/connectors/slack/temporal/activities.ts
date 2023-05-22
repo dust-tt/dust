@@ -298,7 +298,7 @@ export async function syncNonThreaded(
   const endDate = new Date(endTsMs);
   const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
   const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
-  const documentId = `${channelName}-messages-${startDateStr}-${endDateStr}`;
+  const documentId = `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
   const createdAt = firstMessage?.ts
@@ -396,7 +396,7 @@ export async function syncThread(
     connectorId,
     client
   );
-  const documentId = `${channelName}-thread-${threadTs}`;
+  const documentId = `slack-${channelId}-thread-${threadTs}`;
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;
@@ -608,8 +608,13 @@ function getTagsForPage(
     const dateForTitle = formatDateForThreadTitle(threadDate);
     tags.push(`title:${channelName}-thread-${dateForTitle}`);
   } else {
-    // For non-threaded message, the documentId is human-friendly, we copy it as title tag.
-    tags.push(`title:${documentId}`);
+    // replace `slack-${channelId}` by `${channelName}` in documentId (to have a human readable
+    // title with non-threaded time boundaries present in the documentId, but the channelName
+    // instead of the channelId).
+    const parts = documentId.split("-").slice(1);
+    parts[1] = channelName;
+    const title = parts.join("-");
+    tags.push(`title:${title}`);
   }
   return tags;
 }
