@@ -124,11 +124,23 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
-      if (!args.connectorId) {
-        throw new Error("Missing --connectorId argument");
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
       }
       const pageId = args.pageId as string;
-      const connectorId = parseInt(args.connectorId as string);
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "notion",
+          workspaceId: args.wId,
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and type notion`
+        );
+      }
+      const connectorId = connector.id;
       const existingPage = await NotionPage.findOne({
         where: {
           notionPageId: pageId,
