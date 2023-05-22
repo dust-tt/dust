@@ -46,6 +46,7 @@ async function main() {
             if (!LIVE) {
               console.log(`Skipping (not slack): ${d.document_id}`);
             }
+            return;
           }
 
           const parts = d.document_id.split("-");
