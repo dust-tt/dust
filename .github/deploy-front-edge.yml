@@ -1,0 +1,38 @@
+name: Deploy Front Edge
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.1
+        with:
+          project_id: ${{ secrets.GCLOUD_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCLOUD_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Setup kubectl
+        run: |
+          gcloud container clusters get-credentials dust-kube --region us-central1
+
+      - name: Build the image on Cloud Build
+        run: |
+          cd front
+          chmod +x cloud-build.sh
+          ./cloud-build.sh
+
+      - name: Deploy the image on Kubernetes
+        run: |
+          kubectl set image deployment/front-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG
+          echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG"
