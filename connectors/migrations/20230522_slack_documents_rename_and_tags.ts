@@ -1,4 +1,3 @@
-import { channel } from "diagnostics_channel";
 import { Sequelize } from "sequelize";
 
 const { CORE_DATABASE_URI, LIVE = false } = process.env;
