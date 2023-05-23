@@ -28,7 +28,7 @@ jobs:
 
       - name: Build the image on Cloud Build
         run: |
-          cd front
+          cd front/admin
           chmod +x cloud-build.sh
           ./cloud-build.sh
 

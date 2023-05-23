@@ -6,7 +6,7 @@ steps:
         "-t",
         "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA",
         "-f",
-        "Dockerfile",
+        "../Dockerfile",
         "--cache-from",
         "gcr.io/$PROJECT_ID/front-image:latest",
         ".",
