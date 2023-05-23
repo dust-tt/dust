@@ -25,13 +25,6 @@ pub enum StopReason {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct EventPayload {
-    pub event_type: String,
-    pub data: String,
-    pub stop: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Response {
     pub completion: String,
     pub stop_reason: Option<StopReason>,
@@ -169,12 +162,23 @@ impl AnthropicLLM {
                                 }
                             };
 
-                            let _ = event_sender.send(json!({
+                            match event_sender.send(json!({
                                 "type":"tokens",
                                 "content": {
                                     "text":response.completion
                                 }
-                            }));
+                            })) {
+                                Ok(_) => {}
+                                Err(error) => {
+                                    Err(anyhow!(
+                                        "Error sending tokens to event sender: {:?}",
+                                        error
+                                    ))?;
+                                    // @todo(aric): should we stop reading from Anthropic if we fail
+                                    // to send the data on the other side of the stream?
+                                    break 'stream;
+                                }
+                            };
                             final_response = Some(response.clone());
                         }
                     },
