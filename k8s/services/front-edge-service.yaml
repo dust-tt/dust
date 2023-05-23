@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-edge-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "front-backendconfig"}'
+spec:
+  selector:
+    app: front-edge
+    name: front-edge-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP

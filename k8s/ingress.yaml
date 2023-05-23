@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dust-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: dust-kube-ingress-ip-address
+    networking.gke.io/managed-certificates: front-edge-managed-cert
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+    - host: front-edge.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: front-edge-service
+                port:
+                  number: 80

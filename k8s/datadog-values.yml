@@ -1,0 +1,46 @@
+datadog:
+  logs:
+    enabled: true
+    containerCollectAll: false
+    containerExcludeLogs:
+      - "name:datadog-agent"
+  site: datadoghq.eu
+  clusterName: dust-kube
+  apm:
+    socketEnabled: false
+  dogstatsd:
+    useDogStatsDSocketVolume: false
+  ignoreAutoConfig:
+    - cilium
+    - nginx
+    - redis
+
+  kubeStateMetricsCore:
+    enabled: true
+
+  kubeStateMetricsEnabled: false
+
+clusterAgent:
+  enabled: true
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  replicas: 2
+  createPodDisruptionBudget: true
+
+agents:
+  priorityClassCreate: true
+  containers:
+    agent:
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
+
+providers:
+  gke:
+    autopilot: true

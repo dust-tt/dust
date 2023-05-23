@@ -1,0 +1,19 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/connectors-worker-image:$SHORT_SHA",
+        "-f",
+        "Dockerfile.web",
+        "--build-arg",
+        "BASE_IMAGE=gcr.io/$PROJECT_ID/connectors-base-image:$SHORT_SHA",
+        "--cache-from",
+        "gcr.io/$PROJECT_ID/connectors-base-image:latest",
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/connectors-worker-image:$SHORT_SHA"]
+images:
+  - "gcr.io/$PROJECT_ID/connectors-worker-image:$SHORT_SHA"

@@ -1,0 +1,28 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    dir: ".."
+    args:
+      [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA",
+        "-f",
+        "Dockerfile",
+        "--cache-from",
+        "gcr.io/$PROJECT_ID/front-image:latest",
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA"]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "tag",
+        "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA",
+        "gcr.io/$PROJECT_ID/front-image:latest",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/front-image:latest"]
+images:
+  - "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA"
+  - "gcr.io/$PROJECT_ID/front-image:latest"
