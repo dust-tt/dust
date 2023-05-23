@@ -42,5 +42,8 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/front-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.vars.outputs.short_sha }}
-          echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.vars.outputs.short_sha }}"
+          kubectl set image deployment/front-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }}
+          echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }}"
+
+      - name: Wait for rollout to complete
+        run: kubectl rollout status deployment/front-edge-deployment --timeout=10m
