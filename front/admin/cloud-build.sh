@@ -9,7 +9,7 @@ _DOCKERFILE_PATH="${SCRIPT_DIR}/../Dockerfile"
 echo "_DOCKERFILE_PATH is ${_DOCKERFILE_PATH}"
 
 # Start the build and get its ID
-BUILD_ID=$(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_DOCKERFILE_PATH="${_DOCKERFILE_PATH}" --format='value(id)')
+BUILD_ID=$(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_DOCKERFILE_PATH="${_DOCKERFILE_PATH}" --format='value(id)') "${SCRIPT_DIR}/.."
 
 # Print the URL where the logs can be found
 echo "View logs at: https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=$GCLOUD_PROJECT_ID"
