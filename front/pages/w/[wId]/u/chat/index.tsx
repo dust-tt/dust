@@ -1,6 +1,7 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -452,180 +453,215 @@ export default function AppChat({
         <div className="mt-2">
           <MainTab currentTab="Chat" owner={owner} />
         </div>
-        <div className="flex-1">
-          <div
-            className="h-full max-h-full grow-0 overflow-y-auto"
-            ref={scrollRef}
-          >
-            <div className="max-h-0">
-              <div className="mx-auto max-w-4xl px-6 py-2">
-                {messages.length > 0 ? (
-                  <div className="text-sm">
-                    {messages.map((m, i) => {
-                      return isErrorMessage(m) ? (
-                        <div key={i}>
-                          <div className="my-2 ml-12 flex flex-col">
-                            <div className="flex-initial text-xs font-bold text-red-500">
-                              Oops! An error occured (and the team has been
-                              notified).
-                            </div>
-                            <div className="flex-initial text-xs text-gray-500">
-                              Please give it another try, and don't hesitate to
-                              reach out if the problem persists.
-                            </div>
-                            <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                              {m.message}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={i}>
-                          <MessageView
-                            user={user}
-                            message={m}
-                            loading={false}
-                            isLatest={!response && i === messages.length - 1}
-                          />
-                        </div>
-                      );
-                    })}
-                    {response ? (
-                      <div key={messages.length}>
-                        <MessageView
-                          user={user}
-                          message={response}
-                          loading={true}
-                          isLatest={true}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
+
+        {managedDataSources.length === 0 && (
+          <div className="">
+            <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
+              <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
+                <p>💬 Welcome to Chat!</p>
+                <p className="mt-8 italic text-violet-700">
+                  <span className="font-bold">Chat</span> is a conversational
+                  agent with access on your team's knowledge base.
+                </p>
+                {owner.role === "admin" ? (
+                  <p className="mt-8">
+                    You need to set up at least one managed{" "}
+                    <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
+                      Data Source
+                    </Link>{" "}
+                    to activate Chat on your workspace.
+                  </p>
                 ) : (
-                  <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                    <p>💬 Welcome to Chat!</p>
-                    <p className="mt-8">
-                      👩🏼‍🔬 This is an early exploration of a conversational
-                      assistant with context on your team's Slack & Notion. For
-                      each interaction, semantically relevant chunks of
-                      documents are retrieved and presented to Chat to help it
-                      answer your queries.
-                    </p>
-                    <p className="mt-4">
-                      📈 You should expect better performance on general,
-                      qualitative, and thematic questions. Precise or
-                      quantitative questions won't work as well.
-                    </p>
-                    <p className="mt-4">
-                      🔗 You can presume the last few answers are in context for
-                      your dialogue with Chat: don't hesitate to ask follow-up
-                      questions. Only the latest documents retrieved are visible
-                      to Chat. Context is limited so don't be surprised if Chat
-                      moves on after a while.
-                    </p>
-                    <p className="mt-4">
-                      🧞‍♂️ Please share feedback with us on what's working well
-                      and what else you would like Chat to do via Slack or
-                      email:{" "}
-                      <a href="mailto:team@dust.tt" className="font-bold">
-                        team@dust.tt
-                      </a>
-                    </p>
-                  </div>
+                  <p className="mt-8">
+                    Contact the admin of your workspace to activate Chat for
+                    your team.
+                  </p>
                 )}
               </div>
             </div>
           </div>
-        </div>
-        <div className="z-50 w-full flex-initial border bg-white text-sm">
-          <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-            <div className="my-2">
-              <div className="flex flex-row items-center">
-                <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
-                  alpha
-                </div>
-                <div className="flex flex-1 flex-row items-end">
-                  <TextareaAutosize
-                    minRows={1}
-                    placeholder={`Ask anything about \`${owner.name}\``}
-                    className={classNames(
-                      "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                      "rounded-sm",
-                      "border",
-                      "border-slate-200 focus:border-slate-300 focus:ring-0",
-                      "placeholder-gray-400",
-                      "pr-7"
-                    )}
-                    value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.ctrlKey || e.metaKey) {
-                        if (e.key === "Enter" && !loading) {
-                          void handleSubmitMessage();
-                          e.preventDefault();
-                        }
-                      }
-                    }}
-                    autoFocus={true}
-                  />
-                  <div
-                    className={classNames(
-                      "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                    )}
-                  >
-                    {!loading ? (
-                      <ArrowRightCircleIcon
-                        className="h-5 w-5 cursor-pointer text-violet-500"
-                        onClick={() => {
-                          void handleSubmitMessage();
-                        }}
-                      />
+        )}
+
+        {managedDataSources.length > 0 && (
+          <>
+            <div className="flex-1">
+              <div
+                className="h-full max-h-full grow-0 overflow-y-auto"
+                ref={scrollRef}
+              >
+                <div className="max-h-0">
+                  <div className="mx-auto max-w-4xl px-6 py-2">
+                    {messages.length > 0 ? (
+                      <div className="text-sm">
+                        {messages.map((m, i) => {
+                          return isErrorMessage(m) ? (
+                            <div key={i}>
+                              <div className="my-2 ml-12 flex flex-col">
+                                <div className="flex-initial text-xs font-bold text-red-500">
+                                  Oops! An error occured (and the team has been
+                                  notified).
+                                </div>
+                                <div className="flex-initial text-xs text-gray-500">
+                                  Please give it another try, and don't hesitate
+                                  to reach out if the problem persists.
+                                </div>
+                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                                  {m.message}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div key={i}>
+                              <MessageView
+                                user={user}
+                                message={m}
+                                loading={false}
+                                isLatest={
+                                  !response && i === messages.length - 1
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                        {response ? (
+                          <div key={messages.length}>
+                            <MessageView
+                              user={user}
+                              message={response}
+                              loading={true}
+                              isLatest={true}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     ) : (
-                      <div className="mb-1 ml-1">
-                        <Spinner />
+                      <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                        <p>💬 Welcome to Chat!</p>
+                        <p className="mt-8">
+                          👩🏼‍🔬 This is an early exploration of a conversational
+                          assistant with context on your team's Slack & Notion.
+                          For each interaction, semantically relevant chunks of
+                          documents are retrieved and presented to Chat to help
+                          it answer your queries.
+                        </p>
+                        <p className="mt-4">
+                          📈 You should expect better performance on general,
+                          qualitative, and thematic questions. Precise or
+                          quantitative questions won't work as well.
+                        </p>
+                        <p className="mt-4">
+                          🔗 You can presume the last few answers are in context
+                          for your dialogue with Chat: don't hesitate to ask
+                          follow-up questions. Only the latest documents
+                          retrieved are visible to Chat. Context is limited so
+                          don't be surprised if Chat moves on after a while.
+                        </p>
+                        <p className="mt-4">
+                          🧞‍♂️ Please share feedback with us on what's working
+                          well and what else you would like Chat to do via Slack
+                          or email:{" "}
+                          <a href="mailto:team@dust.tt" className="font-bold">
+                            team@dust.tt
+                          </a>
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="mb-4 flex flex-row text-xs">
-              <div className="flex flex-initial text-gray-400">
-                Data Sources:
-              </div>
-              <div className="flex flex-row">
-                {dataSources.map((ds) => {
-                  return (
-                    <div key={ds.name} className="ml-1 flex flex-initial">
+            <div className="z-50 w-full flex-initial border bg-white text-sm">
+              <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
+                <div className="my-2">
+                  <div className="flex flex-row items-center">
+                    <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
+                      alpha
+                    </div>
+                    <div className="flex flex-1 flex-row items-end">
+                      <TextareaAutosize
+                        minRows={1}
+                        placeholder={`Ask anything about \`${owner.name}\``}
+                        className={classNames(
+                          "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
+                          "rounded-sm",
+                          "border",
+                          "border-slate-200 focus:border-slate-300 focus:ring-0",
+                          "placeholder-gray-400",
+                          "pr-7"
+                        )}
+                        value={input}
+                        onChange={(e) => {
+                          setInput(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.ctrlKey || e.metaKey) {
+                            if (e.key === "Enter" && !loading) {
+                              void handleSubmitMessage();
+                              e.preventDefault();
+                            }
+                          }
+                        }}
+                        autoFocus={true}
+                      />
                       <div
                         className={classNames(
-                          "mr-1 flex h-4 w-4 flex-initial cursor-pointer",
-                          ds.selected ? "opacity-100" : "opacity-25"
+                          "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
                         )}
-                        onClick={() => {
-                          handleSwitchDataSourceSelection(ds.name);
-                        }}
                       >
-                        <img src={ds.logoPath}></img>
+                        {!loading ? (
+                          <ArrowRightCircleIcon
+                            className="h-5 w-5 cursor-pointer text-violet-500"
+                            onClick={() => {
+                              void handleSubmitMessage();
+                            }}
+                          />
+                        ) : (
+                          <div className="mb-1 ml-1">
+                            <Spinner />
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-1 text-gray-400"></div>
-              <div className="flex flex-initial text-gray-400">
-                <>
-                  <span className="font-bold">
-                    {isMac ? "⌘" : "ctrl"}
-                    +⏎
-                  </span>
-                  <span className="ml-1 text-gray-300">to submit</span>
-                </>
+                  </div>
+                </div>
+                <div className="mb-4 flex flex-row text-xs">
+                  <div className="flex flex-initial text-gray-400">
+                    Data Sources:
+                  </div>
+                  <div className="flex flex-row">
+                    {dataSources.map((ds) => {
+                      return (
+                        <div key={ds.name} className="ml-1 flex flex-initial">
+                          <div
+                            className={classNames(
+                              "mr-1 flex h-4 w-4 flex-initial cursor-pointer",
+                              ds.selected ? "opacity-100" : "opacity-25"
+                            )}
+                            onClick={() => {
+                              handleSwitchDataSourceSelection(ds.name);
+                            }}
+                          >
+                            <img src={ds.logoPath}></img>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-1 text-gray-400"></div>
+                  <div className="flex flex-initial text-gray-400">
+                    <>
+                      <span className="font-bold">
+                        {isMac ? "⌘" : "ctrl"}
+                        +⏎
+                      </span>
+                      <span className="ml-1 text-gray-300">to submit</span>
+                    </>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </AppLayout>
   );
