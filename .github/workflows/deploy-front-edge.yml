@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_TAG: ${{ substr(github.sha, 0, 7) }}
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
 jobs:
@@ -14,6 +13,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
@@ -39,5 +42,5 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/front-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG
-          echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG"
+          kubectl set image deployment/front-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.vars.outputs.short_sha }}
+          echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.vars.outputs.short_sha }}"
