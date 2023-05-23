@@ -5,12 +5,16 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use eventsource_client as es;
+use eventsource_client::Client as ESClient;
+use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt::{self, Display};
 use std::io::prelude::*;
+use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -21,9 +25,16 @@ pub enum StopReason {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EventPayload {
+    pub event_type: String,
+    pub data: String,
+    pub stop: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Response {
     pub completion: String,
-    pub stop_reason: StopReason,
+    pub stop_reason: Option<StopReason>,
     pub stop: Option<String>,
 }
 
@@ -75,7 +86,117 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
-    async fn generate(
+    async fn streamed_completion(
+        &self,
+        prompt: &str,
+        max_tokens_to_sample: i32,
+        temperature: f32,
+        top_p: f32,
+        top_k: i32,
+        stop: &Vec<String>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<Response> {
+        let url = self.uri()?.to_string();
+
+        let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
+            Ok(builder) => builder,
+            Err(e) => {
+                return Err(anyhow!(
+                    "Error creating Anthropic streaming client: {:?}",
+                    e
+                ))
+            }
+        };
+
+        builder = builder.method(String::from("POST"));
+        builder = match builder.header("Content-Type", "application/json") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+
+        let body = json!({
+            "model": self.id.clone(),
+            "prompt": prompt,
+            "max_tokens_to_sample": max_tokens_to_sample,
+            "temperature": temperature,
+            "stop_sequences": stop.clone(),
+            "top_p": top_p,
+            "top_k": top_k,
+            "stream": true
+        });
+
+        let client = builder
+            .body(body.to_string())
+            .reconnect(
+                es::ReconnectOptions::reconnect(true)
+                    .retry_initial(false)
+                    .delay(Duration::from_secs(1))
+                    .backoff_factor(2)
+                    .delay_max(Duration::from_secs(8))
+                    .build(),
+            )
+            .build();
+
+        let mut stream = client.stream();
+
+        let mut final_response: Option<Response> = None;
+        'stream: loop {
+            match stream.try_next().await {
+                Ok(stream_next) => match stream_next {
+                    Some(es::SSE::Comment(comment)) => {
+                        println!("UNEXPECTED COMMENT {}", comment);
+                    }
+                    Some(es::SSE::Event(event)) => match event.data.as_str() {
+                        "[DONE]" => {
+                            println!("DONE");
+                            break 'stream;
+                        }
+                        _ => {
+                            let response: Response = match serde_json::from_str(event.data.as_str())
+                            {
+                                Ok(response) => response,
+                                Err(error) => {
+                                    Err(anyhow!(
+                                        "Error parsing response from Anthropic: {:?} {:?}",
+                                        error,
+                                        event.data
+                                    ))?;
+                                    break 'stream;
+                                }
+                            };
+
+                            let _ = event_sender.send(json!({
+                                "type":"tokens",
+                                "content": {
+                                    "text":response.completion
+                                }
+                            }));
+                            final_response = Some(response.clone());
+                        }
+                    },
+                    None => {
+                        println!("UNEXPECTED NONE");
+                        break 'stream;
+                    }
+                },
+                Err(error) => {
+                    Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                    break 'stream;
+                }
+            }
+        }
+
+        return match final_response {
+            Some(response) => Ok(response),
+            None => Err(anyhow!("No response from Anthropic")),
+        };
+    }
+
+    async fn completion(
         &self,
         prompt: &str,
         max_tokens_to_sample: i32,
@@ -85,7 +206,6 @@ impl AnthropicLLM {
         stop: &Vec<String>,
     ) -> Result<Response> {
         assert!(self.api_key.is_some());
-
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
@@ -118,7 +238,6 @@ impl AnthropicLLM {
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
-
         let response = match status {
             hyper::StatusCode::OK => {
                 let response: Response = serde_json::from_slice(c)?;
@@ -176,47 +295,90 @@ impl LLM for AnthropicLLM {
         top_p: Option<f32>,
         top_logprobs: Option<i32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(self.api_key.is_some());
         assert!(n > 0);
 
-        // anthropic only supports generating one sample at a time
-        // so we loop here and make n API calls
-        let mut completions: Vec<Tokens> = vec![];
-        for _ in 0..n {
-            let response = self
-                .generate(
-                    prompt,
-                    match max_tokens {
-                        Some(m) => m,
-                        None => 256,
-                    },
-                    temperature,
-                    match top_p {
-                        Some(p) => p,
-                        None => 1.0,
-                    },
-                    match top_logprobs {
-                        Some(k) => k,
-                        None => 0,
-                    },
-                    stop,
-                )
-                .await?;
+        let c: Vec<Tokens> = match event_sender {
+            Some(es) => {
+                let mut completions: Vec<Tokens> = vec![];
+                let response = match self
+                    .streamed_completion(
+                        prompt,
+                        match max_tokens {
+                            Some(m) => m,
+                            None => 256,
+                        },
+                        temperature,
+                        match top_p {
+                            Some(p) => p,
+                            None => 1.0,
+                        },
+                        match top_logprobs {
+                            Some(k) => k,
+                            None => 0,
+                        },
+                        stop,
+                        es,
+                    )
+                    .await
+                {
+                    Ok(response) => response,
+                    Err(error) => {
+                        return Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                    }
+                };
+                completions.push(Tokens {
+                    // Anthropic only return the text
+                    text: response.completion.clone(),
+                    tokens: Some(vec![]),
+                    logprobs: Some(vec![]),
+                    top_logprobs: Some(vec![]),
+                });
 
-            completions.push(Tokens {
-                // Anthropic only return the text
-                text: response.completion.clone(),
-                tokens: Some(vec![]),
-                logprobs: Some(vec![]),
-                top_logprobs: Some(vec![]),
-            });
-        }
+                completions
+            }
+            None => {
+                let mut completions: Vec<Tokens> = vec![];
+                // anthropic only supports generating one sample at a time
+                // so we loop here and make n API calls
+                for _ in 0..n {
+                    let response = self
+                        .completion(
+                            prompt,
+                            match max_tokens {
+                                Some(m) => m,
+                                None => 256,
+                            },
+                            temperature,
+                            match top_p {
+                                Some(p) => p,
+                                None => 1.0,
+                            },
+                            match top_logprobs {
+                                Some(k) => k,
+                                None => 0,
+                            },
+                            stop,
+                        )
+                        .await?;
+
+                    completions.push(Tokens {
+                        // Anthropic only return the text
+                        text: response.completion.clone(),
+                        tokens: Some(vec![]),
+                        logprobs: Some(vec![]),
+                        top_logprobs: Some(vec![]),
+                    });
+                }
+                completions
+            }
+        };
 
         let llm_generation = LLMGeneration {
             created: utils::now(),
-            completions: completions,
+            completions: c,
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
             prompt: Tokens {
