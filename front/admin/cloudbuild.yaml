@@ -1,13 +1,12 @@
 steps:
   - name: "gcr.io/cloud-builders/docker"
-    dir: ".."
     args:
       [
         "build",
         "-t",
         "gcr.io/$PROJECT_ID/front-image:$SHORT_SHA",
         "-f",
-        "$_DOCKERFILE_PATH",
+        "Dockerfile",
         "--cache-from",
         "gcr.io/$PROJECT_ID/front-image:latest",
         ".",
