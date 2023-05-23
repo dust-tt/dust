@@ -33,9 +33,8 @@ jobs:
 
       - name: Build the image on Cloud Build
         run: |
-          cd front/admin
-          chmod +x cloud-build.sh
-          ./cloud-build.sh
+          chmod +x front/admin/cloud-build.sh
+          ./front/admin/cloud-build.sh
 
       - name: Deploy the image on Kubernetes
         run: |
