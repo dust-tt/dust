@@ -6,13 +6,13 @@ import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-import {GetWorkspaceInvitationsResponseBody} from "@app/pages/api/w/[wId]/invitations";
 
 export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
@@ -170,8 +170,12 @@ export function useMembers(owner: WorkspaceType) {
 }
 
 export function useWorkspaceInvitations(owner: WorkspaceType) {
-  const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> = fetcher;
-  const { data, error } = useSWR(`/api/w/${owner.sId}/invitations`, workspaceInvitationsFetcher);
+  const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
+    fetcher;
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/invitations`,
+    workspaceInvitationsFetcher
+  );
 
   return {
     invitations: data ? data.invitations : [],
@@ -179,4 +183,3 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
     isInvitationsError: error,
   };
 }
-

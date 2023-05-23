@@ -197,7 +197,6 @@ export class MembershipInvitation extends Model<
   declare token: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare invitedByAdminId: ForeignKey<User["id"]>;
   declare invitedUserId: ForeignKey<User["id"]>;
 }
 MembershipInvitation.init(
@@ -227,18 +226,17 @@ MembershipInvitation.init(
       defaultValue: "pending",
     },
     token: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    }
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     modelName: "membership_invitation",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["workspaceId"] }],
+    indexes: [{ fields: ["workspaceId", "status"] }],
   }
 );
 Workspace.hasMany(MembershipInvitation);
-User.hasMany(MembershipInvitation, { as: "invitedByAdmin" });
 User.hasMany(MembershipInvitation, { as: "invitedUser" });
 
 export class App extends Model<

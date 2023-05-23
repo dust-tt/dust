@@ -1,15 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import {MembershipInvitation, Workspace} from "@app/lib/models";
+import { MembershipInvitation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {MembershipInvitationType} from "@app/types/membership_invitation";
-
+import { MembershipInvitationType } from "@app/types/membership_invitation";
 
 export type GetMemberInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
-
 
 async function handler(
   req: NextApiRequest,
@@ -43,7 +41,7 @@ async function handler(
     });
   }
 
-  let invitationId = parseInt(req.query.invitationId as string);
+  const invitationId = parseInt(req.query.invitationId as string);
   if (isNaN(invitationId)) {
     return apiError(req, res, {
       status_code: 404,
@@ -55,23 +53,23 @@ async function handler(
   }
 
   switch (req.method) {
-    case "PATCH":
+    case "POST":
       if (
-          !req.body ||
-          !typeof (req.body.status === "string") ||
-          req.body.status !== "revoked" // For now we only allow to revoke an invitation
+        !req.body ||
+        !typeof (req.body.status === "string") ||
+        req.body.status !== "revoked" // For now we only allow to revoke an invitation
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { status: \"revoked\" }.",
+              'The request body is invalid, expects { status: "revoked" }.',
           },
         });
       }
 
-      let invitation = await MembershipInvitation.findOne({
+      const invitation = await MembershipInvitation.findOne({
         where: { id: invitationId },
       });
 
@@ -88,11 +86,13 @@ async function handler(
       invitation.status = req.body.status;
       await invitation.save();
       res.status(200).json({
-        invitations: [{
-          id: invitation.id,
-          status: invitation.status,
-          inviteEmail: invitation.inviteEmail,
-        }],
+        invitations: [
+          {
+            id: invitation.id,
+            status: invitation.status,
+            inviteEmail: invitation.inviteEmail,
+          },
+        ],
       });
       return;
 
@@ -101,7 +101,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }

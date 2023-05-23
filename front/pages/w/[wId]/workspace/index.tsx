@@ -142,7 +142,7 @@ export default function NewApp({
 
   const handleRevokeInvitation = async (invitationId: number) => {
     const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
-      method: "PATCH",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
