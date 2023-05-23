@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 
 _DOCKERFILE_PATH="${SCRIPT_DIR}/../Dockerfile"
 
+echo "_DOCKERFILE_PATH is ${_DOCKERFILE_PATH}"
+
 # Start the build and get its ID
 BUILD_ID=$(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_DOCKERFILE_PATH="${_DOCKERFILE_PATH}" --format='value(id)')
 
