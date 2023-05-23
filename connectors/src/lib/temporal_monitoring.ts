@@ -49,6 +49,7 @@ export class ActivityInboundLogInterceptor
       `activity_id:${this.context.info.activityId}`,
       `workflow_id:${this.context.info.workflowExecution.workflowId}`,
       `workflow_run_id:${this.context.info.workflowExecution.runId}`,
+      `attempt:${this.context.info.attempt}`,
     ];
 
     try {
