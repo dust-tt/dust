@@ -9,11 +9,7 @@ import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 
-const {
-  SENDGRID_API_KEY = "",
-  URL,
-  WORKSPACE_INVITE_TOKEN_SECRET,
-} = process.env;
+const { SENDGRID_API_KEY = "", URL, DUST_INVITE_TOKEN_SECRET } = process.env;
 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
@@ -77,15 +73,15 @@ async function handler(
       if (!URL) {
         throw new Error("URL is not set");
       }
-      if (!WORKSPACE_INVITE_TOKEN_SECRET) {
-        throw new Error("WORKSPACE_INVITE_TOKEN_SECRET is not set");
+      if (!DUST_INVITE_TOKEN_SECRET) {
+        throw new Error("DUST_INVITE_TOKEN_SECRET is not set");
       }
 
       // Create MembershipInvitation
       const inviteEmail = req.body.inviteEmail;
       const invitationToken = sign(
         { workspaceId: owner.id, inviteEmail },
-        WORKSPACE_INVITE_TOKEN_SECRET
+        DUST_INVITE_TOKEN_SECRET
       );
       const invitation = await MembershipInvitation.create({
         workspaceId: owner.id,
