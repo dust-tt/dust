@@ -15,6 +15,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: front-service
+                name: front-edge-service
                 port:
                   number: 80

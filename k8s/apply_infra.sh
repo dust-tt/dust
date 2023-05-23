@@ -30,20 +30,20 @@ echo "-----------------------------------"
 echo "Applying configmaps"
 echo "-----------------------------------"
 
-kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
-kubectl apply -f "$(dirname "$0")/deployments/front-deployment.yaml"
+kubectl apply -f "$(dirname "$0")/deployments/front-edge-deployment.yaml"
 
 
 echo "-----------------------------------"
 echo "Applying services"
 echo "-----------------------------------"
 
-kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
 
 
 echo "-----------------------------------"

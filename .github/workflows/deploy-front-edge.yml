@@ -34,5 +34,5 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/front-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG
+          kubectl set image deployment/front-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG
           echo "Updated front image to: gcr.io/$GCLOUD_PROJECT_ID/front-image:$IMAGE_TAG"
