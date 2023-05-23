@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: ${{ substr(github.sha, 0, 7) }}
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
 jobs:
