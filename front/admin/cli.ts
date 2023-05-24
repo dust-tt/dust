@@ -43,7 +43,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`workspace:`);
       console.log(`  wId: ${w.sId}`);
       console.log(`  name: ${w.name}`);
-      console.log(`  type: ${w.type}`);
 
       const plan = planForWorkspace(w);
       console.log(`  plan:`);
@@ -71,7 +70,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         uId,
         sId: uId.slice(0, 10),
         name: args.name,
-        type: "team",
       });
 
       args.wId = w.sId;

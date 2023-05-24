@@ -122,7 +122,6 @@ async function handler(
             uId,
             sId: uId.slice(0, 10),
             name: session.user.username,
-            type: "personal",
           });
 
           await Membership.create({
