@@ -1,6 +1,0 @@
-FROM node:18.15.0 as base
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build

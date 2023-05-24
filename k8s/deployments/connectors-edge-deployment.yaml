@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectors-edge-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: connectors-edge
+  template:
+    metadata:
+      labels:
+        app: connectors-edge
+        name: connectors-edge-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "connectors","service": "connectors-edge","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/connectors-image:latest
+          command: ["npm", "run", "start:web"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: connectors-edge-config
+            - secretRef:
+                name: connectors-secrets
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+      imagePullSecrets:
+        - name: gcr-json-key
