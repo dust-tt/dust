@@ -14,11 +14,12 @@ import { authMiddleware } from "@connectors/middleware/auth";
 export function startServer(port: number) {
   const app = express();
 
-  app.use(authMiddleware);
-  app.use(bodyParser.json());
   app.get("/", (req, res) => {
     res.status(200).send("OK");
   });
+
+  app.use(authMiddleware);
+  app.use(bodyParser.json());
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
