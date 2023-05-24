@@ -138,7 +138,7 @@ impl AnthropicLLM {
         let mut stream = client.stream();
 
         let mut final_response: Option<Response> = None;
-        let mut already_streamed_length = 0;
+        let mut streamed_length = 0;
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
@@ -163,8 +163,7 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                             };
-                            let completion_to_stream =
-                                &response.completion[already_streamed_length..];
+                            let completion_to_stream = &response.completion[streamed_length..];
 
                             if completion_to_stream.len() > 0 {
                                 let _ = event_sender.send(json!({
@@ -175,7 +174,7 @@ impl AnthropicLLM {
 
                                 }));
                             }
-                            already_streamed_length = response.completion.len();
+                            streamed_length = response.completion.len();
                             final_response = Some(response.clone());
                         }
                     },
@@ -302,7 +301,7 @@ impl LLM for AnthropicLLM {
         assert!(n > 0);
         if n > 1 {
             return Err(anyhow!(
-                "Anthropic only supports generating one sample at a time"
+                "Anthropic only supports generating one sample at a time."
             ))?;
         }
 
