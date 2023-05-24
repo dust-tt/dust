@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
-import { Membership, User } from "@app/lib/models";
+import { Membership, MembershipInvitation, User } from "@app/lib/models";
+import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType } from "@app/types/user";
 
 /**
@@ -51,6 +52,35 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
       name: u.name,
       image: null,
       workspaces: [{ ...owner, role }],
+    };
+  });
+}
+
+/**
+ * Returns the pending inviations associated with the authenticator's owner workspace.
+ * @param auth Authenticator
+ * @returns MenbershipInvitation[] members of the workspace
+ */
+export async function getPendingInvitations(
+  auth: Authenticator
+): Promise<MembershipInvitationType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+
+  const invitations = await MembershipInvitation.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "pending",
+    },
+  });
+
+  return invitations.map((i) => {
+    return {
+      id: i.id,
+      status: i.status,
+      inviteEmail: i.inviteEmail,
     };
   });
 }

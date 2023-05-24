@@ -29,6 +29,7 @@ export type APIErrorType =
   | "workspace_not_found"
   | "action_unknown_error"
   | "action_api_error"
+  | "invitation_not_found"
   | "plan_limit_error";
 
 export type APIError = {

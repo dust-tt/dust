@@ -179,6 +179,56 @@ Membership.init(
 User.hasMany(Membership);
 Workspace.hasMany(Membership);
 
+export class MembershipInvitation extends Model<
+  InferAttributes<MembershipInvitation>,
+  InferCreationAttributes<MembershipInvitation>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare inviteEmail: "string";
+  declare status: "pending" | "consumed" | "revoked";
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare invitedUserId: ForeignKey<User["id"]>;
+}
+MembershipInvitation.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    inviteEmail: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
+    },
+  },
+  {
+    modelName: "membership_invitation",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["workspaceId", "status"] }],
+  }
+);
+Workspace.hasMany(MembershipInvitation);
+User.hasMany(MembershipInvitation, { as: "invitedUser" });
+
 export class App extends Model<
   InferAttributes<App>,
   InferCreationAttributes<App>
