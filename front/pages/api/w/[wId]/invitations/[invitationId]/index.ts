@@ -20,7 +20,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner || owner.type !== "team") {
+  if (!owner) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -57,7 +57,8 @@ async function handler(
       if (
         !req.body ||
         !typeof (req.body.status === "string") ||
-        req.body.status !== "revoked" // For now we only allow to revoke an invitation
+        // For now we only allow revoking invitations.
+        req.body.status !== "revoked"
       ) {
         return apiError(req, res, {
           status_code: 400,
