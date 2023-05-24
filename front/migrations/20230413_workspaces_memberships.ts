@@ -28,6 +28,7 @@ async function main() {
               uId,
               sId: uId.slice(0, 10),
               name: u.username,
+              //@ts-expect-error old migration code kept for reference
               type: "personal",
             });
 

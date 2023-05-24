@@ -22,7 +22,6 @@ export type WorkspaceType = {
   sId: string;
   name: string;
   allowedDomain: string | null;
-  type: "personal" | "team";
   role: RoleType;
   plan: PlanType;
 };

@@ -65,18 +65,16 @@ export default function MainTab({
         />
       ),
     });
-    if (owner.type === "team") {
-      tabs.push({
-        name: "Workspace",
-        href: `/w/${owner.sId}/workspace`,
-        icon: (
-          <UsersIcon
-            className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-            aria-hidden="true"
-          />
-        ),
-      });
-    }
+    tabs.push({
+      name: "Workspace",
+      href: `/w/${owner.sId}/workspace`,
+      icon: (
+        <UsersIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    });
   }
 
   const currTab = tabs.find((tab) => tab.name == currentTab);
@@ -119,27 +117,25 @@ export default function MainTab({
             </Menu.Items>
           </Menu>
         </div>
-        {owner.type === "team" ? (
-          <div className="flex flex-initial">
-            <Link
-              href={`/w/${owner.sId}/u`}
-              className={classNames(
-                "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
-              )}
-            >
-              Use
-            </Link>
-            <div
-              className={classNames(
-                "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                "border-gray-500 font-bold text-gray-700"
-              )}
-            >
-              Build
-            </div>
+        <div className="flex flex-initial">
+          <Link
+            href={`/w/${owner.sId}/u`}
+            className={classNames(
+              "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+              "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
+            )}
+          >
+            Use
+          </Link>
+          <div
+            className={classNames(
+              "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+              "border-gray-500 font-bold text-gray-700"
+            )}
+          >
+            Build
           </div>
-        ) : null}
+        </div>
       </div>
 
       <div className="hidden sm:block">
@@ -163,27 +159,25 @@ export default function MainTab({
               </div>
             ))}
             <div className="flex flex-1"></div>
-            {owner.type === "team" ? (
-              <div className="flex flex-initial">
-                <Link
-                  href={`/w/${owner.sId}/u`}
-                  className={classNames(
-                    "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                    "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
-                  )}
-                >
-                  Use
-                </Link>
-                <div
-                  className={classNames(
-                    "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
-                    "border-gray-500 font-bold text-gray-700"
-                  )}
-                >
-                  Build
-                </div>
+            <div className="flex flex-initial">
+              <Link
+                href={`/w/${owner.sId}/u`}
+                className={classNames(
+                  "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+                  "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
+                )}
+              >
+                Use
+              </Link>
+              <div
+                className={classNames(
+                  "flex flex items-center whitespace-nowrap border-b-2 px-2 py-3 text-sm",
+                  "border-gray-500 font-bold text-gray-700"
+                )}
+              >
+                Build
               </div>
-            ) : null}
+            </div>
           </nav>
         </div>
       </div>

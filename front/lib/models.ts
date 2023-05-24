@@ -87,7 +87,6 @@ export class Workspace extends Model<
   declare name: string;
   declare description?: string;
   declare allowedDomain?: string;
-  declare type: "personal" | "team";
   declare plan?: string;
 }
 Workspace.init(
@@ -124,10 +123,6 @@ Workspace.init(
     },
     allowedDomain: {
       type: DataTypes.STRING,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     plan: {
       type: DataTypes.STRING,

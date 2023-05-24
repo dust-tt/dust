@@ -28,7 +28,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin() || owner.type !== "team") {
+  if (!owner || !auth.isAdmin()) {
     return {
       notFound: true,
     };
@@ -44,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-export default function NewApp({
+export default function WorkspaceAdmin({
   user,
   owner,
   gaTrackingId,

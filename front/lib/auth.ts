@@ -175,7 +175,6 @@ export class Authenticator {
           sId: this._workspace.sId,
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
-          type: this._workspace.type,
           role: this._role,
           plan: planForWorkspace(this._workspace),
         }
@@ -259,7 +258,6 @@ export async function getUserFromSession(
         sId: w.sId,
         name: w.name,
         allowedDomain: w.allowedDomain || null,
-        type: w.type,
         role,
         plan: planForWorkspace(w),
       };
