@@ -28,10 +28,17 @@ spec:
                 name: connectors-edge-config
             - secretRef:
                 name: connectors-secrets
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
           resources:
             requests:
               cpu: 200m
               memory: 512Mi
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-cert
 
       imagePullSecrets:
         - name: gcr-json-key
