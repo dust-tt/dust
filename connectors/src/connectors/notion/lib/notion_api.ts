@@ -5,7 +5,6 @@ import {
   isFullBlock,
   isFullDatabase,
   isFullPage,
-  iteratePaginatedAPI,
 } from "@notionhq/client";
 import {
   BlockObjectResponse,
@@ -149,11 +148,12 @@ export async function getPagesEditedSince(
           };
         }
         try {
-          for await (const child of iteratePaginatedAPI(
+          for await (const child of iteratePaginatedAPIWithRetries(
             notionClient.databases.query,
             {
               database_id: pageOrDb.id,
-            }
+            },
+            localLogger
           )) {
             if (isFullPage(child)) {
               editedPages[child.id] = lastEditedTime;
@@ -429,9 +429,13 @@ async function renderChildDatabase(
   const rows: string[] = [];
   let header: string[] | null = null;
   try {
-    for await (const page of iteratePaginatedAPI(notionClient.databases.query, {
-      database_id: block.id,
-    })) {
+    for await (const page of iteratePaginatedAPIWithRetries(
+      notionClient.databases.query,
+      {
+        database_id: block.id,
+      },
+      pageLogger
+    )) {
       if (isFullPage(page)) {
         if (!header) {
           header = Object.entries(page.properties).map(([key]) => key);
@@ -511,7 +515,8 @@ async function getUserName(
 async function parsePageBlock(
   block: BlockObjectResponse,
   notionClient: Client,
-  pageLogger: Logger
+  pageLogger: Logger,
+  parentsIds: Set<string> = new Set()
 ): Promise<ParsedBlock[]> {
   function parseRichText(text: RichTextItemResponse[]): string {
     const parsed = text.map((t) => t.plain_text).join(" ");
@@ -568,16 +573,24 @@ async function parsePageBlock(
 
     const parsedChildren: ParsedBlock[] = [];
     try {
-      for await (const child of iteratePaginatedAPI(
+      for await (const child of iteratePaginatedAPIWithRetries(
         notionClient.blocks.children.list,
         {
           block_id: block.id,
-        }
+        },
+        pageLogger
       )) {
         if (isFullBlock(child)) {
-          parsedChildren.push(
-            ...(await parsePageBlock(child, notionClient, pageLogger))
-          );
+          if (!parentsIds.has(child.id)) {
+            parsedChildren.push(
+              ...(await parsePageBlock(
+                child,
+                notionClient,
+                pageLogger,
+                new Set([...parentsIds, block.id])
+              ))
+            );
+          }
         }
       }
     } catch (e) {
@@ -847,4 +860,73 @@ async function parsePageBlock(
       })(block);
       return [NULL_BLOCK];
   }
+}
+
+interface IPaginatedList<T> {
+  object: "list";
+  results: T[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
+export async function* iteratePaginatedAPIWithRetries<
+  Args extends {
+    start_cursor?: string;
+  },
+  Item
+>(
+  listFn: (args: Args) => Promise<IPaginatedList<Item>>,
+  firstPageArgs: Args,
+  localLogger?: Logger | null,
+  retry: { retries: number; backoffFactor: number } = {
+    retries: 5,
+    backoffFactor: 2,
+  }
+): AsyncIterableIterator<Item> {
+  let nextCursor: string | null | undefined = firstPageArgs.start_cursor;
+  let resultPageIdx = 0;
+  do {
+    let tries = 0;
+    let response: IPaginatedList<Item> | null = null;
+    const resultPageLogger = (localLogger || logger).child({
+      firstPageArgs,
+      resultPageIdx,
+      nextCursor,
+    });
+    while (tries < retry.retries) {
+      const tryLogger = resultPageLogger.child({
+        tries,
+        maxTries: retry.retries,
+      });
+      try {
+        tryLogger.info("Fetching result page from Notion paginated API.");
+        response = await listFn({
+          ...firstPageArgs,
+          start_cursor: nextCursor,
+        });
+        break;
+      } catch (e) {
+        tryLogger.error(
+          { error: e },
+          "Error while iterating on Notion paginated API."
+        );
+        tries += 1;
+        if (tries >= retry.retries) {
+          throw e;
+        }
+        const sleepTime = 500 * retry.backoffFactor ** tries;
+        tryLogger.info({ sleepTime }, "Sleeping before retrying.");
+        await new Promise((resolve) => setTimeout(resolve, sleepTime));
+        continue;
+      }
+    }
+
+    if (!response) {
+      throw new Error("Unreachable.");
+    }
+
+    yield* response.results;
+    nextCursor = response.next_cursor;
+    resultPageIdx += 1;
+  } while (nextCursor);
 }
