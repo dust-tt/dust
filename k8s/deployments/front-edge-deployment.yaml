@@ -27,6 +27,10 @@ spec:
                 name: front-edge-config
             - secretRef:
                 name: front-secrets
+          # override env vars from configmap/secret
+          env:
+            - name: CONNECTORS_API
+              value: "connectors-edge-service"
           resources:
             requests:
               cpu: 200m
