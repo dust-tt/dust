@@ -1,4 +1,4 @@
-FROM node:18.15.0-alpine as connectors
+FROM node:18.15.0 as connectors
 
 WORKDIR /app
 
