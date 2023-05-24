@@ -33,6 +33,24 @@ echo "-----------------------------------"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 
 echo "-----------------------------------"
+echo "Applying backend configs"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
+
+echo "-----------------------------------"
+echo "Applying managed certificates"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
+
+echo "-----------------------------------"
+echo "Applying frontend configs"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/frontend-configs/dust-frontend-config.yaml"
+
+echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
@@ -52,14 +70,3 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/ingress.yaml"
 
-echo "-----------------------------------"
-echo "Applying backend configs"
-echo "-----------------------------------"
-
-kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
-
-echo "-----------------------------------"
-echo "Applying managed certificates"
-echo "-----------------------------------"
-
-kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"

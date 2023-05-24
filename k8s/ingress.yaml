@@ -5,6 +5,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.global-static-ip-name: dust-kube-ingress-ip-address
     networking.gke.io/managed-certificates: front-edge-managed-cert
+    networking.gke.io/v1beta1.FrontendConfig: "dust-frontendconfig"
     kubernetes.io/ingress.class: "gce"
 spec:
   rules:
