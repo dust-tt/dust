@@ -95,7 +95,7 @@ async function handler(
         to: invitation.inviteEmail,
         from: "team@dust.tt",
         subject: `[DUST] You have been invited to join the '${owner.name}' workspace`,
-        text: `Welcome to Dust!\n\nYou have been invited to join a the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${URL}?inviteToken=${invitationToken}`,
+        text: `Welcome to Dust!\n\nYou have been invited to join the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${URL}?inviteToken=${invitationToken}`,
       };
       await sgMail.send(message);
       res.status(200).json({
