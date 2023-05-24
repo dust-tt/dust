@@ -194,7 +194,7 @@ export default function WorkspaceAdmin({
                 <p className="mt-1 text-sm text-gray-500">
                   A workspace lets you collaborate with your team. Manage your
                   workspace name and whitelist a domain to allow users with an
-                  email from that domain to join this workspace.
+                  e-mail from that domain to join this workspace.
                 </p>
               </div>
               <div>
@@ -321,7 +321,7 @@ export default function WorkspaceAdmin({
                       htmlFor="appName"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Invite per email
+                      Invite by e-mail
                     </label>
                   </div>
                   <div className="col-span-4">
