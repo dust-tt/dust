@@ -1056,6 +1056,11 @@ impl LLM for OpenAILLM {
 
         let c = match event_sender {
             Some(_) => {
+                if n > 1 {
+                    return Err(anyhow!(
+                        "Generating multiple variations in streaming mode is not supported."
+                    ))?;
+                }
                 streamed_completion(
                     self.uri()?,
                     self.api_key.clone().unwrap(),

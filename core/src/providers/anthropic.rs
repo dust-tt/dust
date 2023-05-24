@@ -81,6 +81,7 @@ impl AnthropicLLM {
 
     async fn streamed_completion(
         &self,
+        api_key: String,
         prompt: &str,
         max_tokens_to_sample: i32,
         temperature: f32,
@@ -106,7 +107,7 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
+        builder = match builder.header("X-API-Key", api_key.as_str()) {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
@@ -137,6 +138,7 @@ impl AnthropicLLM {
         let mut stream = client.stream();
 
         let mut final_response: Option<Response> = None;
+        let mut already_streamed_length = 0;
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
@@ -161,24 +163,19 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                             };
+                            let completion_to_steram =
+                                &response.completion[already_streamed_length..];
 
-                            match event_sender.send(json!({
-                                "type":"tokens",
-                                "content": {
-                                    "text":response.completion
-                                }
-                            })) {
-                                Ok(_) => {}
-                                Err(error) => {
-                                    Err(anyhow!(
-                                        "Error sending tokens to event sender: {:?}",
-                                        error
-                                    ))?;
-                                    // @todo(aric): should we stop reading from Anthropic if we fail
-                                    // to send the data on the other side of the stream?
-                                    break 'stream;
-                                }
-                            };
+                            if completion_to_steram.len() > 0 {
+                                let _ = event_sender.send(json!({
+                                    "type":"tokens",
+                                    "content": {
+                                        "text":completion_to_steram
+                                    }
+
+                                }));
+                            }
+                            already_streamed_length = response.completion.len();
                             final_response = Some(response.clone());
                         }
                     },
@@ -202,6 +199,7 @@ impl AnthropicLLM {
 
     async fn completion(
         &self,
+        api_key: String,
         prompt: &str,
         max_tokens_to_sample: i32,
         temperature: f32,
@@ -209,7 +207,6 @@ impl AnthropicLLM {
         top_k: i32,
         stop: &Vec<String>,
     ) -> Result<Response> {
-        assert!(self.api_key.is_some());
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
@@ -218,7 +215,7 @@ impl AnthropicLLM {
             .method(Method::POST)
             .uri(self.uri()?)
             .header("Content-Type", "application/json")
-            .header("X-API-Key", self.api_key.clone().unwrap())
+            .header("X-API-Key", api_key)
             .body(Body::from(
                 json!({
                     "model": self.id.clone(),
@@ -303,12 +300,18 @@ impl LLM for AnthropicLLM {
     ) -> Result<LLMGeneration> {
         assert!(self.api_key.is_some());
         assert!(n > 0);
+        if n > 1 {
+            return Err(anyhow!(
+                "Anthropic only supports generating one sample at a time"
+            ))?;
+        }
 
         let c: Vec<Tokens> = match event_sender {
             Some(es) => {
                 let mut completions: Vec<Tokens> = vec![];
                 let response = match self
                     .streamed_completion(
+                        self.api_key.clone().unwrap(),
                         prompt,
                         match max_tokens {
                             Some(m) => m,
@@ -347,35 +350,34 @@ impl LLM for AnthropicLLM {
                 let mut completions: Vec<Tokens> = vec![];
                 // anthropic only supports generating one sample at a time
                 // so we loop here and make n API calls
-                for _ in 0..n {
-                    let response = self
-                        .completion(
-                            prompt,
-                            match max_tokens {
-                                Some(m) => m,
-                                None => 256,
-                            },
-                            temperature,
-                            match top_p {
-                                Some(p) => p,
-                                None => 1.0,
-                            },
-                            match top_logprobs {
-                                Some(k) => k,
-                                None => 0,
-                            },
-                            stop,
-                        )
-                        .await?;
+                let response = self
+                    .completion(
+                        self.api_key.clone().unwrap(),
+                        prompt,
+                        match max_tokens {
+                            Some(m) => m,
+                            None => 256,
+                        },
+                        temperature,
+                        match top_p {
+                            Some(p) => p,
+                            None => 1.0,
+                        },
+                        match top_logprobs {
+                            Some(k) => k,
+                            None => 0,
+                        },
+                        stop,
+                    )
+                    .await?;
 
-                    completions.push(Tokens {
-                        // Anthropic only return the text
-                        text: response.completion.clone(),
-                        tokens: Some(vec![]),
-                        logprobs: Some(vec![]),
-                        top_logprobs: Some(vec![]),
-                    });
-                }
+                completions.push(Tokens {
+                    // Anthropic only return the text
+                    text: response.completion.clone(),
+                    tokens: Some(vec![]),
+                    logprobs: Some(vec![]),
+                    top_logprobs: Some(vec![]),
+                });
                 completions
             }
         };
