@@ -181,8 +181,14 @@ async function handler(
         }
 
         if (m.role === "revoked") {
-          m.role = "user";
-          await m.save();
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
+            },
+          });
         }
 
         targetWorkspace = workspaceInvite;
