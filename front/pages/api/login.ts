@@ -190,7 +190,7 @@ async function handler(
 
       // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
       // all the checkcs (decoding the JWT) have been run before. Simply create the membership if
-      // does not already exist and mark the invitation as consumed.
+      // it does not already exist and mark the invitation as consumed.
       if (membershipInvite) {
         let m = await Membership.findOne({
           where: {
