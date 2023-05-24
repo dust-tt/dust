@@ -148,9 +148,9 @@ export default function DataSourceNew({
           <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl px-6">
             <div className="mt-8 space-y-8 divide-y divide-gray-200">
-              <div className="space-y-8 divide-y divide-gray-200">
+              <div className="space-y-4 divide-y divide-gray-200">
                 <div>
                   <h3 className="text-base font-medium leading-6 text-gray-900">
                     Create a new DataSource
