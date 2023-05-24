@@ -163,14 +163,14 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                             };
-                            let completion_to_steram =
+                            let completion_to_stream =
                                 &response.completion[already_streamed_length..];
 
-                            if completion_to_steram.len() > 0 {
+                            if completion_to_stream.len() > 0 {
                                 let _ = event_sender.send(json!({
                                     "type":"tokens",
                                     "content": {
-                                        "text":completion_to_steram
+                                        "text":completion_to_stream
                                     }
 
                                 }));
