@@ -68,6 +68,9 @@ export default function WorkspaceAdmin({
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
   const formValidation = () => {
+    if (workspaceName === owner.name && allowedDomain === owner.allowedDomain) {
+      return false;
+    }
     let valid = true;
     if (allowedDomain === null) {
       setAllowedDomainError("");
