@@ -62,9 +62,10 @@ export default function NewApp({
       : null
   );
   const [inviteEmail, setInviteEmail] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const { members, isMembersLoading } = useMembers(owner);
-  const { invitations } = useWorkspaceInvitations(owner);
+  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
   const formValidation = () => {
     let valid = true;
@@ -124,6 +125,7 @@ export default function NewApp({
   };
 
   const handleSendInvitation = async () => {
+    setIsSending(true);
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
       method: "POST",
       headers: {
@@ -138,6 +140,8 @@ export default function NewApp({
     } else {
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
+    setIsSending(false);
+    setInviteEmail("");
   };
 
   const handleRevokeInvitation = async (invitationId: number) => {
@@ -182,7 +186,7 @@ export default function NewApp({
         </div>
         <div className="flex flex-1">
           <div className="mx-auto max-w-4xl px-6">
-            <div className="mt-8 space-y-8 divide-y divide-gray-200">
+            <div className="mt-8 space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace settings
@@ -197,12 +201,14 @@ export default function NewApp({
                 <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
                     <div className="sm:col-span-6">
-                      <label
-                        htmlFor="appName"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Workspace Name
-                      </label>
+                      <div className="flex justify-between">
+                        <label
+                          htmlFor="appName"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                          Workspace name
+                        </label>
+                      </div>
                     </div>
                     <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
@@ -224,31 +230,22 @@ export default function NewApp({
                         Think GitHub repository names, short and memorable.
                       </p>
                     </div>
-                    <div className="sm:col-span-3">
-                      <div className="flex flex-row">
-                        <div className="flex flex-1"></div>
-                        <div className="flex">
-                          <Button
-                            disabled={disable}
-                            type="submit"
-                            onClick={handleUpdateWorkspace}
-                          >
-                            Update
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
                 <div className="mt-8 space-y-8">
                   <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
-                    <div className="sm:col-span-6">
-                      <label
-                        htmlFor="appName"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Whitelist domain for workspace
-                      </label>
+                    <div className="sm:col-span-3">
+                      <div className="flex justify-between">
+                        <label
+                          htmlFor="appName"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                          Whitelisted e-mail domain
+                        </label>
+                        <div className="text-sm font-normal text-gray-400">
+                          optional
+                        </div>
+                      </div>
                     </div>
                     <div className="sm:col-span-3">
                       <div className="mt-1 flex rounded-md shadow-sm">
@@ -273,8 +270,8 @@ export default function NewApp({
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Allow users with an email from a specific domain to join
-                        this workspace.
+                        Allow users with an e-mail from a specific domain to
+                        join this workspace.
                       </p>
                       {inviteLink ? (
                         <div className="mt-2">
@@ -292,25 +289,23 @@ export default function NewApp({
                         </div>
                       ) : null}
                     </div>
-                    <div className="sm:col-span-3">
-                      <div className="flex flex-row">
-                        <div className="flex flex-1"></div>
-                        <div className="flex">
-                          <Button
-                            disabled={disable}
-                            type="submit"
-                            onClick={handleUpdateWorkspace}
-                          >
-                            Update
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex max-w-full flex-row">
+                  <div className="flex flex-1"></div>
+                  <div className="flex">
+                    <Button
+                      disabled={disable}
+                      type="submit"
+                      onClick={handleUpdateWorkspace}
+                    >
+                      <div className="w-16">Update</div>
+                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="mt-20 space-y-8 divide-y divide-gray-200">
+            <div className="mt-10 space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace members
@@ -319,9 +314,9 @@ export default function NewApp({
                   Manage active members and invitations to your workspace.
                 </p>
               </div>
-              <div className="mt-8 space-y-8">
-                <div className="mt-6 grid grid-cols-1 gap-x-4 sm:grid-cols-5">
-                  <div className="sm:col-span-6">
+              <div className="mt-8">
+                <div className="mt-6 grid grid-cols-1 grid-cols-6 gap-x-4">
+                  <div className="col-span-6">
                     <label
                       htmlFor="appName"
                       className="block text-sm font-medium text-gray-700"
@@ -329,7 +324,7 @@ export default function NewApp({
                       Invite per email
                     </label>
                   </div>
-                  <div className="sm:col-span-3">
+                  <div className="col-span-4">
                     <div className="mt-1 flex rounded-md shadow-sm">
                       <input
                         type="text"
@@ -352,33 +347,40 @@ export default function NewApp({
                       />
                     </div>
                   </div>
-                  <div className="sm:col-span-3">
-                    <div className="flex flex-row">
+                  <div className="col-span-2">
+                    <div className="mt-1 flex flex-row">
                       <div className="flex flex-1"></div>
-                      <div className="flex">
+                      <div className="mt-0.5 flex">
                         <Button
-                          disabled={!inviteEmail || !isEmailValid(inviteEmail)}
+                          disabled={
+                            !inviteEmail ||
+                            !isEmailValid(inviteEmail) ||
+                            isSending
+                          }
                           type="submit"
                           onClick={handleSendInvitation}
                         >
-                          Send Invite
+                          <div className="w-16">
+                            {isSending ? "Sending" : "Send"}
+                          </div>
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
+                <div className="mt-8 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-5">
                   <div className="sm:col-span-5">
                     <div className="block text-sm font-medium text-gray-800">
-                      Members: {invitations.length} pending invitation(s),{" "}
-                      {members.length} active member(s).
-                      {isMembersLoading ? (
+                      {invitations.length} Invitation
+                      {invitations.length !== 1 && "s"} and {members.length}{" "}
+                      Member{members.length !== 1 && "s"}:
+                      {isMembersLoading || isInvitationsLoading ? (
                         <span className="ml-2 text-xs text-gray-400">
                           loading...
                         </span>
                       ) : null}
                     </div>
-                    <ul className="mt-6 space-y-4">
+                    <ul className="ml-2 mt-4 space-y-2">
                       {invitations.map((invitation) => (
                         <li
                           key={invitation.id}
@@ -389,11 +391,8 @@ export default function NewApp({
                               <div className="text-sm font-medium text-gray-500">
                                 {invitation.inviteEmail}
                               </div>
-                              <div className="flex-cols flex text-sm text-gray-500">
-                                <div className="mr-1 mt-0.5 flex h-4 w-4 flex-initial">
-                                  <img src="/static/favicon.png"></img>
-                                </div>
-                                <div className="flex flex-1">[pending]</div>
+                              <div className="flex-cols flex text-sm italic text-gray-400">
+                                pending
                               </div>
                             </div>
                           </div>
@@ -404,13 +403,13 @@ export default function NewApp({
                                 handleRevokeInvitation(invitation.id)
                               }
                             >
-                              Revoke invitation
+                              <div className="w-16">Revoke</div>
                             </Button>
                           </div>
                         </li>
                       ))}
                     </ul>
-                    <ul className="mt-6 space-y-4">
+                    <ul className="ml-2 mt-6 space-y-2">
                       {members.map((member) => (
                         <li
                           key={member.id}
@@ -418,7 +417,7 @@ export default function NewApp({
                         >
                           <div className="flex items-center">
                             <div className="">
-                              <div className="text-sm font-medium text-gray-500">
+                              <div className="text-sm font-medium text-gray-700">
                                 {member.name}{" "}
                                 {member.id === user?.id ? (
                                   <span className="ml-1 rounded-sm bg-gray-200 px-1 py-0.5 text-xs font-bold text-gray-900">
@@ -529,9 +528,11 @@ export default function NewApp({
                                 )}
                               </Listbox>
                             ) : (
-                              <span className="ml-2 italic text-gray-900">
-                                admin
-                              </span>
+                              <div className="w-full">
+                                <span className="ml-2 italic text-gray-900">
+                                  admin
+                                </span>
+                              </div>
                             )}
                           </div>
                         </li>

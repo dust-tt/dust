@@ -21,9 +21,16 @@ export const getServerSideProps: GetServerSideProps<{
 
   if (user && user.workspaces.length > 0) {
     // TODO(spolu): persist latest workspace in session?
+    let url = `/w/${user.workspaces[0].sId}/a`;
+    if (context.query.wId) {
+      url = `/api/login?wId=${context.query.wId}`;
+    }
+    if (context.query.inviteToken) {
+      url = `/api/login?inviteToken=${context.query.inviteToken}`;
+    }
     return {
       redirect: {
-        destination: `/w/${user.workspaces[0].sId}/a`,
+        destination: url,
         permanent: false,
       },
     };

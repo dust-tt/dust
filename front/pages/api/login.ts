@@ -88,14 +88,12 @@ async function handler(
       if (req.query.inviteToken) {
         const inviteToken = req.query.inviteToken as string;
         const decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
-          workspaceId: string;
-          inviteEmail: string;
+          membershipInvitationId: number;
         };
 
         membershipInvite = await MembershipInvitation.findOne({
           where: {
-            workspaceId: decodedToken.workspaceId,
-            inviteEmail: decodedToken.inviteEmail,
+            id: decodedToken.membershipInvitationId,
           },
         });
         if (!membershipInvite) {
@@ -104,9 +102,12 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "The invite token is invalid, please ask your admin to resend an invitation",
+                "The invite token is invalid, please ask your admin to resend an invitation.",
             },
           });
+        }
+        if (membershipInvite.status !== "pending") {
+          membershipInvite = null;
         }
       }
 
@@ -159,6 +160,8 @@ async function handler(
         }
       }
 
+      let targetWorkspace: Workspace | null = null;
+
       // `workspaceInvite` flow: we know we can add the user to the workspace as all the checks
       // have been run. Simply create the membership if does not alreayd exist.
       if (workspaceInvite) {
@@ -176,6 +179,13 @@ async function handler(
             workspaceId: workspaceInvite.id,
           });
         }
+
+        if (m.role === "revoked") {
+          m.role = "user";
+          await m.save();
+        }
+
+        targetWorkspace = workspaceInvite;
       }
 
       // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
@@ -199,6 +209,23 @@ async function handler(
         membershipInvite.status = "consumed";
         membershipInvite.invitedUserId = user.id;
         await membershipInvite.save();
+
+        if (m.role === "revoked") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
+            },
+          });
+        }
+
+        targetWorkspace = await Workspace.findOne({
+          where: {
+            id: membershipInvite.workspaceId,
+          },
+        });
       }
 
       const u = await getUserFromSession(session);
@@ -214,10 +241,8 @@ async function handler(
         });
       }
 
-      if (workspaceInvite) {
-        res.redirect(`/w/${workspaceInvite.sId}`);
-      } else if (membershipInvite) {
-        res.redirect(`/w/${membershipInvite.workspaceId}`);
+      if (targetWorkspace) {
+        res.redirect(`/w/${targetWorkspace.sId}`);
       } else {
         // TODO(spolu): persist latest workspace in session?
         res.redirect(`/w/${u.workspaces[0].sId}`);

@@ -194,7 +194,6 @@ export class MembershipInvitation extends Model<
 
   declare inviteEmail: "string";
   declare status: "pending" | "consumed" | "revoked";
-  declare token: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare invitedUserId: ForeignKey<User["id"]>;
@@ -224,10 +223,6 @@ MembershipInvitation.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "pending",
-    },
-    token: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
   },
   {

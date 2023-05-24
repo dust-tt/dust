@@ -79,24 +79,23 @@ async function handler(
 
       // Create MembershipInvitation
       const inviteEmail = req.body.inviteEmail;
-      const invitationToken = sign(
-        { workspaceId: owner.id, inviteEmail },
-        DUST_INVITE_TOKEN_SECRET
-      );
       const invitation = await MembershipInvitation.create({
         workspaceId: owner.id,
         inviteEmail,
         status: "pending",
-        token: invitationToken,
       });
-      await invitation.save();
+
+      const invitationToken = sign(
+        { membershipInvitationId: invitation.id },
+        DUST_INVITE_TOKEN_SECRET
+      );
 
       // Send invite email
       const message = {
         to: invitation.inviteEmail,
         from: "team@dust.tt",
-        subject: "You have been invited to join a Dust workspace",
-        text: `You have been invited to join a Dust workspace. Click the link below to accept the invitation: ${URL}/login?token=${invitationToken}`,
+        subject: `[DUST] You have been invited to join the '${owner.name}' workspace`,
+        text: `Welcome to Dust!\n\nYou have been invited to join a the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${URL}?inviteToken=${invitationToken}`,
       };
       await sgMail.send(message);
       res.status(200).json({
