@@ -77,7 +77,7 @@ export default function ProfileKeys({
     await mutate(`/api/w/${owner.sId}/keys`);
   };
 
-  const handleDisable = async (key: KeyType) => {
+  const handleRevoke = async (key: KeyType) => {
     await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
       method: "POST",
       headers: {
@@ -183,10 +183,10 @@ export default function ProfileKeys({
                         <Button
                           disabled={key.status != "active"}
                           onClick={async () => {
-                            await handleDisable(key);
+                            await handleRevoke(key);
                           }}
                         >
-                          Disable
+                          Revoke
                         </Button>
                       </div>
                     ) : null}

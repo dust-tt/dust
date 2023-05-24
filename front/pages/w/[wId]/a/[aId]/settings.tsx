@@ -157,9 +157,9 @@ export default function SettingsView({
 
         <div className="mx-auto mt-4 flex w-full max-w-5xl flex-auto">
           <div className="flex flex-1">
-            <div className="w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-              <div className="mt-8 space-y-8 divide-y divide-gray-200">
-                <div className="space-y-8 divide-y divide-gray-200">
+            <div className="w-full max-w-5xl px-6">
+              <div className="space-y-8 divide-y divide-gray-200">
+                <div className="space-y-4 divide-y divide-gray-200">
                   <div>
                     <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
                       <div className="sm:col-span-3">
