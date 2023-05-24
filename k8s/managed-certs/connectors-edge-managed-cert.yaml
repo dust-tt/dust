@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: connectors-edge-managed-cert
+spec:
+  domains:
+    - connectors-edge.dust.tt
