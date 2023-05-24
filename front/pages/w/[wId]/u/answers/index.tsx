@@ -50,7 +50,7 @@ export default function AppAnswers({
           <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
             <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
               <p>🏗️ Under construction...</p>
-              <p className="mt-8 italic text-violet-700">
+              <p className="mt-8 italic">
                 <span className="font-bold">Answers</span> will tackle any
                 internal question across your team's knowledge base, in a format
                 adapted to your needs.

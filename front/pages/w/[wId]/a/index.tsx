@@ -69,7 +69,7 @@ export default function Apps({
                 <h1 className="text-base font-medium text-gray-900">Apps</h1>
 
                 <p className="text-sm text-gray-500">
-                  Build custom Large Language Model apps.
+                  Your Large Language Model apps.
                 </p>
               </div>
               <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
@@ -77,7 +77,7 @@ export default function Apps({
                   <Link href={`/w/${owner.sId}/a/new`}>
                     <Button>
                       <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                      New App
+                      Create App
                     </Button>
                   </Link>
                 )}
@@ -153,14 +153,12 @@ export default function Apps({
               <div className="sm:flex sm:items-center">
                 <div className="mt-8 sm:flex-auto">
                   <h1 className="text-base font-medium text-gray-900">
-                    Community Example Apps
+                    Community Apps
                   </h1>
 
                   <p className="text-sm text-gray-500">
-                    Discover apps created by the community. They serve as great
-                    examples to get started with Dust.
-                    <br />
-                    You can clone them directly to your account.
+                    Apps created by the community. Clone them to get started
+                    instantly.
                   </p>
                 </div>
               </div>

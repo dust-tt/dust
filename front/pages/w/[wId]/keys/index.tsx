@@ -92,7 +92,7 @@ export default function ProfileKeys({
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="API keys" owner={owner} />
+          <MainTab currentTab="API Keys" owner={owner} />
         </div>
 
         <div className="">
@@ -100,16 +100,13 @@ export default function ProfileKeys({
             <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
               <div className="">
                 <h1 className="text-base font-medium text-gray-900">
-                  API keys
+                  Secret API Keys
                 </h1>
 
                 <p className="text-sm text-gray-500">
-                  Your secret API keys are listed below. They are used to expose
-                  Dust apps as endpoints. When running an app through an
-                  endpoint with your API key, the providers associated with your
-                  account will be used to run the app. Do not share your API
-                  keys with others, or expose it in the browser or client-side
-                  code.
+                  Secrets used to communicate between your servers and Dust. Do
+                  not share them with anyone. Do not use them in client-side or
+                  browser code.
                 </p>
               </div>
               <div className="mr-2 mt-2 whitespace-nowrap  md:ml-12">
@@ -119,7 +116,7 @@ export default function ProfileKeys({
                   }}
                 >
                   <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                  New secret key
+                  Create Secret API Key
                 </Button>
               </div>
             </div>
@@ -174,7 +171,7 @@ export default function ProfileKeys({
                               : "ml-6 bg-gray-100 text-gray-800"
                           )}
                         >
-                          {key.status}
+                          {key.status === "active" ? "active" : "revoked"}
                         </p>
                       </div>
                     </div>

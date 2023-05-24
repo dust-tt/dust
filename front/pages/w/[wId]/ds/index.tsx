@@ -272,7 +272,7 @@ export default function DataSourcesView({
                 </h1>
 
                 <p className="text-sm text-gray-500">
-                  Upload documents to perform semantic searches.
+                  Data Sources let you perform semantic searches on your data.
                 </p>
               </div>
               <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
@@ -297,7 +297,7 @@ export default function DataSourcesView({
                   >
                     <Button>
                       <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                      New Data Source
+                      Create Data Source
                     </Button>
                   </Link>
                 )}
@@ -381,8 +381,7 @@ export default function DataSourcesView({
             </h1>
 
             <p className="text-sm text-gray-500 ">
-              Fully managed and synchronized in real-time with the products you
-              use.
+              Continuously synchronized with the products you use.
             </p>
           </div>
         </div>
