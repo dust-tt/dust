@@ -66,7 +66,10 @@ export class ActivityInboundLogInterceptor
         if (error.__is_dust_error !== undefined) {
           // this is a dust error
           errorType = error.type;
-          this.logger.error({ error, durationMs }, "Activity failed");
+          this.logger.error(
+            { error, durationMs, attempt: this.context.info.attempt },
+            "Activity failed"
+          );
         } else {
           // unknown error type
           this.logger.error(
@@ -74,6 +77,7 @@ export class ActivityInboundLogInterceptor
               error,
               error_stack: error?.stack,
               durationMs: durationMs,
+              ttempt: this.context.info.attempt,
             },
             "Unhandled activity error"
           );
