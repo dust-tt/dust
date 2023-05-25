@@ -219,6 +219,13 @@ MembershipInvitation.init(
       allowNull: false,
       defaultValue: "pending",
     },
+    invitedUserId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "users",
+        key: "id",
+      },
+    },
   },
   {
     modelName: "membership_invitation",
@@ -227,7 +234,9 @@ MembershipInvitation.init(
   }
 );
 Workspace.hasMany(MembershipInvitation);
-User.hasMany(MembershipInvitation, { as: "invitedUser" });
+User.hasMany(MembershipInvitation, {
+  foreignKey: "invitedUserId",
+});
 
 export class App extends Model<
   InferAttributes<App>,
@@ -414,8 +423,8 @@ export class Clone extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare fromId: number;
-  declare toId: number;
+  declare fromId: ForeignKey<App["id"]>;
+  declare toId: ForeignKey<App["id"]>;
 }
 Clone.init(
   {
@@ -456,8 +465,8 @@ Clone.init(
     sequelize: front_sequelize,
   }
 );
-Clone.belongsTo(App, { as: "from", foreignKey: "fromId" });
-Clone.belongsTo(App, { as: "to", foreignKey: "toId" });
+Clone.belongsTo(App, { foreignKey: "fromId" });
+Clone.belongsTo(App, { foreignKey: "toId" });
 
 export class Key extends Model<
   InferAttributes<Key>,
