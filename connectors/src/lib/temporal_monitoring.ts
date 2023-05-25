@@ -77,7 +77,7 @@ export class ActivityInboundLogInterceptor
               error,
               error_stack: error?.stack,
               durationMs: durationMs,
-              ttempt: this.context.info.attempt,
+              attempt: this.context.info.attempt,
             },
             "Unhandled activity error"
           );
