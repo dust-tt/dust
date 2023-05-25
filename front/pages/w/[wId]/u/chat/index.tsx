@@ -232,7 +232,7 @@ export function RetrievalsView({
                     <a
                       href={r.sourceUrl}
                       target={"_blank"}
-                      className="font-bold text-gray-600"
+                      className="text-gray-600"
                     >
                       #{r.document.channelName}
                     </a>
@@ -246,7 +246,7 @@ export function RetrievalsView({
                     <a
                       href={r.sourceUrl}
                       target={"_blank"}
-                      className="text-gray-600"
+                      className="block w-32 truncate text-gray-600 sm:w-fit"
                     >
                       {r.document.title}
                     </a>
@@ -425,7 +425,6 @@ export default function AppChat({
         }
         if (event.content.block_name === "MODEL") {
           if (e.error) {
-            console.log("MODEL event wiht error", event);
             m.push({
               message: e.error,
             } as ErrorMessage);
