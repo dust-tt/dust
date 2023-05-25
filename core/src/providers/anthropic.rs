@@ -1,5 +1,7 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, Tokens, LLM};
+use crate::providers::llm::{
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
+};
 use crate::providers::provider::{ModelError, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils;
@@ -79,7 +81,116 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
-    async fn streamed_completion(
+    fn chat_prompt(&self, messages: &Vec<ChatMessage>) -> String {
+        let mut prompt = messages
+            .iter()
+            .map(|cm| -> String {
+                format!(
+                    "\n\n{}: {}",
+                    match cm.role {
+                        ChatMessageRole::System => "Assistant",
+                        ChatMessageRole::Assistant => "Assistant",
+                        ChatMessageRole::User => "Human",
+                    },
+                    cm.content
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        prompt = format!("{}\n\nHuman:", prompt);
+
+        return prompt;
+    }
+
+    async fn chat_completion(
+        &self,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: f32,
+        stop: &Vec<String>,
+        max_tokens: Option<i32>,
+    ) -> Result<LLMChatGeneration> {
+        assert!(self.api_key.is_some());
+
+        let prompt = self.chat_prompt(messages);
+        let mut stop_tokens = stop.clone();
+        stop_tokens.push(String::from("\n\nHuman:"));
+
+        let response = self
+            .completion(
+                self.api_key.clone().unwrap(),
+                &prompt,
+                match max_tokens {
+                    Some(m) => m,
+                    None => 256,
+                },
+                temperature,
+                top_p,
+                // @todo(aric): I don't understand the meaning
+                // of top_k, which is top_logprob in the llm block.
+                // I'm setting it to 0 for now. TBC at code review time
+                0,
+                stop_tokens.as_ref(),
+            )
+            .await?;
+
+        return Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::Anthropic.to_string(),
+            model: self.id.clone(),
+            completions: vec![ChatMessage {
+                role: ChatMessageRole::Assistant,
+                content: response.completion.clone(),
+                name: None,
+            }],
+        });
+    }
+
+    pub async fn streamed_chat_completion(
+        &self,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: f32,
+        stop: &Vec<String>,
+        max_tokens: Option<i32>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<LLMChatGeneration> {
+        let prompt = self.chat_prompt(messages);
+        let mut stop_tokens = stop.clone();
+        stop_tokens.push(String::from("\n\nHuman:"));
+        let response = self
+            .streamed_completion(
+                self.api_key.clone().unwrap(),
+                prompt.as_str(),
+                match max_tokens {
+                    Some(m) => m,
+                    None => 256,
+                },
+                temperature,
+                top_p,
+                // @todo(aric): I don't understand the meaning of this top_k
+                // parameter, which is top_logprob in the openai llm block.
+                // TBD at code review time.
+                0,
+                &stop_tokens,
+                event_sender,
+            )
+            .await;
+
+        return Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::Anthropic.to_string(),
+            model: self.id.clone(),
+            completions: vec![ChatMessage {
+                role: ChatMessageRole::Assistant,
+                content: response?.completion.clone(),
+                name: None,
+            }],
+        });
+    }
+
+    pub async fn streamed_completion(
         &self,
         api_key: String,
         prompt: &str,
@@ -411,20 +522,53 @@ impl LLM for AnthropicLLM {
 
     async fn chat(
         &self,
-        _messages: &Vec<ChatMessage>,
-        _temperature: f32,
-        _top_p: Option<f32>,
-        _n: usize,
-        _stop: &Vec<String>,
-        _max_tokens: Option<i32>,
+        messages: &Vec<ChatMessage>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        Err(anyhow!(
-            "Chat capabilities are not implemented for provider `anthropic`"
-        ))
+        if n > 1 {
+            return Err(anyhow!(
+                "Anthropic only supports generating one sample at a time."
+            ))?;
+        }
+        match event_sender {
+            Some(es) => {
+                return self
+                    .streamed_chat_completion(
+                        messages,
+                        temperature,
+                        match top_p {
+                            Some(p) => p,
+                            None => 1.0,
+                        },
+                        stop,
+                        max_tokens,
+                        es,
+                    )
+                    .await;
+            }
+            None => {
+                return self
+                    .chat_completion(
+                        messages,
+                        temperature,
+                        match top_p {
+                            Some(p) => p,
+                            None => 1.0,
+                        },
+                        stop,
+                        max_tokens,
+                    )
+                    .await;
+            }
+        }
     }
 }
 
