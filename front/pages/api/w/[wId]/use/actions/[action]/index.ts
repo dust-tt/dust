@@ -9,7 +9,7 @@ import {
 import { DustAppConfigType } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError, statsDClient, withLogging } from "@app/logger/withlogging";
 
 export const config = {
   api: {
@@ -106,6 +106,14 @@ async function handler(
         "Action run creation"
       );
 
+      const tags = [
+        `action:${req.query.action}`,
+        `workspace:${owner.sId}`,
+        `workspace_name:${owner.name}`,
+      ];
+
+      statsDClient.increment("use_actions.count", 1, tags);
+
       const apiRes = await fetch(
         `${DUST_API}/api/v1/w/${action.app.workspaceId}/apps/${action.app.appId}/runs`,
         {
@@ -125,8 +133,6 @@ async function handler(
       );
 
       if (!apiRes.ok && apiRes.body) {
-        const body = await apiRes.text();
-        console.log("BODY", body);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
