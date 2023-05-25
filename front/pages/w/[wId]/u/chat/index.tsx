@@ -139,6 +139,87 @@ function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
   return (m as ErrorMessage).message !== undefined;
 }
 
+export function DocumentView({ document }: { document: RetrievedDocument }) {
+  const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
+  const [chunkExpanded, setChunkExpanded] = useState(false);
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex flex-row items-center text-xs">
+        <div
+          className={classNames(
+            "flex flex-initial cursor-pointer select-none rounded-md bg-gray-100 px-1 py-0.5",
+            chunkExpanded ? "bg-gray-300" : "hover:bg-gray-200"
+          )}
+          onClick={() => {
+            setChunkExpanded(!chunkExpanded);
+          }}
+        >
+          {document.score.toFixed(2)}
+        </div>
+        <div className="ml-2 flex flex-initial">
+          <div className={classNames("mr-1 flex h-4 w-4")}>
+            <img src={PROVIDER_LOGO_PATH[document.provider]}></img>
+          </div>
+        </div>
+        {document.provider === "slack" && (
+          <div className="flex flex-initial">
+            <a
+              href={document.sourceUrl}
+              target={"_blank"}
+              className="text-gray-600"
+            >
+              #{document.document.channelName}
+            </a>
+            <span className="ml-1 text-gray-400">
+              {document.document.timestamp.split(" ")[0]}
+            </span>
+          </div>
+        )}
+        {document.provider === "notion" && (
+          <div className="flex flex-initial">
+            <a
+              href={document.sourceUrl}
+              target={"_blank"}
+              className="block w-32 truncate text-gray-600 sm:w-fit"
+            >
+              {document.document.title}
+            </a>
+            <span className="ml-1 text-gray-400">
+              {document.document.timestamp.split(" ")[0]}
+            </span>
+          </div>
+        )}
+      </div>
+      {chunkExpanded && (
+        <div className="my-2 flex flex-col space-y-2">
+          {document.document.chunks.map((chunk, i) => (
+            <div key={i} className="flex flex-initial">
+              <div
+                className="ml-10 border-l-4 border-slate-400"
+                onClick={() => {
+                  expandedChunkId == i
+                    ? setExpandedChunkId(null)
+                    : setExpandedChunkId(i);
+                }}
+              >
+                <p
+                  className={classNames(
+                    "cursor-pointer pl-2 text-xs italic text-gray-500",
+                    expandedChunkId === i ? "" : "line-clamp-2"
+                  )}
+                >
+                  {chunk.text}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RetrievalsView({
   message,
   isLatest,
@@ -217,46 +298,7 @@ export function RetrievalsView({
       {expanded && message.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
           {message.retrievals.map((r, i) => {
-            return (
-              <div key={i} className="flex flex-row items-center text-xs">
-                <div className="flex flex-initial rounded-md bg-gray-100 px-1 py-0.5">
-                  {r.score.toFixed(2)}
-                </div>
-                <div className="ml-2 flex flex-initial">
-                  <div className={classNames("mr-1 flex h-4 w-4")}>
-                    <img src={PROVIDER_LOGO_PATH[r.provider]}></img>
-                  </div>
-                </div>
-                {r.provider === "slack" && (
-                  <div className="flex flex-initial">
-                    <a
-                      href={r.sourceUrl}
-                      target={"_blank"}
-                      className="text-gray-600"
-                    >
-                      #{r.document.channelName}
-                    </a>
-                    <span className="ml-1 text-gray-400">
-                      {r.document.timestamp.split(" ")[0]}
-                    </span>
-                  </div>
-                )}
-                {r.provider === "notion" && (
-                  <div className="flex flex-initial">
-                    <a
-                      href={r.sourceUrl}
-                      target={"_blank"}
-                      className="block w-32 truncate text-gray-600 sm:w-fit"
-                    >
-                      {r.document.title}
-                    </a>
-                    <span className="ml-1 text-gray-400">
-                      {r.document.timestamp.split(" ")[0]}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
+            return <DocumentView document={r} key={i} />;
           })}
         </div>
       )}
