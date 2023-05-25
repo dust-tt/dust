@@ -906,6 +906,12 @@ export async function* iteratePaginatedAPIWithRetries<
         });
         break;
       } catch (e) {
+        if (
+          APIResponseError.isAPIResponseError(e) &&
+          e.code === "object_not_found"
+        ) {
+          throw e;
+        }
         tryLogger.error(
           { error: e },
           "Error while iterating on Notion paginated API."
