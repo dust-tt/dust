@@ -43,7 +43,7 @@ export default function MainTab({
 
   if (owner.role === "builder" || owner.role === "admin") {
     tabs.push({
-      name: "API keys",
+      name: "API Keys",
       href: `/w/${owner.sId}/keys`,
       icon: (
         <KeyIcon

@@ -195,9 +195,7 @@ export default function WorkspaceAdmin({
                   Workspace settings
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  A workspace lets you collaborate with your team. Manage your
-                  workspace name and whitelist a domain to allow users with an
-                  e-mail from that domain to join this workspace.
+                  A workspace lets you collaborate with your team.
                 </p>
               </div>
               <div>
@@ -273,8 +271,8 @@ export default function WorkspaceAdmin({
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Allow users with an e-mail from a specific domain to
-                        join this workspace.
+                        Allow any user with an e-mail from the specified domain
+                        to join this workspace.
                       </p>
                       {inviteLink ? (
                         <div className="mt-2">

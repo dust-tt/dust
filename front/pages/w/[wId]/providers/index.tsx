@@ -159,8 +159,7 @@ export default function ProfileProviders({
                 </h1>
 
                 <p className="text-sm text-gray-500">
-                  Model providers available to your apps. Activate at least one
-                  to be able to run your apps.
+                  Model providers available to your apps.
                 </p>
               </div>
             </div>
@@ -221,7 +220,7 @@ export default function ProfileProviders({
                         {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
-                          ? "Setup"
+                          ? "Set up"
                           : "Coming Soon"}
                       </Button>
                     </div>
@@ -295,7 +294,7 @@ export default function ProfileProviders({
                         {configs[provider.providerId]
                           ? "Edit"
                           : provider.built
-                          ? "Setup"
+                          ? "Set up"
                           : "Coming Soon"}
                       </Button>
                     </div>
