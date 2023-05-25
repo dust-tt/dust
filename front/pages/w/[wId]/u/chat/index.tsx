@@ -246,7 +246,7 @@ export function RetrievalsView({
                     <a
                       href={r.sourceUrl}
                       target={"_blank"}
-                      className="block text-gray-600 w-32 truncate sm:w-fit"
+                      className="block w-32 truncate text-gray-600 sm:w-fit"
                     >
                       {r.document.title}
                     </a>
