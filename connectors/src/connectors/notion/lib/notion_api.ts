@@ -124,6 +124,15 @@ export async function getPagesEditedSince(
     if (pageOrDb.object === "page") {
       if (isFullPage(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+        // skip pages that have a `lastEditedTime` in the future
+        if (lastEditedTime > Date.now()) {
+          localLogger.warn(
+            { pageId: pageOrDb.id, lastEditedTime },
+            "Page has last edited time in the future."
+          );
+          continue;
+        }
+
         if (sinceTs && lastEditedTime < sinceTs) {
           return {
             pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
