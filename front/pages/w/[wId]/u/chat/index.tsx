@@ -358,6 +358,21 @@ export function MessageView({
   );
 }
 
+const COMMANDS: { cmd: string; description: string }[] = [
+  {
+    cmd: "/new",
+    description: "start a new conversation",
+  },
+  {
+    cmd: "/search",
+    description: "perform a document retrieval without querying the agent",
+  },
+  {
+    cmd: "/msg",
+    description: "message the agent without performing a document retrieval",
+  },
+];
+
 export default function AppChat({
   user,
   owner,
@@ -377,6 +392,9 @@ export default function AppChat({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Message | null>(null);
+  const [commands, setCommands] = useState<
+    { cmd: string; description: string }[]
+  >([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -385,6 +403,15 @@ export default function AppChat({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, response]);
+
+  const handleInputUpdate = (input: string) => {
+    setInput(input);
+    if (input.startsWith("/") && input.split(" ").length === 1) {
+      setCommands(COMMANDS.filter((c) => c.cmd.startsWith(input)));
+    } else {
+      setCommands([]);
+    }
+  };
 
   const handleSwitchDataSourceSelection = (name: string) => {
     const newSelection = dataSources.map((ds) => {
@@ -619,6 +646,35 @@ export default function AppChat({
                       alpha
                     </div>
                     <div className="flex flex-1 flex-row items-end">
+                      {commands.length > 0 && (
+                        <div className="absolute mb-12 pr-7">
+                          <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
+                            {commands.map((c, i) => {
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex cursor-pointer flex-row rounded-sm px-2 py-2 hover:bg-gray-100"
+                                >
+                                  <div className="flex w-16 flex-row">
+                                    <div
+                                      className={classNames(
+                                        "flex flex-initial",
+                                        "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                      )}
+                                    >
+                                      {c.cmd}
+                                    </div>
+                                    <div className="flex flex-1"></div>
+                                  </div>
+                                  <div className="italic text-gray-500">
+                                    {c.description}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <TextareaAutosize
                         minRows={1}
                         placeholder={`Ask anything about \`${owner.name}\``}
@@ -632,7 +688,7 @@ export default function AppChat({
                         )}
                         value={input}
                         onChange={(e) => {
-                          setInput(e.target.value);
+                          handleInputUpdate(e.target.value);
                         }}
                         onKeyDown={(e) => {
                           if (e.ctrlKey || e.metaKey) {
