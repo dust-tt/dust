@@ -116,6 +116,7 @@ impl AnthropicLLM {
         let prompt = self.chat_prompt(messages);
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
+        stop_tokens.push(String::from("\n\nAssistant:"));
 
         let response = self
             .completion(
@@ -159,6 +160,8 @@ impl AnthropicLLM {
         let prompt = self.chat_prompt(messages);
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
+        stop_tokens.push(String::from("\n\nAssistant:"));
+
         let response = self
             .streamed_completion(
                 self.api_key.clone().unwrap(),
