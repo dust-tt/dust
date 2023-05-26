@@ -361,15 +361,16 @@ export function MessageView({
 const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/new",
-    description: "start a new conversation",
+    description: "Start a new conversation",
   },
   {
-    cmd: "/search",
-    description: "perform a document retrieval without querying the agent",
+    cmd: "/follow-up",
+    description:
+      "Follow-up with the agent without performing a document retrieval",
   },
   {
-    cmd: "/msg",
-    description: "message the agent without performing a document retrieval",
+    cmd: "/retrieve-only",
+    description: "Perform a document retrieval without querying the agent",
   },
 ];
 
@@ -395,8 +396,10 @@ export default function AppChat({
   const [commands, setCommands] = useState<
     { cmd: string; description: string }[]
   >([]);
+  const [commandsSelect, setCommandsSelect] = useState<number>(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -408,8 +411,19 @@ export default function AppChat({
     setInput(input);
     if (input.startsWith("/") && input.split(" ").length === 1) {
       setCommands(COMMANDS.filter((c) => c.cmd.startsWith(input)));
+      setCommandsSelect(0);
     } else {
       setCommands([]);
+      setCommandsSelect(0);
+    }
+  };
+
+  const handleSelectCommand = () => {
+    if (commandsSelect >= 0 && commandsSelect < commands.length) {
+      setInput(commands[commandsSelect].cmd + " ");
+      setCommands([]);
+      setCommandsSelect(0);
+      inputRef.current?.focus();
     }
   };
 
@@ -653,9 +667,20 @@ export default function AppChat({
                               return (
                                 <div
                                   key={i}
-                                  className="flex cursor-pointer flex-row rounded-sm px-2 py-2 hover:bg-gray-100"
+                                  className={classNames(
+                                    "flex cursor-pointer flex-row rounded-sm px-2 py-2",
+                                    i === commandsSelect
+                                      ? "bg-gray-100"
+                                      : "bg-white"
+                                  )}
+                                  onMouseEnter={() => {
+                                    setCommandsSelect(i);
+                                  }}
+                                  onClick={() => {
+                                    handleSelectCommand();
+                                  }}
                                 >
-                                  <div className="flex w-16 flex-row">
+                                  <div className="flex w-24 flex-row">
                                     <div
                                       className={classNames(
                                         "flex flex-initial",
@@ -666,7 +691,7 @@ export default function AppChat({
                                     </div>
                                     <div className="flex flex-1"></div>
                                   </div>
-                                  <div className="italic text-gray-500">
+                                  <div className="ml-2 w-48 truncate italic text-gray-500 sm:w-max">
                                     {c.description}
                                   </div>
                                 </div>
@@ -690,7 +715,30 @@ export default function AppChat({
                         onChange={(e) => {
                           handleInputUpdate(e.target.value);
                         }}
+                        ref={inputRef}
                         onKeyDown={(e) => {
+                          if (commands.length > 0) {
+                            if (e.key === "ArrowUp") {
+                              setCommandsSelect(
+                                commandsSelect > 0
+                                  ? commandsSelect - 1
+                                  : commandsSelect
+                              );
+                              e.preventDefault();
+                            }
+                            if (e.key === "ArrowDown") {
+                              setCommandsSelect(
+                                commandsSelect < commands.length - 1
+                                  ? commandsSelect + 1
+                                  : commandsSelect
+                              );
+                              e.preventDefault();
+                            }
+                            if (e.key === "Enter") {
+                              handleSelectCommand();
+                              e.preventDefault();
+                            }
+                          }
                           if (e.ctrlKey || e.metaKey) {
                             if (e.key === "Enter" && !loading) {
                               void handleSubmitMessage();
