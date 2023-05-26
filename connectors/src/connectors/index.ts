@@ -1,5 +1,6 @@
 import { Transaction } from "sequelize";
 
+import { createGithubConnector } from "@connectors/connectors/github";
 import {
   cleanupNotionConnector,
   createNotionConnector,
@@ -15,6 +16,12 @@ import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+export type ConnectorCreatorParams =
+  | {
+      nangoConnectionId: string;
+    }
+  | { githubInstallationId: string };
+
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
   connectionId: string
@@ -26,6 +33,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: createSlackConnector,
   notion: createNotionConnector,
+  github: createGithubConnector,
 };
 
 type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;

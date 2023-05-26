@@ -55,17 +55,17 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     fetchConnectorError: null,
   },
   {
+    name: "Github",
+    connectorProvider: "github",
+    isBuilt: true,
+    logoPath: "/static/github_black_32x32.png",
+    fetchConnectorError: null,
+  },
+  {
     name: "Google Drive",
     connectorProvider: "google_drive",
     isBuilt: false,
     logoPath: "/static/google_drive_32x32.png",
-    fetchConnectorError: null,
-  },
-  {
-    name: "Github",
-    connectorProvider: "github",
-    isBuilt: false,
-    logoPath: "/static/github_black_32x32.png",
     fetchConnectorError: null,
   },
 ];
@@ -196,19 +196,26 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
-    const nangoConnectorId =
-      provider == "slack"
-        ? nangoConfig.slackConnectorId
-        : nangoConfig.notionConnectorId;
-    const nango = new Nango({ publicKey: nangoConfig.publicKey });
-
     try {
-      const {
-        connectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoConnectorId,
-        `${provider}-${owner.sId}`
-      );
+      let connectionId: string;
+      if (provider === "notion" || provider === "slack") {
+        // nango-based connectors
+        const nangoConnectorId =
+          provider === "slack"
+            ? nangoConfig.slackConnectorId
+            : nangoConfig.notionConnectorId;
+        const nango = new Nango({ publicKey: nangoConfig.publicKey });
+        const {
+          connectionId: nangoConnectionId,
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+        connectionId = nangoConnectionId;
+      } else if (provider === "github") {
+        const installationId = await githubAuth();
+        connectionId = installationId;
+      } else {
+        throw new Error(`Unknown provider ${provider}`);
+      }
 
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
 
@@ -222,6 +229,7 @@ export default function DataSourcesView({
           connectionId,
         }),
       });
+
       if (res.ok) {
         const createdManagedDataSource: {
           dataSource: DataSourceType;
@@ -518,4 +526,32 @@ export default function DataSourcesView({
       </div>
     </AppLayout>
   );
+}
+
+async function githubAuth(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const ghPopup = window.open("https://github.com/apps/dust-test-app");
+
+    const popupMessageEventListener = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === "installed") {
+        resolve(event.data.installationId);
+        window.removeEventListener("message", popupMessageEventListener);
+        ghPopup?.close();
+      }
+    };
+
+    window.addEventListener("message", popupMessageEventListener);
+
+    const checkPopupStatus = setInterval(() => {
+      if (ghPopup && ghPopup.closed) {
+        window.removeEventListener("message", popupMessageEventListener);
+        clearInterval(checkPopupStatus);
+        reject(
+          new Error("User closed the window before installation completed")
+        );
+      }
+    }, 100);
+  });
 }

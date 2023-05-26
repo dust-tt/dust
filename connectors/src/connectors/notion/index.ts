@@ -1,5 +1,6 @@
 import { Transaction } from "sequelize";
 
+import { ConnectorCreatorParams } from "@connectors/connectors";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -45,8 +46,6 @@ export async function createNotionConnector(
     const connector = await Connector.create(
       {
         type: "notion",
-        // TODO: deprecate_nango_connection_id_2023-06-06
-        nangoConnectionId,
         connectionId: nangoConnectionId,
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,

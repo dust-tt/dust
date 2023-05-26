@@ -32,10 +32,7 @@ export class Connector extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
-
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  declare nangoConnectionId: string;
-  declare connectionId?: string | null;
+  declare connectionId: string;
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -47,6 +44,9 @@ export class Connector extends Model<
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
+
+  declare nangoConnectionId?: string;
+  declare githubInstallationId?: string;
 }
 
 Connector.init(
@@ -70,14 +70,9 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // TODO: deprecate_nango_connection_id_2023-06-06
-    nangoConnectionId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,
@@ -115,10 +110,38 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // must be set for all nango-based connectors
+    nangoConnectionId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    // only set for github connectors
+    githubInstallationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
-
+    validate: {
+      // either nangoConnectionId or githubInstallationId must be set
+      eitherNangoConnectionIdOrGithubInstallationId() {
+        if (
+          this.nangoConnectionId === null &&
+          this.githubInstallationId === null
+        ) {
+          throw new Error(
+            "either nangoConnectionId or githubInstallationId must be set"
+          );
+        }
+      },
+      // if provider is github, githubInstallationId must be set
+      githubInstallationIdMustBeSet() {
+        if (this.type === "github" && this.githubInstallationId === null) {
+          throw new Error("githubInstallationId must be set");
+        }
+      },
+    },
     modelName: "connectors",
     indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }

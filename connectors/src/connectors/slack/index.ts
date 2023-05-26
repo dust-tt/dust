@@ -112,10 +112,7 @@ export async function cleanupSlackConnector(
   if (!SLACK_CLIENT_SECRET) {
     return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
   }
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const accessToken = await getAccessToken(
-    connector.connectionId || connector.nangoConnectionId
-  );
+  const accessToken = await getAccessToken(connector.connectionId);
   const slackClient = getSlackClient(accessToken);
   const deleteRes = await slackClient.apps.uninstall({
     client_id: SLACK_CLIENT_ID,

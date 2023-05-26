@@ -13,9 +13,7 @@ type ConnectorCreateReqBody = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  nangoConnectionId: string;
-  connectionId?: string;
+  connectionId: string;
 };
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
@@ -33,8 +31,7 @@ const _createConnectorAPIHandler = async (
       !req.body.workspaceAPIKey ||
       !req.body.dataSourceName ||
       !req.body.workspaceId ||
-      // TODO: deprecate_nango_connection_id_2023-06-06
-      !(req.body.connectionId || req.body.nangoConnectionId)
+      !req.body.connectionId
     ) {
       return apiError(req, res, {
         api_error: {
@@ -55,8 +52,29 @@ const _createConnectorAPIHandler = async (
         status_code: 400,
       });
     }
+
     const connectorCreator =
       CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+
+    // const createConnectorParams = isCreateNangoConnectorReqBody(req.body)
+    //   ? {
+    //       nangoConnectionId: req.body.nangoConnectionId,
+    //     }
+    //   : isCreateGithubConnectorReqBody(req.body)
+    //   ? {
+    //       githubInstallationId: req.body.githubInstallationId,
+    //     }
+    //   : null;
+
+    // if (!createConnectorParams) {
+    //   return apiError(req, res, {
+    //     api_error: {
+    //       type: "invalid_request_error",
+    //       message: `Missing required parameters. Required : nangoConnectionId or githubInstallationId`,
+    //     },
+    //     status_code: 400,
+    //   });
+    // }
 
     const connectorRes = await connectorCreator(
       {
@@ -64,8 +82,7 @@ const _createConnectorAPIHandler = async (
         dataSourceName: req.body.dataSourceName,
         workspaceId: req.body.workspaceId,
       },
-      // TODO: deprecate_nango_connection_id_2023-06-06
-      req.body.connectionId || req.body.nangoConnectionId
+      req.body.connectionId
     );
 
     if (connectorRes.isErr()) {
