@@ -128,6 +128,15 @@ const _webhookSlackAPIHandler = async (
           },
         });
       }
+
+      if (!connector.nangoConnectionId) {
+        return res.status(500).send({
+          error: {
+            message: `Connector ${connector.id} does not have a nango connection id`,
+          },
+        });
+      }
+
       const slackAccessToken = await getAccessToken(
         // TODO: deprecate_nango_connection_id_2023-06-06
         connector.connectionId || connector.nangoConnectionId

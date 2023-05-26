@@ -34,9 +34,7 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   };
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflowId = workspaceFullSyncWorkflowId(connectorId);
   try {
@@ -81,9 +79,7 @@ export async function launchSlackSyncOneThreadWorkflow(
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   };
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflowId = syncOneThreadDebouncedWorkflowId(
     connectorId,
@@ -130,9 +126,7 @@ export async function launchSlackSyncOneMessageWorkflow(
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   };
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const messageTs = parseInt(threadTs as string) * 1000;
   const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
@@ -180,9 +174,7 @@ export async function launchSlackBotJoinedWorkflow(
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   };
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflowId = botJoinedChannelWorkflowId(connectorId);
   try {
@@ -223,10 +215,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: string) {
 
   const dataSourceConfig: DataSourceConfig =
     dataSourceConfigFromConnector(connector);
-
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflowId = slackGarbageCollectorWorkflowId(connectorId);
   try {

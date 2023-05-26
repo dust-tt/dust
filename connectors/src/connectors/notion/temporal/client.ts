@@ -26,9 +26,7 @@ export async function launchNotionSyncWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  const nangoConnectionId =
-    connector.connectionId || connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
