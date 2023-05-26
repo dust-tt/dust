@@ -88,7 +88,7 @@ impl AnthropicLLM {
                 format!(
                     "\n\n{}: {}",
                     match cm.role {
-                        ChatMessageRole::System => "Assistant",
+                        ChatMessageRole::System => "Human",
                         ChatMessageRole::Assistant => "Assistant",
                         ChatMessageRole::User => "Human",
                     },
@@ -128,10 +128,7 @@ impl AnthropicLLM {
                 },
                 temperature,
                 top_p,
-                // @todo(aric): I don't understand the meaning
-                // of top_k, which is top_logprob in the llm block.
-                // I'm setting it to 0 for now. TBC at code review time
-                0,
+                None,
                 stop_tokens.as_ref(),
             )
             .await?;
@@ -172,10 +169,7 @@ impl AnthropicLLM {
                 },
                 temperature,
                 top_p,
-                // @todo(aric): I don't understand the meaning of this top_k
-                // parameter, which is top_logprob in the openai llm block.
-                // TBD at code review time.
-                0,
+                None,
                 &stop_tokens,
                 event_sender,
             )
@@ -200,7 +194,7 @@ impl AnthropicLLM {
         max_tokens_to_sample: i32,
         temperature: f32,
         top_p: f32,
-        top_k: i32,
+        top_k: Option<i32>,
         stop: &Vec<String>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<Response> {
@@ -317,7 +311,7 @@ impl AnthropicLLM {
         max_tokens_to_sample: i32,
         temperature: f32,
         top_p: f32,
-        top_k: i32,
+        top_k: Option<i32>,
         stop: &Vec<String>,
     ) -> Result<Response> {
         let https = HttpsConnector::new();
@@ -407,7 +401,7 @@ impl LLM for AnthropicLLM {
         _frequency_penalty: Option<f32>,
         _presence_penalty: Option<f32>,
         top_p: Option<f32>,
-        top_logprobs: Option<i32>,
+        _top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
@@ -435,10 +429,7 @@ impl LLM for AnthropicLLM {
                             Some(p) => p,
                             None => 1.0,
                         },
-                        match top_logprobs {
-                            Some(k) => k,
-                            None => 0,
-                        },
+                        None,
                         stop,
                         es,
                     )
@@ -476,10 +467,7 @@ impl LLM for AnthropicLLM {
                             Some(p) => p,
                             None => 1.0,
                         },
-                        match top_logprobs {
-                            Some(k) => k,
-                            None => 0,
-                        },
+                        None,
                         stop,
                     )
                     .await?;
