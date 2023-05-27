@@ -369,7 +369,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
       "Follow-up with the agent without performing a document retrieval",
   },
   {
-    cmd: "/retrieve-only",
+    cmd: "/retrieve",
     description: "Perform a document retrieval without querying the agent",
   },
 ];
@@ -441,7 +441,7 @@ export default function AppChat({
     setDataSources(newSelection);
   };
 
-  const handleSubmitMessage = async () => {
+  const handleSubmit = async () => {
     // clone messages add new message to the end
     const m = [...messages];
     m.push({
@@ -741,7 +741,7 @@ export default function AppChat({
                           }
                           if (e.ctrlKey || e.metaKey) {
                             if (e.key === "Enter" && !loading) {
-                              void handleSubmitMessage();
+                              void handleSubmit();
                               e.preventDefault();
                             }
                           }
@@ -757,7 +757,7 @@ export default function AppChat({
                           <ArrowRightCircleIcon
                             className="h-5 w-5 cursor-pointer text-violet-500"
                             onClick={() => {
-                              void handleSubmitMessage();
+                              void handleSubmit();
                             }}
                           />
                         ) : (
