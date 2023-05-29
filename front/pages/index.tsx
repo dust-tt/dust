@@ -304,7 +304,7 @@ export default function Home({
           <div className="mt-32">
             <div className="grid grid-cols-8">
               <div className="col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white py-2">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white py-2 border-violet-200">
                   <img
                     className="mx-auto w-[418px]"
                     src="/static/landing_chat.png"
@@ -330,9 +330,9 @@ export default function Home({
           </div>
 
           <div className="mt-16">
-            <div className="grid grid-cols-8">
-              <div className="col-span-4 pl-4 pr-8 align-middle">
-                <div className="mt-24">
+            <div className="sm:grid sm:grid-cols-8">
+              <div className="sm:col-span-4 pl-4 pr-8 align-middle">
+                <div className="mt-16">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Connect Data Sources
                   </div>
@@ -346,10 +346,10 @@ export default function Home({
                   </p>
                 </div>
               </div>
-              <div className="col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2">
+              <div className="sm:col-span-4">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2 border-violet-200">
                   <img
-                    className="mx-auto w-[396px]"
+                    className="mx-auto w-[393px]"
                     src="/static/landing_data_sources.png"
                   />
                 </div>
@@ -360,7 +360,7 @@ export default function Home({
           <div className="mt-16">
             <div className="grid grid-cols-8">
               <div className="col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2 border-violet-200">
                   <img
                     className="mx-auto w-[396px]"
                     src="/static/landing_block.png"
