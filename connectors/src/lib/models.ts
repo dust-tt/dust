@@ -126,18 +126,15 @@ Connector.init(
     validate: {
       // either nangoConnectionId or githubInstallationId must be set
       eitherNangoConnectionIdOrGithubInstallationId() {
-        if (
-          this.nangoConnectionId === null &&
-          this.githubInstallationId === null
-        ) {
+        if (!(this.nangoConnectionId || this.githubInstallationId)) {
           throw new Error(
             "either nangoConnectionId or githubInstallationId must be set"
           );
         }
       },
-      // if provider is github, githubInstallationId must be set
+      // githubInstallationId must be set if type is github and not set otherwise
       githubInstallationIdMustBeSet() {
-        if (this.type === "github" && this.githubInstallationId === null) {
+        if ((this.type === "github") === !!this.githubInstallationId) {
           throw new Error("githubInstallationId must be set");
         }
       },
