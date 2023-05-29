@@ -1,4 +1,3 @@
-import { CheckIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import Head from "next/head";
@@ -45,94 +44,6 @@ export const getServerSideProps: GetServerSideProps<{
     props: { gaTrackingId: GA_TRACKING_ID },
   };
 };
-
-const features = [
-  {
-    name: "Chained LLM apps",
-    built: true,
-    description:
-      "Chain arbitrarily between calls to models, code execution and queries to external services.",
-  },
-  {
-    name: "Multiple inputs",
-    built: true,
-    description:
-      "Avoid overfitting by iterating on your LLM app design on several inputs simultaneously.",
-  },
-  {
-    name: "Model choice",
-    built: true,
-    description:
-      "Design against models served by OpenAI, Cohere, AI21 and more. Switch models seamlessly.",
-  },
-  {
-    name: "Version history",
-    built: true,
-    description:
-      "Have easy access to iterations, model outputs and few-shot examples saved automatically.",
-  },
-  {
-    name: "Caching",
-    built: true,
-    description:
-      "Speed up iterations and reduce costs with cached model interactions.",
-  },
-  {
-    name: "Easy deployment & use",
-    built: true,
-    description: "Deploy to an API endpoint or use directly from Dust.",
-  },
-  {
-    name: "Data Sources",
-    built: true,
-    description:
-      "Fully managed semantic search engines you can query from your workflows.",
-  },
-  {
-    name: "Connections",
-    built: false,
-    description:
-      "Connect your team's Notion, Google Docs or Slack to managed Data Sources that are kept up-to-date automatically.",
-  },
-];
-
-function Features() {
-  return (
-    <div className="mx-auto max-w-3xl xl:max-w-7xl">
-      <div className="mx-auto text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-          Build powerful workflows <br />
-          on top of LLMs and Semantic Search🔥
-        </h2>
-      </div>
-      <div className="px-4 py-16 sm:px-6 xl:px-8 xl:py-24">
-        <dl className="space-y-10 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 xl:grid-cols-4 xl:gap-x-8">
-          {features.map((feature) => (
-            <div key={feature.name} className="relative">
-              <dt>
-                <CheckIcon
-                  className="absolute h-6 w-6 text-green-500"
-                  aria-hidden="true"
-                />
-                <p className="ml-9 flex flex-row items-center text-lg font-medium leading-6 text-gray-900">
-                  <span>{feature.name}</span>
-                  {feature.built ? null : (
-                    <span className="ml-2 rounded-md bg-gray-400 px-2 py-0.5 text-xs font-normal text-white">
-                      coming soon
-                    </span>
-                  )}
-                </p>
-              </dt>
-              <dd className="ml-9 mt-2 text-base text-gray-500">
-                {feature.description}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </div>
-  );
-}
 
 const particuleNum = 60;
 
@@ -304,7 +215,7 @@ export default function Home({
           <div className="mt-32">
             <div className="grid grid-cols-8">
               <div className="col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white py-2 border-violet-200">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white py-2">
                   <img
                     className="mx-auto w-[418px]"
                     src="/static/landing_chat.png"
@@ -331,7 +242,7 @@ export default function Home({
 
           <div className="mt-16">
             <div className="sm:grid sm:grid-cols-8">
-              <div className="sm:col-span-4 pl-4 pr-8 align-middle">
+              <div className="pl-4 pr-8 align-middle sm:col-span-4">
                 <div className="mt-16">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Connect Data Sources
@@ -347,7 +258,7 @@ export default function Home({
                 </div>
               </div>
               <div className="sm:col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2 border-violet-200">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
                     className="mx-auto w-[393px]"
                     src="/static/landing_data_sources.png"
@@ -360,7 +271,7 @@ export default function Home({
           <div className="mt-16">
             <div className="grid grid-cols-8">
               <div className="col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2 border-violet-200">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
                     className="mx-auto w-[396px]"
                     src="/static/landing_block.png"
@@ -385,7 +296,7 @@ export default function Home({
           </div>
         </div>
 
-        <div className="mx-auto my-10 pb-8 mt-32 max-w-3xl text-center text-sm text-gray-400">
+        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center text-sm text-gray-400">
           Dust © 2022 – 2023
         </div>
         <>
