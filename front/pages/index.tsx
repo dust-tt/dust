@@ -222,7 +222,7 @@ export default function Home({
                   />
                 </div>
               </div>
-              <div className="sm:col-span-4 sm:pl-8 sm:pr-4 align-middle">
+              <div className="align-middle sm:col-span-4 sm:pl-8 sm:pr-4">
                 <div className="mt-8 sm:mt-24">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Company knowledge vectorized, not rasterized
@@ -242,7 +242,7 @@ export default function Home({
 
           <div className="mt-16">
             <div className="sm:grid sm:grid-cols-8">
-              <div className="sm:pl-4 sm:pr-8 align-middle sm:col-span-4">
+              <div className="align-middle sm:col-span-4 sm:pl-4 sm:pr-8">
                 <div className="sm:mt-16">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Connect Data Sources
@@ -257,7 +257,7 @@ export default function Home({
                   </p>
                 </div>
               </div>
-              <div className="sm:col-span-4 mt-8 sm:mt-0">
+              <div className="mt-8 sm:col-span-4 sm:mt-0">
                 <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
                     className="mx-auto w-[393px]"
@@ -278,7 +278,7 @@ export default function Home({
                   />
                 </div>
               </div>
-              <div className="sm:col-span-4 sm:pl-8 sm:pr-4 align-middle">
+              <div className="align-middle sm:col-span-4 sm:pl-8 sm:pr-4">
                 <div className="mt-8">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Build powerful workflows on top of your company data
