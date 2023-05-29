@@ -1,15 +1,20 @@
-import { ArrowRightCircleIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import dynamic from "next/dynamic";
 import Head from "next/head";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
+import p5Types from "p5";
 
-import { ActionButton, Button } from "@app/components/Button";
+import { ActionButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-import { classNames, communityApps } from "@app/lib/utils";
+
+// Will only import `react-p5` on client-side
+const Sketch = dynamic(() => import("react-p5").then((mod) => mod.default), {
+  ssr: false,
+});
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -129,6 +134,91 @@ function Features() {
   );
 }
 
+const particuleNum = 60;
+
+class Particle {
+  pos: p5Types.Vector;
+  vel: p5Types.Vector;
+  acc: p5Types.Vector;
+  angle: number;
+  radius: number;
+
+  constructor(p5: p5Types) {
+    this.pos = p5.createVector(
+      p5.random(p5.windowWidth * 2) - p5.windowWidth / 2,
+      p5.random(p5.windowHeight)
+    );
+    this.vel = p5.createVector(p5.random(-1, 1), p5.random(-1, 1));
+    this.acc = p5.createVector();
+    this.angle = p5.random(p5.TWO_PI);
+    this.radius = p5.random(30, 120);
+  }
+
+  applyForce(force: p5Types.Vector) {
+    this.acc.add(force);
+  }
+
+  update(p5: p5Types) {
+    let percent = p5.millis() / 10000;
+    if (percent > 1) {
+      percent = 1;
+    }
+    const center = p5.createVector(
+      p5.windowWidth / 2,
+      (1 * p5.windowHeight) / 3
+    );
+    const circlingForce = p5.createVector(
+      p5.cos(this.angle),
+      p5.sin(this.angle)
+    );
+    circlingForce.mult(this.radius * percent);
+    center.add(circlingForce);
+    const attractionForce = center.sub(this.pos);
+    attractionForce.normalize();
+    attractionForce.mult(0.005 * percent);
+    this.applyForce(attractionForce);
+    this.angle += 0.01;
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    this.vel.limit(3);
+  }
+
+  show(p5: p5Types, nextPos: p5Types.Vector | null = null) {
+    p5.fill(0, 0, 0);
+    // p5.noStroke();
+    // p5.circle(this.pos.x, this.pos.y, 2);
+    // if nextPos draw a line ot the next one
+    if (nextPos) {
+      p5.line(this.pos.x, this.pos.y, nextPos.x, nextPos.y);
+    }
+  }
+}
+
+function Cloud() {
+  const particles: Particle[] = [];
+
+  const setup = (p5: p5Types, canvasParentRef: Element) => {
+    p5.createCanvas(p5.windowWidth, p5.windowHeight).parent(canvasParentRef);
+    p5.frameRate(30);
+    for (let i = 0; i < particuleNum; i++) {
+      particles.push(new Particle(p5));
+    }
+  };
+
+  const draw = (p5: p5Types) => {
+    p5.clear();
+    let p: Particle | null = particles[particles.length - 1];
+    for (const particle of particles) {
+      particle.update(p5);
+      particle.show(p5, p?.pos);
+      p = particle;
+    }
+  };
+
+  return <Sketch setup={setup} draw={draw} />;
+}
+
 export default function Home({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -137,146 +227,165 @@ export default function Home({
   return (
     <>
       <Head>
-        <title>Dust - Design and Deploy Large Language Models Apps</title>
+        <title>Dust - Unleash your Company Data with Generative AI</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <main className="mx-4">
-        <div className="mx-8">
-          <Logo />
-        </div>
+      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 opacity-5">
+        <Cloud />
+      </div>
+      <main className="z-10 mx-4">
+        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          <div className="-ml-4 -mt-2">
+            <Logo />
+          </div>
 
-        <div className="mx-auto mt-12 sm:max-w-3xl lg:max-w-4xl">
-          <h1 className="text-center text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-            <div className="">Make and Deploy</div>
-            <div className="leading-snug text-violet-600">
-              Large Language Model Apps
-            </div>
+          <h1 className="mt-12 text-5xl font-bold leading-none tracking-tighter text-gray-800 sm:mt-16 sm:text-7xl lg:text-8xl">
+            Unleash your
+            <br />
+            <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
+              Company Data
+            </span>{" "}
+            <br />
+            with Generative AI
+            <br />
           </h1>
 
-          <div className="mt-8 flex flex-col">
-            {!router.query.signIn || router.query.signIn === "github" ? (
-              <div className="flex w-auto w-full flex-initial">
-                <div className="mx-auto mt-2">
-                  <ActionButton
-                    onClick={() =>
-                      signIn("github", {
-                        callbackUrl: router.query.wId
-                          ? `/api/login?wId=${router.query.wId}`
-                          : `/api/login`,
-                      })
-                    }
-                  >
-                    <img
-                      src="/static/github_white_32x32.png"
-                      className="ml-1 h-4 w-4"
-                    />
-                    <span className="ml-2 mr-1">Sign in with GitHub</span>
-                  </ActionButton>
-                </div>
-              </div>
-            ) : null}
-
-            {!router.query.signIn || router.query.signIn === "google" ? (
-              <div className="flex w-auto w-full flex-initial">
-                <div className="mx-auto mt-2">
-                  <ActionButton
-                    onClick={() =>
-                      signIn("google", {
-                        callbackUrl: router.query.wId
-                          ? `/api/login?wId=${router.query.wId}`
-                          : `/api/login`,
-                      })
-                    }
-                  >
-                    <img
-                      src="/static/google_white_32x32.png"
-                      className="ml-1 h-4 w-4"
-                    />
-                    <span className="ml-2 mr-1">Sign in with Google</span>
-                  </ActionButton>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex w-auto w-full flex-initial">
-              <div className="mx-auto mt-3">
-                <Link href="https://docs.dust.tt" className="mx-auto">
-                  <div className="">
-                    <Button>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      View Documentation
-                    </Button>
-                  </div>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16">
-          <Features />
-        </div>
-
-        <div className="mx-auto mt-8 max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
-          <div className="sm:flex sm:items-center">
-            <div className="mt-8 sm:flex-auto">
-              <h1 className="text-base font-medium text-gray-900">
-                Community Example Apps
-              </h1>
-
-              <p className="text-sm text-gray-500">
-                Discover apps created by the community. They serve as great
-                examples to get started with Dust.
+          <div className="mt-12 grid sm:grid-cols-6">
+            <div className="text-lg text-gray-900 sm:col-span-3">
+              <p className="font-light">
+                I analyze hundreds of internal documents in seconds to generate
+                answers adapted to your role and need. I assist you creating
+                better content, faster. I craft and push timely updates to keep
+                you in the know.
               </p>
+              <p className="mt-4 text-lg font-medium">
+                I am the{" "}
+                <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
+                  Smart Team OS
+                </span>{" "}
+                that will accelerate your company.
+              </p>
+              <div className="mt-12">
+                <ActionButton
+                  onClick={() =>
+                    signIn("google", {
+                      callbackUrl: router.query.wId
+                        ? `/api/login?wId=${router.query.wId}`
+                        : `/api/login`,
+                    })
+                  }
+                >
+                  <img
+                    src="/static/google_white_32x32.png"
+                    className="ml-1 h-4 w-4"
+                  />
+                  <span className="ml-2 mr-1">Sign in with Google</span>
+                </ActionButton>
+                <div className="ml-32 mt-1 text-xs text-gray-500">
+                  or{" "}
+                  <span
+                    className="cursor-pointer hover:font-bold"
+                    onClick={() => {
+                      void signIn("github", {
+                        callbackUrl: router.query.wId
+                          ? `/api/login?wId=${router.query.wId}`
+                          : `/api/login`,
+                      });
+                    }}
+                  >
+                    GitHub
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 overflow-hidden">
-            <ul role="list" className="mb-8">
-              {communityApps.map((app) => (
-                <li key={app.sId} className="px-2">
-                  <div className="py-4">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/w/${app.wId}/a/${app.sId}`}
-                        className="block"
-                      >
-                        <p className="truncate text-base font-bold text-violet-600">
-                          {app.name}
-                        </p>
-                      </Link>
-                      <div className="ml-2 flex flex-shrink-0">
-                        <p
-                          className={classNames(
-                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            app.visibility == "public"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          )}
-                        >
-                          {app.visibility}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-700">
-                          {app.description}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                        <p>{app.sId}</p>
-                      </div>
-                    </div>
+          <div className="mt-32">
+            <div className="grid grid-cols-8">
+              <div className="col-span-4">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white py-2">
+                  <img
+                    className="mx-auto w-[418px]"
+                    src="/static/landing_chat.png"
+                  />
+                </div>
+              </div>
+              <div className="col-span-4 pl-8 pr-4 align-middle">
+                <div className="mt-24">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Company knowledge vectorized, not rasterized
                   </div>
-                </li>
-              ))}
-            </ul>
+                  <p className="mt-4 text-lg font-light">
+                    LLMs have the potential to disantangle how information is
+                    created and stored from how it is consumed.
+                  </p>
+                  <p className="mt-4 text-lg font-light">
+                    Get up-to-date answers based on your entire company data
+                    crafted to you personally.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <div className="grid grid-cols-8">
+              <div className="col-span-4 pl-4 pr-8 align-middle">
+                <div className="mt-24">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Connect Data Sources
+                  </div>
+                  <p className="mt-4 text-lg font-light">
+                    Fully managed semantic search engines to expose your company
+                    data to large lanugage models.
+                  </p>
+                  <p className="mt-4 text-lg font-light">
+                    Connect your team's Notion, Google Docs, Slack or GitHub to
+                    managed Data Sources that are kept up-to-date automatically.
+                  </p>
+                </div>
+              </div>
+              <div className="col-span-4">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[396px]"
+                    src="/static/landing_data_sources.png"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <div className="grid grid-cols-8">
+              <div className="col-span-4">
+                <div className="mx-auto overflow-hidden rounded-lg border bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[396px]"
+                    src="/static/landing_block.png"
+                  />
+                </div>
+              </div>
+              <div className="col-span-4 pl-8 pr-4 align-middle">
+                <div className="mt-8">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Build powerful workflows on top of your company data
+                  </div>
+                  <p className="mt-4 text-lg font-light">
+                    Create large language model apps: query your data sources,
+                    chain calls to models to achieve specific tasks.
+                  </p>
+                  <p className="mt-4 text-lg font-light">
+                    Deploy these apps behind API.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mx-auto my-10 max-w-3xl text-center text-sm text-gray-400">
+        <div className="mx-auto my-10 pb-8 mt-32 max-w-3xl text-center text-sm text-gray-400">
           Dust © 2022 – 2023
         </div>
         <>
@@ -293,6 +402,7 @@ export default function Home({
              gtag('config', '${gaTrackingId}');
             `}
           </Script>
+          <Script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js" />
         </>
       </main>
     </>

@@ -7,7 +7,7 @@ export function Logo() {
     <div className="mx-4 mt-8 flex flex-row items-center">
       <div className="flex rotate-[30deg]">
         <div className="h-4 w-[8px] rounded-xl bg-gray-400"></div>
-        <div className="h-4 w-[2px] bg-white"></div>
+        <div className="h-4 w-[2px] bg-transparent"></div>
         <div className="h-6 w-[8px] rounded-xl bg-gray-400"></div>
       </div>
       <div className="flex h-4 w-[8px] bg-white"></div>
@@ -28,7 +28,7 @@ export function PulseLogo({ animated }: { animated: boolean }) {
     >
       <div className="flex rotate-[30deg]">
         <div className="h-4 w-[8px] rounded-xl bg-gray-400"></div>
-        <div className="h-4 w-[2px] bg-white"></div>
+        <div className="h-4 w-[2px] bg-transparent"></div>
         <div className="h-6 w-[8px] rounded-xl bg-gray-400"></div>
       </div>
     </div>
