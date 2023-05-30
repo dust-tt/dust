@@ -304,50 +304,51 @@ export function MessageView({
   user,
   message,
   loading,
-  isLatest,
+  isLatestRetrieval,
 }: {
   user: UserType | null;
   message: Message;
   loading: boolean;
-  isLatest: boolean;
+  isLatestRetrieval: boolean;
 }) {
   return (
     <div className="">
-      <div className="flex flex-row">
-        {message.role === "assistant" && (
-          <RetrievalsView message={message} isLatest={isLatest} />
-        )}
-      </div>
-      <div className="my-2 flex flex-row items-start">
-        <div
-          className={classNames(
-            "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-            message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
-          )}
-        >
-          {message.role === "assistant" ? (
-            <div className="flex scale-50 pl-2">
-              <PulseLogo animated={loading}></PulseLogo>
-            </div>
-          ) : (
-            <div className="flex">
-              <img
-                className="h-8 w-8 rounded-md"
-                src={user?.image || "https://gravatar.com/avatar/anonymous"}
-                alt=""
-              />
-            </div>
-          )}
+      {message.role === "retrieval" ? (
+        <div className="flex flex-row">
+          <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
-        <div
-          className={classNames(
-            "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
-            message.role === "user" ? "italic text-gray-500" : "text-gray-700"
-          )}
-        >
-          {message.message}
+      ) : (
+        <div className="my-2 flex flex-row items-start">
+          <div
+            className={classNames(
+              "min-w-6 flex h-8 w-8 flex-initial rounded-md",
+              message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
+            )}
+          >
+            {message.role === "assistant" ? (
+              <div className="flex scale-50 pl-2">
+                <PulseLogo animated={loading}></PulseLogo>
+              </div>
+            ) : (
+              <div className="flex">
+                <img
+                  className="h-8 w-8 rounded-md"
+                  src={user?.image || "https://gravatar.com/avatar/anonymous"}
+                  alt=""
+                />
+              </div>
+            )}
+          </div>
+          <div
+            className={classNames(
+              "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
+              message.role === "user" ? "italic text-gray-500" : "text-gray-700"
+            )}
+          >
+            {message.message}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -414,6 +415,11 @@ export default function AppChat({
 
   const handleSelectCommand = () => {
     if (commandsSelect >= 0 && commandsSelect < commands.length) {
+      if (commands[commandsSelect].cmd === "/new") {
+        setCommands([]);
+        setCommandsSelect(0);
+        return handleNew();
+      }
       setInput(commands[commandsSelect].cmd + " ");
       setCommands([]);
       setCommandsSelect(0);
@@ -435,95 +441,185 @@ export default function AppChat({
     setDataSources(newSelection);
   };
 
+  const handleNew = async () => {
+    setMessages([]);
+    setInput("");
+    setLoading(false);
+  };
+
   const handleSubmit = async () => {
+    let runRetrieval = true;
+    let runAssistant = true;
+    let processedInput = input;
+
+    if (input.startsWith("/retrieve")) {
+      runAssistant = false;
+      processedInput = input.substring("/retrieve".length).trim();
+    }
+    if (input.startsWith("/follow-up")) {
+      runRetrieval = false;
+      processedInput = input.substring("/follow-up".length).trim();
+    }
+
     // clone messages add new message to the end
     const m = [...messages];
-    m.push({
+    const userMessage: Message = {
       role: "user",
-      runRetrieval: true,
-      runAssistant: true,
-      message: input,
-      retrievals: [],
-    });
+      runRetrieval,
+      runAssistant,
+      message: processedInput,
+    };
+
+    m.push(userMessage);
     setMessages(m);
     setInput("");
     setLoading(true);
-    const r: Message = {
-      role: "assistant",
-      message: "",
-    };
-    setResponse(r);
 
-    const config = cloneBaseConfig(DustProdActionRegistry["chat-main"].config);
-    config.DATASOURCE.data_sources = dataSources
-      .filter((ds) => ds.selected)
-      .map((ds) => {
-        return {
-          workspace_id: prodAPI.workspaceId(),
-          data_source_id: ds.name,
-        };
-      });
+    if (runRetrieval) {
+      const retrievalMessage: Message = {
+        role: "retrieval",
+      };
+      setResponse(retrievalMessage);
 
-    const res = await runActionStreamed(owner, "chat-main", config, [
-      { messages: m },
-    ]);
-    if (res.isErr()) {
-      console.log("ERROR", res.error);
-      // TODO(spolu): error reporting
-      setLoading(false);
-      return;
-    }
-    const { eventStream } = res.value;
+      const config = cloneBaseConfig(
+        DustProdActionRegistry["chat-retrieval"].config
+      );
+      config.DATASOURCE.data_sources = dataSources
+        .filter((ds) => ds.selected)
+        .map((ds) => {
+          return {
+            workspace_id: prodAPI.workspaceId(),
+            data_source_id: ds.name,
+          };
+        });
 
-    let skip = false;
-    for await (const event of eventStream) {
-      if (skip) continue;
-      // console.log("EVENT", event);
-      if (event.type === "tokens") {
-        const content = r.message + event.content.tokens.text;
-        setResponse({ ...r, message: content });
-        r.message = content;
-      }
-      if (event.type === "error") {
-        console.log("ERROR event", event);
+      const res = await runActionStreamed(owner, "chat-retrieval", config, [
+        { messages: [userMessage] },
+      ]);
+      if (res.isErr()) {
         m.push({
           role: "error",
-          message: event.content.message,
+          message: res.error.message,
         } as Message);
+        // console.log("ERROR", res.error);
         setMessages(m);
         setResponse(null);
-        skip = true;
+        setLoading(false);
+        return;
       }
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (event.content.block_name === "RETRIEVALS") {
-          if (!e.error) {
-            r.retrievals = e.value;
-            setResponse({ ...r });
-          }
+
+      const { eventStream } = res.value;
+
+      for await (const event of eventStream) {
+        // console.log("EVENT", event);
+        if (event.type === "error") {
+          console.log("ERROR event", event);
+          m.push({
+            role: "error",
+            message: event.content.message,
+          } as Message);
+          setMessages(m);
+          setResponse(null);
+          setLoading(false);
+          return;
         }
-        if (event.content.block_name === "MODEL") {
-          if (e.error) {
-            m.push({
-              role: "error",
-              message: e.error,
-            } as Message);
-            setMessages(m);
-            setResponse(null);
-            skip = true;
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (event.content.block_name === "DATASOURCE") {
+            if (e.error) {
+              m.push({
+                role: "error",
+                message: e.error,
+              } as Message);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+              return;
+            }
           }
-        }
-        if (event.content.block_name === "OUTPUT") {
-          if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
+          if (event.content.block_name === "OUTPUT") {
+            if (!e.error) {
+              m.push(e.value);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+            }
           }
         }
       }
     }
 
-    setLoading(false);
+    if (runAssistant) {
+      const assistantMessage: Message = {
+        role: "assistant",
+        message: "",
+      };
+      setResponse(assistantMessage);
+
+      const config = cloneBaseConfig(
+        DustProdActionRegistry["chat-assistant"].config
+      );
+
+      const res = await runActionStreamed(owner, "chat-assistant", config, [
+        { messages: m },
+      ]);
+      if (res.isErr()) {
+        m.push({
+          role: "error",
+          message: res.error.message,
+        } as Message);
+        // console.log("ERROR", res.error);
+        setMessages(m);
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+
+      const { eventStream } = res.value;
+
+      for await (const event of eventStream) {
+        // console.log("EVENT", event);
+        if (event.type === "tokens") {
+          const message = assistantMessage.message + event.content.tokens.text;
+          setResponse({ ...assistantMessage, message: message });
+          assistantMessage.message = message;
+        }
+        if (event.type === "error") {
+          console.log("ERROR event", event);
+          m.push({
+            role: "error",
+            message: event.content.message,
+          } as Message);
+          setMessages(m);
+          setResponse(null);
+          setLoading(false);
+          return;
+        }
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (event.content.block_name === "MODEL") {
+            if (e.error) {
+              m.push({
+                role: "error",
+                message: e.error,
+              } as Message);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+              return;
+            }
+          }
+          if (event.content.block_name === "OUTPUT") {
+            if (!e.error) {
+              m.push(e.value);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+            }
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -595,8 +691,25 @@ export default function AppChat({
                                 user={user}
                                 message={m}
                                 loading={false}
-                                isLatest={
-                                  !response && i === messages.length - 1
+                                // isLatest={
+                                //   !response && i === messages.length - 1
+                                // }
+                                isLatestRetrieval={
+                                  !(
+                                    response && response.role === "retrieval"
+                                  ) &&
+                                  (() => {
+                                    for (
+                                      let j = messages.length - 1;
+                                      j >= 0;
+                                      j--
+                                    ) {
+                                      if (messages[j].role === "retrieval") {
+                                        return i === j;
+                                      }
+                                    }
+                                    return false;
+                                  })()
                                 }
                               />
                             </div>
@@ -608,7 +721,8 @@ export default function AppChat({
                               user={user}
                               message={response}
                               loading={true}
-                              isLatest={true}
+                              // isLatest={true}
+                              isLatestRetrieval={response.role === "retrieval"}
                             />
                           </div>
                         ) : null}
@@ -674,7 +788,7 @@ export default function AppChat({
                                     setCommandsSelect(i);
                                   }}
                                   onClick={() => {
-                                    handleSelectCommand();
+                                    void handleSelectCommand();
                                   }}
                                 >
                                   <div className="flex w-24 flex-row">
@@ -732,7 +846,7 @@ export default function AppChat({
                               e.preventDefault();
                             }
                             if (e.key === "Enter") {
-                              handleSelectCommand();
+                              void handleSelectCommand();
                               e.preventDefault();
                             }
                           }

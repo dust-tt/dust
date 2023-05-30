@@ -27,6 +27,38 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "chat-retrieval": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "0d7ab66fd2",
+      appHash:
+        "3f64c7b8d4bad05db5d880ca5ffb66f7107a5c178ed43e360fd31634269bc01f",
+    },
+    config: {
+      DATASOURCE: {
+        data_sources: [],
+        top_k: 8,
+        filter: { tags: null, timestamp: null },
+        use_cache: false,
+      },
+    },
+  },
+  "chat-assistant": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "ab43ff2450",
+      appHash:
+        "02a6d6d9194f732aa6e666f39384d7ccf7fbc2d18a7c1b411d732f2316169bfd",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        use_cache: true,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export function cloneBaseConfig(config: { [model: string]: any }) {
