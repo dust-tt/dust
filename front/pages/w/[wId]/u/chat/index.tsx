@@ -126,18 +126,12 @@ type RetrievedDocument = {
 };
 
 type Message = {
-  role: "user" | "assistant";
-  content: string;
-  retrievals: RetrievedDocument[] | null;
+  role: "user" | "retrieval" | "assistant" | "error";
+  runRetrieval?: boolean;
+  runAssistant?: boolean;
+  message?: string; // for `user`, `assistant` and `error` messages
+  retrievals?: RetrievedDocument[]; // for `retrieval` messages
 };
-
-type ErrorMessage = {
-  message: string;
-};
-
-function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
-  return (m as ErrorMessage).message !== undefined;
-}
 
 export function DocumentView({ document }: { document: RetrievedDocument }) {
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
@@ -310,53 +304,70 @@ export function MessageView({
   user,
   message,
   loading,
-  isLatest,
+  isLatestRetrieval,
 }: {
   user: UserType | null;
   message: Message;
   loading: boolean;
-  isLatest: boolean;
+  isLatestRetrieval: boolean;
 }) {
   return (
     <div className="">
-      <div className="flex flex-row">
-        {message.role === "assistant" && (
-          <RetrievalsView message={message} isLatest={isLatest} />
-        )}
-      </div>
-      <div className="my-2 flex flex-row items-start">
-        <div
-          className={classNames(
-            "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-            message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
-          )}
-        >
-          {message.role === "assistant" ? (
-            <div className="flex scale-50 pl-2">
-              <PulseLogo animated={loading}></PulseLogo>
-            </div>
-          ) : (
-            <div className="flex">
-              <img
-                className="h-8 w-8 rounded-md"
-                src={user?.image || "https://gravatar.com/avatar/anonymous"}
-                alt=""
-              />
-            </div>
-          )}
+      {message.role === "retrieval" ? (
+        <div className="flex flex-row">
+          <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
-        <div
-          className={classNames(
-            "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
-            message.role === "user" ? "italic text-gray-500" : "text-gray-700"
-          )}
-        >
-          {message.content}
+      ) : (
+        <div className="my-2 flex flex-row items-start">
+          <div
+            className={classNames(
+              "min-w-6 flex h-8 w-8 flex-initial rounded-md",
+              message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
+            )}
+          >
+            {message.role === "assistant" ? (
+              <div className="flex scale-50 pl-2">
+                <PulseLogo animated={loading}></PulseLogo>
+              </div>
+            ) : (
+              <div className="flex">
+                <img
+                  className="h-8 w-8 rounded-md"
+                  src={user?.image || "https://gravatar.com/avatar/anonymous"}
+                  alt=""
+                />
+              </div>
+            )}
+          </div>
+          <div
+            className={classNames(
+              "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
+              message.role === "user" ? "italic text-gray-500" : "text-gray-700"
+            )}
+          >
+            {message.message}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
+const COMMANDS: { cmd: string; description: string }[] = [
+  {
+    cmd: "/new",
+    description: "Start a new conversation",
+  },
+  {
+    cmd: "/follow-up",
+    description:
+      "Follow-up with the assistant without performing a document retrieval",
+  },
+  {
+    cmd: "/retrieve",
+    description: "Perform a document retrieval without querying the assistant",
+  },
+];
 
 export default function AppChat({
   user,
@@ -372,19 +383,49 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [messages, setMessages] = useState<(Message | ErrorMessage)[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [dataSources, setDataSources] = useState(managedDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Message | null>(null);
+  const [commands, setCommands] = useState<
+    { cmd: string; description: string }[]
+  >([]);
+  const [commandsSelect, setCommandsSelect] = useState<number>(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, response]);
+
+  const handleInputUpdate = (input: string) => {
+    setInput(input);
+    if (input.startsWith("/") && input.split(" ").length === 1) {
+      setCommands(COMMANDS.filter((c) => c.cmd.startsWith(input)));
+      setCommandsSelect(0);
+    } else {
+      setCommands([]);
+      setCommandsSelect(0);
+    }
+  };
+
+  const handleSelectCommand = () => {
+    if (commandsSelect >= 0 && commandsSelect < commands.length) {
+      if (commands[commandsSelect].cmd === "/new") {
+        setCommands([]);
+        setCommandsSelect(0);
+        return handleNew();
+      }
+      setInput(commands[commandsSelect].cmd + " ");
+      setCommands([]);
+      setCommandsSelect(0);
+      inputRef.current?.focus();
+    }
+  };
 
   const handleSwitchDataSourceSelection = (name: string) => {
     const newSelection = dataSources.map((ds) => {
@@ -400,92 +441,185 @@ export default function AppChat({
     setDataSources(newSelection);
   };
 
-  const handleSubmitMessage = async () => {
+  const handleNew = async () => {
+    setMessages([]);
+    setInput("");
+    setLoading(false);
+  };
+
+  const handleSubmit = async () => {
+    let runRetrieval = true;
+    let runAssistant = true;
+    let processedInput = input;
+
+    if (input.startsWith("/retrieve")) {
+      runAssistant = false;
+      processedInput = input.substring("/retrieve".length).trim();
+    }
+    if (input.startsWith("/follow-up")) {
+      runRetrieval = false;
+      processedInput = input.substring("/follow-up".length).trim();
+    }
+
     // clone messages add new message to the end
     const m = [...messages];
-    m.push({
+    const userMessage: Message = {
       role: "user",
-      content: input,
-      retrievals: [],
-    });
+      runRetrieval,
+      runAssistant,
+      message: processedInput,
+    };
+
+    m.push(userMessage);
     setMessages(m);
     setInput("");
     setLoading(true);
-    const r: Message = {
-      role: "assistant",
-      content: "",
-      retrievals: null,
-    };
-    setResponse(r);
 
-    const config = cloneBaseConfig(DustProdActionRegistry["chat-main"].config);
-    config.DATASOURCE.data_sources = dataSources
-      .filter((ds) => ds.selected)
-      .map((ds) => {
-        return {
-          workspace_id: prodAPI.workspaceId(),
-          data_source_id: ds.name,
-        };
-      });
+    if (runRetrieval) {
+      const retrievalMessage: Message = {
+        role: "retrieval",
+      };
+      setResponse(retrievalMessage);
 
-    const res = await runActionStreamed(owner, "chat-main", config, [
-      { messages: m },
-    ]);
-    if (res.isErr()) {
-      console.log("ERROR", res.error);
-      // TODO(spolu): error reporting
-      setLoading(false);
-      return;
-    }
-    const { eventStream } = res.value;
+      const config = cloneBaseConfig(
+        DustProdActionRegistry["chat-retrieval"].config
+      );
+      config.DATASOURCE.data_sources = dataSources
+        .filter((ds) => ds.selected)
+        .map((ds) => {
+          return {
+            workspace_id: prodAPI.workspaceId(),
+            data_source_id: ds.name,
+          };
+        });
 
-    let skip = false;
-    for await (const event of eventStream) {
-      if (skip) continue;
-      // console.log("EVENT", event);
-      if (event.type === "tokens") {
-        const content = r.content + event.content.tokens.text;
-        setResponse({ ...r, content });
-        r.content = content;
-      }
-      if (event.type === "error") {
-        console.log("ERROR event", event);
+      const res = await runActionStreamed(owner, "chat-retrieval", config, [
+        { messages: [userMessage] },
+      ]);
+      if (res.isErr()) {
         m.push({
-          message: event.content.message,
-        } as ErrorMessage);
+          role: "error",
+          message: res.error.message,
+        } as Message);
+        // console.log("ERROR", res.error);
         setMessages(m);
         setResponse(null);
-        skip = true;
+        setLoading(false);
+        return;
       }
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (event.content.block_name === "RETRIEVALS") {
-          if (!e.error) {
-            r.retrievals = e.value;
-            setResponse({ ...r });
-          }
+
+      const { eventStream } = res.value;
+
+      for await (const event of eventStream) {
+        // console.log("EVENT", event);
+        if (event.type === "error") {
+          console.log("ERROR event", event);
+          m.push({
+            role: "error",
+            message: event.content.message,
+          } as Message);
+          setMessages(m);
+          setResponse(null);
+          setLoading(false);
+          return;
         }
-        if (event.content.block_name === "MODEL") {
-          if (e.error) {
-            m.push({
-              message: e.error,
-            } as ErrorMessage);
-            setMessages(m);
-            setResponse(null);
-            skip = true;
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (event.content.block_name === "DATASOURCE") {
+            if (e.error) {
+              m.push({
+                role: "error",
+                message: e.error,
+              } as Message);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+              return;
+            }
           }
-        }
-        if (event.content.block_name === "OUTPUT") {
-          if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
+          if (event.content.block_name === "OUTPUT") {
+            if (!e.error) {
+              m.push(e.value);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+            }
           }
         }
       }
     }
 
-    setLoading(false);
+    if (runAssistant) {
+      const assistantMessage: Message = {
+        role: "assistant",
+        message: "",
+      };
+      setResponse(assistantMessage);
+
+      const config = cloneBaseConfig(
+        DustProdActionRegistry["chat-assistant"].config
+      );
+
+      const res = await runActionStreamed(owner, "chat-assistant", config, [
+        { messages: m },
+      ]);
+      if (res.isErr()) {
+        m.push({
+          role: "error",
+          message: res.error.message,
+        } as Message);
+        // console.log("ERROR", res.error);
+        setMessages(m);
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+
+      const { eventStream } = res.value;
+
+      for await (const event of eventStream) {
+        // console.log("EVENT", event);
+        if (event.type === "tokens") {
+          const message = assistantMessage.message + event.content.tokens.text;
+          setResponse({ ...assistantMessage, message: message });
+          assistantMessage.message = message;
+        }
+        if (event.type === "error") {
+          console.log("ERROR event", event);
+          m.push({
+            role: "error",
+            message: event.content.message,
+          } as Message);
+          setMessages(m);
+          setResponse(null);
+          setLoading(false);
+          return;
+        }
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (event.content.block_name === "MODEL") {
+            if (e.error) {
+              m.push({
+                role: "error",
+                message: e.error,
+              } as Message);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+              return;
+            }
+          }
+          if (event.content.block_name === "OUTPUT") {
+            if (!e.error) {
+              m.push(e.value);
+              setMessages(m);
+              setResponse(null);
+              setLoading(false);
+            }
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -535,7 +669,7 @@ export default function AppChat({
                     {messages.length > 0 ? (
                       <div className="text-sm">
                         {messages.map((m, i) => {
-                          return isErrorMessage(m) ? (
+                          return m.role === "error" ? (
                             <div key={i}>
                               <div className="my-2 ml-12 flex flex-col">
                                 <div className="flex-initial text-xs font-bold text-red-500">
@@ -557,8 +691,25 @@ export default function AppChat({
                                 user={user}
                                 message={m}
                                 loading={false}
-                                isLatest={
-                                  !response && i === messages.length - 1
+                                // isLatest={
+                                //   !response && i === messages.length - 1
+                                // }
+                                isLatestRetrieval={
+                                  !(
+                                    response && response.role === "retrieval"
+                                  ) &&
+                                  (() => {
+                                    for (
+                                      let j = messages.length - 1;
+                                      j >= 0;
+                                      j--
+                                    ) {
+                                      if (messages[j].role === "retrieval") {
+                                        return i === j;
+                                      }
+                                    }
+                                    return false;
+                                  })()
                                 }
                               />
                             </div>
@@ -570,7 +721,8 @@ export default function AppChat({
                               user={user}
                               message={response}
                               loading={true}
-                              isLatest={true}
+                              // isLatest={true}
+                              isLatestRetrieval={response.role === "retrieval"}
                             />
                           </div>
                         ) : null}
@@ -605,6 +757,37 @@ export default function AppChat({
                             team@dust.tt
                           </a>
                         </p>
+                        <div className="mt-8 w-full">
+                          ⚙️ Available commands:
+                          <div className="pt-2">
+                            {COMMANDS.map((c, i) => {
+                              return (
+                                <div
+                                  key={i}
+                                  className={classNames("flex px-2 py-1")}
+                                >
+                                  <div className="flex w-24 flex-row">
+                                    <div className="flex flex-initial flex-col">
+                                      <div
+                                        className={classNames(
+                                          "flex flex-initial",
+                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                        )}
+                                      >
+                                        {c.cmd}
+                                      </div>
+                                      <div className="flex flex-1"></div>
+                                    </div>
+                                    <div className="flex flex-1"></div>
+                                  </div>
+                                  <div className="ml-2 w-64 sm:w-max">
+                                    {c.description}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -619,6 +802,46 @@ export default function AppChat({
                       alpha
                     </div>
                     <div className="flex flex-1 flex-row items-end">
+                      {commands.length > 0 && (
+                        <div className="absolute mb-12 pr-7">
+                          <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
+                            {commands.map((c, i) => {
+                              return (
+                                <div
+                                  key={i}
+                                  className={classNames(
+                                    "flex cursor-pointer flex-row rounded-sm px-2 py-2",
+                                    i === commandsSelect
+                                      ? "bg-gray-100"
+                                      : "bg-white"
+                                  )}
+                                  onMouseEnter={() => {
+                                    setCommandsSelect(i);
+                                  }}
+                                  onClick={() => {
+                                    void handleSelectCommand();
+                                  }}
+                                >
+                                  <div className="flex w-24 flex-row">
+                                    <div
+                                      className={classNames(
+                                        "flex flex-initial",
+                                        "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                      )}
+                                    >
+                                      {c.cmd}
+                                    </div>
+                                    <div className="flex flex-1"></div>
+                                  </div>
+                                  <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
+                                    {c.description}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <TextareaAutosize
                         minRows={1}
                         placeholder={`Ask anything about \`${owner.name}\``}
@@ -632,12 +855,35 @@ export default function AppChat({
                         )}
                         value={input}
                         onChange={(e) => {
-                          setInput(e.target.value);
+                          handleInputUpdate(e.target.value);
                         }}
+                        ref={inputRef}
                         onKeyDown={(e) => {
+                          if (commands.length > 0) {
+                            if (e.key === "ArrowUp") {
+                              setCommandsSelect(
+                                commandsSelect > 0
+                                  ? commandsSelect - 1
+                                  : commandsSelect
+                              );
+                              e.preventDefault();
+                            }
+                            if (e.key === "ArrowDown") {
+                              setCommandsSelect(
+                                commandsSelect < commands.length - 1
+                                  ? commandsSelect + 1
+                                  : commandsSelect
+                              );
+                              e.preventDefault();
+                            }
+                            if (e.key === "Enter") {
+                              void handleSelectCommand();
+                              e.preventDefault();
+                            }
+                          }
                           if (e.ctrlKey || e.metaKey) {
                             if (e.key === "Enter" && !loading) {
-                              void handleSubmitMessage();
+                              void handleSubmit();
                               e.preventDefault();
                             }
                           }
@@ -653,7 +899,7 @@ export default function AppChat({
                           <ArrowRightCircleIcon
                             className="h-5 w-5 cursor-pointer text-violet-500"
                             onClick={() => {
-                              void handleSubmitMessage();
+                              void handleSubmit();
                             }}
                           />
                         ) : (
