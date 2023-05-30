@@ -757,6 +757,37 @@ export default function AppChat({
                             team@dust.tt
                           </a>
                         </p>
+                        <div className="mt-8 w-full">
+                          ⚙️ Available commands:
+                          <div className="pt-2">
+                            {COMMANDS.map((c, i) => {
+                              return (
+                                <div
+                                  key={i}
+                                  className={classNames("flex px-2 py-1")}
+                                >
+                                  <div className="flex w-24 flex-row">
+                                    <div className="flex flex-initial flex-col">
+                                      <div
+                                        className={classNames(
+                                          "flex flex-initial",
+                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                        )}
+                                      >
+                                        {c.cmd}
+                                      </div>
+                                      <div className="flex flex-1"></div>
+                                    </div>
+                                    <div className="flex flex-1"></div>
+                                  </div>
+                                  <div className="ml-2 w-64 sm:w-max">
+                                    {c.description}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
