@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -47,10 +47,13 @@ impl Block for Reduce {
         _name: &str,
         _env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
-        Ok(Value::Null)
+        Ok(BlockResult {
+            val: Value::Null,
+            meta: None
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

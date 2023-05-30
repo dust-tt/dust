@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -83,33 +83,37 @@ impl Block for Map {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         match env.state.get(&self.from) {
             None => Err(anyhow::anyhow!(
                 "Map `from` block `{}` output not found",
                 self.from
             )),
             Some(v) => match self.repeat {
-                None => match v.as_array() {
+                None => match v.val.as_array() {
                     None => Err(anyhow::anyhow!(
                         "Map `from` block `{}` output must be an array, \
                             or `repeat` must be defined",
                         self.from
                     )),
-                    Some(arr) => {
-                        if arr.len() > MAP_MAX_ITERATIONS {
+                    Some(val) => {
+                        // match v.as_array here, look at OG code
+                        if val.len() > MAP_MAX_ITERATIONS {
                             Err(anyhow::anyhow!(
                                 "Map `from` block `{}` output exceeds maximum size ({})",
                                 self.from,
                                 MAP_MAX_ITERATIONS
                             ))?;
                         }
-                        match arr.len() {
+                        match val.len() {
                             0 => Err(anyhow::anyhow!(
                                 "Map `from` block `{}` output must be a non-empty array",
                                 self.from
                             )),
-                            _ => Ok(v.clone()),
+                            _ => Ok(BlockResult {
+                                val: v.val.clone(), 
+                                meta: None // do I need to take the meta here
+                            }),
                         }
                     }
                 },
@@ -120,9 +124,12 @@ impl Block for Map {
                     _ => {
                         let mut output = Vec::new();
                         for _ in 0..repeat {
-                            output.push(v.clone());
+                            output.push(v.val.clone());
                         }
-                        Ok(Value::Array(output))
+                        Ok(BlockResult {
+                            val: Value::Array(output),
+                            meta: None
+                        })
                     }
                 },
             },

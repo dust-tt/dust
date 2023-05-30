@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env,
+    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult
 };
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
@@ -153,14 +153,14 @@ impl LLM {
             .state
             .get(&name)
             .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-        if !output.is_array() {
+        if !output.val.is_array() {
             Err(anyhow!(
                 "Block `{}` output is not an array, the block output referred in \
                  `few_shot_prompt` must be an array",
                 name
             ))?;
         }
-        let output = output.as_array().unwrap();
+        let output = output.val.as_array().unwrap();
 
         // Check that the block output elements are objects.
         for o in output {
@@ -302,7 +302,7 @@ impl Block for LLM {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -476,20 +476,23 @@ impl Block for LLM {
 
                 assert!(g.completions.len() == 1);
 
-                Ok(serde_json::to_value(LLMValue {
-                    prompt: Tokens {
-                        text: prompt,
-                        tokens: None,
-                        logprobs: None,
-                        top_logprobs: None,
-                    },
-                    completion: Tokens {
-                        text: g.completions[0].content.clone(),
-                        tokens: None,
-                        logprobs: None,
-                        top_logprobs: None,
-                    },
-                })?)
+                Ok(BlockResult {
+                    val: serde_json::to_value(LLMValue {
+                        prompt: Tokens {
+                            text: prompt,
+                            tokens: None,
+                            logprobs: None,
+                            top_logprobs: None,
+                        },
+                        completion: Tokens {
+                            text: g.completions[0].content.clone(),
+                            tokens: None,
+                            logprobs: None,
+                            top_logprobs: None,
+                        },
+                    })?,
+                    meta: None
+                })
             }
             false => {
                 let request = LLMRequest::new(
@@ -552,10 +555,13 @@ impl Block for LLM {
 
                 assert!(g.completions.len() == 1);
 
-                Ok(serde_json::to_value(LLMValue {
+                Ok(BlockResult {
+                    val: serde_json::to_value(LLMValue {
                     prompt: g.prompt,
                     completion: g.completions[0].clone(),
-                })?)
+                })?,
+                    meta: None
+                })
             }
         }
     }
@@ -585,11 +591,11 @@ mod tests {
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(
-                r#"{"RETRIEVE":[
+                r#"{"RETRIEVE": {"val": [
                     {"question":"What is your name?"},
-                    {"question":"What is your dob"}
-                    ],
-                    "DATA":{"answer":"John"}}"#,
+                    {"question":"What is your dob"},
+                    ], "meta": None},
+                    "DATA": {val: {"answer":"John"}, meta: None}"#,
             )
             .unwrap(),
             input: InputState {

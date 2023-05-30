@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -58,19 +58,22 @@ impl Block for Code {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         // Assumes there is a _fun function defined in `source`.
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();
         let code = self.code.clone();
-        let result = tokio::task::spawn_blocking(move || {
+        let result: Value = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &env)
         })
         .await??;
-
-        Ok(result)
+        println!("{}", &result["meta"]);
+        Ok(BlockResult {
+            val: result["value"].clone(),
+            meta: Some(result["meta"].clone())
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -80,7 +80,7 @@ impl Block for While {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let e = env.clone();
 
         // Directly return false if we have reached max_iterations
@@ -88,7 +88,7 @@ impl Block for While {
             None => unreachable!(),
             Some(w) => {
                 if w.iteration >= self.max_iterations {
-                    return Ok(Value::Bool(false));
+                    return Ok(BlockResult { val: Value::Bool(false), meta: None});
                 }
             }
         }
@@ -110,7 +110,10 @@ impl Block for While {
         };
 
         match condition_value {
-            Value::Bool(b) => Ok(Value::Bool(b)),
+            Value::Bool(b) => Ok(BlockResult {
+                val: Value::Bool(b),
+                meta: None
+            }),
             _ => Err(anyhow!(
                 "Invalid return value from `condition_code`, expecting boolean"
             ))?,

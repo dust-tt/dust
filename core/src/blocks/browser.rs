@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::block::BlockResult;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
     pub error: String,
@@ -110,7 +112,7 @@ impl Block for Browser {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let use_cache = match config {
@@ -207,7 +209,10 @@ impl Block for Browser {
                         "port": response.headers["x-response-port"],
                     }
                 });
-                Ok(result)
+                Ok(BlockResult {
+                    val: result,
+                    meta: None
+                })
             }
             s => match error_as_output {
                 false => Err(anyhow!(
@@ -222,7 +227,10 @@ impl Block for Browser {
                             "body": response.body,
                         },
                     });
-                    Ok(result)
+                    Ok(BlockResult {
+                        val: result,
+                        meta: None
+                    })
                 }
             },
         }

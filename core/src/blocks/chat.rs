@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
 use crate::deno::script::Script;
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
@@ -161,7 +161,7 @@ impl Block for Chat {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -364,9 +364,12 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
-        Ok(serde_json::to_value(ChatValue {
+        Ok(BlockResult { 
+            val: serde_json::to_value(ChatValue {
             message: g.completions[0].clone(),
-        })?)
+        })?,
+            meta: None
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

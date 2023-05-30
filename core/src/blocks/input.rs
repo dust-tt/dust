@@ -1,4 +1,4 @@
-use crate::blocks::block::{Block, BlockType, Env};
+use crate::blocks::block::{Block, BlockType, Env, BlockResult};
 use crate::Rule;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -33,9 +33,12 @@ impl Block for Input {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         match env.input.value.as_ref() {
-            Some(i) => Ok(i.clone()),
+            Some(i) => Ok(BlockResult {
+                val: i.clone(), 
+                meta: None
+            }),
             None => unreachable!(),
         }
     }

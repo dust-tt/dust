@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
 use crate::Rule;
@@ -96,7 +96,7 @@ impl Block for Curl {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let use_cache = match config {
@@ -155,7 +155,10 @@ impl Block for Curl {
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
 
-        Ok(json!(response))
+        Ok(BlockResult {
+            val: json!(response), 
+            meta: None
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
