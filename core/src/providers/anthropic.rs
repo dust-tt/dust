@@ -35,34 +35,26 @@ pub struct Response {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ErrorDetail {
-    pub loc: Vec<String>,
-    pub msg: String,
     pub r#type: String,
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
-    // anthropi api errors look like this:
-    // {"detail":[{"loc":["body","model"],"msg":"field required","type":"value_error.missing"}]}
-    pub detail: Vec<ErrorDetail>,
+    // Anthropi api errors look like this:
+    // {"error":{"type":"invalid_request_error","message":"model: field required"}}
+    pub error: ErrorDetail,
 }
 
 impl Display for ErrorDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{}", self.loc.join("."), self.r#type, self.msg)
+        write!(f, "{},{}", self.r#type, self.message)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let details = self
-            .detail
-            .iter()
-            .map(|detail| detail.to_string())
-            .collect::<Vec<String>>()
-            .join("\t");
-
-        write!(f, "{}", details)
+        write!(f, "{}", self.error)
     }
 }
 
