@@ -1,7 +1,5 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
-};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, Tokens, LLM};
 use crate::providers::provider::{ModelError, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils;
@@ -81,120 +79,14 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
-    fn chat_prompt(&self, messages: &Vec<ChatMessage>) -> String {
-        let mut prompt = messages
-            .iter()
-            .map(|cm| -> String {
-                format!(
-                    "\n\n{}: {}",
-                    match cm.role {
-                        ChatMessageRole::System => "Human",
-                        ChatMessageRole::Assistant => "Assistant",
-                        ChatMessageRole::User => "Human",
-                    },
-                    cm.content
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        prompt = format!("{}\n\nHuman:", prompt);
-
-        return prompt;
-    }
-
-    async fn chat_completion(
-        &self,
-        messages: &Vec<ChatMessage>,
-        temperature: f32,
-        top_p: f32,
-        stop: &Vec<String>,
-        max_tokens: Option<i32>,
-    ) -> Result<LLMChatGeneration> {
-        assert!(self.api_key.is_some());
-
-        let prompt = self.chat_prompt(messages);
-        let mut stop_tokens = stop.clone();
-        stop_tokens.push(String::from("\n\nHuman:"));
-        stop_tokens.push(String::from("\n\nAssistant:"));
-
-        let response = self
-            .completion(
-                self.api_key.clone().unwrap(),
-                &prompt,
-                match max_tokens {
-                    Some(m) => m,
-                    None => 256,
-                },
-                temperature,
-                top_p,
-                None,
-                stop_tokens.as_ref(),
-            )
-            .await?;
-
-        return Ok(LLMChatGeneration {
-            created: utils::now(),
-            provider: ProviderID::Anthropic.to_string(),
-            model: self.id.clone(),
-            completions: vec![ChatMessage {
-                role: ChatMessageRole::Assistant,
-                content: response.completion.clone(),
-                name: None,
-            }],
-        });
-    }
-
-    pub async fn streamed_chat_completion(
-        &self,
-        messages: &Vec<ChatMessage>,
-        temperature: f32,
-        top_p: f32,
-        stop: &Vec<String>,
-        max_tokens: Option<i32>,
-        event_sender: UnboundedSender<Value>,
-    ) -> Result<LLMChatGeneration> {
-        let prompt = self.chat_prompt(messages);
-        let mut stop_tokens = stop.clone();
-        stop_tokens.push(String::from("\n\nHuman:"));
-        stop_tokens.push(String::from("\n\nAssistant:"));
-
-        let response = self
-            .streamed_completion(
-                self.api_key.clone().unwrap(),
-                prompt.as_str(),
-                match max_tokens {
-                    Some(m) => m,
-                    None => 256,
-                },
-                temperature,
-                top_p,
-                None,
-                &stop_tokens,
-                event_sender,
-            )
-            .await;
-
-        return Ok(LLMChatGeneration {
-            created: utils::now(),
-            provider: ProviderID::Anthropic.to_string(),
-            model: self.id.clone(),
-            completions: vec![ChatMessage {
-                role: ChatMessageRole::Assistant,
-                content: response?.completion.clone(),
-                name: None,
-            }],
-        });
-    }
-
-    pub async fn streamed_completion(
+    async fn streamed_completion(
         &self,
         api_key: String,
         prompt: &str,
         max_tokens_to_sample: i32,
         temperature: f32,
         top_p: f32,
-        top_k: Option<i32>,
+        top_k: i32,
         stop: &Vec<String>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<Response> {
@@ -311,7 +203,7 @@ impl AnthropicLLM {
         max_tokens_to_sample: i32,
         temperature: f32,
         top_p: f32,
-        top_k: Option<i32>,
+        top_k: i32,
         stop: &Vec<String>,
     ) -> Result<Response> {
         let https = HttpsConnector::new();
@@ -401,7 +293,7 @@ impl LLM for AnthropicLLM {
         _frequency_penalty: Option<f32>,
         _presence_penalty: Option<f32>,
         top_p: Option<f32>,
-        _top_logprobs: Option<i32>,
+        top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
@@ -429,7 +321,10 @@ impl LLM for AnthropicLLM {
                             Some(p) => p,
                             None => 1.0,
                         },
-                        None,
+                        match top_logprobs {
+                            Some(k) => k,
+                            None => 0,
+                        },
                         stop,
                         es,
                     )
@@ -467,7 +362,10 @@ impl LLM for AnthropicLLM {
                             Some(p) => p,
                             None => 1.0,
                         },
-                        None,
+                        match top_logprobs {
+                            Some(k) => k,
+                            None => 0,
+                        },
                         stop,
                     )
                     .await?;
@@ -513,53 +411,20 @@ impl LLM for AnthropicLLM {
 
     async fn chat(
         &self,
-        messages: &Vec<ChatMessage>,
-        temperature: f32,
-        top_p: Option<f32>,
-        n: usize,
-        stop: &Vec<String>,
-        max_tokens: Option<i32>,
+        _messages: &Vec<ChatMessage>,
+        _temperature: f32,
+        _top_p: Option<f32>,
+        _n: usize,
+        _stop: &Vec<String>,
+        _max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
         _extras: Option<Value>,
-        event_sender: Option<UnboundedSender<Value>>,
+        _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        if n > 1 {
-            return Err(anyhow!(
-                "Anthropic only supports generating one sample at a time."
-            ))?;
-        }
-        match event_sender {
-            Some(es) => {
-                return self
-                    .streamed_chat_completion(
-                        messages,
-                        temperature,
-                        match top_p {
-                            Some(p) => p,
-                            None => 1.0,
-                        },
-                        stop,
-                        max_tokens,
-                        es,
-                    )
-                    .await;
-            }
-            None => {
-                return self
-                    .chat_completion(
-                        messages,
-                        temperature,
-                        match top_p {
-                            Some(p) => p,
-                            None => 1.0,
-                        },
-                        stop,
-                        max_tokens,
-                    )
-                    .await;
-            }
-        }
+        Err(anyhow!(
+            "Chat capabilities are not implemented for provider `anthropic`"
+        ))
     }
 }
 

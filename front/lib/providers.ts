@@ -50,7 +50,7 @@ export const modelProviders: ModelProvider[] = [
     name: "Anthropic",
     built: true,
     enabled: false,
-    chat: true,
+    chat: false,
     embed: false,
   },
   {
