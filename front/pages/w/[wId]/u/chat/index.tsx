@@ -416,6 +416,9 @@ export default function AppChat({
   const handleSelectCommand = () => {
     if (commandsSelect >= 0 && commandsSelect < commands.length) {
       if (commands[commandsSelect].cmd === "/new") {
+        if (loading) {
+          return;
+        }
         setCommands([]);
         setCommandsSelect(0);
         return handleNew();
