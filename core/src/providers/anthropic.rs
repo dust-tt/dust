@@ -219,7 +219,10 @@ impl AnthropicLLM {
             "temperature": temperature,
             "stop_sequences": stop.clone(),
             "top_p": top_p,
-            "top_k": top_k,
+            "top_k": match top_k {
+                Some(k) => k,
+                None => -1
+            },
             "stream": true
         });
 
@@ -325,7 +328,10 @@ impl AnthropicLLM {
                     // we get 422 Unprocessable Entity
                     "stop_sequences": stop.clone(),
                     "top_p": top_p,
-                    "top_k": top_k,
+                    "top_k": match top_k {
+                        Some(k) => k,
+                        None => -1
+                    },
                 })
                 .to_string(),
             ))?;
