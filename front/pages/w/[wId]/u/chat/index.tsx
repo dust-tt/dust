@@ -126,18 +126,12 @@ type RetrievedDocument = {
 };
 
 type Message = {
-  role: "user" | "assistant";
-  content: string;
-  retrievals: RetrievedDocument[] | null;
+  role: "user" | "retrieval" | "assistant" | "error";
+  runRetrieval?: boolean;
+  runAssistant?: boolean;
+  message?: string; // for `user`, `assistant` and `error` messages
+  retrievals?: RetrievedDocument[]; // for `retrieval` messages
 };
-
-type ErrorMessage = {
-  message: string;
-};
-
-function isErrorMessage(m: Message | ErrorMessage): m is ErrorMessage {
-  return (m as ErrorMessage).message !== undefined;
-}
 
 export function DocumentView({ document }: { document: RetrievedDocument }) {
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
@@ -351,7 +345,7 @@ export function MessageView({
             message.role === "user" ? "italic text-gray-500" : "text-gray-700"
           )}
         >
-          {message.content}
+          {message.message}
         </div>
       </div>
     </div>
@@ -388,7 +382,7 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [messages, setMessages] = useState<(Message | ErrorMessage)[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [dataSources, setDataSources] = useState(managedDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -446,7 +440,9 @@ export default function AppChat({
     const m = [...messages];
     m.push({
       role: "user",
-      content: input,
+      runRetrieval: true,
+      runAssistant: true,
+      message: input,
       retrievals: [],
     });
     setMessages(m);
@@ -454,8 +450,7 @@ export default function AppChat({
     setLoading(true);
     const r: Message = {
       role: "assistant",
-      content: "",
-      retrievals: null,
+      message: "",
     };
     setResponse(r);
 
@@ -485,15 +480,16 @@ export default function AppChat({
       if (skip) continue;
       // console.log("EVENT", event);
       if (event.type === "tokens") {
-        const content = r.content + event.content.tokens.text;
-        setResponse({ ...r, content });
-        r.content = content;
+        const content = r.message + event.content.tokens.text;
+        setResponse({ ...r, message: content });
+        r.message = content;
       }
       if (event.type === "error") {
         console.log("ERROR event", event);
         m.push({
+          role: "error",
           message: event.content.message,
-        } as ErrorMessage);
+        } as Message);
         setMessages(m);
         setResponse(null);
         skip = true;
@@ -509,8 +505,9 @@ export default function AppChat({
         if (event.content.block_name === "MODEL") {
           if (e.error) {
             m.push({
+              role: "error",
               message: e.error,
-            } as ErrorMessage);
+            } as Message);
             setMessages(m);
             setResponse(null);
             skip = true;
@@ -576,7 +573,7 @@ export default function AppChat({
                     {messages.length > 0 ? (
                       <div className="text-sm">
                         {messages.map((m, i) => {
-                          return isErrorMessage(m) ? (
+                          return m.role === "error" ? (
                             <div key={i}>
                               <div className="my-2 ml-12 flex flex-col">
                                 <div className="flex-initial text-xs font-bold text-red-500">
