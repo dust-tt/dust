@@ -19,10 +19,9 @@ impl Script {
         // console.log() is not available by default -- add the most basic version with single
         // argument (and no warn/info/... variants)
         let all_code =
-            "let logs = '';
-            const console = { log: function(expr) {
-                Deno.core.print(expr + '\\n', false);
-                logs = JSON.stringify(expr) + '\\n';
+            "let __rust_logs = '';
+            const console = { log: function(...args) {
+                __rust_logs += args.map((expr) => JSON.stringify(expr)).join(', ') + '\\n';
             } };"
                 .to_string()
                 + js_code;
@@ -87,7 +86,7 @@ impl Script {
 				if (typeof __rust_result === 'undefined')
 					__rust_result = null;
 
-				Deno.core.ops.op_return({{res: __rust_result, logs: logs}});
+				Deno.core.ops.op_return({{value: __rust_result, logs: __rust_logs}});
 			}})()"
         );
 

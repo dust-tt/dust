@@ -439,7 +439,7 @@ impl App {
                                                         Some(v) => Ok(v.val.clone()),
                                                     })
                                                 .collect::<Result<Vec<_>>>()?),
-                                            meta: None,
+                                            meta: None 
                                         }
                                     );
                                     Ok(())
@@ -843,7 +843,7 @@ impl App {
                                                             name.clone(),
                                                             BlockResult {
                                                                 val: Value::Array(vec![v.val]),
-                                                                meta: None
+                                                                meta: v.meta
                                                             }
                                                         );
                                                     }

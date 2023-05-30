@@ -69,10 +69,9 @@ impl Block for Code {
             script.call("_fun", &env)
         })
         .await??;
-        println!("{}", &result["meta"]);
         Ok(BlockResult {
             val: result["value"].clone(),
-            meta: Some(result["meta"].clone())
+            meta: Some(result["logs"].clone())
         })
     }
 
