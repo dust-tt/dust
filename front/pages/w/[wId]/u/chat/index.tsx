@@ -542,7 +542,6 @@ export default function AppChat({
               m.push(e.value);
               setMessages(m);
               setResponse(null);
-              setLoading(false);
             }
           }
         }
@@ -560,8 +559,16 @@ export default function AppChat({
         DustProdActionRegistry["chat-assistant"].config
       );
 
+      const context = {
+        user: {
+          username: user?.username,
+          full_name: user?.name,
+        },
+        date_today: new Date().toISOString().split("T")[0],
+      };
+
       const res = await runActionStreamed(owner, "chat-assistant", config, [
-        { messages: m },
+        { messages: m, context },
       ]);
       if (res.isErr()) {
         m.push({
@@ -614,12 +621,13 @@ export default function AppChat({
               m.push(e.value);
               setMessages(m);
               setResponse(null);
-              setLoading(false);
             }
           }
         }
       }
     }
+
+    setLoading(false);
   };
 
   return (
