@@ -152,10 +152,10 @@ export default function Home({
           </div>
 
           <p className="mt-12 text-5xl font-bold tracking-tighter text-gray-800 sm:mt-16 sm:text-7xl lg:text-8xl">
-            Unleash your
+            Build
             <br />
             <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
-              Company Data
+              Smarter Teams
             </span>{" "}
             <br />
             with Generative AI
@@ -163,19 +163,21 @@ export default function Home({
           </p>
 
           <div className="mt-12 grid sm:grid-cols-6">
-            <div className="text-lg text-gray-900 sm:col-span-3">
-              <p className="font-light">
-                I analyze hundreds of internal documents in seconds to generate
-                answers adapted to your role and need. I assist you creating
-                better content, faster. I craft and push timely updates to keep
-                you in the know.
+            <div className="text-lg text-gray-900 sm:col-span-4">
+              <p className="rounded bg-white bg-opacity-50 font-light">
+                Fast-growing companies all feel the pain of rapidly growing
+                internal information debt. But LLMs have the potential to
+                fundamentally change how data is created or consumed in the
+                enterprise, and can be harnessed to help teams craft better
+                content, understand their environment faster, and ultimately
+                take better decisions.
               </p>
-              <p className="mt-4 text-lg font-medium">
-                I am the{" "}
+
+              <p className="mt-4 bg-white bg-opacity-50 text-lg font-medium">
+                Get better work done faster with Dust, the{" "}
                 <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
                   Smart Team OS
                 </span>{" "}
-                that will accelerate your company.
               </p>
               <div className="mt-12">
                 <ActionButton
@@ -212,59 +214,24 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-32">
+          <div className="mt-32 ">
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
-                <div className="flex flex-1"></div>
-                <div className="flex-initial">
+                <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Knowledge{" "}
-                    <span className="bg-orange-600 text-white">
+                    Internal data{" "}
+                    <span className="bg-orange-500 text-white">
                       vectorized, not rasterized
                     </span>
                   </div>
-                  <p className="mt-4 text-lg font-light">
-                    LLMs have the potential to disantangle how information is
-                    created and stored from how it is consumed.
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Bring your internal data in context with fully managed
+                    semantic search engines to expose it to large language
+                    models apps.
                   </p>
-                  <p className="mt-4 text-lg font-light">
-                    Give your team the power to access the data they need in the
-                    format they like for the profile they have and use case at
-                    hand.
-                  </p>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
-                  <img
-                    className="mx-auto w-[418px]"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
-                <div className="flex flex-1"></div>
-                <div className="flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Connect{" "}
-                    <span className="bg-orange-600 text-white">
-                      Data Sources
-                    </span>
-                  </div>
-                  <p className="mt-4 text-lg font-light">
-                    Fully managed semantic search engines to expose your company
-                    data to large language models applications.
-                  </p>
-                  <p className="mt-4 text-lg font-light">
-                    Safely connect your Notion, Google Docs, Slack or GitHub to
-                    Dust through managed Data Sources that are kept up-to-date
-                    automatically.
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Safely connect Notion, Slack, etc… as continuously updated
+                    embeddings.
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
@@ -283,21 +250,58 @@ export default function Home({
           <div className="mt-16">
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
-                <div className="flex flex-1"></div>
-                <div className="flex-initial">
+                <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Build{" "}
-                    <span className="bg-orange-600 text-white">
+                    Smart{" "}
+                    <span className="bg-orange-500 text-white">
+                      read and write
+                    </span>{" "}
+                    tools
+                  </div>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Disentangle how information is created and stored from where
+                    and how it's consumed by your team.
+                  </p>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Find tailored answers to your questions rather than a list
+                    of documents. Stay updated on projects in just as many
+                    bullet points as you have time for. Make your notes and
+                    memos crisp, compelling, and consistent with the team
+                    lexicon and tone of voice.
+                  </p>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[418px]"
+                    src="/static/landing_chat.png"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+                <div className="mt-2 flex-initial">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Your own{" "}
+                    <span className="bg-orange-500 text-white">
                       powerful workflows
                     </span>
                   </div>
-                  <p className="mt-4 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
                     Build custom Large Language Model apps with the models of
-                    your choice and your data sources. Evaluate and maintain
-                    them in a visual interface.
+                    your choice and your own data sources. Tweak, evaluate and
+                    maintain them in a visual interface that assists you in the
+                    process of prompting stochastic models.
                   </p>
-                  <p className="mt-4 text-lg font-light">
-                    Deploy them for access by API or GUI in an instant.
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Deploy your own apps internally either with a GUI or via
+                    API.
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
