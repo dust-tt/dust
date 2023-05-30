@@ -239,27 +239,34 @@ export function Execution({
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((t, i) => {
         return (
-          <div key={i} className="flex-auto flex-col">
-            {t.error != null ? (
-              <div className="flex flex-auto flex-row">
-                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
-                <Error error={t.error} />
-              </div>
-            ) : (
-              <div className="flex flex-row">
-                <div className="flex flex-initial">
-                  <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
+          <div>
+            <div key={i} className="flex-auto flex-col">
+              {t.error != null ? (
+                <div className="flex flex-auto flex-row">
+                  <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
+                  <Error error={t.error} />
                 </div>
-                <div className="flex flex-1">
-                  <ValueViewer
-                    block={block}
-                    value={t.value}
-                    topLevel={true}
-                    k={null}
-                  />
+              ) : (
+                <div className="flex flex-row">
+                  <div className="flex flex-initial">
+                    <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
+                  </div>
+                  <div className="flex flex-1">
+                    <ValueViewer
+                      block={block}
+                      value={t.value}
+                      topLevel={true}
+                      k={null}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+            <div>
+               {t.meta != null ? (
+                  <p>Logs: {t.meta}</p>
+               ) : null}
+            </div>
           </div>
         );
       })}

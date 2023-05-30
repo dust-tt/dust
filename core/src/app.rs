@@ -604,13 +604,24 @@ impl App {
                         m.iter()
                             .map(|o| match o {
                                 Some(r) => match r {
-                                    (_, Some(v), None) => BlockExecution {
-                                        value: Some(v.clone()),
-                                        error: None,
+                                    (_, Some(v), None) => {
+                                        match block.block_type() {
+                                            BlockType::Code => BlockExecution {
+                                                value: Some(v["res"].clone()),
+                                                error: None,
+                                                meta: Some(v["logs"].clone())
+                                            },
+                                            _ => BlockExecution {
+                                                value: Some(v.clone()),
+                                                error: None,
+                                                meta: None,
+                                            }
+                                        }
                                     },
                                     (_, None, Some(err)) => BlockExecution {
                                         value: None,
                                         error: Some(err.clone()),
+                                        meta: None,
                                     },
                                     _ => unreachable!(),
                                 },

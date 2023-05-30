@@ -17,6 +17,7 @@ pub struct BlockExecution {
     // pub env: Env,
     pub value: Option<Value>,
     pub error: Option<String>,
+    pub meta: Option<Value>
 }
 
 pub type Credentials = HashMap<String, String>;
