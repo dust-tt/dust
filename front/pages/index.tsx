@@ -151,7 +151,7 @@ export default function Home({
             <Logo />
           </div>
 
-          <h1 className="mt-12 text-5xl font-bold leading-none tracking-tighter text-gray-800 sm:mt-16 sm:text-7xl lg:text-8xl">
+          <p className="mt-12 text-5xl font-bold tracking-tighter text-gray-800 sm:mt-16 sm:text-7xl lg:text-8xl">
             Unleash your
             <br />
             <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
@@ -160,7 +160,7 @@ export default function Home({
             <br />
             with Generative AI
             <br />
-          </h1>
+          </p>
 
           <div className="mt-12 grid sm:grid-cols-6">
             <div className="text-lg text-gray-900 sm:col-span-3">
@@ -213,51 +213,63 @@ export default function Home({
           </div>
 
           <div className="mt-32">
-            <div className="sm:grid sm:grid-cols-8">
-              <div className="sm:col-span-4">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white py-2">
-                  <img
-                    className="mx-auto w-[418px]"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
-              <div className="align-middle sm:col-span-4 sm:pl-8 sm:pr-4">
-                <div className="mt-8 sm:mt-24">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+                <div className="flex flex-1"></div>
+                <div className="flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Company knowledge vectorized, not rasterized
+                    Knowledge{" "}
+                    <span className="bg-orange-600 text-white">
+                      vectorized, not rasterized
+                    </span>
                   </div>
                   <p className="mt-4 text-lg font-light">
                     LLMs have the potential to disantangle how information is
                     created and stored from how it is consumed.
                   </p>
                   <p className="mt-4 text-lg font-light">
-                    Get up-to-date answers based on your entire company data
-                    crafted to you personally.
+                    Give your team the power to access the data they need in the
+                    format they like for the profile they have and use case at
+                    hand.
                   </p>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[418px]"
+                    src="/static/landing_chat.png"
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="mt-16">
-            <div className="sm:grid sm:grid-cols-8">
-              <div className="align-middle sm:col-span-4 sm:pl-4 sm:pr-8">
-                <div className="sm:mt-16">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+                <div className="flex flex-1"></div>
+                <div className="flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Connect Data Sources
+                    Connect{" "}
+                    <span className="bg-orange-600 text-white">
+                      Data Sources
+                    </span>
                   </div>
                   <p className="mt-4 text-lg font-light">
                     Fully managed semantic search engines to expose your company
-                    data to large lanugage models.
+                    data to large language models applications.
                   </p>
                   <p className="mt-4 text-lg font-light">
-                    Connect your team's Notion, Google Docs, Slack or GitHub to
-                    managed Data Sources that are kept up-to-date automatically.
+                    Safely connect your Notion, Google Docs, Slack or GitHub to
+                    Dust through managed Data Sources that are kept up-to-date
+                    automatically.
                   </p>
                 </div>
+                <div className="flex flex-1"></div>
               </div>
-              <div className="mt-8 sm:col-span-4 sm:mt-0">
+              <div className="mt-8 md:col-span-4 md:mt-0">
                 <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
                     className="mx-auto w-[393px]"
@@ -269,27 +281,33 @@ export default function Home({
           </div>
 
           <div className="mt-16">
-            <div className="sm:grid sm:grid-cols-8">
-              <div className="sm:col-span-4">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+                <div className="flex flex-1"></div>
+                <div className="flex-initial">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Build{" "}
+                    <span className="bg-orange-600 text-white">
+                      powerful workflows
+                    </span>
+                  </div>
+                  <p className="mt-4 text-lg font-light">
+                    Build custom Large Language Model apps with the models of
+                    your choice and your data sources. Evaluate and maintain
+                    them in a visual interface.
+                  </p>
+                  <p className="mt-4 text-lg font-light">
+                    Deploy them for access by API or GUI in an instant.
+                  </p>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
                 <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
                     className="mx-auto w-[396px]"
                     src="/static/landing_block.png"
                   />
-                </div>
-              </div>
-              <div className="align-middle sm:col-span-4 sm:pl-8 sm:pr-4">
-                <div className="mt-8">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Build powerful workflows on top of your company data
-                  </div>
-                  <p className="mt-4 text-lg font-light">
-                    Create large language model apps: query your data sources,
-                    chain calls to models to achieve specific tasks.
-                  </p>
-                  <p className="mt-4 text-lg font-light">
-                    Deploy these apps behind API.
-                  </p>
                 </div>
               </div>
             </div>
