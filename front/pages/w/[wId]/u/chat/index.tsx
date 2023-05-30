@@ -361,11 +361,11 @@ const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/follow-up",
     description:
-      "Follow-up with the agent without performing a document retrieval",
+      "Follow-up with the assistant without performing a document retrieval",
   },
   {
     cmd: "/retrieve",
-    description: "Perform a document retrieval without querying the agent",
+    description: "Perform a document retrieval without querying the assistant",
   },
 ];
 
@@ -802,7 +802,7 @@ export default function AppChat({
                                     </div>
                                     <div className="flex flex-1"></div>
                                   </div>
-                                  <div className="ml-2 w-48 truncate italic text-gray-500 sm:w-max">
+                                  <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
                                     {c.description}
                                   </div>
                                 </div>
