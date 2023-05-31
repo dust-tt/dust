@@ -477,7 +477,7 @@ impl Block for LLM {
                 assert!(g.completions.len() == 1);
 
                 Ok(BlockResult {
-                    val: serde_json::to_value(LLMValue {
+                    value: serde_json::to_value(LLMValue {
                         prompt: Tokens {
                             text: prompt,
                             tokens: None,
@@ -556,7 +556,7 @@ impl Block for LLM {
                 assert!(g.completions.len() == 1);
 
                 Ok(BlockResult {
-                    val: serde_json::to_value(LLMValue {
+                    value: serde_json::to_value(LLMValue {
                     prompt: g.prompt,
                     completion: g.completions[0].clone(),
                 })?,

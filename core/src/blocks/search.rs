@@ -243,7 +243,7 @@ impl Block for Search {
 
         match response.status {
             200 => Ok(BlockResult {
-                val: response.body,
+                value: response.body,
                 meta: None
             }),
             s => Err(anyhow!(

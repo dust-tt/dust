@@ -251,7 +251,7 @@ impl Block for Chat {
         let e = env.clone();
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        let messages_value: Value = match tokio::task::spawn_blocking(move || {
+        let messages_result: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(messages_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &e)
@@ -262,7 +262,7 @@ impl Block for Chat {
             Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
         };
 
-        let mut messages = match messages_value {
+        let mut messages = match &messages_result["value"] {
             Value::Array(a) => a
                 .into_iter()
                 .map(|v| match v {
@@ -365,10 +365,10 @@ impl Block for Chat {
         assert!(g.completions.len() == 1);
 
         Ok(BlockResult { 
-            val: serde_json::to_value(ChatValue {
+            value: serde_json::to_value(ChatValue {
             message: g.completions[0].clone(),
         })?,
-            meta: None
+            meta: Some(messages_result["logs"].clone())
         })
     }
 

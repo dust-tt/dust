@@ -210,7 +210,7 @@ impl Block for Browser {
                     }
                 });
                 Ok(BlockResult {
-                    val: result,
+                    value: result,
                     meta: None
                 })
             }
@@ -228,7 +228,7 @@ impl Block for Browser {
                         },
                     });
                     Ok(BlockResult {
-                        val: result,
+                        value: result,
                         meta: None
                     })
                 }

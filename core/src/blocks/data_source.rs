@@ -341,7 +341,7 @@ impl Block for DataSource {
         }
 
         Ok(BlockResult {
-            val: serde_json::to_value(Self::top_k_sorted_documents(
+            value: serde_json::to_value(Self::top_k_sorted_documents(
             top_k, &documents,
         ))?,
             meta: None

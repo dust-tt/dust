@@ -111,7 +111,7 @@ impl Block for Map {
                                 self.from
                             )),
                             _ => Ok(BlockResult {
-                                val: v.clone(), 
+                                value: v.clone(), 
                                 meta: None // do I need to take the meta here
                             }),
                         }
@@ -127,7 +127,7 @@ impl Block for Map {
                             output.push(v.clone());
                         }
                         Ok(BlockResult {
-                            val: Value::Array(output),
+                            value: Value::Array(output),
                             meta: None
                         })
                     }

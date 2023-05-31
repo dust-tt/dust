@@ -36,7 +36,7 @@ impl Block for Input {
     ) -> Result<BlockResult> {
         match env.input.value.as_ref() {
             Some(i) => Ok(BlockResult {
-                val: i.clone(), 
+                value: i.clone(), 
                 meta: None
             }),
             None => unreachable!(),

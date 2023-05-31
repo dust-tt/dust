@@ -49,7 +49,7 @@ impl Block for End {
         // No-op the block outputs within the while|if/end are coallesced, the output of end is
         // ignored and not stored in the environment as it has the same name as the while|if block.
         Ok(BlockResult {
-            val: Value::Null,
+            value: Value::Null,
             meta: None
         })
     }

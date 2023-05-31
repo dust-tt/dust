@@ -70,7 +70,7 @@ impl Block for Code {
         })
         .await??;
         Ok(BlockResult {
-            val: result["value"].clone(),
+            value: result["value"].clone(),
             meta: Some(result["logs"].clone())
         })
     }

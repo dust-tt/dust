@@ -88,7 +88,7 @@ impl Block for While {
             None => unreachable!(),
             Some(w) => {
                 if w.iteration >= self.max_iterations {
-                    return Ok(BlockResult { val: Value::Bool(false), meta: None});
+                    return Ok(BlockResult { value: Value::Bool(false), meta: None});
                 }
             }
         }
@@ -98,7 +98,7 @@ impl Block for While {
             .condition_code
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
-        let condition_value: Value = match tokio::task::spawn_blocking(move || {
+        let result: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(condition_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &e)
@@ -109,10 +109,10 @@ impl Block for While {
             Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
         };
 
-        match condition_value {
+        match result["value"] {
             Value::Bool(b) => Ok(BlockResult {
-                val: Value::Bool(b),
-                meta: None
+                value: Value::Bool(b), 
+                meta: Some(result["logs"].clone())
             }),
             _ => Err(anyhow!(
                 "Invalid return value from `condition_code`, expecting boolean"

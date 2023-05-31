@@ -51,7 +51,7 @@ impl Block for Reduce {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(BlockResult {
-            val: Value::Null,
+            value: Value::Null,
             meta: None
         })
     }

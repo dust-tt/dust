@@ -116,7 +116,7 @@ impl FromStr for BlockType {
 
 #[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
 pub struct BlockResult {
-    pub val: Value,
+    pub value: Value,
     pub meta: Option<Value>,
 }
 #[async_trait]

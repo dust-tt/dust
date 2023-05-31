@@ -72,7 +72,7 @@ impl Block for Data {
             .await?
         {
             Some(d) => Ok(BlockResult {
-                val: d.data_as_value(),
+                value: d.data_as_value(),
                 meta: None
             }),
             None => Err(anyhow!(

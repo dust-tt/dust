@@ -556,7 +556,7 @@ impl App {
                                 Ok((input_idx, map_idx, e, Err(err)))
                             }
                         },
-                        true => Ok((input_idx, map_idx, e, Ok(BlockResult {val: Value::Null, meta: None}))) // what's going on here
+                        true => Ok((input_idx, map_idx, e, Ok(BlockResult {value: Value::Null, meta: None}))) // what's going on here
                             as Result<
                                 (usize, usize, Env, Result<BlockResult, anyhow::Error>),
                                 anyhow::Error,
@@ -605,7 +605,7 @@ impl App {
                                 Some(r) => match r {
                                     (_, Some(v), None) => 
                                         BlockExecution {
-                                            value: Some(v.val.clone()),
+                                            value: Some(v.value.clone()),
                                             error: None,
                                             meta: v.meta.clone()
                                         },
@@ -805,7 +805,7 @@ impl App {
                                     // the state the value for the `map` type since they have the
                                     // same name. This is fine as this is not super useful
                                     // information as it's repetitive.
-                                    e.state.insert(name.clone(), v.val);
+                                    e.state.insert(name.clone(), v.value);
                                 }
                                 // We're inside a `while` loop, accumu      late value in `env.state` as
                                 // an array.
@@ -826,7 +826,7 @@ impl App {
                                                 match e.state.get(name) {
                                                     Some(Value::Array(arr)) => {
                                                         let mut arr = arr.clone();
-                                                        arr.push(v.val.clone());
+                                                        arr.push(v.value.clone());
                                                         e.state.insert(
                                                             name.clone(),
                                                             Value::Array(arr),
@@ -835,7 +835,7 @@ impl App {
                                                     None => {
                                                         e.state.insert(
                                                             name.clone(),
-                                                            Value::Array(vec![v.val]),
+                                                            Value::Array(vec![v.value]),
                                                         );
                                                     }
                                                     _ => unreachable!(),

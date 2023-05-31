@@ -112,7 +112,7 @@ impl Block for Curl {
 
         let e = env.clone();
         let headers_code = self.headers_code.clone();
-        let headers_value: Value = match tokio::task::spawn_blocking(move || {
+        let headers_result: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(headers_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &e)
@@ -125,7 +125,7 @@ impl Block for Curl {
 
         let e = env.clone();
         let body_code = self.body_code.clone();
-        let body_value: Value = match tokio::task::spawn_blocking(move || {
+        let body_result: Value = match tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(body_code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &e)
@@ -147,17 +147,17 @@ impl Block for Curl {
         let request = HttpRequest::new(
             self.method.as_str(),
             url.as_str(),
-            headers_value,
-            body_value,
+            headers_result["value"].clone(),
+            body_result["value"].clone(),
         )?;
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
-
         Ok(BlockResult {
-            val: json!(response), 
-            meta: None
+            value: json!(response), 
+            // if there are meta logs, then concatenate them and return them
+            meta: Some(Value::String(headers_result["logs"].as_str().unwrap().to_owned() + "\n" + &body_result["logs"].as_str().unwrap()))
         })
     }
 
