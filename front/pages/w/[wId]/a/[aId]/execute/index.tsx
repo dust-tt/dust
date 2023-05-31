@@ -12,7 +12,7 @@ import TextareaAutosize from "react-textarea-autosize";
 // @ts-expect-error there are no types for sse.js.
 import { SSE } from "sse.js";
 
-import { Execution } from "@app/components/app/blocks/Output";
+import { Execution, Logs } from "@app/components/app/blocks/Output";
 import MainTab from "@app/components/app/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";
@@ -155,40 +155,42 @@ function ExecuteOutputLine({
   const traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
 
   return (
-    <div className="leading-none">
-      <button
-        disabled={!traces}
-        onClick={() => onToggleExpand()}
-        className={classNames("border-none", traces ? "" : "text-gray-400")}
-      >
-        <div className="flex flex-row items-center">
-          {!expanded ? (
-            <ChevronRightIcon className="h-4 w-4 text-gray-400" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-          )}{" "}
-          <div className="inline">
-            <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
-              {blockType}
-            </span>
-            <span className="ml-1 font-bold text-gray-700">{blockName}</span>
+    <div>
+      <div className="leading-none">
+        <button
+          disabled={!traces}
+          onClick={() => onToggleExpand()}
+          className={classNames("border-none", traces ? "" : "text-gray-400")}
+        >
+          <div className="flex flex-row items-center">
+            {!expanded ? (
+              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            )}{" "}
+            <div className="inline">
+              <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
+                {blockType}
+              </span>
+              <span className="ml-1 font-bold text-gray-700">{blockName}</span>
+            </div>
+            <div>
+              {lastEventForBlock.content.status === "running" ? (
+                <div className="ml-1">
+                  <Spinner />
+                </div>
+              ) : lastEventForBlock.content.status === "errored" ? (
+                <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
+              ) : null}
+            </div>
           </div>
-          <div>
-            {lastEventForBlock.content.status === "running" ? (
-              <div className="ml-1">
-                <Spinner />
-              </div>
-            ) : lastEventForBlock.content.status === "errored" ? (
-              <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
-            ) : null}
+        </button>
+        {true ? (
+          <div className="mb-2 ml-8 flex text-sm text-gray-600">
+            <Execution block={null} trace={traces} />
           </div>
-        </div>
-      </button>
-      {expanded ? (
-        <div className="mb-2 ml-8 flex text-sm text-gray-600">
-          <Execution block={null} trace={traces} />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
