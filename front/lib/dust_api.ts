@@ -55,7 +55,11 @@ export type DustAppRunBlockExecutionEvent = {
   content: {
     block_type: string;
     block_name: string;
-    execution: { value: any | null; error: string | null, meta: any | null }[][];
+    execution: {
+      value: any | null;
+      error: string | null;
+      meta: any | null;
+    }[][];
   };
 };
 
