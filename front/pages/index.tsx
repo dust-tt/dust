@@ -137,11 +137,26 @@ export default function Home({
   return (
     <>
       <Head>
-        <title>Dust - Unleash your Company Data with Generative AI</title>
+        <title>Dust - Build Smarter Teams with Generative AI</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
+        <meta
+          id="meta-description"
+          name="description"
+          content="Harnesses the power of LLMs to help your teams craft better content, understand their environment faster, and ultimately take better decisions."
+        />
+        <meta
+          id="og-title"
+          property="og:title"
+          content="Dust - Build Smarter Teams with Generative AI"
+        />
+        <meta
+          id="og-image"
+          property="og:image"
+          content="/static/og_image.png"
+        />
       </Head>
 
-      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 opacity-5">
+      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 overflow-hidden opacity-5">
         <Cloud />
       </div>
       <main className="z-10 mx-4">
@@ -328,7 +343,22 @@ export default function Home({
         </div>
 
         <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center text-sm text-gray-400">
-          Dust © 2022 – 2023
+          Dust © 2022-2023 –{" "}
+          <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
+            Legal
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Privacy-1a329ca7b8e349e88b5ec3277fe35189">
+            Privacy
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb">
+            Terms
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
+            Cookies
+          </Link>
         </div>
         <>
           <Script
