@@ -328,7 +328,22 @@ export default function Home({
         </div>
 
         <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center text-sm text-gray-400">
-          Dust © 2022 – 2023
+          Dust © 2022-2023 –{" "}
+          <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
+            Legal
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Privacy-1a329ca7b8e349e88b5ec3277fe35189">
+            Privacy
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb">
+            Terms
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
+            Cookies
+          </Link>
         </div>
         <>
           <Script
