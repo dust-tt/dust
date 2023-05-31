@@ -395,7 +395,6 @@ export default function Home({
                     hard to make users happy with or without technical know-how.
                   </p>
                 </div>
-                <div className="flex flex-1"></div>
               </div>
             </div>
           </div>
