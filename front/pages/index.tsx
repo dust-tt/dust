@@ -341,9 +341,9 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mx-32 mt-32 border-t"></div>
+          <div className="mt-32 border-t sm:mx-16 md:mx-32"></div>
 
-          <div className="mx-32 mt-16">
+          <div className="mt-16 sm:mx-16 md:mx-32">
             <div className="">
               <div className="flex flex-col">
                 <div className="mt-2 flex-initial">
