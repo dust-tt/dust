@@ -3,7 +3,6 @@ import {
   ChevronRightIcon,
   ComputerDesktopIcon,
 } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -15,7 +14,7 @@ import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { ActionButton, Button } from "./Button";
+import { ActionButton } from "./Button";
 import WorkspacePicker from "./WorkspacePicker";
 
 export default function AppLayout({
@@ -165,16 +164,6 @@ export default function AppLayout({
                         ) : null}
                       </ol>
                     </nav>
-                    <div className="static inset-auto hidden flex-initial items-center pr-4 md:flex">
-                      <Link href="https://docs.dust.tt">
-                        <Button>
-                          <>
-                            <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                            View Documentation
-                          </>
-                        </Button>
-                      </Link>
-                    </div>
                     {user ? (
                       <div className="static inset-auto right-0 flex flex-initial items-center pr-2">
                         <Menu as="div" className="relative">
