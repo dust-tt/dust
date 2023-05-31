@@ -230,7 +230,7 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-32 ">
+          <div className="mt-32">
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
@@ -336,6 +336,64 @@ export default function Home({
                     className="mx-auto w-[400px]"
                     src="/static/landing_block.png"
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mx-32 mt-32 border-t"></div>
+
+          <div className="mx-32 mt-16">
+            <div className="">
+              <div className="flex flex-col">
+                <div className="mt-2 flex-initial">
+                  <div className="text-center text-xl font-bold tracking-tighter text-gray-500">
+                    <span className="italic">Our Product Constitution</span>
+                  </div>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">
+                      Augmenting humans, not replacing them.
+                    </span>{" "}
+                    We're optimistic about making work life better for smart
+                    people. We're building R2-D2, not Terminator.
+                  </p>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">Focusing on the upside.</span>{" "}
+                    There's so much machines can help with, and we'd rather
+                    focus on increasing the upside rather than cutting costs.
+                  </p>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">
+                      Craftsmanship over chatbots, hard problems over hype.
+                    </span>{" "}
+                    There's a little more to great products and experiences than
+                    wrapping GPT-4 API calls into a chat UI. We're in this to
+                    solve hard problems at hand on user experience and product
+                    quality.
+                  </p>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">Building with an AI core.</span>{" "}
+                    Being an LLM-native company, we're building with large
+                    language models in mind from the ground up, rather than
+                    sprinkling them here and there.
+                  </p>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">Being Safe and Sound.</span>{" "}
+                    Your data's sensitive, and you can't just accept “making
+                    things up” as a standard. Our North Star is somewhere
+                    between Factualness, Safety, and Security. We aspire to
+                    define standards rather than simply abide by the existing
+                    ones.
+                  </p>
+                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                    <span className="font-bold">
+                      Focusing on tinkerers, delighting everyone.
+                    </span>{" "}
+                    We make tools with the makers in mind. Those who want to
+                    bend software to their will deserve a way to do it and are
+                    our core audience, and not all are developers. We'll work
+                    hard to make users happy with or without technical know-how.
+                  </p>
                 </div>
               </div>
             </div>
