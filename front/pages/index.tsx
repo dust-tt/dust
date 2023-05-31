@@ -179,7 +179,7 @@ export default function Home({
           <div className="mt-12 grid sm:grid-cols-6">
             <div className="text-lg text-gray-900 sm:col-span-4">
               <p className="rounded bg-white bg-opacity-50 font-light">
-                While, fast-growing companies all feel the pain of rapidly
+                While fast-growing companies all feel the pain of rapidly
                 growing internal information debt, LLMs have the potential to
                 fundamentally change how data is created or consumed in the
                 enterprise. Dust harnesses their power to help teams craft
