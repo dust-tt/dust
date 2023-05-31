@@ -156,14 +156,20 @@ impl Block for Curl {
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
-        Ok(BlockResult {
-            value: json!(response),
-            // if there are meta logs, then concatenate them and return them
-            meta: Some(Value::String(
+        let meta = if body_result["logs"].as_str().unwrap() == ""
+            && headers_result["logs"].as_str().unwrap() == ""
+        {
+            Some(Value::String("".to_string()))
+        } else {
+            Some(Value::String(
                 headers_result["logs"].as_str().unwrap().to_owned()
                     + "\n"
                     + &body_result["logs"].as_str().unwrap(),
-            )),
+            ))
+        };
+        Ok(BlockResult {
+            value: json!(response),
+            meta: meta,
         })
     }
 

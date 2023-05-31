@@ -3,6 +3,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
+  InformationCircleIcon
 } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -12,6 +13,7 @@ import { TraceType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
+
 
 export function ObjectViewer({
   block,
@@ -268,24 +270,33 @@ export function Execution({
 }
 
 export function Logs({
-  log
+  trace
 }: {
-  log: String;
+  trace: TraceType[];
 }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
-      <div>
-        <div className="flex-auto flex-col">
-          <div className="flex flex-1">
-            <ValueViewer
-              value={log}
-              topLevel={true}
-              k={null}
-              block={null}
-            />
-          </div>
-        </div>
-      </div>
+      {trace.map((trace) => {
+        if (trace.meta)
+        {
+          return (
+            <div className="flex-auto flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-initial">
+                  <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
+                </div>
+                <div className="flex flex-1 font-mono">
+                  <ValueViewer
+                    value={trace.meta}
+                    topLevel={true}
+                    k={null}    
+                    block={null}
+                  />
+                </div>
+              </div>
+            </div>
+        )}
+      })}
     </div>
   )
 }
@@ -353,6 +364,9 @@ export default function Output({
       return acc + t.filter((t) => t.error !== null).length;
     }, 0);
 
+    const logs = traces.reduce((acc, t) => {
+      return acc + t.filter((t) => t.meta && t.meta !== "").length;
+    }, 0);
     return (
       <div>
         <div className="flex flex-auto flex-col">
@@ -399,45 +413,47 @@ export default function Output({
             </>
           ) : null}
         </div>
-        <div className="flex flex-auto flex-col">
-          <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial cursor-pointer text-gray-400">
-              <div onClick={() => setExpandedLog(!expandedLog)}>
-                <span className="flex flex-row items-center">
-                  {expandedLog ? (
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                  ) : (
-                    <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                  )}
-                  <span className="text-sm text-gray-400">
-                    [{" "}
-                    <span className="font-bold">
-                      Logs
+        {logs ? (
+          <div className="flex flex-auto flex-col">
+            <div className="flex flex-row items-center text-sm">
+              <div className="flex-initial cursor-pointer text-gray-400">
+                <div onClick={() => setExpandedLog(!expandedLog)}>
+                  <span className="flex flex-row items-center">
+                    {expandedLog ? (
+                      <ChevronDownIcon className="mt-0.5 h-4 w-4" />
+                    ) : (
+                      <ChevronRightIcon className="mt-0.5 h-4 w-4" />
+                    )}
+                    <span className="text-sm text-gray-400">
+                      [{" "}
+                      <span className="font-bold text">
+                        {logs} {logs === 1 ? "log" : "logs"}
+                      </span>
+                      ]
                     </span>
-                    ]
                   </span>
-                </span>
+                </div>
               </div>
             </div>
-          </div>
-          {expandedLog ? (
-            <>
-              {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
-              {traces.map((trace) => trace.map((t) => t.meta.split("\n"))).flat().flat().map((log, i) => {
-                if (log) {
-                  return (
-                    <div key={i} className="ml-1 flex flex-auto flex-row">
-                      <div className="mr-2 flex font-mono text-sm text-gray-300">
-                        {i}:
+            {expandedLog ? (
+              <>
+                {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
+                {traces.map((trace, i) => {
+                  if (trace.map((t) => t.meta).some((e) => e)) {
+                    return (
+                      <div key={i} className="ml-1 flex flex-auto flex-row">
+                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                          {i}:
+                        </div>
+                        <Logs trace={trace} />
                       </div>
-                      <Logs log={log} />
-                    </div>
-                  );
-                }
-              })}
-            </>
-          ) : null}
-        </div>
+                    );
+                  }
+                })}
+              </>
+            ) : null}
+          </div>
+        ) : null }
       </div>
     );
   } else {

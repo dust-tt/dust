@@ -21,7 +21,9 @@ impl Script {
         let all_code =
             "let __rust_logs = '';
             const console = { log: function(...args) {
-                __rust_logs += args.map((expr) => JSON.stringify(expr)).join(', ') + '\\n';
+                __rust_logs += args.map((expr) =>
+                    (typeof expr === 'string' || expr instanceof String) ? expr : JSON.stringify(expr)
+                    ).join(', ') + '\\n';
             } };"
                 .to_string()
                 + js_code;
