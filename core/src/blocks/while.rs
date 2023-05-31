@@ -4,7 +4,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
@@ -101,21 +101,22 @@ impl Block for While {
             .condition_code
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
-        let result: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(condition_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
-        };
+        let (condition_value, condition_logs): (Value, String) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(condition_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
+            };
 
-        match result["value"] {
+        match condition_value {
             Value::Bool(b) => Ok(BlockResult {
                 value: Value::Bool(b),
-                meta: Some(result["logs"].clone()),
+                meta: Some(json!({ "logs": condition_logs })),
             }),
             _ => Err(anyhow!(
                 "Invalid return value from `condition_code`, expecting boolean"

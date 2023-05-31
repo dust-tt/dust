@@ -114,29 +114,31 @@ impl Block for Curl {
 
         let e = env.clone();
         let headers_code = self.headers_code.clone();
-        let headers_result: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(headers_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in headers code: {}", e))?,
-        };
+        let (headers_value, headers_logs): (Value, String) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(headers_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in headers code: {}", e))?,
+            };
 
         let e = env.clone();
         let body_code = self.body_code.clone();
-        let body_result: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(body_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in body code: {}", e))?,
-        };
+        let (body_value, body_logs): (Value, String) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(body_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in body code: {}", e))?,
+            };
 
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
@@ -149,31 +151,17 @@ impl Block for Curl {
         let request = HttpRequest::new(
             self.method.as_str(),
             url.as_str(),
-            headers_result["value"].clone(),
-            body_result["value"].clone(),
+            headers_value,
+            body_value,
         )?;
 
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
-        let meta = if body_result["logs"].as_str().unwrap() == ""
-            && headers_result["logs"].as_str().unwrap() == ""
-        {
-            Some(Value::String("".to_string()))
-        } else if headers_result["logs"].as_str().unwrap() == "" {
-            Some(Value::String(
-                body_result["logs"].as_str().unwrap().to_owned(),
-            ))
-        } else {
-            Some(Value::String(
-                headers_result["logs"].as_str().unwrap().to_owned()
-                    + "\n"
-                    + &body_result["logs"].as_str().unwrap(),
-            ))
-        };
+
         Ok(BlockResult {
             value: json!(response),
-            meta: meta,
+            meta: Some(json!({ "logs": format!("{}{}", headers_logs, body_logs) })),
         })
     }
 

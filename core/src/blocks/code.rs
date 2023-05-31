@@ -4,7 +4,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
@@ -63,15 +63,15 @@ impl Block for Code {
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();
         let code = self.code.clone();
-        let result: Value = tokio::task::spawn_blocking(move || {
+        let (result, logs): (Value, String) = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &env)
         })
         .await??;
         Ok(BlockResult {
-            value: result["value"].clone(),
-            meta: Some(result["logs"].clone()),
+            value: result.clone(),
+            meta: Some(json!({ "logs": logs })),
         })
     }
 

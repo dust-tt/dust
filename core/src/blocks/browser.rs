@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -7,8 +9,6 @@ use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
-
-use super::block::BlockResult;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {

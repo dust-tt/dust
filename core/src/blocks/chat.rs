@@ -253,18 +253,19 @@ impl Block for Chat {
         let e = env.clone();
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        let messages_result: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(messages_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
-        };
+        let (messages_value, messages_logs): (Value, String) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(messages_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
+            };
 
-        let mut messages = match &messages_result["value"] {
+        let mut messages = match messages_value {
             Value::Array(a) => a
                 .into_iter()
                 .map(|v| match v {
@@ -370,7 +371,9 @@ impl Block for Chat {
             value: serde_json::to_value(ChatValue {
                 message: g.completions[0].clone(),
             })?,
-            meta: Some(messages_result["logs"].clone()),
+            meta: Some(json!({
+                "logs": messages_logs,
+            })),
         })
     }
 

@@ -119,6 +119,7 @@ pub struct BlockResult {
     pub value: Value,
     pub meta: Option<Value>,
 }
+
 #[async_trait]
 pub trait Block {
     fn block_type(&self) -> BlockType;

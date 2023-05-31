@@ -417,37 +417,36 @@ impl App {
             // Value::None?
             if block.block_type() == BlockType::Reduce {
                 assert!(current_map.is_some());
-                envs = envs
-                    .iter()
-                    .map(|map_envs| {
-                        assert!(map_envs.len() > 0);
-                        let mut env = map_envs[0].clone();
-                        current_map_blocks
-                            .iter()
-                            .map(|n| {
-                                env.state.insert(
-                                    n.clone(),
-                                    Value::Array(
-                                        map_envs
-                                            .iter()
-                                            .map(|e| match e.state.get(n) {
-                                                None => Err(anyhow!(
+                envs =
+                    envs.iter()
+                        .map(|map_envs| {
+                            assert!(map_envs.len() > 0);
+                            let mut env = map_envs[0].clone();
+                            current_map_blocks
+                                .iter()
+                                .map(|n| {
+                                    env.state.insert(
+                                        n.clone(),
+                                        Value::Array(
+                                            map_envs
+                                                .iter()
+                                                .map(|e| match e.state.get(n) {
+                                                    None => Err(anyhow!(
                                                     "Missing block `{}` output, at iteration {}",
-                                                    n,
-                                                    e.map.as_ref().unwrap().iteration
+                                                    n, e.map.as_ref().unwrap().iteration
                                                 ))?,
-                                                Some(v) => Ok(v.clone()),
-                                            })
-                                            .collect::<Result<Vec<_>>>()?,
-                                    ),
-                                );
-                                Ok(())
-                            })
-                            .collect::<Result<Vec<_>>>()?;
-                        env.map = None;
-                        Ok(vec![env])
-                    })
-                    .collect::<Result<Vec<_>>>()?;
+                                                    Some(v) => Ok(v.clone()),
+                                                })
+                                                .collect::<Result<Vec<_>>>()?,
+                                        ),
+                                    );
+                                    Ok(())
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            env.map = None;
+                            Ok(vec![env])
+                        })
+                        .collect::<Result<Vec<_>>>()?;
 
                 current_map = None;
                 current_map_blocks = vec![];
@@ -558,13 +557,19 @@ impl App {
                                 Ok((input_idx, map_idx, e, Err(err)))
                             }
                         },
-                        true => {
-                            Ok((input_idx, map_idx, e, Ok(BlockResult {value: Value::Null, meta: None})))
+                        true => Ok((
+                            input_idx,
+                            map_idx,
+                            e,
+                            Ok(BlockResult {
+                                value: Value::Null,
+                                meta: None,
+                            }),
+                        ))
                             as Result<
                                 (usize, usize, Env, Result<BlockResult, anyhow::Error>),
                                 anyhow::Error,
-                            >
-                        }
+                            >,
                     }
                 })
             })

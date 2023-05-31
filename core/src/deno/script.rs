@@ -62,19 +62,23 @@ impl Script {
         })
     }
 
-    pub fn call<A, R>(&mut self, fn_name: &str, arg: A) -> Result<R>
+    pub fn call<A, R>(&mut self, fn_name: &str, arg: A) -> Result<(R, String)>
     where
         A: Serialize,
         R: DeserializeOwned,
     {
         let json_arg = serde_json::to_value(arg)?.to_string();
-        let json_result = self.call_impl(fn_name, json_arg)?;
+        let (json_result, logs) = self.call_impl(fn_name, json_arg)?;
         let result: R = serde_json::from_value(json_result)?;
 
-        Ok(result)
+        Ok((result, logs))
     }
 
-    fn call_impl(&mut self, fn_name: &str, json_args: String) -> Result<serde_json::Value> {
+    fn call_impl(
+        &mut self,
+        fn_name: &str,
+        json_args: String,
+    ) -> Result<(serde_json::Value, String)> {
         // Note: ops() is required to initialize internal state
         // Wrap everything in scoped block
 
@@ -123,7 +127,14 @@ impl Script {
             Rc::try_unwrap(entry).expect("Rc must hold single strong ref to resource entry");
         self.last_rid += 1;
 
-        Ok(extracted.json_value)
+        let output = extracted.json_value;
+
+        let return_value = output["value"].clone();
+
+        match output.get("logs") {
+            Some(serde_json::Value::String(logs)) => Ok((return_value, logs.clone())),
+            _ => Ok((return_value, "".to_string())),
+        }
     }
 }
 
