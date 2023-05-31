@@ -109,13 +109,12 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 type RetrievedDocument = {
-  sourceUrl: string;
-  title: string;
-  provider: ConnectorProvider;
+  data_source_id: string;
+  source_url: string;
+  timestamp: string;
   score: number;
   document: {
     channelName?: string;
-    timestamp: string;
     title?: string;
     lastEditedAt?: string;
     chunks: {
