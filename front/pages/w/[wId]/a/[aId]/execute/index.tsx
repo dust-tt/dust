@@ -12,7 +12,7 @@ import TextareaAutosize from "react-textarea-autosize";
 // @ts-expect-error there are no types for sse.js.
 import { SSE } from "sse.js";
 
-import { Execution, Logs } from "@app/components/app/blocks/Output";
+import { Execution } from "@app/components/app/blocks/Output";
 import MainTab from "@app/components/app/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";

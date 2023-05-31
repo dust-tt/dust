@@ -276,11 +276,11 @@ export function Logs({
 }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
-      {trace.map((trace) => {
+      {trace.map((trace, i) => {
         if (trace.meta)
         {
           return (
-            <div className="flex-auto flex-col">
+            <div key={i} className="flex-auto flex-col">
               <div className="flex flex-row">
                 <div className="flex flex-initial">
                   <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
