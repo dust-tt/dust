@@ -37,7 +37,7 @@ pub struct InputState {
 #[derive(Serialize, Clone)]
 pub struct Env {
     pub config: RunConfig,
-    pub state: HashMap<String, BlockResult>,
+    pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
@@ -235,7 +235,7 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
                 .state
                 .get(name)
                 .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-            if !output.val.is_object() {
+            if !output.is_object() {
                 Err(anyhow!(
                     "Block `{}` output is not an object, the output of `{}` referred to \
                      as a variable in `{}` must be an object",
@@ -244,7 +244,7 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
                     field
                 ))?;
             }
-            let output = output.val.as_object().unwrap();
+            let output = output.as_object().unwrap();
 
             if !output.contains_key(key) {
                 Err(anyhow!(

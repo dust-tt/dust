@@ -153,14 +153,14 @@ impl LLM {
             .state
             .get(&name)
             .ok_or_else(|| anyhow!("Block `{}` output not found", name))?;
-        if !output.val.is_array() {
+        if !output.is_array() {
             Err(anyhow!(
                 "Block `{}` output is not an array, the block output referred in \
                  `few_shot_prompt` must be an array",
                 name
             ))?;
         }
-        let output = output.val.as_array().unwrap();
+        let output = output.as_array().unwrap();
 
         // Check that the block output elements are objects.
         for o in output {
@@ -591,11 +591,11 @@ mod tests {
                 blocks: HashMap::new(),
             },
             state: serde_json::from_str(
-                r#"{"RETRIEVE": {"val": [
+                r#"{"RETRIEVE":[
                     {"question":"What is your name?"},
-                    {"question":"What is your dob"},
-                    ], "meta": None},
-                    "DATA": {val: {"answer":"John"}, meta: None}"#,
+                    {"question":"What is your dob"}
+                    ],
+                    "DATA":{"answer":"John"}}"#,
             )
             .unwrap(),
             input: InputState {

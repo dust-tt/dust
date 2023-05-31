@@ -90,7 +90,7 @@ impl Block for Map {
                 self.from
             )),
             Some(v) => match self.repeat {
-                None => match v.val.as_array() {
+                None => match v.as_array() {
                     None => Err(anyhow::anyhow!(
                         "Map `from` block `{}` output must be an array, \
                             or `repeat` must be defined",
@@ -111,7 +111,7 @@ impl Block for Map {
                                 self.from
                             )),
                             _ => Ok(BlockResult {
-                                val: v.val.clone(), 
+                                val: v.clone(), 
                                 meta: None // do I need to take the meta here
                             }),
                         }
@@ -124,7 +124,7 @@ impl Block for Map {
                     _ => {
                         let mut output = Vec::new();
                         for _ in 0..repeat {
-                            output.push(v.val.clone());
+                            output.push(v.clone());
                         }
                         Ok(BlockResult {
                             val: Value::Array(output),

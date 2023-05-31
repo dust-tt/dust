@@ -427,20 +427,17 @@ impl App {
                                 .map(|n| {
                                     env.state.insert(
                                         n.clone(),
-                                        BlockResult {
-                                            val: Value::Array(
-                                                map_envs
-                                                    .iter()
-                                                    .map(|e| match e.state.get(n) {
-                                                        None => Err(anyhow!(
-                                                            "Missing block `{}` output, at iteration {}",
-                                                            n, e.map.as_ref().unwrap().iteration
-                                                        ))?,
-                                                        Some(v) => Ok(v.val.clone()),
-                                                    })
-                                                .collect::<Result<Vec<_>>>()?),
-                                            meta: None 
-                                        }
+                                        Value::Array(
+                                            map_envs
+                                                .iter()
+                                                .map(|e| match e.state.get(n) {
+                                                    None => Err(anyhow!(
+                                                        "Missing block `{}` output, at iteration {}",
+                                                        n, e.map.as_ref().unwrap().iteration
+                                                    ))?,
+                                                    Some(v) => Ok(v.clone()),
+                                                })
+                                            .collect::<Result<Vec<_>>>()?),
                                     );
                                     Ok(())
                                 })
@@ -808,7 +805,7 @@ impl App {
                                     // the state the value for the `map` type since they have the
                                     // same name. This is fine as this is not super useful
                                     // information as it's repetitive.
-                                    e.state.insert(name.clone(), v);
+                                    e.state.insert(name.clone(), v.val);
                                 }
                                 // We're inside a `while` loop, accumu      late value in `env.state` as
                                 // an array.
@@ -827,24 +824,18 @@ impl App {
                                         match current_skips.as_ref().unwrap().get(input_idx) {
                                             Some(false) => {
                                                 match e.state.get(name) {
-                                                    Some(BlockResult {val: Value::Array(arr), meta }) => {
+                                                    Some(Value::Array(arr)) => {
                                                         let mut arr = arr.clone();
                                                         arr.push(v.val.clone());
                                                         e.state.insert(
                                                             name.clone(),
-                                                            BlockResult {
-                                                                val: Value::Array(arr),
-                                                                meta: meta.clone()
-                                                            }
+                                                            Value::Array(arr),
                                                         );
                                                     }
                                                     None => {
                                                         e.state.insert(
                                                             name.clone(),
-                                                            BlockResult {
-                                                                val: Value::Array(vec![v.val]),
-                                                                meta: v.meta
-                                                            }
+                                                            Value::Array(vec![v.val]),
                                                         );
                                                     }
                                                     _ => unreachable!(),
@@ -857,10 +848,7 @@ impl App {
                                                     None => {
                                                         e.state.insert(
                                                             name.clone(),
-                                                            BlockResult {
-                                                                val: Value::Array(vec![]),
-                                                                meta: None
-                                                            }
+                                                            Value::Array(vec![])
                                                         );
                                                     }
                                                     _ => (),
@@ -898,22 +886,22 @@ impl App {
                         let env = map_envs[0].clone();
                         match env.state.get(name) {
                             None => unreachable!(), // Checked at map block execution.
-                            Some(BlockResult { val: Value::Null, meta: _ }) => unreachable!(), // Checked at map block execution.
-                            Some(BlockResult{val: v, meta}) => v
-                                .as_array()
-                                .unwrap()
-                                .iter()
-                                .enumerate()
-                                .map(|(i, x)| {
-                                    let mut e = env.clone();
-                                    e.map = Some(MapState {
-                                        name: name.clone(),
-                                        iteration: i,
-                                    });
-                                    e.state.insert(name.clone(), BlockResult { val: x.clone(), meta: meta.clone()});
-                                    e
-                                })
-                                .collect::<Vec<_>>(),
+                            Some(v) => match v.as_array() {
+                                None => unreachable!(), // Checked at map block execution.
+                                Some(v) => v
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, v)| {
+                                        let mut e = env.clone();
+                                        e.map = Some(MapState {
+                                            name: name.clone(),
+                                            iteration: i,
+                                        });
+                                        e.state.insert(name.clone(), v.clone());
+                                        e
+                                    })
+                                    .collect::<Vec<_>>(),
+                            },
                         }
                     })
                     .collect::<Vec<_>>();
@@ -927,7 +915,7 @@ impl App {
                         .map(|map_envs| {
                             assert!(map_envs.len() == 1);
                             match map_envs[0].state.get(name) {
-                                Some(BlockResult { meta: _, val: Value::Array(arr)}) => {
+                                Some(Value::Array(arr)) => {
                                     assert!(arr.len() > 0);
                                     // get latest value
                                     match arr.last() {
