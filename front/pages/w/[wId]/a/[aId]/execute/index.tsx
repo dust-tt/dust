@@ -184,7 +184,7 @@ function ExecuteOutputLine({
           </div>
         </div>
       </button>
-      {true ? (
+      {expanded ? (
         <div className="mb-2 ml-8 flex text-sm text-gray-600">
           <Execution block={null} trace={traces} />
         </div>

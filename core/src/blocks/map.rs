@@ -96,16 +96,15 @@ impl Block for Map {
                             or `repeat` must be defined",
                         self.from
                     )),
-                    Some(val) => {
-                        // match v.as_array here, look at OG code
-                        if val.len() > MAP_MAX_ITERATIONS {
+                    Some(arr) => {
+                        if arr.len() > MAP_MAX_ITERATIONS {
                             Err(anyhow::anyhow!(
                                 "Map `from` block `{}` output exceeds maximum size ({})",
                                 self.from,
                                 MAP_MAX_ITERATIONS
                             ))?;
                         }
-                        match val.len() {
+                        match arr.len() {
                             0 => Err(anyhow::anyhow!(
                                 "Map `from` block `{}` output must be a non-empty array",
                                 self.from

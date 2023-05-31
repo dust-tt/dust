@@ -239,35 +239,34 @@ export function Execution({
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((t, i) => {
         return (
-          <div>
-            <div key={i} className="flex-auto flex-col">
-              {t.error != null ? (
-                <div className="flex flex-auto flex-row">
-                  <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
-                  <Error error={t.error} />
+          <div key={i} className="flex-auto flex-col">
+            {t.error != null ? (
+              <div className="flex flex-auto flex-row">
+                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
+                <Error error={t.error} />
+              </div>
+            ) : (
+              <div className="flex flex-row">
+                <div className="flex flex-initial">
+                  <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
                 </div>
-              ) : (
-                <div className="flex flex-row">
-                  <div className="flex flex-initial">
-                    <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
-                  </div>
-                  <div className="flex flex-1">
-                    <ValueViewer
-                      block={block}
-                      value={t.value}
-                      topLevel={true}
-                      k={null}
-                    />
-                  </div>
+                <div className="flex flex-1">
+                  <ValueViewer
+                    block={block}
+                    value={t.value}
+                    topLevel={true}
+                    k={null}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         );
       })}
     </div>
   );
 }
+
 export function Logs({
   log
 }: {
@@ -320,7 +319,7 @@ export default function Output({
     }
   );
 
-  const [expandedRes, setExpandedRes] = useState(false);
+  const [expandedResult, setExpandedResult] = useState(false);
   const [expandedLog, setExpandedLog] = useState(false);
 
 
@@ -359,9 +358,9 @@ export default function Output({
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
             <div className="flex-initial cursor-pointer text-gray-400">
-              <div onClick={() => setExpandedRes(!expandedRes)}>
+              <div onClick={() => setExpandedResult(!expandedResult)}>
                 <span className="flex flex-row items-center">
-                  {expandedRes ? (
+                  {expandedResult ? (
                     <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                   ) : (
                     <ChevronRightIcon className="mt-0.5 h-4 w-4" />
@@ -385,7 +384,7 @@ export default function Output({
               </div>
             </div>
           </div>
-          {expandedRes ? (
+          {expandedResult ? (
             <>
               {traces.map((trace, i) => {
                 return (
