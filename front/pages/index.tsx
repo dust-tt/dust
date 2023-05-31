@@ -1,12 +1,14 @@
+import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 import p5Types from "p5";
 
-import { ActionButton } from "@app/components/Button";
+import { ActionButton, Button } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -97,9 +99,6 @@ class Particle {
 
   show(p5: p5Types, nextPos: p5Types.Vector | null = null) {
     p5.fill(0, 0, 0);
-    // p5.noStroke();
-    // p5.circle(this.pos.x, this.pos.y, 2);
-    // if nextPos draw a line ot the next one
     if (nextPos) {
       p5.line(this.pos.x, this.pos.y, nextPos.x, nextPos.y);
     }
@@ -165,12 +164,12 @@ export default function Home({
           <div className="mt-12 grid sm:grid-cols-6">
             <div className="text-lg text-gray-900 sm:col-span-4">
               <p className="rounded bg-white bg-opacity-50 font-light">
-                Fast-growing companies all feel the pain of rapidly growing
-                internal information debt. But LLMs have the potential to
+                While, fast-growing companies all feel the pain of rapidly
+                growing internal information debt, LLMs have the potential to
                 fundamentally change how data is created or consumed in the
-                enterprise, and can be harnessed to help teams craft better
-                content, understand their environment faster, and ultimately
-                take better decisions.
+                enterprise. Dust harnesses their power to help teams craft
+                better content, understand their environment faster, and
+                ultimately take better decisions.
               </p>
 
               <p className="mt-4 bg-white bg-opacity-50 text-lg font-medium">
@@ -195,28 +194,30 @@ export default function Home({
                   />
                   <span className="ml-2 mr-1">Sign in with Google</span>
                 </ActionButton>
-                <div className="ml-32 mt-1 text-xs text-gray-500">
-                  or{" "}
-                  <span
-                    className="cursor-pointer hover:font-bold"
-                    onClick={() => {
-                      void signIn("github", {
-                        callbackUrl: router.query.wId
-                          ? `/api/login?wId=${router.query.wId}`
-                          : `/api/login`,
-                      });
-                    }}
-                  >
-                    GitHub
-                  </span>
-                </div>
+                {!(router.query.signIn && router.query.signIn !== "github") && (
+                  <div className="ml-32 mt-1 text-xs text-gray-500">
+                    or{" "}
+                    <span
+                      className="cursor-pointer hover:font-bold"
+                      onClick={() => {
+                        void signIn("github", {
+                          callbackUrl: router.query.wId
+                            ? `/api/login?wId=${router.query.wId}`
+                            : `/api/login`,
+                        });
+                      }}
+                    >
+                      GitHub
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="mt-32 ">
             <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Internal data{" "}
@@ -237,9 +238,9 @@ export default function Home({
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-4">
                   <img
-                    className="mx-auto w-[393px]"
+                    className="mx-auto w-[400px]"
                     src="/static/landing_data_sources.png"
                   />
                 </div>
@@ -249,7 +250,7 @@ export default function Home({
 
           <div className="mt-16">
             <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Smart{" "}
@@ -275,7 +276,7 @@ export default function Home({
               <div className="mt-8 md:col-span-4 md:mt-0">
                 <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
-                    className="mx-auto w-[418px]"
+                    className="mx-auto w-[400px]"
                     src="/static/landing_chat.png"
                   />
                 </div>
@@ -285,7 +286,7 @@ export default function Home({
 
           <div className="mt-16">
             <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pl-4 md:pr-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Your own{" "}
@@ -296,20 +297,28 @@ export default function Home({
                   <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
                     Build custom Large Language Model apps with the models of
                     your choice and your own data sources. Tweak, evaluate and
-                    maintain them in a visual interface that assists you in the
-                    process of prompting stochastic models.
+                    maintain them in a visual interface that assists you with
+                    the intricacies of prompting and chaining stochastic models.
                   </p>
                   <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
                     Deploy your own apps internally either with a GUI or via
                     API.
                   </p>
+                  <div className="mt-6">
+                    <Link href="https://docs.dust.tt">
+                      <Button>
+                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                        View Documentation
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
                 <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
                   <img
-                    className="mx-auto w-[396px]"
+                    className="mx-auto w-[400px]"
                     src="/static/landing_block.png"
                   />
                 </div>
