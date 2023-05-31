@@ -160,6 +160,10 @@ impl Block for Curl {
             && headers_result["logs"].as_str().unwrap() == ""
         {
             Some(Value::String("".to_string()))
+        } else if headers_result["logs"].as_str().unwrap() == "" {
+            Some(Value::String(
+                body_result["logs"].as_str().unwrap().to_owned(),
+            ))
         } else {
             Some(Value::String(
                 headers_result["logs"].as_str().unwrap().to_owned()

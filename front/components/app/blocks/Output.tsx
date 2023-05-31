@@ -3,7 +3,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -13,7 +13,6 @@ import { TraceType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
-
 
 export function ObjectViewer({
   block,
@@ -269,16 +268,11 @@ export function Execution({
   );
 }
 
-export function Logs({
-  trace
-}: {
-  trace: TraceType[];
-}) {
+export function Logs({ trace }: { trace: TraceType[] }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((trace, i) => {
-        if (trace.meta)
-        {
+        if (trace.meta) {
           return (
             <div key={i} className="flex-auto flex-col">
               <div className="flex flex-row">
@@ -289,16 +283,17 @@ export function Logs({
                   <ValueViewer
                     value={trace.meta}
                     topLevel={true}
-                    k={null}    
+                    k={null}
                     block={null}
                   />
                 </div>
               </div>
             </div>
-        )}
+          );
+        }
       })}
     </div>
-  )
+  );
 }
 export default function Output({
   owner,
@@ -332,7 +327,6 @@ export default function Output({
 
   const [expandedResult, setExpandedResult] = useState(false);
   const [expandedLog, setExpandedLog] = useState(false);
-
 
   if (
     run &&
@@ -426,7 +420,7 @@ export default function Output({
                     )}
                     <span className="text-sm text-gray-400">
                       [{" "}
-                      <span className="font-bold text">
+                      <span className="text font-bold">
                         {logs} {logs === 1 ? "log" : "logs"}
                       </span>
                       ]
@@ -453,7 +447,7 @@ export default function Output({
               </>
             ) : null}
           </div>
-        ) : null }
+        ) : null}
       </div>
     );
   } else {
