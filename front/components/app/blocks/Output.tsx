@@ -272,7 +272,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((trace, i) => {
-        if (trace.meta) {
+        if (trace.meta && trace.meta.logs) {
           return (
             <div key={i} className="flex-auto flex-col">
               <div className="flex flex-row">
@@ -281,7 +281,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
                 </div>
                 <div className="flex flex-1 font-mono">
                   <ValueViewer
-                    value={trace.meta}
+                    value={trace.meta.logs}
                     topLevel={true}
                     k={null}
                     block={null}
