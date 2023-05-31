@@ -18,15 +18,12 @@ impl Script {
     pub fn from_string(js_code: &str) -> Result<Self> {
         // console.log() is not available by default -- add the most basic version with single
         // argument (and no warn/info/... variants)
-        let all_code =
-            "let __rust_logs = '';
+        let all_code = "let __rust_logs = [];
             const console = { log: function(...args) {
-                __rust_logs += args.map((expr) =>
-                    (typeof expr === 'string' || expr instanceof String) ? expr : JSON.stringify(expr)
-                    ).join(', ') + '\\n';
+                __rust_logs = __rust_logs.concat(args)
             } };"
-                .to_string()
-                + js_code;
+            .to_string()
+            + js_code;
 
         Self::create_script(all_code)
     }
@@ -62,7 +59,7 @@ impl Script {
         })
     }
 
-    pub fn call<A, R>(&mut self, fn_name: &str, arg: A) -> Result<(R, String)>
+    pub fn call<A, R>(&mut self, fn_name: &str, arg: A) -> Result<(R, Vec<serde_json::Value>)>
     where
         A: Serialize,
         R: DeserializeOwned,
@@ -78,7 +75,7 @@ impl Script {
         &mut self,
         fn_name: &str,
         json_args: String,
-    ) -> Result<(serde_json::Value, String)> {
+    ) -> Result<(serde_json::Value, Vec<serde_json::Value>)> {
         // Note: ops() is required to initialize internal state
         // Wrap everything in scoped block
 
@@ -132,8 +129,8 @@ impl Script {
         let return_value = output["value"].clone();
 
         match output.get("logs") {
-            Some(serde_json::Value::String(logs)) => Ok((return_value, logs.clone())),
-            _ => Ok((return_value, "".to_string())),
+            Some(serde_json::Value::Array(logs)) => Ok((return_value, logs.clone())),
+            _ => Ok((return_value, vec![])),
         }
     }
 }

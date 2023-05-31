@@ -63,7 +63,7 @@ impl Block for Code {
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();
         let code = self.code.clone();
-        let (result, logs): (Value, String) = tokio::task::spawn_blocking(move || {
+        let (result, logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &env)

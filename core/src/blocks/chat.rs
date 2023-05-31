@@ -253,7 +253,7 @@ impl Block for Chat {
         let e = env.clone();
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        let (messages_value, messages_logs): (Value, String) =
+        let (messages_value, messages_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(messages_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));

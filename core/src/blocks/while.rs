@@ -101,7 +101,7 @@ impl Block for While {
             .condition_code
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
-        let (condition_value, condition_logs): (Value, String) =
+        let (condition_value, condition_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(condition_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));

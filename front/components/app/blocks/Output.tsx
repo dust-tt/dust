@@ -359,7 +359,7 @@ export default function Output({
     }, 0);
 
     const logs = traces.reduce((acc, t) => {
-      return acc + t.filter((t) => t.meta && t.meta !== "").length;
+      return acc + t.filter((t) => t.meta && t.meta.length).length;
     }, 0);
     return (
       <div>

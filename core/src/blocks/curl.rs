@@ -114,7 +114,7 @@ impl Block for Curl {
 
         let e = env.clone();
         let headers_code = self.headers_code.clone();
-        let (headers_value, headers_logs): (Value, String) =
+        let (headers_value, mut headers_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(headers_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));
@@ -128,7 +128,7 @@ impl Block for Curl {
 
         let e = env.clone();
         let body_code = self.body_code.clone();
-        let (body_value, body_logs): (Value, String) =
+        let (body_value, body_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(body_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));
@@ -158,10 +158,10 @@ impl Block for Curl {
         let response = request
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
-
+        headers_logs.extend(body_logs);
         Ok(BlockResult {
             value: json!(response),
-            meta: Some(json!({ "logs": format!("{}{}", headers_logs, body_logs) })),
+            meta: Some(json!({ "logs": headers_logs })),
         })
     }
 
