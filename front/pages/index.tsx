@@ -141,7 +141,7 @@ export default function Home({
         <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
 
-      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 opacity-5">
+      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 overflow-hidden opacity-5">
         <Cloud />
       </div>
       <main className="z-10 mx-4">
