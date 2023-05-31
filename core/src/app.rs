@@ -834,7 +834,7 @@ impl App {
                                                             name.clone(),
                                                             BlockResult {
                                                                 val: Value::Array(arr),
-                                                                meta: meta.clone() // need to add them here
+                                                                meta: meta.clone()
                                                             }
                                                         );
                                                     }
@@ -910,7 +910,6 @@ impl App {
                                         name: name.clone(),
                                         iteration: i,
                                     });
-                                    // todo: mixup between old and new v here
                                     e.state.insert(name.clone(), BlockResult { val: x.clone(), meta: meta.clone()});
                                     e
                                 })
