@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -71,7 +71,7 @@ impl Block for Code {
         .await??;
         Ok(BlockResult {
             value: result["value"].clone(),
-            meta: Some(result["logs"].clone())
+            meta: Some(result["logs"].clone()),
         })
     }
 

@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -111,8 +111,8 @@ impl Block for Map {
                                 self.from
                             )),
                             _ => Ok(BlockResult {
-                                value: v.clone(), 
-                                meta: None // do I need to take the meta here
+                                value: v.clone(),
+                                meta: None, // do I need to take the meta here
                             }),
                         }
                     }
@@ -128,7 +128,7 @@ impl Block for Map {
                         }
                         Ok(BlockResult {
                             value: Value::Array(output),
-                            meta: None
+                            meta: None,
                         })
                     }
                 },

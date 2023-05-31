@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
 use crate::Rule;
@@ -155,9 +157,13 @@ impl Block for Curl {
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
         Ok(BlockResult {
-            value: json!(response), 
+            value: json!(response),
             // if there are meta logs, then concatenate them and return them
-            meta: Some(Value::String(headers_result["logs"].as_str().unwrap().to_owned() + "\n" + &body_result["logs"].as_str().unwrap()))
+            meta: Some(Value::String(
+                headers_result["logs"].as_str().unwrap().to_owned()
+                    + "\n"
+                    + &body_result["logs"].as_str().unwrap(),
+            )),
         })
     }
 

@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult
+    find_variables, parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
@@ -491,7 +491,7 @@ impl Block for LLM {
                             top_logprobs: None,
                         },
                     })?,
-                    meta: None
+                    meta: None,
                 })
             }
             false => {
@@ -557,10 +557,10 @@ impl Block for LLM {
 
                 Ok(BlockResult {
                     value: serde_json::to_value(LLMValue {
-                    prompt: g.prompt,
-                    completion: g.completions[0].clone(),
-                })?,
-                    meta: None
+                        prompt: g.prompt,
+                        completion: g.completions[0].clone(),
+                    })?,
+                    meta: None,
                 })
             }
         }

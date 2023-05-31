@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::deno::script::Script;
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
@@ -364,11 +366,11 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
-        Ok(BlockResult { 
+        Ok(BlockResult {
             value: serde_json::to_value(ChatValue {
-            message: g.completions[0].clone(),
-        })?,
-            meta: Some(messages_result["logs"].clone())
+                message: g.completions[0].clone(),
+            })?,
+            meta: Some(messages_result["logs"].clone()),
         })
     }
 

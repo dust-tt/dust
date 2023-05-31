@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -88,7 +88,10 @@ impl Block for While {
             None => unreachable!(),
             Some(w) => {
                 if w.iteration >= self.max_iterations {
-                    return Ok(BlockResult { value: Value::Bool(false), meta: None});
+                    return Ok(BlockResult {
+                        value: Value::Bool(false),
+                        meta: None,
+                    });
                 }
             }
         }
@@ -111,8 +114,8 @@ impl Block for While {
 
         match result["value"] {
             Value::Bool(b) => Ok(BlockResult {
-                value: Value::Bool(b), 
-                meta: Some(result["logs"].clone())
+                value: Value::Bool(b),
+                meta: Some(result["logs"].clone()),
             }),
             _ => Err(anyhow!(
                 "Invalid return value from `condition_code`, expecting boolean"

@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -73,7 +73,7 @@ impl Block for Data {
         {
             Some(d) => Ok(BlockResult {
                 value: d.data_as_value(),
-                meta: None
+                meta: None,
             }),
             None => Err(anyhow!(
                 "Version `{}` not found for dataset `{}`",

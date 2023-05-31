@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
 use crate::Rule;
@@ -291,7 +293,7 @@ impl Block for DataSource {
                         Ok((workspace_id, data_source_id))
                     })
                     .collect::<Result<Vec<_>>>()?,
-               _ => Err(anyhow!(err_msg.clone()))?,
+                _ => Err(anyhow!(err_msg.clone()))?,
             },
             _ => Err(anyhow!(err_msg.clone()))?,
         };
@@ -341,10 +343,8 @@ impl Block for DataSource {
         }
 
         Ok(BlockResult {
-            value: serde_json::to_value(Self::top_k_sorted_documents(
-            top_k, &documents,
-        ))?,
-            meta: None
+            value: serde_json::to_value(Self::top_k_sorted_documents(top_k, &documents))?,
+            meta: None,
         })
     }
 

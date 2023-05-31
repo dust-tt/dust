@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState, BlockResult};
+use crate::blocks::block::{parse_block, Block, BlockResult, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, RunType, Status};
@@ -417,35 +417,37 @@ impl App {
             // Value::None?
             if block.block_type() == BlockType::Reduce {
                 assert!(current_map.is_some());
-                envs =
-                    envs.iter()
-                        .map(|map_envs| {
-                            assert!(map_envs.len() > 0);
-                            let mut env = map_envs[0].clone();
-                            current_map_blocks
-                                .iter()
-                                .map(|n| {
-                                    env.state.insert(
-                                        n.clone(),
-                                        Value::Array(
-                                            map_envs
-                                                .iter()
-                                                .map(|e| match e.state.get(n) {
-                                                    None => Err(anyhow!(
-                                                        "Missing block `{}` output, at iteration {}",
-                                                        n, e.map.as_ref().unwrap().iteration
-                                                    ))?,
-                                                    Some(v) => Ok(v.clone()),
-                                                })
-                                            .collect::<Result<Vec<_>>>()?),
-                                    );
-                                    Ok(())
-                                })
-                                .collect::<Result<Vec<_>>>()?;
-                            env.map = None;
-                            Ok(vec![env])
-                        })
-                        .collect::<Result<Vec<_>>>()?;
+                envs = envs
+                    .iter()
+                    .map(|map_envs| {
+                        assert!(map_envs.len() > 0);
+                        let mut env = map_envs[0].clone();
+                        current_map_blocks
+                            .iter()
+                            .map(|n| {
+                                env.state.insert(
+                                    n.clone(),
+                                    Value::Array(
+                                        map_envs
+                                            .iter()
+                                            .map(|e| match e.state.get(n) {
+                                                None => Err(anyhow!(
+                                                    "Missing block `{}` output, at iteration {}",
+                                                    n,
+                                                    e.map.as_ref().unwrap().iteration
+                                                ))?,
+                                                Some(v) => Ok(v.clone()),
+                                            })
+                                            .collect::<Result<Vec<_>>>()?,
+                                    ),
+                                );
+                                Ok(())
+                            })
+                            .collect::<Result<Vec<_>>>()?;
+                        env.map = None;
+                        Ok(vec![env])
+                    })
+                    .collect::<Result<Vec<_>>>()?;
 
                 current_map = None;
                 current_map_blocks = vec![];
@@ -556,11 +558,13 @@ impl App {
                                 Ok((input_idx, map_idx, e, Err(err)))
                             }
                         },
-                        true => Ok((input_idx, map_idx, e, Ok(BlockResult {value: Value::Null, meta: None}))) // what's going on here
+                        true => {
+                            Ok((input_idx, map_idx, e, Ok(BlockResult {value: Value::Null, meta: None})))
                             as Result<
                                 (usize, usize, Env, Result<BlockResult, anyhow::Error>),
                                 anyhow::Error,
-                            >,
+                            >
+                        }
                     }
                 })
             })
@@ -603,12 +607,11 @@ impl App {
                         m.iter()
                             .map(|o| match o {
                                 Some(r) => match r {
-                                    (_, Some(v), None) => 
-                                        BlockExecution {
-                                            value: Some(v.value.clone()),
-                                            error: None,
-                                            meta: v.meta.clone()
-                                        },
+                                    (_, Some(v), None) => BlockExecution {
+                                        value: Some(v.value.clone()),
+                                        error: None,
+                                        meta: v.meta.clone(),
+                                    },
                                     (_, None, Some(err)) => BlockExecution {
                                         value: None,
                                         error: Some(err.clone()),
@@ -807,7 +810,7 @@ impl App {
                                     // information as it's repetitive.
                                     e.state.insert(name.clone(), v.value);
                                 }
-                                // We're inside a `while` loop, accumu      late value in `env.state` as
+                                // We're inside a `while` loop, accumulate value in `env.state` as
                                 // an array.
                                 Some(_) => {
                                     // We don't insert a value if the block type is `end` as `while`
@@ -848,7 +851,7 @@ impl App {
                                                     None => {
                                                         e.state.insert(
                                                             name.clone(),
-                                                            Value::Array(vec![])
+                                                            Value::Array(vec![]),
                                                         );
                                                     }
                                                     _ => (),

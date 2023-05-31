@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::http::request::HttpRequest;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -244,7 +246,7 @@ impl Block for Search {
         match response.status {
             200 => Ok(BlockResult {
                 value: response.body,
-                meta: None
+                meta: None,
             }),
             s => Err(anyhow!(
                 "SearchError: Unexpected error with HTTP status {}.",

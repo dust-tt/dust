@@ -1,4 +1,4 @@
-use crate::blocks::block::{Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -36,8 +36,8 @@ impl Block for Input {
     ) -> Result<BlockResult> {
         match env.input.value.as_ref() {
             Some(i) => Ok(BlockResult {
-                value: i.clone(), 
-                meta: None
+                value: i.clone(),
+                meta: None,
             }),
             None => unreachable!(),
         }

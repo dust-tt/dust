@@ -155,42 +155,40 @@ function ExecuteOutputLine({
   const traces = outputForBlock ? getTraceFromEvents(outputForBlock) : [];
 
   return (
-    <div>
-      <div className="leading-none">
-        <button
-          disabled={!traces}
-          onClick={() => onToggleExpand()}
-          className={classNames("border-none", traces ? "" : "text-gray-400")}
-        >
-          <div className="flex flex-row items-center">
-            {!expanded ? (
-              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
-            ) : (
-              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-            )}{" "}
-            <div className="inline">
-              <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
-                {blockType}
-              </span>
-              <span className="ml-1 font-bold text-gray-700">{blockName}</span>
-            </div>
-            <div>
-              {lastEventForBlock.content.status === "running" ? (
-                <div className="ml-1">
-                  <Spinner />
-                </div>
-              ) : lastEventForBlock.content.status === "errored" ? (
-                <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
-              ) : null}
-            </div>
+    <div className="leading-none">
+      <button
+        disabled={!traces}
+        onClick={() => onToggleExpand()}
+        className={classNames("border-none", traces ? "" : "text-gray-400")}
+      >
+        <div className="flex flex-row items-center">
+          {!expanded ? (
+            <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+          )}{" "}
+          <div className="inline">
+            <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
+              {blockType}
+            </span>
+            <span className="ml-1 font-bold text-gray-700">{blockName}</span>
           </div>
-        </button>
-        {true ? (
-          <div className="mb-2 ml-8 flex text-sm text-gray-600">
-            <Execution block={null} trace={traces} />
+          <div>
+            {lastEventForBlock.content.status === "running" ? (
+              <div className="ml-1">
+                <Spinner />
+              </div>
+            ) : lastEventForBlock.content.status === "errored" ? (
+              <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        </div>
+      </button>
+      {true ? (
+        <div className="mb-2 ml-8 flex text-sm text-gray-600">
+          <Execution block={null} trace={traces} />
+        </div>
+      ) : null}
     </div>
   );
 }

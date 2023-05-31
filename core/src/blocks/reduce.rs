@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env, BlockResult};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -52,7 +52,7 @@ impl Block for Reduce {
         // ignored and not stored in the environment as it has the same name as the map block.
         Ok(BlockResult {
             value: Value::Null,
-            meta: None
+            meta: None,
         })
     }
 

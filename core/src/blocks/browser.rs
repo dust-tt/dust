@@ -211,7 +211,7 @@ impl Block for Browser {
                 });
                 Ok(BlockResult {
                     value: result,
-                    meta: None
+                    meta: None,
                 })
             }
             s => match error_as_output {
@@ -229,7 +229,7 @@ impl Block for Browser {
                     });
                     Ok(BlockResult {
                         value: result,
-                        meta: None
+                        meta: None,
                     })
                 }
             },
