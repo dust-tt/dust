@@ -327,11 +327,11 @@ export default function DataSourceUpsert({
             <div className="flex flex-1">
               <div className="w-full">
                 <div className="sm:col-span-5">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Text Content
-                  </h3>
                   <div className="flex flex-row">
-                    <div className="flex flex-1">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Text Content
+                      </h3>
                       <p className="my-2 text-sm text-gray-500">
                         Upload or copy the text data for the document you want
                         to create or replace (upsert).
