@@ -1,10 +1,10 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
@@ -58,19 +58,21 @@ impl Block for Code {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         // Assumes there is a _fun function defined in `source`.
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();
         let code = self.code.clone();
-        let result = tokio::task::spawn_blocking(move || {
+        let (result, logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(code.as_str())?
                 .with_timeout(std::time::Duration::from_secs(10));
             script.call("_fun", &env)
         })
         .await??;
-
-        Ok(result)
+        Ok(BlockResult {
+            value: result.clone(),
+            meta: Some(json!({ "logs": logs })),
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

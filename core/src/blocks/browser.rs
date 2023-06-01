@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -110,7 +112,7 @@ impl Block for Browser {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let use_cache = match config {
@@ -207,7 +209,10 @@ impl Block for Browser {
                         "port": response.headers["x-response-port"],
                     }
                 });
-                Ok(result)
+                Ok(BlockResult {
+                    value: result,
+                    meta: None,
+                })
             }
             s => match error_as_output {
                 false => Err(anyhow!(
@@ -222,7 +227,10 @@ impl Block for Browser {
                             "body": response.body,
                         },
                     });
-                    Ok(result)
+                    Ok(BlockResult {
+                        value: result,
+                        meta: None,
+                    })
                 }
             },
         }

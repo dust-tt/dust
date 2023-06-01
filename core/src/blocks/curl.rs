@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
 use crate::Rule;
@@ -96,7 +98,7 @@ impl Block for Curl {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let use_cache = match config {
@@ -112,29 +114,31 @@ impl Block for Curl {
 
         let e = env.clone();
         let headers_code = self.headers_code.clone();
-        let headers_value: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(headers_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in headers code: {}", e))?,
-        };
+        let (headers_value, headers_logs): (Value, Vec<Value>) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(headers_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in headers code: {}", e))?,
+            };
 
         let e = env.clone();
         let body_code = self.body_code.clone();
-        let body_value: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(body_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in body code: {}", e))?,
-        };
+        let (body_value, body_logs): (Value, Vec<Value>) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(body_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in body code: {}", e))?,
+            };
 
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
@@ -155,7 +159,13 @@ impl Block for Curl {
             .execute_with_cache(env.project.clone(), env.store.clone(), use_cache)
             .await?;
 
-        Ok(json!(response))
+        let mut all_logs = headers_logs;
+        all_logs.extend(body_logs);
+
+        Ok(BlockResult {
+            value: json!(response),
+            meta: Some(json!({ "logs": all_logs })),
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

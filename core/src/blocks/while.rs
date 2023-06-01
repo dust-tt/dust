@@ -1,10 +1,10 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
@@ -80,7 +80,7 @@ impl Block for While {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let e = env.clone();
 
         // Directly return false if we have reached max_iterations
@@ -88,7 +88,10 @@ impl Block for While {
             None => unreachable!(),
             Some(w) => {
                 if w.iteration >= self.max_iterations {
-                    return Ok(Value::Bool(false));
+                    return Ok(BlockResult {
+                        value: Value::Bool(false),
+                        meta: None,
+                    });
                 }
             }
         }
@@ -98,19 +101,23 @@ impl Block for While {
             .condition_code
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
-        let condition_value: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(condition_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
-        };
+        let (condition_value, condition_logs): (Value, Vec<Value>) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(condition_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
+            };
 
         match condition_value {
-            Value::Bool(b) => Ok(Value::Bool(b)),
+            Value::Bool(b) => Ok(BlockResult {
+                value: Value::Bool(b),
+                meta: Some(json!({ "logs": condition_logs })),
+            }),
             _ => Err(anyhow!(
                 "Invalid return value from `condition_code`, expecting boolean"
             ))?,

@@ -3,6 +3,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -267,6 +268,34 @@ export function Execution({
   );
 }
 
+export function Logs({ trace }: { trace: TraceType[] }) {
+  return (
+    <div className="flex flex-auto flex-col overflow-hidden">
+      {trace.map((trace, i) => {
+        if (trace.meta && trace.meta.logs) {
+          return (
+            <div key={i} className="flex-auto flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-initial">
+                  <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
+                </div>
+                <div className="flex flex-1 font-mono">
+                  <ValueViewer
+                    value={trace.meta.logs}
+                    topLevel={true}
+                    k={null}
+                    block={null}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+}
+
 export default function Output({
   owner,
   block,
@@ -297,7 +326,8 @@ export default function Output({
     }
   );
 
-  const [expanded, setExpanded] = useState(false);
+  const [expandedResult, setExpandedResult] = useState(false);
+  const [expandedLog, setExpandedLog] = useState(false);
 
   if (
     run &&
@@ -328,51 +358,97 @@ export default function Output({
     const errors = traces.reduce((acc, t) => {
       return acc + t.filter((t) => t.error !== null).length;
     }, 0);
+    const logs = traces.reduce((acc, t) => {
+      return acc + t.filter((t) => t.meta && t.meta.logs.length).length;
+    }, 0);
 
     return (
-      <div className="flex flex-auto flex-col">
-        <div className="flex flex-row items-center text-sm">
-          <div className="flex-initial cursor-pointer text-gray-400">
-            <div onClick={() => setExpanded(!expanded)}>
-              <span className="flex flex-row items-center">
-                {expanded ? (
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                ) : (
-                  <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                )}
-                <span className="text-sm text-gray-400">
-                  [{" "}
-                  <span className="font-bold text-emerald-400">
-                    {successes} {successes === 1 ? "success" : "successes"}
-                  </span>
-                  {errors > 0 ? (
-                    <>
-                      {", "}
-                      <span className="font-bold text-red-400">
-                        {errors} {errors === 1 ? "error" : "errors"}
+      <div>
+        {logs ? (
+          <div className="flex flex-auto flex-col">
+            <div className="flex flex-row items-center text-sm">
+              <div className="flex-initial cursor-pointer text-gray-400">
+                <div onClick={() => setExpandedLog(!expandedLog)}>
+                  <span className="flex flex-row items-center">
+                    {expandedLog ? (
+                      <ChevronDownIcon className="mt-0.5 h-4 w-4" />
+                    ) : (
+                      <ChevronRightIcon className="mt-0.5 h-4 w-4" />
+                    )}
+                    <span className="text-sm text-gray-400">
+                      [{" "}
+                      <span className="text font-bold">
+                        {logs} {logs === 1 ? "log" : "logs"}
                       </span>
-                    </>
-                  ) : null}{" "}
-                  ]
+                      ]
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            {expandedLog ? (
+              <>
+                {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
+                {traces.map((trace, i) => {
+                  if (trace.map((t) => t.meta).some((e) => e.logs.length)) {
+                    return (
+                      <div key={i} className="ml-1 flex flex-auto flex-row">
+                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                          {i}:
+                        </div>
+                        <Logs trace={trace} />
+                      </div>
+                    );
+                  }
+                })}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex flex-auto flex-col">
+          <div className="flex flex-row items-center text-sm">
+            <div className="flex-initial cursor-pointer text-gray-400">
+              <div onClick={() => setExpandedResult(!expandedResult)}>
+                <span className="flex flex-row items-center">
+                  {expandedResult ? (
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4" />
+                  ) : (
+                    <ChevronRightIcon className="mt-0.5 h-4 w-4" />
+                  )}
+                  <span className="text-sm text-gray-400">
+                    [{" "}
+                    <span className="font-bold text-emerald-400">
+                      {successes} {successes === 1 ? "success" : "successes"}
+                    </span>
+                    {errors > 0 ? (
+                      <>
+                        {", "}
+                        <span className="font-bold text-red-400">
+                          {errors} {errors === 1 ? "error" : "errors"}
+                        </span>
+                      </>
+                    ) : null}{" "}
+                    ]
+                  </span>
                 </span>
-              </span>
+              </div>
             </div>
           </div>
-        </div>
-        {expanded ? (
-          <>
-            {traces.map((trace, i) => {
-              return (
-                <div key={i} className="ml-1 flex flex-auto flex-row">
-                  <div className="mr-2 flex font-mono text-sm text-gray-300">
-                    {i}:
+          {expandedResult ? (
+            <>
+              {traces.map((trace, i) => {
+                return (
+                  <div key={i} className="ml-1 flex flex-auto flex-row">
+                    <div className="mr-2 flex font-mono text-sm text-gray-300">
+                      {i}:
+                    </div>
+                    <Execution trace={trace} block={block} />
                   </div>
-                  <Execution trace={trace} block={block} />
-                </div>
-              );
-            })}
-          </>
-        ) : null}
+                );
+              })}
+            </>
+          ) : null}
+        </div>
       </div>
     );
   } else {

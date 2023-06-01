@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::deno::script::Script;
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
@@ -161,7 +163,7 @@ impl Block for Chat {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -251,16 +253,17 @@ impl Block for Chat {
         let e = env.clone();
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        let messages_value: Value = match tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(messages_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        {
-            Ok(v) => v,
-            Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
-        };
+        let (messages_value, messages_logs): (Value, Vec<Value>) =
+            match tokio::task::spawn_blocking(move || {
+                let mut script = Script::from_string(messages_code.as_str())?
+                    .with_timeout(std::time::Duration::from_secs(10));
+                script.call("_fun", &e)
+            })
+            .await?
+            {
+                Ok((v, l)) => (v, l),
+                Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
+            };
 
         let mut messages = match messages_value {
             Value::Array(a) => a
@@ -364,9 +367,14 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
-        Ok(serde_json::to_value(ChatValue {
-            message: g.completions[0].clone(),
-        })?)
+        Ok(BlockResult {
+            value: serde_json::to_value(ChatValue {
+                message: g.completions[0].clone(),
+            })?,
+            meta: Some(json!({
+                "logs": messages_logs,
+            })),
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

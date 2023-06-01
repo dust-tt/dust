@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -65,13 +65,16 @@ impl Block for Data {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         match env
             .store
             .load_dataset(&env.project, &self.dataset_id, &self.hash)
             .await?
         {
-            Some(d) => Ok(d.data_as_value()),
+            Some(d) => Ok(BlockResult {
+                value: d.data_as_value(),
+                meta: None,
+            }),
             None => Err(anyhow!(
                 "Version `{}` not found for dataset `{}`",
                 self.hash,
