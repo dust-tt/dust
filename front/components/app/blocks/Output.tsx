@@ -295,6 +295,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
     </div>
   );
 }
+
 export default function Output({
   owner,
   block,
@@ -357,12 +358,53 @@ export default function Output({
     const errors = traces.reduce((acc, t) => {
       return acc + t.filter((t) => t.error !== null).length;
     }, 0);
-
     const logs = traces.reduce((acc, t) => {
-      return acc + t.filter((t) => t.meta && t.meta.length).length;
+      return acc + t.filter((t) => t.meta && t.meta.logs.length).length;
     }, 0);
+
     return (
       <div>
+        {logs ? (
+          <div className="flex flex-auto flex-col">
+            <div className="flex flex-row items-center text-sm">
+              <div className="flex-initial cursor-pointer text-gray-400">
+                <div onClick={() => setExpandedLog(!expandedLog)}>
+                  <span className="flex flex-row items-center">
+                    {expandedLog ? (
+                      <ChevronDownIcon className="mt-0.5 h-4 w-4" />
+                    ) : (
+                      <ChevronRightIcon className="mt-0.5 h-4 w-4" />
+                    )}
+                    <span className="text-sm text-gray-400">
+                      [{" "}
+                      <span className="text font-bold">
+                        {logs} {logs === 1 ? "log" : "logs"}
+                      </span>
+                      ]
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            {expandedLog ? (
+              <>
+                {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
+                {traces.map((trace, i) => {
+                  if (trace.map((t) => t.meta).some((e) => e.logs.length)) {
+                    return (
+                      <div key={i} className="ml-1 flex flex-auto flex-row">
+                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                          {i}:
+                        </div>
+                        <Logs trace={trace} />
+                      </div>
+                    );
+                  }
+                })}
+              </>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
             <div className="flex-initial cursor-pointer text-gray-400">
@@ -406,48 +448,7 @@ export default function Output({
               })}
             </>
           ) : null}
-        </div>
-        {logs ? (
-          <div className="flex flex-auto flex-col">
-            <div className="flex flex-row items-center text-sm">
-              <div className="flex-initial cursor-pointer text-gray-400">
-                <div onClick={() => setExpandedLog(!expandedLog)}>
-                  <span className="flex flex-row items-center">
-                    {expandedLog ? (
-                      <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                    ) : (
-                      <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                    )}
-                    <span className="text-sm text-gray-400">
-                      [{" "}
-                      <span className="text font-bold">
-                        {logs} {logs === 1 ? "log" : "logs"}
-                      </span>
-                      ]
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
-            {expandedLog ? (
-              <>
-                {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
-                {traces.map((trace, i) => {
-                  if (trace.map((t) => t.meta).some((e) => e)) {
-                    return (
-                      <div key={i} className="ml-1 flex flex-auto flex-row">
-                        <div className="mr-2 flex font-mono text-sm text-gray-300">
-                          {i}:
-                        </div>
-                        <Logs trace={trace} />
-                      </div>
-                    );
-                  }
-                })}
-              </>
-            ) : null}
-          </div>
-        ) : null}
+        </div>   
       </div>
     );
   } else {

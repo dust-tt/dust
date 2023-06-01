@@ -161,6 +161,7 @@ impl Block for Curl {
 
         let mut all_logs = headers_logs;
         all_logs.extend(body_logs);
+
         Ok(BlockResult {
             value: json!(response),
             meta: Some(json!({ "logs": all_logs })),
