@@ -155,6 +155,94 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await workspace("show", args);
       return;
     }
+    case "upgrade": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      let plan = {} as any;
+      if (w.plan) {
+        try {
+          plan = JSON.parse(w.plan);
+        } catch (err) {
+          console.log("Ignoring existing plan since not parseable JSON.");
+        }
+      }
+
+      if (!plan.limits) {
+        plan.limits = {};
+      }
+      if (!plan.limits.dataSources) {
+        plan.limits.dataSources = {};
+      }
+      if (!plan.limits.dataSources.documents) {
+        plan.limits.dataSources.documents = {};
+      }
+
+      plan.limits.dataSources.count = -1;
+      plan.limits.dataSources.documents.count = -1;
+      plan.limits.dataSources.documents.sizeMb = -1;
+      plan.limits.dataSources.managed = true;
+
+      w.plan = JSON.stringify(plan);
+      await w.save();
+
+      await workspace("show", args);
+      return;
+    }
+    case "downgrade": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      let plan = {} as any;
+      if (w.plan) {
+        try {
+          plan = JSON.parse(w.plan);
+        } catch (err) {
+          console.log("Ignoring existing plan since not parseable JSON.");
+        }
+      }
+
+      if (!plan.limits) {
+        plan.limits = {};
+      }
+      if (!plan.limits.dataSources) {
+        plan.limits.dataSources = {};
+      }
+      if (!plan.limits.dataSources.documents) {
+        plan.limits.dataSources.documents = {};
+      }
+
+      plan.limits.dataSources.count = 1;
+      plan.limits.dataSources.documents.count = 32;
+      plan.limits.dataSources.documents.sizeMb = 1;
+      plan.limits.dataSources.managed = false;
+
+      w.plan = JSON.stringify(plan);
+      await w.save();
+
+      await workspace("show", args);
+      return;
+    }
     case "add-user": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -241,7 +329,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
     default:
-      throw new Error(`Unknown workspace command: ${command}`);
+      console.log(`Unknown workspace command: ${command}`);
+      console.log(
+        "Possible values: `find`, `show`, `create`, `set-limits`, `add-user`, `change-role`, `upgrade`, `downgrade`"
+      );
   }
 };
 
@@ -312,7 +403,8 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
     default:
-      throw new Error(`Unknown user command: ${command}`);
+      console.log(`Unknown user command: ${command}`);
+      console.log("Possible values: `find`, `show`");
   }
 };
 
@@ -362,7 +454,8 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     default:
-      throw new Error(`Unknown user command: ${command}`);
+      console.log(`Unknown data-source command: ${command}`);
+      console.log("Possible values: `delete-managed`");
   }
 };
 
@@ -370,9 +463,11 @@ const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
   if (argv._.length < 2) {
-    throw new Error(
+    console.log(
       "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
     );
+    console.log("Possible object types: `workspace`, `user`, `data-source`");
+    return;
   }
 
   const [objectType, command] = argv._;
@@ -388,7 +483,10 @@ const main = async () => {
       await dataSource(command, argv);
       return;
     default:
-      throw new Error(`Unknown object type: ${objectType}`);
+      console.log(
+        "Unknown object type, possible values: `workspace`, `user`, `data-source`"
+      );
+      return;
   }
 };
 
