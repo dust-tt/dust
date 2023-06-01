@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::http::request::HttpRequest;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -129,7 +131,7 @@ impl Block for Search {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let provider_id = match config {
@@ -242,7 +244,10 @@ impl Block for Search {
             .await?;
 
         match response.status {
-            200 => Ok(response.body),
+            200 => Ok(BlockResult {
+                value: response.body,
+                meta: None,
+            }),
             s => Err(anyhow!(
                 "SearchError: Unexpected error with HTTP status {}.",
                 s

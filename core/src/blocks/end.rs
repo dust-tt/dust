@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -45,10 +45,13 @@ impl Block for End {
         _name: &str,
         _env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         // No-op the block outputs within the while|if/end are coallesced, the output of end is
         // ignored and not stored in the environment as it has the same name as the while|if block.
-        Ok(Value::Null)
+        Ok(BlockResult {
+            value: Value::Null,
+            meta: None,
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    find_variables, parse_pair, replace_variables_in_string, Block, BlockType, Env,
+    find_variables, parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
@@ -302,7 +302,7 @@ impl Block for LLM {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let (provider_id, model_id) = match config {
@@ -476,20 +476,23 @@ impl Block for LLM {
 
                 assert!(g.completions.len() == 1);
 
-                Ok(serde_json::to_value(LLMValue {
-                    prompt: Tokens {
-                        text: prompt,
-                        tokens: None,
-                        logprobs: None,
-                        top_logprobs: None,
-                    },
-                    completion: Tokens {
-                        text: g.completions[0].content.clone(),
-                        tokens: None,
-                        logprobs: None,
-                        top_logprobs: None,
-                    },
-                })?)
+                Ok(BlockResult {
+                    value: serde_json::to_value(LLMValue {
+                        prompt: Tokens {
+                            text: prompt,
+                            tokens: None,
+                            logprobs: None,
+                            top_logprobs: None,
+                        },
+                        completion: Tokens {
+                            text: g.completions[0].content.clone(),
+                            tokens: None,
+                            logprobs: None,
+                            top_logprobs: None,
+                        },
+                    })?,
+                    meta: None,
+                })
             }
             false => {
                 let request = LLMRequest::new(
@@ -552,10 +555,13 @@ impl Block for LLM {
 
                 assert!(g.completions.len() == 1);
 
-                Ok(serde_json::to_value(LLMValue {
-                    prompt: g.prompt,
-                    completion: g.completions[0].clone(),
-                })?)
+                Ok(BlockResult {
+                    value: serde_json::to_value(LLMValue {
+                        prompt: g.prompt,
+                        completion: g.completions[0].clone(),
+                    })?,
+                    meta: None,
+                })
             }
         }
     }

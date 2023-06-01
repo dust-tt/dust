@@ -114,6 +114,12 @@ impl FromStr for BlockType {
     }
 }
 
+#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
+pub struct BlockResult {
+    pub value: Value,
+    pub meta: Option<Value>,
+}
+
 #[async_trait]
 pub trait Block {
     fn block_type(&self) -> BlockType;
@@ -125,7 +131,7 @@ pub trait Block {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value>;
+    ) -> Result<BlockResult>;
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
     fn as_any(&self) -> &dyn Any;

@@ -38,6 +38,7 @@ export type BlockStatus = {
 export type TraceType = {
   value?: any;
   error?: string;
+  meta?: any;
 };
 
 export type RunType = {

@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_block, Block, BlockType, Env, InputState, MapState};
+use crate::blocks::block::{parse_block, Block, BlockResult, BlockType, Env, InputState, MapState};
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, RunType, Status};
@@ -432,9 +432,9 @@ impl App {
                                                 .iter()
                                                 .map(|e| match e.state.get(n) {
                                                     None => Err(anyhow!(
-                                                "Missing block `{}` output, at iteration {}",
-                                                n, e.map.as_ref().unwrap().iteration
-                                            ))?,
+                                                    "Missing block `{}` output, at iteration {}",
+                                                    n, e.map.as_ref().unwrap().iteration
+                                                ))?,
                                                     Some(v) => Ok(v.clone()),
                                                 })
                                                 .collect::<Result<Vec<_>>>()?,
@@ -536,7 +536,7 @@ impl App {
                                     .await?;
                                 Ok((input_idx, map_idx, e, Ok(v)))
                                     as Result<
-                                        (usize, usize, Env, Result<Value, anyhow::Error>),
+                                        (usize, usize, Env, Result<BlockResult, anyhow::Error>),
                                         anyhow::Error,
                                     >
                             }
@@ -557,9 +557,17 @@ impl App {
                                 Ok((input_idx, map_idx, e, Err(err)))
                             }
                         },
-                        true => Ok((input_idx, map_idx, e, Ok(Value::Null)))
+                        true => Ok((
+                            input_idx,
+                            map_idx,
+                            e,
+                            Ok(BlockResult {
+                                value: Value::Null,
+                                meta: None,
+                            }),
+                        ))
                             as Result<
-                                (usize, usize, Env, Result<Value, anyhow::Error>),
+                                (usize, usize, Env, Result<BlockResult, anyhow::Error>),
                                 anyhow::Error,
                             >,
                     }
@@ -579,7 +587,7 @@ impl App {
             .await?;
 
             // Flatten the result and extract results (Env, Value) or error strings.
-            let mut flat: Vec<Vec<Option<(Env, Option<Value>, Option<String>)>>> =
+            let mut flat: Vec<Vec<Option<(Env, Option<BlockResult>, Option<String>)>>> =
                 envs.iter().map(|e| vec![None; e.len()]).collect::<Vec<_>>();
 
             let mut errors: Vec<String> = vec![];
@@ -605,12 +613,14 @@ impl App {
                             .map(|o| match o {
                                 Some(r) => match r {
                                     (_, Some(v), None) => BlockExecution {
-                                        value: Some(v.clone()),
+                                        value: Some(v.value.clone()),
                                         error: None,
+                                        meta: v.meta.clone(),
                                     },
                                     (_, None, Some(err)) => BlockExecution {
                                         value: None,
                                         error: Some(err.clone()),
+                                        meta: None,
                                     },
                                     _ => unreachable!(),
                                 },
@@ -803,7 +813,7 @@ impl App {
                                     // the state the value for the `map` type since they have the
                                     // same name. This is fine as this is not super useful
                                     // information as it's repetitive.
-                                    e.state.insert(name.clone(), v);
+                                    e.state.insert(name.clone(), v.value);
                                 }
                                 // We're inside a `while` loop, accumulate value in `env.state` as
                                 // an array.
@@ -824,7 +834,7 @@ impl App {
                                                 match e.state.get(name) {
                                                     Some(Value::Array(arr)) => {
                                                         let mut arr = arr.clone();
-                                                        arr.push(v.clone());
+                                                        arr.push(v.value.clone());
                                                         e.state.insert(
                                                             name.clone(),
                                                             Value::Array(arr),
@@ -833,7 +843,7 @@ impl App {
                                                     None => {
                                                         e.state.insert(
                                                             name.clone(),
-                                                            Value::Array(vec![v]),
+                                                            Value::Array(vec![v.value]),
                                                         );
                                                     }
                                                     _ => unreachable!(),

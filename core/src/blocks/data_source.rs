@@ -1,4 +1,6 @@
-use crate::blocks::block::{parse_pair, replace_variables_in_string, Block, BlockType, Env};
+use crate::blocks::block::{
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+};
 use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
 use crate::Rule;
@@ -265,7 +267,7 @@ impl Block for DataSource {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
         let err_msg = format!(
@@ -340,9 +342,10 @@ impl Block for DataSource {
             }
         }
 
-        Ok(serde_json::to_value(Self::top_k_sorted_documents(
-            top_k, &documents,
-        ))?)
+        Ok(BlockResult {
+            value: serde_json::to_value(Self::top_k_sorted_documents(top_k, &documents))?,
+            meta: None,
+        })
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

@@ -1,4 +1,4 @@
-use crate::blocks::block::{parse_pair, Block, BlockType, Env};
+use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -83,7 +83,7 @@ impl Block for Map {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<Value> {
+    ) -> Result<BlockResult> {
         match env.state.get(&self.from) {
             None => Err(anyhow::anyhow!(
                 "Map `from` block `{}` output not found",
@@ -109,7 +109,10 @@ impl Block for Map {
                                 "Map `from` block `{}` output must be a non-empty array",
                                 self.from
                             )),
-                            _ => Ok(v.clone()),
+                            _ => Ok(BlockResult {
+                                value: v.clone(),
+                                meta: None, // do I need to take the meta here
+                            }),
                         }
                     }
                 },
@@ -122,7 +125,10 @@ impl Block for Map {
                         for _ in 0..repeat {
                             output.push(v.clone());
                         }
-                        Ok(Value::Array(output))
+                        Ok(BlockResult {
+                            value: Value::Array(output),
+                            meta: None,
+                        })
                     }
                 },
             },
