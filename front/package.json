@@ -28,6 +28,7 @@
     "next": "^13.1.5",
     "next-auth": "^4.18.10",
     "next-remove-imports": "^1.0.8",
+    "pdfjs-dist": "^3.7.107",
     "pegjs": "^0.10.0",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",

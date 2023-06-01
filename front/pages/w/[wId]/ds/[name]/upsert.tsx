@@ -5,7 +5,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+// @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
+import * as PDFJS from "pdfjs-dist/build/pdf";
 import { useEffect, useRef, useState } from "react";
+PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton, Button } from "@app/components/Button";
@@ -79,6 +82,7 @@ export default function DataSourceUpsert({
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     setDisabled(!documentId || !text);
@@ -107,12 +111,28 @@ export default function DataSourceUpsert({
     }
   }, [loadDocumentId]);
 
-  const handleFileLoadedEnded = (e: any) => {
+  const handleFileLoadedText = (e: any) => {
     const content = e.target.result;
     setText(content);
+    setUploading(false);
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileLoadedPDF = async (e: any) => {
+    const arrayBuffer = e.target.result;
+    const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    let text = "";
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const strings = content.items.map((item: any) => item.str);
+      text += strings.join(" ") + "\n";
+    }
+    setText(text);
+    setUploading(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
     // Enforce plan limits: DataSource documents size.
     if (
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
@@ -123,9 +143,18 @@ export default function DataSourceUpsert({
       );
       return;
     }
-    const fileData = new FileReader();
-    fileData.onloadend = handleFileLoadedEnded;
-    fileData.readAsText(file);
+    setUploading(true);
+    if (file.type == "application/pdf") {
+      const fileReader = new FileReader();
+      fileReader.onloadend = handleFileLoadedPDF;
+      fileReader.readAsArrayBuffer(file);
+    } else if (file.type == "text/plain") {
+      const fileData = new FileReader();
+      fileData.onloadend = handleFileLoadedText;
+      fileData.readAsText(file);
+    } else {
+      window.alert("File type not supported.");
+    }
   };
 
   const router = useRouter();
@@ -298,13 +327,43 @@ export default function DataSourceUpsert({
             <div className="flex flex-1">
               <div className="w-full">
                 <div className="sm:col-span-5">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Text Content
-                  </h3>
-                  <p className="my-2 text-sm text-gray-500">
-                    Upload or copy the text data for the document you want to
-                    create or replace (upsert).
-                  </p>
+                  <div className="flex flex-row">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Text Content
+                      </h3>
+                      <p className="my-2 text-sm text-gray-500">
+                        Upload (text or PDF) or copy the text data for the
+                        document you want to create or replace (upsert).
+                      </p>
+                    </div>
+                    {!readOnly ? (
+                      <div className="ml-2 mt-0 flex-none">
+                        <input
+                          className="hidden"
+                          type="file"
+                          accept=".txt, .pdf"
+                          ref={fileInputRef}
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              await handleFileUpload(e.target.files[0]);
+                            }
+                          }}
+                        ></input>
+                        <Button
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.click();
+                            }
+                          }}
+                          disabled={readOnly || uploading}
+                        >
+                          <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
+                          Upload{uploading && <span>ing...</span>}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="mt-1 flex rounded-md shadow-sm">
                     <textarea
                       name="text"
@@ -320,41 +379,16 @@ export default function DataSourceUpsert({
                         downloading ? "text-gray-300" : ""
                       )}
                       disabled={downloading}
-                      value={downloading ? "Downloading..." : text}
+                      value={
+                        downloading
+                          ? "Downloading..."
+                          : uploading
+                          ? "Uploading..."
+                          : text
+                      }
                       onChange={(e) => setText(e.target.value)}
                     />
                   </div>
-                  {!readOnly ? (
-                    <div className="mt-4 w-full leading-4">
-                      <div className=""></div>
-                      <div className="mt-6 flex flex-row">
-                        <div className="flex-1"></div>
-                        <div className="ml-2 flex-initial">
-                          <input
-                            className="hidden"
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files.length > 0) {
-                                handleFileUpload(e.target.files[0]);
-                              }
-                            }}
-                          ></input>
-                          <Button
-                            onClick={() => {
-                              if (fileInputRef.current) {
-                                fileInputRef.current.click();
-                              }
-                            }}
-                            disabled={readOnly}
-                          >
-                            <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
-                            Upload
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>
