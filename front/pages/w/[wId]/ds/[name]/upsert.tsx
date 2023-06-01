@@ -6,6 +6,8 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
+
+// @ts-expect-error
 import * as PDFJS from "pdfjs-dist/build/pdf";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
@@ -122,7 +124,7 @@ export default function DataSourceUpsert({
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const content = await page.getTextContent();
-      const strings = content.items.map((item) => item.str);
+      const strings = content.items.map((item: any) => item.str);
       text += strings.join(" ") + "\n";
     }
     setText(text);
