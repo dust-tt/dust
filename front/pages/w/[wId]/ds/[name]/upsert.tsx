@@ -149,7 +149,6 @@ export default function DataSourceUpsert({
       fileData.readAsText(file);
     } else {
       window.alert("File type not supported.");
-      return;
     }
   };
 
