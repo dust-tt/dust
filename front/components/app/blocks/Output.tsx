@@ -448,7 +448,7 @@ export default function Output({
               })}
             </>
           ) : null}
-        </div>   
+        </div>
       </div>
     );
   } else {
