@@ -6,6 +6,8 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
+import * as PDFJS from "pdfjs-dist/build/pdf";
+PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton, Button } from "@app/components/Button";
@@ -107,12 +109,26 @@ export default function DataSourceUpsert({
     }
   }, [loadDocumentId]);
 
-  const handleFileLoadedEnded = (e: any) => {
+  const handleFileLoadedText = (e: any) => {
     const content = e.target.result;
     setText(content);
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileLoadedPDF = async (e: any) => {
+    const arrayBuffer = e.target.result;
+    const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    let text = "";
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const strings = content.items.map((item) => item.str);
+      text += strings.join(" ") + "\n";
+    }
+    setText(text);
+  };
+
+  const handleFileUpload = async (file: File) => {
     // Enforce plan limits: DataSource documents size.
     if (
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
@@ -123,9 +139,18 @@ export default function DataSourceUpsert({
       );
       return;
     }
-    const fileData = new FileReader();
-    fileData.onloadend = handleFileLoadedEnded;
-    fileData.readAsText(file);
+    if (file.type == "application/pdf") {
+      const fileReader = new FileReader();
+      fileReader.onloadend = handleFileLoadedPDF;
+      fileReader.readAsArrayBuffer(file);
+    } else if (file.type == "text/plain") {
+      const fileData = new FileReader();
+      fileData.onloadend = handleFileLoadedText;
+      fileData.readAsText(file);
+    } else {
+      window.alert("File type not supported.");
+      return;
+    }
   };
 
   const router = useRouter();
@@ -333,6 +358,7 @@ export default function DataSourceUpsert({
                           <input
                             className="hidden"
                             type="file"
+                            accept=".txt, .pdf"
                             ref={fileInputRef}
                             onChange={(e) => {
                               if (e.target.files && e.target.files.length > 0) {
