@@ -333,8 +333,8 @@ export default function DataSourceUpsert({
                         Text Content
                       </h3>
                       <p className="my-2 text-sm text-gray-500">
-                        Upload or copy the text data for the document you want
-                        to create or replace (upsert).
+                        Upload (text or PDF) or copy the text data for the
+                        document you want to create or replace (upsert).
                       </p>
                     </div>
                     {!readOnly ? (
