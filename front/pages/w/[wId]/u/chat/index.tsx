@@ -111,17 +111,15 @@ export const getServerSideProps: GetServerSideProps<{
 type RetrievedDocument = {
   data_source_id: string;
   source_url: string;
+  document_id: string;
   timestamp: string;
+  tags: string[];
   score: number;
-  document: {
-    channelName?: string;
-    title?: string;
-    lastEditedAt?: string;
-    chunks: {
-      text: string;
-      offset: number;
-    }[];
-  };
+  chunks: {
+    text: string;
+    offset: number;
+    score: number;
+  }[];
 };
 
 type Message = {
@@ -132,9 +130,45 @@ type Message = {
   retrievals?: RetrievedDocument[]; // for `retrieval` messages
 };
 
+const providerFromDocument = (document: RetrievedDocument) => {
+  let provider = "none";
+  switch (document.data_source_id) {
+    case "managed-slack":
+      provider = "slack";
+      break;
+    case "managed-notion":
+      provider = "notion";
+      break;
+  }
+  return provider;
+};
+
+const titleFromDocument = (document: RetrievedDocument) => {
+  let title = document.document_id;
+  // Try to look for a title tag.
+  for (const tag of document.tags) {
+    if (tag.startsWith("title:")) {
+      title = tag.substring("title:".length);
+    }
+  }
+
+  switch (document.data_source_id) {
+    case "managed-slack":
+      for (const tag of document.tags) {
+        if (tag.startsWith("channelName:")) {
+          title = "#" + tag.substring("channelName:".length);
+        }
+      }
+      break;
+  }
+  return title;
+};
+
 export function DocumentView({ document }: { document: RetrievedDocument }) {
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
   const [chunkExpanded, setChunkExpanded] = useState(false);
+
+  const provider = providerFromDocument(document);
 
   return (
     <div className="flex flex-col">
@@ -152,41 +186,25 @@ export function DocumentView({ document }: { document: RetrievedDocument }) {
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>
-            <img src={PROVIDER_LOGO_PATH[document.provider]}></img>
+            <img src={PROVIDER_LOGO_PATH[provider]}></img>
           </div>
         </div>
-        {document.provider === "slack" && (
-          <div className="flex flex-initial">
-            <a
-              href={document.sourceUrl}
-              target={"_blank"}
-              className="text-gray-600"
-            >
-              #{document.document.channelName}
-            </a>
-            <span className="ml-1 text-gray-400">
-              {document.document.timestamp.split(" ")[0]}
-            </span>
-          </div>
-        )}
-        {document.provider === "notion" && (
-          <div className="flex flex-initial">
-            <a
-              href={document.sourceUrl}
-              target={"_blank"}
-              className="block w-32 truncate text-gray-600 sm:w-fit"
-            >
-              {document.document.title}
-            </a>
-            <span className="ml-1 text-gray-400">
-              {document.document.timestamp.split(" ")[0]}
-            </span>
-          </div>
-        )}
+        <div className="flex flex-initial">
+          <a
+            href={document.source_url}
+            target={"_blank"}
+            className="block w-32 truncate text-gray-600 sm:w-fit"
+          >
+            {titleFromDocument(document)}
+          </a>
+          <span className="ml-1 text-gray-400">
+            {document.timestamp.split(" ")[0]}
+          </span>
+        </div>
       </div>
       {chunkExpanded && (
         <div className="my-2 flex flex-col space-y-2">
-          {document.document.chunks.map((chunk, i) => (
+          {document.chunks.map((chunk, i) => (
             <div key={i} className="flex flex-initial">
               <div
                 className="ml-10 border-l-4 border-slate-400"
@@ -220,17 +238,25 @@ export function RetrievalsView({
   message: Message;
   isLatest: boolean;
 }) {
-  const [summary, setSummary] = useState<{ [provider: string]: number }>({});
+  const [summary, setSummary] = useState<{
+    [data_source_id: string]: { count: number; provider: string };
+  }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     if (message.retrievals && message.retrievals.length > 0) {
-      const summary = {} as { [key: string]: number };
+      const summary = {} as {
+        [key: string]: { count: number; provider: string };
+      };
       message.retrievals.forEach((r) => {
-        if (r.provider in summary) {
-          summary[r.provider] += 1;
+        const provider = providerFromDocument(r);
+        if (r.data_source_id in summary) {
+          summary[r.data_source_id].count += 1;
         } else {
-          summary[r.provider] = 1;
+          summary[r.data_source_id] = {
+            provider,
+            count: 1,
+          };
         }
       });
       setSummary(summary);
@@ -258,10 +284,10 @@ export function RetrievalsView({
                     className="flex flex-initial flex-row items-center"
                   >
                     <div className={classNames("mr-1 flex h-4 w-4")}>
-                      <img src={PROVIDER_LOGO_PATH[k]}></img>
+                      <img src={PROVIDER_LOGO_PATH[summary[k].provider]}></img>
                     </div>
                     <div className="flex-initial text-gray-700">
-                      {summary[k]}
+                      {summary[k].count}
                     </div>
                   </div>
                 );
