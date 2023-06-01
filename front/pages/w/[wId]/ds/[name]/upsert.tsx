@@ -5,10 +5,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
-
-// @ts-expect-error
+// @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
+import { useEffect, useRef, useState } from "react";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
 import AppLayout from "@app/components/AppLayout";
@@ -361,9 +360,9 @@ export default function DataSourceUpsert({
                             type="file"
                             accept=".txt, .pdf"
                             ref={fileInputRef}
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               if (e.target.files && e.target.files.length > 0) {
-                                handleFileUpload(e.target.files[0]);
+                                await handleFileUpload(e.target.files[0]);
                               }
                             }}
                           ></input>
