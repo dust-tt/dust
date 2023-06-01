@@ -356,10 +356,10 @@ export default function DataSourceUpsert({
                               fileInputRef.current.click();
                             }
                           }}
-                          disabled={readOnly}
+                          disabled={readOnly || uploading}
                         >
                           <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
-                          Upload
+                          Upload{uploading && <span>ing...</span>}
                         </Button>
                       </div>
                     ) : null}
