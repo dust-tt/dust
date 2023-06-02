@@ -350,7 +350,7 @@ export default function Home({
                   <div className="text-center text-xl font-bold tracking-tighter text-gray-500">
                     <span className="italic">Our Product Constitution</span>
                   </div>
-                  <p className="mt-8 bg-white bg-opacity-50 font-light">
+                  <p className="mt-12 bg-white bg-opacity-50 font-light">
                     <span className="font-bold">
                       Augmenting humans, not replacing them.
                     </span>{" "}
