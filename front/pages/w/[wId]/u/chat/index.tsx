@@ -998,8 +998,8 @@ export default function AppChat({
                           </div>
                           <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
                             <span className="text-gray-600">
-                              <span className="font-semibold">{ds.name}</span>{" "}
-                              {ds.description && ds.description}
+                              <span className="font-semibold">{ds.name}</span>
+                              {ds.description ? ` ${ds.description}`: null}
                             </span>
                           </div>
                         </div>
