@@ -130,6 +130,50 @@ The following parameters are accepted when inserting a document:
 See the [Documents](/documents) API reference to learn how to insert documents by API. Data
 sources need to be created from the Dust interface.
 
+### Uploading directories of files to your Data Source
+
+We also have a script you can use to upload a directory's contents to your data source. Copy the following code into `upload.py` and then fill in the values for your Dust API key, the workspace id you are in, and the data source you want to upload to. Then run `python <dir>`, where `dir` is the directory from which you want to upload the documents.
+
+```python
+#!/usr/bin/env python
+import requests
+import pathlib
+import pdftotext
+import sys
+
+// The three following variables need to be set with your own Dust API key (can be found in the interface),
+// Workspace ID (can be found in the workspace URL) and Data Source ID:
+DUST_API_KEY=""
+DUST_WORKSPACE_ID=""
+DUST_DATA_SOURCE_ID=""
+ENDPOINT= f"https://dust.tt/api/v1/w/{DUST_WORKSPACE_ID}/data_sources/{DUST_DATA_SOURCE_ID}/documents/"
+
+def upload(text, file):
+    url = ENDPOINT + file.stem
+    r = requests.post(url, headers={'Authorization': "Bearer " + DUST_API_KEY}, json={
+        "text": text,
+    })
+    return r
+
+directory = sys.argv[1]
+
+# iterate through all files and upload text or pdf2text
+for file in pathlib.Path(directory).rglob("*"):
+    if file.is_file():
+        if file.suffix == ".pdf":
+            resp = upload("\n\n".join(pdftotext.PDF(file.open("rb"))) , file)
+        elif file.suffix in [".txt", ".md"]:
+            resp = upload(file.read_text(), file)
+        else: continue
+        if resp.status_code == 200:
+            print("Uploaded", file)
+        else:
+            print("Error uploading", file)
+            print(resp.text)
+```
+
+Example usage, once values are filled in: `python upload.py test_dir/`.
+
 ## Document deletion
 
 When deleting a document, all associated chunks are automatically removed from the vector search
