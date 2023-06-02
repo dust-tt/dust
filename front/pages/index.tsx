@@ -27,7 +27,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   if (user && user.workspaces.length > 0) {
     // TODO(spolu): persist latest workspace in session?
-    let url = `/w/${user.workspaces[0].sId}/a`;
+    let url = `/w/${user.workspaces[0].sId}`;
     if (context.query.wId) {
       url = `/api/login?wId=${context.query.wId}`;
     }
