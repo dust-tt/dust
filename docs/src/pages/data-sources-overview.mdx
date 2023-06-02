@@ -144,7 +144,7 @@ import sys
 KEY = "DUST API KEY"
 WORKSPACE_ID = "WORKSPACE ID"
 DS = "DATA SOURCE NAME"
-ENDPOINT = f"http://localhost:3000/api/v1/w/{WORKSPACE_ID}/data_sources/{DS}/documents/"
+ENDPOINT = f"https://dust.tt/api/v1/w/{WORKSPACE_ID}/data_sources/{DS}/documents/"
 
 def upload(text, file):
     url = ENDPOINT + file.stem

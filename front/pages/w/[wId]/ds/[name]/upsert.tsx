@@ -342,7 +342,7 @@ export default function DataSourceUpsert({
                         <input
                           className="hidden"
                           type="file"
-                          accept=".txt, .pdf"
+                          accept=".txt, .pdf, .md"
                           ref={fileInputRef}
                           onChange={async (e) => {
                             if (e.target.files && e.target.files.length > 0) {
