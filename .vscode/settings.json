@@ -1,9 +1,10 @@
 {
-  "eslint.workingDirectories": ["./front", "./docs", "./xp1"],
+  "eslint.workingDirectories": ["./front", "./docs", "./connectors", "./xp1"],
   "rust-analyzer.linkedProjects": ["./core/Cargo.toml"],
 
   "editor.codeActionsOnSave": {
     "source.organizeImports": false,
     "source.fixAll.eslint": true
-  }
+  },
+  "eslint.run": "onSave"
 }
