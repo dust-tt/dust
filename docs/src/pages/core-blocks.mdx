@@ -335,6 +335,35 @@ contain an array of 4 `{ "foo": "bar" }` objects.
 
 ---
 
+## While End blocks
+
+The `while` and `end` blocks are used to execute the set of blocks in between sequentially them
+until a termination condition is met. The `while` block takes a `condition` argument expecting code
+to be executed at each iteration of the loop. The code must return a boolean value. If the value is
+`true` the loop continues, otherwise it stops.
+
+The `end` block does not take any argument and has the same name as its associated `while` block.
+After executing the `end` block, each output of the blocks in between the `while` and `end` blocks
+will be collected in an array accesible from any subsequent block (see the [Map Reduce
+blocks](#map-reduce-blocks) documentation for more details on this behavior).
+
+### Configuration
+
+<Properties>
+  <Property name="condition" type="string">
+    A javascript function `_fun` which takes a single argument `env` (see the
+    [Code block](/core-blocks#code-block) documentation for details) and returns
+    a boolean value. If the value is `true` the loop continues, otherwise it
+    stops.
+  </Property>
+  <Property name="max_iterations" type="integer">
+    The maximum number of iterations to execute the blocks in between the
+    `while` and `end` blocks. Must be set and has a maximum value of **32**.
+  </Property>
+</Properties>
+
+---
+
 ## DataSource block
 
 The `data_source` block provides an interface to query a [Data Source](/data-sources-overview) and
@@ -374,11 +403,11 @@ for more details about how documents are chunked to enable semantic search.
     be smaller if multiple chunks from the same document are among the `top_k`
     retrieved chunks.
   </Property>
-  <Property name="data_sources" type="[]{username, data_source_id}">
+  <Property name="data_sources" type="[]{workspace_id, data_source_id}">
     An array of objects representing the Data Sources to query. Note that the
     Dust interface currently only supports adding one Data Source to a block,
     but you can pass many by API. The objects must have the following
-    properties: `username`, the username of the user who owns the Data Source,
+    properties: `workspace_id`, the id of workspace who owns the Data Source,
     and, `data_source_id`, The name of the Data Source.
   </Property>
   <Property

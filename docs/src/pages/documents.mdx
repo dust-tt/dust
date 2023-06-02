@@ -91,8 +91,9 @@ The Document model represents a [Data Source](/data-sources-overview) document.
   <Col>
 
     This endpoint enables you to insert a new document to a Data Source. The semantic of this
-    endpoint is an _upsert_: if the `document_id` does not exists it gets replaced, otherwise it
-    gets replaced. You can only insert documents to the Data Sources you own.
+    endpoint is an _upsert_: if the `document_id` does not exists it gets created, otherwise it
+    gets replaced (meaning you always have to supply a `document_id`). You can only insert documents
+    to the Data Sources you own.
 
     ### URL attributes
 
