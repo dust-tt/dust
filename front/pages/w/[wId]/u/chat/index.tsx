@@ -1,5 +1,8 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightCircleIcon,
+  DocumentDuplicateIcon,
+} from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -33,19 +36,21 @@ const { GA_TRACKING_ID = "" } = process.env;
 const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
+  google_drive: "/static/google_drive_32x32.png",
+  github: "/static/github_black_32x32.png",
 };
 
-type ManagedDataSource = {
+type DataSource = {
   name: string;
-  provider: ConnectorProvider;
+  description?: string;
+  provider: ConnectorProvider | "none";
   selected: boolean;
-  logoPath: string;
 };
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  managedDataSources: ManagedDataSource[];
+  workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
   gaTrackingId: string;
 }> = async (context) => {
@@ -73,23 +78,30 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSources = dsRes.value;
+  const dataSources: DataSource[] = dsRes.value.map((ds) => {
+    return {
+      name: ds.name,
+      description: ds.description,
+      provider: ds.connectorProvider || "none",
+      selected: ds.connectorProvider ? true : false,
+    };
+  });
 
-  const managedDataSources = dataSources
-    .filter((ds) => ds.connectorProvider)
-    .map((ds) => {
-      if (!ds.connectorProvider) {
-        throw new Error("provider not defined for the data source");
-      }
-      return {
-        name: ds.name,
-        provider: ds.connectorProvider,
-        selected: true,
-        logoPath: PROVIDER_LOGO_PATH[ds.connectorProvider],
-      };
-    });
+  // Select Data Sources if none are managed.
+  if (!dataSources.some((ds) => ds.provider !== "none")) {
+    for (const ds of dataSources) {
+      ds.selected = true;
+    }
+  }
 
-  managedDataSources.sort((a, b) => {
+  // Manged first, then alphabetically
+  dataSources.sort((a, b) => {
+    if (a.provider === "none") {
+      return b.provider === "none" ? 0 : 1;
+    }
+    if (b.provider === "none") {
+      return -1;
+    }
     if (a.provider < b.provider) {
       return -1;
     } else {
@@ -101,7 +113,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      managedDataSources,
+      workspaceDataSources: dataSources,
       prodCredentials,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -109,20 +121,17 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 type RetrievedDocument = {
-  sourceUrl: string;
-  title: string;
-  provider: ConnectorProvider;
+  data_source_id: string;
+  source_url: string;
+  document_id: string;
+  timestamp: string;
+  tags: string[];
   score: number;
-  document: {
-    channelName?: string;
-    timestamp: string;
-    title?: string;
-    lastEditedAt?: string;
-    chunks: {
-      text: string;
-      offset: number;
-    }[];
-  };
+  chunks: {
+    text: string;
+    offset: number;
+    score: number;
+  }[];
 };
 
 type Message = {
@@ -133,9 +142,45 @@ type Message = {
   retrievals?: RetrievedDocument[]; // for `retrieval` messages
 };
 
+const providerFromDocument = (document: RetrievedDocument) => {
+  let provider = "none";
+  switch (document.data_source_id) {
+    case "managed-slack":
+      provider = "slack";
+      break;
+    case "managed-notion":
+      provider = "notion";
+      break;
+  }
+  return provider;
+};
+
+const titleFromDocument = (document: RetrievedDocument) => {
+  let title = document.document_id;
+  // Try to look for a title tag.
+  for (const tag of document.tags) {
+    if (tag.startsWith("title:")) {
+      title = tag.substring("title:".length);
+    }
+  }
+
+  switch (document.data_source_id) {
+    case "managed-slack":
+      for (const tag of document.tags) {
+        if (tag.startsWith("channelName:")) {
+          title = "#" + tag.substring("channelName:".length);
+        }
+      }
+      break;
+  }
+  return title;
+};
+
 export function DocumentView({ document }: { document: RetrievedDocument }) {
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
   const [chunkExpanded, setChunkExpanded] = useState(false);
+
+  const provider = providerFromDocument(document);
 
   return (
     <div className="flex flex-col">
@@ -153,41 +198,29 @@ export function DocumentView({ document }: { document: RetrievedDocument }) {
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>
-            <img src={PROVIDER_LOGO_PATH[document.provider]}></img>
+            {provider !== "none" ? (
+              <img src={PROVIDER_LOGO_PATH[provider]}></img>
+            ) : (
+              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+            )}
           </div>
         </div>
-        {document.provider === "slack" && (
-          <div className="flex flex-initial">
-            <a
-              href={document.sourceUrl}
-              target={"_blank"}
-              className="text-gray-600"
-            >
-              #{document.document.channelName}
-            </a>
-            <span className="ml-1 text-gray-400">
-              {document.document.timestamp.split(" ")[0]}
-            </span>
-          </div>
-        )}
-        {document.provider === "notion" && (
-          <div className="flex flex-initial">
-            <a
-              href={document.sourceUrl}
-              target={"_blank"}
-              className="block w-32 truncate text-gray-600 sm:w-fit"
-            >
-              {document.document.title}
-            </a>
-            <span className="ml-1 text-gray-400">
-              {document.document.timestamp.split(" ")[0]}
-            </span>
-          </div>
-        )}
+        <div className="flex flex-initial">
+          <a
+            href={document.source_url}
+            target={"_blank"}
+            className="block w-32 truncate text-gray-600 sm:w-fit"
+          >
+            {titleFromDocument(document)}
+          </a>
+          <span className="ml-1 text-gray-400">
+            {document.timestamp.split(" ")[0]}
+          </span>
+        </div>
       </div>
       {chunkExpanded && (
         <div className="my-2 flex flex-col space-y-2">
-          {document.document.chunks.map((chunk, i) => (
+          {document.chunks.map((chunk, i) => (
             <div key={i} className="flex flex-initial">
               <div
                 className="ml-10 border-l-4 border-slate-400"
@@ -221,17 +254,25 @@ export function RetrievalsView({
   message: Message;
   isLatest: boolean;
 }) {
-  const [summary, setSummary] = useState<{ [provider: string]: number }>({});
+  const [summary, setSummary] = useState<{
+    [data_source_id: string]: { count: number; provider: string };
+  }>({});
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     if (message.retrievals && message.retrievals.length > 0) {
-      const summary = {} as { [key: string]: number };
+      const summary = {} as {
+        [key: string]: { count: number; provider: string };
+      };
       message.retrievals.forEach((r) => {
-        if (r.provider in summary) {
-          summary[r.provider] += 1;
+        const provider = providerFromDocument(r);
+        if (r.data_source_id in summary) {
+          summary[r.data_source_id].count += 1;
         } else {
-          summary[r.provider] = 1;
+          summary[r.data_source_id] = {
+            provider,
+            count: 1,
+          };
         }
       });
       setSummary(summary);
@@ -259,10 +300,16 @@ export function RetrievalsView({
                     className="flex flex-initial flex-row items-center"
                   >
                     <div className={classNames("mr-1 flex h-4 w-4")}>
-                      <img src={PROVIDER_LOGO_PATH[k]}></img>
+                      {summary[k].provider !== "none" ? (
+                        <img
+                          src={PROVIDER_LOGO_PATH[summary[k].provider]}
+                        ></img>
+                      ) : (
+                        <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                      )}
                     </div>
                     <div className="flex-initial text-gray-700">
-                      {summary[k]}
+                      {summary[k].count}
                     </div>
                   </div>
                 );
@@ -372,7 +419,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
 export default function AppChat({
   user,
   owner,
-  managedDataSources,
+  workspaceDataSources,
   prodCredentials,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -384,7 +431,7 @@ export default function AppChat({
   const prodAPI = new DustAPI(prodCredentials);
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [dataSources, setDataSources] = useState(managedDataSources);
+  const [dataSources, setDataSources] = useState(workspaceDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Message | null>(null);
@@ -567,8 +614,20 @@ export default function AppChat({
           username: user?.username,
           full_name: user?.name,
         },
+        workspace: owner.name,
         date_today: new Date().toISOString().split("T")[0],
       };
+
+      const r: any[] = [];
+
+      console.log(
+        r.filter((t) => {
+          return false;
+        })
+      );
+
+      console.log("CONTEXT", JSON.stringify(context));
+      console.log("MESSAGES", JSON.stringify(m));
 
       const res = await runActionStreamed(owner, "chat-assistant", config, [
         { messages: m, context },
@@ -640,7 +699,7 @@ export default function AppChat({
           <MainTab currentTab="Chat" owner={owner} />
         </div>
 
-        {managedDataSources.length === 0 && (
+        {dataSources.length === 0 && (
           <div className="">
             <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
               <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
@@ -651,7 +710,7 @@ export default function AppChat({
                 </p>
                 {owner.role === "admin" ? (
                   <p className="mt-8">
-                    You need to set up at least one managed{" "}
+                    You need to set up at least one{" "}
                     <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
                       Data Source
                     </Link>{" "}
@@ -668,7 +727,7 @@ export default function AppChat({
           </div>
         )}
 
-        {managedDataSources.length > 0 && (
+        {dataSources.length > 0 && (
           <>
             <div className="flex-1">
               <div
@@ -929,7 +988,10 @@ export default function AppChat({
                   <div className="flex flex-row">
                     {dataSources.map((ds) => {
                       return (
-                        <div key={ds.name} className="ml-1 flex flex-initial">
+                        <div
+                          key={ds.name}
+                          className="group ml-1 flex flex-initial"
+                        >
                           <div
                             className={classNames(
                               "mr-1 flex h-4 w-4 flex-initial cursor-pointer",
@@ -939,7 +1001,17 @@ export default function AppChat({
                               handleSwitchDataSourceSelection(ds.name);
                             }}
                           >
-                            <img src={ds.logoPath}></img>
+                            {ds.provider !== "none" ? (
+                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
+                            ) : (
+                              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                            )}
+                          </div>
+                          <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
+                            <span className="text-gray-600">
+                              <span className="font-semibold">{ds.name}</span>{" "}
+                              {ds.description && ds.description}
+                            </span>
                           </div>
                         </div>
                       );
