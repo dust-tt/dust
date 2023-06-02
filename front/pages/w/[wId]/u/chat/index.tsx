@@ -1,5 +1,8 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightCircleIcon,
+  DocumentDuplicateIcon,
+} from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -33,19 +36,21 @@ const { GA_TRACKING_ID = "" } = process.env;
 const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
+  google_drive: "/static/google_drive_32x32.png",
+  github: "/static/github_black_32x32.png",
 };
 
-type ManagedDataSource = {
+type DataSource = {
   name: string;
-  provider: ConnectorProvider;
+  description?: string;
+  provider: ConnectorProvider | "none";
   selected: boolean;
-  logoPath: string;
 };
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  managedDataSources: ManagedDataSource[];
+  workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
   gaTrackingId: string;
 }> = async (context) => {
@@ -73,23 +78,30 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSources = dsRes.value;
+  const dataSources: DataSource[] = dsRes.value.map((ds) => {
+    return {
+      name: ds.name,
+      description: ds.description,
+      provider: ds.connectorProvider || "none",
+      selected: ds.connectorProvider ? true : false,
+    };
+  });
 
-  const managedDataSources = dataSources
-    .filter((ds) => ds.connectorProvider)
-    .map((ds) => {
-      if (!ds.connectorProvider) {
-        throw new Error("provider not defined for the data source");
-      }
-      return {
-        name: ds.name,
-        provider: ds.connectorProvider,
-        selected: true,
-        logoPath: PROVIDER_LOGO_PATH[ds.connectorProvider],
-      };
-    });
+  // Select Data Sources if none are managed.
+  if (!dataSources.some((ds) => ds.provider !== "none")) {
+    for (const ds of dataSources) {
+      ds.selected = true;
+    }
+  }
 
-  managedDataSources.sort((a, b) => {
+  // Manged first, then alphabetically
+  dataSources.sort((a, b) => {
+    if (a.provider === "none") {
+      return b.provider === "none" ? 0 : 1;
+    }
+    if (b.provider === "none") {
+      return -1;
+    }
     if (a.provider < b.provider) {
       return -1;
     } else {
@@ -101,7 +113,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      managedDataSources,
+      workspaceDataSources: dataSources,
       prodCredentials,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -186,7 +198,11 @@ export function DocumentView({ document }: { document: RetrievedDocument }) {
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>
-            <img src={PROVIDER_LOGO_PATH[provider]}></img>
+            {provider !== "none" ? (
+              <img src={PROVIDER_LOGO_PATH[provider]}></img>
+            ) : (
+              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+            )}
           </div>
         </div>
         <div className="flex flex-initial">
@@ -284,7 +300,13 @@ export function RetrievalsView({
                     className="flex flex-initial flex-row items-center"
                   >
                     <div className={classNames("mr-1 flex h-4 w-4")}>
-                      <img src={PROVIDER_LOGO_PATH[summary[k].provider]}></img>
+                      {summary[k].provider !== "none" ? (
+                        <img
+                          src={PROVIDER_LOGO_PATH[summary[k].provider]}
+                        ></img>
+                      ) : (
+                        <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                      )}
                     </div>
                     <div className="flex-initial text-gray-700">
                       {summary[k].count}
@@ -397,7 +419,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
 export default function AppChat({
   user,
   owner,
-  managedDataSources,
+  workspaceDataSources,
   prodCredentials,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -409,7 +431,7 @@ export default function AppChat({
   const prodAPI = new DustAPI(prodCredentials);
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [dataSources, setDataSources] = useState(managedDataSources);
+  const [dataSources, setDataSources] = useState(workspaceDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Message | null>(null);
@@ -592,8 +614,20 @@ export default function AppChat({
           username: user?.username,
           full_name: user?.name,
         },
+        workspace: owner.name,
         date_today: new Date().toISOString().split("T")[0],
       };
+
+      const r: any[] = [];
+
+      console.log(
+        r.filter((t) => {
+          return false;
+        })
+      );
+
+      console.log("CONTEXT", JSON.stringify(context));
+      console.log("MESSAGES", JSON.stringify(m));
 
       const res = await runActionStreamed(owner, "chat-assistant", config, [
         { messages: m, context },
@@ -665,7 +699,7 @@ export default function AppChat({
           <MainTab currentTab="Chat" owner={owner} />
         </div>
 
-        {managedDataSources.length === 0 && (
+        {dataSources.length === 0 && (
           <div className="">
             <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
               <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
@@ -676,7 +710,7 @@ export default function AppChat({
                 </p>
                 {owner.role === "admin" ? (
                   <p className="mt-8">
-                    You need to set up at least one managed{" "}
+                    You need to set up at least one{" "}
                     <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
                       Data Source
                     </Link>{" "}
@@ -693,7 +727,7 @@ export default function AppChat({
           </div>
         )}
 
-        {managedDataSources.length > 0 && (
+        {dataSources.length > 0 && (
           <>
             <div className="flex-1">
               <div
@@ -954,7 +988,10 @@ export default function AppChat({
                   <div className="flex flex-row">
                     {dataSources.map((ds) => {
                       return (
-                        <div key={ds.name} className="ml-1 flex flex-initial">
+                        <div
+                          key={ds.name}
+                          className="group ml-1 flex flex-initial"
+                        >
                           <div
                             className={classNames(
                               "mr-1 flex h-4 w-4 flex-initial cursor-pointer",
@@ -964,7 +1001,17 @@ export default function AppChat({
                               handleSwitchDataSourceSelection(ds.name);
                             }}
                           >
-                            <img src={ds.logoPath}></img>
+                            {ds.provider !== "none" ? (
+                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
+                            ) : (
+                              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                            )}
+                          </div>
+                          <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
+                            <span className="text-gray-600">
+                              <span className="font-semibold">{ds.name}</span>{" "}
+                              {ds.description && ds.description}
+                            </span>
                           </div>
                         </div>
                       );
