@@ -141,14 +141,14 @@ import pathlib
 import pdftotext
 import sys
 
-key = "DUST API KEY"
-workspace_id = "WORKSPACE ID"
-ds = "DATA SOURCE NAME"
-endpoint = f"http://localhost:3000/api/v1/w/{workspace_id}/data_sources/{ds}/documents/"
+KEY = "DUST API KEY"
+WORKSPACE_ID = "WORKSPACE ID"
+DS = "DATA SOURCE NAME"
+ENDPOINT = f"http://localhost:3000/api/v1/w/{WORKSPACE_ID}/data_sources/{DS}/documents/"
 
 def upload(text, file):
-    url = endpoint + file.stem
-    r = requests.post(url, headers={'Authorization': "Bearer " + key}, json={
+    url = ENDPOINT + file.stem
+    r = requests.post(url, headers={'Authorization': "Bearer " + KEY}, json={
         "text": text,
     })
     return r
