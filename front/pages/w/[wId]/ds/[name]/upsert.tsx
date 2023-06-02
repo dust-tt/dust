@@ -327,7 +327,7 @@ export default function DataSourceUpsert({
             <div className="flex flex-1">
               <div className="w-full">
                 <div className="sm:col-span-5">
-                  <div className="flex flex-row">
+                  <div className="flex flex-row items-center">
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-700">
                         Text Content
@@ -338,7 +338,7 @@ export default function DataSourceUpsert({
                       </p>
                     </div>
                     {!readOnly ? (
-                      <div className="ml-2 mt-0 flex-none">
+                      <div className="ml-2 mt-0 flex-initial">
                         <input
                           className="hidden"
                           type="file"
