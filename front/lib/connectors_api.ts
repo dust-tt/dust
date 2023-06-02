@@ -13,7 +13,24 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-export type ConnectorProvider = "slack" | "notion" | "github";
+const CONNECTOR_PROVIDERS = [
+  "slack",
+  "notion",
+  "github",
+  "google_drive",
+] as const;
+export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
+export const CONNECTOR_PROVIDERS_USING_NANGO = [
+  "slack",
+  "notion",
+  "google_drive",
+] as const;
+type ConnectorProviderUsingNango = (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];
+
+export function connectorIsUsingNango(provider: string): provider is ConnectorProviderUsingNango {
+  return CONNECTOR_PROVIDERS_USING_NANGO.includes(provider as any);
+}
+
 export type ConnectorType = {
   id: string;
   type: ConnectorProvider;

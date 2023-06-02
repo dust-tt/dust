@@ -419,3 +419,146 @@ GithubIssue.init(
   }
 );
 Connector.hasMany(GithubIssue);
+
+export class GoogleDriveFolders extends Model<
+  InferAttributes<GoogleDriveFolders>,
+  InferCreationAttributes<GoogleDriveFolders>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare folderId: string;
+}
+
+GoogleDriveFolders.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    folderId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_folders",
+    indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
+  }
+);
+
+Connector.hasOne(GoogleDriveFolders);
+
+export class GoogleDriveFiles extends Model<
+  InferAttributes<GoogleDriveFiles>,
+  InferCreationAttributes<GoogleDriveFiles>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare fileId: string;
+}
+
+GoogleDriveFiles.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    fileId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_files",
+    indexes: [{ fields: ["connectorId", "fileId"], unique: true }],
+  }
+);
+Connector.hasOne(GoogleDriveFiles);
+
+// Sync Token are the equivalent of a timestamp for syncing the delta
+// between the last sync and the current sync.
+export class GoogleDriveSyncToken extends Model<
+  InferAttributes<GoogleDriveSyncToken>,
+  InferCreationAttributes<GoogleDriveSyncToken>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare driveId: string;
+  declare syncToken: string;
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+GoogleDriveSyncToken.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    driveId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    syncToken: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_sync_tokens",
+    indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
+  }
+);
+Connector.hasOne(GoogleDriveSyncToken);

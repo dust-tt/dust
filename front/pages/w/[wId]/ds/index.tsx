@@ -10,6 +10,7 @@ import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
+  connectorIsUsingNango,
   ConnectorProvider,
   ConnectorsAPI,
   ConnectorType,
@@ -25,6 +26,7 @@ const {
   GA_TRACKING_ID = "",
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   GITHUB_APP_URL = "",
 } = process.env;
@@ -66,6 +68,13 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
+    isBuilt: true,
+    logoPath: "/static/google_drive_32x32.png",
+    fetchConnectorError: null,
+  },
+  {
+    name: "Google Drive",
+    connectorProvider: "google_drive",
     isBuilt: false,
     logoPath: "/static/google_drive_32x32.png",
     fetchConnectorError: null,
@@ -84,6 +93,7 @@ export const getServerSideProps: GetServerSideProps<{
     publicKey: string;
     slackConnectorId: string;
     notionConnectorId: string;
+    googleDriveConnectorId: string;
   };
   githubAppUrl: string;
 }> = async (context) => {
@@ -177,6 +187,7 @@ export const getServerSideProps: GetServerSideProps<{
         publicKey: NANGO_PUBLIC_KEY,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
+        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
     },
@@ -203,12 +214,13 @@ export default function DataSourcesView({
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     try {
       let connectionId: string;
-      if (provider === "notion" || provider === "slack") {
+      if (connectorIsUsingNango(provider)) {
         // nango-based connectors
-        const nangoConnectorId =
-          provider === "slack"
-            ? nangoConfig.slackConnectorId
-            : nangoConfig.notionConnectorId;
+        const nangoConnectorId = {
+          slack: nangoConfig.slackConnectorId,
+          notion: nangoConfig.notionConnectorId,
+          google_drive: nangoConfig.googleDriveConnectorId,
+        }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const {
           connectionId: nangoConnectionId,

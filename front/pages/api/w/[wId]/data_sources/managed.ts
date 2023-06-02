@@ -66,7 +66,7 @@ async function handler(
 
       if (
         !req.body.provider ||
-        !["slack", "notion", "github"].includes(req.body.provider)
+        !["slack", "notion", "github", "google_drive"].includes(req.body.provider)
       ) {
         return apiError(req, res, {
           status_code: 400,
