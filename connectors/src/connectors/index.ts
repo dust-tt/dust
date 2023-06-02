@@ -1,5 +1,7 @@
 import { Transaction } from "sequelize";
 
+import { createGoogleDriveConnector } from "@connectors/connectors/google_drive";
+import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
   cleanupNotionConnector,
   createNotionConnector,
@@ -7,8 +9,10 @@ import {
   resumeNotionConnector,
   stopNotionConnector,
 } from "@connectors/connectors/notion";
-import { cleanupSlackConnector } from "@connectors/connectors/slack";
-import { createSlackConnector } from "@connectors/connectors/slack";
+import {
+  cleanupSlackConnector,
+  createSlackConnector,
+} from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
@@ -26,6 +30,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: createSlackConnector,
   notion: createNotionConnector,
+  google_drive: createGoogleDriveConnector,
 };
 
 type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;
@@ -41,6 +46,12 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
     return new Ok(connectorId);
   },
   notion: stopNotionConnector,
+  google_drive: async (connectorId: string) => {
+    logger.info(
+      `Stopping Google Drive connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(connectorId);
+  },
 };
 
 // Should cleanup any state/resources associated with the connector
@@ -55,6 +66,10 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  google_drive: async (connectorId: string, transaction: Transaction) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
 };
 
 type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
@@ -70,6 +85,9 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
     return new Ok(connectorId);
   },
   notion: resumeNotionConnector,
+  google_drive: async (connectorId: string) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
 };
 
 type SyncConnector = (connectorId: string) => Promise<Result<string, Error>>;
@@ -78,4 +96,5 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
+    google_drive: launchGoogleDriveFullSyncWorkflow,
   };

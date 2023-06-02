@@ -2,6 +2,7 @@ import minimist from "minimist";
 
 import { startServer } from "@connectors/api_server";
 
+import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
@@ -18,5 +19,8 @@ runSlackWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running slack worker")
 );
 runNotionWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running notion worker")
+);
+runGoogleWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running notion worker")
 );

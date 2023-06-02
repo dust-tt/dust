@@ -323,3 +323,94 @@ NotionPage.init(
   }
 );
 Connector.hasMany(NotionPage);
+
+export class GoogleDriveFolders extends Model<
+  InferAttributes<GoogleDriveFolders>,
+  InferCreationAttributes<GoogleDriveFolders>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare folderId: string;
+}
+
+GoogleDriveFolders.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    folderId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_folders",
+    indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
+  }
+);
+
+Connector.hasMany(GoogleDriveFolders);
+
+export class GoogleDriveFiles extends Model<
+  InferAttributes<GoogleDriveFiles>,
+  InferCreationAttributes<GoogleDriveFiles>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare fileId: string;
+}
+
+GoogleDriveFiles.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    fileId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_files",
+    indexes: [{ fields: ["connectorId", "fileId"], unique: true }],
+  }
+);
+Connector.hasMany(GoogleDriveFiles);

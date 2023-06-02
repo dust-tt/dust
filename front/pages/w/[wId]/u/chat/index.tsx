@@ -33,6 +33,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
+  google_drive: "/static/google_drive_32x32.png",
 };
 
 type ManagedDataSource = {

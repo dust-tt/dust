@@ -24,6 +24,7 @@ const {
   GA_TRACKING_ID = "",
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
 } = process.env;
 
@@ -57,7 +58,7 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
-    isBuilt: false,
+    isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
     fetchConnectorError: null,
   },
@@ -82,6 +83,7 @@ export const getServerSideProps: GetServerSideProps<{
     publicKey: string;
     slackConnectorId: string;
     notionConnectorId: string;
+    googleDriveConnectorId: string;
   };
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -174,6 +176,7 @@ export const getServerSideProps: GetServerSideProps<{
         publicKey: NANGO_PUBLIC_KEY,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
+        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
     },
   };
@@ -196,10 +199,11 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
-    const nangoConnectorId =
-      provider == "slack"
-        ? nangoConfig.slackConnectorId
-        : nangoConfig.notionConnectorId;
+    const nangoConnectorId = {
+      slack: nangoConfig.slackConnectorId,
+      notion: nangoConfig.notionConnectorId,
+      google_drive: nangoConfig.googleDriveConnectorId,
+    }[provider];
     const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
     try {

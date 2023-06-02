@@ -57,7 +57,7 @@ async function handler(
       if (
         !req.body ||
         typeof req.body.nangoConnectionId !== "string" ||
-        !["slack", "notion"].includes(req.body.provider)
+        !["slack", "notion", "google_drive"].includes(req.body.provider)
       ) {
         return apiError(req, res, {
           status_code: 400,

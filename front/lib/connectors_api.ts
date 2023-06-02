@@ -13,7 +13,7 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-export type ConnectorProvider = "slack" | "notion";
+export type ConnectorProvider = "slack" | "notion" | "google_drive";
 export type ConnectorType = {
   id: string;
   type: ConnectorProvider;

@@ -17,6 +17,9 @@ export function getProviderLogoPathForDataSource(
     case "slack":
       return `/static/slack_32x32.png`;
 
+    case "google_drive":
+      return `/static/google_drive_32x32.png`;      
+
     default:
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ((_provider: never) => {
