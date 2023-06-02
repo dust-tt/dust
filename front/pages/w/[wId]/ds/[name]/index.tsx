@@ -174,8 +174,7 @@ export default function DataSourceView({
                   </div>
 
                   <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
-                    Showing documents {Math.min(documents.length, offset + 1)} -{" "}
-                    {last} of {total} documents
+                    Showing documents {offset + 1} - {last} of {total} documents
                   </div>
                 </div>
               </div>
