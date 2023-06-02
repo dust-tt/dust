@@ -618,17 +618,6 @@ export default function AppChat({
         date_today: new Date().toISOString().split("T")[0],
       };
 
-      const r: any[] = [];
-
-      console.log(
-        r.filter((t) => {
-          return false;
-        })
-      );
-
-      console.log("CONTEXT", JSON.stringify(context));
-      console.log("MESSAGES", JSON.stringify(m));
-
       const res = await runActionStreamed(owner, "chat-assistant", config, [
         { messages: m, context },
       ]);
