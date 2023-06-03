@@ -414,3 +414,53 @@ GoogleDriveFiles.init(
   }
 );
 Connector.hasMany(GoogleDriveFiles);
+
+export class GoogleDriveSyncToken extends Model<
+  InferAttributes<GoogleDriveSyncToken>,
+  InferCreationAttributes<GoogleDriveSyncToken>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare driveId: string;
+  declare syncToken: string;
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+GoogleDriveSyncToken.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    driveId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    syncToken: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_sync_tokens",
+    indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
+  }
+);
+Connector.hasMany(GoogleDriveSyncToken);

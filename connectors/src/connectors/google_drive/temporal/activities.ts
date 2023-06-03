@@ -12,6 +12,7 @@ import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive
 import {
   GoogleDriveFiles,
   GoogleDriveFolders,
+  GoogleDriveSyncToken,
   ModelId,
 } from "@connectors/lib/models";
 
@@ -53,10 +54,13 @@ export async function getDriveClient(
 
     return drive;
   }
+
   throw new Error("Invalid auth_credentials type");
 }
 
-export async function getDrivesIds(nangoConnectionId: string) {
+export async function getDrivesIds(
+  nangoConnectionId: string
+): Promise<string[]> {
   const drive = await getDriveClient(nangoConnectionId);
   let nextPageToken = undefined;
   const ids = [];
@@ -73,7 +77,11 @@ export async function getDrivesIds(nangoConnectionId: string) {
     if (!res.data.drives) {
       throw new Error("Drives list is undefined");
     }
-    ids.push(...res.data.drives.map((drive) => drive.id));
+    for (const drive of res.data.drives) {
+      if (drive.id) {
+        ids.push(drive.id);
+      }
+    }
     nextPageToken = res.data.nextPageToken;
   } while (nextPageToken);
 
@@ -153,6 +161,7 @@ async function syncOneFile(
   fileId: string,
   webViewLink?: string
 ) {
+  console.log("syncOneFile", fileId);
   const docs = google.docs({ version: "v1", auth: oauth2client });
   const res = await docs.documents.get({
     documentId: fileId,
@@ -250,4 +259,103 @@ async function objectIsInFolder(
     }
     parentsQueue.push(...res.data.parents);
   } while (parentsQueue.length > 0);
+}
+
+export async function incrementalSync(
+  connectorId: ModelId,
+  nangoConnectionId: string,
+  dataSourceConfig: DataSourceConfig,
+  driveId: string
+) {
+  const lastSyncToken = await getSyncPageToken(
+    connectorId,
+    nangoConnectionId,
+    driveId
+  );
+
+  const driveClient = await getDriveClient(nangoConnectionId);
+  const oauth2client = await getAuthObject(nangoConnectionId);
+  let nextPageToken: string | undefined = undefined;
+  do {
+    const changesRes = await driveClient.changes.list({
+      driveId: driveId,
+      pageToken: lastSyncToken,
+      pageSize: 100,
+      fields: "*",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    });
+    if (changesRes.status !== 200) {
+      throw new Error(
+        `Error getting changes. status_code: ${changesRes.status}. status_text: ${changesRes.statusText}`
+      );
+    }
+    if (changesRes.data.changes === undefined) {
+      throw new Error(`changes list is undefined`);
+    }
+
+    for (const change of changesRes.data.changes) {
+      if (change.changeType !== "file") {
+        continue;
+      }
+      if (change.file?.mimeType !== "application/vnd.google-apps.document") {
+        continue;
+      }
+      if (!change.file.id) {
+        continue;
+      }
+      await syncOneFile(
+        connectorId,
+        oauth2client,
+        dataSourceConfig,
+        change.file.id,
+        change.file.webViewLink ? change.file.webViewLink : undefined
+      );
+    }
+    nextPageToken = changesRes.data.nextPageToken
+      ? changesRes.data.nextPageToken
+      : undefined;
+    if (changesRes.data.newStartPageToken) {
+      await GoogleDriveSyncToken.upsert({
+        connectorId: connectorId,
+        driveId: driveId,
+        syncToken: changesRes.data.newStartPageToken,
+      });
+    }
+  } while (nextPageToken);
+}
+
+async function getSyncPageToken(
+  connectorId: ModelId,
+  nangoConnectionId: string,
+  driveId: string
+) {
+  const last = await GoogleDriveSyncToken.findOne({
+    where: {
+      connectorId: connectorId,
+      driveId: driveId,
+    },
+  });
+  if (last) {
+    return last.syncToken;
+  }
+  const driveClient = await getDriveClient(nangoConnectionId);
+  let lastSyncToken = undefined;
+  if (!lastSyncToken) {
+    const startTokenRes = await driveClient.changes.getStartPageToken({
+      driveId: driveId,
+      supportsAllDrives: true,
+    });
+    if (startTokenRes.status !== 200) {
+      throw new Error(
+        `Error getting start page token. status_code: ${startTokenRes.status}. status_text: ${startTokenRes.statusText}`
+      );
+    }
+    if (!startTokenRes.data.startPageToken) {
+      throw new Error("No start page token found");
+    }
+    lastSyncToken = startTokenRes.data.startPageToken;
+  }
+
+  return lastSyncToken;
 }

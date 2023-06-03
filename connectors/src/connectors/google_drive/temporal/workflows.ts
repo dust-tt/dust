@@ -4,7 +4,9 @@ import type * as activities from "@connectors/connectors/google_drive/temporal/a
 import { ModelId } from "@connectors/lib/models";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { syncFiles } = proxyActivities<typeof activities>({
+const { syncFiles, getDrivesIds, incrementalSync } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -27,4 +29,24 @@ export async function googleDriveFullSync(
 
 export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-fullSync-${connectorId}`;
+}
+
+export async function googleDriveIncrementalSync(
+  connectorId: ModelId,
+  nangoConnectionId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  const drivesIds = await getDrivesIds(nangoConnectionId);
+  for (const driveId of drivesIds) {
+    await incrementalSync(
+      connectorId,
+      nangoConnectionId,
+      dataSourceConfig,
+      driveId
+    );
+  }
+}
+
+export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
+  return `googleDrive-IncrementalSync-${connectorId}`;
 }
