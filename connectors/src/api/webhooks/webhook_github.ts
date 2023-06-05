@@ -22,8 +22,7 @@ const _webhookGithubAPIHandler = async (
   >,
   res: Response<GithubWebhookResBody>
 ) => {
-  const jsonBody = req.body;
-  console.log("HOOK BODY", jsonBody);
+  // TODO -- webhooks ignored for now
   return res.status(200).end();
 };
 
