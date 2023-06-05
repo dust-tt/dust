@@ -42,7 +42,7 @@ export const ConnectorsAPI = {
         workspaceAPIKey,
         dataSourceName,
         connectionId,
-        // TODO: deprecate_nango_connection_id_2023-06-06
+        // TODO: 20230606_deprecate_nango_connection_id
         nangoConnectionId: connectionId,
       }),
     });
