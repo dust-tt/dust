@@ -57,7 +57,7 @@ export async function googleDriveIncrementalSync(
         connectorId,
         nangoConnectionId,
         dataSourceConfig,
-        driveId
+        driveId.id
       );
     } while (changeCount && changeCount > 0);
   }

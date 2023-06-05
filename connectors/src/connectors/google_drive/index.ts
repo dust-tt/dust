@@ -48,11 +48,5 @@ export async function createGoogleDriveConnector(
     return res;
   }
 
-  const workflowRes = await launchGoogleDriveFullSyncWorkflow(
-    res.value.id.toString()
-  );
-  if (workflowRes.isErr()) {
-    return workflowRes;
-  }
   return new Ok(res.value.id.toString());
 }
