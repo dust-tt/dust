@@ -368,7 +368,7 @@ GoogleDriveFolders.init(
   }
 );
 
-Connector.hasMany(GoogleDriveFolders);
+Connector.hasOne(GoogleDriveFolders);
 
 export class GoogleDriveFiles extends Model<
   InferAttributes<GoogleDriveFiles>,
@@ -413,8 +413,10 @@ GoogleDriveFiles.init(
     indexes: [{ fields: ["connectorId", "fileId"], unique: true }],
   }
 );
-Connector.hasMany(GoogleDriveFiles);
+Connector.hasOne(GoogleDriveFiles);
 
+// Sync Token are the equivalent of a timestamp for syncing the delta
+// between the last sync and the current sync.
 export class GoogleDriveSyncToken extends Model<
   InferAttributes<GoogleDriveSyncToken>,
   InferCreationAttributes<GoogleDriveSyncToken>
@@ -463,4 +465,4 @@ GoogleDriveSyncToken.init(
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }
 );
-Connector.hasMany(GoogleDriveSyncToken);
+Connector.hasOne(GoogleDriveSyncToken);
