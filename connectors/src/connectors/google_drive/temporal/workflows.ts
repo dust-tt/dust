@@ -36,8 +36,8 @@ export async function googleDriveFullSync(
     await reportInitialSyncProgress(connectorId, `Synced ${totalCount} files`);
   } while (nextPageToken);
 
-  console.log("googleDriveFullSync done for connectorId", connectorId);
   await syncSucceeded(connectorId);
+  console.log("googleDriveFullSync done for connectorId", connectorId);
 }
 
 export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
@@ -51,15 +51,18 @@ export async function googleDriveIncrementalSync(
 ) {
   const drivesIds = await getDrivesIds(nangoConnectionId);
   for (const driveId of drivesIds) {
-    await incrementalSync(
-      connectorId,
-      nangoConnectionId,
-      dataSourceConfig,
-      driveId
-    );
+    let changeCount: number | undefined = undefined;
+    do {
+      changeCount = await incrementalSync(
+        connectorId,
+        nangoConnectionId,
+        dataSourceConfig,
+        driveId
+      );
+    } while (changeCount && changeCount > 0);
   }
-  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
   await syncSucceeded(connectorId);
+  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
 export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {

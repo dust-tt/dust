@@ -16,6 +16,8 @@ import {
   ModelId,
 } from "@connectors/lib/models";
 
+const FILES_SYNC_CONCURRENCY = 30;
+
 export async function getAuthObject(
   nangoConnectionId: string
 ): Promise<OAuth2Client> {
@@ -94,13 +96,7 @@ export async function syncFiles(
   dataSourceConfig: DataSourceConfig,
   nextPageToken?: string
 ) {
-  const folders = await GoogleDriveFolders.findAll({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  const foldersIds = folders.map((f) => f.folderId);
+  const foldersIds = await getFoldersToSync(connectorId);
   const authCredentials = await getAuthObject(nangoConnectionId);
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
@@ -129,7 +125,7 @@ export async function syncFiles(
         url: file.webViewLink ? file.webViewLink : undefined,
       };
     });
-  const queue = new PQueue({ concurrency: 30 });
+  const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
@@ -151,7 +147,6 @@ export async function syncFiles(
     })
   );
 
-  // return res.data;
   return {
     nextPageToken: res.data.nextPageToken,
     count: res.data.files.length,
@@ -165,7 +160,6 @@ async function syncOneFile(
   fileId: string,
   webViewLink?: string
 ) {
-  console.log("syncOneFile", fileId);
   const docs = google.docs({ version: "v1", auth: oauth2client });
   const res = await docs.documents.get({
     documentId: fileId,
@@ -224,7 +218,7 @@ async function syncOneFile(
 
 function googleDocJSON2Text(
   jsonDoc: ReturnType<typeof convertGoogleDocumentToJson>
-) {
+): string {
   const arrayDoc: string[] = [];
   for (const element of jsonDoc.content) {
     if (typeof element === "object") {
@@ -243,30 +237,6 @@ function googleDocJSON2Text(
   return arrayDoc.join("\n");
 }
 
-export async function _syncAllFiles(
-  connectorId: ModelId,
-  nangoConnectionId: string,
-  dataSourceConfig: DataSourceConfig
-) {
-  let nextPageToken: string | undefined | null = undefined;
-  const files = [];
-  do {
-    const res = await syncFiles(
-      connectorId,
-      nangoConnectionId,
-      dataSourceConfig,
-      nextPageToken
-    );
-    nextPageToken = res.nextPageToken;
-    if (!res.files) {
-      throw new Error("No files found");
-    }
-    for (const file of res.files) {
-      files.push(file);
-    }
-  } while (nextPageToken);
-}
-
 /**
  * This function performs a BFS search in the parents tree of the object to check
  * if the object is in a list of folders.
@@ -278,14 +248,12 @@ async function objectIsInFolder(
   objectId: string,
   foldersIds: string[]
 ) {
-  // For now, we always return true until we have the file picker.
-  return true;
   const drive = await getDriveClient(oauth2client);
   // Parents Queue to BFS the parents tree.
   // Objects in Google Drive can have multiple parents.
   const parentsQueue: string[] = [];
   parentsQueue.push(objectId);
-  do {
+  while (parentsQueue.length > 0) {
     const currentObject = parentsQueue.shift();
     if (!currentObject) {
       // This makes Typescript happy.
@@ -304,11 +272,12 @@ async function objectIsInFolder(
         `Error getting object. objetId:${objectId} status_code: ${res.status}. status_text: ${res.statusText}`
       );
     }
-    if (!res.data.parents) {
-      return false;
+    if (res.data.parents && res.data.parents.length > 0) {
+      parentsQueue.push(...res.data.parents);
     }
-    parentsQueue.push(...res.data.parents);
-  } while (parentsQueue.length > 0);
+  }
+
+  return false;
 }
 
 export async function incrementalSync(
@@ -316,16 +285,18 @@ export async function incrementalSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveId: string
-) {
+): Promise<number> {
   const lastSyncToken = await getSyncPageToken(
     connectorId,
     nangoConnectionId,
     driveId
   );
+  const foldersIds = await getFoldersToSync(connectorId);
 
   const driveClient = await getDriveClient(nangoConnectionId);
   const oauth2client = await getAuthObject(nangoConnectionId);
   let nextPageToken: string | undefined = undefined;
+  let changeCount = 0;
   do {
     const changesRes = await driveClient.changes.list({
       driveId: driveId,
@@ -345,6 +316,7 @@ export async function incrementalSync(
     }
 
     for (const change of changesRes.data.changes) {
+      changeCount++;
       if (change.changeType !== "file") {
         continue;
       }
@@ -352,6 +324,9 @@ export async function incrementalSync(
         continue;
       }
       if (!change.file.id) {
+        continue;
+      }
+      if (!(await objectIsInFolder(oauth2client, change.file.id, foldersIds))) {
         continue;
       }
       await syncOneFile(
@@ -373,6 +348,8 @@ export async function incrementalSync(
       });
     }
   } while (nextPageToken);
+
+  return changeCount;
 }
 
 async function getSyncPageToken(
@@ -408,4 +385,16 @@ async function getSyncPageToken(
   }
 
   return lastSyncToken;
+}
+
+async function getFoldersToSync(connectorId: ModelId) {
+  const folders = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  const foldersIds = folders.map((f) => f.folderId);
+
+  return foldersIds;
 }

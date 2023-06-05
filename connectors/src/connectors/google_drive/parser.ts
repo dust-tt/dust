@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+// This file was downloaded from https://github.com/filipedeschamps/parse-google-docs-json
+// I only fixed the imports (from require()).
 
 import _get from "lodash.get";
 import _last from "lodash.last";
