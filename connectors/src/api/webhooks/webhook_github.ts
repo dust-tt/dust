@@ -112,20 +112,11 @@ const _webhookGithubAPIHandler = async (
 ) => {
   const event = req.headers["x-github-event"];
   const jsonBody = req.body;
-  const action = jsonBody.action;
 
   if (!event || typeof event !== "string") {
     return res.status(400).json({
       error: {
         message: "Missing `x-github-event` header",
-      },
-    });
-  }
-
-  if (!action) {
-    return res.status(400).json({
-      error: {
-        message: "Missing `action` in payload",
       },
     });
   }
