@@ -29,6 +29,7 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
+import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -120,31 +121,9 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-type RetrievedDocument = {
-  data_source_id: string;
-  source_url: string;
-  document_id: string;
-  timestamp: string;
-  tags: string[];
-  score: number;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number;
-  }[];
-};
-
-type Message = {
-  role: "user" | "retrieval" | "assistant" | "error";
-  runRetrieval?: boolean;
-  runAssistant?: boolean;
-  message?: string; // for `user`, `assistant` and `error` messages
-  retrievals?: RetrievedDocument[]; // for `retrieval` messages
-};
-
-const providerFromDocument = (document: RetrievedDocument) => {
+const providerFromDocument = (document: ChatRetrievedDocumentType) => {
   let provider = "none";
-  switch (document.data_source_id) {
+  switch (document.dataSourceId) {
     case "managed-slack":
       provider = "slack";
       break;
@@ -155,8 +134,8 @@ const providerFromDocument = (document: RetrievedDocument) => {
   return provider;
 };
 
-const titleFromDocument = (document: RetrievedDocument) => {
-  let title = document.document_id;
+const titleFromDocument = (document: ChatRetrievedDocumentType) => {
+  let title = document.documentId;
   // Try to look for a title tag.
   for (const tag of document.tags) {
     if (tag.startsWith("title:")) {
@@ -164,7 +143,7 @@ const titleFromDocument = (document: RetrievedDocument) => {
     }
   }
 
-  switch (document.data_source_id) {
+  switch (document.dataSourceId) {
     case "managed-slack":
       for (const tag of document.tags) {
         if (tag.startsWith("channelName:")) {
@@ -176,7 +155,11 @@ const titleFromDocument = (document: RetrievedDocument) => {
   return title;
 };
 
-export function DocumentView({ document }: { document: RetrievedDocument }) {
+export function DocumentView({
+  document,
+}: {
+  document: ChatRetrievedDocumentType;
+}) {
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
   const [chunkExpanded, setChunkExpanded] = useState(false);
 
@@ -207,7 +190,7 @@ export function DocumentView({ document }: { document: RetrievedDocument }) {
         </div>
         <div className="flex flex-initial">
           <a
-            href={document.source_url}
+            href={document.sourceUrl}
             target={"_blank"}
             className="block w-32 truncate text-gray-600 sm:w-fit"
           >
@@ -251,7 +234,7 @@ export function RetrievalsView({
   message,
   isLatest,
 }: {
-  message: Message;
+  message: ChatMessageType;
   isLatest: boolean;
 }) {
   const [summary, setSummary] = useState<{
@@ -266,10 +249,10 @@ export function RetrievalsView({
       };
       message.retrievals.forEach((r) => {
         const provider = providerFromDocument(r);
-        if (r.data_source_id in summary) {
-          summary[r.data_source_id].count += 1;
+        if (r.dataSourceId in summary) {
+          summary[r.dataSourceId].count += 1;
         } else {
-          summary[r.data_source_id] = {
+          summary[r.dataSourceId] = {
             provider,
             count: 1,
           };
@@ -354,7 +337,7 @@ export function MessageView({
   isLatestRetrieval,
 }: {
   user: UserType | null;
-  message: Message;
+  message: ChatMessageType;
   loading: boolean;
   isLatestRetrieval: boolean;
 }) {
@@ -430,11 +413,13 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [title, setTitle] = useState<string>("New Chat");
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+
   const [dataSources, setDataSources] = useState(workspaceDataSources);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<Message | null>(null);
+  const [response, setResponse] = useState<ChatMessageType | null>(null);
   const [commands, setCommands] = useState<
     { cmd: string; description: string }[]
   >([]);
@@ -497,6 +482,43 @@ export default function AppChat({
     setLoading(false);
   };
 
+  const updateTitle = async (messages: ChatMessageType[]) => {
+    const m = messages.filter(
+      (m) => m.role === "user" || m.role === "assistant"
+    );
+
+    const config = cloneBaseConfig(DustProdActionRegistry["chat-title"].config);
+
+    const context = {
+      user: {
+        username: user?.username,
+        full_name: user?.name,
+      },
+      workspace: owner.name,
+      date_today: new Date().toISOString().split("T")[0],
+    };
+
+    const res = await runActionStreamed(owner, "chat-title", config, [
+      { messages: m, context },
+    ]);
+    if (res.isErr()) {
+      return;
+    }
+
+    const { eventStream } = res.value;
+
+    for await (const event of eventStream) {
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (event.content.block_name === "OUTPUT") {
+          if (!e.error) {
+            setTitle(e.value.title);
+          }
+        }
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     let runRetrieval = true;
     let runAssistant = true;
@@ -513,7 +535,7 @@ export default function AppChat({
 
     // clone messages add new message to the end
     const m = [...messages];
-    const userMessage: Message = {
+    const userMessage: ChatMessageType = {
       role: "user",
       runRetrieval,
       runAssistant,
@@ -526,7 +548,7 @@ export default function AppChat({
     setLoading(true);
 
     if (runRetrieval) {
-      const retrievalMessage: Message = {
+      const retrievalMessage: ChatMessageType = {
         role: "retrieval",
       };
       setResponse(retrievalMessage);
@@ -550,7 +572,7 @@ export default function AppChat({
         m.push({
           role: "error",
           message: res.error.message,
-        } as Message);
+        } as ChatMessageType);
         // console.log("ERROR", res.error);
         setMessages(m);
         setResponse(null);
@@ -567,7 +589,7 @@ export default function AppChat({
           m.push({
             role: "error",
             message: event.content.message,
-          } as Message);
+          } as ChatMessageType);
           setMessages(m);
           setResponse(null);
           setLoading(false);
@@ -580,7 +602,7 @@ export default function AppChat({
               m.push({
                 role: "error",
                 message: e.error,
-              } as Message);
+              } as ChatMessageType);
               setMessages(m);
               setResponse(null);
               setLoading(false);
@@ -599,7 +621,7 @@ export default function AppChat({
     }
 
     if (runAssistant) {
-      const assistantMessage: Message = {
+      const assistantMessage: ChatMessageType = {
         role: "assistant",
         message: "",
       };
@@ -625,7 +647,7 @@ export default function AppChat({
         m.push({
           role: "error",
           message: res.error.message,
-        } as Message);
+        } as ChatMessageType);
         // console.log("ERROR", res.error);
         setMessages(m);
         setResponse(null);
@@ -647,7 +669,7 @@ export default function AppChat({
           m.push({
             role: "error",
             message: event.content.message,
-          } as Message);
+          } as ChatMessageType);
           setMessages(m);
           setResponse(null);
           setLoading(false);
@@ -660,7 +682,7 @@ export default function AppChat({
               m.push({
                 role: "error",
                 message: e.error,
-              } as Message);
+              } as ChatMessageType);
               setMessages(m);
               setResponse(null);
               setLoading(false);
@@ -676,6 +698,11 @@ export default function AppChat({
           }
         }
       }
+
+      // Update title and save the conversation.
+      void (async () => {
+        await updateTitle(m);
+      })();
     }
 
     setLoading(false);
@@ -726,65 +753,73 @@ export default function AppChat({
                 <div className="max-h-0">
                   <div className="mx-auto max-w-4xl px-6 py-2">
                     {messages.length > 0 ? (
-                      <div className="text-sm">
-                        {messages.map((m, i) => {
-                          return m.role === "error" ? (
-                            <div key={i}>
-                              <div className="my-2 ml-12 flex flex-col">
-                                <div className="flex-initial text-xs font-bold text-red-500">
-                                  Oops! An error occured (and the team has been
-                                  notified).
-                                </div>
-                                <div className="flex-initial text-xs text-gray-500">
-                                  Please give it another try, and don't hesitate
-                                  to reach out if the problem persists.
-                                </div>
-                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                                  {m.message}
+                      <div>
+                        <div className="mx-auto my-4 flex max-w-xl flex-col items-center justify-center text-sm font-bold">
+                          {title}
+                        </div>
+                        <div className="text-sm">
+                          {messages.map((m, i) => {
+                            return m.role === "error" ? (
+                              <div key={i}>
+                                <div className="my-2 ml-12 flex flex-col">
+                                  <div className="flex-initial text-xs font-bold text-red-500">
+                                    Oops! An error occured (and the team has
+                                    been notified).
+                                  </div>
+                                  <div className="flex-initial text-xs text-gray-500">
+                                    Please give it another try, and don't
+                                    hesitate to reach out if the problem
+                                    persists.
+                                  </div>
+                                  <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                                    {m.message}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div key={i}>
+                            ) : (
+                              <div key={i}>
+                                <MessageView
+                                  user={user}
+                                  message={m}
+                                  loading={false}
+                                  // isLatest={
+                                  //   !response && i === messages.length - 1
+                                  // }
+                                  isLatestRetrieval={
+                                    !(
+                                      response && response.role === "retrieval"
+                                    ) &&
+                                    (() => {
+                                      for (
+                                        let j = messages.length - 1;
+                                        j >= 0;
+                                        j--
+                                      ) {
+                                        if (messages[j].role === "retrieval") {
+                                          return i === j;
+                                        }
+                                      }
+                                      return false;
+                                    })()
+                                  }
+                                />
+                              </div>
+                            );
+                          })}
+                          {response ? (
+                            <div key={messages.length}>
                               <MessageView
                                 user={user}
-                                message={m}
-                                loading={false}
-                                // isLatest={
-                                //   !response && i === messages.length - 1
-                                // }
+                                message={response}
+                                loading={true}
+                                // isLatest={true}
                                 isLatestRetrieval={
-                                  !(
-                                    response && response.role === "retrieval"
-                                  ) &&
-                                  (() => {
-                                    for (
-                                      let j = messages.length - 1;
-                                      j >= 0;
-                                      j--
-                                    ) {
-                                      if (messages[j].role === "retrieval") {
-                                        return i === j;
-                                      }
-                                    }
-                                    return false;
-                                  })()
+                                  response.role === "retrieval"
                                 }
                               />
                             </div>
-                          );
-                        })}
-                        {response ? (
-                          <div key={messages.length}>
-                            <MessageView
-                              user={user}
-                              message={response}
-                              loading={true}
-                              // isLatest={true}
-                              isLatestRetrieval={response.role === "retrieval"}
-                            />
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </div>
                     ) : (
                       <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
@@ -994,7 +1029,7 @@ export default function AppChat({
                             {ds.provider !== "none" ? (
                               <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
                             ) : (
-                              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500 -ml-0.5" />
+                              <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
                             )}
                           </div>
                           <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
