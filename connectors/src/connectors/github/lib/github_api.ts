@@ -22,7 +22,7 @@ type GithubRepo = {
   owner: GithubOrg;
 };
 
-type GithubUser = {
+export type GithubUser = {
   id: number;
   login: string;
 };
@@ -31,6 +31,15 @@ type GithubIssue = {
   id: number;
   number: number;
   title: string;
+  url: string;
+  creator: GithubUser | null;
+  createdAt: Date;
+  updatedAt: Date;
+  body?: string | null;
+};
+
+type GithubIssueComment = {
+  id: number;
   url: string;
   creator: GithubUser | null;
   createdAt: Date;
@@ -59,20 +68,7 @@ export async function getGithubAppPrivateKey(): Promise<string> {
 export async function validateInstallationId(
   installationId: string
 ): Promise<boolean> {
-  if (!GITHUB_APP_ID) {
-    throw new Error("GITHUB_APP_ID not set");
-  }
-
-  const privateKey = await getGithubAppPrivateKey();
-
-  const octokit = new Octokit({
-    authStrategy: createAppAuth,
-    auth: {
-      appId: GITHUB_APP_ID,
-      privateKey: privateKey,
-      installationId,
-    },
-  });
+  const octokit = await getOctokit(installationId);
 
   try {
     await octokit.rest.apps.getAuthenticated();
@@ -88,19 +84,7 @@ export async function getReposPage(
   installationId: string,
   page: number
 ): Promise<GithubRepo[]> {
-  if (!GITHUB_APP_ID) {
-    throw new Error("GITHUB_APP_ID not set");
-  }
-  const privateKey = await getGithubAppPrivateKey();
-
-  const octokit = new Octokit({
-    authStrategy: createAppAuth,
-    auth: {
-      appId: GITHUB_APP_ID,
-      privateKey: privateKey,
-      installationId: installationId,
-    },
-  });
+  const octokit = await getOctokit(installationId);
 
   return (
     await octokit.request("GET /installation/repositories", {
@@ -122,29 +106,20 @@ export async function getReposPage(
   }));
 }
 
-export async function getRepoIssues(
+export async function getRepoIssuesPage(
   installationId: string,
   repoId: string,
-  login: string
+  login: string,
+  page: number
 ): Promise<GithubIssue[]> {
-  if (!GITHUB_APP_ID) {
-    throw new Error("GITHUB_APP_ID not set");
-  }
-  const privateKey = await getGithubAppPrivateKey();
-
-  const octokit = new Octokit({
-    authStrategy: createAppAuth,
-    auth: {
-      appId: GITHUB_APP_ID,
-      privateKey: privateKey,
-      installationId: installationId,
-    },
-  });
+  const octokit = await getOctokit(installationId);
 
   const issues = (
     await octokit.rest.issues.listForRepo({
       owner: login,
       repo: repoId,
+      per_page: API_PAGE_SIZE,
+      page: page,
     })
   ).data;
 
@@ -163,4 +138,87 @@ export async function getRepoIssues(
     updatedAt: new Date(i.updated_at),
     body: i.body,
   }));
+}
+
+export async function getIssue(
+  installationId: string,
+  repoId: string,
+  login: string,
+  issueNumber: number
+): Promise<GithubIssue> {
+  const octokit = await getOctokit(installationId);
+
+  const issue = (
+    await octokit.rest.issues.get({
+      owner: login,
+      repo: repoId,
+      issue_number: issueNumber,
+    })
+  ).data;
+
+  return {
+    id: issue.id,
+    number: issue.number,
+    title: issue.title,
+    url: issue.html_url,
+    creator: issue.user
+      ? {
+          id: issue.user.id,
+          login: issue.user.login,
+        }
+      : null,
+    createdAt: new Date(issue.created_at),
+    updatedAt: new Date(issue.updated_at),
+    body: issue.body,
+  };
+}
+
+export async function getIssueCommentsPage(
+  installationId: string,
+  repoId: string,
+  login: string,
+  issueNumber: number,
+  page: number
+): Promise<GithubIssueComment[]> {
+  const octokit = await getOctokit(installationId);
+
+  const comments = (
+    await octokit.rest.issues.listComments({
+      owner: login,
+      repo: repoId,
+      issue_number: issueNumber,
+      per_page: API_PAGE_SIZE,
+      page: page,
+    })
+  ).data;
+
+  return comments.map((c) => ({
+    id: c.id,
+    url: c.html_url,
+    creator: c.user
+      ? {
+          id: c.user.id,
+          login: c.user.login,
+        }
+      : null,
+    createdAt: new Date(c.created_at),
+    updatedAt: new Date(c.updated_at),
+    body: c.body,
+  }));
+}
+
+async function getOctokit(installationId: string): Promise<Octokit> {
+  if (!GITHUB_APP_ID) {
+    throw new Error("GITHUB_APP_ID not set");
+  }
+  const privateKey = await getGithubAppPrivateKey();
+
+  return new Octokit({
+    authStrategy: createAppAuth,
+    auth: {
+      appId: GITHUB_APP_ID,
+      privateKey: privateKey,
+      installationId: installationId,
+    },
+  });
 }
