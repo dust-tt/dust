@@ -340,6 +340,9 @@ export async function getParsedPage(
     (await getUserName(notionClient, page.last_edited_by.id, pageLogger)) ||
     page.last_edited_by.id;
 
+  // remove base64 images from rendered page
+  renderedPage = renderedPage.replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
+
   return {
     id: page.id,
     url: page.url,
