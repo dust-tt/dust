@@ -105,7 +105,7 @@ export async function syncFiles(
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
     corpora: "allDrives",
-    pageSize: 100,
+    pageSize: 1000,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
@@ -151,7 +151,11 @@ export async function syncFiles(
     })
   );
 
-  return res.data;
+  // return res.data;
+  return {
+    nextPageToken: res.data.nextPageToken,
+    count: res.data.files.length,
+  };
 }
 
 async function syncOneFile(
@@ -179,7 +183,9 @@ async function syncOneFile(
   }
   const tags = [`title:${res.data.title}`];
 
-  const content = convertGoogleDocumentToJson(res.data);
+  const jsonDoc = convertGoogleDocumentToJson(res.data);
+  const textDoc = googleDocJSON2Text(jsonDoc);
+
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
     fileId: fileId,
@@ -188,11 +194,53 @@ async function syncOneFile(
   await upsertToDatasource(
     dataSourceConfig,
     fileId,
-    JSON.stringify(content, null, 2),
+    textDoc,
     webViewLink,
     undefined,
     tags
   );
+}
+
+// Example payload returned by the Google Docs parser util.
+//  {
+//       "h1": "What we’re trying to do"
+//     },
+//     {
+//       "h2": "Key goals"
+//     },
+//     {
+//       "p": ""
+//     },
+//     {
+//       "p": "**For Dust**"
+//     },
+//     {
+//       "ul": [
+//         "Update positioning: from developer platform to Smart Team OS",
+//         "Tease / showcase uses cases for the core apps and platform"
+//       ]
+//     },
+//   }
+
+function googleDocJSON2Text(
+  jsonDoc: ReturnType<typeof convertGoogleDocumentToJson>
+) {
+  const arrayDoc: string[] = [];
+  for (const element of jsonDoc.content) {
+    if (typeof element === "object") {
+      const keys = Object.keys(element);
+      keys.forEach((key) => {
+        if (["p", "h1", "h2", "h3", "h4", "h5", "blockquote"].includes(key)) {
+          arrayDoc.push(element[key]);
+        }
+        if (key === "ul") {
+          arrayDoc.push(...element[key]);
+        }
+      });
+    }
+  }
+
+  return arrayDoc.join("\n");
 }
 
 export async function _syncAllFiles(
@@ -230,6 +278,8 @@ async function objectIsInFolder(
   objectId: string,
   foldersIds: string[]
 ) {
+  // For now, we always return true until we have the file picker.
+  return true;
   const drive = await getDriveClient(oauth2client);
   // Parents Queue to BFS the parents tree.
   // Objects in Google Drive can have multiple parents.

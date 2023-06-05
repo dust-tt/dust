@@ -2,10 +2,17 @@ import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
+import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { syncFiles, getDrivesIds, incrementalSync } = proxyActivities<
   typeof activities
+>({
+  startToCloseTimeout: "10 minutes",
+});
+
+const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
+  typeof sync_status
 >({
   startToCloseTimeout: "10 minutes",
 });
@@ -15,6 +22,7 @@ export async function googleDriveFullSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig
 ) {
+  let totalCount = 0;
   let nextPageToken: string | undefined = undefined;
   do {
     const res = await syncFiles(
@@ -24,7 +32,12 @@ export async function googleDriveFullSync(
       nextPageToken
     );
     nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+    totalCount += res.count;
+    await reportInitialSyncProgress(connectorId, `Synced ${totalCount} files`);
   } while (nextPageToken);
+
+  console.log("googleDriveFullSync done for connectorId", connectorId);
+  await syncSucceeded(connectorId);
 }
 
 export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
@@ -45,6 +58,8 @@ export async function googleDriveIncrementalSync(
       driveId
     );
   }
+  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
+  await syncSucceeded(connectorId);
 }
 
 export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
