@@ -32,7 +32,7 @@ export const ConnectorsAPI = {
     workspaceId: string,
     workspaceAPIKey: string,
     dataSourceName: string,
-    nangoConnectionId: string
+    connectionId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
@@ -41,7 +41,9 @@ export const ConnectorsAPI = {
         workspaceId,
         workspaceAPIKey,
         dataSourceName,
-        nangoConnectionId,
+        connectionId,
+        // TODO: deprecate_nango_connection_id_2023-06-06
+        nangoConnectionId: connectionId,
       }),
     });
 

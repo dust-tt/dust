@@ -17,7 +17,7 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  connectionId: string
 ) => Promise<Result<string, Error>>;
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<

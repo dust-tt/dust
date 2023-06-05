@@ -398,7 +398,8 @@ export async function garbageCollectActivity(
     "Found pages to delete."
   );
   const notionAccessToken = await getNotionAccessToken(
-    connector.nangoConnectionId
+    // TODO: deprecate_nango_connection_id_2023-06-06
+    connector.connectionId || connector.nangoConnectionId
   );
   for (const page of pagesToDelete) {
     if (

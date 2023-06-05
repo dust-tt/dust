@@ -32,7 +32,9 @@ export class Connector extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
-  declare nangoConnectionId: string;
+
+  declare connectionId?: string;
+
   declare workspaceAPIKey: string;
   declare workspaceId: string;
   declare dataSourceName: string;
@@ -43,6 +45,9 @@ export class Connector extends Model<
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
+
+  // TODO: Deprecated
+  declare nangoConnectionId: string;
 }
 
 Connector.init(
@@ -66,9 +71,9 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    nangoConnectionId: {
+    connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,
@@ -105,6 +110,12 @@ Connector.init(
     firstSyncProgress: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+
+    // TODO: deprecate_nango_connection_id_2023-06-06
+    nangoConnectionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {
