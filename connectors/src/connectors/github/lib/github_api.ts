@@ -1,8 +1,15 @@
 import { createAppAuth } from "@octokit/auth-app";
 import fs from "fs-extra";
-import { App, Octokit } from "octokit";
+import { Octokit } from "octokit";
 
 import logger from "@connectors/logger/logger";
+
+const API_PAGE_SIZE = 100;
+
+type GithubOrg = {
+  id: number;
+  login: string;
+};
 
 type GithubRepo = {
   id: number;
@@ -12,6 +19,7 @@ type GithubRepo = {
   createdAt: Date | null;
   updatedAt: Date | null;
   description?: string | null;
+  owner: GithubOrg;
 };
 
 type GithubUser = {
@@ -24,7 +32,7 @@ type GithubIssue = {
   number: number;
   title: string;
   url: string;
-  creator: GithubUser;
+  creator: GithubUser | null;
   createdAt: Date;
   updatedAt: Date;
   body?: string | null;
@@ -76,7 +84,10 @@ export async function validateInstallationId(
   return true;
 }
 
-export async function getRepos(installationId: string): Promise<GithubRepo[]> {
+export async function getReposPage(
+  installationId: string,
+  page: number
+): Promise<GithubRepo[]> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }
@@ -92,7 +103,10 @@ export async function getRepos(installationId: string): Promise<GithubRepo[]> {
   });
 
   return (
-    await octokit.request("GET /installation/repositories")
+    await octokit.request("GET /installation/repositories", {
+      per_page: API_PAGE_SIZE,
+      page: page,
+    })
   ).data.repositories.map((r) => ({
     id: r.id,
     name: r.name,
@@ -101,10 +115,18 @@ export async function getRepos(installationId: string): Promise<GithubRepo[]> {
     createdAt: r.created_at ? new Date(r.created_at) : null,
     updatedAt: r.updated_at ? new Date(r.updated_at) : null,
     description: r.description,
+    owner: {
+      id: r.owner.id,
+      login: r.owner.login,
+    },
   }));
 }
 
-export async function getRepoIssues(installationId: string, repoId: string) {
+export async function getRepoIssues(
+  installationId: string,
+  repoId: string,
+  login: string
+): Promise<GithubIssue[]> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }
@@ -119,20 +141,26 @@ export async function getRepoIssues(installationId: string, repoId: string) {
     },
   });
 
-  // await octokit.rest.issues.listForRepo({
-  //   repo: repoId,
-  // });
-
   const issues = (
-    await octokit.request("GET /repositories/{repository_id}/issues", {
-      repository_id: repoId,
+    await octokit.rest.issues.listForRepo({
+      owner: login,
+      repo: repoId,
     })
   ).data;
 
-  return issues.map((i: any) => ({
+  return issues.map((i) => ({
     id: i.id,
     number: i.number,
     title: i.title,
-    url: i.url,
+    url: i.html_url,
+    creator: i.user
+      ? {
+          id: i.user.id,
+          login: i.user.login,
+        }
+      : null,
+    createdAt: new Date(i.created_at),
+    updatedAt: new Date(i.updated_at),
+    body: i.body,
   }));
 }
