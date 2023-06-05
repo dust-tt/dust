@@ -983,7 +983,8 @@ export default function AppChat({
                         >
                           <div
                             className={classNames(
-                              "mr-1 flex h-4 w-4 flex-initial cursor-pointer",
+                              "flex h-4 w-4 flex-initial cursor-pointer",
+                              ds.provider !== "none" ? "mr-1" : "",
                               ds.selected ? "opacity-100" : "opacity-25"
                             )}
                             onClick={() => {
@@ -993,7 +994,7 @@ export default function AppChat({
                             {ds.provider !== "none" ? (
                               <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
                             ) : (
-                              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                              <DocumentDuplicateIcon className="h-4 w-4 text-slate-500 -ml-0.5" />
                             )}
                           </div>
                           <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
