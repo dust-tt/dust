@@ -1,11 +1,13 @@
-import { PlusIcon } from "@heroicons/react/20/solid";
+import { Dialog, Transition } from "@headlessui/react";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import { ActionButton } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -14,8 +16,7 @@ import {
   ConnectorsAPI,
   ConnectorType,
 } from "@app/lib/connectors_api";
-import { classNames } from "@app/lib/utils";
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -260,11 +261,21 @@ export default function DataSourcesView({
   useEffect(() => {
     setLocalIntegrations(localIntegrations);
   }, [localIntegrations]);
+  const googleDrive = integrations.find((integration) => {
+    return integration.connectorProvider === "google_drive";
+  });
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
+          {googleDrive && googleDrive.connector && (
+            <GoogleDriveFoldersPicker
+              owner={owner}
+              connectorId={googleDrive.connector.id}
+            />
+          )}
+
           <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="">
@@ -521,5 +532,174 @@ export default function DataSourcesView({
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function GoogleDriveFoldersPicker(props: {
+  // onSave: (folders: string[]) => void;
+  owner: WorkspaceType;
+  connectorId: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(
+    new Set<string>()
+  );
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const foldersRes = await fetch(
+        `/api/w/${props.owner.sId}/data_sources/google_drive/folders?connectorId=${props.connectorId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (foldersRes.ok) {
+        const folders = await foldersRes.json();
+        setFolders(folders);
+      } else {
+        window.alert("Failed to fetch folders");
+      }
+    })();
+  }, []);
+
+  const onSave = async (folders: string[]) => {
+    const res = await fetch(
+      `/api/w/${props.owner.sId}/data_sources/google_drive/folders`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folders: folders,
+          connectorId: props.connectorId.toString(),
+        }),
+      }
+    );
+    if (res.ok) {
+    } else {
+      window.alert("Failed to save folders");
+    }
+  };
+
+  const cancelButtonRef = useRef(null);
+
+  return (
+    <Transition.Root show={open} as={Fragment}>
+      <Dialog
+        as="div"
+        className="relative z-10"
+        initialFocus={cancelButtonRef}
+        onClose={setOpen}
+      >
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+              enterTo="opacity-100 translate-y-0 sm:scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            >
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full  sm:mx-0 sm:h-10 sm:w-10">
+                    <img
+                      src="/static/google_drive_32x32.png"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-base font-semibold leading-6 text-gray-900"
+                    >
+                      Select the folders to synchronize.
+                    </Dialog.Title>
+                    <div className="mt-2">
+                      <ul className="h-96 w-auto overflow-auto">
+                        {folders.map((folder) => {
+                          return (
+                            <label key={folder.id} htmlFor={folder.id}>
+                              <div className="relative flex items-start p-1">
+                                <div className="flex h-6 items-center text-2xl">
+                                  {/* <FolderIcon className="-ml-1 mr-1 h-5 w-5" /> */}
+                                  <input
+                                    id={folder.id}
+                                    aria-describedby="comments-description"
+                                    type="checkbox"
+                                    name={folder.id}
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 "
+                                    checked={selectedFolders.has(folder.id)}
+                                    onChange={() => {
+                                      if (selectedFolders.has(folder.id)) {
+                                        selectedFolders.delete(folder.id);
+                                        setSelectedFolders(
+                                          new Set(selectedFolders)
+                                        );
+                                      } else {
+                                        selectedFolders.add(folder.id);
+                                        setSelectedFolders(
+                                          new Set(selectedFolders)
+                                        );
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                <div className="ml-3 text-base leading-6">
+                                  <label
+                                    htmlFor="comments"
+                                    className="font-medium text-gray-900"
+                                  >
+                                    {folder.name}
+                                  </label>{" "}
+                                  <span
+                                    id="comments-description"
+                                    className="text-gray-500"
+                                  >
+                                    Drive
+                                  </span>
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                  <ActionButton
+                    onClick={() => {
+                      void onSave(Array.from(selectedFolders));
+                    }}
+                  >
+                    Save
+                  </ActionButton>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition.Root>
   );
 }

@@ -4,6 +4,10 @@ import express from "express";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import {
+  googleDriveGetFoldersAPIHandler,
+  googleDriveSetFoldersAPIHandler,
+} from "@connectors/api/google_drive";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
@@ -28,6 +32,15 @@ export function startServer(port: number) {
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
+
+  app.get(
+    "/connectors/:connector_id/google_drive/get_folders",
+    googleDriveGetFoldersAPIHandler
+  );
+  app.post(
+    "/connectors/:connector_id/google_drive/set_folders",
+    googleDriveSetFoldersAPIHandler
+  );
 
   app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);
