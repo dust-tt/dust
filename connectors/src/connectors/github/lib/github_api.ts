@@ -108,16 +108,18 @@ export async function getReposPage(
 
 export async function getRepoIssuesPage(
   installationId: string,
-  repoId: string,
+  repoName: string,
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
   const octokit = await getOctokit(installationId);
 
+  console.log("getting issues for", installationId, repoName, login, page);
+
   const issues = (
     await octokit.rest.issues.listForRepo({
       owner: login,
-      repo: repoId,
+      repo: repoName,
       per_page: API_PAGE_SIZE,
       page: page,
     })
@@ -142,7 +144,7 @@ export async function getRepoIssuesPage(
 
 export async function getIssue(
   installationId: string,
-  repoId: string,
+  repoName: string,
   login: string,
   issueNumber: number
 ): Promise<GithubIssue> {
@@ -151,7 +153,7 @@ export async function getIssue(
   const issue = (
     await octokit.rest.issues.get({
       owner: login,
-      repo: repoId,
+      repo: repoName,
       issue_number: issueNumber,
     })
   ).data;
@@ -175,7 +177,7 @@ export async function getIssue(
 
 export async function getIssueCommentsPage(
   installationId: string,
-  repoId: string,
+  repoName: string,
   login: string,
   issueNumber: number,
   page: number
@@ -185,7 +187,7 @@ export async function getIssueCommentsPage(
   const comments = (
     await octokit.rest.issues.listComments({
       owner: login,
-      repo: repoId,
+      repo: repoName,
       issue_number: issueNumber,
       per_page: API_PAGE_SIZE,
       page: page,

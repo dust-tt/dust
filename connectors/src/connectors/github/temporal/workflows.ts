@@ -10,6 +10,11 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getFullSyncWorkflowId } from "./utils";
 
+const { githubSaveStartSyncActivity, githubSaveSuccessSyncActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "1 minute",
+  });
+
 const {
   githubGetReposResultPageActivity,
   githubGetRepoIssuesResultPageActivity,
@@ -28,6 +33,8 @@ export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string
 ) {
+  await githubSaveStartSyncActivity(dataSourceConfig);
+
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -38,6 +45,7 @@ export async function githubFullSyncWorkflow(
   const promises: Promise<void>[] = [];
 
   let pageNumber = 1; // 1-indexed
+
   for (;;) {
     const resultsPage = await githubGetReposResultPageActivity(
       githubInstallationId,
@@ -51,7 +59,7 @@ export async function githubFullSyncWorkflow(
 
     for (const repo of resultsPage) {
       const fullSyncWorkflowId = getFullSyncWorkflowId(dataSourceConfig);
-      const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.repoId}`;
+      const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.name}`;
       promises.push(
         queue.add(() =>
           executeChild(githubRepoSyncWorkflow.name, {
@@ -59,7 +67,7 @@ export async function githubFullSyncWorkflow(
             args: [
               dataSourceConfig,
               githubInstallationId,
-              repo.repoId,
+              repo.name,
               repo.login,
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -70,19 +78,21 @@ export async function githubFullSyncWorkflow(
   }
 
   await Promise.all(promises);
+
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
 export async function githubRepoSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
-  repoId: string,
+  repoName: string,
   repoLogin: string
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
     githubInstallationId: githubInstallationId,
-    repoId,
+    repoName,
     repoLogin,
   };
 
@@ -95,7 +105,7 @@ export async function githubRepoSyncWorkflow(
   for (;;) {
     const resultsPage = await githubGetRepoIssuesResultPageActivity(
       githubInstallationId,
-      repoId,
+      repoName,
       repoLogin,
       pageNumber,
       loggerArgs
@@ -109,7 +119,7 @@ export async function githubRepoSyncWorkflow(
         queue.add(() =>
           githubUpsertIssueActivity(
             githubInstallationId,
-            repoId,
+            repoName,
             repoLogin,
             issueNumber,
             dataSourceConfig,

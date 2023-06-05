@@ -134,7 +134,7 @@ Connector.init(
       },
       // githubInstallationId must be set if type is github and not set otherwise
       githubInstallationIdMustBeSet() {
-        if ((this.type === "github") === !!this.githubInstallationId) {
+        if ((this.type === "github") !== !!this.githubInstallationId) {
           throw new Error("githubInstallationId must be set");
         }
       },
