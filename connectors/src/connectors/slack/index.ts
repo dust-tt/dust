@@ -1,5 +1,7 @@
 import { WebClient } from "@slack/web-api";
+import { Transaction } from "sequelize";
 
+import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
   Connector,
   sequelize_conn,
@@ -9,10 +11,7 @@ import {
 import { nango_client } from "@connectors/lib/nango_client.js";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-export type NangoConnectionId = string;
-import { Transaction } from "sequelize";
-
-import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { getAccessToken, getSlackClient } from "./temporal/activities";
 
@@ -21,8 +20,10 @@ const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
 
 export async function createSlackConnector(
   dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: NangoConnectionId
+  connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
+  const nangoConnectionId = connectionId;
+
   const res = await sequelize_conn.transaction(
     async (t): Promise<Result<Connector, Error>> => {
       const nango = nango_client();
@@ -58,7 +59,9 @@ export async function createSlackConnector(
       const connector = await Connector.create(
         {
           type: "slack",
+          // TODO: deprecate_nango_connection_id_2023-06-06
           nangoConnectionId,
+          connectionId: nangoConnectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
@@ -109,7 +112,10 @@ export async function cleanupSlackConnector(
   if (!SLACK_CLIENT_SECRET) {
     return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
   }
-  const accessToken = await getAccessToken(connector.nangoConnectionId);
+  // TODO: deprecate_nango_connection_id_2023-06-06
+  const accessToken = await getAccessToken(
+    connector.connectionId || connector.nangoConnectionId
+  );
   const slackClient = getSlackClient(accessToken);
   const deleteRes = await slackClient.apps.uninstall({
     client_id: SLACK_CLIENT_ID,

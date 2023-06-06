@@ -129,7 +129,8 @@ const _webhookSlackAPIHandler = async (
         });
       }
       const slackAccessToken = await getAccessToken(
-        connector.nangoConnectionId
+        // TODO: deprecate_nango_connection_id_2023-06-06
+        connector.connectionId || connector.nangoConnectionId
       );
       const myUserId = await whoAmI(slackAccessToken);
       if (myUserId !== req.body.event.user) {

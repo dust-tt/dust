@@ -13,7 +13,9 @@ type ConnectorCreateReqBody = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
+  // TODO: deprecate_nango_connection_id_2023-06-06
   nangoConnectionId: string;
+  connectionId?: string;
 };
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
@@ -31,13 +33,14 @@ const _createConnectorAPIHandler = async (
       !req.body.workspaceAPIKey ||
       !req.body.dataSourceName ||
       !req.body.workspaceId ||
-      !req.body.nangoConnectionId
+      // TODO: deprecate_nango_connection_id_2023-06-06
+      !(req.body.connectionId || req.body.nangoConnectionId)
     ) {
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
           message: `Missing required parameters. Required : workspaceAPIKey,
-           dataSourceName, workspaceId, nangoConnectionId`,
+           dataSourceName, workspaceId, connectionId`,
         },
         status_code: 400,
       });
@@ -61,7 +64,8 @@ const _createConnectorAPIHandler = async (
         dataSourceName: req.body.dataSourceName,
         workspaceId: req.body.workspaceId,
       },
-      req.body.nangoConnectionId
+      // TODO: deprecate_nango_connection_id_2023-06-06
+      req.body.connectionId || req.body.nangoConnectionId
     );
 
     if (connectorRes.isErr()) {

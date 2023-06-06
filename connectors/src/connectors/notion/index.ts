@@ -16,14 +16,17 @@ import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
 
 export async function createNotionConnector(
   dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
+  const nangoConnectionId = connectionId;
+
   if (!NANGO_NOTION_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
@@ -42,7 +45,9 @@ export async function createNotionConnector(
     const connector = await Connector.create(
       {
         type: "notion",
+        // TODO: deprecate_nango_connection_id_2023-06-06
         nangoConnectionId,
+        connectionId: nangoConnectionId,
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,

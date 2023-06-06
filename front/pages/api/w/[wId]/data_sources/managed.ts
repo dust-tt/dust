@@ -56,7 +56,7 @@ async function handler(
 
       if (
         !req.body ||
-        typeof req.body.nangoConnectionId !== "string" ||
+        typeof req.body.connectionId !== "string" ||
         !["slack", "notion"].includes(req.body.provider)
       ) {
         return apiError(req, res, {
@@ -64,7 +64,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { nangoConnectionId: string, provider: string }.",
+              "The request body is invalid, expects { connectionId: string, provider: string }.",
           },
         });
       }
@@ -162,7 +162,7 @@ async function handler(
         owner.sId,
         systemAPIKeyRes.value.secret,
         dataSourceName,
-        req.body.nangoConnectionId
+        req.body.connectionId
       );
       if (connectorsRes.isErr()) {
         logger.error(

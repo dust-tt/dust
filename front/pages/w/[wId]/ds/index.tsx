@@ -204,7 +204,7 @@ export default function DataSourcesView({
 
     try {
       const {
-        connectionId: nangoConnectionId,
+        connectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(
         nangoConnectorId,
         `${provider}-${owner.sId}`
@@ -219,7 +219,7 @@ export default function DataSourcesView({
         },
         body: JSON.stringify({
           provider,
-          nangoConnectionId,
+          connectionId,
         }),
       });
       if (res.ok) {
