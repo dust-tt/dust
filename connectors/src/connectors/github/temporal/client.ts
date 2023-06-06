@@ -169,6 +169,6 @@ export async function launchGithubIssueSyncWorkflow(
       issueNumber,
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getIssueSyncWorkflowId(dataSourceConfig, issueNumber),
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
   });
 }

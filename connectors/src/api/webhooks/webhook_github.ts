@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 
 import {
+  isCommentPayload,
+  isGithubWebhookPayload,
+  isIssuePayload,
+  isPullRequestPayload,
+  isRepositoriesAddedPayload,
+  isRepositoriesRemovedPayload,
+} from "@connectors/connectors/github/lib/github_webhooks";
+import {
   launchGithubIssueSyncWorkflow,
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
@@ -10,119 +18,14 @@ import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
+const MUST_HANDLE = {
+  installation_repositories: new Set(["added", "removed"]),
+  issues: new Set(["opened", "edited", "deleted"]),
+  issue_comment: new Set(["created", "edited", "deleted"]),
+  pull_request: new Set(["opened", "edited"]),
+} as Record<string, Set<string>>;
+
 const logger = mainLogger.child({ provider: "github" });
-
-interface GithubWebhookPayload {
-  action: string;
-  installation: {
-    id: number;
-  };
-  organization: {
-    login: string;
-  };
-  repository: {
-    name: string;
-    id: number;
-  };
-}
-
-function isGithubWebhookPayload(
-  payload: unknown
-): payload is GithubWebhookPayload {
-  return (
-    !!(payload as GithubWebhookPayload).action &&
-    typeof (payload as GithubWebhookPayload).action === "string" &&
-    !!(payload as GithubWebhookPayload).installation &&
-    typeof (payload as GithubWebhookPayload).installation.id === "number" &&
-    !!(payload as GithubWebhookPayload).organization &&
-    typeof (payload as GithubWebhookPayload).organization.login === "string" &&
-    !!(payload as GithubWebhookPayload).repository &&
-    typeof (payload as GithubWebhookPayload).repository.name === "string"
-  );
-}
-
-interface RepositoriesAddedPayload {
-  action: "added";
-  repositories_added: { name: string; id: number }[];
-}
-
-function isRepositoriesAddedPayload(
-  payload: unknown
-): payload is RepositoriesAddedPayload {
-  return (
-    !!(payload as RepositoriesAddedPayload).repositories_added &&
-    (payload as RepositoriesAddedPayload).action === "added"
-  );
-}
-
-interface RepositoriesRemovedPayload {
-  action: "removed";
-  repositories_removed: { name: string; id: number }[];
-}
-
-function isRepositoriesRemovedPayload(
-  payload: unknown
-): payload is RepositoriesRemovedPayload {
-  return (
-    !!(payload as RepositoriesRemovedPayload).repositories_removed &&
-    (payload as RepositoriesRemovedPayload).action === "removed"
-  );
-}
-
-const issuePayloadActions = ["opened", "edited", "deleted"] as const;
-
-interface IssuePayload {
-  action: (typeof issuePayloadActions)[number];
-  issue: { id: number; number: number };
-}
-
-function isIssuePayload(payload: unknown): payload is IssuePayload {
-  return (
-    !!(payload as IssuePayload).issue &&
-    issuePayloadActions.includes((payload as IssuePayload).action)
-  );
-}
-
-const commentPayloadActions = ["created", "edited", "deleted"] as const;
-
-interface CommentPayload {
-  action: (typeof commentPayloadActions)[number];
-  issue: { id: number; number: number };
-}
-
-function isCommentPayload(payload: unknown): payload is CommentPayload {
-  return (
-    !!(payload as CommentPayload).issue &&
-    commentPayloadActions.includes((payload as CommentPayload).action)
-  );
-}
-
-const pullRequestPayloadActions = ["opened", "edited"] as const;
-
-interface PullRequestPayload {
-  action: (typeof pullRequestPayloadActions)[number];
-  pull_request: { id: number; number: number };
-}
-
-function isPullRequestPayload(payload: unknown): payload is PullRequestPayload {
-  return (
-    !!(payload as PullRequestPayload).pull_request &&
-    pullRequestPayloadActions.includes((payload as PullRequestPayload).action)
-  );
-}
-
-type GithubWebhookReqBody = {
-  action: string;
-  installation: {
-    id: number;
-  };
-  organization: {
-    login: string;
-  };
-  repository: {
-    name: string;
-  };
-};
 
 type GithubWebhookResBody = null | ConnectorsAPIErrorResponse;
 
@@ -130,7 +33,7 @@ const _webhookGithubAPIHandler = async (
   req: Request<
     Record<string, string>,
     GithubWebhookResBody,
-    GithubWebhookReqBody
+    { action?: string }
   >,
   res: Response<GithubWebhookResBody>
 ) => {
@@ -146,21 +49,30 @@ const _webhookGithubAPIHandler = async (
   }
 
   const _ignoreEvent = () => {
+    if (MUST_HANDLE[event]?.has(jsonBody.action || "unknown")) {
+      logger.error(
+        {
+          event,
+          action: jsonBody.action || "unknown",
+          jsonBody,
+        },
+        "Could not process webhook"
+      );
+
+      return res.status(500).json();
+    }
+
     return ignoreEvent(
       {
         event,
-        action: jsonBody.action,
+        action: jsonBody.action || "unknown",
       },
       res
     );
   };
 
   if (!isGithubWebhookPayload(jsonBody)) {
-    return res.status(400).json({
-      error: {
-        message: "Invalid payload",
-      },
-    });
+    return _ignoreEvent();
   }
 
   logger.info(
@@ -171,7 +83,7 @@ const _webhookGithubAPIHandler = async (
     "Received webhook"
   );
 
-  const installationId = jsonBody.installation.id;
+  const installationId = jsonBody.installation.id.toString();
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
@@ -197,14 +109,14 @@ const _webhookGithubAPIHandler = async (
       if (isRepositoriesAddedPayload(jsonBody)) {
         return syncRepos(
           connector,
-          jsonBody.organization.login,
+          jsonBody.installation.account.login,
           jsonBody.repositories_added.map((r) => ({ name: r.name, id: r.id })),
           res
         );
       } else if (isRepositoriesRemovedPayload(jsonBody)) {
         return garbageCollectRepos(
           connector,
-          jsonBody.organization.login,
+          jsonBody.installation.account.login,
           jsonBody.repositories_removed.map((r) => ({
             name: r.name,
             id: r.id,
@@ -212,11 +124,7 @@ const _webhookGithubAPIHandler = async (
           res
         );
       }
-      return res.status(400).json({
-        error: {
-          message: "Invalid payload",
-        },
-      });
+      return _ignoreEvent();
     case "issues":
       if (isIssuePayload(jsonBody)) {
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {

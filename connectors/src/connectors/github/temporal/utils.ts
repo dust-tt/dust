@@ -10,7 +10,8 @@ export function getReposSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
 
 export function getIssueSyncWorkflowId(
   dataSourceInfo: DataSourceInfo,
+  repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-issue-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${issueNumber}`;
+  return `workflow-github-issue-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
 }
