@@ -96,7 +96,10 @@ export async function launchGithubReposSyncWorkflow(
 
   const workflow = await getGithubReposSyncWorkflow(connectorId);
 
-  // TODO: figure out how we want to handle more than webhook for repositories_added
+  // TODO: figure out how we want to handle more than one webhook for repositories_added
+  // If 2 come in too close from each other, we'll lose the info from the second one.
+  // If we remove the check entirely, we don't control the number of concurrent requests
+  // to the Github API (and wen coulkd hit the rate limit).
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
       {
@@ -159,6 +162,9 @@ export async function launchGithubIssueSyncWorkflow(
   const githubInstallationId = connector.connectionId;
 
   // TODO: figure out how we should handle concurrency limit here
+  // If many issues are updated at the same time, we could have a lot of
+  // concurrent workflows, which means a lot of concurrent requests to the
+  // Github API (and we could hit the rate limit).
   await client.workflow.start(githubIssueSyncWorkflow, {
     args: [
       dataSourceConfig,
