@@ -68,6 +68,7 @@ export async function githubFullSyncWorkflow(
               dataSourceConfig,
               githubInstallationId,
               repo.name,
+              repo.id,
               repo.login,
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -86,6 +87,7 @@ export async function githubRepoSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
   repoName: string,
+  repoId: number,
   repoLogin: string
 ) {
   const loggerArgs = {
@@ -120,6 +122,7 @@ export async function githubRepoSyncWorkflow(
           githubUpsertIssueActivity(
             githubInstallationId,
             repoName,
+            repoId,
             repoLogin,
             issueNumber,
             dataSourceConfig,

@@ -19,7 +19,7 @@ export async function githubGetReposResultPageActivity(
   githubInstallationId: string,
   pageNumber: number, // 1-indexed
   loggerArgs: Record<string, string | number>
-): Promise<{ name: string; login: string }[]> {
+): Promise<{ name: string; id: number; login: string }[]> {
   const localLogger = logger.child({
     ...loggerArgs,
     pageNumber,
@@ -33,6 +33,7 @@ export async function githubGetReposResultPageActivity(
   const page = await getReposPage(githubInstallationId, pageNumber);
   return page.map((repo) => ({
     name: repo.name,
+    id: repo.id,
     login: repo.owner.login,
   }));
 }
@@ -67,6 +68,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 export async function githubUpsertIssueActivity(
   installationId: string,
   repoName: string,
+  repoId: number,
   login: string,
   issueNumber: number,
   dataSourceConfig: DataSourceConfig,
@@ -104,7 +106,7 @@ export async function githubUpsertIssueActivity(
     resultPage += 1;
   }
 
-  const documentId = `github-issue-${repoName}-${issueNumber}`;
+  const documentId = `github-issue-${repoId}-${issueNumber}`;
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [`title:${issue.title}`];
   if (issueAuthor) {
