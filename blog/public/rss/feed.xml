@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>Commit</title>
+        <link>undefined</link>
+        <description>Open-source Git client for macOS minimalists</description>
+        <lastBuildDate>Mon, 05 Jun 2023 16:49:24 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>https://github.com/jpmonette/feed</generator>
+        <image>
+            <title>Commit</title>
+            <url>undefined/favicon.ico</url>
+            <link>undefined</link>
+        </image>
+        <copyright>All rights reserved 2023</copyright>
+        <item>
+            <title><![CDATA[Speculative sampling: how LLMs can write a lot faster using other LLMs]]></title>
+            <link>undefined/#2023-06-02-speculative-sampling</link>
+            <guid>undefined/#2023-06-02-speculative-sampling</guid>
+            <pubDate>Fri, 02 Jun 2023 00:00:00 GMT</pubDate>
+            <content:encoded><![CDATA[<div>Test</div><article><script type="text/metadata">{"id":"2023-06-02-speculative-sampling","title":"Speculative sampling: how LLMs can write a lot faster using other LLMs","date":"2023-06-02T00:00Z"}</script>
+<div class="relative mt-8 overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900 [&amp;+*]:mt-8"><img alt="" loading="lazy" width="1280" height="720" decoding="async" data-nimg="1" style="color:transparent" sizes="(min-width: 1280px) 36rem, (min-width: 1024px) 45vw, (min-width: 640px) 32rem, 95vw" srcSet="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=384&amp;q=75 384w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=640&amp;q=75 640w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=750&amp;q=75 750w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=828&amp;q=75 828w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=1080&amp;q=75 1080w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=1200&amp;q=75 1200w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=1920&amp;q=75 1920w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=2048&amp;q=75 2048w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=3840&amp;q=75 3840w" src="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fexample.c6c746a4.gif&amp;w=3840&amp;q=75"/><div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10 dark:ring-white/10"></div></div>
+
+<p>Behind the beautiful name of <em>Speculative sampling</em> lies a neat technique to have a large language model can generate tokens <strong>up to three times faster</strong> 🔥 The technique has been developed by various research teams, including one from Google DeepMind <a href="https://arxiv.org/pdf/2302.01318.pdf">who published it here</a>.</p>
+</article>]]></content:encoded>
+            <author>crazy.joe@example.com (Joe Davola)</author>
+        </item>
+        <item>
+            <title><![CDATA[Fake post 2: Project configuration files]]></title>
+            <link>undefined/#2023-03-17-fake-post-2</link>
+            <guid>undefined/#2023-03-17-fake-post-2</guid>
+            <pubDate>Fri, 17 Mar 2023 00:00:00 GMT</pubDate>
+            <content:encoded><![CDATA[<article><script type="text/metadata">{"id":"2023-03-17-fake-post-2","title":"Fake post 2: Project configuration files","date":"2023-03-17T00:00Z"}</script>
+<div class="relative mt-8 overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900 [&amp;+*]:mt-8"><img alt="" loading="lazy" width="1728" height="666" decoding="async" data-nimg="1" style="color:transparent" sizes="(min-width: 1280px) 36rem, (min-width: 1024px) 45vw, (min-width: 640px) 32rem, 95vw" srcSet="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=384&amp;q=75 384w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=640&amp;q=75 640w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=750&amp;q=75 750w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=828&amp;q=75 828w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=1080&amp;q=75 1080w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=1200&amp;q=75 1200w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=1920&amp;q=75 1920w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=2048&amp;q=75 2048w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=3840&amp;q=75 3840w" src="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fconfiguration-files.7610785b.png&amp;w=3840&amp;q=75"/><div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10 dark:ring-white/10"></div></div>
+
+<p>I&#x27;ve added support for creating per-project <code>.commitrc</code> files that override your global settings for that particular project. Went with YAML for these because personally I&#x27;m sick of quoting keys in JSON all the time, or accidentally leaving in a trailing comma.</p>
+</article>]]></content:encoded>
+            <author>crazy.joe@example.com (Joe Davola)</author>
+        </item>
+        <item>
+            <title><![CDATA[Fake post 1: Dark mode support]]></title>
+            <link>undefined/#2023-03-06-fake-post-1</link>
+            <guid>undefined/#2023-03-06-fake-post-1</guid>
+            <pubDate>Mon, 06 Mar 2023 00:00:00 GMT</pubDate>
+            <content:encoded><![CDATA[<article><script type="text/metadata">{"id":"2023-03-06-fake-post-1","title":"Fake post 1: Dark mode support","date":"2023-03-06T00:00Z"}</script>
+<div class="relative mt-8 overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900 [&amp;+*]:mt-8"><img alt="" loading="lazy" width="1728" height="936" decoding="async" data-nimg="1" style="color:transparent" sizes="(min-width: 1280px) 36rem, (min-width: 1024px) 45vw, (min-width: 640px) 32rem, 95vw" srcSet="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=384&amp;q=75 384w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=640&amp;q=75 640w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=750&amp;q=75 750w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=828&amp;q=75 828w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=1080&amp;q=75 1080w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=1200&amp;q=75 1200w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=1920&amp;q=75 1920w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=2048&amp;q=75 2048w, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=3840&amp;q=75 3840w" src="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fdark-mode.93eb9a82.png&amp;w=3840&amp;q=75"/><div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10 dark:ring-white/10"></div></div>
+
+<p>I released this thing last week hoping a couple of people would say &quot;awesome job&quot; and make me feel good about what I&#x27;d built but instead I just got a ton of people shaming me on Twitter for being such a horrible person for only shipping a light UI.</p></article>]]></content:encoded>
+            <author>crazy.joe@example.com (Joe Davola)</author>
+        </item>
+    </channel>
+</rss>
