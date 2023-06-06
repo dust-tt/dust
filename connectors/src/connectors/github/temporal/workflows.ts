@@ -38,7 +38,7 @@ export async function githubFullSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId: githubInstallationId,
+    githubInstallationId,
   };
 
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
@@ -91,7 +91,7 @@ export async function githubRepoSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId: githubInstallationId,
+    githubInstallationId,
     repoName,
     repoLogin,
   };

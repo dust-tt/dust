@@ -77,18 +77,7 @@ async function handler(
         });
       }
 
-      if (req.body.provider === "github") {
-        if (typeof req.body.githubInstallationId !== "string") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                'The request body is invalid, expects { provider: "github", githubInstallationId: string }.',
-            },
-          });
-        }
-      } else if (typeof req.body.nangoConnectionId !== "string") {
+      if (typeof req.body.connectionId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

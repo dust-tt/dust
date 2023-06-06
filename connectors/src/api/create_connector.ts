@@ -56,26 +56,6 @@ const _createConnectorAPIHandler = async (
     const connectorCreator =
       CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
 
-    // const createConnectorParams = isCreateNangoConnectorReqBody(req.body)
-    //   ? {
-    //       nangoConnectionId: req.body.nangoConnectionId,
-    //     }
-    //   : isCreateGithubConnectorReqBody(req.body)
-    //   ? {
-    //       githubInstallationId: req.body.githubInstallationId,
-    //     }
-    //   : null;
-
-    // if (!createConnectorParams) {
-    //   return apiError(req, res, {
-    //     api_error: {
-    //       type: "invalid_request_error",
-    //       message: `Missing required parameters. Required : nangoConnectionId or githubInstallationId`,
-    //     },
-    //     status_code: 400,
-    //   });
-    // }
-
     const connectorRes = await connectorCreator(
       {
         workspaceAPIKey: req.body.workspaceAPIKey,

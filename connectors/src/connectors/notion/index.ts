@@ -1,6 +1,5 @@
 import { Transaction } from "sequelize";
 
-import { ConnectorCreatorParams } from "@connectors/connectors";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,

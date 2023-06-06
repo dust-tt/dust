@@ -16,12 +16,6 @@ import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export type ConnectorCreatorParams =
-  | {
-      nangoConnectionId: string;
-    }
-  | { githubInstallationId: string };
-
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
   connectionId: string

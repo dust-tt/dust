@@ -8,6 +8,7 @@ async function main() {
       connectionId: sequelize_conn.col("nangoConnectionId"),
     },
     {
+      // @ts-expect-error `connectionId` has been made non-nullable
       where: {
         connectionId: {
           [Op.eq]: null,

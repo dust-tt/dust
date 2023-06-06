@@ -59,8 +59,6 @@ export async function createSlackConnector(
       const connector = await Connector.create(
         {
           type: "slack",
-          // TODO: deprecate_nango_connection_id_2023-06-06
-          nangoConnectionId,
           connectionId: nangoConnectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,

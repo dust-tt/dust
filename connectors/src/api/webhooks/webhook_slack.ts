@@ -129,18 +129,7 @@ const _webhookSlackAPIHandler = async (
         });
       }
 
-      if (!connector.nangoConnectionId) {
-        return res.status(500).send({
-          error: {
-            message: `Connector ${connector.id} does not have a nango connection id`,
-          },
-        });
-      }
-
-      const slackAccessToken = await getAccessToken(
-        // TODO: deprecate_nango_connection_id_2023-06-06
-        connector.connectionId || connector.nangoConnectionId
-      );
+      const slackAccessToken = await getAccessToken(connector.connectionId);
       const myUserId = await whoAmI(slackAccessToken);
       if (myUserId !== req.body.event.user) {
         return res.status(200).send();

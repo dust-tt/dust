@@ -22,12 +22,8 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  if (!connector.githubInstallationId) {
-    throw new Error(
-      `Connector does not have a githubInstallationId. ConnectorId: ${connectorId}`
-    );
-  }
-  const githubInstallationId = connector.githubInstallationId;
+
+  const githubInstallationId = connector.connectionId;
 
   const workflow = await getGithubFullSyncWorkflow(connectorId);
 
@@ -59,11 +55,7 @@ export async function getGithubFullSyncWorkflow(connectorId: string): Promise<{
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  if (!connector.githubInstallationId) {
-    throw new Error(
-      `Connector does not have a githubInstallationId. ConnectorId: ${connectorId}`
-    );
-  }
+
   const handle: WorkflowHandle<typeof githubFullSyncWorkflow> =
     client.workflow.getHandle(getFullSyncWorkflowId(dataSourceConfig));
 

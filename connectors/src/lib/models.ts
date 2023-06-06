@@ -44,9 +44,6 @@ export class Connector extends Model<
   declare lastSyncSuccessfulTime?: Date;
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
-
-  declare nangoConnectionId?: string;
-  declare githubInstallationId?: string;
 }
 
 Connector.init(
@@ -110,35 +107,9 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // must be set for all nango-based connectors
-    nangoConnectionId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    // only set for github connectors
-    githubInstallationId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
   },
   {
     sequelize: sequelize_conn,
-    validate: {
-      // either nangoConnectionId or githubInstallationId must be set
-      eitherNangoConnectionIdOrGithubInstallationId() {
-        if (!(this.nangoConnectionId || this.githubInstallationId)) {
-          throw new Error(
-            "either nangoConnectionId or githubInstallationId must be set"
-          );
-        }
-      },
-      // githubInstallationId must be set if type is github and not set otherwise
-      githubInstallationIdMustBeSet() {
-        if ((this.type === "github") !== !!this.githubInstallationId) {
-          throw new Error("githubInstallationId must be set");
-        }
-      },
-    },
     modelName: "connectors",
     indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }
