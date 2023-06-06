@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docs
+  template:
+    metadata:
+      labels:
+        app: docs
+        name: docs-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "docs","service": "docs","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/docs-image:latest
+          command: ["npm", "run", "start"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: docs-config
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
