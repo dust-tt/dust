@@ -1,7 +1,16 @@
 import { Request, Response } from "express";
 
+import {
+  launchGithubIssueSyncWorkflow,
+  launchGithubReposSyncWorkflow,
+} from "@connectors/connectors/github/temporal/client";
+import { assertNever } from "@connectors/lib/assert_never";
+import { Connector } from "@connectors/lib/models";
+import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+
+const logger = mainLogger.child({ provider: "github" });
 
 interface GithubWebhookPayload {
   action: string;
@@ -13,6 +22,7 @@ interface GithubWebhookPayload {
   };
   repository: {
     name: string;
+    id: number;
   };
 }
 
@@ -33,7 +43,7 @@ function isGithubWebhookPayload(
 
 interface RepositoriesAddedPayload {
   action: "added";
-  repositories_added: { name: string }[];
+  repositories_added: { name: string; id: number }[];
 }
 
 function isRepositoriesAddedPayload(
@@ -47,7 +57,7 @@ function isRepositoriesAddedPayload(
 
 interface RepositoriesRemovedPayload {
   action: "removed";
-  repositories_removed: { name: string }[];
+  repositories_removed: { name: string; id: number }[];
 }
 
 function isRepositoriesRemovedPayload(
@@ -87,6 +97,20 @@ function isCommentPayload(payload: unknown): payload is CommentPayload {
   );
 }
 
+const pullRequestPayloadActions = ["opened", "edited"] as const;
+
+interface PullRequestPayload {
+  action: (typeof pullRequestPayloadActions)[number];
+  pull_request: { id: number; number: number };
+}
+
+function isPullRequestPayload(payload: unknown): payload is PullRequestPayload {
+  return (
+    !!(payload as PullRequestPayload).pull_request &&
+    pullRequestPayloadActions.includes((payload as PullRequestPayload).action)
+  );
+}
+
 type GithubWebhookReqBody = {
   action: string;
   installation: {
@@ -121,6 +145,16 @@ const _webhookGithubAPIHandler = async (
     });
   }
 
+  const _ignoreEvent = () => {
+    return ignoreEvent(
+      {
+        event,
+        action: jsonBody.action,
+      },
+      res
+    );
+  };
+
   if (!isGithubWebhookPayload(jsonBody)) {
     return res.status(400).json({
       error: {
@@ -129,56 +163,212 @@ const _webhookGithubAPIHandler = async (
     });
   }
 
+  logger.info(
+    {
+      event,
+      action: jsonBody.action,
+    },
+    "Received webhook"
+  );
+
+  const installationId = jsonBody.installation.id;
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+
+  if (!connector) {
+    logger.error(
+      {
+        installationId,
+      },
+      "Connector not found"
+    );
+    // return 200 to avoid github retrying
+    return res.status(200);
+  }
+
+  // TODO: check connector state (paused, etc.)
+  // if connector is paused, return 200 to avoid github retrying
+
   switch (event) {
     case "installation_repositories":
       if (isRepositoriesAddedPayload(jsonBody)) {
-        // TODO: sync repo
+        return syncRepos(
+          connector,
+          jsonBody.organization.login,
+          jsonBody.repositories_added.map((r) => ({ name: r.name, id: r.id })),
+          res
+        );
       } else if (isRepositoriesRemovedPayload(jsonBody)) {
-        // TODO: garbage collect repo
-      } else {
-        return res.status(400).json({
-          error: {
-            message: "Invalid payload",
-          },
-        });
+        return garbageCollectRepos(
+          connector,
+          jsonBody.organization.login,
+          jsonBody.repositories_removed.map((r) => ({
+            name: r.name,
+            id: r.id,
+          })),
+          res
+        );
       }
-      break;
+      return res.status(400).json({
+        error: {
+          message: "Invalid payload",
+        },
+      });
     case "issues":
       if (isIssuePayload(jsonBody)) {
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
-          // TODO: sync issue
+          return syncIssue(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.issue.number,
+            res
+          );
         } else if (jsonBody.action === "deleted") {
-          // TODO: garbage collect issue
+          return garbageCollectIssue(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.issue.number,
+            res
+          );
         } else {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          ((_action: never) => ({}))(jsonBody.action);
-          res.status(200).end();
+          assertNever(jsonBody.action);
         }
-      } else {
-        // unhandled -- ignore
-        return res.status(200).end();
       }
-      break;
+      return _ignoreEvent();
+
     case "issue_comment":
       if (isCommentPayload(jsonBody)) {
-        if (jsonBody.action === "created" || jsonBody.action === "edited") {
-          // TODO: sync issue
-        } else if (jsonBody.action === "deleted") {
-          // TODO: garbage collect issue
+        if (
+          jsonBody.action === "created" ||
+          jsonBody.action === "edited" ||
+          jsonBody.action === "deleted"
+        ) {
+          return syncIssue(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.issue.number,
+            res
+          );
         } else {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          ((_action: never) => ({}))(jsonBody.action);
-          res.status(200).end();
+          assertNever(jsonBody.action);
         }
-      } else {
-        // unhandled -- ignore
-        return res.status(200).end();
       }
-      break;
+      return _ignoreEvent();
+
+    case "pull_request":
+      if (isPullRequestPayload(jsonBody)) {
+        if (jsonBody.action === "opened" || jsonBody.action === "edited") {
+          return syncIssue(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.pull_request.number,
+            res
+          );
+        } else {
+          assertNever(jsonBody.action);
+        }
+      }
+      return _ignoreEvent();
+
     default:
-      // unhandled -- ignore
-      return res.status(200).end();
+      return _ignoreEvent();
   }
 };
+
+function ignoreEvent(
+  {
+    event,
+    action,
+  }: {
+    event: string;
+    action: string;
+  },
+  res: Response<GithubWebhookResBody>
+) {
+  logger.info(
+    {
+      event,
+      action,
+    },
+    "Ignoring event"
+  );
+  res.status(200).end();
+}
+
+async function syncRepos(
+  connector: Connector,
+  orgLogin: string,
+  repos: { name: string; id: number }[],
+  res: Response<GithubWebhookResBody>
+) {
+  await launchGithubReposSyncWorkflow(connector.id.toString(), orgLogin, repos);
+  res.status(200).end();
+}
+
+async function garbageCollectRepos(
+  connector: Connector,
+  orgLogin: string,
+  repos: { name: string; id: number }[],
+  res: Response<GithubWebhookResBody>
+) {
+  for (const repo of repos) {
+    console.log(
+      "GARBAGE COLLECT REPO",
+      connector.connectionId,
+      orgLogin,
+      repo.name,
+      repo.id
+    );
+  }
+  res.status(200).end();
+}
+
+async function syncIssue(
+  connector: Connector,
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  issueNumber: number,
+  res: Response<GithubWebhookResBody>
+) {
+  await launchGithubIssueSyncWorkflow(
+    connector.id.toString(),
+    orgLogin,
+    repoName,
+    repoId,
+    issueNumber
+  );
+  res.status(200).end();
+}
+
+async function garbageCollectIssue(
+  connector: Connector,
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  issueNumber: number,
+  res: Response<GithubWebhookResBody>
+) {
+  console.log(
+    "GARBAGE COLLECT ISSUE",
+    connector.connectionId,
+    orgLogin,
+    repoName,
+    repoId,
+    issueNumber
+  );
+  res.status(200).end();
+}
 
 export const webhookGithubAPIHandler = withLogging(_webhookGithubAPIHandler);
