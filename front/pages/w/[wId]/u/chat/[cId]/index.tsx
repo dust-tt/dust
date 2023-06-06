@@ -464,16 +464,16 @@ export default function AppChat({
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
+  const [titleState, setTitleState] = useState<
+    "new" | "writing" | "saving" | "saved"
+  >(chatSession.title ? "saved" : "new");
 
   useEffect(() => {
     setTitle(chatSession.title || "Chat");
     setMessages(chatSession.messages || []);
+    setTitleState(chatSession.title ? "saved" : "new");
     inputRef.current?.focus();
   }, [chatSession]);
-
-  const [titleState, setTitleState] = useState<
-    "new" | "writing" | "saving" | "saved"
-  >(chatSession.title ? "saved" : "new");
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
   const [input, setInput] = useState("");
