@@ -1,11 +1,16 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getSession } from "@app/lib/auth";
+import { getChatSession, storeChatSession } from "@app/lib/api/chat";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { apiError } from "@app/logger/withlogging";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
+import { apiError, withLogging } from "@app/logger/withlogging";
+import {
+  ChatMessageType,
+  ChatRetrievedDocumentType,
+  ChatSessionType,
+} from "@app/types/chat";
 
 const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
   type: "object",
@@ -56,7 +61,7 @@ const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   required: ["role"],
 };
 
-const chatSessionSchema: JSONSchemaType<{
+const chatSessionCreateSchema: JSONSchemaType<{
   title?: string;
   messages: ChatMessageType[];
 }> = {
@@ -71,11 +76,16 @@ const chatSessionSchema: JSONSchemaType<{
   required: ["messages"],
 };
 
+export type ChatSessionResponseBody = {
+  session: ChatSessionType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<ChatSessionResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
+  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     req.query.wId as string
@@ -88,6 +98,16 @@ async function handler(
       api_error: {
         type: "workspace_not_found",
         message: "The workspace you're trying to modify was not found.",
+      },
+    });
+  }
+
+  if (!user) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_user_not_found",
+        message: "Could not find the user of the current session.",
       },
     });
   }
@@ -116,19 +136,68 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const pRes = parse_payload(chatSessionSchema, req.body);
+      const pRes = parse_payload(chatSessionCreateSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
         return;
       }
-      const session = pRes.value;
+      const s = pRes.value;
 
-      res.status(200);
+      const session = await storeChatSession(
+        cId,
+        owner,
+        user,
+        s.title || null,
+        s.messages
+      );
+
+      res.status(200).json({
+        session,
+      });
+      return;
+    }
+
+    case "GET": {
+      if (!(typeof req.query.cId === "string")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid query parameters, `cId` (string) is required.",
+          },
+        });
+      }
+
+      const cId = req.query.cId;
+
+      const session = await getChatSession(owner, cId);
+      if (!session) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "chat_session_not_found",
+            message: "The chat session was not found.",
+          },
+        });
+      }
+
+      res.status(200).json({
+        session,
+      });
       return;
     }
 
     default:
-      res.status(405).end();
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
+        },
+      });
       break;
   }
 }
+
+export default withLogging(handler);

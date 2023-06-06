@@ -1,17 +1,18 @@
-import { ChatSessionType } from "@app/types/chat";
+import { new_id } from "@app/lib/utils";
+import { ChatMessageType, ChatSessionType } from "@app/types/chat";
+import { UserType, WorkspaceType } from "@app/types/user";
 
-import { Authenticator } from "../auth";
-import { ChatMessage, ChatRetrievedDocument, ChatSession } from "../models";
+import {
+  ChatMessage,
+  ChatRetrievedDocument,
+  ChatSession,
+  front_sequelize,
+} from "../models";
 
 export async function getChatSession(
-  auth: Authenticator,
+  owner: WorkspaceType,
   cId: string
 ): Promise<ChatSessionType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return null;
-  }
-
   const chatSession = await ChatSession.findOne({
     where: {
       workspaceId: owner.id,
@@ -51,7 +52,7 @@ export async function getChatSession(
 
   return {
     id: chatSession.id,
-    uId: chatSession.uId,
+    userId: chatSession.userId,
     sId: chatSession.sId,
     title: chatSession.title,
     messages: messages.map((m) => {
@@ -73,5 +74,129 @@ export async function getChatSession(
         }),
       };
     }),
+  };
+}
+
+export function newChatSessionId() {
+  const uId = new_id();
+  return uId.slice(0, 10);
+}
+
+export async function storeChatSession(
+  sId: string,
+  owner: WorkspaceType,
+  user: UserType,
+  title: string | null,
+  messages: ChatMessageType[]
+): Promise<ChatSessionType> {
+  const t = await front_sequelize.transaction();
+
+  // start by cleaning up the previous chat session
+  const oldSession = await ChatSession.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId,
+    },
+  });
+
+  if (oldSession) {
+    // destroy all chat messages and retrived documents
+    await Promise.all(
+      (
+        await ChatMessage.findAll({
+          where: {
+            chatSessionId: oldSession.id,
+          },
+        })
+      ).map((m) => {
+        return (async () => {
+          await ChatRetrievedDocument.destroy({
+            where: {
+              chatMessageId: m.id,
+            },
+            transaction: t,
+          });
+          await ChatMessage.destroy({
+            where: {
+              id: m.id,
+            },
+            transaction: t,
+          });
+        })();
+      })
+    );
+
+    // destroy the chat session
+    await ChatSession.destroy({
+      where: {
+        id: oldSession.id,
+      },
+      transaction: t,
+    });
+  }
+
+  const chatSession = title
+    ? await ChatSession.create(
+        {
+          sId,
+          workspaceId: owner.id,
+          userId: user.id,
+          title,
+        },
+        { transaction: t }
+      )
+    : await ChatSession.create(
+        {
+          sId,
+          workspaceId: owner.id,
+          userId: user.id,
+        },
+        { transaction: t }
+      );
+
+  await Promise.all(
+    messages.map((m) => {
+      return (async () => {
+        const chatMessage = await ChatMessage.create(
+          {
+            role: m.role,
+            runRetrieval: m.runRetrieval,
+            runAssistant: m.runAssistant,
+            message: m.message,
+            chatSessionId: chatSession.id,
+          },
+          { transaction: t }
+        );
+
+        await Promise.all(
+          m.retrievals?.map((r) => {
+            return (async () => {
+              await ChatRetrievedDocument.create(
+                {
+                  dataSourceId: r.dataSourceId,
+                  sourceUrl: r.sourceUrl,
+                  documentId: r.documentId,
+                  timestamp: r.timestamp,
+                  tags: r.tags,
+                  score: r.score,
+                  chatMessageId: chatMessage.id,
+                },
+                { transaction: t }
+              );
+            })();
+          }) || []
+        );
+      })();
+    })
+  );
+
+  await t.commit();
+
+  return {
+    id: chatSession.id,
+    userId: chatSession.userId,
+    sId: chatSession.sId,
+    title: chatSession.title,
+    messages,
   };
 }

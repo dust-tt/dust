@@ -660,7 +660,6 @@ export class ChatSession extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare uId: string;
   declare sId: string;
   declare title?: string;
 
@@ -684,10 +683,6 @@ ChatSession.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    uId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     sId: {
       type: DataTypes.STRING,

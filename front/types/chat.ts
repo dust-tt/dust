@@ -22,8 +22,8 @@ export type ChatMessageType = {
 
 export type ChatSessionType = {
   id: number;
-  uId: string;
+  userId: number;
   sId: string;
   title?: string;
-  messages?: ChatMessageType[];
+  messages: ChatMessageType[];
 };
