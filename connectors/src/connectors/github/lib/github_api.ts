@@ -114,8 +114,6 @@ export async function getRepoIssuesPage(
 ): Promise<GithubIssue[]> {
   const octokit = await getOctokit(installationId);
 
-  console.log("getting issues for", installationId, repoName, login, page);
-
   const issues = (
     await octokit.rest.issues.listForRepo({
       owner: login,
