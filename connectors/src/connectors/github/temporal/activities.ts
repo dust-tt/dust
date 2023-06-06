@@ -110,7 +110,7 @@ export async function githubUpsertIssueActivity(
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
   }
-  // TODO: last commentor, last comment date
+  // TODO: last commentor, last comment date, issue labels (as tags)
   await upsertToDatasource(
     dataSourceConfig,
     documentId,
