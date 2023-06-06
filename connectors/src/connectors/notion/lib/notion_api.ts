@@ -173,7 +173,13 @@ export async function getPagesEditedSince(
             localLogger
           )) {
             if (isFullPage(child)) {
-              editedPages[child.id] = lastEditedTime;
+              const childLastEditedTime = new Date(
+                child.last_edited_time
+              ).getTime();
+
+              if (!sinceTs || childLastEditedTime >= sinceTs) {
+                editedPages[child.id] = childLastEditedTime;
+              }
             }
           }
         } catch (e) {
