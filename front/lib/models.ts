@@ -689,7 +689,7 @@ ChatSession.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },
@@ -699,6 +699,7 @@ ChatSession.init(
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "userId"] },
+      { fields: ["workspaceId", "sId"] },
     ],
   }
 );
@@ -753,13 +754,14 @@ ChatMessage.init(
       allowNull: true,
     },
     message: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },
   {
     modelName: "chat_message",
     sequelize: front_sequelize,
+    indexes: [{ fields: ["chatSessionId"] }],
   }
 );
 
@@ -829,6 +831,7 @@ ChatRetrievedDocument.init(
   {
     modelName: "chat_retrieved_document",
     sequelize: front_sequelize,
+    indexes: [{ fields: ["chatMessageId"] }],
   }
 );
 

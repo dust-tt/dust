@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -450,6 +451,8 @@ export default function AppChat({
   chatSession,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   const isMac =
     typeof window !== "undefined"
       ? navigator.platform.toUpperCase().indexOf("MAC") >= 0
@@ -461,6 +464,12 @@ export default function AppChat({
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
+
+  useEffect(() => {
+    setTitle(chatSession.title || "Chat");
+    setMessages(chatSession.messages || []);
+    inputRef.current?.focus();
+  }, [chatSession]);
 
   const [titleState, setTitleState] = useState<
     "new" | "writing" | "saving" | "saved"
@@ -527,9 +536,9 @@ export default function AppChat({
   };
 
   const handleNew = async () => {
-    setMessages([]);
+    // Redirect to new chat session.
     setInput("");
-    setLoading(false);
+    void router.push(`/w/${owner.sId}/u/chat`);
   };
 
   const updateTitle = async (title: string, messages: ChatMessageType[]) => {
@@ -994,173 +1003,177 @@ export default function AppChat({
                 </div>
               </div>
             </div>
-            <div className="z-50 w-full flex-initial border bg-white text-sm">
-              <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-                <div className="my-2">
-                  <div className="flex flex-row items-center">
-                    <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
-                      alpha
-                    </div>
-                    <div className="flex flex-1 flex-row items-end">
-                      {commands.length > 0 && (
-                        <div className="absolute mb-12 pr-7">
-                          <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
-                            {commands.map((c, i) => {
-                              return (
-                                <div
-                                  key={i}
-                                  className={classNames(
-                                    "flex cursor-pointer flex-row rounded-sm px-2 py-2",
-                                    i === commandsSelect
-                                      ? "bg-gray-100"
-                                      : "bg-white"
-                                  )}
-                                  onMouseEnter={() => {
-                                    setCommandsSelect(i);
-                                  }}
-                                  onClick={() => {
-                                    void handleSelectCommand();
-                                  }}
-                                >
-                                  <div className="flex w-24 flex-row">
-                                    <div
-                                      className={classNames(
-                                        "flex flex-initial",
-                                        "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                      )}
-                                    >
-                                      {c.cmd}
+            {!chatSession.readOnly && (
+              <div className="z-50 w-full flex-initial border bg-white text-sm">
+                <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
+                  <div className="my-2">
+                    <div className="flex flex-row items-center">
+                      <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
+                        alpha
+                      </div>
+                      <div className="flex flex-1 flex-row items-end">
+                        {commands.length > 0 && (
+                          <div className="absolute mb-12 pr-7">
+                            <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
+                              {commands.map((c, i) => {
+                                return (
+                                  <div
+                                    key={i}
+                                    className={classNames(
+                                      "flex cursor-pointer flex-row rounded-sm px-2 py-2",
+                                      i === commandsSelect
+                                        ? "bg-gray-100"
+                                        : "bg-white"
+                                    )}
+                                    onMouseEnter={() => {
+                                      setCommandsSelect(i);
+                                    }}
+                                    onClick={() => {
+                                      void handleSelectCommand();
+                                    }}
+                                  >
+                                    <div className="flex w-24 flex-row">
+                                      <div
+                                        className={classNames(
+                                          "flex flex-initial",
+                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                        )}
+                                      >
+                                        {c.cmd}
+                                      </div>
+                                      <div className="flex flex-1"></div>
                                     </div>
-                                    <div className="flex flex-1"></div>
+                                    <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
+                                      {c.description}
+                                    </div>
                                   </div>
-                                  <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
-                                    {c.description}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
+                        )}
+                        <TextareaAutosize
+                          minRows={1}
+                          placeholder={`Ask anything about \`${owner.name}\``}
+                          className={classNames(
+                            "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
+                            "rounded-sm",
+                            "border",
+                            "border-slate-200 focus:border-slate-300 focus:ring-0",
+                            "placeholder-gray-400",
+                            "pr-7"
+                          )}
+                          value={input}
+                          onChange={(e) => {
+                            handleInputUpdate(e.target.value);
+                          }}
+                          ref={inputRef}
+                          onKeyDown={(e) => {
+                            if (commands.length > 0) {
+                              if (e.key === "ArrowUp") {
+                                setCommandsSelect(
+                                  commandsSelect > 0
+                                    ? commandsSelect - 1
+                                    : commandsSelect
+                                );
+                                e.preventDefault();
+                              }
+                              if (e.key === "ArrowDown") {
+                                setCommandsSelect(
+                                  commandsSelect < commands.length - 1
+                                    ? commandsSelect + 1
+                                    : commandsSelect
+                                );
+                                e.preventDefault();
+                              }
+                              if (e.key === "Enter") {
+                                void handleSelectCommand();
+                                e.preventDefault();
+                              }
+                            }
+                            if (e.ctrlKey || e.metaKey) {
+                              if (e.key === "Enter" && !loading) {
+                                void handleSubmit();
+                                e.preventDefault();
+                              }
+                            }
+                          }}
+                          autoFocus={true}
+                        />
+                        <div
+                          className={classNames(
+                            "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
+                          )}
+                        >
+                          {!loading ? (
+                            <ArrowRightCircleIcon
+                              className="h-5 w-5 cursor-pointer text-violet-500"
+                              onClick={() => {
+                                void handleSubmit();
+                              }}
+                            />
+                          ) : (
+                            <div className="mb-1 ml-1">
+                              <Spinner />
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <TextareaAutosize
-                        minRows={1}
-                        placeholder={`Ask anything about \`${owner.name}\``}
-                        className={classNames(
-                          "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                          "rounded-sm",
-                          "border",
-                          "border-slate-200 focus:border-slate-300 focus:ring-0",
-                          "placeholder-gray-400",
-                          "pr-7"
-                        )}
-                        value={input}
-                        onChange={(e) => {
-                          handleInputUpdate(e.target.value);
-                        }}
-                        ref={inputRef}
-                        onKeyDown={(e) => {
-                          if (commands.length > 0) {
-                            if (e.key === "ArrowUp") {
-                              setCommandsSelect(
-                                commandsSelect > 0
-                                  ? commandsSelect - 1
-                                  : commandsSelect
-                              );
-                              e.preventDefault();
-                            }
-                            if (e.key === "ArrowDown") {
-                              setCommandsSelect(
-                                commandsSelect < commands.length - 1
-                                  ? commandsSelect + 1
-                                  : commandsSelect
-                              );
-                              e.preventDefault();
-                            }
-                            if (e.key === "Enter") {
-                              void handleSelectCommand();
-                              e.preventDefault();
-                            }
-                          }
-                          if (e.ctrlKey || e.metaKey) {
-                            if (e.key === "Enter" && !loading) {
-                              void handleSubmit();
-                              e.preventDefault();
-                            }
-                          }
-                        }}
-                        autoFocus={true}
-                      />
-                      <div
-                        className={classNames(
-                          "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                        )}
-                      >
-                        {!loading ? (
-                          <ArrowRightCircleIcon
-                            className="h-5 w-5 cursor-pointer text-violet-500"
-                            onClick={() => {
-                              void handleSubmit();
-                            }}
-                          />
-                        ) : (
-                          <div className="mb-1 ml-1">
-                            <Spinner />
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="mb-4 flex flex-row text-xs">
-                  <div className="flex flex-initial text-gray-400">
-                    Data Sources:
-                  </div>
-                  <div className="flex flex-row">
-                    {dataSources.map((ds) => {
-                      return (
-                        <div
-                          key={ds.name}
-                          className="group ml-1 flex flex-initial"
-                        >
+                  <div className="mb-4 flex flex-row text-xs">
+                    <div className="flex flex-initial text-gray-400">
+                      Data Sources:
+                    </div>
+                    <div className="flex flex-row">
+                      {dataSources.map((ds) => {
+                        return (
                           <div
-                            className={classNames(
-                              "flex h-4 w-4 flex-initial cursor-pointer",
-                              ds.provider !== "none" ? "mr-1" : "",
-                              ds.selected ? "opacity-100" : "opacity-25"
-                            )}
-                            onClick={() => {
-                              handleSwitchDataSourceSelection(ds.name);
-                            }}
+                            key={ds.name}
+                            className="group ml-1 flex flex-initial"
                           >
-                            {ds.provider !== "none" ? (
-                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
-                            ) : (
-                              <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                            )}
+                            <div
+                              className={classNames(
+                                "flex h-4 w-4 flex-initial cursor-pointer",
+                                ds.provider !== "none" ? "mr-1" : "",
+                                ds.selected ? "opacity-100" : "opacity-25"
+                              )}
+                              onClick={() => {
+                                handleSwitchDataSourceSelection(ds.name);
+                              }}
+                            >
+                              {ds.provider !== "none" ? (
+                                <img
+                                  src={PROVIDER_LOGO_PATH[ds.provider]}
+                                ></img>
+                              ) : (
+                                <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                              )}
+                            </div>
+                            <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
+                              <span className="text-gray-600">
+                                <span className="font-semibold">{ds.name}</span>
+                                {ds.description ? ` ${ds.description}` : null}
+                              </span>
+                            </div>
                           </div>
-                          <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
-                            <span className="text-gray-600">
-                              <span className="font-semibold">{ds.name}</span>
-                              {ds.description ? ` ${ds.description}` : null}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-1 text-gray-400"></div>
-                  <div className="flex flex-initial text-gray-400">
-                    <>
-                      <span className="font-bold">
-                        {isMac ? "⌘" : "ctrl"}
-                        +⏎
-                      </span>
-                      <span className="ml-1 text-gray-300">to submit</span>
-                    </>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-1 text-gray-400"></div>
+                    <div className="flex flex-initial text-gray-400">
+                      <>
+                        <span className="font-bold">
+                          {isMac ? "⌘" : "ctrl"}
+                          +⏎
+                        </span>
+                        <span className="ml-1 text-gray-300">to submit</span>
+                      </>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
