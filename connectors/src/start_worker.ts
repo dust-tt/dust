@@ -1,3 +1,4 @@
+import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
@@ -8,4 +9,7 @@ runSlackWorker().catch((err) =>
 );
 runNotionWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running notion worker")
+);
+runGithubWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running github worker")
 );

@@ -32,10 +32,7 @@ export class Connector extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
-
-  // TODO: deprecate_nango_connection_id_2023-06-06
-  declare nangoConnectionId: string;
-  declare connectionId?: string | null;
+  declare connectionId: string;
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -70,14 +67,9 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // TODO: deprecate_nango_connection_id_2023-06-06
-    nangoConnectionId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,
@@ -118,7 +110,6 @@ Connector.init(
   },
   {
     sequelize: sequelize_conn,
-
     modelName: "connectors",
     indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }

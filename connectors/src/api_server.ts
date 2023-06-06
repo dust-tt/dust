@@ -7,6 +7,7 @@ import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
+import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -14,12 +15,23 @@ import { authMiddleware } from "@connectors/middleware/auth";
 export function startServer(port: number) {
   const app = express();
 
-  app.get("/", (req, res) => {
+  // for health check -- doesn't go through auth middleware
+  app.get("/", (_req, res) => {
     res.status(200).send("OK");
   });
 
+  app.use(
+    bodyParser.json({
+      verify: (req, _res, buf) => {
+        // @ts-expect-error -- rawBody is not defined on Request
+        // but we need it to validate webhooks signatures
+        req.rawBody = buf;
+      },
+    })
+  );
+
   app.use(authMiddleware);
-  app.use(bodyParser.json());
+
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
@@ -28,6 +40,11 @@ export function startServer(port: number) {
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
+  app.post(
+    "/webhooks/:webhooks_secret/github",
+    bodyParser.raw({ type: "application/json" }),
+    webhookGithubAPIHandler
+  );
 
   app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);

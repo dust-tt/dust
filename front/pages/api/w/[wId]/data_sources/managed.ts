@@ -54,11 +54,30 @@ async function handler(
         });
       }
 
+      if (!req.body || typeof req.body.connectionId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request body is missing.",
+          },
+        });
+      }
+
       if (
-        !req.body ||
-        typeof req.body.connectionId !== "string" ||
-        !["slack", "notion"].includes(req.body.provider)
+        !req.body.provider ||
+        !["slack", "notion", "github"].includes(req.body.provider)
       ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid provider.",
+          },
+        });
+      }
+
+      if (typeof req.body.connectionId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

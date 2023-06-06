@@ -14,6 +14,7 @@ import {
   ConnectorsAPI,
   ConnectorType,
 } from "@app/lib/connectors_api";
+import { githubAuth } from "@app/lib/github_auth";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -55,17 +56,17 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     fetchConnectorError: null,
   },
   {
-    name: "Google Drive",
-    connectorProvider: "google_drive",
-    isBuilt: false,
-    logoPath: "/static/google_drive_32x32.png",
-    fetchConnectorError: null,
-  },
-  {
     name: "Github",
     connectorProvider: "github",
     isBuilt: false,
     logoPath: "/static/github_black_32x32.png",
+    fetchConnectorError: null,
+  },
+  {
+    name: "Google Drive",
+    connectorProvider: "google_drive",
+    isBuilt: false,
+    logoPath: "/static/google_drive_32x32.png",
     fetchConnectorError: null,
   },
 ];
@@ -196,19 +197,26 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
-    const nangoConnectorId =
-      provider == "slack"
-        ? nangoConfig.slackConnectorId
-        : nangoConfig.notionConnectorId;
-    const nango = new Nango({ publicKey: nangoConfig.publicKey });
-
     try {
-      const {
-        connectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoConnectorId,
-        `${provider}-${owner.sId}`
-      );
+      let connectionId: string;
+      if (provider === "notion" || provider === "slack") {
+        // nango-based connectors
+        const nangoConnectorId =
+          provider === "slack"
+            ? nangoConfig.slackConnectorId
+            : nangoConfig.notionConnectorId;
+        const nango = new Nango({ publicKey: nangoConfig.publicKey });
+        const {
+          connectionId: nangoConnectionId,
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+        connectionId = nangoConnectionId;
+      } else if (provider === "github") {
+        const installationId = await githubAuth();
+        connectionId = installationId;
+      } else {
+        throw new Error(`Unknown provider ${provider}`);
+      }
 
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
 
@@ -222,6 +230,7 @@ export default function DataSourcesView({
           connectionId,
         }),
       });
+
       if (res.ok) {
         const createdManagedDataSource: {
           dataSource: DataSourceType;

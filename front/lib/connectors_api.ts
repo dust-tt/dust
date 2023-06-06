@@ -13,7 +13,7 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-export type ConnectorProvider = "slack" | "notion";
+export type ConnectorProvider = "slack" | "notion" | "github";
 export type ConnectorType = {
   id: string;
   type: ConnectorProvider;
@@ -42,8 +42,6 @@ export const ConnectorsAPI = {
         workspaceAPIKey,
         dataSourceName,
         connectionId,
-        // TODO: 20230606_deprecate_nango_connection_id
-        nangoConnectionId: connectionId,
       }),
     });
 

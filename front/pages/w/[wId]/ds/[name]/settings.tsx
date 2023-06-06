@@ -14,6 +14,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
 import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
+import { githubAuth } from "@app/lib/github_auth";
 import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
@@ -488,14 +489,18 @@ function ManagedDataSourceSettings({
     }
     const provider = connector.type;
 
-    const nangoConnectorId =
-      provider == "slack"
-        ? nangoConfig.slackConnectorId
-        : nangoConfig.notionConnectorId;
+    if (provider === "notion" || provider === "slack") {
+      const nangoConnectorId =
+        provider == "slack"
+          ? nangoConfig.slackConnectorId
+          : nangoConfig.notionConnectorId;
 
-    const nango = new Nango({ publicKey: nangoConfig.publicKey });
+      const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-    await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+      await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+    } else if (provider === "github") {
+      await githubAuth();
+    }
   };
 
   return (

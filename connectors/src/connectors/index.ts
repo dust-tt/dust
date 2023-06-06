@@ -1,5 +1,6 @@
 import { Transaction } from "sequelize";
 
+import { createGithubConnector } from "@connectors/connectors/github";
 import {
   cleanupNotionConnector,
   createNotionConnector,
@@ -26,6 +27,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: createSlackConnector,
   notion: createNotionConnector,
+  github: createGithubConnector,
 };
 
 type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;
@@ -37,6 +39,12 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   slack: async (connectorId: string) => {
     logger.info(
       `Stopping Slack connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(connectorId);
+  },
+  github: async (connectorId: string) => {
+    logger.info(
+      `Stopping Github connector is a no-op. ConnectorId: ${connectorId}`
     );
     return new Ok(connectorId);
   },
@@ -55,6 +63,12 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
+  github: async (connectorId: string) => {
+    logger.info(
+      `Cleaning up Github connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(undefined);
+  },
 };
 
 type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
@@ -70,6 +84,12 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
     return new Ok(connectorId);
   },
   notion: resumeNotionConnector,
+  github: async (connectorId: string) => {
+    logger.info(
+      `Resuming Github connector is a no-op. ConnectorId: ${connectorId}`
+    );
+    return new Ok(connectorId);
+  },
 };
 
 type SyncConnector = (connectorId: string) => Promise<Result<string, Error>>;
@@ -78,4 +98,10 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
+    github: async (connectorId: string) => {
+      logger.info(
+        `Syncing Github connector is a no-op. ConnectorId: ${connectorId}`
+      );
+      return new Ok(connectorId);
+    },
   };
