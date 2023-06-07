@@ -10,7 +10,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0d7ab66fd2",
       appHash:
-        "4454bb2d88f368800988339ab1d77cfe3ae5862ba78b6f6ee7f488c719a8ce22",
+        "eb523129497d094c7986ff6edac16f877ffe2d3ee0149afe9d5e43719cf1e067",
     },
     config: {
       DATASOURCE: {
@@ -26,7 +26,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "ab43ff2450",
       appHash:
-        "2e406bd23173489cbc88f067847271c6a949f23a292137892a8a82bba2271944",
+        "5ba93a4b1750336ff15614b16d2f735de444e63ff22ec03f8c6e8b48392e0ea5",
     },
     config: {
       MODEL: {
@@ -34,6 +34,22 @@ export const DustProdActionRegistry: {
         model_id: "gpt-3.5-turbo",
         use_cache: true,
         use_stream: true,
+      },
+    },
+  },
+  "chat-title": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "8fe968eef3",
+      appHash:
+        "3620dd97892f5256499100efff0e866e70490517dbb2716db5c0ac151b9ff3bf",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "text-davinci-003",
+        use_cache: true,
+        use_stream: false,
       },
     },
   },
