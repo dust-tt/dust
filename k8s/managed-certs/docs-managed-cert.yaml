@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: docs-managed-cert
+spec:
+  domains:
+    - docs.dust.tt
