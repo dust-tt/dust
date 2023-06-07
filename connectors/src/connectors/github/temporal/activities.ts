@@ -6,7 +6,7 @@ import {
   GithubUser,
 } from "@connectors/connectors/github/lib/github_api";
 import { upsertToDatasource } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
+import { Connector, GithubIssue } from "@connectors/lib/models";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -124,6 +124,32 @@ export async function githubUpsertIssueActivity(
     500,
     { ...loggerArgs, provider: "github" }
   );
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Connector not found");
+  }
+
+  const existingIssueInDb = await GithubIssue.findOne({
+    where: {
+      repoId,
+      issueNumber,
+      connectorId: connector.id,
+    },
+  });
+
+  if (!existingIssueInDb) {
+    localLogger.info("Creating new GitHub issue in DB.");
+    await GithubIssue.create({
+      repoId: repoId.toString(),
+      issueNumber,
+      connectorId: connector.id,
+    });
+  }
 }
 
 export async function githubSaveStartSyncActivity(

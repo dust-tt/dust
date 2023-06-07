@@ -13,7 +13,7 @@ import {
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import { assertNever } from "@connectors/lib/assert_never";
-import { Connector } from "@connectors/lib/models";
+import { Connector, GithubConnectorState } from "@connectors/lib/models";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
@@ -101,6 +101,40 @@ const _webhookGithubAPIHandler = async (
     return res.status(200);
   }
 
+  const githubConnectorState = await GithubConnectorState.findOne({
+    where: {
+      connectorId: connector?.id,
+    },
+  });
+
+  if (!githubConnectorState) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        installationId,
+      },
+      "Connector state not found"
+    );
+    // return 200 to avoid github retrying
+    return res.status(200);
+  }
+
+  if (
+    !githubConnectorState.webhooksEnabledAt ||
+    githubConnectorState.webhooksEnabledAt.getTime() > Date.now()
+  ) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        installationId,
+        webhooksEnabledAt: githubConnectorState.webhooksEnabledAt,
+      },
+      "Ignoring webhook because webhooks are disabled for connector,"
+    );
+
+    return res.status(200);
+  }
+
   // TODO: check connector state (paused, etc.)
   // if connector is paused, return 200 to avoid github retrying
 
@@ -110,7 +144,10 @@ const _webhookGithubAPIHandler = async (
         return syncRepos(
           connector,
           jsonBody.installation.account.login,
-          jsonBody.repositories_added.map((r) => ({ name: r.name, id: r.id })),
+          jsonBody.repositories_added.map((r) => ({
+            name: r.name,
+            id: r.id,
+          })),
           res
         );
       } else if (isRepositoriesRemovedPayload(jsonBody)) {
