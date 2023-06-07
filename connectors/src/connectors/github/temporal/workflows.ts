@@ -120,6 +120,7 @@ export async function githubReposSyncWorkflow(
   }
 
   await Promise.all(promises);
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
 export async function githubRepoSyncWorkflow(
@@ -201,6 +202,7 @@ export async function githubIssueSyncWorkflow(
     dataSourceConfig,
     loggerArgs
   );
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
 export async function githubIssueGarbageCollectWorkflow(
@@ -223,6 +225,7 @@ export async function githubIssueGarbageCollectWorkflow(
     issueNumber,
     loggerArgs
   );
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
 export async function githubRepoGarbageCollectWorkflow(
@@ -242,4 +245,5 @@ export async function githubRepoGarbageCollectWorkflow(
     repoId,
     loggerArgs
   );
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
