@@ -332,7 +332,7 @@ export class GithubConnectorState extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare webhooksEnabledAt?: Date;
+  declare webhooksEnabledAt?: Date | null;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }

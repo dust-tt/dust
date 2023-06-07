@@ -51,3 +51,92 @@ export async function createGithubConnector(
     return new Err(err as Error);
   }
 }
+
+export async function stopGithubConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        id: connectorId,
+      },
+    });
+
+    if (!connector) {
+      return new Err(new Error("Connector not found"));
+    }
+
+    const connectorState = await GithubConnectorState.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    if (!connectorState) {
+      return new Err(new Error("Connector state not found"));
+    }
+
+    if (!connectorState.webhooksEnabledAt) {
+      return new Err(new Error("Connector is already stopped"));
+    }
+
+    await connectorState.update({
+      webhooksEnabledAt: null,
+    });
+
+    return new Ok(connector.id.toString());
+  } catch (err) {
+    return new Err(err as Error);
+  }
+}
+
+export async function resumeGithubConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        id: connectorId,
+      },
+    });
+
+    if (!connector) {
+      return new Err(new Error("Connector not found"));
+    }
+
+    const connectorState = await GithubConnectorState.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    if (!connectorState) {
+      return new Err(new Error("Connector state not found"));
+    }
+
+    if (connectorState.webhooksEnabledAt) {
+      return new Err(new Error("Connector is not stopped"));
+    }
+
+    await connectorState.update({
+      webhooksEnabledAt: new Date(),
+    });
+
+    await launchGithubFullSyncWorkflow(connector.id.toString());
+
+    return new Ok(connector.id.toString());
+  } catch (err) {
+    return new Err(err as Error);
+  }
+}
+
+export async function fullResyncGithubConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  try {
+    await launchGithubFullSyncWorkflow(connectorId);
+    return new Ok(connectorId);
+  } catch (err) {
+    return new Err(err as Error);
+  }
+}
