@@ -461,7 +461,7 @@ export default function AppChat({
         ? navigator.userAgent.toUpperCase().indexOf("MAC") >= 0
         : false
     );
-  });
+  }, []);
 
   const prodAPI = new DustAPI(prodCredentials);
 
