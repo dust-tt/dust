@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: gcr.io/or1g1n-186209/dust-blog:latest
+          image: gcr.io/or1g1n-186209/blog-image:latest
           imagePullPolicy: Always
           command: ["npm", "run", "start"]
           ports:
