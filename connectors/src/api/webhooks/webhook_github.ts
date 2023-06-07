@@ -51,13 +51,14 @@ const _webhookGithubAPIHandler = async (
   }
 
   if (!HANDLED_WEBHOOKS[event]?.has(action)) {
-    return ignoreEvent(
+    logger.info(
       {
         event,
         action,
       },
-      res
+      "Ignoring webhook event"
     );
+    res.status(200).end();
   }
 
   logger.info(
@@ -232,26 +233,6 @@ const _webhookGithubAPIHandler = async (
       return rejectEvent();
   }
 };
-
-function ignoreEvent(
-  {
-    event,
-    action,
-  }: {
-    event: string;
-    action: string;
-  },
-  res: Response<GithubWebhookResBody>
-) {
-  logger.info(
-    {
-      event,
-      action,
-    },
-    "Ignoring event"
-  );
-  res.status(200).end();
-}
 
 async function syncRepos(
   connector: Connector,
