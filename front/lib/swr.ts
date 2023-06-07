@@ -10,6 +10,7 @@ import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invi
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
@@ -181,5 +182,23 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
     invitations: data ? data.invitations : [],
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
+  };
+}
+
+export function useChatSessions(
+  owner: WorkspaceType,
+  limit: number,
+  offset: number
+) {
+  const runsFetcher: Fetcher<GetChatSessionsResponseBody> = fetcher;
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/use/chats?limit=${limit}&offset=${offset}`,
+    runsFetcher
+  );
+
+  return {
+    sessions: data ? data.sessions : [],
+    isChatSessionsLoading: !error && !data,
+    isChatSessionsError: error,
   };
 }

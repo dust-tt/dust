@@ -32,7 +32,9 @@ import {
   DustAPICredentials,
   runActionStreamed,
 } from "@app/lib/dust_api";
+import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -427,6 +429,44 @@ export function MessageView({
   );
 }
 
+function ChatHistory({ owner }: { owner: WorkspaceType }) {
+  const router = useRouter();
+
+  const [limit] = useState(10);
+
+  const { sessions } = useChatSessions(owner, limit, 0);
+
+  return (
+    <div className="flex w-full flex-col">
+      <div className="mx-auto flex flex-row items-center py-8 font-bold italic">
+        Recent Chats
+      </div>
+      <div className="flex w-full flex-col space-y-2">
+        {sessions.map((s, i) => {
+          return (
+            <div
+              key={i}
+              className="flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
+              onClick={() => {
+                void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
+              }}
+            >
+              <div className="flex flex-row items-center">
+                <div className="flex flex-1">{s.title}</div>
+                <div className="min-w-16 flex flex-initial">
+                  <span className="ml-2 text-xs italic text-gray-400">
+                    {timeAgoFrom(s.created)} ago
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/new",
@@ -590,16 +630,19 @@ export default function AppChat({
     title: string,
     messages: ChatMessageType[]
   ) => {
-    const res = await fetch(`/api/w/${owner.sId}/use/chat/${chatSession.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        messages,
-      }),
-    });
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          messages,
+        }),
+      }
+    );
     if (res.ok) {
       return true;
     } else {
@@ -1001,6 +1044,9 @@ export default function AppChat({
                               );
                             })}
                           </div>
+                        </div>
+                        <div className="w-full py-4">
+                          <ChatHistory owner={owner} />
                         </div>
                       </div>
                     )}
