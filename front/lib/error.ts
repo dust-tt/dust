@@ -30,7 +30,8 @@ export type APIErrorType =
   | "action_unknown_error"
   | "action_api_error"
   | "invitation_not_found"
-  | "plan_limit_error";
+  | "plan_limit_error"
+  | "chat_session_not_found";
 
 export type APIError = {
   type: APIErrorType;

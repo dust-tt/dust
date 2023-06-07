@@ -27,8 +27,9 @@ export type RoleType = "admin" | "builder" | "user" | "none";
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
  * It acts as a central place to enforce permissioning across all of Dust.
- * In the future once we have Workspace the logic of resolving membership of a workspace and
- * associated permission will be implemented here.
+ *
+ * It explicitely does not store a reference to the current user to make sure our permissions are
+ * workspace oriented. Use `getUserFromSession` if needed.
  */
 export class Authenticator {
   _workspace: Workspace | null;

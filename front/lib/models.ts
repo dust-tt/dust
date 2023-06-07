@@ -642,13 +642,200 @@ Run.init(
     modelName: "run",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["workspaceId", "appId", "runType"] },
+      { fields: ["workspaceId", "appId", "runType", "createdAt"] },
       { unique: true, fields: ["dustRunId"] },
     ],
   }
 );
 App.hasMany(Run);
 Workspace.hasMany(Run);
+
+// Chat
+
+export class ChatSession extends Model<
+  InferAttributes<ChatSession>,
+  InferCreationAttributes<ChatSession>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare sId: string;
+  declare title?: string;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+}
+
+ChatSession.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "chat_session",
+    sequelize: front_sequelize,
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["workspaceId", "userId"] },
+      { fields: ["workspaceId", "sId"] },
+    ],
+  }
+);
+
+Workspace.hasMany(ChatSession);
+User.hasMany(ChatSession);
+
+export class ChatMessage extends Model<
+  InferAttributes<ChatMessage>,
+  InferCreationAttributes<ChatMessage>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare role: "user" | "retrieval" | "assistant" | "error";
+  declare runRetrieval?: boolean;
+  declare runAssistant?: boolean;
+  declare message?: string;
+  // `retrievals` are stored in a separate table
+
+  declare chatSessionId: ForeignKey<ChatSession["id"]>;
+}
+
+ChatMessage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    role: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    runRetrieval: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    runAssistant: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "chat_message",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["chatSessionId", "createdAt"] }],
+  }
+);
+
+ChatSession.hasMany(ChatMessage);
+
+export class ChatRetrievedDocument extends Model<
+  InferAttributes<ChatRetrievedDocument>,
+  InferCreationAttributes<ChatRetrievedDocument>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare dataSourceId: string;
+  declare sourceUrl: string;
+  declare documentId: string;
+  declare timestamp: string;
+  declare tags: string[];
+  declare score: number;
+  // `chunks` are not stored for Chat history
+
+  declare chatMessageId: ForeignKey<ChatMessage["id"]>;
+}
+
+ChatRetrievedDocument.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    dataSourceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    timestamp: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    tags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
+    score: {
+      type: DataTypes.REAL,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "chat_retrieved_document",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["chatMessageId"] }],
+  }
+);
+
+ChatMessage.hasMany(ChatRetrievedDocument);
 
 // XP1
 

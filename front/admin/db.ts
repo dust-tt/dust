@@ -1,5 +1,8 @@
 import {
   App,
+  ChatMessage,
+  ChatRetrievedDocument,
+  ChatSession,
   Clone,
   Dataset,
   DataSource,
@@ -26,6 +29,10 @@ async function main() {
   await Key.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
+  await ChatSession.sync({ alter: true });
+  await ChatMessage.sync({ alter: true });
+  await ChatRetrievedDocument.sync({ alter: true });
+
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
 
