@@ -16,11 +16,6 @@ export type GetRunsResponseBody = {
   total: number;
 };
 
-type GetRunsErrorResponseBody = {
-  message: string;
-  code: string;
-};
-
 export type PostRunsResponseBody = {
   run: RunType;
 };
@@ -28,10 +23,7 @@ export type PostRunsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetRunsResponseBody
-    | GetRunsErrorResponseBody
-    | PostRunsResponseBody
-    | ReturnedAPIErrorType
+    GetRunsResponseBody | PostRunsResponseBody | ReturnedAPIErrorType
   >
 ) {
   const session = await getSession(req, res);
