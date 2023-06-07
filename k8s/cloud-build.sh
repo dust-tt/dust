@@ -14,4 +14,4 @@ echo "Current working directory is $(pwd)"
 
 # Start the build and get its ID
 echo "Starting build..."
-BUILD_ID=$(gcloud builds submit --suppress-logs --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$1 --format='value(id)' .)
+BUILD_ID=$(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$1 --format='value(id)' .)
