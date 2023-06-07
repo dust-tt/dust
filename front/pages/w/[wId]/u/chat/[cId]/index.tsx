@@ -453,10 +453,15 @@ export default function AppChat({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
-  const isMac =
-    typeof window !== "undefined"
-      ? navigator.platform.toUpperCase().indexOf("MAC") >= 0
-      : false;
+  const [isMac, setIsMac] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMac(
+      typeof window !== "undefined"
+        ? navigator.userAgent.toUpperCase().indexOf("MAC") >= 0
+        : false
+    );
+  });
 
   const prodAPI = new DustAPI(prodCredentials);
 

@@ -642,7 +642,7 @@ Run.init(
     modelName: "run",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["workspaceId", "appId", "runType"] },
+      { fields: ["workspaceId", "appId", "runType", "createdAt"] },
       { unique: true, fields: ["dustRunId"] },
     ],
   }
@@ -761,7 +761,7 @@ ChatMessage.init(
   {
     modelName: "chat_message",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["chatSessionId"] }],
+    indexes: [{ fields: ["chatSessionId", "createdAt"] }],
   }
 );
 

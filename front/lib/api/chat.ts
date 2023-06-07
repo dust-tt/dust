@@ -89,114 +89,105 @@ export async function storeChatSession(
   title: string | null,
   messages: ChatMessageType[]
 ): Promise<ChatSessionType> {
-  const t = await front_sequelize.transaction();
+  return await front_sequelize.transaction(async (t) => {
+    // Start by cleaning up the previous chat session
+    const oldSession = await ChatSession.findOne({
+      where: {
+        workspaceId: owner.id,
+        sId,
+      },
+      transaction: t,
+    });
 
-  // start by cleaning up the previous chat session
-  const oldSession = await ChatSession.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId,
-    },
-  });
-
-  if (oldSession) {
-    // destroy all chat messages and retrived documents
-    await Promise.all(
-      (
-        await ChatMessage.findAll({
-          where: {
-            chatSessionId: oldSession.id,
-          },
+    if (oldSession) {
+      // destroy all chat messages and retrived documents
+      await Promise.all(
+        (
+          await ChatMessage.findAll({
+            where: {
+              chatSessionId: oldSession.id,
+            },
+            transaction: t,
+          })
+        ).map((m) => {
+          return (async () => {
+            await ChatRetrievedDocument.destroy({
+              where: {
+                chatMessageId: m.id,
+              },
+              transaction: t,
+            });
+            await ChatMessage.destroy({
+              where: {
+                id: m.id,
+              },
+              transaction: t,
+            });
+          })();
         })
-      ).map((m) => {
+      );
+
+      // destroy the chat session
+      await ChatSession.destroy({
+        where: {
+          id: oldSession.id,
+        },
+        transaction: t,
+      });
+    }
+
+    const chatSession = await ChatSession.create(
+      {
+        sId,
+        workspaceId: owner.id,
+        userId: user.id,
+        title: title ? title : undefined,
+      },
+      { transaction: t }
+    );
+
+    await Promise.all(
+      messages.map((m) => {
         return (async () => {
-          await ChatRetrievedDocument.destroy({
-            where: {
-              chatMessageId: m.id,
+          const chatMessage = await ChatMessage.create(
+            {
+              role: m.role,
+              runRetrieval: m.runRetrieval,
+              runAssistant: m.runAssistant,
+              message: m.message,
+              chatSessionId: chatSession.id,
             },
-            transaction: t,
-          });
-          await ChatMessage.destroy({
-            where: {
-              id: m.id,
-            },
-            transaction: t,
-          });
+            { transaction: t }
+          );
+
+          await Promise.all(
+            m.retrievals?.map((r) => {
+              return (async () => {
+                await ChatRetrievedDocument.create(
+                  {
+                    dataSourceId: r.dataSourceId,
+                    sourceUrl: r.sourceUrl,
+                    documentId: r.documentId,
+                    timestamp: r.timestamp,
+                    tags: r.tags,
+                    score: r.score,
+                    chatMessageId: chatMessage.id,
+                  },
+                  { transaction: t }
+                );
+              })();
+            }) || []
+          );
         })();
       })
     );
 
-    // destroy the chat session
-    await ChatSession.destroy({
-      where: {
-        id: oldSession.id,
-      },
-      transaction: t,
-    });
-  }
-
-  const chatSession = title
-    ? await ChatSession.create(
-        {
-          sId,
-          workspaceId: owner.id,
-          userId: user.id,
-          title,
-        },
-        { transaction: t }
-      )
-    : await ChatSession.create(
-        {
-          sId,
-          workspaceId: owner.id,
-          userId: user.id,
-        },
-        { transaction: t }
-      );
-
-  await Promise.all(
-    messages.map((m) => {
-      return (async () => {
-        const chatMessage = await ChatMessage.create(
-          {
-            role: m.role,
-            runRetrieval: m.runRetrieval,
-            runAssistant: m.runAssistant,
-            message: m.message,
-            chatSessionId: chatSession.id,
-          },
-          { transaction: t }
-        );
-
-        await Promise.all(
-          m.retrievals?.map((r) => {
-            return (async () => {
-              await ChatRetrievedDocument.create(
-                {
-                  dataSourceId: r.dataSourceId,
-                  sourceUrl: r.sourceUrl,
-                  documentId: r.documentId,
-                  timestamp: r.timestamp,
-                  tags: r.tags,
-                  score: r.score,
-                  chatMessageId: chatMessage.id,
-                },
-                { transaction: t }
-              );
-            })();
-          }) || []
-        );
-      })();
-    })
-  );
-
-  await t.commit();
-
-  return {
-    id: chatSession.id,
-    userId: chatSession.userId,
-    sId: chatSession.sId,
-    title: chatSession.title,
-    messages,
-  };
+    return {
+      id: chatSession.id,
+      userId: chatSession.userId,
+      sId: chatSession.sId,
+      title: chatSession.title,
+      messages,
+    };
+  });
 }
