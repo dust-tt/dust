@@ -18,7 +18,7 @@ import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-const MUST_HANDLE = {
+const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),
   issues: new Set(["opened", "edited", "deleted"]),
   issue_comment: new Set(["created", "edited", "deleted"]),
@@ -39,6 +39,7 @@ const _webhookGithubAPIHandler = async (
 ) => {
   const event = req.headers["x-github-event"];
   const jsonBody = req.body;
+  const action = jsonBody.action || "unknown";
 
   if (!event || typeof event !== "string") {
     return res.status(400).json({
@@ -48,31 +49,14 @@ const _webhookGithubAPIHandler = async (
     });
   }
 
-  const _ignoreEvent = () => {
-    if (MUST_HANDLE[event]?.has(jsonBody.action || "unknown")) {
-      logger.error(
-        {
-          event,
-          action: jsonBody.action || "unknown",
-          jsonBody,
-        },
-        "Could not process webhook"
-      );
-
-      return res.status(500).json();
-    }
-
+  if (!HANDLED_WEBHOOKS[event]?.has(action)) {
     return ignoreEvent(
       {
         event,
-        action: jsonBody.action || "unknown",
+        action,
       },
       res
     );
-  };
-
-  if (!isGithubWebhookPayload(jsonBody)) {
-    return _ignoreEvent();
   }
 
   logger.info(
@@ -82,6 +66,22 @@ const _webhookGithubAPIHandler = async (
     },
     "Received webhook"
   );
+
+  const rejectEvent = (): Response<GithubWebhookResBody> => {
+    logger.error(
+      {
+        event,
+        action,
+        jsonBody,
+      },
+      "Could not process webhook"
+    );
+    return res.status(500).json();
+  };
+
+  if (!isGithubWebhookPayload(jsonBody)) {
+    return rejectEvent();
+  }
 
   const installationId = jsonBody.installation.id.toString();
   const connector = await Connector.findOne({
@@ -124,7 +124,7 @@ const _webhookGithubAPIHandler = async (
           res
         );
       }
-      return _ignoreEvent();
+      return rejectEvent();
     case "issues":
       if (isIssuePayload(jsonBody)) {
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
@@ -149,7 +149,8 @@ const _webhookGithubAPIHandler = async (
           assertNever(jsonBody.action);
         }
       }
-      return _ignoreEvent();
+
+      return rejectEvent();
 
     case "issue_comment":
       if (isCommentPayload(jsonBody)) {
@@ -170,7 +171,7 @@ const _webhookGithubAPIHandler = async (
           assertNever(jsonBody.action);
         }
       }
-      return _ignoreEvent();
+      return rejectEvent();
 
     case "pull_request":
       if (isPullRequestPayload(jsonBody)) {
@@ -187,10 +188,10 @@ const _webhookGithubAPIHandler = async (
           assertNever(jsonBody.action);
         }
       }
-      return _ignoreEvent();
+      return rejectEvent();
 
     default:
-      return _ignoreEvent();
+      return rejectEvent();
   }
 };
 
