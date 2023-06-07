@@ -138,9 +138,6 @@ const _webhookGithubAPIHandler = async (
     return res.status(200);
   }
 
-  // TODO: check connector state (paused, etc.)
-  // if connector is paused, return 200 to avoid github retrying
-
   switch (event) {
     case "installation_repositories":
       if (isRepositoriesAddedPayload(jsonBody)) {
