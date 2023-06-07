@@ -195,3 +195,41 @@ export async function githubIssueSyncWorkflow(
     loggerArgs
   );
 }
+
+export async function githubIssueGarbageCollectWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  githubInstallationId: string,
+  repoName: string,
+  repoId: number,
+  repoLogin: string,
+  issueNumber: number
+) {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    repoName,
+    repoLogin,
+    issueNumber,
+  };
+
+  // TODO: Implement
+}
+
+export async function githubRepoGarbageCollectWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  githubInstallationId: string,
+  repoName: string,
+  repoId: number,
+  repoLogin: string
+) {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    repoName,
+    repoLogin,
+  };
+
+  // todo: implement
+}

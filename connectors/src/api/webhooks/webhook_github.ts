@@ -10,6 +10,7 @@ import {
 } from "@connectors/connectors/github/lib/github_webhooks";
 import {
   launchGithubIssueSyncWorkflow,
+  launchGithubRepoGarbageCollectWorkflow,
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import { assertNever } from "@connectors/lib/assert_never";
@@ -268,13 +269,12 @@ async function garbageCollectRepos(
   repos: { name: string; id: number }[],
   res: Response<GithubWebhookResBody>
 ) {
-  for (const repo of repos) {
-    console.log(
-      "GARBAGE COLLECT REPO",
-      connector.connectionId,
+  for (const { name, id } of repos) {
+    await launchGithubRepoGarbageCollectWorkflow(
+      connector.id.toString(),
       orgLogin,
-      repo.name,
-      repo.id
+      name,
+      id
     );
   }
   res.status(200).end();

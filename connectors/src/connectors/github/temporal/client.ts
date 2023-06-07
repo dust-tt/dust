@@ -12,7 +12,9 @@ import {
 } from "@connectors/connectors/github/temporal/utils";
 import {
   githubFullSyncWorkflow,
+  githubIssueGarbageCollectWorkflow,
   githubIssueSyncWorkflow,
+  githubRepoGarbageCollectWorkflow,
   githubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -94,55 +96,11 @@ export async function launchGithubReposSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const githubInstallationId = connector.connectionId;
 
-  const workflow = await getGithubReposSyncWorkflow(connectorId);
-
-  // TODO: figure out how we want to handle more than one webhook for repositories_added
-  // If 2 come in too close from each other, we'll lose the info from the second one.
-  // If we remove the check entirely, we don't control the number of concurrent requests
-  // to the Github API (and wen coulkd hit the rate limit).
-  if (workflow && workflow.executionDescription.status.name === "RUNNING") {
-    logger.warn(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-      },
-      "launchGithubReposSyncWorkflow: Github repos sync workflow already running."
-    );
-    return;
-  }
-
   await client.workflow.start(githubReposSyncWorkflow, {
     args: [dataSourceConfig, githubInstallationId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
   });
-}
-
-export async function getGithubReposSyncWorkflow(connectorId: string): Promise<{
-  executionDescription: WorkflowExecutionDescription;
-  handle: WorkflowHandle;
-} | null> {
-  const client = await getTemporalClient();
-
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  const handle: WorkflowHandle<typeof githubReposSyncWorkflow> =
-    client.workflow.getHandle(getReposSyncWorkflowId(dataSourceConfig));
-
-  try {
-    return {
-      executionDescription: await handle.describe(),
-      handle,
-    };
-  } catch (err) {
-    if (err instanceof WorkflowNotFoundError) {
-      return null;
-    }
-    throw err;
-  }
 }
 
 export async function launchGithubIssueSyncWorkflow(
@@ -161,10 +119,6 @@ export async function launchGithubIssueSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const githubInstallationId = connector.connectionId;
 
-  // TODO: figure out how we should handle concurrency limit here
-  // If many issues are updated at the same time, we could have a lot of
-  // concurrent workflows, which means a lot of concurrent requests to the
-  // Github API (and we could hit the rate limit).
   await client.workflow.start(githubIssueSyncWorkflow, {
     args: [
       dataSourceConfig,
@@ -176,5 +130,59 @@ export async function launchGithubIssueSyncWorkflow(
     ],
     taskQueue: QUEUE_NAME,
     workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+  });
+}
+
+export async function launchGithubIssueGarbageCollectWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  issueNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubIssueGarbageCollectWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      issueNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+  });
+}
+
+export async function launchGithubRepoGarbageCollectWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubRepoGarbageCollectWorkflow, {
+    args: [dataSourceConfig, githubInstallationId, repoName, repoId, repoLogin],
+    taskQueue: QUEUE_NAME,
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, 0),
   });
 }
