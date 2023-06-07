@@ -1,3 +1,5 @@
+import PQueue from "p-queue";
+
 import {
   getIssue,
   getIssueCommentsPage,
@@ -5,8 +7,11 @@ import {
   getReposPage,
   GithubUser,
 } from "@connectors/connectors/github/lib/github_api";
-import { upsertToDatasource } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
+import {
+  deleteFromDataSource,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
+import { Connector, GithubIssue } from "@connectors/lib/models";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -106,7 +111,7 @@ export async function githubUpsertIssueActivity(
     resultPage += 1;
   }
 
-  const documentId = `github-issue-${repoId}-${issueNumber}`;
+  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [`title:${issue.title}`];
   if (issueAuthor) {
@@ -124,6 +129,32 @@ export async function githubUpsertIssueActivity(
     500,
     { ...loggerArgs, provider: "github" }
   );
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Connector not found");
+  }
+
+  const existingIssueInDb = await GithubIssue.findOne({
+    where: {
+      repoId: repoId.toString(),
+      issueNumber,
+      connectorId: connector.id,
+    },
+  });
+
+  if (!existingIssueInDb) {
+    localLogger.info("Creating new GitHub issue in DB.");
+    await GithubIssue.create({
+      repoId: repoId.toString(),
+      issueNumber,
+      connectorId: connector.id,
+    });
+  }
 }
 
 export async function githubSaveStartSyncActivity(
@@ -167,6 +198,100 @@ export async function githubSaveSuccessSyncActivity(
   }
 }
 
+export async function githubIssueGarbageCollectActivity(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  issueNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  await deleteIssue(
+    dataSourceConfig,
+    installationId,
+    repoId,
+    issueNumber,
+    loggerArgs
+  );
+}
+
+export async function githubRepoGarbageCollectActivity(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  loggerArgs: Record<string, string | number>
+) {
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Connector not found");
+  }
+
+  const issuesInRepo = await GithubIssue.findAll({
+    where: {
+      repoId,
+      connectorId: connector.id,
+    },
+  });
+
+  const queue = new PQueue({ concurrency: 5 });
+  const promises = [];
+
+  for (const issue of issuesInRepo) {
+    promises.push(
+      queue.add(() =>
+        deleteIssue(
+          dataSourceConfig,
+          installationId,
+          repoId,
+          issue.issueNumber,
+          loggerArgs
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+}
+
+async function deleteIssue(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  issueNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child(loggerArgs);
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Connector not found");
+  }
+
+  localLogger.info("Deleting GitHub issue from Dust Data Source.");
+  await deleteFromDataSource(
+    dataSourceConfig,
+    getIssueDocumentId(repoId, issueNumber)
+  );
+
+  localLogger.info("Deleting GitHub issue from database.");
+  await GithubIssue.destroy({
+    where: {
+      repoId: repoId.toString(),
+      issueNumber,
+      connectorId: connector.id,
+    },
+  });
+}
+
 function renderGithubUser(user: GithubUser | null): string {
   if (!user) {
     return "";
@@ -175,4 +300,8 @@ function renderGithubUser(user: GithubUser | null): string {
     return `@${user.login}`;
   }
   return `@${user.id}`;
+}
+
+function getIssueDocumentId(repoId: string, issueNumber: number): string {
+  return `github-issue-${repoId}-${issueNumber}`;
 }

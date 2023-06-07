@@ -5,8 +5,18 @@ import {
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
-import { getFullSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
-import { githubFullSyncWorkflow } from "@connectors/connectors/github/temporal/workflows";
+import {
+  getFullSyncWorkflowId,
+  getIssueSyncWorkflowId,
+  getReposSyncWorkflowId,
+} from "@connectors/connectors/github/temporal/utils";
+import {
+  githubFullSyncWorkflow,
+  githubIssueGarbageCollectWorkflow,
+  githubIssueSyncWorkflow,
+  githubRepoGarbageCollectWorkflow,
+  githubReposSyncWorkflow,
+} from "@connectors/connectors/github/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -70,4 +80,107 @@ export async function getGithubFullSyncWorkflow(connectorId: string): Promise<{
     }
     throw err;
   }
+}
+
+export async function launchGithubReposSyncWorkflow(
+  connectorId: string,
+  orgLogin: string,
+  repos: { name: string; id: number }[]
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubReposSyncWorkflow, {
+    args: [dataSourceConfig, githubInstallationId, orgLogin, repos],
+    taskQueue: QUEUE_NAME,
+    workflowId: getReposSyncWorkflowId(dataSourceConfig),
+  });
+}
+
+export async function launchGithubIssueSyncWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  issueNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubIssueSyncWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      issueNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+  });
+}
+
+export async function launchGithubIssueGarbageCollectWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  issueNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubIssueGarbageCollectWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoId.toString(),
+      issueNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+  });
+}
+
+export async function launchGithubRepoGarbageCollectWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubRepoGarbageCollectWorkflow, {
+    args: [dataSourceConfig, githubInstallationId, repoId.toString()],
+    taskQueue: QUEUE_NAME,
+    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, 0),
+  });
 }
