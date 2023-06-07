@@ -9,13 +9,13 @@ export async function getStaticProps() {
   return { props: {} }
 }
 
----
+—-
 
 ## Speculative sampling: how LLMs can write a lot faster using other LLMs {{ date: '2023-06-02T00:00Z', id: '2023-06-02-speculative-sampling' }}
 
 Behind the beautiful name of *Speculative sampling* lies a neat technique to have a large language model generate tokens **up to three times faster** 🔥 The technique has been developed by various research teams, including one from  Google DeepMind [who published it here](https://arxiv.org/pdf/2302.01318.pdf).
 
-See it for yourself:
+See for yourself:
 
 ![](@/media/2023-06-02-speculative-sampling/example.gif)
 
@@ -42,34 +42,32 @@ What is impressive is that this can be done *without loss of quality*. Just as a
 But it can be shown that the quality of Speculative Sampling (SSp) is the same as regular sampling (RSp) in two ways:
 
 1. *theoretically*: the token probability distribution is proven to be the same as in the [DeepMind paper](https://arxiv.org/pdf/2302.01318.pdf);
-2. Empirically, by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/philipperolet/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
+2. Empirically: by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/philipperolet/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
 
 ### How and why it works
 
-Let us provide a simplified explanation of how SSp works (optimized for clarity over precision 😉--see the DeepMind paper for full details)
+Let us provide a simplified explanation of how SSp works (optimized for clarity over precision 😉—see the DeepMind paper for full details)
 
-Small models are significantly faster than large ones--e.g. the tests in the [repo](https://github.com/philipperolet/llama-ssp) show the Llama 7B model is ~8 times faster than the 65B.
+Small models are significantly faster than large ones—e.g. the tests in the [repo](https://github.com/philipperolet/llama-ssp) show the Llama 7B model is ~8 times faster than the 65B.
 
 The major observation behind SSp is that it takes the same time for a target model to generate a single token, than to check how likely it would have generated a sequence of e.g. 4 tokens.
 
 ![Blog post 1.png](@/media/2023-06-02-speculative-sampling/Blog_post_1.png)
 
-Therefore, having the draft model generate 4 tokens, and then the target model check they are good, can be done in roughly the same time as sampling a single token from the target model. This is what SSp does: sample 4 tokens for the draft (4 is a hyperparameter here), assess how good they are sequentially and accept them until one is too bad, then sample a token it would have generated itself--at no additional cost, because the "likeliness check" of the target gives us token probabilities we can sample directly from, *without another forward pass*.
+Therefore, having the draft model generate 4 tokens, and then the target model check they are good, can be done in roughly the same time as sampling a single token from the target model. This is what SSp does: sample 4 tokens for the draft (4 is a hyperparameter here), assess how good they are sequentially and accept them until one is too bad, then sample a token it would have generated itself—at no additional cost, because the "likeliness check" of the target gives us token probabilities we can sample directly from, *without another forward pass*.
 
-If the draft model is often correct, i.e. the tokens it generates are validated by the target model most of the time, then the gain can be huge. On dumb cases such as completing the prompt "1 2 1 2 1 2 1 2 " etc. you can expect all tokens to be accepted all the time, so you'd get a roughly 4x speed up.
+If the draft model is often correct, i.e. the tokens it generates are validated by the target model most of the time, then the gain can be significant. On dumb cases such as completing the prompt "1 2 1 2 1 2 1 2 " etc. you can expect all tokens to be accepted all the time, so you'd get a roughly 4x speed up.
 
 Of course, in real settings, the draft is sometimes wrong, but less than we would expect since in many, many cases at least a few tokens are obvious even for a small model, e.g.:
 
-- "How are you" -> do, ing, ?, \n -- 4 obvious tokens (remembering tokens are not words)
-- "It was amaz" -> ing, !, \n -- 3 obvious tokens
+- "How are you" -> do, ing, ?, \n — 4 obvious tokens (remembering tokens are not words)
+- "It was amaz" -> ing, !, \n — 3 obvious tokens
 
 Generic examples include punctuation, capitalization, language idioms, etc.
 
 ![BP2.png](@/media/2023-06-02-speculative-sampling/BP2.png)
 
 The quality remains the same thanks to the *Modified Rejection Sampling* scheme, as the DeepMind paper's author call it. The decision to accept a draft token is made stochastically depending on the ratio of probabilities of this token (target over draft), and on failure the next token is resampled according to adjusted probabilities. This scheme allows to recover the target model's probability distribution (as proved in the paper's appendix).
-
-The quality remains the same thanks to the *Modified Rejection Sampling* scheme, as the DeepMind paper's author call it. The decision to accept a draft token is made stochastically depending on the ratio of probabilities of this token (target over draft), and on failure the next token is resampled according to accordingly adjusted probabilities. This scheme allows to recover the target model's probability distribution (as proved in the paper's appendix).
 
 Note: speculative sampling has also been discovered and explored by other teams, with other names, e.g. [assisted generation](https://huggingface.co/blog/assisted-generation) at HuggingFace, or [Blockwise Parallel Decoding](https://proceedings.neurips.cc/paper/2018/file/c4127b9194fe8562c64dc0f5bf2c93bc-Paper.pdf) at Google Brain.
 
@@ -87,12 +85,12 @@ The fact that it is now usable by all LLM workers shows the value brought by the
 
 ### Next steps
 
-The repo we shared was based on Meta's Llama models using HuggingFace Transformers. Experiments on newer models--e.g. the recently released Falcon--, faster parallelization code--e.g. using Meta's *fairscale* lib—and hyperparameter tuning--e.g. optimal number of draft tokens--are on the radar.
+The repo we shared was based on Meta's Llama models using HuggingFace Transformers. Experiments on newer models—e.g. the recently released Falcon—, faster parallelization code—e.g. using Meta's *fairscale* lib—and hyperparameter tuning—e.g. optimal number of draft tokens—are on the radar.
 
-Apart from speculative sampling, great new techniques are emerging that can help us build--non-exhaustive list 📜
+Apart from speculative sampling, great new techniques are emerging that can help us build. Non-exhaustive list 📜
 
 - QLoRA: applying LoRA to quantized models for even more accessible LLMs hardware-wise;
 - Tree-of-Thought: generalizing Chain-of-thought, to make existing models stronger at problem-solving;
-- RLAIF strategies so that anybody can afford specializing models--since it removes the need to hire click workers.
+- RLAIF strategies so that anybody can afford specializing models—since it removes the need to hire click workers.
 
-Lots of interesting paths to innovate. Crucially, it's essential to find ways to ground the models in truth, ensuring the factuality of their outputs and minimizing potential hallucinations while we forge those paths towards better LLMs. At Dust we look forward to experiment on those to further build productivity tools that make teams smarter.
+Lots of interesting paths to innovate. Crucially, it's essential to find ways to ground the models in truth, ensuring the factuality of their outputs and minimizing potential hallucinations while we forge those paths towards better LLMs. At Dust we look forward to experimenting on those to further build  tools that make teams smarter.
