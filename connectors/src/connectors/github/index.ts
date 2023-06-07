@@ -1,8 +1,11 @@
+import { Transaction } from "sequelize";
+
 import { validateInstallationId } from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import {
   Connector,
   GithubConnectorState,
+  GithubIssue,
   sequelize_conn,
 } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
@@ -137,6 +140,45 @@ export async function fullResyncGithubConnector(
     await launchGithubFullSyncWorkflow(connectorId);
     return new Ok(connectorId);
   } catch (err) {
+    return new Err(err as Error);
+  }
+}
+
+export async function cleanupGithubConnector(
+  connectorId: string,
+  transaction: Transaction
+): Promise<Result<void, Error>> {
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        id: connectorId,
+      },
+      transaction,
+    });
+
+    if (!connector) {
+      logger.error({ connectorId }, "Connector not found");
+      return new Err(new Error("Connector not found"));
+    }
+
+    await GithubIssue.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GithubConnectorState.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      { connectorId, error: err },
+      "Error cleaning up github connector"
+    );
     return new Err(err as Error);
   }
 }

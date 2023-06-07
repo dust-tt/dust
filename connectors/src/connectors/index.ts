@@ -1,6 +1,7 @@
 import { Transaction } from "sequelize";
 
 import {
+  cleanupGithubConnector,
   createGithubConnector,
   fullResyncGithubConnector,
   resumeGithubConnector,
@@ -63,11 +64,7 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
-  github: async (connectorId: string) => {
-    throw new Error(
-      "not implemented: github connector cleanup. ConnectorId: " + connectorId
-    );
-  },
+  github: cleanupGithubConnector,
 };
 
 type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
