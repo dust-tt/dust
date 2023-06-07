@@ -9,6 +9,34 @@ import {
   front_sequelize,
 } from "../models";
 
+export async function getChatSessions(
+  owner: WorkspaceType,
+  user: UserType,
+  limit: number,
+  offset: number
+): Promise<ChatSessionType[]> {
+  const chatSessions = await ChatSession.findAll({
+    where: {
+      workspaceId: owner.id,
+      userId: user.id,
+    },
+    limit,
+    offset,
+    order: [["createdAt", "DESC"]],
+  });
+
+  return chatSessions.map((c) => {
+    return {
+      id: c.id,
+      userId: c.userId,
+      created: c.createdAt.getTime(),
+      sId: c.sId,
+      title: c.title,
+      messages: [],
+    };
+  });
+}
+
 export async function getChatSession(
   owner: WorkspaceType,
   cId: string
@@ -53,6 +81,7 @@ export async function getChatSession(
   return {
     id: chatSession.id,
     userId: chatSession.userId,
+    created: chatSession.createdAt.getTime(),
     sId: chatSession.sId,
     title: chatSession.title,
     messages: messages.map((m) => {
@@ -185,6 +214,7 @@ export async function storeChatSession(
     return {
       id: chatSession.id,
       userId: chatSession.userId,
+      created: chatSession.createdAt.getTime(),
       sId: chatSession.sId,
       title: chatSession.title,
       messages,
