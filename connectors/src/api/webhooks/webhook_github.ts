@@ -9,6 +9,7 @@ import {
   isRepositoriesRemovedPayload,
 } from "@connectors/connectors/github/lib/github_webhooks";
 import {
+  launchGithubIssueGarbageCollectWorkflow,
   launchGithubIssueSyncWorkflow,
   launchGithubRepoGarbageCollectWorkflow,
   launchGithubReposSyncWorkflow,
@@ -58,7 +59,7 @@ const _webhookGithubAPIHandler = async (
       },
       "Ignoring webhook event"
     );
-    res.status(200).end();
+    return res.status(200).end();
   }
 
   logger.info(
@@ -78,7 +79,7 @@ const _webhookGithubAPIHandler = async (
       },
       "Could not process webhook"
     );
-    return res.status(500).json();
+    return res.status(500).end();
   };
 
   if (!isGithubWebhookPayload(jsonBody)) {
@@ -287,9 +288,8 @@ async function garbageCollectIssue(
   issueNumber: number,
   res: Response<GithubWebhookResBody>
 ) {
-  console.log(
-    "GARBAGE COLLECT ISSUE",
-    connector.connectionId,
+  await launchGithubIssueGarbageCollectWorkflow(
+    connector.id.toString(),
     orgLogin,
     repoName,
     repoId,

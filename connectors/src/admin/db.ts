@@ -1,5 +1,7 @@
 import {
   Connector,
+  GithubConnectorState,
+  GithubIssue,
   NotionConnectorState,
   NotionPage,
   SlackConfiguration,
@@ -13,6 +15,8 @@ async function main(): Promise<void> {
   await SlackMessages.sync({ alter: true });
   await NotionPage.sync({ alter: true });
   await NotionConnectorState.sync({ alter: true });
+  await GithubConnectorState.sync({ alter: true });
+  await GithubIssue.sync({ alter: true });
   return;
 }
 

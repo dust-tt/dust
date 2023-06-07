@@ -141,7 +141,7 @@ export async function githubUpsertIssueActivity(
 
   const existingIssueInDb = await GithubIssue.findOne({
     where: {
-      repoId,
+      repoId: repoId.toString(),
       issueNumber,
       connectorId: connector.id,
     },
