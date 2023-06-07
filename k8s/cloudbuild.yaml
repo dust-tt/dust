@@ -25,3 +25,6 @@ steps:
 images:
   - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA"
   - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
