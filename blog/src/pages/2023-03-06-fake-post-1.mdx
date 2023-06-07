@@ -1,0 +1,25 @@
+import { SparkleIcon } from '@/components/SparkleIcon'
+import { generateRssFeed } from '@/lib/generateRssFeed'
+
+export async function getStaticProps() {
+  if (process.env.NODE_ENV === 'production') {
+    await generateRssFeed()
+  }
+  return { props: {} }
+}
+
+---
+
+
+## Dark mode support {{ date: '2023-03-06T00:00Z', id: '2023-03-06-fake-post-1'}}
+
+I released this thing last week hoping a couple of people would say "awesome job" and make me feel good about what I'd built but instead I just got a ton of people shaming me on Twitter for being such a horrible person for only shipping a light UI.
+
+![](@/media/dark-mode.png)
+
+### <SparkleIcon /> Improvements
+
+- Added dark mode support
+- Improved input field responsiveness when writing a commit message in a project with a large number of changed files
+- Made keyboard shortcut for opening the Commit window customizable
+- Deleted my Twitter account
