@@ -154,9 +154,7 @@ export async function launchGithubIssueGarbageCollectWorkflow(
     args: [
       dataSourceConfig,
       githubInstallationId,
-      repoName,
-      repoId,
-      repoLogin,
+      repoId.toString(),
       issueNumber,
     ],
     taskQueue: QUEUE_NAME,
@@ -181,7 +179,7 @@ export async function launchGithubRepoGarbageCollectWorkflow(
   const githubInstallationId = connector.connectionId;
 
   await client.workflow.start(githubRepoGarbageCollectWorkflow, {
-    args: [dataSourceConfig, githubInstallationId, repoName, repoId, repoLogin],
+    args: [dataSourceConfig, githubInstallationId, repoId.toString()],
     taskQueue: QUEUE_NAME,
     workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, 0),
   });

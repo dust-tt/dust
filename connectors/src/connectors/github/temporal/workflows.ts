@@ -18,9 +18,16 @@ const { githubSaveStartSyncActivity, githubSaveSuccessSyncActivity } =
 const {
   githubGetReposResultPageActivity,
   githubGetRepoIssuesResultPageActivity,
+  githubIssueGarbageCollectActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
 });
+
+const { githubRepoGarbageCollectActivity } = proxyActivities<typeof activities>(
+  {
+    startToCloseTimeout: "20 minute",
+  }
+);
 
 const { githubUpsertIssueActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
@@ -199,37 +206,40 @@ export async function githubIssueSyncWorkflow(
 export async function githubIssueGarbageCollectWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string,
+  repoId: string,
   issueNumber: number
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
     githubInstallationId,
-    repoName,
-    repoLogin,
     issueNumber,
   };
 
-  // TODO: Implement
+  await githubIssueGarbageCollectActivity(
+    dataSourceConfig,
+    githubInstallationId,
+    repoId,
+    issueNumber,
+    loggerArgs
+  );
 }
 
 export async function githubRepoGarbageCollectWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string
+  repoId: string
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
     githubInstallationId,
-    repoName,
-    repoLogin,
   };
 
-  // todo: implement
+  await githubRepoGarbageCollectActivity(
+    dataSourceConfig,
+    githubInstallationId,
+    repoId,
+    loggerArgs
+  );
 }
