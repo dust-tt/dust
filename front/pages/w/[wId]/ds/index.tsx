@@ -1,16 +1,13 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { INode } from "react-accessible-treeview";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import { ActionButton } from "@app/components/Button";
+import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import MainTab from "@app/components/profile/MainTab";
-import MultiSelectCheckboxAsync from "@app/components/TreeView";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -18,7 +15,6 @@ import {
   ConnectorProvider,
   ConnectorsAPI,
   ConnectorType,
-  GoogleDriveSelectedFolderType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -207,6 +203,7 @@ export default function DataSourcesView({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
+  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     try {
@@ -256,6 +253,9 @@ export default function DataSourcesView({
               : ds;
           })
         );
+        if (provider === "google_drive") {
+          setGoogleDrivePickerOpen(true);
+        }
       } else {
         logger.error(
           {
@@ -278,7 +278,8 @@ export default function DataSourcesView({
   useEffect(() => {
     setLocalIntegrations(localIntegrations);
   }, [localIntegrations]);
-  const googleDrive = integrations.find((integration) => {
+
+  const googleDrive = localIntegrations.find((integration) => {
     return integration.connectorProvider === "google_drive";
   });
 
@@ -287,9 +288,11 @@ export default function DataSourcesView({
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
           {googleDrive && googleDrive.connector && (
-            <GoogleDriveFoldersPicker
+            <GoogleDriveFoldersPickerModal
               owner={owner}
               connectorId={googleDrive.connector.id}
+              isOpen={googleDrivePickerOpen}
+              setOpen={setGoogleDrivePickerOpen}
             />
           )}
 
@@ -549,155 +552,5 @@ export default function DataSourcesView({
         </div>
       </div>
     </AppLayout>
-  );
-}
-
-function GoogleDriveFoldersPicker(props: {
-  // onSave: (folders: string[]) => void;
-  owner: WorkspaceType;
-  connectorId: string;
-}) {
-  const [open, setOpen] = useState(true);
-  const [selectedFoldersToSave, setSelectedFoldersToSave] = useState<
-    string[] | undefined
-  >(undefined);
-
-  const [folders, setFolders] = useState<GoogleDriveSelectedFolderType[]>([]);
-
-  useEffect(() => {
-    void (async () => {
-      const foldersRes = await fetch(
-        `/api/w/${props.owner.sId}/data_sources/google_drive/folders?connectorId=${props.connectorId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (foldersRes.ok) {
-        const folders: GoogleDriveSelectedFolderType[] =
-          await foldersRes.json();
-        console.log("got folders", folders);
-        setFolders(folders);
-      } else {
-        window.alert("Failed to fetch folders");
-      }
-    })();
-  }, []);
-
-  const onSave = async (folders: string[]) => {
-    const res = await fetch(
-      `/api/w/${props.owner.sId}/data_sources/google_drive/folders`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          folders: folders,
-          connectorId: props.connectorId.toString(),
-        }),
-      }
-    );
-    if (res.ok) {
-      window.alert("Successfully saved folders");
-    } else {
-      window.alert("Failed to save folders");
-    }
-  };
-
-  const cancelButtonRef = useRef(null);
-
-  const rootFolder: GoogleDriveSelectedFolderType = {
-    name: "",
-    id: "root",
-    children: folders.filter((f) => f.parent === "root").map((c) => c.id),
-    parent: null,
-    selected: false,
-  };
-  const initialFolders = [rootFolder, ...folders];
-
-  console.log("initial folders", initialFolders);
-
-  return (
-    <Transition.Root show={open} as={Fragment}>
-      <Dialog
-        as="div"
-        className="h-200 relative "
-        initialFocus={cancelButtonRef}
-        onClose={setOpen}
-      >
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 z-10 h-4/5 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-            >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full  sm:mx-0 sm:h-10 sm:w-10">
-                    <img
-                      src="/static/google_drive_32x32.png"
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-base font-semibold leading-6 text-gray-900"
-                    >
-                      Select the folders to synchronize.
-                    </Dialog.Title>
-                    <div className="mt-2 h-4/5">
-                      {folders.length > 0 && (
-                        <>
-                          <MultiSelectCheckboxAsync
-                            folders={initialFolders}
-                            owner={props.owner}
-                            connectorId={props.connectorId}
-                            onSelectedChange={(folders: string[]) => {
-                              setSelectedFoldersToSave(folders);
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                  <ActionButton
-                    onClick={() => {
-                      if (selectedFoldersToSave !== undefined) {
-                        void onSave(selectedFoldersToSave);
-                      }
-                    }}
-                  >
-                    Save
-                  </ActionButton>
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
-        </div>
-      </Dialog>
-    </Transition.Root>
   );
 }

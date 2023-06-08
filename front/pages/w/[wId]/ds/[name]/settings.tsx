@@ -9,9 +9,14 @@ import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/data_source/MainTab";
+import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
+import {
+  connectorIsUsingNango,
+  ConnectorsAPI,
+  ConnectorType,
+} from "@app/lib/connectors_api";
 import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
@@ -24,6 +29,7 @@ const {
   GA_TRACKING_ID = "",
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
+  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   GITHUB_APP_URL = "",
 } = process.env;
@@ -39,6 +45,7 @@ export const getServerSideProps: GetServerSideProps<{
     publicKey: string;
     slackConnectorId: string;
     notionConnectorId: string;
+    googleDriveConnectorId: string;
   };
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -93,6 +100,7 @@ export const getServerSideProps: GetServerSideProps<{
         publicKey: NANGO_PUBLIC_KEY,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
+        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
     },
   };
@@ -108,6 +116,7 @@ export default function DataSourceSettings({
   nangoConfig,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId;
+
   return (
     <AppLayout
       user={user}
@@ -471,12 +480,15 @@ function ManagedDataSourceSettings({
     publicKey: string;
     slackConnectorId: string;
     notionConnectorId: string;
+    googleDriveConnectorId: string;
   };
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
   if (!logo) {
     throw new Error(`No logo for data source ${dataSource.name}`);
   }
+  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
+
   const dataSourceName = dataSource.connectorProvider
     ? dataSource.connectorProvider.charAt(0).toUpperCase() +
       dataSource.connectorProvider.slice(1)
@@ -490,11 +502,12 @@ function ManagedDataSourceSettings({
     }
     const provider = connector.type;
 
-    if (provider === "notion" || provider === "slack") {
-      const nangoConnectorId =
-        provider == "slack"
-          ? nangoConfig.slackConnectorId
-          : nangoConfig.notionConnectorId;
+    if (connectorIsUsingNango(provider)) {
+      const nangoConnectorId = {
+        slack: nangoConfig.slackConnectorId,
+        notion: nangoConfig.notionConnectorId,
+        google_drive: nangoConfig.googleDriveConnectorId,
+      }[provider];
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
@@ -505,36 +518,56 @@ function ManagedDataSourceSettings({
   };
 
   return (
-    <div className="">
-      <div className="mx-auto mt-8 max-w-4xl px-4">
-        <div className="-200 mt-8 space-y-8">
-          <div className="-200">
-            <div>
-              <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <div className="flex flex-row items-center">
-                    <div className="mr-1 flex h-4 w-4 ">
-                      <img src={logo}></img>
+    <>
+      {connector && connector?.type == "google_drive" && (
+        <GoogleDriveFoldersPickerModal
+          owner={owner}
+          connectorId={connector.id}
+          isOpen={googleDrivePickerOpen}
+          setOpen={setGoogleDrivePickerOpen}
+        />
+      )}
+
+      <div className="">
+        <div className="mx-auto mt-8 max-w-4xl px-4">
+          <div className="-200 mt-8 space-y-8">
+            <div className="-200">
+              <div>
+                <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+                  <div className="sm:col-span-3">
+                    <div className="flex flex-row items-center">
+                      <div className="mr-1 flex h-4 w-4 ">
+                        <img src={logo}></img>
+                      </div>
+                      <label
+                        htmlFor="dataSourceName"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        {dataSourceName} (managed - {total} documents)
+                      </label>
                     </div>
-                    <label
-                      htmlFor="dataSourceName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      {dataSourceName} (managed - {total} documents)
-                    </label>
                   </div>
-                </div>
 
-                <div className="flex flex-row justify-between sm:col-span-6">
-                  <ManagedDataSourceStatus
-                    connector={connector}
-                    fetchConnectorError={fetchConnectorError}
-                  />
+                  <div className="flex flex-row justify-between sm:col-span-6">
+                    <ManagedDataSourceStatus
+                      connector={connector}
+                      fetchConnectorError={fetchConnectorError}
+                    />
 
-                  <div className="flex flex-col">
-                    <Button onClick={handleUpdatePermissions}>
-                      Update permissions
-                    </Button>
+                    <div className="flex flex-row">
+                      <Button onClick={handleUpdatePermissions}>
+                        Update permissions
+                      </Button>
+                      {connector && connector.type === "google_drive" && (
+                        <div className="ml-3">
+                          <Button
+                            onClick={() => setGoogleDrivePickerOpen(true)}
+                          >
+                            Edit Folders selection
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -542,6 +575,6 @@ function ManagedDataSourceSettings({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
