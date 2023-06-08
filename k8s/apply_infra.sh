@@ -86,6 +86,7 @@ echo "-----------------------------------"
 apply_deployment front-deployment
 apply_deployment front-edge-deployment
 apply_deployment connectors-deployment
+apply_deployment connectors-worker-deployment
 apply_deployment connectors-edge-deployment
 apply_deployment blog-deployment
 apply_deployment docs-deployment
