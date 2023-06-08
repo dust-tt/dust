@@ -149,7 +149,7 @@ const _googleDriveGetFoldersAPIHandler = async (
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Error while getting Google Drive folders. status: ${res.status} statusText: ${res.statusText}`,
+          message: `Error while getting Google Drive folders. status: ${filesRes.status} statusText: ${filesRes.statusText}`,
         },
       });
     }
@@ -180,14 +180,11 @@ const _googleDriveGetFoldersAPIHandler = async (
       ? filesRes.data.nextPageToken
       : undefined;
   } while (nextPageToken);
-  console.log("done fetching from google", new Date());
 
-  console.log("start linking", new Date());
   folders.forEach((currentNode) => {
     const directChildren = folders.filter((f) => f.parent === currentNode.id);
     currentNode.children = directChildren.map((f) => f.id);
   });
-  console.log("done linking", new Date());
 
   return res.status(200).send(folders);
 };

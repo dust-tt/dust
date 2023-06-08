@@ -2,7 +2,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
