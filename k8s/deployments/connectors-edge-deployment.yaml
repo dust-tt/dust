@@ -31,7 +31,7 @@ spec:
           # override env vars from configmap/secret
           env:
             - name: FRONT_API
-              value: "front-edge-service"
+              value: http://front-edge-service
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
