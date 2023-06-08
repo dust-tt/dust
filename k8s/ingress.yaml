@@ -10,9 +10,9 @@ metadata:
 
 spec:
   tls:
-	  - hosts:
-	      - dust.tt
-	    secretName: dust-temp-cert
+    - hosts:
+        - dust.tt
+      secretName: dust-temp-cert
 
   rules:
     - host: dust.tt
