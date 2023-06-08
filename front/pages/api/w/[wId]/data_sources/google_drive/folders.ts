@@ -53,18 +53,18 @@ async function handler(
         });
       }
 
-      if (!req.body || typeof req.query.connectorId !== "string") {
+      if (typeof req.query.connectorId !== "string" || (req.query.parentId && typeof req.query.parentId !== "string")) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "uri_params required: connectorId.",
+            message: "uri_params required: connectorId. query_params optional: parentId.",
           },
         });
       }
-      console.log('a12132432')
       const foldersRes = await ConnectorsAPI.getGoogleDriveFolders(
-        req.query.connectorId
+        req.query.connectorId,
+        req.query.parentId || undefined
       );
       if (foldersRes.isErr()) {
         return apiError(req, res, {
@@ -75,7 +75,7 @@ async function handler(
           },
         });
       }
-      console.log("foldersRes.value ", foldersRes.value);
+      
 
       res.status(200).json(foldersRes.value);
 
@@ -112,12 +112,11 @@ async function handler(
         req.body.folders
       );
       if (setFoldersRes.isErr()) {
-        console.log("connectorsRes.isErr() ", setFoldersRes.error);
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `An error occurred while setting the Google Drive folders.`,
+            message: `An error occurred while setting the Google Drive folders. ${setFoldersRes.error}`,
           },
         });
       }
