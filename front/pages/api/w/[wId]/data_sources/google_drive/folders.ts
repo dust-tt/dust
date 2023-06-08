@@ -53,12 +53,16 @@ async function handler(
         });
       }
 
-      if (typeof req.query.connectorId !== "string" || (req.query.parentId && typeof req.query.parentId !== "string")) {
+      if (
+        typeof req.query.connectorId !== "string" ||
+        (req.query.parentId && typeof req.query.parentId !== "string")
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "uri_params required: connectorId. query_params optional: parentId.",
+            message:
+              "uri_params required: connectorId. query_params optional: parentId.",
           },
         });
       }
@@ -75,7 +79,6 @@ async function handler(
           },
         });
       }
-      
 
       res.status(200).json(foldersRes.value);
 

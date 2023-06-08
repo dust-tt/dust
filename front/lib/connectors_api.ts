@@ -47,7 +47,6 @@ export type ConnectorType = {
   firstSyncProgress?: string;
 };
 
-
 export type GoogleDriveFolderType = {
   id: string;
   name: string;
@@ -58,7 +57,6 @@ export type GoogleDriveFolderType = {
 export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
   selected: boolean;
 };
-
 
 export const ConnectorsAPI = {
   async createConnector(
@@ -167,13 +165,18 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async getGoogleDriveFolders(connectorId: string, parentId?:string): Promise<
+  async getGoogleDriveFolders(
+    connectorId: string,
+    parentId?: string
+  ): Promise<
     ConnectorsAPIResponse<{
-      folders: GoogleDriveSelectedFolderType[]
+      folders: GoogleDriveSelectedFolderType[];
     }>
   > {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/get_folders?parentId=${parentId || ""}`,
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/get_folders?parentId=${
+        parentId || ""
+      }`,
       {
         method: "GET",
         headers: getDefaultHeaders(),
@@ -195,11 +198,14 @@ async function _resultFromResponse<T>(
 ): Promise<ConnectorsAPIResponse<T>> {
   if (!response.ok) {
     if (response.headers.get("Content-Type") === "application/json") {
-      const jsonError = await response.json()
+      const jsonError = await response.json();
       logger.error({ jsonError }, "Unexpected response from ConnectorAPI");
       return new Err(jsonError);
     } else {
-      logger.error({ statusCode:response.status, statusText: response.statusText }, "Unexpected response from ConnectorAPI");
+      logger.error(
+        { statusCode: response.status, statusText: response.statusText },
+        "Unexpected response from ConnectorAPI"
+      );
       return new Err({
         error: {
           message: `Unexpected response status: ${response.status} ${response.statusText}`,
