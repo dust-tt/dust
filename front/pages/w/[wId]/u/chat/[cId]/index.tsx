@@ -436,7 +436,7 @@ function ChatHistory({ owner }: { owner: WorkspaceType }) {
 
   const { sessions } = useChatSessions(owner, limit, 0);
 
-  return (
+  return (sessions && sessions.length > 0) && (
     <div className="flex w-full flex-col">
       <div className="mx-auto flex flex-row items-center py-8 font-bold italic">
         Recent Chats
