@@ -9,6 +9,11 @@ metadata:
     kubernetes.io/ingress.class: "gce"
 
 spec:
+  tls:
+    - hosts:
+        - connectors.dust.tt
+      secretName: connectors-temp-cert
+
   rules:
     - host: dust.tt
       http:
@@ -29,6 +34,17 @@ spec:
             backend:
               service:
                 name: front-edge-service
+                port:
+                  number: 80
+
+    - host: connectors.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: connectors-service
                 port:
                   number: 80
 

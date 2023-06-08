@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectors-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: connectors
+  template:
+    metadata:
+      labels:
+        app: connectors
+        name: connectors-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "connectors","service": "connectors","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/connectors-image:latest
+          command: ["npm", "run", "start:web"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: connectors-config
+            - secretRef:
+                name: connectors-secrets
+
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-cert
+
+      imagePullSecrets:
+        - name: gcr-json-key
