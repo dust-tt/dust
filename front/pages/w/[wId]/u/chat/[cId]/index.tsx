@@ -436,33 +436,37 @@ function ChatHistory({ owner }: { owner: WorkspaceType }) {
 
   const { sessions } = useChatSessions(owner, limit, 0);
 
-  return (sessions && sessions.length > 0) && (
+  return (
     <div className="flex w-full flex-col">
-      <div className="mx-auto flex flex-row items-center py-8 font-bold italic">
-        Recent Chats
-      </div>
-      <div className="flex w-full flex-col space-y-2">
-        {sessions.map((s, i) => {
-          return (
-            <div
-              key={i}
-              className="flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
-              onClick={() => {
-                void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
-              }}
-            >
-              <div className="flex flex-row items-center">
-                <div className="flex flex-1">{s.title}</div>
-                <div className="min-w-16 flex flex-initial">
-                  <span className="ml-2 text-xs italic text-gray-400">
-                    {timeAgoFrom(s.created)} ago
-                  </span>
+      {sessions && sessions.length > 0 && (
+        <>
+          <div className="mx-auto flex flex-row items-center py-8 font-bold italic">
+            Recent Chats
+          </div>
+          <div className="flex w-full flex-col space-y-2">
+            {sessions.map((s, i) => {
+              return (
+                <div
+                  key={i}
+                  className="flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
+                  }}
+                >
+                  <div className="flex flex-row items-center">
+                    <div className="flex flex-1">{s.title}</div>
+                    <div className="min-w-16 flex flex-initial">
+                      <span className="ml-2 text-xs italic text-gray-400">
+                        {timeAgoFrom(s.created)} ago
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
