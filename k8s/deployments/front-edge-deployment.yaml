@@ -27,10 +27,16 @@ spec:
                 name: front-edge-config
             - secretRef:
                 name: front-secrets
+
           # override env vars from configmap/secret
           env:
             - name: CONNECTORS_API
-              value: "connectors-edge-service"
+              value: http://connectors-edge-service
+            - name: NEXTAUTH_URL
+              value: https://front-edge.dust.tt
+            - name: URL
+              value: https://front-edge.dust.tt
+
           resources:
             requests:
               cpu: 200m
