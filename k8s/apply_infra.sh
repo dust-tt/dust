@@ -50,6 +50,7 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/blog-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
@@ -66,6 +67,7 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
+# kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/blog-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/docs-managed-cert.yaml"
@@ -83,6 +85,7 @@ echo "-----------------------------------"
 
 apply_deployment front-deployment
 apply_deployment front-edge-deployment
+apply_deployment connectors-deployment
 apply_deployment connectors-edge-deployment
 apply_deployment blog-deployment
 apply_deployment docs-deployment
@@ -94,6 +97,7 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/blog-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/docs-service.yaml"
