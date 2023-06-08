@@ -20,16 +20,6 @@ export function startServer(port: number) {
     res.status(200).send("OK");
   });
 
-  // temporary, ACME challenge
-  app.get(
-    "/.well-known/acme-challenge/pjLldvnwyTFooRwBaDWv9AN9aMAv9UXTO34EViYryrQ",
-    (_req, res) => {
-      res.send(
-        "pjLldvnwyTFooRwBaDWv9AN9aMAv9UXTO34EViYryrQ.iNVJjvAd2FBKVsJoanvQ6BvZklL3u5J_X-9HPIKMOhE"
-      );
-    }
-  );
-
   app.use(
     bodyParser.json({
       verify: (req, _res, buf) => {
