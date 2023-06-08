@@ -1,4 +1,3 @@
-
 import { SparkleIcon } from '@/components/SparkleIcon'
 import { generateRssFeed } from '@/lib/generateRssFeed'
 
@@ -11,7 +10,9 @@ export async function getStaticProps() {
 
 ---
 
-## Speculative sampling: how LLMs can write a lot faster using other LLMs {{ date: '2023-06-02T00:00Z', id: '2023-06-02-speculative-sampling' }}
+## Speculative sampling: LLMs writing a lot faster using other LLMs {{ date: '2023-06-02T00:00Z', id: '2023-06-02-speculative-sampling' }}
+
+*Author: Philippe Rolet*
 
 Behind the beautiful name of *Speculative sampling* lies a neat technique to have a large language model generate tokens **up to three times faster** 🔥 The technique has been developed by various research teams, including one from  Google DeepMind [who published it here](https://arxiv.org/pdf/2302.01318.pdf).
 
@@ -42,7 +43,7 @@ What is impressive is that this can be done *without loss of quality*. Just as a
 But it can be shown that the quality of Speculative Sampling (SSp) is the same as regular sampling (RSp) in two ways:
 
 1. *theoretically*: the token probability distribution is proven to be the same as in the [DeepMind paper](https://arxiv.org/pdf/2302.01318.pdf);
-2. Empirically: by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/philipperolet/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
+2. *empirically*: by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/philipperolet/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
 
 ### How and why it works
 
