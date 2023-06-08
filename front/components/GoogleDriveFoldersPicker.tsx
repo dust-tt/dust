@@ -1,8 +1,11 @@
-import cx from "classnames";
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import TreeView, { INode } from "react-accessible-treeview";
-import { FaCheckSquare, FaMinusSquare, FaSquare } from "react-icons/fa";
-import { IoMdArrowDropright } from "react-icons/io";
+import {
+  FaRegCheckSquare,
+  FaRegMinusSquare,
+  FaRegSquare,
+} from "react-icons/fa";
+import { IoMdArrowDropdown, IoMdArrowDropright } from "react-icons/io";
 
 import { GoogleDriveSelectedFolderType } from "@app/lib/connectors_api";
 import { WorkspaceType } from "@app/types/user";
@@ -26,7 +29,7 @@ function getParentsIds(
   return parents;
 }
 
-function MultiSelectCheckboxAsync(props: {
+export default function GoogleDriveFoldersPicker(props: {
   folders: GoogleDriveSelectedFolderType[];
   owner: WorkspaceType;
   connectorId: string;
@@ -34,18 +37,14 @@ function MultiSelectCheckboxAsync(props: {
 }) {
   const loadedAlertElement = useRef(null);
   const treeView = useRef(null);
-  const [data, setData] = useState(
-    props.folders.map((el): INode => {
-      return { isBranch: el.children.length > 0, ...el };
-    })
-  );
+  const nodes = props.folders.map((el): INode => {
+    return { isBranch: el.children.length > 0, ...el };
+  });
   const selectedIds = props.folders.filter((f) => f.selected).map((f) => f.id);
-
-  console.log("selectedIds", selectedIds);
 
   return (
     <>
-      <div>
+      <div className="">
         <div
           className="flex flex-row"
           ref={loadedAlertElement}
@@ -55,7 +54,8 @@ function MultiSelectCheckboxAsync(props: {
         <div className="checkbox">
           <TreeView
             ref={treeView}
-            data={data}
+            data={nodes}
+            className="p-3"
             aria-label="Checkbox tree"
             multiSelect
             propagateSelect={true}
@@ -87,22 +87,40 @@ function MultiSelectCheckboxAsync(props: {
               return (
                 <div
                   {...getNodeProps({ onClick: handleExpand })}
-                  style={{ marginLeft: 40 * (level - 1) }}
-                  className="flex flex-row items-center"
+                  style={{ marginLeft: 30 * (level - 1) }}
+                  className="flex flex-row items-center text-gray-700"
                 >
-                  {isBranch && <ArrowIcon isOpen={isExpanded} />}
-                  {!isBranch && <ArrowIcon isOpen={false} />}
-                  <CheckBoxIcon
-                    className="checkbox-icon"
+                  <div className="">
+                    {isBranch && <ArrowIcon isOpen={isExpanded} />}
+                    {!isBranch && (
+                      <div className="opacity-0">
+                        <ArrowIcon isOpen={false} />
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    className="cursor-point"
                     onClick={(e) => {
                       handleSelect(e);
                       e.stopPropagation();
                     }}
-                    variant={
-                      isHalfSelected ? "some" : isSelected ? "all" : "none"
-                    }
-                  />
-                  <span className="name">{element.name}</span>
+                  >
+                    <CheckBoxIcon
+                      variant={
+                        isHalfSelected ? "some" : isSelected ? "all" : "none"
+                      }
+                    />
+                  </div>
+
+                  <div
+                    className=" ml-1 cursor-pointer "
+                    onClick={(e) => {
+                      handleSelect(e);
+                      e.stopPropagation();
+                    }}
+                  >
+                    {element.name}
+                  </div>
                 </div>
               );
             }}
@@ -114,26 +132,22 @@ function MultiSelectCheckboxAsync(props: {
 }
 
 const ArrowIcon = ({ isOpen }: { isOpen: boolean }) => {
-  const baseClass = "arrow";
-  const classes = cx(
-    baseClass,
-    { [`${baseClass}--closed`]: !isOpen },
-    { [`${baseClass}--open`]: isOpen }
-  );
-  return <IoMdArrowDropright className={classes} />;
-};
-
-const CheckBoxIcon = ({ variant, ...rest }) => {
-  switch (variant) {
-    case "all":
-      return <FaCheckSquare {...rest} />;
-    case "none":
-      return <FaSquare {...rest} />;
-    case "some":
-      return <FaMinusSquare {...rest} />;
-    default:
-      return null;
+  if (!isOpen) {
+    return <IoMdArrowDropright />;
+  } else {
+    return <IoMdArrowDropdown />;
   }
 };
 
-export default MultiSelectCheckboxAsync;
+const CheckBoxIcon = ({ variant }: { variant: "all" | "none" | "some" }) => {
+  switch (variant) {
+    case "all":
+      return <FaRegCheckSquare />;
+    case "none":
+      return <FaRegSquare />;
+    case "some":
+      return <FaRegMinusSquare />;
+    default:
+      throw new Error("Invalid variant");
+  }
+};
