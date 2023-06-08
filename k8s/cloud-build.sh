@@ -5,9 +5,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 
+# second arg : directory to build from (defaults to service name arg)
+BUILD_DIR=${2:-$1}
 
 # Change the current working directory to the directory in which to build the image
-cd "${SCRIPT_DIR}/../$1"
+cd "${SCRIPT_DIR}/../${BUILD_DIR}"
 
 # Check the current working directory
 echo "Current working directory is $(pwd)"

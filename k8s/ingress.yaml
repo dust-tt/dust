@@ -9,7 +9,23 @@ metadata:
     kubernetes.io/ingress.class: "gce"
 
 spec:
+  tls:
+	  - hosts:
+	      - dust.tt
+	    secretName: dust-temp-cert
+
   rules:
+    - host: dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: front-service
+                port:
+                  number: 80
+
     - host: front-edge.dust.tt
       http:
         paths:
