@@ -64,7 +64,7 @@ echo "-----------------------------------"
 echo "Applying managed certificates"
 echo "-----------------------------------"
 
-# kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
+kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/blog-managed-cert.yaml"
