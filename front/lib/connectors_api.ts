@@ -47,6 +47,19 @@ export type ConnectorType = {
   firstSyncProgress?: string;
 };
 
+
+export type GoogleDriveFolderType = {
+  id: string;
+  name: string;
+  parent: string | null;
+  children: string[];
+};
+
+export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
+  selected: boolean;
+};
+
+
 export const ConnectorsAPI = {
   async createConnector(
     provider: ConnectorProvider,
@@ -154,17 +167,13 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async getGoogleDriveFolders(connectorId: string): Promise<
+  async getGoogleDriveFolders(connectorId: string, parentId?:string): Promise<
     ConnectorsAPIResponse<{
-      folders: {
-        name: string;
-        id: string;
-        selected: boolean;
-      }[]
+      folders: GoogleDriveSelectedFolderType[]
     }>
   > {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/get_folders`,
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/get_folders?parentId=${parentId || ""}`,
       {
         method: "GET",
         headers: getDefaultHeaders(),

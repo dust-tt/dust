@@ -4,11 +4,13 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { INode } from "react-accessible-treeview";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import { ActionButton } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
+import MultiSelectCheckboxAsync from "@app/components/TreeView";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -16,6 +18,7 @@ import {
   ConnectorProvider,
   ConnectorsAPI,
   ConnectorType,
+  GoogleDriveSelectedFolderType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -555,10 +558,11 @@ function GoogleDriveFoldersPicker(props: {
   connectorId: string;
 }) {
   const [open, setOpen] = useState(true);
-  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(
-    new Set<string>()
-  );
-  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+  const [selectedFoldersToSave, setSelectedFoldersToSave] = useState<
+    string[] | undefined
+  >(undefined);
+
+  const [folders, setFolders] = useState<GoogleDriveSelectedFolderType[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -572,7 +576,9 @@ function GoogleDriveFoldersPicker(props: {
         }
       );
       if (foldersRes.ok) {
-        const folders = await foldersRes.json();
+        const folders: GoogleDriveSelectedFolderType[] =
+          await foldersRes.json();
+        console.log("got folders", folders);
         setFolders(folders);
       } else {
         window.alert("Failed to fetch folders");
@@ -595,6 +601,7 @@ function GoogleDriveFoldersPicker(props: {
       }
     );
     if (res.ok) {
+      window.alert("Successfully saved folders");
     } else {
       window.alert("Failed to save folders");
     }
@@ -602,11 +609,22 @@ function GoogleDriveFoldersPicker(props: {
 
   const cancelButtonRef = useRef(null);
 
+  const rootFolder: GoogleDriveSelectedFolderType = {
+    name: "",
+    id: "root",
+    children: folders.filter((f) => f.parent === "root").map((c) => c.id),
+    parent: null,
+    selected: false,
+  };
+  const initialFolders = [rootFolder, ...folders];
+
+  console.log("initial folders", initialFolders);
+
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
         as="div"
-        className="relative z-10"
+        className="h-200 relative "
         initialFocus={cancelButtonRef}
         onClose={setOpen}
       >
@@ -622,7 +640,7 @@ function GoogleDriveFoldersPicker(props: {
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-10 overflow-y-auto">
+        <div className="fixed inset-0 z-10 h-4/5 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <Transition.Child
               as={Fragment}
@@ -648,62 +666,28 @@ function GoogleDriveFoldersPicker(props: {
                     >
                       Select the folders to synchronize.
                     </Dialog.Title>
-                    <div className="mt-2">
-                      <ul className="h-96 w-auto overflow-auto">
-                        {folders.map((folder) => {
-                          return (
-                            <label key={folder.id} htmlFor={folder.id}>
-                              <div className="relative flex items-start p-1">
-                                <div className="flex h-6 items-center text-2xl">
-                                  {/* <FolderIcon className="-ml-1 mr-1 h-5 w-5" /> */}
-                                  <input
-                                    id={folder.id}
-                                    aria-describedby="comments-description"
-                                    type="checkbox"
-                                    name={folder.id}
-                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 "
-                                    checked={selectedFolders.has(folder.id)}
-                                    onChange={() => {
-                                      if (selectedFolders.has(folder.id)) {
-                                        selectedFolders.delete(folder.id);
-                                        setSelectedFolders(
-                                          new Set(selectedFolders)
-                                        );
-                                      } else {
-                                        selectedFolders.add(folder.id);
-                                        setSelectedFolders(
-                                          new Set(selectedFolders)
-                                        );
-                                      }
-                                    }}
-                                  />
-                                </div>
-                                <div className="ml-3 text-base leading-6">
-                                  <label
-                                    htmlFor="comments"
-                                    className="font-medium text-gray-900"
-                                  >
-                                    {folder.name}
-                                  </label>{" "}
-                                  <span
-                                    id="comments-description"
-                                    className="text-gray-500"
-                                  >
-                                    Drive
-                                  </span>
-                                </div>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </ul>
+                    <div className="mt-2 h-4/5">
+                      {folders.length > 0 && (
+                        <>
+                          <MultiSelectCheckboxAsync
+                            folders={initialFolders}
+                            owner={props.owner}
+                            connectorId={props.connectorId}
+                            onSelectedChange={(folders: string[]) => {
+                              setSelectedFoldersToSave(folders);
+                            }}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                   <ActionButton
                     onClick={() => {
-                      void onSave(Array.from(selectedFolders));
+                      if (selectedFoldersToSave !== undefined) {
+                        void onSave(selectedFoldersToSave);
+                      }
                     }}
                   >
                     Save
