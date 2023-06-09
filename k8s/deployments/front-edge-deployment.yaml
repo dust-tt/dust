@@ -37,6 +37,11 @@ spec:
             - name: URL
               value: https://front-edge.dust.tt
 
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
           resources:
             requests:
               cpu: 200m

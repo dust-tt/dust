@@ -28,10 +28,17 @@ spec:
                 name: connectors-edge-config
             - secretRef:
                 name: connectors-secrets
+
           # override env vars from configmap/secret
           env:
             - name: FRONT_API
               value: http://front-edge-service
+
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs

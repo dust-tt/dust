@@ -22,11 +22,17 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
+
           envFrom:
             - configMapRef:
                 name: front-config
             - secretRef:
                 name: front-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
 
           resources:
             requests:

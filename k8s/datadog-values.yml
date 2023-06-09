@@ -6,10 +6,17 @@ datadog:
       - "name:datadog-agent"
   site: datadoghq.eu
   clusterName: dust-kube
+
   apm:
     socketEnabled: false
+    portEnabled: true
+
   dogstatsd:
     useDogStatsDSocketVolume: false
+    port: 8125
+    useHostPort: true
+    nonLocalTraffic: true
+
   ignoreAutoConfig:
     - cilium
     - nginx

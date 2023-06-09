@@ -27,6 +27,12 @@ spec:
             - secretRef:
                 name: connectors-secrets
 
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
