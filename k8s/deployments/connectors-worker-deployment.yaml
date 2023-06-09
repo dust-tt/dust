@@ -36,6 +36,8 @@ spec:
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
+            - name: private-key-volume
+              mountPath: /etc/private-keys
 
           resources:
             requests:
@@ -50,3 +52,7 @@ spec:
         - name: cert-volume
           secret:
             secretName: temporal-cert
+
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key
