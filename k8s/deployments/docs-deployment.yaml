@@ -26,6 +26,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: docs-config
+
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
           resources:
             requests:
               cpu: 2000m

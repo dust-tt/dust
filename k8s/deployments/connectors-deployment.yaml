@@ -23,11 +23,17 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3002
+
           envFrom:
             - configMapRef:
                 name: connectors-config
             - secretRef:
                 name: connectors-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
 
           volumeMounts:
             - name: cert-volume
