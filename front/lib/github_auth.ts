@@ -1,12 +1,6 @@
-export async function githubAuth(): Promise<string> {
-  const { GITHUB_APP_URL = "" } = process.env;
-
-  if (!GITHUB_APP_URL.length) {
-    throw new Error("Missing GITHUB_APP_URL environment variable.");
-  }
-
+export async function githubAuth(githubAppUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const ghPopup = window.open(GITHUB_APP_URL);
+    const ghPopup = window.open(githubAppUrl);
     let authComplete = false;
 
     const popupMessageEventListener = (event: MessageEvent) => {
