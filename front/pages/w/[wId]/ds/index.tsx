@@ -26,6 +26,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
+  GITHUB_APP_URL = "",
 } = process.env;
 
 type UpcomingConnectorProvider = "google_drive" | "github";
@@ -212,7 +213,7 @@ export default function DataSourcesView({
           await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
         connectionId = nangoConnectionId;
       } else if (provider === "github") {
-        const installationId = await githubAuth();
+        const installationId = await githubAuth(GITHUB_APP_URL);
         connectionId = installationId;
       } else {
         throw new Error(`Unknown provider ${provider}`);
