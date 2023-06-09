@@ -1,3 +1,8 @@
+export type ChatTimeRange = {
+  name: string;
+  id: string;
+};
+
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
   sourceUrl: string;

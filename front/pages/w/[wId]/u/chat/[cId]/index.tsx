@@ -35,8 +35,11 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
+import { ChatTimeRange, ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import TimeRangePicker, {
+  defaultTimeRange,
+} from "@app/components/use/ChatTimeRangePicker";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -525,6 +528,7 @@ export default function AppChat({
   }, [chatSession]);
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(defaultTimeRange);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
@@ -582,6 +586,10 @@ export default function AppChat({
       }
     });
     setDataSources(newSelection);
+  };
+
+  const handleTimeRangeChange = (timeRange: ChatTimeRange) => {
+    setSelectedTimeRange(timeRange);
   };
 
   const handleNew = async () => {
@@ -1214,9 +1222,22 @@ export default function AppChat({
                           </div>
                         );
                       })}
+                      
+                    </div>
+                    <div className="flex flex-initial text-gray-500 px-2">
+                      //
+                    </div>
+                    <div className="flex flex-initial text-gray-400">
+                      Time Range:
+                    </div>
+                    <div className="ml-2 flex flex-row text-xs">
+                      <TimeRangePicker
+                        timeRange={selectedTimeRange}
+                        onTimeRangeUpdate={(tr) => handleTimeRangeChange(tr)}
+                      />
                     </div>
                     <div className="flex flex-1 text-gray-400"></div>
-                    <div className="flex flex-initial text-gray-400">
+                    <div className="flex flex-initial text-gray-400 hidden lg:block">
                       <>
                         <span className="font-bold">
                           {isMac ? "⌘" : "ctrl"}
