@@ -386,7 +386,7 @@ impl DataSource {
             )
             .await?;
 
-        // Embed chunks with max concurrency of 16.
+        // Embed chunks with max concurrency of 24.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
                 let provider_id = self.config.provider_id.clone();
@@ -399,7 +399,7 @@ impl DataSource {
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
                 })
             })
-            .buffer_unordered(16)
+            .buffer_unordered(24)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
                 Ok(r) => r,
