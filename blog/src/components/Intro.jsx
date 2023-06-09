@@ -49,7 +49,7 @@ export function Intro() {
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-x-1 gap-y-3 sm:gap-x-2 lg:justify-start">
         <IconLink href="https://dust.tt" icon={TryitIcon} className="flex-none">
-          Try it !
+          Try Dust!
         </IconLink>
         <IconLink href="/rss/feed.xml" icon={FeedIcon} className="flex-none">
           RSS
