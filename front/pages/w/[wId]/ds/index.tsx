@@ -85,6 +85,7 @@ export const getServerSideProps: GetServerSideProps<{
     slackConnectorId: string;
     notionConnectorId: string;
   };
+  githubAppUrl: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -177,6 +178,7 @@ export const getServerSideProps: GetServerSideProps<{
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
       },
+      githubAppUrl: GITHUB_APP_URL,
     },
   };
 };
@@ -190,6 +192,7 @@ export default function DataSourcesView({
   canUseManagedDataSources,
   gaTrackingId,
   nangoConfig,
+  githubAppUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [localIntegrations, setLocalIntegrations] = useState(integrations);
 
@@ -213,7 +216,7 @@ export default function DataSourcesView({
           await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
         connectionId = nangoConnectionId;
       } else if (provider === "github") {
-        const installationId = await githubAuth(GITHUB_APP_URL);
+        const installationId = await githubAuth(githubAppUrl);
         connectionId = installationId;
       } else {
         throw new Error(`Unknown provider ${provider}`);
