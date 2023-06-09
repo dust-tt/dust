@@ -1,7 +1,8 @@
 import React, { useRef } from "react";
 import TreeView, { INode } from "react-accessible-treeview";
 import {
-  FaRegCheckSquare,
+  FaCheckSquare,
+  FaFolder,
   FaRegMinusSquare,
   FaRegSquare,
 } from "react-icons/fa";
@@ -88,7 +89,7 @@ export default function GoogleDriveFoldersPicker(props: {
                 <div
                   {...getNodeProps({ onClick: handleExpand })}
                   style={{ marginLeft: 30 * (level - 1) }}
-                  className="flex flex-row items-center text-gray-700"
+                  className="flex flex-row items-center leading-7 text-gray-900	"
                 >
                   <div className="">
                     {isBranch && <ArrowIcon isOpen={isExpanded} />}
@@ -99,7 +100,11 @@ export default function GoogleDriveFoldersPicker(props: {
                     )}
                   </div>
                   <div
-                    className="cursor-point"
+                    className={`cursor-point  ${
+                      isSelected || isHalfSelected
+                        ? "text-blue-500"
+                        : "text-gray-500"
+                    }`}
                     onClick={(e) => {
                       handleSelect(e);
                       e.stopPropagation();
@@ -111,7 +116,9 @@ export default function GoogleDriveFoldersPicker(props: {
                       }
                     />
                   </div>
-
+                  <div className="ml-2 text-gray-600">
+                    <FaFolder />
+                  </div>
                   <div
                     className=" ml-1 cursor-pointer "
                     onClick={(e) => {
@@ -142,7 +149,7 @@ const ArrowIcon = ({ isOpen }: { isOpen: boolean }) => {
 const CheckBoxIcon = ({ variant }: { variant: "all" | "none" | "some" }) => {
   switch (variant) {
     case "all":
-      return <FaRegCheckSquare />;
+      return <FaCheckSquare />;
     case "none":
       return <FaRegSquare />;
     case "some":
