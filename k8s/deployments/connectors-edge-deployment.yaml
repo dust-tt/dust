@@ -42,14 +42,19 @@ spec:
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
+            - name: private-key-volume
+              mountPath: /etc/private-keys
+
           resources:
             requests:
               cpu: 200m
               memory: 512Mi
+
       volumes:
         - name: cert-volume
           secret:
             secretName: temporal-cert
 
-      imagePullSecrets:
-        - name: gcr-json-key
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key

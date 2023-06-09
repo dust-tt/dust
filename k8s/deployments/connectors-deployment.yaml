@@ -38,6 +38,8 @@ spec:
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
+            - name: private-key-volume
+              mountPath: /etc/private-keys
 
           resources:
             requests:
@@ -52,5 +54,6 @@ spec:
           secret:
             secretName: temporal-cert
 
-      imagePullSecrets:
-        - name: gcr-json-key
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key
