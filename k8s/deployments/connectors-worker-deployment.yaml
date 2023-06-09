@@ -17,7 +17,7 @@ spec:
         ad.datadoghq.com/web.logs: '[{"source": "connectors-worker","service": "connectors","tags": ["env:prod"]}]'
     spec:
       containers:
-        - name: web
+        - name: worker
           image: gcr.io/or1g1n-186209/connectors-image:latest
           command: ["npm", "run", "start:worker"]
           imagePullPolicy: Always
@@ -33,8 +33,12 @@ spec:
 
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 2000m
+              memory: 8Gi
+
+            limits:
+              cpu: 2000m
+              memory: 8Gi
 
       volumes:
         - name: cert-volume

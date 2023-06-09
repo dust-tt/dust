@@ -28,5 +28,8 @@ spec:
                 name: blog-config
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 2000m
+              memory: 8Gi
+            limit:
+              cpu: 2000m
+              memory: 8Gi
