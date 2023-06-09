@@ -43,7 +43,7 @@ jobs:
         run: |
           kubectl set image deployment/connectors-deployment web=gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}
           echo "Updated connectors image to: gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}"
-          kubectl set image deployment/connectors-worker-deployment worker=gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}
+          kubectl set image deployment/connectors-worker-deployment web=gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}
           echo "Updated connectors-worker image to: gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}"
 
       - name: Wait for rollout to complete
