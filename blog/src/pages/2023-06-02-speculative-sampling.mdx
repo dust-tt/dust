@@ -20,7 +20,7 @@ See for yourself:
 
 ![](@/media/2023-06-02-speculative-sampling/example.gif)
 
-And also try it yourself [on this repo](https://github.com/philipperolet/llama-ssp), containing a bit of code Dust released to illustrate the technique.
+And also try it yourself [on this repo](https://github.com/dust-tt/llama-ssp), containing a bit of code Dust released to illustrate the technique.
 
 ### What is it?
 
@@ -43,13 +43,13 @@ What is impressive is that this can be done *without loss of quality*. Just as a
 But it can be shown that the quality of Speculative Sampling (SSp) is the same as regular sampling (RSp) in two ways:
 
 1. *theoretically*: the token probability distribution is proven to be the same as in the [DeepMind paper](https://arxiv.org/pdf/2302.01318.pdf);
-2. *empirically*: by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/philipperolet/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
+2. *empirically*: by using benchmarks and observing that both perform exactly the same. In the [Dust repo](https://github.com/dust-tt/llama-ssp) we shared, we make Llama models perform a few thousand of multiplications and we show that the success ratio are the same; the Deepmind paper also performs similar empirical tests on other benchmarks (note: in our case, it also confirms our implementation is correct 😉)
 
 ### How and why it works
 
 Let us provide a simplified explanation of how SSp works (optimized for clarity over precision 😉—see the DeepMind paper for full details)
 
-Small models are significantly faster than large ones—e.g. the tests in the [repo](https://github.com/philipperolet/llama-ssp) show the Llama 7B model is ~8 times faster than the 65B.
+Small models are significantly faster than large ones—e.g. the tests in the [repo](https://github.com/dust-tt/llama-ssp) show the Llama 7B model is ~8 times faster than the 65B.
 
 The major observation behind SSp is that it takes the same time for a target model to generate a single token, than to check how likely it would have generated a sequence of e.g. 4 tokens.
 
@@ -74,7 +74,7 @@ Note: speculative sampling has also been discovered and explored by other teams,
 
 ### 🙏 to the open ecosystem
 
-Anybody can use this sampling strategy, as we hope [the repo shows](https://github.com/philipperolet/llama-ssp). It was made possible by the openness of the ecosystem:
+Anybody can use this sampling strategy, as we hope [the repo shows](https://github.com/dust-tt/llama-ssp). It was made possible by the openness of the ecosystem:
 
 - openly accessible research from Google DeepMind;
 - open source software from HuggingFace;

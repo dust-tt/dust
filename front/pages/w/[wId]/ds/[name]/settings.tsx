@@ -25,6 +25,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
+  GITHUB_APP_URL = "",
 } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
@@ -499,7 +500,7 @@ function ManagedDataSourceSettings({
 
       await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
     } else if (provider === "github") {
-      await githubAuth();
+      await githubAuth(GITHUB_APP_URL);
     }
   };
 

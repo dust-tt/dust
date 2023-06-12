@@ -6,3 +6,4 @@ spec:
   sessionAffinity:
     affinityType: "GENERATED_COOKIE"
     affinityCookieTtlSec: 600
+  timeoutSec: 300

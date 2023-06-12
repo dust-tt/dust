@@ -1,6 +1,6 @@
-export async function githubAuth(): Promise<string> {
+export async function githubAuth(githubAppUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const ghPopup = window.open("https://github.com/apps/dust-test-app");
+    const ghPopup = window.open(githubAppUrl);
     let authComplete = false;
 
     const popupMessageEventListener = (event: MessageEvent) => {

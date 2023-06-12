@@ -26,10 +26,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: blog-config
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
           resources:
             requests:
               cpu: 2000m
               memory: 8Gi
-            limit:
+            limits:
               cpu: 2000m
               memory: 8Gi
