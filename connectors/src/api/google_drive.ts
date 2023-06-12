@@ -117,8 +117,8 @@ const _googleDriveGetFoldersAPIHandler = async (
   }
   const selectedFolders = await getFoldersToSync(connectorId);
   console.log("selected folders", selectedFolders);
-  const driveClient = await getDriveClient(connector.nangoConnectionId);
-  const drives = await getDrivesIds(connector.nangoConnectionId);
+  const driveClient = await getDriveClient(connector.connectionId);
+  const drives = await getDrivesIds(connector.connectionId);
   const folders: GoogleDriveSelectedFolderType[] = [];
   for (const drive of drives) {
     folders.push({
