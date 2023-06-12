@@ -1,7 +1,7 @@
 import { GetServerSideProps } from "next";
 
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -19,7 +19,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   // check if upsertable data sources using getDataSources
-  let dataSources = (await getDataSources(auth)).filter(
+  const dataSources = (await getDataSources(auth)).filter(
     (ds) => ds.userUpsertable
   );
   if (owner.role === "user" && dataSources.length) {
