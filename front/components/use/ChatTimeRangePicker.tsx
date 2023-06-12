@@ -9,11 +9,12 @@ import { WorkspaceType } from "@app/types/user";
 import { ChatTimeRange } from "@app/types/chat";
 
 export const timeRanges = [
-  { name: "All time", id: "all" },
-  { name: "1 day ago", id: "day" },
-  { name: "1 week ago", id: "week" },
-  { name: "1 month ago", id: "month" },
-  { name: "1 year ago", id: "year" },
+  { name: "All time", id: "all", ms: 0},
+  { name: "1d ago", id: "day", ms: 86400000},
+  { name: "1w ago", id: "week", ms: 604800000},
+  // 31 days in ms, and 366 days in ms so that we do not miss any documents
+  { name: "1m ago", id: "month", ms: 2678400000}, 
+  { name: "1y ago", id: "year", ms: 31622400000},
 ];
 
 export const defaultTimeRange = timeRanges[0];

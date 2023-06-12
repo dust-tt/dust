@@ -709,7 +709,11 @@ export default function AppChat({
             data_source_id: ds.name,
           };
         });
-
+      if (selectedTimeRange.id !== "all") {
+        config.DATASOURCE.filter = {
+          timestamp: { gt: Date.now() - selectedTimeRange.ms },
+        }
+      }
       const res = await runActionStreamed(owner, "chat-retrieval", config, [
         { messages: [userMessage] },
       ]);
