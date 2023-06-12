@@ -705,7 +705,10 @@ export default function AppChat({
       const res = await runActionStreamed(owner, "chat-retrieval", config, [
         {
           messages: [userMessage],
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          userContext: {
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            localeString: navigator.language,
+          },
         },
       ]);
       if (res.isErr()) {
