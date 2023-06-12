@@ -75,6 +75,7 @@ export default function DataSourceNew({
     model_id: "",
   });
   const [dataSourceMaxChunkSize, setDataSourceMaxChunkSize] = useState(256);
+  const [userUpsertable, setUserUpsertable] = useState(false);
 
   const formValidation = () => {
     let exists = false;
@@ -130,6 +131,7 @@ export default function DataSourceNew({
         provider_id: dataSourceModel.provider_id,
         model_id: dataSourceModel.model_id,
         max_chunk_size: `${dataSourceMaxChunkSize}`,
+        userUpsertable: userUpsertable,
       }),
     });
     if (res.ok) {
@@ -291,6 +293,33 @@ export default function DataSourceNew({
                       </fieldset>
                     </div>
                   </div>
+                </div>
+                <div className="sm:col-span-6">
+                  <fieldset className="mt-2">
+                    <legend className="contents text-sm font-medium text-gray-700">
+                      Upload rights
+                    </legend>
+                    <div className="mt-1 flex items-center space-y-4">
+                      <input
+                        id="dataSourceUpsertable"
+                        name="upsertable"
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                        checked={userUpsertable}
+                        onChange={(e) => setUserUpsertable(e.target.checked)}
+                      />
+                      <label
+                        htmlFor="upsertable"
+                        className="ml-3 block text-sm font-medium text-gray-700"
+                      >
+                        User-upsertable
+                        <p className="mt-0 text-sm font-normal text-gray-500">
+                          Users of your workspace can upload documents to the
+                          data source
+                        </p>
+                      </label>
+                    </div>
+                  </fieldset>
                 </div>
 
                 <div>
