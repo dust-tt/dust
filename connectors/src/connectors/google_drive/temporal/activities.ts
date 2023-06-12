@@ -335,7 +335,6 @@ async function objectIsInFolder(
   objectId: string,
   foldersIds: string[]
 ) {
-  return true;
   // Parents Queue to BFS the parents tree.
   // Objects in Google Drive can have multiple parents.
   const parentsQueue: string[] = [];
