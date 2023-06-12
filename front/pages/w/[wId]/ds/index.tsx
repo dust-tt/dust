@@ -72,13 +72,6 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     logoPath: "/static/google_drive_32x32.png",
     fetchConnectorError: null,
   },
-  {
-    name: "Google Drive",
-    connectorProvider: "google_drive",
-    isBuilt: false,
-    logoPath: "/static/google_drive_32x32.png",
-    fetchConnectorError: null,
-  },
 ];
 
 export const getServerSideProps: GetServerSideProps<{

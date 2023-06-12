@@ -268,6 +268,13 @@ function googleDocJSON2Text(
           case "ul":
             arrayDoc.push(...element[key].map((item: string) => `- ${item}`));
             break;
+          case "ol":
+            arrayDoc.push(
+              ...element[key].map(
+                (item: string, i: number) => `- ${i + 1} ${item}`
+              )
+            );
+            break;
           case "table": {
             console.log("***** table", element[key]);
             let tableStr = element[key]?.headers
@@ -285,14 +292,6 @@ function googleDocJSON2Text(
 
             break;
           }
-
-          case "ol":
-            arrayDoc.push(
-              ...element[key].map(
-                (item: string, i: number) => `- ${i + 1} ${item}`
-              )
-            );
-            break;
         }
       });
     }
@@ -336,6 +335,7 @@ async function objectIsInFolder(
   objectId: string,
   foldersIds: string[]
 ) {
+  return true;
   // Parents Queue to BFS the parents tree.
   // Objects in Google Drive can have multiple parents.
   const parentsQueue: string[] = [];
