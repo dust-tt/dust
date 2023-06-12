@@ -1,15 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
+import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
-
-export type PostManagedDataSourceResponseBody = {
-  dataSource: DataSourceType;
-  connector: ConnectorType;
-};
 
 async function handler(
   req: NextApiRequest,
@@ -48,7 +42,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can get the Google Drive folders.",
+              "Only the users that are `admins` for the current workspace can see the current Google Drive folders selection.",
           },
         });
       }
@@ -90,7 +84,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can create a managed Data Source.",
+              "Only the users that are `admins` for the current workspace can set the Google Drive Folders selection.",
           },
         });
       }

@@ -31,17 +31,19 @@ export default function GoogleDriveFoldersPickerModal(props: {
         }
       );
       if (foldersRes.ok) {
-        const folders: GoogleDriveSelectedFolderType[] =
-          await foldersRes.json();
+        let folders: GoogleDriveSelectedFolderType[] = await foldersRes.json();
+
+        folders = folders.map((f) => {
+          return { ...f, parent: f.parent || "root" };
+        });
         setFolders(folders);
       } else {
-        window.alert("Failed to fetch folders");
+        window.alert("Could not fetch Google Drive folders");
       }
     })();
   }, []);
 
   const onSave = async (folders: string[]) => {
-    console.log("on save got", folders);
     const res = await fetch(
       `/api/w/${props.owner.sId}/data_sources/google_drive/folders`,
       {
@@ -55,9 +57,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
         }),
       }
     );
-    if (res.ok) {
-      window.alert("Your folders selection has been saved");
-    } else {
+    if (!res.ok) {
       window.alert("Failed to save folders");
     }
   };

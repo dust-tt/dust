@@ -116,7 +116,6 @@ const _googleDriveGetFoldersAPIHandler = async (
     });
   }
   const selectedFolders = await getFoldersToSync(connectorId);
-  console.log("selected folders", selectedFolders);
   const driveClient = await getDriveClient(connector.connectionId);
   const drives = await getDrivesIds(connector.connectionId);
   const folders: GoogleDriveSelectedFolderType[] = [];
@@ -124,14 +123,13 @@ const _googleDriveGetFoldersAPIHandler = async (
     folders.push({
       id: drive.id,
       name: drive.name,
-      parent: "root",
+      parent: null,
       children: [],
       selected: selectedFolders.includes(drive.id),
     });
   }
   let nextPageToken: string | undefined = undefined;
 
-  console.log("start fetching from google", new Date());
   do {
     const filesRes: GaxiosResponse<drive_v3.Schema$FileList> =
       await driveClient.files.list({
@@ -171,6 +169,7 @@ const _googleDriveGetFoldersAPIHandler = async (
           id: file.id,
           name: file.name,
           parent: file.parents ? (file.parents[0] as string) : null,
+          // children are computed once we have the full list of nodes.
           children: [],
           selected: selectedFolders.includes(file.id),
         });
@@ -181,6 +180,8 @@ const _googleDriveGetFoldersAPIHandler = async (
       : undefined;
   } while (nextPageToken);
 
+  // filling out the children property for each node.
+  // complexity is N^2, with N being the number of folders.
   folders.forEach((currentNode) => {
     const directChildren = folders.filter((f) => f.parent === currentNode.id);
     currentNode.children = directChildren.map((f) => f.id);

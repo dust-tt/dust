@@ -51,11 +51,11 @@ export function startServer(port: number) {
   );
 
   app.get(
-    "/connectors/:connector_id/google_drive/get_folders",
+    "/connectors/:connector_id/google_drive/folders",
     googleDriveGetFoldersAPIHandler
   );
   app.post(
-    "/connectors/:connector_id/google_drive/set_folders",
+    "/connectors/:connector_id/google_drive/folders",
     googleDriveSetFoldersAPIHandler
   );
 

@@ -50,14 +50,14 @@ export async function googleDriveIncrementalSync(
   dataSourceConfig: DataSourceConfig
 ) {
   const drivesIds = await getDrivesIds(nangoConnectionId);
-  for (const driveId of drivesIds) {
+  for (const googleDrive of drivesIds) {
     let changeCount: number | undefined = undefined;
     do {
       changeCount = await incrementalSync(
         connectorId,
         nangoConnectionId,
         dataSourceConfig,
-        driveId.id
+        googleDrive.id
       );
     } while (changeCount && changeCount > 0);
   }

@@ -11,32 +11,12 @@ import { IoMdArrowDropdown, IoMdArrowDropright } from "react-icons/io";
 import { GoogleDriveSelectedFolderType } from "@app/lib/connectors_api";
 import { WorkspaceType } from "@app/types/user";
 
-function getParentsIds(
-  id: string,
-  tree: GoogleDriveSelectedFolderType[]
-): string[] {
-  const parents = [];
-  let currentId: string | null = id;
-  while (currentId) {
-    const currentNode = tree.find((el) => el.id === currentId);
-    if (currentNode) {
-      if (currentNode.parent) {
-        parents.push(currentNode.parent);
-      }
-    }
-
-    currentId = currentNode?.parent || null;
-  }
-  return parents;
-}
-
 export default function GoogleDriveFoldersPicker(props: {
   folders: GoogleDriveSelectedFolderType[];
   owner: WorkspaceType;
   connectorId: string;
   onSelectedChange: (selected: string[]) => void;
 }) {
-  const loadedAlertElement = useRef(null);
   const treeView = useRef(null);
   const nodes = props.folders.map((el): INode => {
     return { isBranch: el.children.length > 0, ...el };
@@ -46,12 +26,7 @@ export default function GoogleDriveFoldersPicker(props: {
   return (
     <>
       <div className="">
-        <div
-          className="flex flex-row"
-          ref={loadedAlertElement}
-          role="alert"
-          aria-live="polite"
-        ></div>
+        <div className="flex flex-row" role="alert" aria-live="polite"></div>
         <div className="checkbox">
           <TreeView
             ref={treeView}
@@ -158,3 +133,22 @@ const CheckBoxIcon = ({ variant }: { variant: "all" | "none" | "some" }) => {
       throw new Error("Invalid variant");
   }
 };
+
+function getParentsIds(
+  id: string,
+  tree: GoogleDriveSelectedFolderType[]
+): string[] {
+  const parents = [];
+  let currentId: string | null = id;
+  while (currentId) {
+    const currentNode = tree.find((el) => el.id === currentId);
+    if (currentNode) {
+      if (currentNode.parent) {
+        parents.push(currentNode.parent);
+      }
+    }
+
+    currentId = currentNode?.parent || null;
+  }
+  return parents;
+}

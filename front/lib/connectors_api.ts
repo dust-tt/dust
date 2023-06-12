@@ -152,7 +152,7 @@ export const ConnectorsAPI = {
     folders: string[]
   ): Promise<ConnectorsAPIResponse<void>> {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/set_folders`,
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders`,
       {
         method: "POST",
         headers: getDefaultHeaders(),
@@ -174,7 +174,7 @@ export const ConnectorsAPI = {
     }>
   > {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/get_folders?parentId=${
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders?parentId=${
         parentId || ""
       }`,
       {
