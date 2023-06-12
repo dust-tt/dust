@@ -21,7 +21,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
   const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const nangoConnectionId = connector.nangoConnectionId;
+  const nangoConnectionId = connector.connectionId;
 
   const workflowId = googleDriveFullSyncWorkflowId(connectorIdModelId);
   try {

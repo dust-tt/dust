@@ -32,7 +32,7 @@ export async function createGoogleDriveConnector(
       const connector = await Connector.create(
         {
           type: "google_drive",
-          nangoConnectionId,
+          connectionId: nangoConnectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,

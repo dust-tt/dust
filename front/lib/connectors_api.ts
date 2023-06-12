@@ -25,9 +25,12 @@ export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "notion",
   "google_drive",
 ] as const;
-type ConnectorProviderUsingNango = (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];
+type ConnectorProviderUsingNango =
+  (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];
 
-export function connectorIsUsingNango(provider: string): provider is ConnectorProviderUsingNango {
+export function connectorIsUsingNango(
+  provider: string
+): provider is ConnectorProviderUsingNango {
   return CONNECTOR_PROVIDERS_USING_NANGO.includes(provider as any);
 }
 
