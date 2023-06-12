@@ -577,7 +577,7 @@ impl DataSource {
                         match timestamp.gt.clone() {
                             Some(v) => must_filter.push(
                                 qdrant::FieldCondition {
-                                    key: "timestamp".to_string(),
+                                    key: "timetamp".to_string(),
                                     range: Some(qdrant::Range {
                                         gte: Some(v as f64),
                                         ..Default::default()
@@ -591,7 +591,7 @@ impl DataSource {
                         match timestamp.lt.clone() {
                             Some(v) => must_filter.push(
                                 qdrant::FieldCondition {
-                                    key: "timestamp".to_string(),
+                                    key: "timetamp".to_string(),
                                     range: Some(qdrant::Range {
                                         lte: Some(v as f64),
                                         ..Default::default()
