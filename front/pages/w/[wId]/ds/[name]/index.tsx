@@ -178,7 +178,7 @@ export default function DataSourceView({
                   </div>
                 </div>
               </div>
-              {readOnly ? null : (
+              {readOnly && !dataSource.userUpsertable ? null : (
                 <div className="">
                   <div className="mt-0 flex-none">
                     <Link
