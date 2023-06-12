@@ -703,7 +703,10 @@ export default function AppChat({
         });
 
       const res = await runActionStreamed(owner, "chat-retrieval", config, [
-        { messages: [userMessage] },
+        {
+          messages: [userMessage],
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
       ]);
       if (res.isErr()) {
         m.push({
