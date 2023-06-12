@@ -466,7 +466,7 @@ impl DataSource {
                 let mut payload = Payload::new();
                 payload.insert("tags", document.tags.clone());
                 payload.insert("timetamp", document.timestamp as i64);
-                payload.insert("timestamp", document.timestamp as i64);		
+                payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());
                 payload.insert("data_source_id", self.data_source_id.clone());
