@@ -13,7 +13,7 @@ export async function upsertToDatasource(
   documentId: string,
   documentText: string,
   documentUrl?: string,
-  timestamp?: number,
+  timestampMs?: number,
   tags?: string[],
   retries = 3,
   delayBetweenRetriesMs = 500,
@@ -30,7 +30,7 @@ export async function upsertToDatasource(
         documentId,
         documentText,
         documentUrl,
-        timestamp,
+        timestampMs,
         tags,
         loggerArgs
       );

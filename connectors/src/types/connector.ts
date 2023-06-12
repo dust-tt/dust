@@ -1,4 +1,9 @@
-const CONNECTOR_PROVIDERS = ["slack", "notion", "github"] as const;
+const CONNECTOR_PROVIDERS = [
+  "slack",
+  "notion",
+  "github",
+  "google_drive",
+] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export function isConnectorProvider(val: string): val is ConnectorProvider {

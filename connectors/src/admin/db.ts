@@ -2,6 +2,9 @@ import {
   Connector,
   GithubConnectorState,
   GithubIssue,
+  GoogleDriveFiles,
+  GoogleDriveFolders,
+  GoogleDriveSyncToken,
   NotionConnectorState,
   NotionPage,
   SlackConfiguration,
@@ -17,6 +20,10 @@ async function main(): Promise<void> {
   await NotionConnectorState.sync({ alter: true });
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
+  await GoogleDriveFolders.sync({ alter: true });
+  await GoogleDriveFiles.sync({ alter: true });
+  await GoogleDriveSyncToken.sync({ alter: true });
+
   return;
 }
 
