@@ -18,10 +18,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  // check if upsertable data sources using getDataSources
-  const dataSources = (await getDataSources(auth)).filter(
-    (ds) => ds.userUpsertable
-  );
   if (owner.role === "user") {
     return {
       redirect: {
