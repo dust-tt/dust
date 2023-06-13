@@ -1,0 +1,30 @@
+{
+  "description": "Productivity Assistant with access to your Tabs",
+  "manifest_version": 2,
+  "name": "Dust",
+  "version": "1.0",
+  "background": { "scripts": ["background.bundle.js"] },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon-34.png"
+  },
+  "content_scripts":
+	[
+		{
+			"matches": ["*://*/*"],
+			"js": ["content.bundle.js"]
+		}
+	],
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "permissions": ["tabs", "storage", "<all_urls>", "contextMenus", "cookies"],
+  "web_accessible_resources": [
+    "icon-128.png", "icon-34.png"
+  ],
+  "browser_specific_settings": {
+		"gecko": {
+      		"id": "team@dust.tt"
+  		}
+  	}
+}

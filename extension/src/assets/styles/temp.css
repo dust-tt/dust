@@ -1,0 +1,45 @@
+
+#dust-overlay {
+    position: fixed;
+    min-width: 200px;
+    min-height: 200px;
+    max-width: 350px;
+    border-radius: 20px;
+    padding: 20px;
+    display: none;
+    z-index: 100000;
+    top: 20px;
+    right: 20px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    background: #fafafa;
+    max-height: 90vh;
+    overflow-x: scroll;
+  }
+  #dust-overlay a {
+      color: #1C0C5B;
+      font-size: 14px;
+      font-family: Verdana, sans-serif;
+      text-decoration: none;
+      border: none;
+  }
+  #dust-overlay p {
+      font-family: Verdana, sans-serif;
+      color: black;
+      font-size: 13px;
+  }
+  
+  #dust-overlay ul {
+      list-style-type: none;
+      margin-top: 55px;
+  }
+  
+  #dust-overlay button {
+      font-size: 45px;
+      color: black;
+      background: none;
+      border: none;
+      position: absolute;
+      left: 15px; 
+      top: 30px;
+  }
+  
