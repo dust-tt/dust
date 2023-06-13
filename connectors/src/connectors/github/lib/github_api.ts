@@ -120,6 +120,7 @@ export async function getRepoIssuesPage(
       repo: repoName,
       per_page: API_PAGE_SIZE,
       page: page,
+      state: "all",
     })
   ).data;
 
