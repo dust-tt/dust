@@ -59,7 +59,7 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     fetchConnectorError: null,
   },
   {
-    name: "Github",
+    name: "GitHub",
     connectorProvider: "github",
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",

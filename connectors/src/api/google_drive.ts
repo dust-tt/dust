@@ -58,6 +58,17 @@ const _googleDriveSetFoldersAPIHandler = async (
           { transaction: t }
         );
       }
+      await Promise.all(
+        req.body.folders.map((folder) =>
+          GoogleDriveFolders.create(
+            {
+              connectorId: parseInt(req.params.connector_id),
+              folderId: folder,
+            },
+            { transaction: t }
+          )
+        )
+      );
     });
   } catch (error) {
     logger.error(
@@ -86,6 +97,14 @@ type GetFoldersRes =
   | GoogleDriveSelectedFolderType[]
   | ConnectorsAPIErrorResponse;
 
+// This endpoint returns the list of all folders in the user's Google Drive (only the shared drives for now).
+// The list is returned as a flat list of nodes with their parents and children property filled out.
+// The Google Drive API only allows you to list objects, and getting the full path of a file requires
+// to make an API call for each parent. That means that we rely on the fact that Google Drive
+// is going to ultimately send us all the folders at some point when listing them to have the full path of each folder
+// defined. Otherwise, the behavior is undefined.
+// The local compute time complexity of this function is N^2, with N being the number of folders.
+// The API call complexity is O(N) with N being the number of folders.
 const _googleDriveGetFoldersAPIHandler = async (
   req: Request<
     { connector_id: string; parentId?: string },
@@ -140,6 +159,7 @@ const _googleDriveGetFoldersAPIHandler = async (
         includeItemsFromAllDrives: true,
         corpora: "allDrives",
         pageToken: nextPageToken,
+        pageSize: 1000,
       });
 
     if (filesRes.status !== 200) {

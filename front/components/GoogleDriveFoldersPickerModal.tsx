@@ -18,9 +18,11 @@ export default function GoogleDriveFoldersPickerModal(props: {
   >(undefined);
 
   const [folders, setFolders] = useState<GoogleDriveSelectedFolderType[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     void (async () => {
+      setIsLoading(true);
       const foldersRes = await fetch(
         `/api/w/${props.owner.sId}/data_sources/google_drive/folders?connectorId=${props.connectorId}`,
         {
@@ -30,6 +32,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
           },
         }
       );
+      setIsLoading(false);
       if (foldersRes.ok) {
         let folders: GoogleDriveSelectedFolderType[] = await foldersRes.json();
 
@@ -107,10 +110,16 @@ export default function GoogleDriveFoldersPickerModal(props: {
                       as="h3"
                       className="text-base font-semibold leading-6 text-gray-900"
                     >
-                      Select the Drive folders to synchronize
+                      Select the Google Drive folders to synchronize
                     </Dialog.Title>
-                    <div className="mt-2 h-[500px] overflow-y-auto rounded border-2	border-x-gray-100">
-                      {folders.length > 0 && (
+
+                    {isLoading && (
+                      <div className="mt-2 flex h-[500px] items-center  justify-center overflow-y-auto	rounded border-2 border-x-gray-100">
+                        <div>Loading...</div>
+                      </div>
+                    )}
+                    {!isLoading && folders.length > 0 && (
+                      <div className="mt-2  h-[500px] overflow-y-auto	rounded border-2 border-x-gray-100">
                         <GoogleDriveFoldersPicker
                           folders={initialFolders}
                           owner={props.owner}
@@ -119,8 +128,8 @@ export default function GoogleDriveFoldersPickerModal(props: {
                             setSelectedFoldersToSave(folders);
                           }}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-5 flex justify-end">

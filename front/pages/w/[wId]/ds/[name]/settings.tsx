@@ -512,6 +512,9 @@ function ManagedDataSourceSettings({
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
       await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+      if (connector && connector.type === "google_drive") {
+        setGoogleDrivePickerOpen(true);
+      }
     } else if (provider === "github") {
       await githubAuth(GITHUB_APP_URL);
     }
@@ -558,15 +561,6 @@ function ManagedDataSourceSettings({
                       <Button onClick={handleUpdatePermissions}>
                         Update permissions
                       </Button>
-                      {connector && connector.type === "google_drive" && (
-                        <div className="ml-3">
-                          <Button
-                            onClick={() => setGoogleDrivePickerOpen(true)}
-                          >
-                            Edit Folders selection
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
