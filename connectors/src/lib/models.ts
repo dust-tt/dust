@@ -473,8 +473,10 @@ export class GoogleDriveFiles extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare garbageCollectedAt: Date | null;
   declare connectorId: ForeignKey<Connector["id"]>;
-  declare fileId: string;
+  declare dustFileId: string;
+  declare driveFileId: string;
 }
 
 GoogleDriveFiles.init(
@@ -494,11 +496,19 @@ GoogleDriveFiles.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    garbageCollectedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     connectorId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    fileId: {
+    dustFileId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    driveFileId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -506,7 +516,7 @@ GoogleDriveFiles.init(
   {
     sequelize: sequelize_conn,
     modelName: "google_drive_files",
-    indexes: [{ fields: ["connectorId", "fileId"], unique: true }],
+    indexes: [{ fields: ["connectorId", "driveFileId"], unique: true }],
   }
 );
 Connector.hasOne(GoogleDriveFiles);

@@ -1,6 +1,9 @@
 import PQueue from "p-queue";
 
-import { upsertToDatasource } from "@connectors/lib/data_sources";
+import {
+  deleteFromDataSource,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveFileType } from "@connectors/types/google_drive";
@@ -9,9 +12,12 @@ import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 import memoize from "lodash.memoize";
+import { Op } from "sequelize";
 
 import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive/parser";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  Connector,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -19,6 +25,7 @@ import {
 } from "@connectors/lib/models";
 
 const FILES_SYNC_CONCURRENCY = 30;
+const FILES_GC_CONCURRENCY = 30;
 
 export async function getAuthObject(
   nangoConnectionId: string
@@ -203,7 +210,8 @@ async function syncOneFile(
   const documentId = `gdrive-${file.id}`;
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
-    fileId: documentId,
+    dustFileId: documentId,
+    driveFileId: file.id,
   });
 
   await upsertToDatasource(
@@ -489,4 +497,49 @@ export async function getFoldersToSync(connectorId: ModelId) {
   const foldersIds = folders.map((f) => f.folderId);
 
   return foldersIds;
+}
+
+export async function garbageCollector(
+  connectorId: ModelId,
+  startTs: number
+): Promise<number> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const authCredentials = await getAuthObject(connector.connectionId);
+  const files = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connectorId,
+      garbageCollectedAt: { [Op.or]: [{ [Op.lt]: new Date(startTs) }, null] },
+    },
+    limit: 100,
+  });
+
+  const queue = new PQueue({ concurrency: FILES_GC_CONCURRENCY });
+  const selectedFolders = await getFoldersToSync(connectorId);
+  await Promise.all(
+    files.map(async (file) => {
+      return queue.add(async () => {
+        if (
+          (await objectIsInFolder(
+            authCredentials,
+            file.driveFileId,
+            selectedFolders
+          )) === false
+        ) {
+          await deleteFromDataSource(dataSourceConfig, file.dustFileId);
+          await file.destroy();
+        } else {
+          await file.update({
+            garbageCollectedAt: new Date(),
+          });
+        }
+      });
+    })
+  );
+
+  return files.length;
 }
