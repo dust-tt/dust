@@ -1188,7 +1188,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4 flex flex-row text-xs">
+                  <div className="mb-4 flex flex-row text-xs flex-wrap">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>
@@ -1228,27 +1228,16 @@ export default function AppChat({
                       })}
                       
                     </div>
-                    <div className="flex flex-initial text-gray-500 px-2">
-                      //
-                    </div>
-                    <div className="flex flex-initial text-gray-400">
+                    <div className="flex flex-1 text-gray-400 hidden lg:block"></div>
+                    <div className="flex basis-full h-0 lg:hidden"></div>
+                    <div className="flex flex-initial text-gray-400 mt-2 lg:mt-0">
                       Time Range:
                     </div>
-                    <div className="ml-2 flex flex-row text-xs">
+                    <div className="flex flex-row text-xs mt-2 lg:mt-0">
                       <TimeRangePicker
                         timeRange={selectedTimeRange}
                         onTimeRangeUpdate={(tr) => handleTimeRangeChange(tr)}
                       />
-                    </div>
-                    <div className="flex flex-1 text-gray-400"></div>
-                    <div className="flex flex-initial text-gray-400 hidden lg:block">
-                      <>
-                        <span className="font-bold">
-                          {isMac ? "⌘" : "ctrl"}
-                          +⏎
-                        </span>
-                        <span className="ml-1 text-gray-300">to submit</span>
-                      </>
                     </div>
                   </div>
                 </div>

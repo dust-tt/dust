@@ -1,5 +1,4 @@
-import { Menu } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { RadioGroup } from "@headlessui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -9,15 +8,15 @@ import { WorkspaceType } from "@app/types/user";
 import { ChatTimeRange } from "@app/types/chat";
 
 export const timeRanges = [
-  { name: "All time", id: "all", ms: 0},
-  { name: "1d ago", id: "day", ms: 86400000},
-  { name: "1w ago", id: "week", ms: 604800000},
+  // { name: "1 day", id: "day", ms: 86400000},
+  { name: "week", id: "week", ms: 604800000, description: "Last 7 days" },
   // 31 days in ms, and 366 days in ms so that we do not miss any documents
-  { name: "1m ago", id: "month", ms: 2678400000}, 
-  { name: "1y ago", id: "year", ms: 31622400000},
+  { name: "month", id: "month", ms: 2678400000, description: "Last 31 days"},
+  { name: "year", id: "year", ms: 31622400000, description: "Last 366 days"},
+  { name: "all", id: "all", ms: 0, description: "All time"},
 ];
 
-export const defaultTimeRange = timeRanges[0];
+export const defaultTimeRange = timeRanges[3];
 
 export default function TimeRangePicker({
   timeRange,
@@ -30,58 +29,64 @@ export default function TimeRangePicker({
   return (
     <div className="flex items-center">
       <div className="flex items-center">
-        <Menu as="div" className="relative inline-block text-left">
-          <div>
-            <Menu.Button
-              className={classNames(
-                "inline-flex items-center rounded-md text-xs font-normal text-gray-700",
-                name && name.length > 0 ? "px-0" : "border px-3",
-                "border-orange-400 text-gray-700",
-                "focus:outline-none focus:ring-0"
-              )}
-            >
-              {name && name.length > 0 ? (
-                <>
-                  <div className="mr-1 text-xs text-violet-600">{name}</div>
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                </>
-              ) : (
-                "Select Time"
-              )}
-            </Menu.Button>
-          </div>
-
+        <RadioGroup
+          as="div"
+          className="relative flex flex-row items-end text-left"
+          onChange={onTimeRangeUpdate}
+          value={timeRange}
+        >
+          <RadioGroup.Label className="sr-only">Time Range</RadioGroup.Label>
           {(timeRanges || []).length > 0 ? (
-            <Menu.Items
-              className={classNames(
-                "bottom-5 ml-2 absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                name && name.length > 0 ? "-left-4" : "left-1"
-              )}
-            >
-              <div className="py-1">
-                {(timeRanges || []).map((tr) => {
-                  return (
-                    <Menu.Item key={tr.name}>
-                      {({ active }) => (
-                        <span
+            <>
+              {(timeRanges || []).map((tr) => {
+                return (
+                  <RadioGroup.Option
+                    key={tr.id}
+                    value={tr}
+                    className="rounded-full group"
+                  >
+                    {({ checked }) => (
+                      <>
+                        <div
                           className={classNames(
-                            active
-                              ? "bg-gray-50 text-gray-900"
-                              : "text-gray-700",
-                            "block cursor-pointer px-4 py-2 text-xs"
+                            checked
+                              ? "border-gray-600 bg-gray-200 text-gray-600"
+                              : "text-gray-400",
+                            "ml-2 block cursor-pointer rounded-md border border-gray-400 bg-gray-100 px-2 text-xs"
                           )}
-                          onClick={() => onTimeRangeUpdate(tr)}
                         >
+                          {" "}
+                          {checked && (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="mr-1 inline-block h-3 w-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
                           {tr.name}
-                        </span>
-                      )}
-                    </Menu.Item>
-                  );
-                })}
-              </div>
-            </Menu.Items>
+                        </div>
+                        <div className="absolute bottom-5 rounded border bg-white px-1 py-1 hidden group-hover:block">
+                          <span className="text-gray-600">
+                            {tr.description ? ` ${tr.description}` : null}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </RadioGroup.Option>
+                );
+              })}
+            </>
           ) : null}
-        </Menu>
+        </RadioGroup>
       </div>
     </div>
   );
