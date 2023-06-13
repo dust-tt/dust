@@ -22,18 +22,10 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const dataSources = (await getDataSources(auth)).filter(
     (ds) => ds.userUpsertable
   );
-  if (owner.role === "user" && dataSources.length) {
+  if (owner.role === "user") {
     return {
       redirect: {
         destination: `/w/${context.query.wId}/ds`,
-        permanent: false,
-      },
-    };
-  }
-  if (owner.role !== "user") {
-    return {
-      redirect: {
-        destination: `/w/${context.query.wId}/a`,
         permanent: false,
       },
     };
