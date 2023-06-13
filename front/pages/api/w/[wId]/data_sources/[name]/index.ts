@@ -73,6 +73,7 @@ async function handler(
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: dataSource.connectorId,
           connectorProvider: dataSource.connectorProvider,
+          userUpsertable: dataSource.userUpsertable,
         },
       });
       return;
@@ -120,6 +121,7 @@ async function handler(
           dustAPIProjectId: ds.dustAPIProjectId,
           connectorId: ds.connectorId,
           connectorProvider: ds.connectorProvider,
+          userUpsertable: ds.userUpsertable,
         },
       });
 

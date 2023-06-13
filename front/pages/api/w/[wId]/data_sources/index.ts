@@ -181,6 +181,7 @@ async function handler(
           visibility: ds.visibility,
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
+          userUpsertable: ds.userUpsertable,
         },
       });
       return;

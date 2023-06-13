@@ -539,8 +539,8 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
   declare connectorId?: string;
   declare connectorProvider?: ConnectorProvider;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userUpsertable: CreationOptional<boolean>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 DataSource.init(
