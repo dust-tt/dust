@@ -49,25 +49,17 @@ const _googleDriveSetFoldersAPIHandler = async (
         },
         transaction: t,
       });
-      for (const folder of req.body.folders) {
-        await GoogleDriveFolders.create(
-          {
-            connectorId: parseInt(req.params.connector_id),
-            folderId: folder,
-          },
-          { transaction: t }
-        );
-      }
+
       await Promise.all(
-        req.body.folders.map((folder) =>
-          GoogleDriveFolders.create(
+        req.body.folders.map(async (folder) => {
+          await GoogleDriveFolders.create(
             {
               connectorId: parseInt(req.params.connector_id),
               folderId: folder,
             },
             { transaction: t }
-          )
-        )
+          );
+        })
       );
     });
   } catch (error) {
