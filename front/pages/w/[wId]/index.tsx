@@ -1,6 +1,4 @@
 import { GetServerSideProps } from "next";
-
-import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
