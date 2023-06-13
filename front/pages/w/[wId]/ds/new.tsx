@@ -349,11 +349,16 @@ export default function DataSourceNew({
                       </p>
                     </div>
                   </div>
-                  <fieldset className="mt-6">
-                    <legend className="contents text-sm font-medium text-gray-700">
-                      Upload rights
-                    </legend>
-                    <div className="flex items-center space-y-4">
+                  <div className="mt-4">
+                    <div className="flex justify-between">
+                      <label
+                        htmlFor="upsertable"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Upload Rights
+                      </label>
+                    </div>
+                    <div className="flex items-center mt-2">
                       <input
                         id="dataSourceUpsertable"
                         name="upsertable"
@@ -362,18 +367,12 @@ export default function DataSourceNew({
                         checked={userUpsertable}
                         onChange={(e) => setUserUpsertable(e.target.checked)}
                       />
-                      <label
-                        htmlFor="upsertable"
-                        className="ml-3 block text-sm font-medium text-gray-700"
-                      >
-                        User can upload
-                        <p className="mt-0 text-sm font-normal text-gray-500">
-                          Non-builder users of your workspace can upload
+                      <p className="block text-sm ml-3 text-sm font-normal text-gray-500">
+                          Users (non-builders) of your workspace can upload
                           documents to the data source
-                        </p>
-                      </label>
+                      </p>
                     </div>
-                  </fieldset>
+                  </div>
                 </div>
               </div>
 

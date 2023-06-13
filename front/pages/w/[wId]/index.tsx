@@ -20,14 +20,14 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   if (owner.role === "user") {
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/ds`,
+        destination: `/w/${context.query.wId}/u`,
         permanent: false,
       },
     };
   }
   return {
     redirect: {
-      destination: `/w/${context.query.wId}/u`,
+      destination: `/w/${context.query.wId}/a`,
       permanent: false,
     },
   };
