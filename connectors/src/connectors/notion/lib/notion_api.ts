@@ -301,10 +301,18 @@ export async function getParsedPage(
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (e.code === "object_not_found" || e.code === "validation_error")
     ) {
       blocks = [];
-      pageLogger.info("Couldn't get page blocks.");
+      pageLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Couldn't get page blocks."
+      );
     } else {
       throw e;
     }
