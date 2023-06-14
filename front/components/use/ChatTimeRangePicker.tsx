@@ -1,10 +1,8 @@
-import { Listbox, RadioGroup, Transition } from "@headlessui/react";
-import Link from "next/link";
-import { Fragment, useEffect, useState } from "react";
+import { RadioGroup, Transition } from "@headlessui/react";
+import { ClockIcon } from "@heroicons/react/24/outline";
+import { Fragment, useState } from "react";
 
-import { useDataSources } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 import { ChatTimeRange } from "@app/types/chat";
 
 export const timeRanges = [
@@ -13,7 +11,7 @@ export const timeRanges = [
   // 31 days in ms, and 366 days in ms so that we do not miss any documents
   { name: "1 month", id: "month", ms: 2678400000, description: "Last 31 days" },
   { name: "1 year", id: "year", ms: 31622400000, description: "Last 366 days" },
-  { name: "All time", id: "all", ms: 0, description: "All time" },
+  { name: "all time", id: "all", ms: 0, description: "All time" },
 ];
 
 export const defaultTimeRange = timeRanges[3];
@@ -27,7 +25,7 @@ export default function TimeRangePicker({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex items-center flex-row-reverse sm:flex-row">
+    <div className="flex flex-row-reverse items-center sm:flex-row">
       <Transition
         show={open}
         as={Fragment}
@@ -37,7 +35,7 @@ export default function TimeRangePicker({
       >
         <RadioGroup
           as="div"
-          className="relative flex flex-row items-end text-left ml-1 justify-start sm:justify-end sm:mr-1 sm:ml-0"
+          className="relative ml-1 flex flex-row items-end justify-start text-left sm:ml-0 sm:mr-1 sm:justify-end"
           onChange={(tr) => {
             setOpen(false);
             onTimeRangeUpdate(tr);
@@ -52,7 +50,7 @@ export default function TimeRangePicker({
                   <RadioGroup.Option
                     key={tr.id}
                     value={tr}
-                    className="group mr-1 sm:ml-1 sm:mr-0 rounded-full"
+                    className="group mr-1 rounded-full sm:ml-1 sm:mr-0"
                     defaultChecked={tr.id === timeRange.id}
                   >
                     {({ checked }) => (
@@ -60,30 +58,10 @@ export default function TimeRangePicker({
                         <div
                           className={classNames(
                             checked ? "hidden" : "text-gray-600 ring-gray-400",
-                            "group relative w-full cursor-default whitespace-nowrap rounded-md bg-white py-0.5 pl-1 pr-4 text-left text-xs shadow-sm ring-1 ring-inset hover:text-gray-600 hover:outline-none hover:ring-1 hover:ring-violet-700"
+                            "group relative w-full cursor-default cursor-pointer whitespace-nowrap rounded-md bg-violet-50 bg-white px-2 py-0.5 text-left text-xs text-violet-800 shadow-sm hover:bg-violet-100"
                           )}
                         >
-                          {" "}
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="mr-1 inline-block h-3 w-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke={checked ? "currentColor" : "none"}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
                           {tr.name}
-                        </div>
-                        <div className="absolute bottom-5 hidden rounded border bg-white py-1 pr-1 group-hover:block">
-                          <span className="text-gray-600">
-                            {tr.description ? ` ${tr.description}` : null}
-                          </span>
                         </div>
                       </>
                     )}
@@ -95,25 +73,12 @@ export default function TimeRangePicker({
         </RadioGroup>
       </Transition>
       <div
-        className="group relative w-full cursor-default rounded-md bg-white py-0.5 pl-1 pr-3 text-left text-xs text-gray-600 shadow-sm ring-1 ring-inset ring-gray-400 hover:outline-none hover:ring-1 hover:ring-violet-700"
+        className="group relative w-full cursor-default cursor-pointer rounded-md bg-violet-200 py-0.5 pl-2 pr-2 text-left text-xs font-semibold text-violet-800"
         onClick={() => setOpen(!open)}
       >
         <span className="flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="h-4 w-4 group-hover:text-violet-700"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span className="ml-2 block truncate">{timeRange.name}</span>
+          <ClockIcon className="mr-0.5 inline-block h-3 w-3" />
+          <span className="ml-0.5 block truncate">{timeRange.name}</span>
         </span>
       </div>
     </div>
