@@ -78,6 +78,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
+  isAdmin: boolean;
   dataSources: DataSourceType[];
   integrations: DataSourceIntegration[];
   canUseManagedDataSources: boolean;
@@ -105,6 +106,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const readOnly = !auth.isBuilder();
+  const isAdmin = auth.isAdmin();
 
   const allDataSources = await getDataSources(auth);
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
@@ -155,6 +157,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       readOnly,
+      isAdmin,
       dataSources,
       integrations: DATA_SOURCE_INTEGRATIONS.map(
         (managedDs): DataSourceIntegration => {
@@ -191,6 +194,7 @@ export default function DataSourcesView({
   user,
   owner,
   readOnly,
+  isAdmin,
   dataSources,
   integrations,
   canUseManagedDataSources,
@@ -253,19 +257,13 @@ export default function DataSourcesView({
           })
         );
       } else {
-        logger.error(
-          {
-            status: res.status,
-            body: await res.text(),
-            provider,
-          },
-          `Failed to enable managed Data Source`
+        const responseText = await res.text();
+        window.alert(
+          `Failed to enable ${provider} Data Source: ${responseText}`
         );
-        window.alert(`Failed to enable ${provider} Data Source`);
       }
     } catch (e) {
-      logger.error(e, "Failed to enable managed Data Source");
-      window.alert(`Failed to enable ${provider}  Data Source`);
+      window.alert(`Failed to enable ${provider}  Data Source: ${e}`);
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
@@ -465,7 +463,8 @@ export default function DataSourcesView({
                                 !ds.isBuilt ||
                                 isLoadingByProvider[
                                   ds.connectorProvider as ConnectorProvider
-                                ]
+                                ] ||
+                                !isAdmin
                               }
                               onClick={
                                 canUseManagedDataSources
@@ -477,14 +476,6 @@ export default function DataSourcesView({
                                   : () => {
                                       window.alert(
                                         "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                                      );
-                                      logger.info(
-                                        {
-                                          workspace: owner.sId,
-                                          connector_provider:
-                                            ds.connectorProvider,
-                                        },
-                                        "request_early_access_managed_data_source"
                                       );
                                     }
                               }
