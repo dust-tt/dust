@@ -805,11 +805,6 @@ pub async fn chat_completion(
 
     let mut body = json!({
         "messages": messages,
-        "functions": match functions.len() {
-            0 => None,
-            _ => Some(functions),
-        },
-        "function_call": function_call,
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
@@ -826,6 +821,12 @@ pub async fn chat_completion(
     }
     if model_id.is_some() {
         body["model"] = json!(model_id);
+    }
+    if functions.len() > 0 {
+        body["functions"] = json!(functions);
+    }
+    if function_call.is_some() {
+        body["function_call"] = function_call.unwrap();
     }
 
     // println!("BODY: {}", body.to_string());
