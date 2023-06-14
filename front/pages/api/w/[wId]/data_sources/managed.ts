@@ -229,6 +229,7 @@ async function handler(
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
+          userUpsertable: false,
         },
         connector: connectorsRes.value,
       });
