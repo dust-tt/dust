@@ -27,7 +27,7 @@ export default function TimeRangePicker({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex items-center">
+    <div className="flex items-center flex-row-reverse sm:flex-row">
       <Transition
         show={open}
         as={Fragment}
@@ -37,7 +37,7 @@ export default function TimeRangePicker({
       >
         <RadioGroup
           as="div"
-          className="relative flex flex-row items-end text-left"
+          className="relative flex flex-row items-end text-left ml-1 justify-start sm:justify-end sm:mr-1 sm:ml-0"
           onChange={(tr) => {
             setOpen(false);
             onTimeRangeUpdate(tr);
@@ -52,7 +52,7 @@ export default function TimeRangePicker({
                   <RadioGroup.Option
                     key={tr.id}
                     value={tr}
-                    className="group mr-2 rounded-full"
+                    className="group mr-1 sm:ml-1 sm:mr-0 rounded-full"
                     defaultChecked={tr.id === timeRange.id}
                   >
                     {({ checked }) => (
