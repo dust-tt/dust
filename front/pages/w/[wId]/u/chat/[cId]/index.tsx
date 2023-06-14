@@ -14,6 +14,10 @@ import TextareaAutosize from "react-textarea-autosize";
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
+import TimeRangePicker, {
+  ChatTimeRange,
+  defaultTimeRange,
+} from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
   cloneBaseConfig,
@@ -37,10 +41,6 @@ import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import TimeRangePicker, {
-  defaultTimeRange,
-  ChatTimeRange,
-} from "@app/components/use/ChatTimeRangePicker";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
