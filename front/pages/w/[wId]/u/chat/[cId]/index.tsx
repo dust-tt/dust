@@ -14,6 +14,10 @@ import TextareaAutosize from "react-textarea-autosize";
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
+import TimeRangePicker, {
+  ChatTimeRange,
+  defaultTimeRange,
+} from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
   cloneBaseConfig,
@@ -525,6 +529,8 @@ export default function AppChat({
   }, [chatSession]);
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
+  const [selectedTimeRange, setSelectedTimeRange] =
+    useState<ChatTimeRange>(defaultTimeRange);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
@@ -582,6 +588,10 @@ export default function AppChat({
       }
     });
     setDataSources(newSelection);
+  };
+
+  const handleTimeRangeChange = (timeRange: ChatTimeRange) => {
+    setSelectedTimeRange(timeRange);
   };
 
   const handleNew = async () => {
@@ -701,7 +711,11 @@ export default function AppChat({
             data_source_id: ds.name,
           };
         });
-
+      if (selectedTimeRange.id !== "all") {
+        config.DATASOURCE.filter = {
+          timestamp: { gt: Date.now() - selectedTimeRange.ms },
+        };
+      }
       const res = await runActionStreamed(owner, "chat-retrieval", config, [
         {
           messages: [userMessage],
@@ -1067,7 +1081,7 @@ export default function AppChat({
             {!chatSession.readOnly && (
               <div className="z-50 w-full flex-initial border bg-white text-sm">
                 <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-                  <div className="my-2">
+                  <div className="mb-1 mt-2">
                     <div className="flex flex-row items-center">
                       <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
                         alpha
@@ -1115,7 +1129,9 @@ export default function AppChat({
                         )}
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={`Ask anything about \`${owner.name}\``}
+                          placeholder={`Ask anything about \`${
+                            owner.name
+                          }\`, press ${isMac ? "⌘" : "ctrl"}+⏎ to submit`}
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                             "rounded-sm",
@@ -1182,7 +1198,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4 flex flex-row text-xs">
+                  <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>
@@ -1211,7 +1227,7 @@ export default function AppChat({
                                 <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
                               )}
                             </div>
-                            <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
+                            <div className="absolute bottom-16 hidden rounded border bg-white px-1 py-1 group-hover:block sm:bottom-10">
                               <span className="text-gray-600">
                                 <span className="font-semibold">{ds.name}</span>
                                 {ds.description ? ` ${ds.description}` : null}
@@ -1221,15 +1237,13 @@ export default function AppChat({
                         );
                       })}
                     </div>
-                    <div className="flex flex-1 text-gray-400"></div>
-                    <div className="flex flex-initial text-gray-400">
-                      <>
-                        <span className="font-bold">
-                          {isMac ? "⌘" : "ctrl"}
-                          +⏎
-                        </span>
-                        <span className="ml-1 text-gray-300">to submit</span>
-                      </>
+                    <div className="flex hidden flex-1 text-gray-400 sm:block"></div>
+                    <div className="flex h-0 basis-full sm:hidden"></div>
+                    <div className="mt-2 flex flex-row text-xs sm:mt-0">
+                      <TimeRangePicker
+                        timeRange={selectedTimeRange}
+                        onTimeRangeUpdate={(tr) => handleTimeRangeChange(tr)}
+                      />
                     </div>
                   </div>
                 </div>
