@@ -355,11 +355,12 @@ impl LLMChatRequest {
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
         messages.iter().for_each(|m| {
-            hasher.update(m.role.to_string().as_bytes());
-            if m.content.is_some() {
-                hasher.update(m.content.as_ref().unwrap().as_bytes());
-            }
+            hasher.update(serde_json::to_string(m).unwrap().as_bytes());
         });
+        functions.iter().for_each(|m| {
+            hasher.update(serde_json::to_string(m).unwrap().as_bytes());
+        });
+        hasher.update(force_function.to_string().as_bytes());
         hasher.update(temperature.to_string().as_bytes());
         if !top_p.is_none() {
             hasher.update(top_p.unwrap().to_string().as_bytes());

@@ -197,11 +197,11 @@ export function addBlock(
           messages_code:
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
           functions_code: "_fun = (env) => {\n  // return [];\n}",
-          force_function: false,
         },
         config: {
           provider_id: "",
           model_id: "",
+          force_function: false,
           use_cache: true,
         },
       });
@@ -446,9 +446,6 @@ export function dumpSpecification(
         out += `  functions_code: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.functions_code
         )}\n\`\`\`\n`;
-        out += `  force_function: ${
-          block.spec.force_function ? "true" : "false"
-        }\n`;
         out += `}\n`;
         out += "\n";
         break;

@@ -123,7 +123,7 @@ export default function Chat({
 
   const handleForceFunctionChange = (force_function: boolean) => {
     const b = shallowBlockClone(block);
-    b.spec.force_function = force_function;
+    b.config.force_function = force_function;
     onBlockUpdate(b);
   };
 
@@ -465,7 +465,7 @@ export default function Chat({
                       "ml-1 mr-1 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
                       readOnly ? "" : "cursor-pointer"
                     )}
-                    checked={block.spec.force_function || false}
+                    checked={block.config.force_function || false}
                     onClick={(e) => {
                       if (readOnly) {
                         e.preventDefault();

@@ -18,7 +18,6 @@ pub struct Chat {
     instructions: Option<String>,
     messages_code: String,
     functions_code: Option<String>,
-    force_function: Option<bool>,
     temperature: f32,
     top_p: Option<f32>,
     stop: Vec<String>,
@@ -32,7 +31,6 @@ impl Chat {
         let mut instructions: Option<String> = None;
         let mut messages_code: Option<String> = None;
         let mut functions_code: Option<String> = None;
-        let mut force_function: Option<bool> = None;
         let mut temperature: Option<f32> = None;
         let mut top_p: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
@@ -48,13 +46,6 @@ impl Chat {
                         "instructions" => instructions = Some(value),
                         "messages_code" => messages_code = Some(value),
                         "functions_code" => functions_code = Some(value),
-                        "force_function" => match value.as_str() {
-                            "true" => force_function = Some(true),
-                            "false" => force_function = Some(false),
-                            _ => Err(anyhow!(
-                                "Invalid value for `force_function`, must be `true` or `false`"
-                            ))?,
-                        },
                         "temperature" => match value.parse::<f32>() {
                             Ok(n) => temperature = Some(n),
                             Err(_) => Err(anyhow!(
@@ -105,7 +96,6 @@ impl Chat {
             instructions,
             messages_code: messages_code.unwrap(),
             functions_code: functions_code,
-            force_function: force_function,
             temperature: temperature.unwrap(),
             top_p,
             stop,
@@ -156,9 +146,6 @@ impl Block for Chat {
         if let Some(functions_code) = &self.functions_code {
             hasher.update(functions_code.as_bytes());
         }
-        if let Some(force_function) = &self.force_function {
-            hasher.update(force_function.to_string().as_bytes());
-        }
         hasher.update(self.temperature.to_string().as_bytes());
         if let Some(top_p) = &self.top_p {
             hasher.update(top_p.to_string().as_bytes());
@@ -186,7 +173,7 @@ impl Block for Chat {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id, model_id) = match config {
+        let (provider_id, model_id, force_function) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -226,7 +213,18 @@ impl Block for Chat {
                     ))?,
                 };
 
-                (provider_id, model_id)
+                let force_function = match v.get("force_function") {
+                    Some(v) => match v {
+                        Value::Bool(b) => *b,
+                        _ => Err(anyhow!(
+                            "Invalid `force_function` in configuration for chat block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => false,
+                };
+
+                (provider_id, model_id, force_function)
             }
             _ => Err(anyhow!(
                 "Missing configuration for chat block `{}`, \
@@ -393,7 +391,7 @@ impl Block for Chat {
             &model_id,
             &messages,
             &functions,
-            self.force_function.unwrap_or(false),
+            force_function,
             self.temperature,
             self.top_p,
             1,
