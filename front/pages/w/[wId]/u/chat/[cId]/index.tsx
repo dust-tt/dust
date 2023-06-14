@@ -40,6 +40,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import TimeRangePicker, {
   defaultTimeRange,
 } from "@app/components/use/ChatTimeRangePicker";
+import ChatTimeRangePicker from "@app/components/use/ChatTimeRangePicker2";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -1079,7 +1080,7 @@ export default function AppChat({
             {!chatSession.readOnly && (
               <div className="z-50 w-full flex-initial border bg-white text-sm">
                 <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-                  <div className="my-2">
+                  <div className="mt-2 mb-1">
                     <div className="flex flex-row items-center">
                       <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
                         alpha
@@ -1194,7 +1195,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4 flex flex-row text-xs flex-wrap">
+                  <div className="mb-4 flex flex-row text-xs flex-wrap items-center">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>
@@ -1236,9 +1237,6 @@ export default function AppChat({
                     </div>
                     <div className="flex flex-1 text-gray-400 hidden lg:block"></div>
                     <div className="flex basis-full h-0 lg:hidden"></div>
-                    <div className="flex flex-initial text-gray-400 mt-2 lg:mt-0">
-                      Time Range:
-                    </div>
                     <div className="flex flex-row text-xs mt-2 lg:mt-0">
                       <TimeRangePicker
                         timeRange={selectedTimeRange}
