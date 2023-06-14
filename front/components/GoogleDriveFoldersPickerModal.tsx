@@ -41,17 +41,18 @@ export default function GoogleDriveFoldersPickerModal(props: {
       );
       setIsLoading(false);
       if (foldersRes.ok) {
-        let folders: GoogleDriveSelectedFolderType[] = await foldersRes.json();
+        let fetchedFolders: GoogleDriveSelectedFolderType[] =
+          await foldersRes.json();
 
-        folders = folders.map((f) => {
+        fetchedFolders = fetchedFolders.map((f) => {
           return { ...f, parent: f.parent || "root" };
         });
-        setFolders(folders);
+        setFolders(fetchedFolders);
       } else {
         window.alert("Could not fetch Google Drive folders");
       }
     })();
-  }, []);
+  }, [props.connectorId, props.owner.sId, setFolders, props.isOpen]);
 
   const onSave = async (folders: string[]) => {
     const res = await fetch(
@@ -194,15 +195,14 @@ function GoogleDriveFoldersPicker(props: {
             className="p-3"
             aria-label="Checkbox tree"
             multiSelect
-            propagateSelect={true}
+            propagateSelect={false}
             defaultSelectedIds={selectedIds}
             defaultExpandedIds={selectedIds
               .map((id): string[] => getParentsIds(id, props.folders))
               .flat()}
             togglableSelect
-            propagateSelectUpwards={true}
+            propagateSelectUpwards={false}
             onNodeSelect={({ treeState }) => {
-              console.log("treeState", treeState?.selectedIds);
               if (treeState?.selectedIds) {
                 props.onSelectedChange(
                   Array.from(treeState.selectedIds).map((id) => id.toString())
