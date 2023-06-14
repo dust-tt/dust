@@ -288,7 +288,7 @@ const CheckBoxIcon = ({ variant }: { variant: "all" | "none" | "some" }) => {
     case "none":
       return <FaRegSquare />;
     case "some":
-      return <FaRegMinusSquare />;
+      return <FaRegSquare />;
     default:
       throw new Error("Invalid variant");
   }
