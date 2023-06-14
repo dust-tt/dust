@@ -35,14 +35,11 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import {
-  ChatTimeRange,
-  ChatMessageType,
-  ChatRetrievedDocumentType,
-} from "@app/types/chat";
+import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 import TimeRangePicker, {
   defaultTimeRange,
+  ChatTimeRange,
 } from "@app/components/use/ChatTimeRangePicker";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -1132,7 +1129,9 @@ export default function AppChat({
                         )}
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={`Ask anything about \`${owner.name}\``}
+                          placeholder={`Ask anything about \`${
+                            owner.name
+                          }\`, press ${isMac ? "⌘" : "ctrl"}+⏎ to submit`}
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                             "rounded-sm",

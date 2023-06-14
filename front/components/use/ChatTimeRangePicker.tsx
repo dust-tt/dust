@@ -3,17 +3,21 @@ import { ClockIcon } from "@heroicons/react/24/outline";
 import { Fragment, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
-import { ChatTimeRange } from "@app/types/chat";
 
 export const timeRanges = [
   // { name: "1 day", id: "day", ms: 86400000},
-  { name: "1 week", id: "week", ms: 604800000, description: "Last 7 days" },
+  { name: "1 week", id: "week", ms: 604800000 },
   // 31 days in ms, and 366 days in ms so that we do not miss any documents
-  { name: "1 month", id: "month", ms: 2678400000, description: "Last 31 days" },
-  { name: "1 year", id: "year", ms: 31622400000, description: "Last 366 days" },
-  { name: "all time", id: "all", ms: 0, description: "All time" },
+  { name: "1 month", id: "month", ms: 2678400000 },
+  { name: "1 year", id: "year", ms: 31622400000 },
+  { name: "all time", id: "all", ms: 0 },
 ];
 
+export type ChatTimeRange = {
+  name: string;
+  id: string;
+  ms: number;
+};
 export const defaultTimeRange = timeRanges[3];
 
 export default function TimeRangePicker({
