@@ -336,6 +336,7 @@ impl Block for Chat {
 
                 (
                     match functions_value {
+                        Value::Null => vec![],
                         Value::Array(a) => a
                             .into_iter()
                             .map(|v| match v {

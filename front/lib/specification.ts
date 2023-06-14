@@ -193,9 +193,11 @@ export function addBlock(
           temperature: 0.7,
           instructions: "",
           max_tokens: "",
+          stop: [],
           messages_code:
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
-          stop: [],
+          functions_code: "_fun = (env) => {\n  // return [];\n}",
+          force_function: false,
         },
         config: {
           provider_id: "",
@@ -441,6 +443,12 @@ export function dumpSpecification(
         out += `  messages_code: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.messages_code
         )}\n\`\`\`\n`;
+        out += `  functions_code: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.functions_code
+        )}\n\`\`\`\n`;
+        out += `  force_function: ${
+          block.spec.force_function ? "true" : "false"
+        }\n`;
         out += `}\n`;
         out += "\n";
         break;

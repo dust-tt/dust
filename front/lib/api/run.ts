@@ -85,6 +85,11 @@ export async function getRun(
             spec[i].spec.messages_code
           );
         }
+        if (spec[i].spec.functions_code) {
+          spec[i].spec.functions_code = restoreTripleBackticks(
+            spec[i].spec.functions_code
+          );
+        }
       }
       if (spec[i].type === "while") {
         if (spec[i].spec.condition_code) {

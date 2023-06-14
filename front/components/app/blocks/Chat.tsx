@@ -115,7 +115,20 @@ export default function Chat({
     onBlockUpdate(b);
   };
 
+  const handleFunctionsCodeChange = (functionsCode: string) => {
+    const b = shallowBlockClone(block);
+    b.spec.functions_code = functionsCode;
+    onBlockUpdate(b);
+  };
+
+  const handleForceFunctionChange = (force_function: boolean) => {
+    const b = shallowBlockClone(block);
+    b.spec.force_function = force_function;
+    onBlockUpdate(b);
+  };
+
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const [functionsExpanded, setFunctionsExpanded] = useState(false);
   const [newStop, setNewStop] = useState("");
 
   return (
@@ -391,6 +404,82 @@ export default function Chat({
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
+          {functionsExpanded ? (
+            <div
+              onClick={() => setFunctionsExpanded(false)}
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
+            >
+              <span>
+                <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
+              </span>
+              functions
+            </div>
+          ) : (
+            <div
+              onClick={() => setFunctionsExpanded(true)}
+              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
+            >
+              <span>
+                <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
+              </span>
+              functions
+            </div>
+          )}
+          {functionsExpanded ? (
+            <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex w-full font-normal">
+                <div className="w-full leading-4">
+                  <div
+                    className={classNames(
+                      "border bg-slate-100",
+                      "border-slate-100"
+                    )}
+                  >
+                    <CodeEditor
+                      readOnly={readOnly}
+                      value={block.spec.functions_code}
+                      language="js"
+                      placeholder=""
+                      onChange={(e) =>
+                        handleFunctionsCodeChange(e.target.value)
+                      }
+                      padding={15}
+                      style={{
+                        fontSize: 12,
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                        backgroundColor: "rgb(241 245 249)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="checkbox"
+                    className={classNames(
+                      "ml-1 mr-1 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
+                      readOnly ? "" : "cursor-pointer"
+                    )}
+                    checked={block.spec.force_function || false}
+                    onClick={(e) => {
+                      if (readOnly) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      handleForceFunctionChange(e.target.checked);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-initial">force function</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </Block>
