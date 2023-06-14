@@ -27,7 +27,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::llm::ChatFunction;
+use super::llm::{ChatFunction, ChatFunctionCall};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -521,6 +521,8 @@ pub async fn streamed_chat_completion(
     organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
+    functions: &Vec<ChatFunction>,
+    force_function: bool,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -559,6 +561,13 @@ pub async fn streamed_chat_completion(
             .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
     }
 
+    let mut function_call: Option<Value> = None;
+    if functions.len() > 0 && force_function {
+        function_call = Some(json!({
+            "name": functions[0].name,
+        }));
+    }
+
     let mut body = json!({
         "messages": messages,
         "temperature": temperature,
@@ -578,6 +587,12 @@ pub async fn streamed_chat_completion(
     }
     if model_id.is_some() {
         body["model"] = json!(model_id);
+    }
+    if functions.len() > 0 {
+        body["functions"] = json!(functions);
+    }
+    if function_call.is_some() {
+        body["function_call"] = function_call.unwrap();
     }
 
     // println!("BODY: {}", body.to_string());
@@ -656,26 +671,65 @@ pub async fn streamed_chat_completion(
                             Some(sender) => {
                                 if chunk.choices.len() == 1 {
                                     // we ignore the role for generating events
-                                    let text = match chunk.choices[0].delta.get("content") {
-                                        None => None,
+
+                                    // If we get `content` in the delta object we stream "tokens".
+                                    match chunk.choices[0].delta.get("content") {
+                                        None => (),
                                         Some(content) => match content.as_str() {
-                                            None => None,
-                                            Some(s) => Some(s.to_string()),
-                                        },
-                                    };
-                                    match text {
-                                        Some(t) => match t.len() {
-                                            0 => (),
-                                            _ => {
-                                                let _ = sender.send(json!({
-                                                    "type": "tokens",
-                                                    "content": {
-                                                        "text": t,
-                                                    },
-                                                }));
+                                            None => (),
+                                            Some(s) => {
+                                                if s.len() > 0 {
+                                                    let _ = sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": s,
+                                                        },
+                                                    }));
+                                                }
                                             }
                                         },
+                                    };
+
+                                    // If we a `function_call.name` in the delta object we stream a
+                                    // "function_call" event.
+                                    match chunk.choices[0].delta.get("function_call") {
                                         None => (),
+                                        Some(function_call) => match function_call.get("name") {
+                                            None => (),
+                                            Some(name) => match name.as_str() {
+                                                None => (),
+                                                Some(n) => {
+                                                    let _ = sender.send(json!({
+                                                        "type": "function_call",
+                                                        "content": {
+                                                            "name": n,
+                                                        },
+                                                    }));
+                                                }
+                                            },
+                                        },
+                                    };
+
+                                    // If we a `function_call.arguments` in the delta object we stream
+                                    // a "function_call_arguments_tokens" event.
+                                    match chunk.choices[0].delta.get("function_call") {
+                                        None => (),
+                                        Some(function_call) => {
+                                            match function_call.get("arguments") {
+                                                None => (),
+                                                Some(name) => match name.as_str() {
+                                                    None => (),
+                                                    Some(n) => {
+                                                        let _ = sender.send(json!({
+                                                            "type": "function_call_arguments_tokens",
+                                                            "content": {
+                                                                "text": n,
+                                                            },
+                                                        }));
+                                                    }
+                                                },
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -759,6 +813,45 @@ pub async fn streamed_chat_completion(
                             ));
                         }
                     },
+                };
+
+                match a.choices[j].delta.get("function_call") {
+                    None => (),
+                    Some(function_call) => {
+                        match function_call.get("name") {
+                            Some(Value::String(s)) => {
+                                if !c.choices[j].message.function_call.is_some() {
+                                    c.choices[j].message.function_call = Some(ChatFunctionCall {
+                                        name: s.clone(),
+                                        arguments: String::new(),
+                                    });
+                                }
+                            }
+                            _ => (),
+                        };
+                        match function_call.get("arguments") {
+                            Some(Value::String(s)) => {
+                                if c.choices[j].message.function_call.is_some() {
+                                    c.choices[j]
+                                        .message
+                                        .function_call
+                                        .as_mut()
+                                        .unwrap()
+                                        .arguments = format!(
+                                        "{}{}",
+                                        c.choices[j]
+                                            .message
+                                            .function_call
+                                            .as_mut()
+                                            .unwrap()
+                                            .arguments,
+                                        s
+                                    );
+                                }
+                            }
+                            _ => (),
+                        };
+                    }
                 };
             }
         }
@@ -1294,6 +1387,8 @@ impl LLM for OpenAILLM {
                     },
                     Some(self.id.clone()),
                     messages,
+                    functions,
+                    force_function,
                     temperature,
                     match top_p {
                         Some(t) => t,

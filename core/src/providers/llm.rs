@@ -65,7 +65,7 @@ impl FromStr for ChatMessageRole {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatFunctionCall {
     pub name: String,
-    pub arguments: Value,
+    pub arguments: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

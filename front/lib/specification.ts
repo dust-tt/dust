@@ -196,7 +196,15 @@ export function addBlock(
           stop: [],
           messages_code:
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
-          functions_code: "_fun = (env) => {\n  // return [];\n}",
+          functions_code:
+            "_fun = (env) => {\n" +
+            "  // See https://platform.openai.com/docs/guides/gpt/function-calling\n" +
+            "  // return [{\n" +
+            '  //  name: "...",\n' +
+            '  //  description: "...",\n' +
+            "  //  parameters: ...\n" +
+            "  // }];\n" +
+            "}",
         },
         config: {
           provider_id: "",

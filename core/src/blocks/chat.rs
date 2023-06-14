@@ -411,20 +411,50 @@ impl Block for Chat {
                     let block_name = String::from(name);
                     tokio::task::spawn(async move {
                         while let Some(v) = rx.recv().await {
-                            let t = v.get("content");
+                            let c = v.get("content");
+                            let t = v.get("type");
                             match event_sender.as_ref() {
-                                Some(sender) => {
-                                    let _ = sender.send(json!({
-                                        "type": "tokens",
-                                        "content": {
-                                            "block_type": "chat",
-                                            "block_name": block_name,
-                                            "input_index": input_index,
-                                            "map": map,
-                                            "tokens": t,
-                                        },
-                                    }));
-                                }
+                                Some(sender) => match t {
+                                    Some(Value::String(s)) => {
+                                        if s == "tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "function_call" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "name": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "function_call_arguments_tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                    }
+                                    _ => (),
+                                },
                                 None => (),
                             }
                         }
