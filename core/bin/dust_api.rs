@@ -126,6 +126,10 @@ async fn index() -> &'static str {
     "Welcome to the Dust API!"
 }
 
+async fn testing() -> &'static str {
+    "Testing"
+}
+
 /// Create a new project (simply generates an id)
 
 async fn projects_create(
@@ -1507,6 +1511,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         // Index
         .route("/", get(index))
+        .route("/testing", get(testing))
         // Projects
         .route("/projects", post(projects_create))
         .route("/projects/:project_id/clone", post(projects_clone))
