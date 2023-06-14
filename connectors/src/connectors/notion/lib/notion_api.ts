@@ -523,7 +523,7 @@ async function getUserName(
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (e.code === "object_not_found" || e.code === "validation_error")
     ) {
       pageLogger.info({ user_id: userId }, "Couln't find user.");
       return null;
