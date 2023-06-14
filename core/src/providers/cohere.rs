@@ -15,6 +15,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::embedder::EmbedderVector;
+use super::llm::ChatFunction;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenizeResponse {
@@ -373,6 +374,8 @@ impl LLM for CohereLLM {
     async fn chat(
         &self,
         _messages: &Vec<ChatMessage>,
+        _functions: &Vec<ChatFunction>,
+        _force_function: bool,
         _temperature: f32,
         _top_p: Option<f32>,
         _n: usize,

@@ -414,7 +414,8 @@ impl Block for LLM {
                 let messages = vec![ChatMessage {
                     role: ChatMessageRole::User,
                     name: None,
-                    content: prompt.clone(),
+                    content: Some(prompt.clone()),
+                    function_call: None,
                 }];
 
                 let request = LLMChatRequest::new(
@@ -487,7 +488,11 @@ impl Block for LLM {
                             top_logprobs: None,
                         },
                         completion: Tokens {
-                            text: g.completions[0].content.clone(),
+                            text: g.completions[0]
+                                .content
+                                .as_ref()
+                                .unwrap_or(&String::new())
+                                .clone(),
                             tokens: None,
                             logprobs: None,
                             top_logprobs: None,

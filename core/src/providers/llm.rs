@@ -35,6 +35,7 @@ pub enum ChatMessageRole {
     System,
     User,
     Assistant,
+    Function,
 }
 
 impl ToString for ChatMessageRole {
@@ -43,6 +44,7 @@ impl ToString for ChatMessageRole {
             ChatMessageRole::System => String::from("system"),
             ChatMessageRole::User => String::from("user"),
             ChatMessageRole::Assistant => String::from("assistant"),
+            ChatMessageRole::Function => String::from("function"),
         }
     }
 }
@@ -54,9 +56,16 @@ impl FromStr for ChatMessageRole {
             "system" => Ok(ChatMessageRole::System),
             "user" => Ok(ChatMessageRole::User),
             "assistant" => Ok(ChatMessageRole::Assistant),
+            "function" => Ok(ChatMessageRole::Function),
             _ => Err(ParseError::with_message("Unknown ChatMessageRole"))?,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ChatFunctionCall {
+    pub name: String,
+    pub arguments: Value,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -64,7 +73,8 @@ pub struct ChatMessage {
     pub role: ChatMessageRole,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub content: String,
+    pub content: Option<String>,
+    pub function_call: Option<ChatFunctionCall>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -111,6 +121,8 @@ pub trait LLM {
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        force_function: bool,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -343,7 +355,9 @@ impl LLMChatRequest {
         hasher.update(model_id.as_bytes());
         messages.iter().for_each(|m| {
             hasher.update(m.role.to_string().as_bytes());
-            hasher.update(m.content.as_bytes());
+            if m.content.is_some() {
+                hasher.update(m.content.as_ref().unwrap().as_bytes());
+            }
         });
         hasher.update(temperature.to_string().as_bytes());
         if !top_p.is_none() {
@@ -400,6 +414,8 @@ impl LLMChatRequest {
             || {
                 llm.chat(
                     &self.messages,
+                    &self.functions,
+                    self.force_function,
                     self.temperature,
                     self.top_p,
                     self.n,
@@ -435,7 +451,12 @@ impl LLMChatRequest {
                     self.temperature,
                     c.completions
                         .iter()
-                        .map(|c| c.content.len().to_string())
+                        .map(|c| c
+                            .content
+                            .as_ref()
+                            .unwrap_or(&String::new())
+                            .len()
+                            .to_string())
                         .collect::<Vec<_>>()
                         .join(","),
                 ));

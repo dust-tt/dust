@@ -21,6 +21,8 @@ use std::io::prelude::*;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::llm::ChatFunction;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIScaleSettings {
     scale_type: String,
@@ -455,6 +457,8 @@ impl LLM for AzureOpenAILLM {
     async fn chat(
         &self,
         _messages: &Vec<ChatMessage>,
+        _functions: &Vec<ChatFunction>,
+        _force_function: bool,
         _temperature: f32,
         _top_p: Option<f32>,
         _n: usize,

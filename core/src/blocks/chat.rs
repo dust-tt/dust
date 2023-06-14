@@ -296,7 +296,8 @@ impl Block for Chat {
                                 Some(Value::String(n)) => Some(n.clone()),
                                 _ => None,
                             },
-                            content: c.clone(),
+                            content: Some(c.clone()),
+                            function_call: None,
                         }),
                         _ => Err(anyhow!(
                             "Invalid messages code output, expecting an array of objects with
@@ -380,7 +381,8 @@ impl Block for Chat {
                 ChatMessage {
                     role: ChatMessageRole::System,
                     name: None,
-                    content: i,
+                    content: Some(i),
+                    function_call: None,
                 },
             );
         }

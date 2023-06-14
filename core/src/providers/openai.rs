@@ -27,6 +27,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
+use super::llm::ChatFunction;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u64,
@@ -711,7 +713,8 @@ pub async fn streamed_chat_completion(
                     message: ChatMessage {
                         role: ChatMessageRole::System,
                         name: None,
-                        content: "".to_string(),
+                        content: Some("".to_string()),
+                        function_call: None,
                     },
                     index: c.index,
                     finish_reason: None,
@@ -745,8 +748,15 @@ pub async fn streamed_chat_completion(
                     Some(content) => match content.as_str() {
                         None => (),
                         Some(s) => {
-                            c.choices[j].message.content =
-                                format!("{}{}", c.choices[j].message.content, s);
+                            c.choices[j].message.content = Some(format!(
+                                "{}{}",
+                                c.choices[j]
+                                    .message
+                                    .content
+                                    .as_ref()
+                                    .unwrap_or(&String::new()),
+                                s
+                            ));
                         }
                     },
                 };
@@ -757,7 +767,10 @@ pub async fn streamed_chat_completion(
 
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
-        m.message.content = m.message.content.trim().to_string();
+        m.message.content = match m.message.content.as_ref() {
+            None => None,
+            Some(c) => Some(c.trim().to_string()),
+        };
     }
 
     Ok(completion)
@@ -769,6 +782,8 @@ pub async fn chat_completion(
     organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
+    functions: &Vec<ChatFunction>,
+    force_function: bool,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -781,8 +796,20 @@ pub async fn chat_completion(
     let https = HttpsConnector::new();
     let cli = Client::builder().build::<_, hyper::Body>(https);
 
+    let mut function_call: Option<Value> = None;
+    if functions.len() > 0 && force_function {
+        function_call = Some(json!({
+            "name": functions[0].name,
+        }));
+    }
+
     let mut body = json!({
         "messages": messages,
+        "functions": match functions.len() {
+            0 => None,
+            _ => Some(functions),
+        },
+        "function_call": function_call,
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
@@ -858,7 +885,10 @@ pub async fn chat_completion(
 
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
-        m.message.content = m.message.content.trim().to_string();
+        m.message.content = match m.message.content.as_ref() {
+            None => None,
+            Some(c) => Some(c.trim().to_string()),
+        };
     }
 
     Ok(completion)
@@ -1231,6 +1261,8 @@ impl LLM for OpenAILLM {
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        force_function: bool,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -1301,6 +1333,8 @@ impl LLM for OpenAILLM {
                     },
                     Some(self.id.clone()),
                     messages,
+                    functions,
+                    force_function,
                     temperature,
                     match top_p {
                         Some(t) => t,
