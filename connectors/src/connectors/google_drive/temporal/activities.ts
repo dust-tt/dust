@@ -279,7 +279,6 @@ function googleDocJSON2Text(
             );
             break;
           case "table": {
-            console.log("***** table", element[key]);
             let tableStr = element[key]?.headers
               .map((header: string) => {
                 return ` ${header} `;
