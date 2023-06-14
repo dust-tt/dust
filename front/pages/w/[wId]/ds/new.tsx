@@ -75,6 +75,7 @@ export default function DataSourceNew({
     model_id: "",
   });
   const [dataSourceMaxChunkSize, setDataSourceMaxChunkSize] = useState(256);
+  const [userUpsertable, setUserUpsertable] = useState(false);
 
   const formValidation = () => {
     let exists = false;
@@ -130,6 +131,7 @@ export default function DataSourceNew({
         provider_id: dataSourceModel.provider_id,
         model_id: dataSourceModel.model_id,
         max_chunk_size: `${dataSourceMaxChunkSize}`,
+        userUpsertable: userUpsertable,
       }),
     });
     if (res.ok) {
@@ -344,6 +346,30 @@ export default function DataSourceNew({
                       <p className="mt-2 text-sm text-gray-500">
                         The (maximum) number of tokens used to chunk the
                         documents. 256 tokens is recommended.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex justify-between">
+                      <label
+                        htmlFor="upsertable"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Upload Rights
+                      </label>
+                    </div>
+                    <div className="mt-2 flex items-center">
+                      <input
+                        id="dataSourceUpsertable"
+                        name="upsertable"
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                        checked={userUpsertable}
+                        onChange={(e) => setUserUpsertable(e.target.checked)}
+                      />
+                      <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                        Users (non-builders) of your workspace can upload
+                        documents to the data source
                       </p>
                     </div>
                   </div>
