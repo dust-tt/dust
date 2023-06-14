@@ -2,7 +2,7 @@ use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm::{ChatFunction, ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -17,6 +17,8 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 pub struct Chat {
     instructions: Option<String>,
     messages_code: String,
+    functions_code: Option<String>,
+    force_function: Option<bool>,
     temperature: f32,
     top_p: Option<f32>,
     stop: Vec<String>,
@@ -29,6 +31,8 @@ impl Chat {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut instructions: Option<String> = None;
         let mut messages_code: Option<String> = None;
+        let mut functions_code: Option<String> = None;
+        let mut force_function: Option<bool> = None;
         let mut temperature: Option<f32> = None;
         let mut top_p: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
@@ -43,6 +47,14 @@ impl Chat {
                     match key.as_str() {
                         "instructions" => instructions = Some(value),
                         "messages_code" => messages_code = Some(value),
+                        "functions_code" => functions_code = Some(value),
+                        "force_function" => match value.as_str() {
+                            "true" => force_function = Some(true),
+                            "false" => force_function = Some(false),
+                            _ => Err(anyhow!(
+                                "Invalid value for `force_function`, must be `true` or `false`"
+                            ))?,
+                        },
                         "temperature" => match value.parse::<f32>() {
                             Ok(n) => temperature = Some(n),
                             Err(_) => Err(anyhow!(
@@ -92,6 +104,8 @@ impl Chat {
         Ok(Chat {
             instructions,
             messages_code: messages_code.unwrap(),
+            functions_code: functions_code,
+            force_function: force_function,
             temperature: temperature.unwrap(),
             top_p,
             stop,
@@ -139,6 +153,12 @@ impl Block for Chat {
             hasher.update(instructions.as_bytes());
         }
         hasher.update(self.messages_code.as_bytes());
+        if let Some(functions_code) = &self.functions_code {
+            hasher.update(functions_code.as_bytes());
+        }
+        if let Some(force_function) = &self.force_function {
+            hasher.update(force_function.to_string().as_bytes());
+        }
         hasher.update(self.temperature.to_string().as_bytes());
         if let Some(top_p) = &self.top_p {
             hasher.update(top_p.to_string().as_bytes());
@@ -250,8 +270,8 @@ impl Block for Chat {
             None => None,
         };
 
+        // Process messages.
         let e = env.clone();
-        // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
         let (messages_value, messages_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
@@ -295,6 +315,63 @@ impl Block for Chat {
             ))?,
         };
 
+        // Process functions.
+        let (functions, functions_logs) = match self.functions_code.as_ref() {
+            None => (vec![], vec![]),
+            Some(c) => {
+                let e = env.clone();
+                let functions_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
+                let (functions_value, functions_logs): (Value, Vec<Value>) =
+                    match tokio::task::spawn_blocking(move || {
+                        let mut script = Script::from_string(functions_code.as_str())?
+                            .with_timeout(std::time::Duration::from_secs(10));
+                        script.call("_fun", &e)
+                    })
+                    .await?
+                    {
+                        Ok((v, l)) => (v, l),
+                        Err(e) => Err(anyhow!("Error in functions code: {}", e))?,
+                    };
+
+                (
+                    match functions_value {
+                        Value::Array(a) => a
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Object(o) => {
+                                    match (o.get("name"), o.get("description"), o.get("parameters"))
+                                    {
+                                        (
+                                            Some(Value::String(n)),
+                                            Some(Value::String(d)),
+                                            Some(p),
+                                        ) => Ok(ChatFunction {
+                                            name: n.clone(),
+                                            description: Some(d.clone()),
+                                            parameters: Some(p.clone()),
+                                        }),
+                                        _ => Err(anyhow!(
+                                "Invalid functions code output, expecting an array of objects with
+                                 fields `name`, `description`, and `parameters`."
+                            )),
+                                    }
+                                }
+                                _ => Err(anyhow!(
+                                "Invalid functions code output, expecting an array of objects with
+                                 fields `name`, `description`, and `parameters`."
+                            )),
+                            })
+                            .collect::<Result<Vec<ChatFunction>>>()?,
+                        _ => Err(anyhow!(
+                            "Invalid functions code output, expecting an array of objects with
+                             fields `name`, `description`, and `parameters`."
+                        ))?,
+                    },
+                    functions_logs,
+                )
+            }
+        };
+
         // If instructions are provided, inject them as the first message with role `system`.
         let i = self.instructions(env)?;
         if i.len() > 0 {
@@ -312,6 +389,8 @@ impl Block for Chat {
             provider_id,
             &model_id,
             &messages,
+            &functions,
+            self.force_function.unwrap_or(false),
             self.temperature,
             self.top_p,
             1,
@@ -367,12 +446,15 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
+        let mut all_logs = messages_logs;
+        all_logs.extend(functions_logs);
+
         Ok(BlockResult {
             value: serde_json::to_value(ChatValue {
                 message: g.completions[0].clone(),
             })?,
             meta: Some(json!({
-                "logs": messages_logs,
+                "logs": all_logs,
             })),
         })
     }

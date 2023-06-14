@@ -421,6 +421,8 @@ impl Block for LLM {
                     provider_id,
                     &model_id,
                     &messages,
+                    &vec![],
+                    false,
                     self.temperature,
                     self.top_p,
                     1,

@@ -259,6 +259,7 @@ impl Block for DataSource {
         let mut hasher = blake3::Hasher::new();
         hasher.update("data_source".as_bytes());
         hasher.update(self.query.as_bytes());
+        hasher.update(self.full_text.to_string().as_bytes());
         format!("{}", hasher.finalize().to_hex())
     }
 

@@ -68,6 +68,13 @@ pub struct ChatMessage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ChatFunction {
+    pub name: String,
+    pub description: Option<String>,
+    pub parameters: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
@@ -303,6 +310,8 @@ pub struct LLMChatRequest {
     provider_id: ProviderID,
     model_id: String,
     messages: Vec<ChatMessage>,
+    functions: Vec<ChatFunction>,
+    force_function: bool,
     temperature: f32,
     top_p: Option<f32>,
     n: usize,
@@ -318,6 +327,8 @@ impl LLMChatRequest {
         provider_id: ProviderID,
         model_id: &str,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        force_function: bool,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -360,6 +371,8 @@ impl LLMChatRequest {
             provider_id,
             model_id: String::from(model_id),
             messages: messages.clone(),
+            functions: functions.clone(),
+            force_function,
             temperature,
             top_p,
             n,
