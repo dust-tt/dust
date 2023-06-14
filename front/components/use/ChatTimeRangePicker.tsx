@@ -51,20 +51,15 @@ export default function TimeRangePicker({
                     key={tr.id}
                     value={tr}
                     className="group mr-1 rounded-full sm:ml-1 sm:mr-0"
-                    defaultChecked={tr.id === timeRange.id}
                   >
-                    {({ checked }) => (
-                      <>
                         <div
                           className={classNames(
-                            checked ? "hidden" : "text-gray-600 ring-gray-400",
+                            tr.id == timeRange.id ? "hidden" : "text-gray-600 ring-gray-400",
                             "group relative w-full cursor-pointer whitespace-nowrap rounded-md bg-violet-50 bg-white px-2 py-0.5 text-left text-xs text-violet-800 shadow-sm hover:bg-violet-100"
                           )}
                         >
                           {tr.name}
                         </div>
-                      </>
-                    )}
                   </RadioGroup.Option>
                 );
               })}

@@ -1224,7 +1224,7 @@ export default function AppChat({
                                 <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
                               )}
                             </div>
-                            <div className="absolute bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
+                            <div className="absolute bottom-16 sm:bottom-10 hidden rounded border bg-white px-1 py-1 group-hover:block">
                               <span className="text-gray-600">
                                 <span className="font-semibold">{ds.name}</span>
                                 {ds.description ? ` ${ds.description}` : null}
@@ -1235,9 +1235,9 @@ export default function AppChat({
                       })}
                       
                     </div>
-                    <div className="flex flex-1 text-gray-400 hidden lg:block"></div>
-                    <div className="flex basis-full h-0 lg:hidden"></div>
-                    <div className="flex flex-row text-xs mt-2 lg:mt-0">
+                    <div className="flex flex-1 text-gray-400 hidden sm:block"></div>
+                    <div className="flex basis-full h-0 sm:hidden"></div>
+                    <div className="flex flex-row text-xs mt-2 sm:mt-0">
                       <TimeRangePicker
                         timeRange={selectedTimeRange}
                         onTimeRangeUpdate={(tr) => handleTimeRangeChange(tr)}
