@@ -740,10 +740,6 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
-        utils::info(&format!("Retrieved {} documents", documents.len()));
-
-        utils::info(&format!("Found {} chunks", chunks.len()));
-
         let context_length = 8000;
         let l_qdrant_client = Arc::new(Mutex::new(qdrant_client));
         let mut documents = futures::stream::iter(documents)
@@ -767,7 +763,6 @@ impl DataSource {
                         }
                         let current_length = chunks.iter().map(|c| c.text.len()).sum::<usize>();
                         if (context_length as i64 - current_length as i64) < 0 {
-                            utils::info(&format!("Skipping document {}", d.document_id));
                             d.chunks = chunks;
                             return Ok(d);
                         }
@@ -788,7 +783,6 @@ impl DataSource {
                                 }
                             }
                         }
-                        utils::info("Preparing query...");
                         let filter = qdrant::Filter {
                             must: vec![
                                 qdrant::FieldCondition {
@@ -816,7 +810,6 @@ impl DataSource {
                             ],
                             ..Default::default()
                         };
-                        utils::info(&format!("Filter: {:?}", filter));
                         // use search_points
                         let search_points = qdrant::ScrollPoints {
                             collection_name: collection,
@@ -824,7 +817,6 @@ impl DataSource {
                             limit: Some(1000),
                             ..Default::default()
                         };
-                        utils::info("Currently about to prepare scroll");
                         let results_expand = match qdrant_client.scroll(&search_points).await {
                             Ok(r) => r,
                             Err(e) => {
@@ -832,8 +824,6 @@ impl DataSource {
                                 return Err(anyhow!("Qdrant scroll error: {}", e))?;
                             }
                         };
-                        utils::info(&format!("Got {:?} results", results_expand));
-                        utils::info("Scroll prepared");
                         for r in results_expand.result.iter() {
                             // TODO: maybe abstract this with the other code to unwrap the response?
                             // RetrievedPoint is different from SearchPoint but I could abstract it
@@ -883,11 +873,6 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
-        utils::info(&format!(
-            "Found {} documents with {} chunks",
-            documents.len(),
-            documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
-        ));
         // Sort the documents by the score of the first chunk (guaranteed ordered).
         documents.sort_by(|a, b| {
             let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
