@@ -288,5 +288,3 @@ export function convertGoogleDocumentToJson(document) {
     content,
   };
 }
-
-module.exports = { convertGoogleDocumentToJson };

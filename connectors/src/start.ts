@@ -27,8 +27,6 @@ runNotionWorker().catch((err) =>
 runGithubWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running github worker")
 );
-launchGoogleDriveRenewWebhooksWorkflow()
-  .then(runGoogleWorker)
-  .catch((err) =>
-    logger.error(errorFromAny(err), "Error running notion worker")
-  );
+runGoogleWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running notion worker")
+);
