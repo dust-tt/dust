@@ -62,7 +62,7 @@ export default function TimeRangePicker({
                         tr.id == timeRange.id
                           ? "hidden"
                           : "text-gray-600 ring-gray-400",
-                        "group relative w-full cursor-pointer whitespace-nowrap rounded-md bg-violet-50 bg-white px-2 py-0.5 text-left text-xs text-violet-800 shadow-sm hover:bg-violet-100"
+                        "group relative w-full cursor-pointer whitespace-nowrap rounded-md bg-violet-50 px-2 py-0.5 text-left text-xs text-violet-800 shadow-sm hover:bg-violet-100"
                       )}
                     >
                       {tr.name}
@@ -82,6 +82,12 @@ export default function TimeRangePicker({
           <ClockIcon className="mr-0.5 inline-block h-3 w-3" />
           <span className="ml-0.5 block truncate">{timeRange.name}</span>
         </span>
+        <div className="absolute max-w-max hidden rounded border bg-white px-1 py-1 group-hover:block bottom-6 left-0 sm:right-0 sm:left-auto">
+          <span className="text-gray-600 font-normal">
+            <span className="font-semibold">time range</span>
+            &nbsp; retrieve data within the selected range
+          </span>
+        </div>
       </div>
     </div>
   );
