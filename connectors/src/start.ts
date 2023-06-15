@@ -3,6 +3,7 @@ import minimist from "minimist";
 import { startServer } from "@connectors/api_server";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
+import { launchGoogleDriveRenewWebhooksWorkflow } from "./connectors/google_drive/temporal/client";
 import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
@@ -26,6 +27,8 @@ runNotionWorker().catch((err) =>
 runGithubWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running github worker")
 );
-runGoogleWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running notion worker")
-);
+launchGoogleDriveRenewWebhooksWorkflow()
+  .then(runGoogleWorker)
+  .catch((err) =>
+    logger.error(errorFromAny(err), "Error running notion worker")
+  );

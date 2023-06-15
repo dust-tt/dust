@@ -1,5 +1,4 @@
 import { proxyActivities, setHandler } from "@temporalio/workflow";
-import { sign } from "crypto";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
@@ -8,11 +7,10 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { newFoldersSelectionSignal } from "./signals";
 
-const { syncFiles, getDrivesIds, incrementalSync } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "10 minutes",
-});
+const { syncFiles, getDrivesIds, incrementalSync, renewWebhooks } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
@@ -86,6 +84,17 @@ export async function googleDriveIncrementalSync(
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
-export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
-  return `googleDrive-IncrementalSync-${connectorId}`;
+export function googleDriveIncrementalSyncWorkflowId(connectorId: string) {
+  return `googleDrive-IncrementalSync-${connectorId}-${new Date().getTime()}`;
+}
+
+export async function googleDriveRenewWebhooks() {
+  let count = 0;
+  do {
+    count = await renewWebhooks(10);
+  } while (count);
+}
+
+export function googleDriveRenewWebhooksWorkflowId() {
+  return `googleDrive-RenewWebhook`;
 }

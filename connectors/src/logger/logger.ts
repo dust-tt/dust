@@ -1,6 +1,19 @@
 import pino from "pino";
 
-const logger = pino();
+const NODE_ENV = process.env.NODE_ENV;
+
+const pinoOtions =
+  NODE_ENV === "production"
+    ? {}
+    : {
+        transport: {
+          target: "pino-pretty",
+          options: {
+            errorLikeObjectKeys: ["err", "error", "error_stack", "stack"],
+          },
+        },
+      };
+const logger = pino(pinoOtions);
 
 export default logger;
 export type { Logger } from "pino";
