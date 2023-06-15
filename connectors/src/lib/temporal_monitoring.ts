@@ -4,16 +4,14 @@ import {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-import StatsDClient from "hot-shots";
 
 import logger, { Logger } from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
-
-const statsDClient = new StatsDClient({});
 
 export class ActivityInboundLogInterceptor
   implements ActivityInboundCallsInterceptor
