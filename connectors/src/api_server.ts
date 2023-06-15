@@ -12,6 +12,7 @@ import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
+import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -44,6 +45,10 @@ export function startServer(port: number) {
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/google_drive",
+    webhookGoogleDriveAPIHandler
+  );
   app.post(
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),

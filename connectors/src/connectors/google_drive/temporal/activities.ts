@@ -16,13 +16,17 @@ import { Op } from "sequelize";
 
 import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive/parser";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { HTTPError } from "@connectors/lib/error";
 import {
   Connector,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
+  GoogleDriveWebhook,
   ModelId,
 } from "@connectors/lib/models";
+
+import { registerWebhook } from "../lib";
 
 const FILES_SYNC_CONCURRENCY = 30;
 const FILES_GC_CONCURRENCY = 30;
@@ -541,4 +545,40 @@ export async function garbageCollector(
   );
 
   return files.length;
+}
+export async function renewWebhooks(pageSize: number) {
+  const webhooks = await GoogleDriveWebhook.findAll({
+    where: {
+      expiresAt: {
+        [Op.lt]: new Date().getTime() + 60 * 60 * 1000,
+      },
+    },
+    limit: pageSize,
+  });
+  for (const wh of webhooks) {
+    const connector = await Connector.findByPk(wh.connectorId);
+    if (connector) {
+      const webhookInfo = await registerWebhook(connector.connectionId);
+      if (webhookInfo.isErr()) {
+        if (webhookInfo.error instanceof HTTPError) {
+          if (webhookInfo.error.statusCode === 401) {
+            // The user has revoked the access to the app.
+            // We don't have a way to handle that yet.
+            continue;
+          } else {
+            throw webhookInfo.error;
+          }
+        } else if (webhookInfo.error instanceof Error) {
+          throw webhookInfo.error;
+        }
+      } else {
+        await wh.update({
+          webhookId: webhookInfo.value.id,
+          expiresAt: new Date(webhookInfo.value.expirationTsMs),
+        });
+      }
+    }
+  }
+
+  return webhooks.length;
 }

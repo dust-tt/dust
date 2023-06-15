@@ -572,3 +572,56 @@ GoogleDriveSyncToken.init(
   }
 );
 Connector.hasOne(GoogleDriveSyncToken);
+
+export class GoogleDriveWebhook extends Model<
+  InferAttributes<GoogleDriveWebhook>,
+  InferCreationAttributes<GoogleDriveWebhook>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare webhookId: string;
+  declare expiresAt: Date;
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+GoogleDriveWebhook.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    webhookId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_webhooks",
+    indexes: [
+      { fields: ["connectorId"], unique: true },
+      { fields: ["expiresAt"] },
+    ],
+  }
+);
+Connector.hasOne(GoogleDriveSyncToken);

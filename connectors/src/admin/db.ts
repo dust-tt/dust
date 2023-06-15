@@ -5,6 +5,7 @@ import {
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
+  GoogleDriveWebhook,
   NotionConnectorState,
   NotionPage,
   SlackConfiguration,
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
   await GoogleDriveFolders.sync({ alter: true });
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
+  await GoogleDriveWebhook.sync({ alter: true });
 
   return;
 }
