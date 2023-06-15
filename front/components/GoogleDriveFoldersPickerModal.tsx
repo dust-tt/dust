@@ -4,7 +4,6 @@ import TreeView, { INode } from "react-accessible-treeview";
 import {
   FaCheckSquare,
   FaFolder,
-  FaRegMinusSquare,
   FaRegSquare,
 } from "react-icons/fa";
 import { IoMdArrowDropdown, IoMdArrowDropright } from "react-icons/io";

@@ -30,7 +30,7 @@ export async function registerWebhook(
       body: JSON.stringify({
         id: uuid,
         type: "web_hook",
-        address: `https://${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive`,
+        address: `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive`,
         expiration: new Date().getTime() + 60 * 60 * 5 * 1000,
       }),
     }
