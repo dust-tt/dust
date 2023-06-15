@@ -417,10 +417,7 @@ export function MessageView({
                 {!readOnly && user?.image ? (
                   <img
                     className="h-8 w-8 rounded-md"
-                    src={
-                      user?.image ||
-                      "https://gravatar.com/avatar/anonymous?d=mp"
-                    }
+                    src={user?.image}
                     alt=""
                   />
                 ) : (
