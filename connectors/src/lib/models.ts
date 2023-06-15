@@ -614,4 +614,4 @@ GoogleDriveWebhook.init(
     ],
   }
 );
-Connector.hasOne(GoogleDriveSyncToken);
+Connector.hasOne(GoogleDriveWebhook);
