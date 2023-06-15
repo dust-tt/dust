@@ -126,10 +126,6 @@ async fn index() -> &'static str {
     "Welcome to the Dust API!"
 }
 
-async fn testing() -> &'static str {
-    "Testing"
-}
-
 /// Create a new project (simply generates an id)
 
 async fn projects_create(
@@ -1089,7 +1085,7 @@ struct DatasourceSearchPayload {
     filter: Option<SearchFilter>,
     full_text: bool,
     credentials: run::Credentials,
-    target_document_tokens: usize
+    target_document_tokens: usize,
 }
 
 async fn data_sources_search(
@@ -1513,7 +1509,6 @@ async fn main() -> Result<()> {
     let app = Router::new()
         // Index
         .route("/", get(index))
-        .route("/testing", get(testing))
         // Projects
         .route("/projects", post(projects_create))
         .route("/projects/:project_id/clone", post(projects_clone))

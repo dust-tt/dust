@@ -829,7 +829,14 @@ impl DataSource {
                             chunk_size,
                             d.chunk_count,
                         );
-                        utils::info(&format!("new_offsets: {:?}", new_offsets));
+                        let offset_values: Vec<i64> = new_offsets
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<usize>>()
+                            .into_iter()
+                            .map(|o| o as i64)
+                            .collect();
+                        let no_new_offsets = offset_values.len() as u32;
 
                         let filter = qdrant::Filter {
                             must: vec![
@@ -848,13 +855,7 @@ impl DataSource {
                                     r#match: Some(qdrant::Match {
                                         match_value: Some(qdrant::r#match::MatchValue::Integers(
                                             qdrant::RepeatedIntegers {
-                                                integers: new_offsets
-                                                    .keys()
-                                                    .cloned()
-                                                    .collect::<Vec<usize>>()
-                                                    .into_iter()
-                                                    .map(|o| o as i64)
-                                                    .collect(),
+                                                integers: offset_values,
                                             },
                                         )),
                                     }),
@@ -868,7 +869,7 @@ impl DataSource {
                         let search_points = qdrant::ScrollPoints {
                             collection_name: collection,
                             filter: Some(filter),
-                            limit: Some(1000),
+                            limit: Some(no_new_offsets),
                             ..Default::default()
                         };
                         let results_expand = match qdrant_client.scroll(&search_points).await {
