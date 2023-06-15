@@ -82,8 +82,8 @@ export default function TimeRangePicker({
           <ClockIcon className="mr-0.5 inline-block h-3 w-3" />
           <span className="ml-0.5 block truncate">{timeRange.name}</span>
         </span>
-        <div className="absolute max-w-max hidden rounded border bg-white px-1 py-1 group-hover:block bottom-6 left-0 sm:right-0 sm:left-auto">
-          <span className="text-gray-600 font-normal">
+        <div className="absolute bottom-6 left-0 hidden max-w-max rounded border bg-white px-1 py-1 group-hover:block sm:left-auto sm:right-0">
+          <span className="font-normal text-gray-600">
             <span className="font-semibold">time range</span>
             &nbsp; retrieve data within the selected range
           </span>
