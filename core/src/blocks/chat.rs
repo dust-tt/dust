@@ -457,7 +457,7 @@ impl Block for Chat {
                                                     "block_name": block_name,
                                                     "input_index": input_index,
                                                     "map": map,
-                                                    "name": c,
+                                                    "function_call": c,
                                                 },
                                             }));
                                         }
