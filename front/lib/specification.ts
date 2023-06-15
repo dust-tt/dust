@@ -193,13 +193,23 @@ export function addBlock(
           temperature: 0.7,
           instructions: "",
           max_tokens: "",
+          stop: [],
           messages_code:
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
-          stop: [],
+          functions_code:
+            "_fun = (env) => {\n" +
+            "  // See https://platform.openai.com/docs/guides/gpt/function-calling\n" +
+            "  // return [{\n" +
+            '  //  name: "...",\n' +
+            '  //  description: "...",\n' +
+            "  //  parameters: ...\n" +
+            "  // }];\n" +
+            "}",
         },
         config: {
           provider_id: "",
           model_id: "",
+          function_call: "",
           use_cache: true,
         },
       });
@@ -440,6 +450,9 @@ export function dumpSpecification(
         }
         out += `  messages_code: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.messages_code
+        )}\n\`\`\`\n`;
+        out += `  functions_code: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.functions_code
         )}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";

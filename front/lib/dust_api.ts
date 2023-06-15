@@ -85,6 +85,38 @@ export type DustAppRunTokensEvent = {
   };
 };
 
+export type DustAppRunFunctionCallEvent = {
+  type: "function_call";
+  content: {
+    block_type: string;
+    block_name: string;
+    input_index: number;
+    map: {
+      name: string;
+      iteration: number;
+    } | null;
+    function_call: {
+      name: string;
+    };
+  };
+};
+
+export type DustAppRunFunctionCallArgumentsTokensEvent = {
+  type: "function_call_arguments_tokens";
+  content: {
+    block_type: string;
+    block_name: string;
+    input_index: number;
+    map: {
+      name: string;
+      iteration: number;
+    } | null;
+    tokens: {
+      text: string;
+    };
+  };
+};
+
 export type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
@@ -104,6 +136,8 @@ async function processStreamedRunResponse(res: Response): Promise<
       | DustAppRunBlockStatusEvent
       | DustAppRunBlockExecutionEvent
       | DustAppRunTokensEvent
+      | DustAppRunFunctionCallEvent
+      | DustAppRunFunctionCallArgumentsTokensEvent
       | DustAppRunFinalEvent,
       void,
       unknown
@@ -132,6 +166,8 @@ async function processStreamedRunResponse(res: Response): Promise<
     | DustAppRunBlockStatusEvent
     | DustAppRunBlockExecutionEvent
     | DustAppRunTokensEvent
+    | DustAppRunFunctionCallEvent
+    | DustAppRunFunctionCallArgumentsTokensEvent
     | DustAppRunFinalEvent
   )[] = [];
 
@@ -178,6 +214,20 @@ async function processStreamedRunResponse(res: Response): Promise<
                 type: "tokens",
                 content: data.content,
               } as DustAppRunTokensEvent);
+              break;
+            }
+            case "function_call": {
+              pendingEvents.push({
+                type: "function_call",
+                content: data.content,
+              } as DustAppRunFunctionCallEvent);
+              break;
+            }
+            case "function_call_arguments_tokens": {
+              pendingEvents.push({
+                type: "function_call_arguments_tokens",
+                content: data.content,
+              } as DustAppRunFunctionCallArgumentsTokensEvent);
               break;
             }
             case "final": {
@@ -274,6 +324,8 @@ export class DustAPI {
         | DustAppRunBlockStatusEvent
         | DustAppRunBlockExecutionEvent
         | DustAppRunTokensEvent
+        | DustAppRunFunctionCallEvent
+        | DustAppRunFunctionCallArgumentsTokensEvent
         | DustAppRunFinalEvent,
         void,
         unknown
@@ -354,6 +406,8 @@ export async function runActionStreamed(
       | DustAppRunBlockStatusEvent
       | DustAppRunBlockExecutionEvent
       | DustAppRunTokensEvent
+      | DustAppRunFunctionCallEvent
+      | DustAppRunFunctionCallArgumentsTokensEvent
       | DustAppRunFinalEvent,
       void,
       unknown

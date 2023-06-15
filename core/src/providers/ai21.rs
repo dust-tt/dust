@@ -15,6 +15,8 @@ use std::io::prelude::*;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::llm::ChatFunction;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenDataItem {
     pub token: String,
@@ -330,6 +332,8 @@ impl LLM for AI21LLM {
     async fn chat(
         &self,
         _messages: &Vec<ChatMessage>,
+        _functions: &Vec<ChatFunction>,
+        _function_call: Option<String>,
         _temperature: f32,
         _top_p: Option<f32>,
         _n: usize,

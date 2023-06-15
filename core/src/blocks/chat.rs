@@ -2,7 +2,7 @@ use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm::{ChatFunction, ChatMessage, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -17,6 +17,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 pub struct Chat {
     instructions: Option<String>,
     messages_code: String,
+    functions_code: Option<String>,
     temperature: f32,
     top_p: Option<f32>,
     stop: Vec<String>,
@@ -29,6 +30,7 @@ impl Chat {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut instructions: Option<String> = None;
         let mut messages_code: Option<String> = None;
+        let mut functions_code: Option<String> = None;
         let mut temperature: Option<f32> = None;
         let mut top_p: Option<f32> = None;
         let mut stop: Vec<String> = vec![];
@@ -43,6 +45,7 @@ impl Chat {
                     match key.as_str() {
                         "instructions" => instructions = Some(value),
                         "messages_code" => messages_code = Some(value),
+                        "functions_code" => functions_code = Some(value),
                         "temperature" => match value.parse::<f32>() {
                             Ok(n) => temperature = Some(n),
                             Err(_) => Err(anyhow!(
@@ -92,6 +95,7 @@ impl Chat {
         Ok(Chat {
             instructions,
             messages_code: messages_code.unwrap(),
+            functions_code: functions_code,
             temperature: temperature.unwrap(),
             top_p,
             stop,
@@ -139,6 +143,9 @@ impl Block for Chat {
             hasher.update(instructions.as_bytes());
         }
         hasher.update(self.messages_code.as_bytes());
+        if let Some(functions_code) = &self.functions_code {
+            hasher.update(functions_code.as_bytes());
+        }
         hasher.update(self.temperature.to_string().as_bytes());
         if let Some(top_p) = &self.top_p {
             hasher.update(top_p.to_string().as_bytes());
@@ -166,7 +173,7 @@ impl Block for Chat {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id, model_id) = match config {
+        let (provider_id, model_id, function_call) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -206,7 +213,22 @@ impl Block for Chat {
                     ))?,
                 };
 
-                (provider_id, model_id)
+                let function_call = match v.get("function_call") {
+                    Some(v) => match v {
+                        Value::Null => None,
+                        Value::String(s) => match s.len() {
+                            0 => None,
+                            _ => Some(s.clone()),
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `function_call` in configuration for chat block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => None,
+                };
+
+                (provider_id, model_id, function_call)
             }
             _ => Err(anyhow!(
                 "Missing configuration for chat block `{}`, \
@@ -250,8 +272,8 @@ impl Block for Chat {
             None => None,
         };
 
+        // Process messages.
         let e = env.clone();
-        // replace <DUST_TRIPLE_BACKTICKS> with ```
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
         let (messages_value, messages_logs): (Value, Vec<Value>) =
             match tokio::task::spawn_blocking(move || {
@@ -276,7 +298,8 @@ impl Block for Chat {
                                 Some(Value::String(n)) => Some(n.clone()),
                                 _ => None,
                             },
-                            content: c.clone(),
+                            content: Some(c.clone()),
+                            function_call: None,
                         }),
                         _ => Err(anyhow!(
                             "Invalid messages code output, expecting an array of objects with
@@ -295,6 +318,81 @@ impl Block for Chat {
             ))?,
         };
 
+        // Process functions.
+        let (functions, functions_logs) = match self.functions_code.as_ref() {
+            None => (vec![], vec![]),
+            Some(c) => {
+                let e = env.clone();
+                let functions_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
+                let (functions_value, functions_logs): (Value, Vec<Value>) =
+                    match tokio::task::spawn_blocking(move || {
+                        let mut script = Script::from_string(functions_code.as_str())?
+                            .with_timeout(std::time::Duration::from_secs(10));
+                        script.call("_fun", &e)
+                    })
+                    .await?
+                    {
+                        Ok((v, l)) => (v, l),
+                        Err(e) => Err(anyhow!("Error in functions code: {}", e))?,
+                    };
+
+                (
+                    match functions_value {
+                        Value::Null => vec![],
+                        Value::Array(a) => a
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Object(o) => {
+                                    match (o.get("name"), o.get("description"), o.get("parameters"))
+                                    {
+                                        (
+                                            Some(Value::String(n)),
+                                            Some(Value::String(d)),
+                                            Some(p),
+                                        ) => Ok(ChatFunction {
+                                            name: n.clone(),
+                                            description: Some(d.clone()),
+                                            parameters: Some(p.clone()),
+                                        }),
+                                        _ => Err(anyhow!(
+                                "Invalid functions code output, expecting an array of objects with
+                                 fields `name`, `description`, and `parameters`."
+                            )),
+                                    }
+                                }
+                                _ => Err(anyhow!(
+                                "Invalid functions code output, expecting an array of objects with
+                                 fields `name`, `description`, and `parameters`."
+                            )),
+                            })
+                            .collect::<Result<Vec<ChatFunction>>>()?,
+                        _ => Err(anyhow!(
+                            "Invalid functions code output, expecting an array of objects with
+                             fields `name`, `description`, and `parameters`."
+                        ))?,
+                    },
+                    functions_logs,
+                )
+            }
+        };
+
+        // Validate `function_call` if present.
+        match function_call.as_ref() {
+            None => (),
+            Some(s) => match s.as_str() {
+                "auto" | "none" => (),
+                s => {
+                    functions.iter().find(|f| f.name == s).ok_or(anyhow!(
+                        "Invalid `function_call` in configuration for chat block `{}`: \
+                         function name `{}` not found in functions. Possible values are
+                         'auto', 'none' or the name of one of the functions.",
+                        name,
+                        s
+                    ))?;
+                }
+            },
+        };
+
         // If instructions are provided, inject them as the first message with role `system`.
         let i = self.instructions(env)?;
         if i.len() > 0 {
@@ -303,7 +401,8 @@ impl Block for Chat {
                 ChatMessage {
                     role: ChatMessageRole::System,
                     name: None,
-                    content: i,
+                    content: Some(i),
+                    function_call: None,
                 },
             );
         }
@@ -312,6 +411,8 @@ impl Block for Chat {
             provider_id,
             &model_id,
             &messages,
+            &functions,
+            function_call,
             self.temperature,
             self.top_p,
             1,
@@ -331,20 +432,50 @@ impl Block for Chat {
                     let block_name = String::from(name);
                     tokio::task::spawn(async move {
                         while let Some(v) = rx.recv().await {
-                            let t = v.get("content");
+                            let c = v.get("content");
+                            let t = v.get("type");
                             match event_sender.as_ref() {
-                                Some(sender) => {
-                                    let _ = sender.send(json!({
-                                        "type": "tokens",
-                                        "content": {
-                                            "block_type": "chat",
-                                            "block_name": block_name,
-                                            "input_index": input_index,
-                                            "map": map,
-                                            "tokens": t,
-                                        },
-                                    }));
-                                }
+                                Some(sender) => match t {
+                                    Some(Value::String(s)) => {
+                                        if s == "tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "function_call" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "function_call": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "function_call_arguments_tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                    }
+                                    _ => (),
+                                },
                                 None => (),
                             }
                         }
@@ -367,12 +498,15 @@ impl Block for Chat {
 
         assert!(g.completions.len() == 1);
 
+        let mut all_logs = messages_logs;
+        all_logs.extend(functions_logs);
+
         Ok(BlockResult {
             value: serde_json::to_value(ChatValue {
                 message: g.completions[0].clone(),
             })?,
             meta: Some(json!({
-                "logs": messages_logs,
+                "logs": all_logs,
             })),
         })
     }

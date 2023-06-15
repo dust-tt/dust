@@ -19,6 +19,8 @@ use std::io::prelude::*;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::llm::ChatFunction;
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
@@ -83,8 +85,9 @@ impl AnthropicLLM {
                         ChatMessageRole::System => "Human",
                         ChatMessageRole::Assistant => "Assistant",
                         ChatMessageRole::User => "Human",
+                        ChatMessageRole::Function => "Human",
                     },
-                    cm.content
+                    cm.content.as_ref().unwrap_or(&String::from("")).clone()
                 )
             })
             .collect::<Vec<_>>()
@@ -131,8 +134,9 @@ impl AnthropicLLM {
             model: self.id.clone(),
             completions: vec![ChatMessage {
                 role: ChatMessageRole::Assistant,
-                content: response.completion.clone(),
+                content: Some(response.completion.clone()),
                 name: None,
+                function_call: None,
             }],
         });
     }
@@ -173,8 +177,9 @@ impl AnthropicLLM {
             model: self.id.clone(),
             completions: vec![ChatMessage {
                 role: ChatMessageRole::Assistant,
-                content: response?.completion.clone(),
+                content: Some(response?.completion.clone()),
                 name: None,
+                function_call: None,
             }],
         });
     }
@@ -512,6 +517,8 @@ impl LLM for AnthropicLLM {
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -527,6 +534,10 @@ impl LLM for AnthropicLLM {
                 "Anthropic only supports generating one sample at a time."
             ))?;
         }
+        if functions.len() > 0 || function_call.is_some() {
+            return Err(anyhow!("Anthropic does not support chat functions."));
+        }
+
         match event_sender {
             Some(es) => {
                 return self

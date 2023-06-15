@@ -21,6 +21,11 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           type: "chat",
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           model_id: spec[i].config ? spec[i].config.model_id : "",
+          function_call: spec[i].config
+            ? spec[i].config.function_call
+              ? spec[i].config.function_call
+              : null
+            : null,
           use_cache: spec[i].config
             ? spec[i].config.use_cache
               ? spec[i].config.use_cache

@@ -35,6 +35,7 @@ pub enum ChatMessageRole {
     System,
     User,
     Assistant,
+    Function,
 }
 
 impl ToString for ChatMessageRole {
@@ -43,6 +44,7 @@ impl ToString for ChatMessageRole {
             ChatMessageRole::System => String::from("system"),
             ChatMessageRole::User => String::from("user"),
             ChatMessageRole::Assistant => String::from("assistant"),
+            ChatMessageRole::Function => String::from("function"),
         }
     }
 }
@@ -54,9 +56,16 @@ impl FromStr for ChatMessageRole {
             "system" => Ok(ChatMessageRole::System),
             "user" => Ok(ChatMessageRole::User),
             "assistant" => Ok(ChatMessageRole::Assistant),
+            "function" => Ok(ChatMessageRole::Function),
             _ => Err(ParseError::with_message("Unknown ChatMessageRole"))?,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ChatFunctionCall {
+    pub name: String,
+    pub arguments: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -64,7 +73,16 @@ pub struct ChatMessage {
     pub role: ChatMessageRole,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub content: String,
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_call: Option<ChatFunctionCall>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ChatFunction {
+    pub name: String,
+    pub description: Option<String>,
+    pub parameters: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -104,6 +122,8 @@ pub trait LLM {
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -303,6 +323,8 @@ pub struct LLMChatRequest {
     provider_id: ProviderID,
     model_id: String,
     messages: Vec<ChatMessage>,
+    functions: Vec<ChatFunction>,
+    function_call: Option<String>,
     temperature: f32,
     top_p: Option<f32>,
     n: usize,
@@ -318,6 +340,8 @@ impl LLMChatRequest {
         provider_id: ProviderID,
         model_id: &str,
         messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -331,9 +355,14 @@ impl LLMChatRequest {
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
         messages.iter().for_each(|m| {
-            hasher.update(m.role.to_string().as_bytes());
-            hasher.update(m.content.as_bytes());
+            hasher.update(serde_json::to_string(m).unwrap().as_bytes());
         });
+        functions.iter().for_each(|m| {
+            hasher.update(serde_json::to_string(m).unwrap().as_bytes());
+        });
+        if !function_call.is_none() {
+            hasher.update(function_call.clone().unwrap().as_bytes());
+        }
         hasher.update(temperature.to_string().as_bytes());
         if !top_p.is_none() {
             hasher.update(top_p.unwrap().to_string().as_bytes());
@@ -360,6 +389,8 @@ impl LLMChatRequest {
             provider_id,
             model_id: String::from(model_id),
             messages: messages.clone(),
+            functions: functions.clone(),
+            function_call,
             temperature,
             top_p,
             n,
@@ -387,6 +418,8 @@ impl LLMChatRequest {
             || {
                 llm.chat(
                     &self.messages,
+                    &self.functions,
+                    self.function_call.clone(),
                     self.temperature,
                     self.top_p,
                     self.n,
@@ -422,7 +455,12 @@ impl LLMChatRequest {
                     self.temperature,
                     c.completions
                         .iter()
-                        .map(|c| c.content.len().to_string())
+                        .map(|c| c
+                            .content
+                            .as_ref()
+                            .unwrap_or(&String::new())
+                            .len()
+                            .to_string())
                         .collect::<Vec<_>>()
                         .join(","),
                 ));
