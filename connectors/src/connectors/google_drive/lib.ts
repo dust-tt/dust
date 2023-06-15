@@ -39,16 +39,12 @@ export async function registerWebhook(
     }
   );
 
-  const webhookURLredacted = webhookURL.replace(
-    DUST_CONNECTORS_WEBHOOKS_SECRET,
-    "secret_redacted"
-  );
   if (res.ok) {
     const data: { id: string; expiration: string } = await res.json();
     const result: { id: string; expirationTsMs: number; url: string } = {
       id: data.id,
       expirationTsMs: parseInt(data.expiration),
-      url: webhookURLredacted,
+      url: webhookURL,
     };
     return new Ok(result);
   } else {
