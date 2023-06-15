@@ -333,7 +333,7 @@ impl LLM for AI21LLM {
         &self,
         _messages: &Vec<ChatMessage>,
         _functions: &Vec<ChatFunction>,
-        _force_function: bool,
+        _function_call: Option<String>,
         _temperature: f32,
         _top_p: Option<f32>,
         _n: usize,

@@ -522,7 +522,7 @@ pub async fn streamed_chat_completion(
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     functions: &Vec<ChatFunction>,
-    force_function: bool,
+    function_call: Option<String>,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -561,12 +561,17 @@ pub async fn streamed_chat_completion(
             .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
     }
 
-    let mut function_call: Option<Value> = None;
-    if functions.len() > 0 && force_function {
-        function_call = Some(json!({
-            "name": functions[0].name,
-        }));
-    }
+    // Re-adapt to OpenAI string || object format.
+    let function_call: Option<Value> = match function_call {
+        None => None,
+        Some(s) => match s.as_str() {
+            "none" => Some(Value::String(s)),
+            "auto" => Some(Value::String(s)),
+            _ => Some(json!({
+                "name": s,
+            })),
+        },
+    };
 
     let mut body = json!({
         "messages": messages,
@@ -876,7 +881,7 @@ pub async fn chat_completion(
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
     functions: &Vec<ChatFunction>,
-    force_function: bool,
+    function_call: Option<String>,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -889,12 +894,17 @@ pub async fn chat_completion(
     let https = HttpsConnector::new();
     let cli = Client::builder().build::<_, hyper::Body>(https);
 
-    let mut function_call: Option<Value> = None;
-    if functions.len() > 0 && force_function {
-        function_call = Some(json!({
-            "name": functions[0].name,
-        }));
-    }
+    // Re-adapt to OpenAI string || object format.
+    let function_call: Option<Value> = match function_call {
+        None => None,
+        Some(s) => match s.as_str() {
+            "none" => Some(Value::String(s)),
+            "auto" => Some(Value::String(s)),
+            _ => Some(json!({
+                "name": s,
+            })),
+        },
+    };
 
     let mut body = json!({
         "messages": messages,
@@ -1356,7 +1366,7 @@ impl LLM for OpenAILLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        force_function: bool,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -1388,7 +1398,7 @@ impl LLM for OpenAILLM {
                     Some(self.id.clone()),
                     messages,
                     functions,
-                    force_function,
+                    function_call,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -1430,7 +1440,7 @@ impl LLM for OpenAILLM {
                     Some(self.id.clone()),
                     messages,
                     functions,
-                    force_function,
+                    function_call,
                     temperature,
                     match top_p {
                         Some(t) => t,

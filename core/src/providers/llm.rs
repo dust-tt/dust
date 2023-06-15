@@ -123,7 +123,7 @@ pub trait LLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        force_function: bool,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -324,7 +324,7 @@ pub struct LLMChatRequest {
     model_id: String,
     messages: Vec<ChatMessage>,
     functions: Vec<ChatFunction>,
-    force_function: bool,
+    function_call: Option<String>,
     temperature: f32,
     top_p: Option<f32>,
     n: usize,
@@ -341,7 +341,7 @@ impl LLMChatRequest {
         model_id: &str,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        force_function: bool,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -360,7 +360,9 @@ impl LLMChatRequest {
         functions.iter().for_each(|m| {
             hasher.update(serde_json::to_string(m).unwrap().as_bytes());
         });
-        hasher.update(force_function.to_string().as_bytes());
+        if !function_call.is_none() {
+            hasher.update(function_call.clone().unwrap().as_bytes());
+        }
         hasher.update(temperature.to_string().as_bytes());
         if !top_p.is_none() {
             hasher.update(top_p.unwrap().to_string().as_bytes());
@@ -388,7 +390,7 @@ impl LLMChatRequest {
             model_id: String::from(model_id),
             messages: messages.clone(),
             functions: functions.clone(),
-            force_function,
+            function_call,
             temperature,
             top_p,
             n,
@@ -417,7 +419,7 @@ impl LLMChatRequest {
                 llm.chat(
                     &self.messages,
                     &self.functions,
-                    self.force_function,
+                    self.function_call.clone(),
                     self.temperature,
                     self.top_p,
                     self.n,

@@ -518,7 +518,7 @@ impl LLM for AnthropicLLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        force_function: bool,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -534,7 +534,7 @@ impl LLM for AnthropicLLM {
                 "Anthropic only supports generating one sample at a time."
             ))?;
         }
-        if functions.len() > 0 || force_function {
+        if functions.len() > 0 || function_call.is_some() {
             return Err(anyhow!("Anthropic does not support chat functions."));
         }
 

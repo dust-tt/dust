@@ -423,7 +423,7 @@ impl Block for LLM {
                     &model_id,
                     &messages,
                     &vec![],
-                    false,
+                    None,
                     self.temperature,
                     self.top_p,
                     1,

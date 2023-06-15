@@ -173,7 +173,7 @@ impl Block for Chat {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id, model_id, force_function) = match config {
+        let (provider_id, model_id, function_call) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -213,18 +213,18 @@ impl Block for Chat {
                     ))?,
                 };
 
-                let force_function = match v.get("force_function") {
+                let function_call = match v.get("function_call") {
                     Some(v) => match v {
-                        Value::Bool(b) => *b,
+                        Value::String(s) => Some(s.clone()),
                         _ => Err(anyhow!(
-                            "Invalid `force_function` in configuration for chat block `{}`",
+                            "Invalid `function_call` in configuration for chat block `{}`",
                             name
                         ))?,
                     },
-                    _ => false,
+                    _ => None,
                 };
 
-                (provider_id, model_id, force_function)
+                (provider_id, model_id, function_call)
             }
             _ => Err(anyhow!(
                 "Missing configuration for chat block `{}`, \
@@ -372,6 +372,22 @@ impl Block for Chat {
             }
         };
 
+        // Validate `function_call` if present.
+        match function_call {
+            None => (),
+            Some(s) => match s.as_str() {
+                "auto" | "none" => (),
+                s => {
+                    functions.iter().find(|f| f.name == s).ok_or(anyhow!(
+                        "Invalid `function_call` in configuration for chat block `{}`: \
+                         function name `{}` not found in functions",
+                        name,
+                        s
+                    ))?;
+                }
+            },
+        };
+
         // If instructions are provided, inject them as the first message with role `system`.
         let i = self.instructions(env)?;
         if i.len() > 0 {
@@ -391,7 +407,7 @@ impl Block for Chat {
             &model_id,
             &messages,
             &functions,
-            force_function,
+            function_call,
             self.temperature,
             self.top_p,
             1,
