@@ -8,7 +8,6 @@ use crate::utils;
 use anyhow::{anyhow, Result};
 use async_std::sync::Mutex;
 use cloud_storage::Object;
-use futures::future::try_join_all;
 use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -638,7 +637,7 @@ impl DataSource {
             })
             .await?;
 
-        let mut chunks = results
+        let chunks = results
             .result
             .iter()
             .map(|r| {
@@ -759,7 +758,7 @@ impl DataSource {
                 let collection = self.qdrant_collection();
                 let chunk_size = self.config.max_chunk_size;
                 tokio::spawn(async move {
-                    if (expand) {
+                    if expand {
                         let qdrant_client = qdrant_client.lock().await;
                         let mut cur_chunks = vec![];
                         let mut offset_set = std::collections::HashSet::new();
@@ -775,9 +774,9 @@ impl DataSource {
                         // this just adds the same amount per chunk, probably would want to add as much as possible,
                         // curious about thoughts
                         // TODO: also make it add below or above rather than not at all if not enough space
-                        let mut num_close_addable =
+                        let num_close_addable =
                             (context_length - current_length) / (chunk_size * chunks.len() * 2);
-                        for (chunk) in chunks.iter() {
+                        for chunk in chunks.iter() {
                             // iterate through min to offset:
                             for i in cmp::min(chunk.offset as i64 - num_close_addable as i64, 0)
                                 as usize
@@ -826,7 +825,7 @@ impl DataSource {
                             ..Default::default()
                         };
                         utils::info("Currently about to prepare scroll");
-                        let results_expand = match (qdrant_client.scroll(&search_points).await) {
+                        let results_expand = match qdrant_client.scroll(&search_points).await {
                             Ok(r) => r,
                             Err(e) => {
                                 utils::info(&format!("Qdrant scroll error: {}", e));
@@ -868,8 +867,6 @@ impl DataSource {
                             });
                         }
                     }
-                    // question here of what we want to do about the ordering of chunks
-                    chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
                     d.chunks = chunks;
 
                     Ok::<Document, anyhow::Error>(d)
@@ -899,6 +896,15 @@ impl DataSource {
                 .partial_cmp(&a_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
+
+        // order chunks by offset
+        documents = documents
+            .into_iter()
+            .map(|mut d| {
+                d.chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
+                d
+            })
+            .collect::<Vec<_>>();
 
         utils::done(&format!(
             "Searched Data Source: data_source_id={} document_count={} chunk_count={}",
