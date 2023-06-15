@@ -1,4 +1,8 @@
-import { proxyActivities, setHandler } from "@temporalio/workflow";
+import {
+  executeChild,
+  proxyActivities,
+  setHandler,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
@@ -28,6 +32,12 @@ export async function googleDriveFullSync(
   setHandler(newFoldersSelectionSignal, () => {
     console.log("Folders changed, should sync again.");
     signaled = true;
+  });
+  // Running the incremental sync workflow before the full sync to populate the
+  // Google Drive sync tokens.
+  await executeChild(googleDriveIncrementalSync, {
+    workflowId: googleDriveIncrementalSyncWorkflowId(connectorId.toString()),
+    args: [connectorId, nangoConnectionId, dataSourceConfig],
   });
 
   while (signaled) {

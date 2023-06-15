@@ -8,7 +8,9 @@ const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
   nangoConnectionId: string
-): Promise<Result<{ id: string; expirationTsMs: number }, HTTPError | Error>> {
+): Promise<
+  Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
+> {
   if (!DUST_CONNECTORS_WEBHOOKS_SECRET) {
     return new Err(new Error("DUST_CONNECTORS_WEBHOOKS_SECRET is not defined"));
   }
@@ -19,6 +21,7 @@ export async function registerWebhook(
 
   const uuid = uuidv4().toString();
   const accessToken = (await auth.getAccessToken()).token;
+  const webhookURL = `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive`;
   const res = await fetch(
     "https://www.googleapis.com/drive/v3/changes/watch?pageToken=&includeItemsFromAllDrives=true",
     {
@@ -30,17 +33,22 @@ export async function registerWebhook(
       body: JSON.stringify({
         id: uuid,
         type: "web_hook",
-        address: `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive`,
+        address: webhookURL,
         expiration: new Date().getTime() + 60 * 60 * 5 * 1000,
       }),
     }
   );
 
+  const webhookURLredacted = webhookURL.replace(
+    DUST_CONNECTORS_WEBHOOKS_SECRET,
+    "secret_redacted"
+  );
   if (res.ok) {
     const data: { id: string; expiration: string } = await res.json();
-    const result: { id: string; expirationTsMs: number } = {
+    const result: { id: string; expirationTsMs: number; url: string } = {
       id: data.id,
       expirationTsMs: parseInt(data.expiration),
+      url: webhookURLredacted,
     };
     return new Ok(result);
   } else {
