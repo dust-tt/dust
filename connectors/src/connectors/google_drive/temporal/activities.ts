@@ -575,6 +575,7 @@ export async function renewWebhooks(pageSize: number) {
         await wh.update({
           webhookId: webhookInfo.value.id,
           expiresAt: new Date(webhookInfo.value.expirationTsMs),
+          url: webhookInfo.value.url,
         });
       }
     }

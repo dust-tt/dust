@@ -39,6 +39,12 @@ export async function googleDriveFullSync(
     console.log("Folders changed, should sync again.");
     signaled = true;
   });
+  // Running the incremental sync workflow before the full sync to populate the
+  // Google Drive sync tokens.
+  await executeChild(googleDriveIncrementalSync, {
+    workflowId: googleDriveIncrementalSyncWorkflowId(connectorId.toString()),
+    args: [connectorId, nangoConnectionId, dataSourceConfig],
+  });
 
   while (signaled) {
     signaled = false;

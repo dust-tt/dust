@@ -582,6 +582,7 @@ export class GoogleDriveWebhook extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare webhookId: string;
   declare expiresAt: Date;
+  declare url: string;
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -612,6 +613,10 @@ GoogleDriveWebhook.init(
     },
     expiresAt: {
       type: DataTypes.DATE,
+      allowNull: false,
+    },
+    url: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
   },
