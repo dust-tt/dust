@@ -6,6 +6,7 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
+import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { Connector, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 import { isConnectorProvider } from "@connectors/types/connector";
@@ -166,6 +167,14 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const google = async (command: string) => {
+  switch (command) {
+    case "restart-google-webhooks": {
+      await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -189,6 +198,9 @@ const main = async () => {
       return;
     case "notion":
       await notion(command, argv);
+      return;
+    case "google":
+      await google(command);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);

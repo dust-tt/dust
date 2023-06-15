@@ -36,3 +36,11 @@ export type WorkflowError = {
   message: string;
   __is_dust_error: boolean;
 };
+
+export class HTTPError extends Error {
+  readonly statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}

@@ -2,6 +2,7 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
+  sleep,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
@@ -9,12 +10,18 @@ import { ModelId } from "@connectors/lib/models";
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { newFoldersSelectionSignal } from "./signals";
+import { newFoldersSelectionSignal, newWebhookSignal } from "./signals";
 
-const { syncFiles, getDrivesIds, incrementalSync, garbageCollector } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minutes",
-  });
+const {
+  syncFiles,
+  getDrivesIds,
+  incrementalSync,
+  garbageCollector,
+  renewWebhooks,
+  populateSyncTokens,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
@@ -34,6 +41,9 @@ export async function googleDriveFullSync(
     console.log("Folders changed, should sync again.");
     signaled = true;
   });
+  // Running the incremental sync workflow before the full sync to populate the
+  // Google Drive sync tokens.
+  await populateSyncTokens(connectorId);
 
   while (signaled) {
     signaled = false;
@@ -80,24 +90,52 @@ export async function googleDriveIncrementalSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig
 ) {
-  const drivesIds = await getDrivesIds(nangoConnectionId);
-  for (const googleDrive of drivesIds) {
-    let changeCount: number | undefined = undefined;
-    do {
-      changeCount = await incrementalSync(
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        googleDrive.id
-      );
-    } while (changeCount && changeCount > 0);
+  let signaled = false;
+  let debounceCount = 0;
+  setHandler(newWebhookSignal, () => {
+    console.log("Got a new webhook ");
+    signaled = true;
+  });
+  while (signaled) {
+    signaled = false;
+    await sleep(10000);
+    if (signaled) {
+      debounceCount++;
+      if (debounceCount < 30) {
+        continue;
+      }
+    }
+    console.log(`Processing after debouncing ${debounceCount} time(s)`);
+    const drivesIds = await getDrivesIds(nangoConnectionId);
+    for (const googleDrive of drivesIds) {
+      let changeCount: number | undefined = undefined;
+      do {
+        changeCount = await incrementalSync(
+          connectorId,
+          nangoConnectionId,
+          dataSourceConfig,
+          googleDrive.id
+        );
+      } while (changeCount && changeCount > 0);
+    }
   }
   await syncSucceeded(connectorId);
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
-export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
+export function googleDriveIncrementalSyncWorkflowId(connectorId: string) {
   return `googleDrive-IncrementalSync-${connectorId}`;
+}
+
+export async function googleDriveRenewWebhooks() {
+  let count = 0;
+  do {
+    count = await renewWebhooks(10);
+  } while (count);
+}
+
+export function googleDriveRenewWebhooksWorkflowId() {
+  return `googleDrive-RenewWebhook`;
 }
 
 export async function googleDriveGarbageCollectorWorkflow(
