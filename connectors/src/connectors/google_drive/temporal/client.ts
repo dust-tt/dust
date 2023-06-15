@@ -6,7 +6,7 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 
-import { newFoldersSelectionSignal } from "./signals";
+import { newFoldersSelectionSignal, newWebhookSignal } from "./signals";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
@@ -75,10 +75,12 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
   try {
-    await client.workflow.start(googleDriveIncrementalSync, {
+    await client.workflow.signalWithStart(googleDriveIncrementalSync, {
       args: [connectorIdModelId, nangoConnectionId, dataSourceConfig],
       taskQueue: "google-queue",
       workflowId: workflowId,
+      signal: newWebhookSignal,
+      signalArgs: undefined,
     });
     logger.info(
       {
