@@ -172,7 +172,7 @@ async function handler(
 
       const reader = apiRes.body.getReader();
 
-      const parser = createParser((event) => {
+      const errorDetector = createParser((event) => {
         if (event.type === "event") {
           if (event.data) {
             const data = JSON.parse(event.data);
@@ -194,7 +194,7 @@ async function handler(
           if (done) {
             break;
           }
-          parser.feed(new TextDecoder().decode(value));
+          errorDetector.feed(new TextDecoder().decode(value));
           res.write(value);
           // @ts-expect-error - We need it for streaming but it does not exists in the types.
           res.flush();
