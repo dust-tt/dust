@@ -175,7 +175,7 @@ export default function AppLayout({
                                 src={
                                   user.image
                                     ? user.image
-                                    : "https://gravatar.com/avatar/anonymous"
+                                    : "https://gravatar.com/avatar/anonymous?d=mp"
                                 }
                                 alt=""
                               />

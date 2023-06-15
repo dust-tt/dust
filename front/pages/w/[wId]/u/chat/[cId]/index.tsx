@@ -5,6 +5,7 @@ import {
   ClockIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
+import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -385,11 +386,13 @@ export function MessageView({
   message,
   loading,
   isLatestRetrieval,
+  readOnly,
 }: {
   user: UserType | null;
   message: ChatMessageType;
   loading: boolean;
   isLatestRetrieval: boolean;
+  readOnly: boolean;
 }) {
   return (
     <div className="">
@@ -402,7 +405,7 @@ export function MessageView({
           <div
             className={classNames(
               "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-              message.role === "assistant" ? "bg-gray-50" : "bg-gray-0"
+              "bg-gray-50"
             )}
           >
             {message.role === "assistant" ? (
@@ -411,11 +414,15 @@ export function MessageView({
               </div>
             ) : (
               <div className="flex">
-                <img
-                  className="h-8 w-8 rounded-md"
-                  src={user?.image || "https://gravatar.com/avatar/anonymous"}
-                  alt=""
-                />
+                {!readOnly && user?.image ? (
+                  <img
+                    className="h-8 w-8 rounded-md"
+                    src={user?.image}
+                    alt=""
+                  />
+                ) : (
+                  <UserCircleIcon className="mx-1 my-1 h-6 w-6 text-gray-300"></UserCircleIcon>
+                )}
               </div>
             )}
           </div>
@@ -989,6 +996,7 @@ export default function AppChat({
                                       return false;
                                     })()
                                   }
+                                  readOnly={chatSession.readOnly}
                                 />
                               </div>
                             );
@@ -1003,6 +1011,7 @@ export default function AppChat({
                                 isLatestRetrieval={
                                   response.role === "retrieval"
                                 }
+                                readOnly={chatSession.readOnly}
                               />
                             </div>
                           ) : null}
