@@ -20,13 +20,20 @@ async function migrateCollection(
   batchSize = 250,
   offset?: string | number | undefined | null | Record<string, unknown>
 ) {
-  let currentTime = Date.now(), points, updated = 0;
+  let currentTime = Date.now(),
+    points,
+    updated = 0;
   let nb_points = await client.count(collectionName);
-  console.log("Migrating Collection ", collectionName, "\nNumber of points: ", nb_points.count);
+  console.log(
+    "Migrating Collection ",
+    collectionName,
+    "\nNumber of points: ",
+    nb_points.count
+  );
   // scroll points excluding those with timestamp field until none are left
   do {
     console.log("Current offset: ", offset);
-    const {points, next_page_offset} = await client.scroll(collectionName, {
+    const { points, next_page_offset } = await client.scroll(collectionName, {
       limit: batchSize,
       offset,
       with_vector: false,
@@ -45,7 +52,12 @@ async function migrateCollection(
     offset = next_page_offset;
     updated += points.length;
   } while (offset !== null);
-  console.log("Updated points: ", updated, "\nTime: ", Date.now() - currentTime);
+  console.log(
+    "Updated points: ",
+    updated,
+    "\nTime: ",
+    Date.now() - currentTime
+  );
 }
 
 /* Migrate all collections
