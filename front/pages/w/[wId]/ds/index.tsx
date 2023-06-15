@@ -1,4 +1,4 @@
-import { PlusIcon } from "@heroicons/react/20/solid";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -16,8 +17,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
-import { classNames } from "@app/lib/utils";
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -59,7 +59,7 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     fetchConnectorError: null,
   },
   {
-    name: "Github",
+    name: "GitHub",
     connectorProvider: "github",
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
@@ -68,7 +68,7 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
   {
     name: "Google Drive",
     connectorProvider: "google_drive",
-    isBuilt: false,
+    isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
     fetchConnectorError: null,
   },
@@ -207,6 +207,7 @@ export default function DataSourcesView({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
+  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
   const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
     try {
@@ -256,6 +257,9 @@ export default function DataSourcesView({
               : ds;
           })
         );
+        if (provider === "google_drive") {
+          setGoogleDrivePickerOpen(true);
+        }
       } else {
         const responseText = await res.text();
         window.alert(
@@ -273,10 +277,23 @@ export default function DataSourcesView({
     setLocalIntegrations(localIntegrations);
   }, [localIntegrations]);
 
+  const googleDrive = localIntegrations.find((integration) => {
+    return integration.connectorProvider === "google_drive";
+  });
+
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col">
         <div className="mt-2 flex flex-initial">
+          {googleDrive && googleDrive.connector && (
+            <GoogleDriveFoldersPickerModal
+              owner={owner}
+              connectorId={googleDrive.connector.id}
+              isOpen={googleDrivePickerOpen}
+              setOpen={setGoogleDrivePickerOpen}
+            />
+          )}
+
           <MainTab currentTab="Data Sources" owner={owner} />
         </div>
         <div className="">

@@ -4,6 +4,10 @@ import express from "express";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import {
+  googleDriveGetFoldersAPIHandler,
+  googleDriveSetFoldersAPIHandler,
+} from "@connectors/api/google_drive";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
@@ -44,6 +48,15 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
     webhookGithubAPIHandler
+  );
+
+  app.get(
+    "/connectors/:connector_id/google_drive/folders",
+    googleDriveGetFoldersAPIHandler
+  );
+  app.post(
+    "/connectors/:connector_id/google_drive/folders",
+    googleDriveSetFoldersAPIHandler
   );
 
   app.listen(port, () => {

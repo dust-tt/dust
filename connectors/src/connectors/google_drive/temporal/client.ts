@@ -1,9 +1,16 @@
+import {
+  WorkflowExecutionDescription,
+  WorkflowHandle,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
+
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector, ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 
+import { newFoldersSelectionSignal } from "./signals";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
@@ -23,12 +30,14 @@ export async function launchGoogleDriveFullSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const nangoConnectionId = connector.connectionId;
 
-  const workflowId = googleDriveFullSyncWorkflowId(connectorIdModelId);
+  const workflowId = googleDriveFullSyncWorkflowId(connectorId);
   try {
-    await client.workflow.start(googleDriveFullSync, {
+    await client.workflow.signalWithStart(googleDriveFullSync, {
       args: [connectorIdModelId, nangoConnectionId, dataSourceConfig],
       taskQueue: "google-queue",
       workflowId: workflowId,
+      signal: newFoldersSelectionSignal,
+      signalArgs: undefined,
     });
     logger.info(
       {

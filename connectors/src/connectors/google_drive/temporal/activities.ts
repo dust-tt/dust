@@ -62,9 +62,12 @@ export async function getDriveClient(
   throw new Error("Invalid auth_credentials type");
 }
 
-export async function getDrivesIds(
-  nangoConnectionId: string
-): Promise<string[]> {
+export async function getDrivesIds(nangoConnectionId: string): Promise<
+  {
+    id: string;
+    name: string;
+  }[]
+> {
   const drive = await getDriveClient(nangoConnectionId);
   let nextPageToken = undefined;
   const ids = [];
@@ -82,8 +85,8 @@ export async function getDrivesIds(
       throw new Error("Drives list is undefined");
     }
     for (const drive of res.data.drives) {
-      if (drive.id) {
-        ids.push(drive.id);
+      if (drive.id && drive.name) {
+        ids.push({ id: drive.id, name: drive.name });
       }
     }
     nextPageToken = res.data.nextPageToken;
@@ -276,7 +279,6 @@ function googleDocJSON2Text(
             );
             break;
           case "table": {
-            console.log("***** table", element[key]);
             let tableStr = element[key]?.headers
               .map((header: string) => {
                 return ` ${header} `;
@@ -476,7 +478,7 @@ async function getSyncPageToken(
   return lastSyncToken;
 }
 
-async function getFoldersToSync(connectorId: ModelId) {
+export async function getFoldersToSync(connectorId: ModelId) {
   const folders = await GoogleDriveFolders.findAll({
     where: {
       connectorId: connectorId,

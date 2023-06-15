@@ -3,7 +3,6 @@ import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import { getDriveClient } from "./temporal/activities";
-import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
 export type NangoConnectionId = string;
 
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
@@ -48,11 +47,5 @@ export async function createGoogleDriveConnector(
     return res;
   }
 
-  const workflowRes = await launchGoogleDriveFullSyncWorkflow(
-    res.value.id.toString()
-  );
-  if (workflowRes.isErr()) {
-    return workflowRes;
-  }
   return new Ok(res.value.id.toString());
 }

@@ -1,4 +1,5 @@
 import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 
 export type ConnectorsAPIErrorResponse = {
   error: {
@@ -44,6 +45,17 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+};
+
+export type GoogleDriveFolderType = {
+  id: string;
+  name: string;
+  parent: string | null;
+  children: string[];
+};
+
+export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
+  selected: boolean;
 };
 
 export const ConnectorsAPI = {
@@ -96,6 +108,20 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async syncConnector(
+    connectorId: string
+  ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/sync/${connectorId}`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
   async deleteConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<{ success: true }>> {
@@ -120,6 +146,45 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
+
+  async setGoogleDriveFolders(
+    connectorId: string,
+    folders: string[]
+  ): Promise<ConnectorsAPIResponse<void>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          folders: folders,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async getGoogleDriveFolders(
+    connectorId: string,
+    parentId?: string
+  ): Promise<
+    ConnectorsAPIResponse<{
+      folders: GoogleDriveSelectedFolderType[];
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders?parentId=${
+        parentId || ""
+      }`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
 };
 
 function getDefaultHeaders() {
@@ -133,8 +198,14 @@ async function _resultFromResponse<T>(
 ): Promise<ConnectorsAPIResponse<T>> {
   if (!response.ok) {
     if (response.headers.get("Content-Type") === "application/json") {
-      return new Err(await response.json());
+      const jsonError = await response.json();
+      logger.error({ jsonError }, "Unexpected response from ConnectorAPI");
+      return new Err(jsonError);
     } else {
+      logger.error(
+        { statusCode: response.status, statusText: response.statusText },
+        "Unexpected response from ConnectorAPI"
+      );
       return new Err({
         error: {
           message: `Unexpected response status: ${response.status} ${response.statusText}`,
