@@ -132,37 +132,42 @@ pub struct DataSource {
     config: DataSourceConfig,
 }
 
+use std::collections::HashMap;
+
 fn get_offsets(
     offsets: Vec<usize>,
     space: usize,
     max_chunk_size: usize,
     no_chunks: usize,
-) -> Vec<usize> {
+) -> HashMap<usize, usize> {
     utils::info(&format!(
         "get_offsets: offsets: {:?}, space: {}, max_chunk_size: {}, no_chunks: {}",
         offsets, space, max_chunk_size, no_chunks
     ));
     let mut num_addable = space / max_chunk_size;
-    if (num_addable == 0) {
-        return vec![]
+    if num_addable == 0 {
+        return HashMap::new();
     }
     // sort offsets
     let mut offsets = offsets;
     offsets.sort();
-    let mut offset_set = offsets.clone().into_iter().collect::<std::collections::HashSet<_>>();
-    let mut result = vec![];
+    let mut offset_set = offsets
+        .clone()
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>();
+    let mut results: HashMap<usize, usize> = HashMap::new();
     let mut extras = vec![];
     let num_per_chunk = num_addable / (offsets.len() * 2);
     for i in 0..offsets.len() {
         let cur_extra_right = if i == offsets.len() - 1 {
             no_chunks - offsets[i] - 1
         } else {
-            offsets[i + 1] - offsets[i]
+            offsets[i + 1] - offsets[i] - 1
         };
         let cur_extra_left = if i == 0 {
             offsets[i]
         } else {
-            offsets[i] - offsets[i - 1] + 1
+            offsets[i] - offsets[i - 1] - 1
         };
         if cur_extra_left >= num_per_chunk && cur_extra_right >= num_per_chunk {
             extras.push((num_per_chunk, num_per_chunk));
@@ -179,12 +184,12 @@ fn get_offsets(
         let (cur_extra_left, cur_extra_right) = extras[i];
         for offset in offsets[i] - cur_extra_left..offsets[i] + cur_extra_right + 1 {
             if !offset_set.contains(&offset) {
-                result.push(offset);
+                results.insert(offset, offsets[i]);
                 offset_set.insert(offset);
             }
         }
     }
-    result
+    results
 }
 
 impl DataSource {
@@ -823,7 +828,7 @@ impl DataSource {
                             target_document_tokens - current_length,
                             chunk_size,
                             d.chunk_count,
-                        ).into_iter().map(|c| c as i64).collect();
+                        );
                         utils::info(&format!("new_offsets: {:?}", new_offsets));
 
                         let filter = qdrant::Filter {
@@ -843,7 +848,13 @@ impl DataSource {
                                     r#match: Some(qdrant::Match {
                                         match_value: Some(qdrant::r#match::MatchValue::Integers(
                                             qdrant::RepeatedIntegers {
-                                                integers: new_offsets,
+                                                integers: new_offsets
+                                                    .keys()
+                                                    .cloned()
+                                                    .collect::<Vec<usize>>()
+                                                    .into_iter()
+                                                    .map(|o| o as i64)
+                                                    .collect(),
                                             },
                                         )),
                                     }),
@@ -877,13 +888,6 @@ impl DataSource {
                                 },
                                 None => Err(anyhow!("Missing `text` in chunk payload"))?,
                             };
-                            let chunk_hash = match r.payload.get("chunk_hash") {
-                                Some(t) => match t.kind {
-                                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
-                                    _ => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
-                                },
-                                None => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
-                            };
                             let chunk_offset = match r.payload.get("chunk_offset") {
                                 Some(t) => match t.kind {
                                     Some(qdrant::value::Kind::IntegerValue(i)) => i,
@@ -891,13 +895,15 @@ impl DataSource {
                                 },
                                 None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
                             };
-                            chunks.push(Chunk {
-                                text: text.clone(),
-                                hash: chunk_hash.clone(),
-                                offset: chunk_offset as usize,
-                                vector: None,
-                                score: Some(0.0), // no score here... open question whether we want to put something
-                            });
+                            let parent_chunk = new_offsets.get(&(chunk_offset as usize)).unwrap();
+                            // add text to parent chunk
+                            // this could be faster, should I optimize it?
+                            chunks
+                                .iter_mut()
+                                .find(|c| c.offset == *parent_chunk)
+                                .unwrap()
+                                .text
+                                .push_str((" ".to_owned() + &text).as_str());
                         }
                     }
                     d.chunks = chunks;
