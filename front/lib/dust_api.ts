@@ -324,6 +324,8 @@ export class DustAPI {
         | DustAppRunBlockStatusEvent
         | DustAppRunBlockExecutionEvent
         | DustAppRunTokensEvent
+        | DustAppRunFunctionCallEvent
+        | DustAppRunFunctionCallArgumentsTokensEvent
         | DustAppRunFinalEvent,
         void,
         unknown
@@ -404,6 +406,8 @@ export async function runActionStreamed(
       | DustAppRunBlockStatusEvent
       | DustAppRunBlockExecutionEvent
       | DustAppRunTokensEvent
+      | DustAppRunFunctionCallEvent
+      | DustAppRunFunctionCallArgumentsTokensEvent
       | DustAppRunFinalEvent,
       void,
       unknown
