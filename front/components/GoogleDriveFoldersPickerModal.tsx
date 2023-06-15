@@ -1,11 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import TreeView, { INode } from "react-accessible-treeview";
-import {
-  FaCheckSquare,
-  FaFolder,
-  FaRegSquare,
-} from "react-icons/fa";
+import { FaCheckSquare, FaFolder, FaRegSquare } from "react-icons/fa";
 import { IoMdArrowDropdown, IoMdArrowDropright } from "react-icons/io";
 
 import { GoogleDriveSelectedFolderType } from "@app/lib/connectors_api";
