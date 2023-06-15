@@ -53,7 +53,6 @@ export async function createGoogleDriveConnector(
             webhookId: webhookInfo.value.id,
             expiresAt: new Date(webhookInfo.value.expirationTsMs),
             connectorId: connector.id,
-            url: webhookInfo.value.url,
           },
           { transaction: t }
         );
