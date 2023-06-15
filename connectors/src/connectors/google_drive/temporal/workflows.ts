@@ -1,5 +1,8 @@
-import { proxyActivities, setHandler } from "@temporalio/workflow";
-import { sign } from "crypto";
+import {
+  executeChild,
+  proxyActivities,
+  setHandler,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
@@ -8,11 +11,10 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { newFoldersSelectionSignal } from "./signals";
 
-const { syncFiles, getDrivesIds, incrementalSync } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "10 minutes",
-});
+const { syncFiles, getDrivesIds, incrementalSync, garbageCollector } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
@@ -23,7 +25,8 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 export async function googleDriveFullSync(
   connectorId: ModelId,
   nangoConnectionId: string,
-  dataSourceConfig: DataSourceConfig
+  dataSourceConfig: DataSourceConfig,
+  garbageCollect = true
 ) {
   // signal handler to restart the sync if the folders selection changes.
   let signaled = false;
@@ -58,6 +61,13 @@ export async function googleDriveFullSync(
     } while (nextPageToken);
   }
   await syncSucceeded(connectorId);
+
+  if (garbageCollect) {
+    await executeChild(googleDriveGarbageCollectorWorkflow.name, {
+      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
+      args: [connectorId, nangoConnectionId, dataSourceConfig],
+    });
+  }
   console.log("googleDriveFullSync done for connectorId", connectorId);
 }
 
@@ -88,4 +98,19 @@ export async function googleDriveIncrementalSync(
 
 export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-IncrementalSync-${connectorId}`;
+}
+
+export async function googleDriveGarbageCollectorWorkflow(
+  connectorId: ModelId
+) {
+  const gcTs = new Date().getTime();
+
+  let processed = 0;
+  do {
+    processed = await garbageCollector(connectorId, gcTs);
+  } while (processed > 0);
+}
+
+export function googleDriveGarbageCollectorWorkflowId(connectorId: ModelId) {
+  return `googleDrive-garbageCollector-${connectorId}`;
 }
