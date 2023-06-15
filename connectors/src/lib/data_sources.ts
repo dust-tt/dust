@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FRONT_API = process.env.FRONT_API;
@@ -88,8 +89,16 @@ async function _upsertToDatasource(
   }
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    statsDClient.increment("data_source_upserts_success.count", 1, [
+      `data_source_name:${dataSourceConfig.dataSourceName}`,
+      `workspace_id:${dataSourceConfig.workspaceId}`,
+    ]);
     localLogger.info("Successfully uploaded document to Dust.");
   } else {
+    statsDClient.increment("data_source_upserts_error.count", 1, [
+      `data_source_name:${dataSourceConfig.dataSourceName}`,
+      `workspace_id:${dataSourceConfig.workspaceId}`,
+    ]);
     localLogger.error(
       {
         status: dustRequestResult.status,
