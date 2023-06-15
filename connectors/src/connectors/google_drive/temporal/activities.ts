@@ -582,3 +582,22 @@ export async function renewWebhooks(pageSize: number) {
 
   return webhooks.length;
 }
+export async function populateSyncTokens(connectorId: ModelId) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const drivesIds = await getDrivesIds(connector.connectionId);
+  for (const drive of drivesIds) {
+    const lastSyncToken = await getSyncPageToken(
+      connectorId,
+      connector.connectionId,
+      drive.id
+    );
+    await GoogleDriveSyncToken.upsert({
+      connectorId: connectorId,
+      driveId: drive.id,
+      syncToken: lastSyncToken,
+    });
+  }
+}

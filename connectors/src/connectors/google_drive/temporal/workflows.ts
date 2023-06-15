@@ -18,6 +18,7 @@ const {
   incrementalSync,
   garbageCollector,
   renewWebhooks,
+  populateSyncTokens,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -42,10 +43,7 @@ export async function googleDriveFullSync(
   });
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
-  await executeChild(googleDriveIncrementalSync, {
-    workflowId: googleDriveIncrementalSyncWorkflowId(connectorId.toString()),
-    args: [connectorId, nangoConnectionId, dataSourceConfig],
-  });
+  await populateSyncTokens(connectorId);
 
   while (signaled) {
     signaled = false;
