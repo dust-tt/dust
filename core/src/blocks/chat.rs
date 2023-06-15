@@ -215,7 +215,11 @@ impl Block for Chat {
 
                 let function_call = match v.get("function_call") {
                     Some(v) => match v {
-                        Value::String(s) => Some(s.clone()),
+                        Value::Null => None,
+                        Value::String(s) => match s.len() {
+                            0 => None,
+                            _ => Some(s.clone()),
+                        },
                         _ => Err(anyhow!(
                             "Invalid `function_call` in configuration for chat block `{}`",
                             name
@@ -373,14 +377,15 @@ impl Block for Chat {
         };
 
         // Validate `function_call` if present.
-        match function_call {
+        match function_call.as_ref() {
             None => (),
             Some(s) => match s.as_str() {
                 "auto" | "none" => (),
                 s => {
                     functions.iter().find(|f| f.name == s).ok_or(anyhow!(
                         "Invalid `function_call` in configuration for chat block `{}`: \
-                         function name `{}` not found in functions",
+                         function name `{}` not found in functions. Possible values are
+                         'auto', 'none' or the name of one of the functions.",
                         name,
                         s
                     ))?;

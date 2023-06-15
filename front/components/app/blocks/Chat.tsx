@@ -121,9 +121,9 @@ export default function Chat({
     onBlockUpdate(b);
   };
 
-  const handleForceFunctionChange = (force_function: boolean) => {
+  const handleFunctionCallChange = (function_call: string) => {
     const b = shallowBlockClone(block);
-    b.config.force_function = force_function;
+    b.config.function_call = function_call;
     onBlockUpdate(b);
   };
 
@@ -458,25 +458,22 @@ export default function Chat({
                 </div>
               </div>
               <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-initial">function_call:</div>
                 <div className="flex flex-initial font-normal">
                   <input
-                    type="checkbox"
+                    type="text"
                     className={classNames(
-                      "ml-1 mr-1 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
-                      readOnly ? "" : "cursor-pointer"
+                      "block w-48 flex-1 rounded-md px-1 py-1 text-sm font-normal",
+                      readOnly
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
+                        : "border-white focus:border-gray-300 focus:ring-0"
                     )}
-                    checked={block.config.force_function || false}
-                    onClick={(e) => {
-                      if (readOnly) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onChange={(e) => {
-                      handleForceFunctionChange(e.target.checked);
-                    }}
+                    spellCheck={false}
+                    readOnly={readOnly}
+                    value={block.config.function_call}
+                    onChange={(e) => handleFunctionCallChange(e.target.value)}
                   />
                 </div>
-                <div className="flex flex-initial">force function</div>
               </div>
             </div>
           ) : null}

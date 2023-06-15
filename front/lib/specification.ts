@@ -209,7 +209,7 @@ export function addBlock(
         config: {
           provider_id: "",
           model_id: "",
-          force_function: false,
+          function_call: "",
           use_cache: true,
         },
       });

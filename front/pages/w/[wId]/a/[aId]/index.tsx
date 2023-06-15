@@ -95,7 +95,7 @@ const isRunnable = (
       if (
         key != "use_cache" &&
         key != "error_as_output" &&
-        key != "force_function"
+        key != "function_call"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;
