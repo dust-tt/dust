@@ -1,3 +1,4 @@
+import { createParser } from "eventsource-parser";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { DustProdActionRegistry } from "@app/lib/actions_registry";
@@ -93,18 +94,17 @@ async function handler(
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-      logger.info(
-        {
-          workspace: {
-            sId: owner.sId,
-            name: owner.name,
-          },
-          action: req.query.action,
-          app: action.app,
-          url: `${DUST_API}/api/v1/w/${action.app.workspaceId}/apps/${action.app.appId}/runs`,
+      const loggerArgs = {
+        workspace: {
+          sId: owner.sId,
+          name: owner.name,
         },
-        "Action run creation"
-      );
+        action: req.query.action,
+        app: action.app,
+        url: `${DUST_API}/api/v1/w/${action.app.workspaceId}/apps/${action.app.appId}/runs`,
+      };
+
+      logger.info(loggerArgs, "Action run creation");
 
       const tags = [
         `action:${req.query.action}`,
@@ -132,17 +132,29 @@ async function handler(
         }
       );
 
-      if (!apiRes.ok && apiRes.body) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "action_api_error",
-            message: `Error running streamed app: action=${req.query.action} status_code=${apiRes.status}`,
+      // Record an event and a log for the action error.
+      const logActionError = (
+        errorType: string,
+        errorArgs: Record<string, any>
+      ) => {
+        statsDClient.increment(
+          "use_actions_error.count",
+          1,
+          tags.concat([`error_type:${errorType}`])
+        );
+
+        logger.error(
+          {
+            error_type: errorType,
+            ...errorArgs,
+            ...loggerArgs,
           },
-        });
-      }
+          "Action run error"
+        );
+      };
 
       if (!apiRes.ok || !apiRes.body) {
+        logActionError("api_error", { status_code: apiRes.status });
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -160,6 +172,21 @@ async function handler(
 
       const reader = apiRes.body.getReader();
 
+      const parser = createParser((event) => {
+        if (event.type === "event") {
+          if (event.data) {
+            const data = JSON.parse(event.data);
+
+            switch (data.type) {
+              case "error": {
+                logActionError("run_error", { error: data.content });
+                break;
+              }
+            }
+          }
+        }
+      });
+
       try {
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -167,17 +194,13 @@ async function handler(
           if (done) {
             break;
           }
+          parser.feed(new TextDecoder().decode(value));
           res.write(value);
           // @ts-expect-error - We need it for streaming but it does not exists in the types.
           res.flush();
         }
       } catch (e) {
-        logger.error(
-          {
-            error: e,
-          },
-          "Error streaming chunks while running action"
-        );
+        logActionError("streaming_error", { error: e });
       } finally {
         reader.releaseLock();
       }
