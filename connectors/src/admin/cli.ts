@@ -167,7 +167,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const google = async (command: string, args: parseArgs.ParsedArgs) => {
+const google = async (command: string) => {
   switch (command) {
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
@@ -200,7 +200,7 @@ const main = async () => {
       await notion(command, argv);
       return;
     case "google":
-      await google(command, argv);
+      await google(command);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);
