@@ -84,6 +84,10 @@ async function _upsertToDatasource(
     if (axios.isAxiosError(e) && e.config.data) {
       e.config.data = "[REDACTED]";
     }
+    statsDClient.increment("data_source_upserts_error.count", 1, [
+      `data_source_name:${dataSourceConfig.dataSourceName}`,
+      `workspace_id:${dataSourceConfig.workspaceId}`,
+    ]);
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }
