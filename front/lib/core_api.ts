@@ -427,6 +427,7 @@ export const CoreAPI = {
       } | null;
       fullText: boolean;
       credentials: { [key: string]: string };
+	  expand: boolean;
     }
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
     const response = await fetch(
@@ -442,6 +443,7 @@ export const CoreAPI = {
           filter: payload.filter,
           full_text: payload.fullText,
           credentials: payload.credentials,
+		      expand: payload.expand,
         }),
       }
     );

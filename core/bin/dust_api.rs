@@ -1089,6 +1089,7 @@ struct DatasourceSearchPayload {
     filter: Option<SearchFilter>,
     full_text: bool,
     credentials: run::Credentials,
+    expand: bool,
 }
 
 async fn data_sources_search(
@@ -1131,6 +1132,7 @@ async fn data_sources_search(
                     payload.top_k,
                     payload.filter,
                     payload.full_text,
+                    payload.expand,
                 )
                 .await
             {

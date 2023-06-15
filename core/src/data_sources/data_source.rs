@@ -6,10 +6,12 @@ use crate::run::Credentials;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
+use async_std::sync::Mutex;
 use cloud_storage::Object;
 use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use futures::future::try_join_all;
 use qdrant_client::{
     prelude::{Payload, QdrantClient, QdrantClientConfig},
     qdrant,
@@ -17,6 +19,8 @@ use qdrant_client::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+use std::cmp;
+use std::sync::Arc;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at list
 /// one tag in `is_in` and none of the tags in `is_not`.
@@ -517,6 +521,7 @@ impl DataSource {
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
+        expand: bool
     ) -> Result<Vec<Document>> {
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
@@ -633,7 +638,7 @@ impl DataSource {
             })
             .await?;
 
-        let chunks = results
+        let mut chunks = results
             .result
             .iter()
             .map(|r| {
@@ -730,26 +735,158 @@ impl DataSource {
             })
             .buffer_unordered(16)
             .map(|r| match r {
-                Err(e) => Err(anyhow!("DataSource document retrieval error: {}", e))?,
+                Err(e) => Err(anyhow!("datasource document retrieval error: {}", e))?,
                 Ok(r) => r,
             })
             .try_collect::<Vec<_>>()
             .await?;
 
-        // Merge the chunks with the documents.
-        let mut documents = documents
-            .into_iter()
+        utils::info(&format!("Retrieved {} documents", documents.len()));
+
+        utils::info(&format!("Found {} chunks", chunks.len()));
+        
+        let context_length = 8000;
+        let l_qdrant_client = Arc::new(Mutex::new(qdrant_client));
+        let mut documents = futures::stream::iter(documents)
             .map(|mut d| {
-                let chunks = chunks
+                let mut chunks = chunks
                     .iter()
                     .filter(|(document_id, _)| document_id == &d.document_id)
                     .map(|(_, c)| c.clone())
                     .collect::<Vec<Chunk>>();
-                d.chunks = chunks;
-                d
-            })
-            .collect::<Vec<_>>();
+                // look around a bit for arc/mutex stuff but I don't know if this is the right way to do this
+                let qdrant_client = l_qdrant_client.clone();
+                let collection = self.qdrant_collection();
+                let chunk_size = self.config.max_chunk_size;
+                tokio::spawn(async move {
+                    if (expand)
+                    {
+                        let qdrant_client = qdrant_client.lock().await;
+                        let mut cur_chunks = vec![];
+                        let mut offset_set = std::collections::HashSet::new();
+                        for chunk in chunks.iter() {
+                            offset_set.insert(chunk.offset);
+                        }
+                        let current_length = chunks.iter().map(|c| c.text.len()).sum::<usize>();
+                        if (context_length as i64 - current_length as i64) < 0 {
+                            utils::info(&format!("Skipping document {}", d.document_id));
+                            d.chunks = chunks;
+                            return Ok(d);
+                        }
+                        // this just adds the same amount per chunk, probably would want to add as much as possible,
+                        // curious about thoughts
+                        // TODO: also make it add below or above rather than not at all if not enough space
+                        let mut num_close_addable =
+                            (context_length - current_length) / (chunk_size * chunks.len() * 2);
+                        for (chunk) in chunks.iter() {
+                            // iterate through min to offset:
+                            for i in cmp::min(chunk.offset as i64 - num_close_addable as i64, 0) as usize..cmp::max(chunk.offset + num_close_addable, d.chunk_count)+1{
+                                if !offset_set.contains(&i) {
+                                    cur_chunks.push(i as i64);
+                                    offset_set.insert(i);
+                                }
+                            }
+                        }
+                        utils::info("Preparing query...");
+                        let filter = 
+                            qdrant::Filter {
+                                must: vec![
+                                    qdrant::FieldCondition {
+                                        key: "document_id".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                                                d.document_id.clone(),
+                                            )),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                    qdrant::FieldCondition {
+                                        key: "chunk_offset".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(qdrant::r#match::MatchValue::Integers(
+                                                qdrant::RepeatedIntegers { integers: cur_chunks},
+                                            )),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                ],
+                                ..Default::default()
+                            };
+                        utils::info(&format!("Filter: {:?}", filter));
+                        // use search_points
+                        let search_points = qdrant::ScrollPoints {
+                            collection_name: collection,
+                            filter: Some(filter),
+                            limit: Some(1000),
+                            ..Default::default()
+                        };
+                        utils::info("Currently about to prepare scroll");
+                        let results_expand = match (qdrant_client.scroll(&search_points).await) {
+                            Ok(r) => r,
+                            Err(e) => {
+                                utils::info(&format!("Qdrant scroll error: {}", e));
+                                return Err(anyhow!("Qdrant scroll error: {}", e))?
+                            }
+                        };
+                        utils::info(&format!("Got {:?} results", results_expand));
+                        utils::info("Scroll prepared");
+                        for r in results_expand.result.iter() {
+                            // TODO: maybe abstract this with the other code to unwrap the response? 
+                            // RetrievedPoint is different from SearchPoint but I could abstract it
+                            let text = match r.payload.get("text") {
+                                Some(t) => match t.kind {
+                                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                                    _ => Err(anyhow!("Missing `text` in chunk payload"))?,
+                                },
+                                None => Err(anyhow!("Missing `text` in chunk payload"))?,
+                            };
+                            let chunk_hash = match r.payload.get("chunk_hash") {
+                                Some(t) => match t.kind {
+                                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                                    _ => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+                                },
+                                None => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+                            };
+                            let chunk_offset = match r.payload.get("chunk_offset") {
+                                Some(t) => match t.kind {
+                                    Some(qdrant::value::Kind::IntegerValue(i)) => i,
+                                    _ => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+                                },
+                                None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+                            };
+                            chunks.push(
+                                Chunk {
+                                    text: text.clone(),
+                                    hash: chunk_hash.clone(),
+                                    offset: chunk_offset as usize,
+                                    vector: None,
+                                    score: Some(0.0), // no score here... open question whether we want to put something
+                                },
+                            );
+                        }
+                    }
+                    // question here of what we want to do about the ordering of chunks
+                    chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
+                    d.chunks = chunks;
 
+                    Ok::<Document, anyhow::Error>(d)
+                })
+            })
+            .buffer_unordered(16)
+            .map(|r| match r {
+                Err(e) => Err(anyhow!("datasource document retrieval expansion error: {}", e))?,
+                Ok(r) => r,
+            })
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        utils::info(&format!(
+            "Found {} documents with {} chunks",
+            documents.len(),
+            documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
+        ));
         // Sort the documents by the score of the first chunk (guaranteed ordered).
         documents.sort_by(|a, b| {
             let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
@@ -965,6 +1102,7 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             top_k,
             None,
             false,
+            false
         )
         .await?;
 

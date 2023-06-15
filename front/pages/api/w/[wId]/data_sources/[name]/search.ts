@@ -17,6 +17,7 @@ export type DatasourceSearchQuery = {
   query: string;
   top_k: number;
   full_text: boolean;
+  expand: boolean;
   timestamp_gt?: number;
   timestamp_lt?: number;
   tags_in?: string[];
@@ -29,6 +30,7 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
     query: { type: "string" },
     top_k: { type: "number" },
     full_text: { type: "boolean" },
+    expand: { type: "boolean" },
     timestamp_gt: { type: "number", nullable: true },
     timestamp_lt: { type: "number", nullable: true },
     tags_in: { type: "array", items: { type: "string" }, nullable: true },
@@ -108,6 +110,7 @@ export default async function handler(
           query: searchQuery.query,
           topK: searchQuery.top_k,
           fullText: searchQuery.full_text,
+		  expand: searchQuery.expand,
           filter: {
             tags: {
               in: searchQuery.tags_in,
