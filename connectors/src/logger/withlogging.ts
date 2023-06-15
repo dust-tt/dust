@@ -26,6 +26,7 @@ export const withLogging = (handler: any) => {
         },
         "Unhandled API Error"
       );
+      console.error(err);
 
       const tags = [
         `method:${req.method}`,
