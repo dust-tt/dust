@@ -106,7 +106,7 @@ export default function DataSourceView({
       searchParams.append("query", searchQuery);
       searchParams.append("top_k", "10");
       searchParams.append("full_text", "false");
-      searchParams.append("expand", "false");
+      searchParams.append("target_document_tokens", "8000");
 
       const searchRes = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}/search?` +

@@ -17,7 +17,6 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::cmp;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -131,6 +130,61 @@ pub struct DataSource {
     data_source_id: String,
     internal_id: String,
     config: DataSourceConfig,
+}
+
+fn get_offsets(
+    offsets: Vec<usize>,
+    space: usize,
+    max_chunk_size: usize,
+    no_chunks: usize,
+) -> Vec<usize> {
+    utils::info(&format!(
+        "get_offsets: offsets: {:?}, space: {}, max_chunk_size: {}, no_chunks: {}",
+        offsets, space, max_chunk_size, no_chunks
+    ));
+    let mut num_addable = space / max_chunk_size;
+    if (num_addable == 0) {
+        return vec![]
+    }
+    // sort offsets
+    let mut offsets = offsets;
+    offsets.sort();
+    let mut offset_set = offsets.clone().into_iter().collect::<std::collections::HashSet<_>>();
+    let mut result = vec![];
+    let mut extras = vec![];
+    let num_per_chunk = num_addable / (offsets.len() * 2);
+    for i in 0..offsets.len() {
+        let cur_extra_right = if i == offsets.len() - 1 {
+            no_chunks - offsets[i] - 1
+        } else {
+            offsets[i + 1] - offsets[i]
+        };
+        let cur_extra_left = if i == 0 {
+            offsets[i]
+        } else {
+            offsets[i] - offsets[i - 1] + 1
+        };
+        if cur_extra_left >= num_per_chunk && cur_extra_right >= num_per_chunk {
+            extras.push((num_per_chunk, num_per_chunk));
+        } else if (cur_extra_left + cur_extra_right) < num_per_chunk * 2 {
+            num_addable += num_per_chunk * 2 - (cur_extra_left + cur_extra_right);
+            extras.push((cur_extra_left, cur_extra_right));
+        } else if cur_extra_left < cur_extra_right {
+            extras.push((cur_extra_left, 2 * num_per_chunk - cur_extra_left));
+        } else {
+            extras.push((2 * num_per_chunk - cur_extra_right, cur_extra_right));
+        }
+    }
+    for i in 0..offsets.len() {
+        let (cur_extra_left, cur_extra_right) = extras[i];
+        for offset in offsets[i] - cur_extra_left..offsets[i] + cur_extra_right + 1 {
+            if !offset_set.contains(&offset) {
+                result.push(offset);
+                offset_set.insert(offset);
+            }
+        }
+    }
+    result
 }
 
 impl DataSource {
@@ -520,7 +574,7 @@ impl DataSource {
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
-        expand: bool,
+        target_document_tokens: usize,
     ) -> Result<Vec<Document>> {
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
@@ -740,7 +794,6 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
-        let context_length = 8000;
         let l_qdrant_client = Arc::new(Mutex::new(qdrant_client));
         let mut documents = futures::stream::iter(documents)
             .map(|mut d| {
@@ -754,35 +807,25 @@ impl DataSource {
                 let collection = self.qdrant_collection();
                 let chunk_size = self.config.max_chunk_size;
                 tokio::spawn(async move {
-                    if expand {
+                    if target_document_tokens != 0 {
                         let qdrant_client = qdrant_client.lock().await;
-                        let mut cur_chunks = vec![];
                         let mut offset_set = std::collections::HashSet::new();
                         for chunk in chunks.iter() {
                             offset_set.insert(chunk.offset);
                         }
                         let current_length = chunks.iter().map(|c| c.text.len()).sum::<usize>();
-                        if (context_length as i64 - current_length as i64) < 0 {
+                        if (target_document_tokens as i64 - current_length as i64) < 0 {
                             d.chunks = chunks;
                             return Ok(d);
                         }
-                        // this just adds the same amount per chunk, probably would want to add as much as possible,
-                        // curious about thoughts
-                        // TODO: also make it add below or above rather than not at all if not enough space
-                        let num_close_addable =
-                            (context_length - current_length) / (chunk_size * chunks.len() * 2);
-                        for chunk in chunks.iter() {
-                            // iterate through min to offset:
-                            for i in cmp::min(chunk.offset as i64 - num_close_addable as i64, 0)
-                                as usize
-                                ..cmp::max(chunk.offset + num_close_addable, d.chunk_count) + 1
-                            {
-                                if !offset_set.contains(&i) {
-                                    cur_chunks.push(i as i64);
-                                    offset_set.insert(i);
-                                }
-                            }
-                        }
+                        let new_offsets = get_offsets(
+                            chunks.iter().map(|c| c.offset).collect(),
+                            target_document_tokens - current_length,
+                            chunk_size,
+                            d.chunk_count,
+                        ).into_iter().map(|c| c as i64).collect();
+                        utils::info(&format!("new_offsets: {:?}", new_offsets));
+
                         let filter = qdrant::Filter {
                             must: vec![
                                 qdrant::FieldCondition {
@@ -800,7 +843,7 @@ impl DataSource {
                                     r#match: Some(qdrant::Match {
                                         match_value: Some(qdrant::r#match::MatchValue::Integers(
                                             qdrant::RepeatedIntegers {
-                                                integers: cur_chunks,
+                                                integers: new_offsets,
                                             },
                                         )),
                                     }),
@@ -1097,7 +1140,7 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             top_k,
             None,
             false,
-            false,
+            0,
         )
         .await?;
 
