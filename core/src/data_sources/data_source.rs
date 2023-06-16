@@ -579,7 +579,7 @@ impl DataSource {
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
-        target_document_tokens: usize,
+        target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
@@ -812,20 +812,21 @@ impl DataSource {
                 let collection = self.qdrant_collection();
                 let chunk_size = self.config.max_chunk_size;
                 tokio::spawn(async move {
-                    if target_document_tokens != 0 {
+                    if !target_document_tokens.is_none() {
+                        let target = target_document_tokens.unwrap();
                         let qdrant_client = qdrant_client.lock().await;
                         let mut offset_set = std::collections::HashSet::new();
                         for chunk in chunks.iter() {
                             offset_set.insert(chunk.offset);
                         }
-                        let current_length = chunks.iter().map(|c| c.text.len()).sum::<usize>();
-                        if (target_document_tokens as i64 - current_length as i64) < 0 {
+                        let current_length = chunks.len() * chunk_size;
+                        if (target as i64 - current_length as i64) < 0 {
                             d.chunks = chunks;
                             return Ok(d);
                         }
                         let new_offsets = get_offsets(
                             chunks.iter().map(|c| c.offset).collect(),
-                            target_document_tokens - current_length,
+                            target - current_length,
                             chunk_size,
                             d.chunk_count,
                         );
@@ -873,15 +874,13 @@ impl DataSource {
                             ..Default::default()
                         };
                         let results_expand = match qdrant_client.scroll(&search_points).await {
-                            Ok(r) => r,
+                            Ok(r) => r.result,
                             Err(e) => {
                                 utils::info(&format!("Qdrant scroll error: {}", e));
                                 return Err(anyhow!("Qdrant scroll error: {}", e))?;
                             }
                         };
-                        for r in results_expand.result.iter() {
-                            // TODO: maybe abstract this with the other code to unwrap the response?
-                            // RetrievedPoint is different from SearchPoint but I could abstract it
+                        let mut parsed_results = results_expand.iter().map(|r| {
                             let text = match r.payload.get("text") {
                                 Some(t) => match t.kind {
                                     Some(qdrant::value::Kind::StringValue(ref s)) => s,
@@ -896,15 +895,28 @@ impl DataSource {
                                 },
                                 None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
                             };
-                            let parent_chunk = new_offsets.get(&(chunk_offset as usize)).unwrap();
+                            Ok((text, chunk_offset as usize))
+                        }).collect::<Result<Vec<_>>>()?;
+                        // sort by offse>t
+                        parsed_results.sort_by(|a, b| {
+                            a.1.cmp(&b.1)
+                        });
+                        for item in parsed_results.into_iter() {
+                            let parent_chunk_off = new_offsets.get(&(item.1)).unwrap();
                             // add text to parent chunk
                             // this could be faster, should I optimize it?
-                            chunks
+                            let p_chunk = chunks
                                 .iter_mut()
-                                .find(|c| c.offset == *parent_chunk)
-                                .unwrap()
-                                .text
-                                .push_str((" ".to_owned() + &text).as_str());
+                                .find(|c| c.offset == *parent_chunk_off)
+                                .unwrap();
+                            if (parent_chunk_off < &item.1)
+                            {
+                                p_chunk.text.push_str((" ".to_owned() + &p_chunk.text).as_str());
+                            }
+                            else {
+                                // prepend text
+                                p_chunk.text = (" ".to_owned() + &p_chunk.text).to_owned() + &p_chunk.text;
+                            }
                         }
                     }
                     d.chunks = chunks;
@@ -915,7 +927,7 @@ impl DataSource {
             .buffer_unordered(16)
             .map(|r| match r {
                 Err(e) => Err(anyhow!(
-                    "datasource document retrieval expansion error: {}",
+                    "Data source document retrieval expansion error: {}",
                     e
                 ))?,
                 Ok(r) => r,
@@ -1147,7 +1159,7 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             top_k,
             None,
             false,
-            0,
+            None,
         )
         .await?;
 
