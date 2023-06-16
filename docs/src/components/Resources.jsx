@@ -3,8 +3,6 @@ import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
 
 import { Heading } from "@/components/Heading";
 import { UserIcon } from "@/components/icons/UserIcon";
-import { UsersIcon } from "@/components/icons/UsersIcon";
-import { LinkIcon } from "./icons/LinkIcon";
 import { PaperClipIcon } from "./icons/PaperClipIcon";
 
 const resources = [
