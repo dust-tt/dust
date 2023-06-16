@@ -17,6 +17,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -132,16 +133,14 @@ pub struct DataSource {
     config: DataSourceConfig,
 }
 
-use std::collections::HashMap;
-
-fn get_offsets(
+fn target_document_tokens_offsets(
     offsets: Vec<usize>,
     space: usize,
     max_chunk_size: usize,
     no_chunks: usize,
 ) -> HashMap<usize, usize> {
     utils::info(&format!(
-        "get_offsets: offsets: {:?}, space: {}, max_chunk_size: {}, no_chunks: {}",
+        "target_document_tokens_offsets: offsets: {:?}, space: {}, max_chunk_size: {}, no_chunks: {}",
         offsets, space, max_chunk_size, no_chunks
     ));
     let mut num_addable = space / max_chunk_size;
@@ -156,7 +155,7 @@ fn get_offsets(
         .into_iter()
         .collect::<std::collections::HashSet<_>>();
     let mut results: HashMap<usize, usize> = HashMap::new();
-    let mut extras = vec![];
+    let mut extras: Vec<(usize, usize)> = vec![];
     let num_per_chunk = num_addable / (offsets.len() * 2);
     for i in 0..offsets.len() {
         let cur_extra_right = if i == offsets.len() - 1 {
@@ -800,140 +799,177 @@ impl DataSource {
             .await?;
 
         let l_qdrant_client = Arc::new(Mutex::new(qdrant_client));
-        let mut documents = futures::stream::iter(documents)
-            .map(|mut d| {
-                let mut chunks = chunks
-                    .iter()
-                    .filter(|(document_id, _)| document_id == &d.document_id)
-                    .map(|(_, c)| c.clone())
-                    .collect::<Vec<Chunk>>();
-                // look around a bit for arc/mutex stuff but I don't know if this is the right way to do this
-                let qdrant_client = l_qdrant_client.clone();
-                let collection = self.qdrant_collection();
-                let chunk_size = self.config.max_chunk_size;
-                tokio::spawn(async move {
-                    if !target_document_tokens.is_none() {
-                        let target = target_document_tokens.unwrap();
-                        let qdrant_client = qdrant_client.lock().await;
-                        let mut offset_set = std::collections::HashSet::new();
-                        for chunk in chunks.iter() {
-                            offset_set.insert(chunk.offset);
-                        }
-                        let current_length = chunks.len() * chunk_size;
-                        if (target as i64 - current_length as i64) < 0 {
+        let mut documents = match target_document_tokens {
+            Some(target) => {
+                futures::stream::iter(documents)
+                    .map(|mut d| {
+                        let mut chunks = chunks
+                            .iter()
+                            .filter(|(document_id, _)| document_id == &d.document_id)
+                            .map(|(_, c)| c.clone())
+                            .collect::<Vec<Chunk>>();
+                        let qdrant_client = l_qdrant_client.clone();
+                        let collection = self.qdrant_collection();
+                        let chunk_size = self.config.max_chunk_size;
+                        tokio::spawn(async move {
+                            let qdrant_client = qdrant_client.lock().await;
+                            let mut offset_set = std::collections::HashSet::new();
+                            for chunk in chunks.iter() {
+                                offset_set.insert(chunk.offset);
+                            }
+                            let current_length = chunks.len() * chunk_size;
+                            if (target as i64 - current_length as i64) < 0 {
+                                d.chunks = chunks;
+                                return Ok(d);
+                            }
+                            let new_offsets = target_document_tokens_offsets(
+                                chunks.iter().map(|c| c.offset).collect(),
+                                target - current_length,
+                                chunk_size,
+                                d.chunk_count,
+                            );
+                            let offset_values: Vec<i64> = new_offsets
+                                .keys()
+                                .cloned()
+                                .collect::<Vec<usize>>()
+                                .into_iter()
+                                .map(|o| o as i64)
+                                .collect();
+                            let no_new_offsets = offset_values.len() as u32;
+                            if no_new_offsets == 0 {
+                                d.chunks = chunks;
+                                return Ok(d);
+                            }
+
+                            let filter = qdrant::Filter {
+                                must: vec![
+                                    qdrant::FieldCondition {
+                                        key: "document_id".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(
+                                                qdrant::r#match::MatchValue::Keyword(
+                                                    d.document_id.clone(),
+                                                ),
+                                            ),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                    qdrant::FieldCondition {
+                                        key: "chunk_offset".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(
+                                                qdrant::r#match::MatchValue::Integers(
+                                                    qdrant::RepeatedIntegers {
+                                                        integers: offset_values,
+                                                    },
+                                                ),
+                                            ),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                ],
+                                ..Default::default()
+                            };
+                            let search_points = qdrant::ScrollPoints {
+                                collection_name: collection,
+                                filter: Some(filter),
+                                limit: Some(no_new_offsets),
+                                ..Default::default()
+                            };
+                            let results_expand = match qdrant_client.scroll(&search_points).await {
+                                Ok(r) => r.result,
+                                Err(e) => {
+                                    utils::info(&format!("Qdrant scroll error: {}", e));
+                                    return Err(anyhow!("Qdrant scroll error: {}", e))?;
+                                }
+                            };
+                            let mut parsed_results = results_expand
+                                .iter()
+                                .map(|r| {
+                                    let text = match r.payload.get("text") {
+                                        Some(t) => match t.kind {
+                                            Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                                            _ => Err(anyhow!("Missing `text` in chunk payload"))?,
+                                        },
+                                        None => Err(anyhow!("Missing `text` in chunk payload"))?,
+                                    };
+                                    let chunk_offset = match r.payload.get("chunk_offset") {
+                                        Some(t) => match t.kind {
+                                            Some(qdrant::value::Kind::IntegerValue(i)) => i,
+                                            _ => Err(anyhow!(
+                                                "Missing `chunk_offset` in chunk payload"
+                                            ))?,
+                                        },
+                                        None => {
+                                            Err(anyhow!("Missing `chunk_offset` in chunk payload"))?
+                                        }
+                                    };
+                                    Ok((text, chunk_offset as usize))
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            parsed_results.sort_by(|a, b| a.1.cmp(&b.1));
+                            let mut counter = 0;
+                            chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
+                            chunks = chunks
+                                .into_iter()
+                                .map(|mut chunk| {
+                                    let mut prepend = "".to_owned();
+                                    while counter < parsed_results.len()
+                                        && *new_offsets.get(&parsed_results[counter].1).unwrap()
+                                            == chunk.offset
+                                    {
+                                        let c_offset = parsed_results[counter].1;
+                                        if chunk.offset < c_offset {
+                                            chunk.text.push_str(&(" ".to_owned() + &chunk.text));
+                                        } else {
+                                            prepend.push_str(
+                                                &(parsed_results[counter].0.clone() + " "),
+                                            );
+                                        }
+                                        counter += 1;
+                                    }
+                                    chunk.text = prepend + &chunk.text;
+                                    chunk
+                                })
+                                .collect::<Vec<_>>();
+                            chunks.sort_by(|a, b| {
+                                let b_score = b.score.unwrap_or(0.0);
+                                let a_score = a.score.unwrap_or(0.0);
+                                b_score
+                                    .partial_cmp(&a_score)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
                             d.chunks = chunks;
-                            return Ok(d);
-                        }
-                        let new_offsets = get_offsets(
-                            chunks.iter().map(|c| c.offset).collect(),
-                            target - current_length,
-                            chunk_size,
-                            d.chunk_count,
-                        );
-                        let offset_values: Vec<i64> = new_offsets
-                            .keys()
-                            .cloned()
-                            .collect::<Vec<usize>>()
-                            .into_iter()
-                            .map(|o| o as i64)
-                            .collect();
-                        let no_new_offsets = offset_values.len() as u32;
 
-                        let filter = qdrant::Filter {
-                            must: vec![
-                                qdrant::FieldCondition {
-                                    key: "document_id".to_string(),
-                                    r#match: Some(qdrant::Match {
-                                        match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                            d.document_id.clone(),
-                                        )),
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                                qdrant::FieldCondition {
-                                    key: "chunk_offset".to_string(),
-                                    r#match: Some(qdrant::Match {
-                                        match_value: Some(qdrant::r#match::MatchValue::Integers(
-                                            qdrant::RepeatedIntegers {
-                                                integers: offset_values,
-                                            },
-                                        )),
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ],
-                            ..Default::default()
-                        };
-                        // use search_points
-                        let search_points = qdrant::ScrollPoints {
-                            collection_name: collection,
-                            filter: Some(filter),
-                            limit: Some(no_new_offsets),
-                            ..Default::default()
-                        };
-                        let results_expand = match qdrant_client.scroll(&search_points).await {
-                            Ok(r) => r.result,
-                            Err(e) => {
-                                utils::info(&format!("Qdrant scroll error: {}", e));
-                                return Err(anyhow!("Qdrant scroll error: {}", e))?;
-                            }
-                        };
-                        let mut parsed_results = results_expand.iter().map(|r| {
-                            let text = match r.payload.get("text") {
-                                Some(t) => match t.kind {
-                                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
-                                    _ => Err(anyhow!("Missing `text` in chunk payload"))?,
-                                },
-                                None => Err(anyhow!("Missing `text` in chunk payload"))?,
-                            };
-                            let chunk_offset = match r.payload.get("chunk_offset") {
-                                Some(t) => match t.kind {
-                                    Some(qdrant::value::Kind::IntegerValue(i)) => i,
-                                    _ => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
-                                },
-                                None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
-                            };
-                            Ok((text, chunk_offset as usize))
-                        }).collect::<Result<Vec<_>>>()?;
-                        // sort by offse>t
-                        parsed_results.sort_by(|a, b| {
-                            a.1.cmp(&b.1)
-                        });
-                        for item in parsed_results.into_iter() {
-                            let parent_chunk_off = new_offsets.get(&(item.1)).unwrap();
-                            // add text to parent chunk
-                            // this could be faster, should I optimize it?
-                            let p_chunk = chunks
-                                .iter_mut()
-                                .find(|c| c.offset == *parent_chunk_off)
-                                .unwrap();
-                            if (parent_chunk_off < &item.1)
-                            {
-                                p_chunk.text.push_str((" ".to_owned() + &p_chunk.text).as_str());
-                            }
-                            else {
-                                // prepend text
-                                p_chunk.text = (" ".to_owned() + &p_chunk.text).to_owned() + &p_chunk.text;
-                            }
-                        }
-                    }
+                            Ok::<Document, anyhow::Error>(d)
+                        })
+                    })
+                    .buffer_unordered(16)
+                    .map(|r| match r {
+                        Err(e) => Err(anyhow!(
+                            "Data source document retrieval expansion error: {}",
+                            e
+                        ))?,
+                        Ok(r) => r,
+                    })
+                    .try_collect::<Vec<_>>()
+                    .await?
+            }
+            None => documents
+                .into_iter()
+                .map(|mut d| {
+                    let chunks = chunks
+                        .iter()
+                        .filter(|(document_id, _)| document_id == &d.document_id)
+                        .map(|(_, c)| c.clone())
+                        .collect::<Vec<Chunk>>();
                     d.chunks = chunks;
-
-                    Ok::<Document, anyhow::Error>(d)
+                    d
                 })
-            })
-            .buffer_unordered(16)
-            .map(|r| match r {
-                Err(e) => Err(anyhow!(
-                    "Data source document retrieval expansion error: {}",
-                    e
-                ))?,
-                Ok(r) => r,
-            })
-            .try_collect::<Vec<_>>()
-            .await?;
+                .collect::<Vec<_>>(),
+        };
 
         // Sort the documents by the score of the first chunk (guaranteed ordered).
         documents.sort_by(|a, b| {
@@ -944,7 +980,7 @@ impl DataSource {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // order chunks by offset
+        // Order chunks by offset.
         documents = documents
             .into_iter()
             .map(|mut d| {
