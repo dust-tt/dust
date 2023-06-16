@@ -15,5 +15,5 @@ runGithubWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running github worker")
 );
 runGoogleWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running github worker")
+  logger.error(errorFromAny(err), "Error running google worker")
 );
