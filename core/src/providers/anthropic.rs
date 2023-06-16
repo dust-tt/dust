@@ -93,7 +93,7 @@ impl AnthropicLLM {
             .collect::<Vec<_>>()
             .join("");
 
-        prompt = format!("{}\n\nHuman:", prompt);
+        prompt = format!("{}\n\nAssistant:", prompt);
 
         return prompt;
     }
