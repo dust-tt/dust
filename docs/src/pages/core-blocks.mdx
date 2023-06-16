@@ -274,6 +274,14 @@ generates a new message in response.
     So _0.1_ means only the tokens comprising the top 10% probability mass are
     considered.
   </Property>
+  <Property name="functions_code" type="javascript">
+    A Javascript function `_fun` which takes a single argument `env` (see the
+    [Code block](/core-blocks#code-block) documentation for details) and returns
+    an array (possibly empty) of functions specification objects. Only available
+    for selected OpenAI's models. See [OpenAI's function calling
+    guide](https://platform.openai.com/docs/guides/gpt/function-calling) for
+    more details.
+  </Property>
 </Properties>
 
 ### Configuration
@@ -294,6 +302,15 @@ generates a new message in response.
     In the context of running an app by API. Whether to stream each token as
     they are emitted by the model. Currently only supported for `provider_id`
     set to `openai`.
+  </Property>
+  <Property name="function_call" type="string">
+    If `functions_code` returns a list of functions specifications,
+    `function_call` lets you influence how the model will decide whether to use
+    a function or not. Possible values are `auto`, `none` or one of your
+    functions' name (forcing the call of that function). See [OpenAI's function
+    calling guide](https://platform.openai.com/docs/guides/gpt/function-calling)
+    for more details. Only available for selected OpenAI's models. Conversely to
+    OpenAI's API we take the function name directly instead of an object.
   </Property>
 </Properties>
 
