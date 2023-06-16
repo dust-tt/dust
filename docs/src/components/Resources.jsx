@@ -3,7 +3,7 @@ import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
 
 import { Heading } from "@/components/Heading";
 import { UserIcon } from "@/components/icons/UserIcon";
-import { UsersIcon } from "@/components/icons/UsersIcon";
+import { PaperClipIcon } from "./icons/PaperClipIcon";
 
 const resources = [
   {
@@ -11,6 +11,15 @@ const resources = [
     name: "Runs",
     description: "Learn about how to call a Dust app by API.",
     icon: UserIcon,
+    pattern: {
+      y: 16,
+    },
+  },
+  {
+    href: "/documents",
+    name: "Documents",
+    description: "Learn about how to call manage Dust data sources by API.",
+    icon: PaperClipIcon,
     pattern: {
       y: 16,
     },
