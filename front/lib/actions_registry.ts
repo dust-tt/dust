@@ -42,15 +42,9 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "8fe968eef3",
       appHash:
-        "08795332bd857e517ded56be592ae655b51e7652d6abfde14b00a82b0456f7f2",
+        "528251ebc7b5bc59027877842ca6ff05c64c08765c3ab1f5e1b799395cdb3b57",
     },
     config: {
-      MODEL: {
-        provider_id: "openai",
-        model_id: "text-davinci-003",
-        use_cache: true,
-        use_stream: false,
-      },
       TITLE_CHAT: {
         provider_id: "openai",
         model_id: "gpt-3.5-turbo-0613",
