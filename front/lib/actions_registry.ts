@@ -42,7 +42,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "8fe968eef3",
       appHash:
-        "3620dd97892f5256499100efff0e866e70490517dbb2716db5c0ac151b9ff3bf",
+        "08795332bd857e517ded56be592ae655b51e7652d6abfde14b00a82b0456f7f2",
     },
     config: {
       MODEL: {
@@ -50,6 +50,12 @@ export const DustProdActionRegistry: {
         model_id: "text-davinci-003",
         use_cache: true,
         use_stream: false,
+      },
+      TITLE_CHAT: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-0613",
+        function_call: "post_title",
+        use_cache: true,
       },
     },
   },
