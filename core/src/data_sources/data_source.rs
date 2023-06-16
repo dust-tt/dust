@@ -465,7 +465,6 @@ impl DataSource {
                 let uid = Uuid::new_v4();
                 let mut payload = Payload::new();
                 payload.insert("tags", document.tags.clone());
-                payload.insert("timetamp", document.timestamp as i64);
                 payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());
@@ -578,7 +577,7 @@ impl DataSource {
                         match timestamp.gt.clone() {
                             Some(v) => must_filter.push(
                                 qdrant::FieldCondition {
-                                    key: "timetamp".to_string(),
+                                    key: "timestamp".to_string(),
                                     range: Some(qdrant::Range {
                                         gte: Some(v as f64),
                                         ..Default::default()
@@ -592,7 +591,7 @@ impl DataSource {
                         match timestamp.lt.clone() {
                             Some(v) => must_filter.push(
                                 qdrant::FieldCondition {
-                                    key: "timetamp".to_string(),
+                                    key: "timestamp".to_string(),
                                     range: Some(qdrant::Range {
                                         lte: Some(v as f64),
                                         ..Default::default()

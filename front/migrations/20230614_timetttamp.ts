@@ -7,6 +7,7 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 
 // if reusing, set env vars to those values, don't hardcode the values in the code
 // also as a safety delete the env vars (if persisted one way or another) after the migration
+// !! Since the client used is the REST client, ensure the port in QDRANT URL is to the REST API (not gRPC), usually 6333 (not 6334)
 const { QDRANT_URL, QDRANT_API_KEY } = process.env;
 
 const prodClient = new QdrantClient({
