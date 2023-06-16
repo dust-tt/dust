@@ -7,11 +7,11 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 
 // if reusing, set env vars to those values, don't hardcode the values in the code
 // also as a safety delete the env vars (if persisted one way or another) after the migration
-const { QDRANT_PROD_URL, QDRANT_PROD_API_KEY } = process.env;
+const { QDRANT_URL, QDRANT_API_KEY } = process.env;
 
 const prodClient = new QdrantClient({
-  url: QDRANT_PROD_URL,
-  apiKey: QDRANT_PROD_API_KEY,
+  url: QDRANT_URL,
+  apiKey: QDRANT_API_KEY,
 });
 
 async function migrateCollection(
