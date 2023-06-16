@@ -451,9 +451,11 @@ export function dumpSpecification(
         out += `  messages_code: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.messages_code
         )}\n\`\`\`\n`;
-        out += `  functions_code: \n\`\`\`\n${escapeTripleBackticks(
-          block.spec.functions_code
-        )}\n\`\`\`\n`;
+        if (block.spec.functions_code) {
+          out += `  functions_code: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.functions_code
+          )}\n\`\`\`\n`;
+        }
         out += `}\n`;
         out += "\n";
         break;
