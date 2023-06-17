@@ -209,7 +209,7 @@ async function syncOneFile(
   }
 
   const jsonDoc = convertGoogleDocumentToJson(res.data);
-  const textDoc = googleDocJSON2Text(jsonDoc);
+  const textDoc = googleDocJSON2Text(jsonDoc, res.data.title);
 
   const documentId = `gdrive-${file.id}`;
   await GoogleDriveFiles.upsert({
@@ -250,7 +250,8 @@ async function syncOneFile(
 //   }
 
 function googleDocJSON2Text(
-  jsonDoc: ReturnType<typeof convertGoogleDocumentToJson>
+  jsonDoc: ReturnType<typeof convertGoogleDocumentToJson>,
+  title: string
 ): string {
   const arrayDoc: string[] = [];
   for (const element of jsonDoc.content) {
@@ -311,7 +312,10 @@ function googleDocJSON2Text(
     }
   }
 
-  return arrayDoc.join("\n");
+  const body = arrayDoc.join("\n");
+  const result = `$title: ${title}\n\n${body}`;
+
+  return result;
 }
 
 async function getParents(
