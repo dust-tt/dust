@@ -31,22 +31,40 @@ import { registerWebhook } from "../lib";
 const FILES_SYNC_CONCURRENCY = 30;
 const FILES_GC_CONCURRENCY = 30;
 
+type NangoGetConnectionRes = {
+  connection_id: string;
+  credentials: {
+    type: string;
+    access_token: string;
+    refresh_token: string;
+    expires_at: string;
+    expires_in: number;
+    raw: {
+      scope: string;
+      token_type: string;
+    };
+  };
+};
+
 export async function getAuthObject(
   nangoConnectionId: string
 ): Promise<OAuth2Client> {
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
   }
-  const res = await nango_client().getRawTokenResponse(
+  const res: NangoGetConnectionRes = await nango_client().getConnection(
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-    nangoConnectionId
+    nangoConnectionId,
+    false,
+    true
   );
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
-    access_token: res.access_token,
-    scope: res.scope,
-    token_type: res.token_type,
-    expiry_date: new Date(res.expires_at).getTime(),
+    access_token: res.credentials.access_token,
+    scope: res.credentials.raw.scope,
+    token_type: res.credentials.raw.token_type,
+    expiry_date: new Date(res.credentials.expires_at).getTime(),
+    refresh_token: res.credentials.refresh_token,
   });
 
   return oauth2Client;
@@ -388,8 +406,9 @@ export async function incrementalSync(
   );
   const foldersIds = await getFoldersToSync(connectorId);
 
-  const driveClient = await getDriveClient(nangoConnectionId);
   const oauth2client = await getAuthObject(nangoConnectionId);
+  const driveClient = await getDriveClient(oauth2client);
+
   let nextPageToken: string | undefined = undefined;
   let changeCount = 0;
   do {
