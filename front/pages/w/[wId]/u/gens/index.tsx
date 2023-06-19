@@ -1,5 +1,6 @@
+import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -9,24 +10,73 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions_registry";
-import { Authenticator, getSession, getUserFromSession, prodAPICredentialsForOwner } from "@app/lib/auth";
-import { runActionStreamed } from "@app/lib/dust_api";
-import { classNames } from "@app/lib/utils";
-import { UserType, WorkspaceType } from "@app/types/user";
-
 import {
-  DocumentDuplicateIcon,
-} from "@heroicons/react/24/outline";
-
+  Authenticator,
+  getSession,
+  getUserFromSession,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import {
   DustAPI,
   DustAPICredentials,
+  runActionStreamed,
 } from "@app/lib/dust_api";
+import { classNames } from "@app/lib/utils";
+import { GensRetrievedDocumentType } from "@app/types/gens";
+import { UserType, WorkspaceType } from "@app/types/user";
+
 const { GA_TRACKING_ID = "" } = process.env;
 
+const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
+  notion: "/static/notion_32x32.png",
+  slack: "/static/slack_32x32.png",
+  google_drive: "/static/google_drive_32x32.png",
+  github: "/static/github_black_32x32.png",
+};
 
+export const getServerSideProps: GetServerSideProps<{
+  user: UserType | null;
+  owner: WorkspaceType;
+  prodCredentials: DustAPICredentials;
+  readOnly: boolean;
+  gaTrackingId: string;
+}> = async (context) => {
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
 
-const providerFromDocument = (document: ChatRetrievedDocumentType) => {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  // const prodAPI = new DustAPI(prodCredentials);
+  //
+  // const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
+  // if (dsRes.isErr()) {
+  //   return {
+  //     notFound: true,
+  //   };
+  // }
+
+  return {
+    props: {
+      user,
+      owner,
+      prodCredentials,
+      readOnly: false,
+      gaTrackingId: GA_TRACKING_ID,
+    },
+  };
+};
+
+const providerFromDocument = (document: GensRetrievedDocumentType) => {
   let provider = "none";
   switch (document.dataSourceId) {
     case "managed-slack":
@@ -45,7 +95,7 @@ const providerFromDocument = (document: ChatRetrievedDocumentType) => {
   return provider;
 };
 
-const titleFromDocument = (document: ChatRetrievedDocumentType) => {
+const titleFromDocument = (document: GensRetrievedDocumentType) => {
   let title = document.documentId;
   // Try to look for a title tag.
   for (const tag of document.tags) {
@@ -66,52 +116,28 @@ const titleFromDocument = (document: ChatRetrievedDocumentType) => {
   return title;
 };
 
-const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
-  notion: "/static/notion_32x32.png",
-  slack: "/static/slack_32x32.png",
-  google_drive: "/static/google_drive_32x32.png",
-  github: "/static/github_black_32x32.png",
-};
+export class FunctionSingleArgParser {
+  _textSoFar: string;
+  _inArg: boolean;
+  _functionCall: string;
+  _handler: (token: string) => void;
 
-export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
-  owner: WorkspaceType;
-  readOnly: boolean;
-  gaTrackingId: string;
-}> = async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
-
-
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    return {
-      notFound: true,
-    };
+  constructor(functionCall: string, handler: (token: string) => void) {
+    this._functionCall = functionCall;
+    this._textSoFar = "";
+    this._inArg = false;
+    this._handler = handler;
   }
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const prodAPI = new DustAPI(prodCredentials);
-  const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
-
-  return {
-    props: {
-      user,
-      owner,
-      readOnly: false,
-      gaTrackingId: GA_TRACKING_ID,
-      workspaceId: prodAPI.workspaceId()
-    },
-  };
-};
+  feed(token: string): void {
+    this._textSoFar += token;
+  }
+}
 
 export function DocumentView({
   document,
+}: {
+  document: GensRetrievedDocumentType;
 }) {
   const provider = providerFromDocument(document);
 
@@ -120,9 +146,10 @@ export function DocumentView({
       <div className="flex flex-row items-center text-xs">
         <div
           className={classNames(
-            "flex flex-initial select-none rounded-md bg-gray-100 px-1 py-0.5 bg-gray-300",
-            document.chunks.length > 0 ? "cursor-pointer" : "",
-          )}>
+            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5",
+            document.chunks.length > 0 ? "cursor-pointer" : ""
+          )}
+        >
           {document.score.toFixed(2)}
         </div>
         <div className="ml-2 flex flex-initial">
@@ -150,12 +177,10 @@ export function DocumentView({
       <div className="my-2 flex flex-col space-y-2">
         {document.chunks.map((chunk, i) => (
           <div key={i} className="flex flex-initial">
-            <div
-              className="ml-10 border-l-4 border-slate-400"
-            >
+            <div className="ml-10 border-l-4 border-slate-400">
               <p
                 className={classNames(
-                  "cursor-pointer pl-2 text-xs italic text-gray-500",
+                  "cursor-pointer pl-2 text-xs italic text-gray-500"
                 )}
               >
                 {chunk.text}
@@ -171,23 +196,26 @@ export function DocumentView({
 export default function AppGens({
   user,
   owner,
+  prodCredentials,
   readOnly,
   gaTrackingId,
-  workspaceId
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [gen, setGen] = useState<string>("");
-  const [loading, setLoading] = useState(false);
+  const prodAPI = new DustAPI(prodCredentials);
+
+  const [genContent, setGenContent] = useState<string>("");
+  const [genCursorPosition, setGenCursorPosition] = useState<number>(0);
+  const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [queryLoading, setQueryLoading] = useState<boolean>(false);
+  const [timRange, setTimeRange] = useState<string | null>(null);
+
+  const [retrievalLoading, setRetrievalLoading] = useState(false);
   const [retrieved, setRetrieved] = useState([]);
 
-  const handleGenChange = (value: string) => {
-    setGen(value);
-  };
+  const [generateLoading, setGenerateLoading] = useState<boolean>(false);
 
-  const handleRefreshQuery = async () => {
-    const config = cloneBaseConfig(DustProdActionRegistry["gens-query"].config);
-
-
-    const context = {
+  const getContext = () => {
+    return {
       user: {
         username: user?.username,
         full_name: user?.name,
@@ -195,12 +223,22 @@ export default function AppGens({
       workspace: owner.name,
       date_today: new Date().toISOString().split("T")[0],
     };
+  };
 
-    const res = await runActionStreamed(owner, "gens-query", config, [
-      { text: gen, context },
-    ]);
+  const handleGenChange = (value: string) => {
+    setGenContent(value);
+  };
+
+  const handleRefreshQuery = async () => {
+    setQueryLoading(true);
+
+    const config = cloneBaseConfig(DustProdActionRegistry["gens-query"].config);
+    const inputs = [{ text: genContent, context: getContext() }];
+
+    const res = await runActionStreamed(owner, "gens-query", config, inputs);
     if (res.isErr()) {
-      window.alert("Error runing `gens-query`: " + res.error);
+      setQueryLoading(false);
+      setTimeRange(null);
       return;
     }
 
@@ -211,17 +249,87 @@ export default function AppGens({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            console.log("Query refreshed", e.value);
-            window.alert("Query refreshed: " + e.value);
+            setTimeRange(e.value.time_range);
           }
         }
       }
     }
+
+    setQueryLoading(false);
   };
 
+  const handleGenerate = async () => {
+    setGenerateLoading(true);
+
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["gens-generate"].config
+    );
+
+    // insert <CURSOR> at genCursorPosition
+    let content = genContent;
+    let cursorPosition = genCursorPosition;
+
+    const textWithCursor = `${content.slice(
+      0,
+      cursorPosition
+    )}<CURSOR>${content.slice(cursorPosition)}`;
+
+    console.log(textWithCursor);
+
+    const inputs = [
+      { text_with_cursor: textWithCursor, context: getContext() },
+    ];
+
+    const res = await runActionStreamed(owner, "gens-generate", config, inputs);
+    if (res.isErr()) {
+      console.log("ERROR", res.error);
+      setGenerateLoading(false);
+      return;
+    }
+
+    const { eventStream } = res.value;
+    let tokensSoFar = "";
+
+    for await (const event of eventStream) {
+      if (event.type === "function_call_arguments_tokens") {
+        const tokens = event.content.tokens.text;
+        console.log("FN TOKENS event", tokens);
+
+        if (tokensSoFar.includes('"sentence": ')) {
+          content = `${content.slice(
+            0,
+            cursorPosition
+          )}${tokens}${content.slice(cursorPosition)}`;
+          cursorPosition += tokens.length;
+
+          setGenContent(content);
+          setGenCursorPosition(cursorPosition);
+        }
+
+        tokensSoFar += tokens;
+      }
+      if (event.type === "error") {
+        console.log("ERROR error event", event);
+        setGenerateLoading(false);
+        return;
+      }
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (event.content.block_name === "MODEL") {
+          if (e.error) {
+            console.log("ERROR block_execution event", e.error);
+            setGenerateLoading(false);
+            return;
+          }
+        }
+      }
+    }
+
+    setGenerateLoading(false);
+  };
 
   const handleSearch = async () => {
-    setLoading(true);
+    setRetrievalLoading(true);
     const userContext = {
       user: {
         username: user?.username,
@@ -230,13 +338,17 @@ export default function AppGens({
       workspace: owner.name,
       date_today: new Date().toISOString().split("T")[0],
     };
-    const config = cloneBaseConfig(DustProdActionRegistry["gens-retrieval"].config);
-    config.DATASOURCE.data_sources = [{
-      workspace_id: workspaceId,
-      data_source_id: "managed-notion"
-    }];
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["gens-retrieval"].config
+    );
+    config.DATASOURCE.data_sources = [
+      {
+        workspace_id: prodAPI.workspaceId(),
+        data_source_id: "managed-notion",
+      },
+    ];
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
-      { text: gen, userContext },
+      { text: genContent, userContext },
     ]);
     if (res.isErr()) {
       window.alert("Error runing `gens-retrieval`: " + res.error);
@@ -250,15 +362,15 @@ export default function AppGens({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           console.log(e.value);
-          setRetrieved(e.value.retrievals)
-          setLoading(false);
+          setRetrieved(e.value.retrievals);
+          setRetrievalLoading(false);
           if (!e.error) {
             console.log("Search results", e.value);
           }
         }
       }
     }
-  }
+  };
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
@@ -269,10 +381,11 @@ export default function AppGens({
         <div className="">
           <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
             <div className="flex flex-col">
-              <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-col space-y-4 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex w-full font-normal">
                   <TextareaAutosize
                     minRows={8}
+                    ref={genTextAreaRef}
                     className={classNames(
                       "block w-full resize-none rounded-md bg-slate-100 px-2 py-1 font-mono text-[13px] font-normal",
                       readOnly
@@ -280,47 +393,75 @@ export default function AppGens({
                         : "border-gray-200 focus:border-gray-300 focus:ring-0"
                     )}
                     readOnly={readOnly}
-                    value={gen}
-                    onChange={(e) => handleGenChange(e.target.value)}
+                    value={genContent}
+                    onChange={(e) => {
+                      setGenCursorPosition(e.target.selectionStart);
+                      handleGenChange(e.target.value);
+                    }}
+                    onBlur={(e) => {
+                      setGenCursorPosition(e.target.selectionStart);
+                    }}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">
-                  <div className="mt-2 flex flex-initial">
+                  <div className="flex flex-initial">
                     <ActionButton
+                      disabled={queryLoading}
                       onClick={() => {
                         void handleRefreshQuery();
                       }}
                     >
-                      Refresh Query
+                      {queryLoading ? "Loading..." : "Refresh Query"}
                     </ActionButton>
                   </div>
-                  <div className="mt-2 flex flex-initial">
-                    <ActionButton onClick={() => {
-                      void handleSearch()
-                    }}>Run Search</ActionButton>
+                  <div className="flex flex-initial">
+                    <ActionButton
+                      onClick={() => {
+                        void handleSearch();
+                      }}
+                    >
+                      Run Search
+                    </ActionButton>
                   </div>
-                  <div className="mt-2 flex flex-initial">
-                    <ActionButton>Generate</ActionButton>
+                  <div className="flex flex-initial">
+                    <ActionButton
+                      disabled={generateLoading}
+                      onClick={() => {
+                        void handleGenerate();
+                      }}
+                    >
+                      {generateLoading ? "Loading..." : "Generate"}
+                    </ActionButton>
                   </div>
+                </div>
+                <div className="flex-rows flex space-x-2">
+                  <div className="flex flex-initial">Query:</div>
+                  <div className="flex flex-initial">{timRange}</div>
                 </div>
               </div>
 
-              <div className="w-full mt-5 ">
-                {loading ? (
+              <div className="mt-5 w-full ">
+                {retrievalLoading ? (
                   <div className="flex flex-initial flex-row items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                    <p className="text-2xl font-bold text-gray-700">Loading...</p>
-                  </div>) : 
+                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900"></div>
+                    <p className="text-2xl font-bold text-gray-700">
+                      Loading...
+                    </p>
+                  </div>
+                ) : (
                   <div>
                     <div
                       className={classNames(
                         "flex flex-initial flex-row items-center space-x-2",
                         "rounded px-2 py-1",
-                        "text-xs font-bold text-gray-700 mt-2",
+                        "mt-2 text-xs font-bold text-gray-700"
                       )}
                     >
                       {retrieved && retrieved.length > 0 && (
-                        <p className="text-2xl">Retrieved {retrieved.length} item{retrieved.length == 1 ? "" : "s"}</p>
+                        <p className="text-2xl">
+                          Retrieved {retrieved.length} item
+                          {retrieved.length == 1 ? "" : "s"}
+                        </p>
                       )}
                       {!retrieved && <div className="">Loading...</div>}
                     </div>
@@ -330,7 +471,7 @@ export default function AppGens({
                       })}
                     </div>
                   </div>
-                }
+                )}
               </div>
             </div>
           </div>
