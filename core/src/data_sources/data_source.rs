@@ -16,6 +16,8 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at list
@@ -130,6 +132,57 @@ pub struct DataSource {
     config: DataSourceConfig,
 }
 
+fn target_document_tokens_offsets(
+    offsets: Vec<usize>,
+    chunks_to_grow: usize,
+    total_chunks_count: usize,
+) -> HashMap<usize, usize> {
+    // Note: we could increment num_addable when we don't get enough chunks on a given chunks to cram more chunks
+    if total_chunks_count == 0 {
+        return HashMap::new();
+    }
+    let mut offsets = offsets;
+    offsets.sort();
+    let mut offset_set = offsets
+        .clone()
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>();
+    let mut results: HashMap<usize, usize> = HashMap::new();
+    let mut extras: Vec<(usize, usize)> = vec![];
+    let num_per_chunk = chunks_to_grow / offsets.len();
+    for i in 0..offsets.len() {
+        let cur_extra_right = if i == offsets.len() - 1 {
+            total_chunks_count - offsets[i] - 1
+        } else {
+            offsets[i + 1] - offsets[i] - 1
+        };
+        let cur_extra_left = if i == 0 {
+            offsets[i]
+        } else {
+            offsets[i] - (offsets[i - 1] + 1 + extras[i - 1].1)
+        };
+        if cur_extra_left >= num_per_chunk / 2 && cur_extra_right >= num_per_chunk / 2 {
+            extras.push((num_per_chunk / 2, num_per_chunk / 2));
+        } else if (cur_extra_left + cur_extra_right) < num_per_chunk {
+            extras.push((cur_extra_left, cur_extra_right));
+        } else if cur_extra_left < cur_extra_right {
+            extras.push((cur_extra_left, num_per_chunk - cur_extra_left));
+        } else {
+            extras.push((num_per_chunk - cur_extra_right, cur_extra_right));
+        }
+    }
+    for i in 0..offsets.len() {
+        let (cur_extra_left, cur_extra_right) = extras[i];
+        for offset in offsets[i] - cur_extra_left..offsets[i] + cur_extra_right + 1 {
+            if !offset_set.contains(&offset) {
+                results.insert(offset, offsets[i]);
+                offset_set.insert(offset);
+            }
+        }
+    }
+    results
+}
+
 impl DataSource {
     pub fn new(project: &Project, data_source_id: &str, config: &DataSourceConfig) -> Self {
         DataSource {
@@ -184,7 +237,7 @@ impl DataSource {
                 match std::env::var("QDRANT_API_KEY") {
                     Ok(api_key) => {
                         config.set_api_key(&api_key);
-                        QdrantClient::new(Some(config)).await
+                        QdrantClient::new(Some(config))
                     }
                     Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
                 }
@@ -229,6 +282,7 @@ impl DataSource {
                         qdrant::VectorParams {
                             size: embedder.embedding_size() as u64,
                             distance: qdrant::Distance::Cosine.into(),
+                            ..Default::default()
                         },
                     )),
                 }),
@@ -516,6 +570,7 @@ impl DataSource {
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
+        target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
@@ -729,25 +784,184 @@ impl DataSource {
             })
             .buffer_unordered(16)
             .map(|r| match r {
-                Err(e) => Err(anyhow!("DataSource document retrieval error: {}", e))?,
+                Err(e) => Err(anyhow!("Data source document retrieval error: {}", e))?,
                 Ok(r) => r,
             })
             .try_collect::<Vec<_>>()
             .await?;
 
-        // Merge the chunks with the documents.
-        let mut documents = documents
-            .into_iter()
-            .map(|mut d| {
-                let chunks = chunks
-                    .iter()
-                    .filter(|(document_id, _)| document_id == &d.document_id)
-                    .map(|(_, c)| c.clone())
-                    .collect::<Vec<Chunk>>();
-                d.chunks = chunks;
-                d
-            })
-            .collect::<Vec<_>>();
+        // Qdrant client implements the sync and send traits, so we just need
+        // to wrap it in an Arc so that it can be cloned.
+        let l_qdrant_client = Arc::new(qdrant_client);
+        let mut documents = match target_document_tokens {
+            Some(target) => {
+                futures::stream::iter(documents)
+                    .map(|mut d| {
+                        let mut chunks = chunks
+                            .iter()
+                            .filter(|(document_id, _)| document_id == &d.document_id)
+                            .map(|(_, c)| c.clone())
+                            .collect::<Vec<Chunk>>();
+                        let collection = self.qdrant_collection();
+                        let chunk_size = self.config.max_chunk_size;
+                        let qdrant_client = l_qdrant_client.clone();
+                        tokio::spawn(async move {
+                            let mut offset_set = std::collections::HashSet::new();
+                            for chunk in chunks.iter() {
+                                offset_set.insert(chunk.offset);
+                            }
+                            let current_length = chunks.len() * chunk_size;
+                            if (target as i64 - current_length as i64) / chunk_size as i64 <= 0 {
+                                d.chunks = chunks;
+                                return Ok(d);
+                            }
+                            let new_offsets = target_document_tokens_offsets(
+                                chunks.iter().map(|c| c.offset).collect(),
+                                (target - current_length) / chunk_size,
+                                d.chunk_count,
+                            );
+                            let offset_values: Vec<i64> = new_offsets
+                                .keys()
+                                .cloned()
+                                .collect::<Vec<usize>>()
+                                .into_iter()
+                                .map(|o| o as i64)
+                                .collect();
+                            let new_offsets_count = offset_values.len() as u32;
+                            if new_offsets_count == 0 {
+                                d.chunks = chunks;
+                                return Ok(d);
+                            }
+
+                            let filter = qdrant::Filter {
+                                must: vec![
+                                    qdrant::FieldCondition {
+                                        key: "document_id".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(
+                                                qdrant::r#match::MatchValue::Keyword(
+                                                    d.document_id.clone(),
+                                                ),
+                                            ),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                    qdrant::FieldCondition {
+                                        key: "chunk_offset".to_string(),
+                                        r#match: Some(qdrant::Match {
+                                            match_value: Some(
+                                                qdrant::r#match::MatchValue::Integers(
+                                                    qdrant::RepeatedIntegers {
+                                                        integers: offset_values,
+                                                    },
+                                                ),
+                                            ),
+                                        }),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                ],
+                                ..Default::default()
+                            };
+                            let search_points = qdrant::ScrollPoints {
+                                collection_name: collection,
+                                filter: Some(filter),
+                                limit: Some(new_offsets_count),
+                                ..Default::default()
+                            };
+                            let results_expand = match qdrant_client.scroll(&search_points).await {
+                                Ok(r) => r.result,
+                                Err(e) => {
+                                    utils::error(&format!("Qdrant scroll error: {}", e));
+                                    Err(anyhow!("Qdrant scroll error: {}", e))?
+                                }
+                            };
+                            let mut parsed_results = results_expand
+                                .iter()
+                                .map(|r| {
+                                    let text = match r.payload.get("text") {
+                                        Some(t) => match t.kind {
+                                            Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                                            _ => Err(anyhow!("Missing `text` in chunk payload"))?,
+                                        },
+                                        None => Err(anyhow!("Missing `text` in chunk payload"))?,
+                                    };
+                                    let chunk_offset = match r.payload.get("chunk_offset") {
+                                        Some(t) => match t.kind {
+                                            Some(qdrant::value::Kind::IntegerValue(i)) => i,
+                                            _ => Err(anyhow!(
+                                                "Missing `chunk_offset` in chunk payload"
+                                            ))?,
+                                        },
+                                        None => {
+                                            Err(anyhow!("Missing `chunk_offset` in chunk payload"))?
+                                        }
+                                    };
+                                    Ok((text, chunk_offset as usize))
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            parsed_results.sort_by(|a, b| a.1.cmp(&b.1));
+                            let mut counter = 0;
+                            chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
+                            chunks = chunks
+                                .into_iter()
+                                .map(|mut chunk| {
+                                    let mut prepend = "".to_owned();
+                                    while counter < parsed_results.len()
+                                        && *new_offsets.get(&parsed_results[counter].1).unwrap()
+                                            == chunk.offset
+                                    {
+                                        let c_offset = parsed_results[counter].1;
+                                        if chunk.offset < c_offset {
+                                            chunk.text.push_str(&(" ".to_owned() + &chunk.text));
+                                        } else {
+                                            prepend.push_str(
+                                                &(parsed_results[counter].0.clone() + " "),
+                                            );
+                                        }
+                                        counter += 1;
+                                    }
+                                    chunk.text = prepend + &chunk.text;
+                                    chunk
+                                })
+                                .collect::<Vec<_>>();
+                            chunks.sort_by(|a, b| {
+                                let b_score = b.score.unwrap_or(0.0);
+                                let a_score = a.score.unwrap_or(0.0);
+                                b_score
+                                    .partial_cmp(&a_score)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
+                            d.chunks = chunks;
+
+                            Ok::<Document, anyhow::Error>(d)
+                        })
+                    })
+                    .buffer_unordered(16)
+                    .map(|r| match r {
+                        Err(e) => Err(anyhow!(
+                            "Data source document retrieval expansion error: {}",
+                            e
+                        ))?,
+                        Ok(r) => r,
+                    })
+                    .try_collect::<Vec<_>>()
+                    .await?
+            }
+            None => documents
+                .into_iter()
+                .map(|mut d| {
+                    let chunks = chunks
+                        .iter()
+                        .filter(|(document_id, _)| document_id == &d.document_id)
+                        .map(|(_, c)| c.clone())
+                        .collect::<Vec<Chunk>>();
+                    d.chunks = chunks;
+                    d
+                })
+                .collect::<Vec<_>>(),
+        };
 
         // Sort the documents by the score of the first chunk (guaranteed ordered).
         documents.sort_by(|a, b| {
@@ -964,6 +1178,7 @@ pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Resu
             top_k,
             None,
             false,
+            None,
         )
         .await?;
 
@@ -1069,4 +1284,66 @@ pub async fn cmd_list(data_source_id: &str) -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_c() {
+        let tests = HashMap::from([
+            (
+                (vec![1, 4, 5], 6, 8),
+                HashMap::from([(0, 1), (2, 1), (3, 4), (6, 5), (7, 5)]),
+            ),
+            (
+                (vec![7, 9, 11], 18, 18),
+                HashMap::from([
+                    (2, 7),
+                    (3, 7),
+                    (4, 7),
+                    (5, 7),
+                    (6, 7),
+                    (8, 7),
+                    (10, 9),
+                    (12, 11),
+                    (13, 11),
+                    (14, 11),
+                    (15, 11),
+                    (16, 11),
+                    (17, 11),
+                ]),
+            ),
+            (
+                (vec![0, 31], 6, 32),
+                HashMap::from([(1, 0), (2, 0), (3, 0), (28, 31), (29, 31), (30, 31)]),
+            ),
+            ((vec![0, 1], 6, 32), HashMap::from([(2, 1), (3, 1), (4, 1)])),
+            (
+                (vec![0, 2], 6, 32),
+                HashMap::from([(3, 2), (4, 2), (5, 2), (1, 0)]),
+            ),
+            (
+                (vec![30, 31], 6, 32),
+                HashMap::from([(27, 30), (28, 30), (29, 30)]),
+            ),
+            ((vec![29, 31], 6, 32), HashMap::from([(28, 29), (30, 29)])),
+            (
+                (vec![15, 16], 6, 32),
+                HashMap::from([(12, 15), (13, 15), (14, 15), (17, 16), (18, 16), (19, 16)]),
+            ),
+            (
+                (vec![4, 20], 6, 32),
+                HashMap::from([(3, 4), (5, 4), (19, 20), (21, 20)]),
+            ),
+        ]);
+        // execute every test:
+        for ((offsets, text_size, chunk_size), result) in tests {
+            assert_eq!(
+                target_document_tokens_offsets(offsets, text_size, chunk_size),
+                result
+            );
+        }
+    }
 }
