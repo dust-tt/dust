@@ -812,7 +812,7 @@ impl DataSource {
                                 offset_set.insert(chunk.offset);
                             }
                             let current_length = chunks.len() * chunk_size;
-                            if (target as i64 - current_length as i64) <= 0 {
+                            if (target as i64 - current_length as i64) / chunk_size as i64 <= 0 {
                                 d.chunks = chunks;
                                 return Ok(d);
                             }
