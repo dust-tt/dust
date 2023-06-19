@@ -134,15 +134,13 @@ pub struct DataSource {
 
 fn target_document_tokens_offsets(
     offsets: Vec<usize>,
-    space: usize,
-    max_chunk_size: usize,
-    chunks_count: usize,
+    chunks_to_grow: usize,
+    total_chunks_count: usize,
 ) -> HashMap<usize, usize> {
-    let mut num_addable = space / max_chunk_size;
-    if num_addable == 0 {
+    // Note: we could increment num_addable when we don't get enough chunks on a given chunks to cram more chunks
+    if total_chunks_count == 0 {
         return HashMap::new();
     }
-    // sort offsets
     let mut offsets = offsets;
     offsets.sort();
     let mut offset_set = offsets
@@ -151,27 +149,26 @@ fn target_document_tokens_offsets(
         .collect::<std::collections::HashSet<_>>();
     let mut results: HashMap<usize, usize> = HashMap::new();
     let mut extras: Vec<(usize, usize)> = vec![];
-    let num_per_chunk = num_addable / (offsets.len() * 2);
+    let num_per_chunk = chunks_to_grow / offsets.len();
     for i in 0..offsets.len() {
         let cur_extra_right = if i == offsets.len() - 1 {
-            chunks_count - offsets[i] - 1
+            total_chunks_count - offsets[i] - 1
         } else {
             offsets[i + 1] - offsets[i] - 1
         };
         let cur_extra_left = if i == 0 {
             offsets[i]
         } else {
-            offsets[i] - offsets[i - 1] - 1
+            offsets[i] - (offsets[i - 1] + 1 + extras[i - 1].1)
         };
-        if cur_extra_left >= num_per_chunk && cur_extra_right >= num_per_chunk {
-            extras.push((num_per_chunk, num_per_chunk));
-        } else if (cur_extra_left + cur_extra_right) < num_per_chunk * 2 {
-            num_addable += num_per_chunk * 2 - (cur_extra_left + cur_extra_right);
+        if cur_extra_left >= num_per_chunk / 2 && cur_extra_right >= num_per_chunk / 2 {
+            extras.push((num_per_chunk / 2, num_per_chunk / 2));
+        } else if (cur_extra_left + cur_extra_right) < num_per_chunk {
             extras.push((cur_extra_left, cur_extra_right));
         } else if cur_extra_left < cur_extra_right {
-            extras.push((cur_extra_left, 2 * num_per_chunk - cur_extra_left));
+            extras.push((cur_extra_left, num_per_chunk - cur_extra_left));
         } else {
-            extras.push((2 * num_per_chunk - cur_extra_right, cur_extra_right));
+            extras.push((num_per_chunk - cur_extra_right, cur_extra_right));
         }
     }
     for i in 0..offsets.len() {
@@ -821,8 +818,7 @@ impl DataSource {
                             }
                             let new_offsets = target_document_tokens_offsets(
                                 chunks.iter().map(|c| c.offset).collect(),
-                                target - current_length,
-                                chunk_size,
+                                (target - current_length) / chunk_size,
                                 d.chunk_count,
                             );
                             let offset_values: Vec<i64> = new_offsets
@@ -1289,4 +1285,66 @@ pub async fn cmd_list(data_source_id: &str) -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_c() {
+        let tests = HashMap::from([
+            (
+                (vec![1, 4, 5], 6, 8),
+                HashMap::from([(0, 1), (2, 1), (3, 4), (6, 5), (7, 5)]),
+            ),
+            (
+                (vec![7, 9, 11], 18, 18),
+                HashMap::from([
+                    (2, 7),
+                    (3, 7),
+                    (4, 7),
+                    (5, 7),
+                    (6, 7),
+                    (8, 7),
+                    (10, 9),
+                    (12, 11),
+                    (13, 11),
+                    (14, 11),
+                    (15, 11),
+                    (16, 11),
+                    (17, 11),
+                ]),
+            ),
+            (
+                (vec![0, 31], 6, 32),
+                HashMap::from([(1, 0), (2, 0), (3, 0), (28, 31), (29, 31), (30, 31)]),
+            ),
+            ((vec![0, 1], 6, 32), HashMap::from([(2, 1), (3, 1), (4, 1)])),
+            (
+                (vec![0, 2], 6, 32),
+                HashMap::from([(3, 2), (4, 2), (5, 2), (1, 0)]),
+            ),
+            (
+                (vec![30, 31], 6, 32),
+                HashMap::from([(27, 30), (28, 30), (29, 30)]),
+            ),
+            ((vec![29, 31], 6, 32), HashMap::from([(28, 29), (30, 29)])),
+            (
+                (vec![15, 16], 6, 32),
+                HashMap::from([(12, 15), (13, 15), (14, 15), (17, 16), (18, 16), (19, 16)]),
+            ),
+            (
+                (vec![4, 20], 6, 32),
+                HashMap::from([(3, 4), (5, 4), (19, 20), (21, 20)]),
+            ),
+        ]);
+        // execute every test:
+        for ((offsets, text_size, chunk_size), result) in tests {
+            assert_eq!(
+                target_document_tokens_offsets(offsets, text_size, chunk_size),
+                result
+            );
+        }
+    }
 }
