@@ -42,7 +42,7 @@ jobs:
       - name: Deploy the image on Kubernetes
         run: |
           chmod +x ./k8s/deploy-image.sh
-          ./deploy-image gcr.io/$GCLOUD_PROJECT_ID/blog-image:${{ steps.short_sha.outputs.short_sha }} blog-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/blog-image:${{ steps.short_sha.outputs.short_sha }} blog-deployment
 
       - name: Wait for rollout to complete
         run: kubectl rollout status deployment/blog-deployment --timeout=10m
