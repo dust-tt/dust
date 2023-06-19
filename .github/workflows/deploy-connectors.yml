@@ -43,8 +43,8 @@ jobs:
         run: |
           chmod +x ./k8s/deploy-image.sh
 
-          ./deploy-image gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-deployment
-          ./deploy-image gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-deployment
 
       - name: Wait for rollout to complete
         run: |
