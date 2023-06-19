@@ -30,6 +30,11 @@ spec:
 
           # override env vars from configmap/secret
           env:
+            # we don't want to set --max-old-space-size for edge as pods
+            # don't have the same memory limits as the regular front pods
+            - name: NODE_OPTIONS
+              value: "-r dd-trace/init"
+
             - name: CONNECTORS_API
               value: http://connectors-edge-service
             - name: NEXTAUTH_URL
