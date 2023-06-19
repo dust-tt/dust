@@ -90,7 +90,8 @@ export const DustProdActionRegistry: {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "60e1004c76",
-      appHash: "cd4eee76e1c7d46d8219627085dd5d34cb25c6d9214044ae675800ae08a51cc6",
+      appHash:
+        "cd4eee76e1c7d46d8219627085dd5d34cb25c6d9214044ae675800ae08a51cc6",
     },
     config: {
       DATASOURCE: {
@@ -99,8 +100,8 @@ export const DustProdActionRegistry: {
         filter: { tags: null, timestamp: null },
         use_cache: false,
       },
-    }
-  }
+    },
+  },
 };
 
 export function cloneBaseConfig(config: { [model: string]: any }) {
