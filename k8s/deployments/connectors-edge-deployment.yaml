@@ -31,10 +31,10 @@ spec:
 
           # override env vars from configmap/secret
           env:
-            # we don't want to set --max-old-space-size for edge as pods
+            # we override--max-old-space-size for edge as pods
             # don't have the same memory limits as the regular connectors pods
             - name: NODE_OPTIONS
-              value: "-r dd-trace/init"
+              value: "-r dd-trace/init --max-old-space-size=400"
 
             - name: FRONT_API
               value: http://front-edge-service
