@@ -416,11 +416,12 @@ export default function AppGens({
                   </div>
                   <div className="flex flex-initial">
                     <ActionButton
+                      disabled={retrievalLoading}
                       onClick={() => {
                         void handleSearch();
                       }}
                     >
-                      Run Search
+                      {retrievalLoading ? "Loading..." : "Run Search"}
                     </ActionButton>
                   </div>
                   <div className="flex flex-initial">
@@ -441,37 +442,28 @@ export default function AppGens({
               </div>
 
               <div className="mt-5 w-full ">
-                {retrievalLoading ? (
-                  <div className="flex flex-initial flex-row items-center space-x-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900"></div>
-                    <p className="text-2xl font-bold text-gray-700">
-                      Loading...
-                    </p>
+                <div>
+                  <div
+                    className={classNames(
+                      "flex flex-initial flex-row items-center space-x-2",
+                      "rounded px-2 py-1",
+                      "mt-2 text-xs font-bold text-gray-700"
+                    )}
+                  >
+                    {retrieved && retrieved.length > 0 && (
+                      <p className="text-2xl">
+                        Retrieved {retrieved.length} item
+                        {retrieved.length == 1 ? "" : "s"}
+                      </p>
+                    )}
+                    {!retrieved && <div className="">Loading...</div>}
                   </div>
-                ) : (
-                  <div>
-                    <div
-                      className={classNames(
-                        "flex flex-initial flex-row items-center space-x-2",
-                        "rounded px-2 py-1",
-                        "mt-2 text-xs font-bold text-gray-700"
-                      )}
-                    >
-                      {retrieved && retrieved.length > 0 && (
-                        <p className="text-2xl">
-                          Retrieved {retrieved.length} item
-                          {retrieved.length == 1 ? "" : "s"}
-                        </p>
-                      )}
-                      {!retrieved && <div className="">Loading...</div>}
-                    </div>
-                    <div className="ml-4 mt-2 flex flex-col space-y-1">
-                      {retrieved.map((r, i) => {
-                        return <DocumentView document={r} key={i} />;
-                      })}
-                    </div>
+                  <div className="ml-4 mt-2 flex flex-col space-y-1">
+                    {retrieved.map((r, i) => {
+                      return <DocumentView document={r} key={i} />;
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
