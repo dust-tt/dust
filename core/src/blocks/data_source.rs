@@ -198,7 +198,7 @@ impl DataSource {
                 top_k,
                 filter,
                 self.full_text,
-                None,
+                Some(600),
             )
             .await?;
 

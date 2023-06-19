@@ -6,7 +6,6 @@ use crate::run::Credentials;
 use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use async_std::sync::Mutex;
 use cloud_storage::Object;
 use futures::try_join;
 use futures::StreamExt;
@@ -137,12 +136,8 @@ fn target_document_tokens_offsets(
     offsets: Vec<usize>,
     space: usize,
     max_chunk_size: usize,
-    no_chunks: usize,
+    chunks_count: usize,
 ) -> HashMap<usize, usize> {
-    utils::info(&format!(
-        "target_document_tokens_offsets: offsets: {:?}, space: {}, max_chunk_size: {}, no_chunks: {}",
-        offsets, space, max_chunk_size, no_chunks
-    ));
     let mut num_addable = space / max_chunk_size;
     if num_addable == 0 {
         return HashMap::new();
@@ -159,7 +154,7 @@ fn target_document_tokens_offsets(
     let num_per_chunk = num_addable / (offsets.len() * 2);
     for i in 0..offsets.len() {
         let cur_extra_right = if i == offsets.len() - 1 {
-            no_chunks - offsets[i] - 1
+            chunks_count - offsets[i] - 1
         } else {
             offsets[i + 1] - offsets[i] - 1
         };
@@ -245,7 +240,7 @@ impl DataSource {
                 match std::env::var("QDRANT_API_KEY") {
                     Ok(api_key) => {
                         config.set_api_key(&api_key);
-                        QdrantClient::new(Some(config)).await
+                        QdrantClient::new(Some(config))
                     }
                     Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
                 }
@@ -290,6 +285,7 @@ impl DataSource {
                         qdrant::VectorParams {
                             size: embedder.embedding_size() as u64,
                             distance: qdrant::Distance::Cosine.into(),
+                            ..Default::default()
                         },
                     )),
                 }),
@@ -792,13 +788,15 @@ impl DataSource {
             })
             .buffer_unordered(16)
             .map(|r| match r {
-                Err(e) => Err(anyhow!("datasource document retrieval error: {}", e))?,
+                Err(e) => Err(anyhow!("Data source document retrieval error: {}", e))?,
                 Ok(r) => r,
             })
             .try_collect::<Vec<_>>()
             .await?;
 
-        let l_qdrant_client = Arc::new(Mutex::new(qdrant_client));
+        // Qdrant client implements the sync and send traits, so we just need
+        // to wrap it in an Arc so that it can be cloned.
+        let l_qdrant_client = Arc::new(qdrant_client);
         let mut documents = match target_document_tokens {
             Some(target) => {
                 futures::stream::iter(documents)
@@ -808,11 +806,10 @@ impl DataSource {
                             .filter(|(document_id, _)| document_id == &d.document_id)
                             .map(|(_, c)| c.clone())
                             .collect::<Vec<Chunk>>();
-                        let qdrant_client = l_qdrant_client.clone();
                         let collection = self.qdrant_collection();
                         let chunk_size = self.config.max_chunk_size;
+                        let qdrant_client = l_qdrant_client.clone();
                         tokio::spawn(async move {
-                            let qdrant_client = qdrant_client.lock().await;
                             let mut offset_set = std::collections::HashSet::new();
                             for chunk in chunks.iter() {
                                 offset_set.insert(chunk.offset);
@@ -835,8 +832,8 @@ impl DataSource {
                                 .into_iter()
                                 .map(|o| o as i64)
                                 .collect();
-                            let no_new_offsets = offset_values.len() as u32;
-                            if no_new_offsets == 0 {
+                            let new_offsets_count = offset_values.len() as u32;
+                            if new_offsets_count == 0 {
                                 d.chunks = chunks;
                                 return Ok(d);
                             }
@@ -875,13 +872,13 @@ impl DataSource {
                             let search_points = qdrant::ScrollPoints {
                                 collection_name: collection,
                                 filter: Some(filter),
-                                limit: Some(no_new_offsets),
+                                limit: Some(new_offsets_count),
                                 ..Default::default()
                             };
                             let results_expand = match qdrant_client.scroll(&search_points).await {
                                 Ok(r) => r.result,
                                 Err(e) => {
-                                    utils::info(&format!("Qdrant scroll error: {}", e));
+                                    utils::error(&format!("Qdrant scroll error: {}", e));
                                     return Err(anyhow!("Qdrant scroll error: {}", e))?;
                                 }
                             };
@@ -979,15 +976,6 @@ impl DataSource {
                 .partial_cmp(&a_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-
-        // Order chunks by offset.
-        documents = documents
-            .into_iter()
-            .map(|mut d| {
-                d.chunks.sort_by(|a, b| a.offset.cmp(&b.offset));
-                d
-            })
-            .collect::<Vec<_>>();
 
         utils::done(&format!(
             "Searched Data Source: data_source_id={} document_count={} chunk_count={}",
