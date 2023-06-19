@@ -724,7 +724,8 @@ export default function AppChat({
             m.push(e.value);
             setMessages(m);
             setResponse(null);
-          } else throw new Error("Error in chat retrieval execution.");
+          } else
+            throw new Error("Error in chat retrieval execution: " + e.error);
         }
       }
     }
@@ -773,7 +774,8 @@ export default function AppChat({
             m.push(e.value);
             setMessages(m);
             setResponse(null);
-          } else throw new Error("Error in chat assistant execution.");
+          } else
+            throw new Error("Error in chat assistant execution: " + e.error);
         }
       }
     }
