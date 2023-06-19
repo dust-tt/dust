@@ -42,12 +42,12 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0052be4be7",
       appHash:
-        "c0d3620442c8086e554ab704b16368ab78ede824ecd1a9b0341efc36838d2f7f",
+        "2e47c011d4cdd341a798c44656cba54066dd685dba64bff47dca608158934f7c",
     },
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-06-13",
+        model_id: "gpt-3.5-turbo-0613",
         function_call: "auto",
         use_cache: true,
         use_stream: true,

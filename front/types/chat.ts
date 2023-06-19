@@ -17,6 +17,7 @@ export type ChatMessageType = {
   runRetrieval?: boolean;
   runAssistant?: boolean;
   name?: string; // for `function` messages
+  function_call?: string; // for `function` messages
   content?: any; // for `function` responses
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages

@@ -300,11 +300,15 @@ export function RetrievalsView({
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (message.retrievals && message.retrievals.length > 0) {
+    if (
+      message.content &&
+      message.content.retrievals &&
+      message.content.retrievals.length > 0
+    ) {
       const summary = {} as {
         [key: string]: { count: number; provider: string };
       };
-      message.retrievals.forEach((r) => {
+      message.content.retrievals.forEach((r: any) => {
         const provider = providerFromDocument(r);
         if (r.dataSourceId in summary) {
           summary[r.dataSourceId].count += 1;
@@ -317,9 +321,13 @@ export function RetrievalsView({
       });
       setSummary(summary);
     }
-  }, [message.retrievals]);
+  }, [message.content && message.content.retrievals]);
 
-  return !(message.retrievals && message.retrievals.length === 0) ? (
+  return !(
+    message.content &&
+    message.content.retrievals &&
+    message.content.retrievals.length === 0
+  ) ? (
     <div className="ml-10 flex flex-col">
       <div className="flex flex-row items-center">
         <div
@@ -330,55 +338,59 @@ export function RetrievalsView({
             isLatest ? "bg-orange-100" : "bg-gray-100"
           )}
         >
-          {message.retrievals && message.retrievals.length > 0 && (
-            <>
-              <div className="flex flex-initial">Retrieved</div>
-              {Object.keys(summary).map((k) => {
-                return (
-                  <div
-                    key={k}
-                    className="flex flex-initial flex-row items-center"
-                  >
-                    <div className={classNames("mr-1 flex h-4 w-4")}>
-                      {summary[k].provider !== "none" ? (
-                        <img
-                          src={PROVIDER_LOGO_PATH[summary[k].provider]}
-                        ></img>
-                      ) : (
-                        <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
-                      )}
+          {message.content &&
+            message.content.retrievals &&
+            message.content.retrievals.length > 0 && (
+              <>
+                <div className="flex flex-initial">Retrieved</div>
+                {Object.keys(summary).map((k) => {
+                  return (
+                    <div
+                      key={k}
+                      className="flex flex-initial flex-row items-center"
+                    >
+                      <div className={classNames("mr-1 flex h-4 w-4")}>
+                        {summary[k].provider !== "none" ? (
+                          <img
+                            src={PROVIDER_LOGO_PATH[summary[k].provider]}
+                          ></img>
+                        ) : (
+                          <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                        )}
+                      </div>
+                      <div className="flex-initial text-gray-700">
+                        {summary[k].count}
+                      </div>
                     </div>
-                    <div className="flex-initial text-gray-700">
-                      {summary[k].count}
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="flex flex-initial">
-                {expanded ? (
-                  <ChevronDownIcon
-                    className="h-4 w-4 cursor-pointer"
-                    onClick={() => {
-                      setExpanded(false);
-                    }}
-                  />
-                ) : (
-                  <ChevronRightIcon
-                    className="h-4 w-4 cursor-pointer"
-                    onClick={() => {
-                      setExpanded(true);
-                    }}
-                  />
-                )}
-              </div>
-            </>
+                  );
+                })}
+                <div className="flex flex-initial">
+                  {expanded ? (
+                    <ChevronDownIcon
+                      className="h-4 w-4 cursor-pointer"
+                      onClick={() => {
+                        setExpanded(false);
+                      }}
+                    />
+                  ) : (
+                    <ChevronRightIcon
+                      className="h-4 w-4 cursor-pointer"
+                      onClick={() => {
+                        setExpanded(true);
+                      }}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          {!(message.content && message.content.retrievals) && (
+            <div className="">Loading...</div>
           )}
-          {!message.retrievals && <div className="">Loading...</div>}
         </div>
       </div>
-      {expanded && message.retrievals && (
+      {expanded && message.content && message.content.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {message.retrievals.map((r, i) => {
+          {message.content.retrievals.map((r: any, i: number) => {
             return <DocumentView document={r} key={i} />;
           })}
         </div>
@@ -400,9 +412,11 @@ export function MessageView({
   isLatestRetrieval: boolean;
   readOnly: boolean;
 }) {
+  if (message.role === "assistant" && message.function_call !== undefined)
+    return <></>;
   return (
     <div className="">
-      {message.role === "retrieval" ? (
+      {message.role === "function" && message.name === "retrieve_documents" ? (
         <div className="flex flex-row">
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
@@ -496,11 +510,12 @@ const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/follow-up",
     description:
-      "Follow-up with the assistant without performing a document retrieval",
+      "Forces the assistant to answer *whithout* querying the data sources",
   },
   {
     cmd: "/retrieve",
-    description: "Perform a document retrieval without querying the assistant",
+    description:
+      "Forces the assistant to query the data sources before answering",
   },
 ];
 
@@ -680,11 +695,6 @@ export default function AppChat({
   };
 
   const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
-    const retrievalMessage: ChatMessageType = {
-      role: "retrieval",
-    };
-    setResponse(retrievalMessage);
-
     const config = cloneBaseConfig(
       DustProdActionRegistry["chat-retrieval"].config
     );
@@ -721,16 +731,22 @@ export default function AppChat({
           throw new Error(e.error);
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
+            return {
+              role: "function",
+              name: "retrieve_documents",
+              content: { retrievals: e.value.retrievals },
+            } as ChatMessageType;
           } else throw new Error("Error in chat retrieval execution.");
         }
       }
     }
+    throw new Error("Error: no OUTPUT block streamed.");
   };
 
-  const runChatAssistant = async (m: ChatMessageType[]) => {
+  const runChatAssistant = async (
+    m: ChatMessageType[],
+    retrievalMode: string
+  ) => {
     const assistantMessage: ChatMessageType = {
       role: "assistant",
       message: "",
@@ -738,9 +754,9 @@ export default function AppChat({
     setResponse(assistantMessage);
 
     const config = cloneBaseConfig(
-      DustProdActionRegistry["chat-assistant"].config
+      DustProdActionRegistry["chat-assistant-wfn"].config
     );
-
+    config.MODEL.function_call = retrievalMode;
     const context = {
       user: {
         username: user?.username,
@@ -750,14 +766,13 @@ export default function AppChat({
       date_today: new Date().toISOString().split("T")[0],
     };
 
-    const res = await runActionStreamed(owner, "chat-assistant", config, [
+    const res = await runActionStreamed(owner, "chat-assistant-wfn", config, [
       { messages: m, context },
     ]);
     if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
 
     for await (const event of eventStream) {
-      // console.log("EVENT", event);
       if (event.type === "tokens") {
         const message = assistantMessage.message + event.content.tokens.text;
         setResponse({ ...assistantMessage, message: message });
@@ -766,16 +781,83 @@ export default function AppChat({
       if (event.type === "error") throw new Error(event.content.message);
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
-        if (event.content.block_name === "MODEL" && e.error)
+        if (event.content.block_name === "MODEL" && e.error) {
           throw new Error(e.error);
+        }
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
-          } else throw new Error("Error in chat assistant execution.");
+            return e.value;
+          } else {
+            throw new Error("Error in chat assistant execution.");
+          }
         }
       }
+    }
+  };
+  const updateMessages = async (
+    messages: ChatMessageType[],
+    userMessage: ChatMessageType
+  ) => {
+    messages.push(userMessage);
+    setMessages(messages);
+    setResponse(null);
+  };
+
+  const handleSubmit = async () => {
+    /* Document retrieval is handled by an openai function called
+     * "retrieve_documents". This function is speced for the openai api in the
+     * dust app "chat-assistant-wfn". By default, the chat model decides
+     * whether to run the retrieval function or not. The user can override this
+     * by prepending the message with "/retrieve" or "/follow-up" which will
+     * either force or prevent the model from generating a function call. This
+     * behaviour is stored in `retrievalMode`*/
+    let retrievalMode = "auto";
+    let processedInput = input;
+
+    if (input.startsWith("/retrieve")) {
+      retrievalMode = "retrieve_documents";
+      processedInput = input.substring("/retrieve".length).trim();
+    }
+    if (input.startsWith("/follow-up")) {
+      retrievalMode = "none";
+      processedInput = input.substring("/follow-up".length).trim();
+    }
+
+    // clone messages add new message to the end
+    const m = [...messages];
+    const userMessage: ChatMessageType = {
+      role: "user",
+      message: processedInput,
+    };
+
+    updateMessages(m, userMessage);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const result = await runChatAssistant(m, retrievalMode);
+      updateMessages(m, result);
+      // has the model decided to run the retrieval function?
+      if (result?.function_call !== undefined) {
+        const functionCall = result.function_call;
+        const query = JSON.parse(functionCall.arguments).query;
+        if (functionCall.name !== "retrieve_documents") {
+          throw new Error(
+            "Unexpected or malformed function call by openai fns: " +
+              JSON.stringify(functionCall)
+          );
+        }
+        const retrievalResult = await runChatRetrieval(m, query);
+        updateMessages(m, retrievalResult);
+        const secondResult = await runChatAssistant(m, "none");
+        updateMessages(m, secondResult);
+      }
+    } catch (e: any) {
+      console.log("ERROR", e.message);
+      updateMessages(m, {
+        role: "error",
+        message: e.message,
+      } as ChatMessageType);
     }
 
     // Update title and save the conversation.
@@ -788,50 +870,6 @@ export default function AppChat({
         setTitleState("saved");
       }
     })();
-  };
-
-  const handleSubmit = async () => {
-    let runRetrieval = true;
-    let runAssistant = true;
-    let processedInput = input;
-
-    if (input.startsWith("/retrieve")) {
-      runAssistant = false;
-      runRetrieval = true;
-      processedInput = input.substring("/retrieve".length).trim();
-    }
-    if (input.startsWith("/follow-up")) {
-      runRetrieval = false;
-      processedInput = input.substring("/follow-up".length).trim();
-    }
-
-    // clone messages add new message to the end
-    const m = [...messages];
-    const userMessage: ChatMessageType = {
-      role: "user",
-      runRetrieval,
-      runAssistant,
-      message: processedInput,
-    };
-
-    m.push(userMessage);
-    setMessages(m);
-    setInput("");
-    setLoading(true);
-
-    try {
-      if (runRetrieval) await runChatRetrieval(m, processedInput);
-      if (runAssistant) await runChatAssistant(m);
-    } catch (e: any) {
-      console.log("ERROR", e.message);
-      m.push({
-        role: "error",
-        message: e.message,
-      } as ChatMessageType);
-      setMessages(m);
-      setResponse(null);
-    }
-
     setLoading(false);
   };
 
@@ -938,7 +976,8 @@ export default function AppChat({
                                   // }
                                   isLatestRetrieval={
                                     !(
-                                      response && response.role === "retrieval"
+                                      response &&
+                                      response.name === "retrieve_documents"
                                     ) &&
                                     (() => {
                                       for (
@@ -946,7 +985,10 @@ export default function AppChat({
                                         j >= 0;
                                         j--
                                       ) {
-                                        if (messages[j].role === "retrieval") {
+                                        if (
+                                          messages[j].name ===
+                                          "retrieve_documents"
+                                        ) {
                                           return i === j;
                                         }
                                       }
@@ -966,7 +1008,7 @@ export default function AppChat({
                                 loading={true}
                                 // isLatest={true}
                                 isLatestRetrieval={
-                                  response.role === "retrieval"
+                                  response.name === "retrieve_documents"
                                 }
                                 readOnly={chatSession.readOnly}
                               />
