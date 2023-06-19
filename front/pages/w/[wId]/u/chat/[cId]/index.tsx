@@ -42,6 +42,7 @@ import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { run } from "node:test";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -673,6 +674,180 @@ export default function AppChat({
     }
   };
 
+  const runChatRetrieval = async (m : ChatMessageType[], query : string) => {
+    const retrievalMessage: ChatMessageType = {
+      role: "retrieval",
+    };
+    setResponse(retrievalMessage);
+
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["chat-retrieval"].config
+    );
+    config.DATASOURCE.data_sources = dataSources
+      .filter((ds) => ds.selected)
+      .map((ds) => {
+        return {
+          workspace_id: prodAPI.workspaceId(),
+          data_source_id: ds.name,
+        };
+      });
+    if (selectedTimeRange.id !== "all") {
+      config.DATASOURCE.filter = {
+        timestamp: { gt: Date.now() - selectedTimeRange.ms },
+      };
+    }
+    const res = await runActionStreamed(owner, "chat-retrieval", config, [
+      {
+        messages: [{ role: "query", message: query }],
+        userContext: {
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          localeString: navigator.language,
+        },
+      },
+    ]);
+    if (res.isErr()) {
+      m.push({  
+        role: "error",
+        message: res.error.message,
+      } as ChatMessageType);
+      // console.log("ERROR", res.error);
+      setMessages(m);
+      setResponse(null);
+      setLoading(false);
+      return;
+    }
+
+    const { eventStream } = res.value;
+
+    for await (const event of eventStream) {
+      // console.log("EVENT", event);
+      if (event.type === "error") {
+        console.log("ERROR event", event);
+        m.push({
+          role: "error",
+          message: event.content.message,
+        } as ChatMessageType);
+        setMessages(m);
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (event.content.block_name === "DATASOURCE") {
+          if (e.error) {
+            m.push({
+              role: "error",
+              message: e.error,
+            } as ChatMessageType);
+            setMessages(m);
+            setResponse(null);
+            setLoading(false);
+            return;
+          }
+        }
+        if (event.content.block_name === "OUTPUT") {
+          if (!e.error) {
+            m.push(e.value);
+            setMessages(m);
+            setResponse(null);
+          }
+        }
+      }
+    }
+  }
+
+  const runChatAssistant = async (m: ChatMessageType[]) => {
+    const assistantMessage: ChatMessageType = {
+      role: "assistant",
+      message: "",
+    };
+    setResponse(assistantMessage);
+
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["chat-assistant"].config
+    );
+
+    const context = {
+      user: {
+        username: user?.username,
+        full_name: user?.name,
+      },
+      workspace: owner.name,
+      date_today: new Date().toISOString().split("T")[0],
+    };
+
+    const res = await runActionStreamed(owner, "chat-assistant", config, [
+      { messages: m, context },
+    ]);
+    if (res.isErr()) {
+      m.push({
+        role: "error",
+        message: res.error.message,
+      } as ChatMessageType);
+      // console.log("ERROR", res.error);
+      setMessages(m);
+      setResponse(null);
+      setLoading(false);
+      return;
+    }
+
+    const { eventStream } = res.value;
+
+    for await (const event of eventStream) {
+      // console.log("EVENT", event);
+      if (event.type === "tokens") {
+        const message = assistantMessage.message + event.content.tokens.text;
+        setResponse({ ...assistantMessage, message: message });
+        assistantMessage.message = message;
+      }
+      if (event.type === "error") {
+        console.log("ERROR event", event);
+        m.push({
+          role: "error",
+          message: event.content.message,
+        } as ChatMessageType);
+        setMessages(m);
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (event.content.block_name === "MODEL") {
+          if (e.error) {
+            m.push({
+              role: "error",
+              message: e.error,
+            } as ChatMessageType);
+            setMessages(m);
+            setResponse(null);
+            setLoading(false);
+            return;
+          }
+        }
+        if (event.content.block_name === "OUTPUT") {
+          if (!e.error) {
+            m.push(e.value);
+            setMessages(m);
+            setResponse(null);
+          }
+        }
+      }
+    }
+
+    // Update title and save the conversation.
+    void (async () => {
+      setTitleState("writing");
+      const t = await updateTitle(title, m);
+      setTitleState("saving");
+      const r = await storeChatSession(t, m);
+      if (r) {
+        setTitleState("saved");
+      }
+    })();
+  }
+
   const handleSubmit = async () => {
     let runRetrieval = true;
     let runAssistant = true;
@@ -680,6 +855,7 @@ export default function AppChat({
 
     if (input.startsWith("/retrieve")) {
       runAssistant = false;
+      runRetrieval = true;
       processedInput = input.substring("/retrieve".length).trim();
     }
     if (input.startsWith("/follow-up")) {
@@ -701,179 +877,9 @@ export default function AppChat({
     setInput("");
     setLoading(true);
 
-    if (runRetrieval) {
-      const retrievalMessage: ChatMessageType = {
-        role: "retrieval",
-      };
-      setResponse(retrievalMessage);
+    if (runRetrieval) await runChatRetrieval(m, processedInput);
 
-      const config = cloneBaseConfig(
-        DustProdActionRegistry["chat-retrieval"].config
-      );
-      config.DATASOURCE.data_sources = dataSources
-        .filter((ds) => ds.selected)
-        .map((ds) => {
-          return {
-            workspace_id: prodAPI.workspaceId(),
-            data_source_id: ds.name,
-          };
-        });
-      if (selectedTimeRange.id !== "all") {
-        config.DATASOURCE.filter = {
-          timestamp: { gt: Date.now() - selectedTimeRange.ms },
-        };
-      }
-      const res = await runActionStreamed(owner, "chat-retrieval", config, [
-        {
-          messages: [userMessage],
-          userContext: {
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            localeString: navigator.language,
-          },
-        },
-      ]);
-      if (res.isErr()) {
-        m.push({
-          role: "error",
-          message: res.error.message,
-        } as ChatMessageType);
-        // console.log("ERROR", res.error);
-        setMessages(m);
-        setResponse(null);
-        setLoading(false);
-        return;
-      }
-
-      const { eventStream } = res.value;
-
-      for await (const event of eventStream) {
-        // console.log("EVENT", event);
-        if (event.type === "error") {
-          console.log("ERROR event", event);
-          m.push({
-            role: "error",
-            message: event.content.message,
-          } as ChatMessageType);
-          setMessages(m);
-          setResponse(null);
-          setLoading(false);
-          return;
-        }
-        if (event.type === "block_execution") {
-          const e = event.content.execution[0][0];
-          if (event.content.block_name === "DATASOURCE") {
-            if (e.error) {
-              m.push({
-                role: "error",
-                message: e.error,
-              } as ChatMessageType);
-              setMessages(m);
-              setResponse(null);
-              setLoading(false);
-              return;
-            }
-          }
-          if (event.content.block_name === "OUTPUT") {
-            if (!e.error) {
-              m.push(e.value);
-              setMessages(m);
-              setResponse(null);
-            }
-          }
-        }
-      }
-    }
-
-    if (runAssistant) {
-      const assistantMessage: ChatMessageType = {
-        role: "assistant",
-        message: "",
-      };
-      setResponse(assistantMessage);
-
-      const config = cloneBaseConfig(
-        DustProdActionRegistry["chat-assistant"].config
-      );
-
-      const context = {
-        user: {
-          username: user?.username,
-          full_name: user?.name,
-        },
-        workspace: owner.name,
-        date_today: new Date().toISOString().split("T")[0],
-      };
-
-      const res = await runActionStreamed(owner, "chat-assistant", config, [
-        { messages: m, context },
-      ]);
-      if (res.isErr()) {
-        m.push({
-          role: "error",
-          message: res.error.message,
-        } as ChatMessageType);
-        // console.log("ERROR", res.error);
-        setMessages(m);
-        setResponse(null);
-        setLoading(false);
-        return;
-      }
-
-      const { eventStream } = res.value;
-
-      for await (const event of eventStream) {
-        // console.log("EVENT", event);
-        if (event.type === "tokens") {
-          const message = assistantMessage.message + event.content.tokens.text;
-          setResponse({ ...assistantMessage, message: message });
-          assistantMessage.message = message;
-        }
-        if (event.type === "error") {
-          console.log("ERROR event", event);
-          m.push({
-            role: "error",
-            message: event.content.message,
-          } as ChatMessageType);
-          setMessages(m);
-          setResponse(null);
-          setLoading(false);
-          return;
-        }
-        if (event.type === "block_execution") {
-          const e = event.content.execution[0][0];
-          if (event.content.block_name === "MODEL") {
-            if (e.error) {
-              m.push({
-                role: "error",
-                message: e.error,
-              } as ChatMessageType);
-              setMessages(m);
-              setResponse(null);
-              setLoading(false);
-              return;
-            }
-          }
-          if (event.content.block_name === "OUTPUT") {
-            if (!e.error) {
-              m.push(e.value);
-              setMessages(m);
-              setResponse(null);
-            }
-          }
-        }
-      }
-
-      // Update title and save the conversation.
-      void (async () => {
-        setTitleState("writing");
-        const t = await updateTitle(title, m);
-        setTitleState("saving");
-        const r = await storeChatSession(t, m);
-        if (r) {
-          setTitleState("saved");
-        }
-      })();
-    }
+    if (runAssistant) await runChatAssistant(m);
 
     setLoading(false);
   };
