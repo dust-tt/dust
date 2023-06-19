@@ -42,7 +42,6 @@ import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { run } from "node:test";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
