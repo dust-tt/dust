@@ -36,6 +36,7 @@ type GithubIssue = {
   createdAt: Date;
   updatedAt: Date;
   body?: string | null;
+  isPullRequest: boolean;
 };
 
 type GithubIssueComment = {
@@ -138,6 +139,7 @@ export async function getRepoIssuesPage(
     createdAt: new Date(i.created_at),
     updatedAt: new Date(i.updated_at),
     body: i.body,
+    isPullRequest: !!i.pull_request,
   }));
 }
 
@@ -171,6 +173,7 @@ export async function getIssue(
     createdAt: new Date(issue.created_at),
     updatedAt: new Date(issue.updated_at),
     body: issue.body,
+    isPullRequest: !!issue.pull_request,
   };
 }
 
