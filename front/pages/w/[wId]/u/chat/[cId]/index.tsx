@@ -736,7 +736,7 @@ export default function AppChat({
               name: "retrieve_documents",
               content: { retrievals: e.value.retrievals },
             } as ChatMessageType;
-          } else throw new Error("Error in chat retrieval execution.");
+          } else throw new Error("Error in chat retrieval execution: " + e.error);
         }
       }
     }
@@ -788,7 +788,7 @@ export default function AppChat({
           if (!e.error) {
             return e.value;
           } else {
-            throw new Error("Error in chat assistant execution.");
+            throw new Error("Error in chat assistant execution: " + e.error);
           }
         }
       }

@@ -5,6 +5,7 @@ import {
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
+import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
   getFullSyncWorkflowId,
   getIssueSyncWorkflowId,
@@ -119,7 +120,13 @@ export async function launchGithubIssueSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const githubInstallationId = connector.connectionId;
 
-  await client.workflow.start(githubIssueSyncWorkflow, {
+  const workflowId = getIssueSyncWorkflowId(
+    dataSourceConfig,
+    repoId,
+    issueNumber
+  );
+
+  await client.workflow.signalWithStart(githubIssueSyncWorkflow, {
     args: [
       dataSourceConfig,
       githubInstallationId,
@@ -129,7 +136,9 @@ export async function launchGithubIssueSyncWorkflow(
       issueNumber,
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+    workflowId,
+    signal: newWebhookSignal,
+    signalArgs: undefined,
   });
 }
 

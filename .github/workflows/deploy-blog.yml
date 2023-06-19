@@ -41,8 +41,8 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/blog-deployment web=gcr.io/$GCLOUD_PROJECT_ID/blog-image:${{ steps.short_sha.outputs.short_sha }}
-          echo "Updated blog image to: gcr.io/$GCLOUD_PROJECT_ID/blog-image:${{ steps.short_sha.outputs.short_sha }}"
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/blog-image:${{ steps.short_sha.outputs.short_sha }} blog-deployment
 
       - name: Wait for rollout to complete
         run: kubectl rollout status deployment/blog-deployment --timeout=10m

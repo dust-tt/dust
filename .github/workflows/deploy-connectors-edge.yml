@@ -41,8 +41,8 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/connectors-edge-deployment web=gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}
-          echo "Updated connectors image to: gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }}"
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-edge-deployment
 
       - name: Wait for rollout to complete
         run: kubectl rollout status deployment/connectors-edge-deployment --timeout=10m

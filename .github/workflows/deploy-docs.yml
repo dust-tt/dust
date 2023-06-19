@@ -41,8 +41,8 @@ jobs:
 
       - name: Deploy the image on Kubernetes
         run: |
-          kubectl set image deployment/docs-deployment web=gcr.io/$GCLOUD_PROJECT_ID/docs-image:${{ steps.short_sha.outputs.short_sha }}
-          echo "Updated docs image to: gcr.io/$GCLOUD_PROJECT_ID/docs-image:${{ steps.short_sha.outputs.short_sha }}"
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/docs-image:${{ steps.short_sha.outputs.short_sha }} docs-deployment
 
       - name: Wait for rollout to complete
         run: kubectl rollout status deployment/docs-deployment --timeout=10m

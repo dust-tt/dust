@@ -137,11 +137,10 @@ async function handler(
         errorType: string,
         errorArgs: Record<string, any>
       ) => {
-        statsDClient.increment(
-          "use_actions_error.count",
-          1,
-          tags.concat([`error_type:${errorType}`])
-        );
+        statsDClient.increment("use_actions_error.count", 1, [
+          `error_type:${errorType}`,
+          ...tags,
+        ]);
 
         logger.error(
           {
@@ -180,6 +179,13 @@ async function handler(
             switch (data.type) {
               case "error": {
                 logActionError("run_error", { error: data.content });
+                break;
+              }
+              case "block_execution": {
+                const e = data.content.execution[0][0];
+                if (e.error) {
+                  logActionError("block_execution_error", { error: e.error });
+                }
                 break;
               }
             }
