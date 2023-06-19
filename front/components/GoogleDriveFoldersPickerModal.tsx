@@ -197,7 +197,7 @@ function GoogleDriveFoldersPicker(props: {
               .flat()}
             togglableSelect
             propagateSelectUpwards={false}
-            onNodeSelect={({ treeState }) => {
+            onSelect={({ treeState }) => {
               if (treeState?.selectedIds) {
                 props.onSelectedChange(
                   Array.from(treeState.selectedIds).map((id) => id.toString())

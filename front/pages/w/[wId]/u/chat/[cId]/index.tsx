@@ -175,6 +175,12 @@ const providerFromDocument = (document: ChatRetrievedDocumentType) => {
     case "managed-notion":
       provider = "notion";
       break;
+    case "managed-google_drive":
+      provider = "google_drive";
+      break;
+    case "managed-github":
+      provider = "github";
+      break;
   }
   return provider;
 };

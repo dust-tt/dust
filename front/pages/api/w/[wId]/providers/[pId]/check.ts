@@ -124,7 +124,7 @@ async function handler(
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                prompt: "👋",
+                prompt: "\n\nHuman: 👋\n\nAssistant:",
                 model: "claude-instant-v1",
                 max_tokens_to_sample: 1,
                 stop_sequences: [],
