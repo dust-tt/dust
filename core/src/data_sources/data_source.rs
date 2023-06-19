@@ -812,7 +812,7 @@ impl DataSource {
                                 offset_set.insert(chunk.offset);
                             }
                             let current_length = chunks.len() * chunk_size;
-                            if (target as i64 - current_length as i64) < 0 {
+                            if (target as i64 - current_length as i64) <= 0 {
                                 d.chunks = chunks;
                                 return Ok(d);
                             }
@@ -875,7 +875,7 @@ impl DataSource {
                                 Ok(r) => r.result,
                                 Err(e) => {
                                     utils::error(&format!("Qdrant scroll error: {}", e));
-                                    return Err(anyhow!("Qdrant scroll error: {}", e))?;
+                                    Err(anyhow!("Qdrant scroll error: {}", e))?
                                 }
                             };
                             let mut parsed_results = results_expand
