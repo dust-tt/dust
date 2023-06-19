@@ -53,6 +53,22 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "gens-query": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "699bfebc61",
+      appHash:
+        "1cadce15d74edd7477b83d725562cf997070918fce96784ea7cff4837bdcfe2b",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-0613",
+        function_call: "perform_search",
+        use_cache: false,
+      },
+    },
+  },
 };
 
 export function cloneBaseConfig(config: { [model: string]: any }) {
