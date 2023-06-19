@@ -2,12 +2,15 @@ import {
   executeChild,
   ParentClosePolicy,
   proxyActivities,
+  setHandler,
+  sleep,
 } from "@temporalio/workflow";
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { newWebhookSignal } from "./signals";
 import { getFullSyncWorkflowId, getReposSyncWorkflowId } from "./utils";
 
 const { githubSaveStartSyncActivity, githubSaveSuccessSyncActivity } =
@@ -193,16 +196,31 @@ export async function githubIssueSyncWorkflow(
     issueNumber,
   };
 
-  await githubUpsertIssueActivity(
-    githubInstallationId,
-    repoName,
-    repoId,
-    repoLogin,
-    issueNumber,
-    dataSourceConfig,
-    loggerArgs
-  );
-  await githubSaveSuccessSyncActivity(dataSourceConfig);
+  let signaled = false;
+  let debounceCount = 0;
+
+  setHandler(newWebhookSignal, () => {
+    signaled = true;
+  });
+
+  while (signaled) {
+    signaled = false;
+    await sleep(10000);
+    if (signaled) {
+      debounceCount += 1;
+      continue;
+    }
+    await githubUpsertIssueActivity(
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      issueNumber,
+      dataSourceConfig,
+      { ...loggerArgs, debounceCount }
+    );
+    await githubSaveSuccessSyncActivity(dataSourceConfig);
+  }
 }
 
 export async function githubIssueGarbageCollectWorkflow(
