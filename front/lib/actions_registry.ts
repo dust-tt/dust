@@ -37,6 +37,23 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "chat-assistant-wfn": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "0052be4be7",
+      appHash:
+        "c0d3620442c8086e554ab704b16368ab78ede824ecd1a9b0341efc36838d2f7f",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-06-13",
+        function_call: "auto",
+        use_cache: true,
+        use_stream: true,
+      },
+    },
+  },
   "chat-title": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
