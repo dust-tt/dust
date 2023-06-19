@@ -710,53 +710,21 @@ export default function AppChat({
         },
       },
     ]);
-    if (res.isErr()) {
-      m.push({
-        role: "error",
-        message: res.error.message,
-      } as ChatMessageType);
-      // console.log("ERROR", res.error);
-      setMessages(m);
-      setResponse(null);
-      setLoading(false);
-      return;
-    }
+    if (res.isErr()) throw new Error(res.error.message);
 
     const { eventStream } = res.value;
-
     for await (const event of eventStream) {
-      // console.log("EVENT", event);
-      if (event.type === "error") {
-        console.log("ERROR event", event);
-        m.push({
-          role: "error",
-          message: event.content.message,
-        } as ChatMessageType);
-        setMessages(m);
-        setResponse(null);
-        setLoading(false);
-        return;
-      }
+      if (event.type === "error") throw new Error(event.content.message);
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
-        if (event.content.block_name === "DATASOURCE") {
-          if (e.error) {
-            m.push({
-              role: "error",
-              message: e.error,
-            } as ChatMessageType);
-            setMessages(m);
-            setResponse(null);
-            setLoading(false);
-            return;
-          }
-        }
+        if (event.content.block_name === "DATASOURCE" && e.error)
+          throw new Error(e.error);
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
             m.push(e.value);
             setMessages(m);
             setResponse(null);
-          }
+          } else throw new Error("Error in chat retrieval execution.");
         }
       }
     }
@@ -785,18 +753,7 @@ export default function AppChat({
     const res = await runActionStreamed(owner, "chat-assistant", config, [
       { messages: m, context },
     ]);
-    if (res.isErr()) {
-      m.push({
-        role: "error",
-        message: res.error.message,
-      } as ChatMessageType);
-      // console.log("ERROR", res.error);
-      setMessages(m);
-      setResponse(null);
-      setLoading(false);
-      return;
-    }
-
+    if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
 
     for await (const event of eventStream) {
@@ -806,37 +763,17 @@ export default function AppChat({
         setResponse({ ...assistantMessage, message: message });
         assistantMessage.message = message;
       }
-      if (event.type === "error") {
-        console.log("ERROR event", event);
-        m.push({
-          role: "error",
-          message: event.content.message,
-        } as ChatMessageType);
-        setMessages(m);
-        setResponse(null);
-        setLoading(false);
-        return;
-      }
+      if (event.type === "error") throw new Error(event.content.message);
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
-        if (event.content.block_name === "MODEL") {
-          if (e.error) {
-            m.push({
-              role: "error",
-              message: e.error,
-            } as ChatMessageType);
-            setMessages(m);
-            setResponse(null);
-            setLoading(false);
-            return;
-          }
-        }
+        if (event.content.block_name === "MODEL" && e.error)
+          throw new Error(e.error);
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
             m.push(e.value);
             setMessages(m);
             setResponse(null);
-          }
+          } else throw new Error("Error in chat assistant execution.");
         }
       }
     }
@@ -882,9 +819,18 @@ export default function AppChat({
     setInput("");
     setLoading(true);
 
-    if (runRetrieval) await runChatRetrieval(m, processedInput);
-
-    if (runAssistant) await runChatAssistant(m);
+    try {
+      if (runRetrieval) await runChatRetrieval(m, processedInput);
+      if (runAssistant) await runChatAssistant(m);
+    } catch (e: any) {
+      console.log("ERROR", e.message);
+      m.push({
+        role: "error",
+        message: e.message,
+      } as ChatMessageType);
+      setMessages(m);
+      setResponse(null);
+    }
 
     setLoading(false);
   };
