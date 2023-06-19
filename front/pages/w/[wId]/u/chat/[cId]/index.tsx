@@ -674,7 +674,7 @@ export default function AppChat({
     }
   };
 
-  const runChatRetrieval = async (m : ChatMessageType[], query : string) => {
+  const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
     const retrievalMessage: ChatMessageType = {
       role: "retrieval",
     };
@@ -706,7 +706,7 @@ export default function AppChat({
       },
     ]);
     if (res.isErr()) {
-      m.push({  
+      m.push({
         role: "error",
         message: res.error.message,
       } as ChatMessageType);
@@ -755,7 +755,7 @@ export default function AppChat({
         }
       }
     }
-  }
+  };
 
   const runChatAssistant = async (m: ChatMessageType[]) => {
     const assistantMessage: ChatMessageType = {
@@ -846,7 +846,7 @@ export default function AppChat({
         setTitleState("saved");
       }
     })();
-  }
+  };
 
   const handleSubmit = async () => {
     let runRetrieval = true;
