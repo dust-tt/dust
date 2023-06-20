@@ -87,8 +87,6 @@ export async function getChatSession(
     messages: messages.map((m) => {
       return {
         role: m.role,
-        runRetrieval: m.runRetrieval,
-        runAssistant: m.runAssistant,
         message: m.message,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
           return {
@@ -181,8 +179,6 @@ export async function storeChatSession(
           const chatMessage = await ChatMessage.create(
             {
               role: m.role,
-              runRetrieval: m.runRetrieval,
-              runAssistant: m.runAssistant,
               message: m.message,
               chatSessionId: chatSession.id,
             },

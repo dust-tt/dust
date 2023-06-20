@@ -14,8 +14,6 @@ export type ChatRetrievedDocumentType = {
 
 export type ChatMessageType = {
   role: "user" | "retrieval" | "assistant" | "error" | "function";
-  runRetrieval?: boolean;
-  runAssistant?: boolean;
   name?: string; // for `function` messages
   function_call?: string; // for `function` messages
   content?: any; // for `function` responses
