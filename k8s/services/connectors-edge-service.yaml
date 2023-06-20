@@ -2,6 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: connectors-edge-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "connectors-backendconfig"}'  
 spec:
   selector:
     app: connectors-edge
