@@ -32,7 +32,7 @@ async function handler(
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
+  let owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -267,14 +267,47 @@ async function handler(
       }
 
     case "GET":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_not_found",
-            message: "The app was not found.",
-          },
-        });
+      if (req.query.wIdTarget) {
+        // If we have a `wIdTarget` query parameter, we are fetching runs that were created with an
+        // API key coming from another workspace. So we override the `owner` variable and check that
+        // the user is a user of that workspace.
+        const target = await Authenticator.fromSession(
+          session,
+          req.query.wIdTarget as string
+        );
+
+        owner = target.workspace();
+        if (!owner) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "app_not_found",
+              message: "The app was not found.",
+            },
+          });
+        }
+
+        if (!target.isUser()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "app_not_found",
+              message: "The app was not found.",
+            },
+          });
+        }
+      } else {
+        // Otherwise we are retrieving the runs for the app's own workspace let's just check that we
+        // are user of that workspace.
+        if (!auth.isUser()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "app_not_found",
+              message: "The app was not found.",
+            },
+          });
+        }
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;

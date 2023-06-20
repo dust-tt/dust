@@ -46,6 +46,20 @@ type NangoGetConnectionRes = {
   };
 };
 
+export async function getGoogleCredentials(
+  nangoConnectionId: string
+): Promise<NangoGetConnectionRes> {
+  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
+    throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
+  }
+  return await nango_client().getConnection(
+    NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
+    nangoConnectionId,
+    false,
+    true
+  );
+}
+
 export async function getAuthObject(
   nangoConnectionId: string
 ): Promise<OAuth2Client> {

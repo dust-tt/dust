@@ -8,7 +8,10 @@ import {
   SlackConfiguration,
   SlackMessages,
 } from "@connectors/lib/models.js";
-import { nango_client } from "@connectors/lib/nango_client.js";
+import {
+  nango_client,
+  nangoDeleteConnection,
+} from "@connectors/lib/nango_client.js";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
@@ -122,6 +125,14 @@ export async function cleanupSlackConnector(
         `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
       )
     );
+  }
+
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    NANGO_SLACK_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    return nangoRes;
   }
 
   await SlackMessages.destroy({
