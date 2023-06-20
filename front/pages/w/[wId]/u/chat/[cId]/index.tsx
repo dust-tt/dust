@@ -399,6 +399,33 @@ export function RetrievalsView({
   ) : null;
 }
 
+function formatMessageWithLinks(message: string) {
+  /* Format message by replacing markdown links with <Link/> elements*/
+  const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+  const matches = message.matchAll(linkRegex);
+  let lastIndex = 0;
+  const elements = [];
+  for (const match of matches) {
+    const [fullMatch, text, url] = match;
+    elements.push(message.slice(lastIndex, match.index));
+    elements.push(
+      <Link href={url} key={fullMatch}>
+        <span className="text-blue-600 hover:underline">{text}</span>
+      </Link>
+    );
+    lastIndex =
+      match.index !== undefined ? match.index + fullMatch.length : lastIndex;
+  }
+  elements.push(message.slice(lastIndex));
+  return (
+    <span>
+      {elements.map((e, i) => {
+        return <span key={i}>{e}</span>;
+      })}
+    </span>
+  );
+}
+
 export function MessageView({
   user,
   message,
@@ -452,7 +479,7 @@ export function MessageView({
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
-            {message.message}
+            {formatMessageWithLinks(message.message || "")}
           </div>
         </div>
       )}
