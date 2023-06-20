@@ -7,7 +7,10 @@ import {
   resumeGithubConnector,
   stopGithubConnector,
 } from "@connectors/connectors/github";
-import { createGoogleDriveConnector } from "@connectors/connectors/google_drive";
+import {
+  cleanupGoogleDriveConnector,
+  createGoogleDriveConnector,
+} from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
   cleanupNotionConnector,
@@ -76,10 +79,7 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  google_drive: async (connectorId: string, transaction: Transaction) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  google_drive: cleanupGoogleDriveConnector,
 };
 
 type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
