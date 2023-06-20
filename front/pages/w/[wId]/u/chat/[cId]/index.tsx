@@ -815,6 +815,9 @@ export default function AppChat({
 
     // clone messages add new message to the end
     const m = [...messages];
+    // error messages and messages that caused them are removed from the conversation
+    // to avoid the assistant to get confused. They are not persisted in the database,
+    // since that happens only later on after successful run of the assistant.
     filterErrorMessages(m);
     const userMessage: ChatMessageType = {
       role: "user",
@@ -929,12 +932,12 @@ export default function AppChat({
                                     <ul className="list-inside list-disc">
                                       <li>
                                         You can continue the conversation, this
-                                        error and the last message will be
-                                        ignored
+                                        error and your last message will be
+                                        removed from the conversation
                                       </li>
                                       <li>
                                         Alternatively, restart a chat with the
-                                        `/new` command or by clicking &nbsp;
+                                        `/new` command or by clicking{" "}
                                         <Link
                                           href={`/w/${owner.sId}/u/chat`}
                                           className="text text-violet-500 hover:underline"
