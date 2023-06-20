@@ -3,6 +3,7 @@ use crate::blocks::block::{
 };
 use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
+use crate::utils;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -84,6 +85,7 @@ impl DataSource {
         data_source_id: String,
         top_k: usize,
         filter: Option<SearchFilter>,
+        target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         let data_source_project = match workspace_id {
             Some(workspace_id) => {
@@ -198,7 +200,7 @@ impl DataSource {
                 top_k,
                 filter,
                 self.full_text,
-                None,
+                target_document_tokens,
             )
             .await?;
 
@@ -314,6 +316,17 @@ impl Block for DataSource {
             _ => 10,
         };
 
+        let target_document_tokens = match config {
+            Some(v) => match v.get("target_document_tokens") {
+                Some(Value::Number(k)) => match k.as_u64() {
+                    Some(k) => Some(k as usize),
+                    None => None,
+                },
+                _ => None,
+            },
+            None => None,
+        };
+
         let filter = match config {
             Some(v) => match v.get("filter") {
                 Some(v) => Some(SearchFilter::from_json_str(v.to_string().as_str())?),
@@ -330,6 +343,7 @@ impl Block for DataSource {
                 w_id.clone(),
                 ds.clone(),
                 top_k,
+                target_document_tokens,
                 filter.clone(),
             ));
         }
