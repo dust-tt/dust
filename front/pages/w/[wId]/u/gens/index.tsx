@@ -16,6 +16,7 @@ import {
   getUserFromSession,
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import {
   DustAPI,
   DustAPICredentials,
@@ -24,7 +25,6 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 
 type DataSource = {
   name: string;
