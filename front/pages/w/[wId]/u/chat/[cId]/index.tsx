@@ -828,10 +828,6 @@ export default function AppChat({
     setLoading(true);
 
     try {
-      // if last message contains the word "error", throw an error
-      if (m[m.length - 1]?.message?.toLowerCase().includes("error"))
-        throw new Error("Testing error");
-
       if (runRetrieval) await runChatRetrieval(m, processedInput);
       if (runAssistant) await runChatAssistant(m);
     } catch (e: any) {
