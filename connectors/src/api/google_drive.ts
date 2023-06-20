@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { GaxiosResponse } from "gaxios";
 import { drive_v3 } from "googleapis";
+import PQueue from "p-queue";
 
 import {
   getDriveClient,
@@ -129,6 +130,7 @@ const _googleDriveGetFoldersAPIHandler = async (
   const drives = await getDrivesIds(connector.connectionId);
   const folders: GoogleDriveSelectedFolderType[] = [];
   const promises = [];
+  const queue = new PQueue({ concurrency: 25 });
 
   for (const drive of drives) {
     folders.push({
@@ -139,7 +141,8 @@ const _googleDriveGetFoldersAPIHandler = async (
       selected: selectedFolders.includes(drive.id),
     });
 
-    const p = (async function (driveId: string) {
+    const p = queue.add(async function () {
+      const driveId = drive.id;
       let nextPageToken: string | undefined = undefined;
       do {
         const filesRes: GaxiosResponse<drive_v3.Schema$FileList> =
@@ -192,7 +195,7 @@ const _googleDriveGetFoldersAPIHandler = async (
           ? filesRes.data.nextPageToken
           : undefined;
       } while (nextPageToken);
-    })(drive.id);
+    });
     promises.push(p);
   }
   await Promise.all(promises);
