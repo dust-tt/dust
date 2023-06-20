@@ -822,7 +822,7 @@ export default function AppChat({
       }
     }
   };
-  const updateMessages = async (
+  const updateMessages = (
     messages: ChatMessageType[],
     userMessage: ChatMessageType
   ) => {
