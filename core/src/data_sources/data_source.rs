@@ -914,7 +914,10 @@ impl DataSource {
                                     {
                                         let c_offset = parsed_results[counter].1;
                                         if chunk.offset < c_offset {
-                                            chunk.text.push_str(&(" ".to_owned() + &chunk.text));
+                                            chunk.text.push_str(
+                                                &(" ".to_owned()
+                                                    + &parsed_results[counter].0.clone()),
+                                            );
                                         } else {
                                             prepend.push_str(
                                                 &(parsed_results[counter].0.clone() + " "),
