@@ -95,8 +95,6 @@ type GetFoldersRes =
 // to make an API call for each parent. That means that we rely on the fact that Google Drive
 // is going to ultimately send us all the folders at some point when listing them to have the full path of each folder
 // defined. Otherwise, the behavior is undefined.
-// The local compute time complexity of this function is N^2, with N being the number of folders.
-// The API call complexity is O(N) with N being the number of folders.
 const _googleDriveGetFoldersAPIHandler = async (
   req: Request<
     { connector_id: string; parentId?: string },
@@ -130,6 +128,8 @@ const _googleDriveGetFoldersAPIHandler = async (
   const driveClient = await getDriveClient(connector.connectionId);
   const drives = await getDrivesIds(connector.connectionId);
   const folders: GoogleDriveSelectedFolderType[] = [];
+  const promises = [];
+
   for (const drive of drives) {
     folders.push({
       id: drive.id,
@@ -138,65 +138,76 @@ const _googleDriveGetFoldersAPIHandler = async (
       children: [],
       selected: selectedFolders.includes(drive.id),
     });
+
+    const p = (async function (driveId: string) {
+      let nextPageToken: string | undefined = undefined;
+      do {
+        const filesRes: GaxiosResponse<drive_v3.Schema$FileList> =
+          await driveClient.files.list({
+            fields: "files(id, name, parents), nextPageToken",
+
+            q: "mimeType='application/vnd.google-apps.folder' and trashed=false",
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
+            corpora: "drive",
+            driveId: driveId,
+            pageToken: nextPageToken,
+            pageSize: 1000,
+          });
+
+        if (filesRes.status !== 200) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Error while getting Google Drive folders. status: ${filesRes.status} statusText: ${filesRes.statusText}`,
+            },
+          });
+        }
+        if (!filesRes.data.files) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Error while getting Google Drive folders. No files in response`,
+            },
+          });
+        }
+        for (const file of filesRes.data.files) {
+          if (!file.parents || file.parents.length === 0) {
+            continue;
+          }
+          if (file.id && file.name) {
+            folders.push({
+              id: file.id,
+              name: file.name,
+              parent: file.parents ? (file.parents[0] as string) : null,
+              // children are computed once we have the full list of nodes.
+              children: [],
+              selected: selectedFolders.includes(file.id),
+            });
+          }
+        }
+        nextPageToken = filesRes.data.nextPageToken
+          ? filesRes.data.nextPageToken
+          : undefined;
+      } while (nextPageToken);
+    })(drive.id);
+    promises.push(p);
   }
-  let nextPageToken: string | undefined = undefined;
+  await Promise.all(promises);
 
-  do {
-    const filesRes: GaxiosResponse<drive_v3.Schema$FileList> =
-      await driveClient.files.list({
-        fields: "files(id, name, parents, teamDriveId), nextPageToken",
-
-        q: "mimeType='application/vnd.google-apps.folder' and trashed=false",
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-        corpora: "allDrives",
-        pageToken: nextPageToken,
-        pageSize: 1000,
-      });
-
-    if (filesRes.status !== 200) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Error while getting Google Drive folders. status: ${filesRes.status} statusText: ${filesRes.statusText}`,
-        },
-      });
-    }
-    if (!filesRes.data.files) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Error while getting Google Drive folders. No files in response`,
-        },
-      });
-    }
-    for (const file of filesRes.data.files) {
-      if (!file.parents || file.parents.length === 0) {
-        continue;
-      }
-      if (file.id && file.name) {
-        folders.push({
-          id: file.id,
-          name: file.name,
-          parent: file.parents ? (file.parents[0] as string) : null,
-          // children are computed once we have the full list of nodes.
-          children: [],
-          selected: selectedFolders.includes(file.id),
-        });
-      }
-    }
-    nextPageToken = filesRes.data.nextPageToken
-      ? filesRes.data.nextPageToken
-      : undefined;
-  } while (nextPageToken);
-
-  // filling out the children property for each node.
-  // complexity is N^2, with N being the number of folders.
+  const parents2folders = new Map<string, string[]>();
   folders.forEach((currentNode) => {
-    const directChildren = folders.filter((f) => f.parent === currentNode.id);
-    currentNode.children = directChildren.map((f) => f.id);
+    if (currentNode.parent) {
+      if (!parents2folders.has(currentNode.parent)) {
+        parents2folders.set(currentNode.parent, []);
+      }
+      parents2folders.get(currentNode.parent)?.push(currentNode.id);
+    }
+  });
+  folders.forEach((currentNode) => {
+    currentNode.children = parents2folders.get(currentNode.id) || [];
   });
 
   return res.status(200).send(folders);
