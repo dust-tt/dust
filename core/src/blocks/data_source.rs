@@ -3,7 +3,6 @@ use crate::blocks::block::{
 };
 use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::project::Project;
-use crate::utils;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
