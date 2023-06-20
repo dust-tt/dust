@@ -756,7 +756,6 @@ export default function AppChat({
     ]);
     if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
-
     for await (const event of eventStream) {
       // console.log("EVENT", event);
       if (event.type === "tokens") {
@@ -792,6 +791,13 @@ export default function AppChat({
     })();
   };
 
+  function filterErrorMessages(m: ChatMessageType[]) {
+    // remove last message if it's an error, and the previous messages until the
+    // last user message, included
+    if (m.length === 0 || m[m.length - 1].role !== "error") return;
+    while (m.pop()?.role !== "user" && m.length > 0);
+  }
+
   const handleSubmit = async () => {
     let runRetrieval = true;
     let runAssistant = true;
@@ -809,13 +815,16 @@ export default function AppChat({
 
     // clone messages add new message to the end
     const m = [...messages];
+    // error messages and messages that caused them are removed from the conversation
+    // to avoid the assistant to get confused. They are not persisted in the database,
+    // since that happens only later on after successful run of the assistant.
+    filterErrorMessages(m);
     const userMessage: ChatMessageType = {
       role: "user",
       runRetrieval,
       runAssistant,
       message: processedInput,
     };
-
     m.push(userMessage);
     setMessages(m);
     setInput("");
@@ -920,9 +929,27 @@ export default function AppChat({
                                     been notified).
                                   </div>
                                   <div className="flex-initial text-xs text-gray-500">
-                                    Please give it another try, and don't
-                                    hesitate to reach out if the problem
-                                    persists.
+                                    <ul className="list-inside list-disc">
+                                      <li>
+                                        You can continue the conversation, this
+                                        error and your last message will be
+                                        removed from the conversation
+                                      </li>
+                                      <li>
+                                        Alternatively, restart a chat with the
+                                        `/new` command or by clicking{" "}
+                                        <Link
+                                          href={`/w/${owner.sId}/u/chat`}
+                                          className="text text-violet-500 hover:underline"
+                                        >
+                                          here
+                                        </Link>
+                                      </li>
+                                      <li>
+                                        Don't hesitate to reach out if the
+                                        problem persists.
+                                      </li>
+                                    </ul>
                                   </div>
                                   <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
                                     {m.message}
