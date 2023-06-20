@@ -16,6 +16,7 @@ import {
   getUserFromSession,
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import {
   DustAPI,
   DustAPICredentials,
@@ -24,6 +25,13 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+type DataSource = {
+  name: string;
+  description?: string;
+  provider: ConnectorProvider | "none";
+  selected: boolean;
+};
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -40,6 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
   prodCredentials: DustAPICredentials;
   readOnly: boolean;
   gaTrackingId: string;
+  workspaceDataSources: DataSource[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -56,14 +65,45 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  // const prodAPI = new DustAPI(prodCredentials);
-  //
-  // const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
-  // if (dsRes.isErr()) {
-  //   return {
-  //     notFound: true,
-  //   };
-  // }
+  const prodAPI = new DustAPI(prodCredentials);
+
+  const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
+  if (dsRes.isErr()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataSources: DataSource[] = dsRes.value.map((ds) => {
+    return {
+      name: ds.name,
+      description: ds.description,
+      provider: ds.connectorProvider || "none",
+      selected: ds.connectorProvider ? true : false,
+    };
+  });
+
+  // Select Data Sources if none are managed.
+  if (!dataSources.some((ds) => ds.provider !== "none")) {
+    for (const ds of dataSources) {
+      ds.selected = true;
+    }
+  }
+
+  // Manged first, then alphabetically
+  dataSources.sort((a, b) => {
+    if (a.provider === "none") {
+      return b.provider === "none" ? 0 : 1;
+    }
+    if (b.provider === "none") {
+      return -1;
+    }
+    if (a.provider < b.provider) {
+      return -1;
+    } else {
+      return 1;
+    }
+  });
 
   return {
     props: {
@@ -72,6 +112,7 @@ export const getServerSideProps: GetServerSideProps<{
       prodCredentials,
       readOnly: false,
       gaTrackingId: GA_TRACKING_ID,
+      workspaceDataSources: dataSources,
     },
   };
 };
@@ -199,6 +240,7 @@ export default function AppGens({
   prodCredentials,
   readOnly,
   gaTrackingId,
+  workspaceDataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const prodAPI = new DustAPI(prodCredentials);
 
@@ -211,6 +253,7 @@ export default function AppGens({
 
   const [retrievalLoading, setRetrievalLoading] = useState(false);
   const [retrieved, setRetrieved] = useState([]);
+  const [dataSources, setDataSources] = useState(workspaceDataSources);
 
   const [generateLoading, setGenerateLoading] = useState<boolean>(false);
 
@@ -328,6 +371,20 @@ export default function AppGens({
     setGenerateLoading(false);
   };
 
+  const handleSwitchDataSourceSelection = (name: string) => {
+    const newSelection = dataSources.map((ds) => {
+      if (ds.name === name) {
+        return {
+          ...ds,
+          selected: !ds.selected,
+        };
+      } else {
+        return ds;
+      }
+    });
+    setDataSources(newSelection);
+  };
+
   const handleSearch = async () => {
     setRetrievalLoading(true);
     const userContext = {
@@ -341,12 +398,14 @@ export default function AppGens({
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-retrieval"].config
     );
-    config.DATASOURCE.data_sources = [
-      {
-        workspace_id: prodAPI.workspaceId(),
-        data_source_id: "managed-notion",
-      },
-    ];
+    config.DATASOURCE.data_sources = dataSources
+      .filter((ds) => ds.selected)
+      .map((ds) => {
+        return {
+          workspace_id: prodAPI.workspaceId(),
+          data_source_id: ds.name,
+        };
+      });
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
       { text: genContent, userContext },
     ]);
@@ -438,6 +497,45 @@ export default function AppGens({
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">Query:</div>
                   <div className="flex flex-initial">{timRange}</div>
+                </div>
+              </div>
+
+              <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
+                <div className="flex flex-initial text-gray-400">
+                  Data Sources:
+                </div>
+                <div className="flex flex-row">
+                  {dataSources.map((ds) => {
+                    return (
+                      <div
+                        key={ds.name}
+                        className="group ml-1 flex flex-initial"
+                      >
+                        <div
+                          className={classNames(
+                            "flex h-4 w-4 flex-initial cursor-pointer",
+                            ds.provider !== "none" ? "mr-1" : "",
+                            ds.selected ? "opacity-100" : "opacity-25"
+                          )}
+                          onClick={() => {
+                            handleSwitchDataSourceSelection(ds.name);
+                          }}
+                        >
+                          {ds.provider !== "none" ? (
+                            <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
+                          ) : (
+                            <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                          )}
+                        </div>
+                        <div className="absolute bottom-16 hidden rounded border bg-white px-1 py-1 group-hover:block sm:bottom-10">
+                          <span className="text-gray-600">
+                            <span className="font-semibold">{ds.name}</span>
+                            {ds.description ? ` ${ds.description}` : null}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
