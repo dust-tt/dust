@@ -20,6 +20,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   readOnly: boolean;
   app: AppType;
+  wIdTarget: string | null;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -46,12 +47,17 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  // get get query params "wIdTarget"
+  const wIdTarget = (context.query?.wIdTarget as string) || null;
+  console.log("WIDTARGET", wIdTarget);
+
   return {
     props: {
       user,
       owner,
       readOnly,
       app,
+      wIdTarget,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -79,6 +85,7 @@ export default function RunsView({
   owner,
   readOnly,
   app,
+  wIdTarget,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState("local" as RunRunType);
@@ -96,7 +103,14 @@ export default function RunsView({
     );
   }, [readOnly]);
 
-  const { runs, total } = useRuns(owner, app, limit, offset, runType);
+  const { runs, total } = useRuns(
+    owner,
+    app,
+    limit,
+    offset,
+    runType,
+    wIdTarget
+  );
 
   let last = offset + limit;
   if (offset + limit > total) {
