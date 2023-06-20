@@ -731,6 +731,28 @@ export default function AppChat({
     }
   };
 
+  const filterMessagesForModel = (messages: ChatMessageType[]) => {
+    // remove retrieval messages except the last one, and only keep the last 8 user messages
+
+    const lastRetrievalMessageIndex = messages
+      .map((m, i) => (m.role === "retrieval" ? i : -1))
+      .filter((i) => i !== -1)
+      .pop();
+
+    const eighthButLastUserMessageIndex =
+      messages
+        .map((m, i) => (m.role === "user" ? i : -1))
+        .filter((i) => i !== -1)
+        .reverse()[7] || 0;
+
+    const result = messages.filter(
+      (m, i) =>
+        i >= eighthButLastUserMessageIndex &&
+        (m.role !== "retrieval" || i === lastRetrievalMessageIndex)
+    );
+    return result;
+  };
+
   const runChatAssistant = async (m: ChatMessageType[]) => {
     const assistantMessage: ChatMessageType = {
       role: "assistant",
@@ -752,7 +774,7 @@ export default function AppChat({
     };
 
     const res = await runActionStreamed(owner, "chat-assistant", config, [
-      { messages: m, context },
+      { messages: filterMessagesForModel(m), context },
     ]);
     if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
