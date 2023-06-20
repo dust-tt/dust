@@ -342,8 +342,8 @@ impl Block for DataSource {
                 w_id.clone(),
                 ds.clone(),
                 top_k,
-                target_document_tokens,
                 filter.clone(),
+                target_document_tokens,
             ));
         }
 
