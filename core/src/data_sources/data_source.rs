@@ -919,7 +919,7 @@ impl DataSource {
                                             );
                                         } else {
                                             prepend.push_str(
-                                                &(parsed_results[counter].0.clone() + " "),
+                                                &(parsed_results[counter].0) + " "),
                                             );
                                         }
                                         counter += 1;
