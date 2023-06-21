@@ -305,7 +305,7 @@ export function ResultsView({
                 return (
                   <DocumentView
                     document={r}
-                    key={r.documentId}
+                    key={i}
                     query={query}
                     owner={owner}
                   />
@@ -374,7 +374,6 @@ export default function AppGens({
   const [retrievalLoading, setRetrievalLoading] = useState(false);
   const [retrieved, setRetrieved] = useState([]);
   const [dataSources, setDataSources] = useState(workspaceDataSources);
-  const [resultTexts, setResultTexts] = useState({}); // TODO: more efficient here
 
   const [generateLoading, setGenerateLoading] = useState<boolean>(false);
 
