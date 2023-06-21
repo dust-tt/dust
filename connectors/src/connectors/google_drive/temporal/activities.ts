@@ -623,16 +623,13 @@ export async function renewOneWebhook(webhookId: ModelId) {
         });
       }
     } catch (e) {
-      logger.error(
-        { error: e },
-        `Failed to renew webhook for ${wh.connectorId}`
-      );
+      logger.error({ error: e }, `Failed to renew webhook`);
       const tags = [
         `connector_id:${wh.connectorId}`,
         `workspaceId:${connector.workspaceId}`,
       ];
       statsDClient.increment(
-        "`google_drive_renew_webhook_errors.count",
+        "google_drive_renew_webhook_errors.count",
         1,
         tags
       );
