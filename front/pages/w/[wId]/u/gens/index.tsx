@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -167,9 +167,9 @@ export function DocumentView({
   owner: WorkspaceType;
 }) {
   const provider = providerFromDocument(document);
-  const [extractedText, setExtractedText] = useState<string>("");
-
-  useEffect(() => {
+  const [extractedText, setExtractedText] = useState("");
+  useMemo(() => {
+    setExtractedText("");
     const extractInput = [
       {
         query: query,
@@ -226,7 +226,7 @@ export function DocumentView({
           .catch((e) => console.log(e));
       })
       .catch((e) => console.log("Error during extract", e));
-  }, []);
+  }, [document]);
 
   return (
     <div className="flex flex-col">
@@ -382,6 +382,7 @@ export default function AppGens({
   const [dataSources, setDataSources] = useState(workspaceDataSources);
 
   const [generateLoading, setGenerateLoading] = useState<boolean>(false);
+  const [top_k, setTopK] = useState<number>(32);
 
   const getContext = () => {
     return {
@@ -521,6 +522,7 @@ export default function AppGens({
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-retrieval"].config
     );
+    config.DATASOURCE.top_k = top_k;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
       .map((ds) => {
@@ -544,6 +546,7 @@ export default function AppGens({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           setRetrieved(e.value.retrievals);
+          console.log("Search completed");
           setRetrievalLoading(false);
         }
       }
@@ -613,6 +616,12 @@ export default function AppGens({
                     </ActionButton>
                   </div>
                 </div>
+                <input
+                  type="number"
+                  value={top_k}
+                  placeholder="Top K"
+                  onChange={(e) => setTopK(Number(e.target.value))}
+                />
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">Query:</div>
                   <div className="flex flex-initial">{timRange}</div>
