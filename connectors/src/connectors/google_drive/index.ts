@@ -130,14 +130,30 @@ export async function cleanupGoogleDriveConnector(
   } catch (err) {
     if (!force) {
       throw err;
+    } else {
+      logger.error(
+        {
+          err,
+        },
+        "Error revoking token"
+      );
     }
   }
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID
   );
-  if (nangoRes.isErr() && !force) {
-    return nangoRes;
+  if (nangoRes.isErr()) {
+    if (!force) {
+      return nangoRes;
+    } else {
+      logger.error(
+        {
+          err: nangoRes.error,
+        },
+        "Error deleting connection from Nango"
+      );
+    }
   }
 
   await GoogleDriveFolders.destroy({
