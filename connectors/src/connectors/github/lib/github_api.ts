@@ -1,7 +1,6 @@
 import { createAppAuth } from "@octokit/auth-app";
 import { isLeft } from "fp-ts/lib/Either";
 import fs from "fs-extra";
-import { PathReporter } from "io-ts/lib/PathReporter";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 
@@ -273,10 +272,10 @@ export async function getRepoDiscussionsPage(
     GetRepoDiscussionsPayloadSchema.decode(d);
 
   if (isLeft(getRepoDiscussionsPayloadValidation)) {
-    const pathError = PathReporter.report(
-      getRepoDiscussionsPayloadValidation
-    ).join(", ");
-    throw new Error(`Unexpected payload: ${pathError}`);
+    const pathError = reporter.formatValidationErrors(
+      getRepoDiscussionsPayloadValidation.left
+    );
+    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
   }
 
   const payload = getRepoDiscussionsPayloadValidation.right;
