@@ -1,182 +1,131 @@
-export type GithubWebhookPayload = {
-  action: string;
-  installation: {
-    id: number;
-  };
-};
+import { isRight } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 
-export function isGithubWebhookPayload(
-  payload: unknown
-): payload is GithubWebhookPayload {
-  return (
-    !!(payload as GithubWebhookPayload).action &&
-    typeof (payload as GithubWebhookPayload).action === "string" &&
-    !!(payload as GithubWebhookPayload).installation &&
-    typeof (payload as GithubWebhookPayload).installation.id === "number"
-  );
-}
+export const GithubWebhookPayloadSchema = t.type({
+  action: t.string,
+  installation: t.type({
+    id: t.number,
+  }),
+});
 
-export type LightRepoType = {
-  id: number;
-  name: string;
-};
+const InstallationSchema = t.type({
+  id: t.number,
+  account: t.type({
+    login: t.string,
+  }),
+});
 
-export type WithInstallationAccountType = {
-  installation: {
-    id: number;
-    account: {
-      login: string;
-    };
-  };
-};
+const RepositorySchema = t.type({
+  id: t.number,
+  name: t.string,
+});
 
-export function isWithInstallationAccountType(
-  payload: unknown
-): payload is WithInstallationAccountType {
-  return (
-    !!(payload as WithInstallationAccountType).installation &&
-    typeof (payload as WithInstallationAccountType).installation.id ===
-      "number" &&
-    !!(payload as WithInstallationAccountType).installation.account &&
-    typeof (payload as WithInstallationAccountType).installation.account
-      .login === "string"
-  );
-}
-
-export type RepositoriesAddedPayload = {
-  action: "added";
-  repositories_added: LightRepoType[];
-} & WithInstallationAccountType;
-
+const RepositoriesAddedPayloadSchema = t.type({
+  action: t.literal("added"),
+  repositories_added: t.array(RepositorySchema),
+  installation: InstallationSchema,
+});
+type RepositoriesAddedPayload = t.TypeOf<typeof RepositoriesAddedPayloadSchema>;
 export function isRepositoriesAddedPayload(
   payload: unknown
 ): payload is RepositoriesAddedPayload {
-  return (
-    !!(payload as RepositoriesAddedPayload).repositories_added &&
-    (payload as RepositoriesAddedPayload).action === "added" &&
-    isWithInstallationAccountType(payload)
-  );
+  const validation = RepositoriesAddedPayloadSchema.decode(payload);
+  return isRight(validation);
 }
 
-export type RepositoriesRemovedPayload = {
-  action: "removed";
-  repositories_removed: LightRepoType[];
-} & WithInstallationAccountType;
-
+const RepositoriesRemovedPayloadSchema = t.type({
+  action: t.literal("removed"),
+  repositories_removed: t.array(RepositorySchema),
+  installation: InstallationSchema,
+});
+type RepositoriesRemovedPayload = t.TypeOf<
+  typeof RepositoriesRemovedPayloadSchema
+>;
 export function isRepositoriesRemovedPayload(
   payload: unknown
 ): payload is RepositoriesRemovedPayload {
-  return (
-    !!(payload as RepositoriesRemovedPayload).repositories_removed &&
-    (payload as RepositoriesRemovedPayload).action === "removed" &&
-    isWithInstallationAccountType(payload)
-  );
+  const validation = RepositoriesRemovedPayloadSchema.decode(payload);
+  return isRight(validation);
 }
 
-export type WithLightIssueType = {
-  issue: {
-    id: number;
-    number: number;
-  };
-};
+const IssueSchema = t.type({
+  id: t.number,
+  number: t.number,
+});
 
-export function isWithLightIssueType(
-  payload: unknown
-): payload is WithLightIssueType {
-  return (
-    !!(payload as WithLightIssueType).issue &&
-    typeof (payload as WithLightIssueType).issue.id === "number" &&
-    typeof (payload as WithLightIssueType).issue.number === "number"
-  );
-}
+const OrganizationSchema = t.type({
+  login: t.string,
+});
 
-export type WithLightOrganizationType = {
-  organization: {
-    login: string;
-  };
-};
-
-export function isWithLightOrganizationType(
-  payload: unknown
-): payload is WithLightOrganizationType {
-  return (
-    !!(payload as WithLightOrganizationType).organization &&
-    typeof (payload as WithLightOrganizationType).organization.login ===
-      "string"
-  );
-}
-
-export type WithLightRepositoryType = {
-  repository: {
-    id: number;
-    name: string;
-  };
-};
-
-export function isWithLightRepositoryType(
-  payload: unknown
-): payload is WithLightRepositoryType {
-  return (
-    !!(payload as WithLightRepositoryType).repository &&
-    typeof (payload as WithLightRepositoryType).repository.id === "number" &&
-    typeof (payload as WithLightRepositoryType).repository.name === "string"
-  );
-}
-
-export const issuePayloadActions = ["opened", "edited", "deleted"] as const;
-
-export type IssuePayload = {
-  action: (typeof issuePayloadActions)[number];
-} & WithLightIssueType &
-  WithLightOrganizationType &
-  WithLightRepositoryType;
-
+const IssuePayloadSchema = t.type({
+  action: t.union([
+    t.literal("opened"),
+    t.literal("edited"),
+    t.literal("deleted"),
+  ]),
+  issue: IssueSchema,
+  organization: OrganizationSchema,
+  repository: RepositorySchema,
+});
+type IssuePayload = t.TypeOf<typeof IssuePayloadSchema>;
 export function isIssuePayload(payload: unknown): payload is IssuePayload {
-  return (
-    !!(payload as IssuePayload).issue &&
-    issuePayloadActions.includes((payload as IssuePayload).action) &&
-    isWithLightIssueType(payload) &&
-    isWithLightOrganizationType(payload) &&
-    isWithLightRepositoryType(payload)
-  );
+  const validation = IssuePayloadSchema.decode(payload);
+  return isRight(validation);
 }
 
-export const commentPayloadActions = ["created", "edited", "deleted"] as const;
-
-export type CommentPayload = {
-  action: (typeof commentPayloadActions)[number];
-} & WithLightIssueType &
-  WithLightOrganizationType &
-  WithLightRepositoryType;
-
+const CommentPayloadSchema = t.type({
+  action: t.union([
+    t.literal("created"),
+    t.literal("edited"),
+    t.literal("deleted"),
+  ]),
+  issue: IssueSchema,
+  organization: OrganizationSchema,
+  repository: RepositorySchema,
+});
+type CommentPayload = t.TypeOf<typeof CommentPayloadSchema>;
 export function isCommentPayload(payload: unknown): payload is CommentPayload {
-  return (
-    commentPayloadActions.includes((payload as CommentPayload).action) &&
-    isWithLightIssueType(payload) &&
-    isWithLightOrganizationType(payload) &&
-    isWithLightRepositoryType(payload)
-  );
+  const validation = CommentPayloadSchema.decode(payload);
+  return isRight(validation);
 }
 
-export const pullRequestPayloadActions = ["opened", "edited"] as const;
+const PullRequestSchema = t.type({
+  id: t.number,
+  number: t.number,
+});
 
-export type PullRequestPayload = {
-  action: (typeof pullRequestPayloadActions)[number];
-  pull_request: { id: number; number: number };
-} & WithLightOrganizationType &
-  WithLightRepositoryType;
-
+const PullRequestPayloadSchema = t.type({
+  action: t.union([t.literal("opened"), t.literal("edited")]),
+  pull_request: PullRequestSchema,
+  organization: OrganizationSchema,
+  repository: RepositorySchema,
+});
+type PullRequestPayload = t.TypeOf<typeof PullRequestPayloadSchema>;
 export function isPullRequestPayload(
   payload: unknown
 ): payload is PullRequestPayload {
-  return (
-    pullRequestPayloadActions.includes(
-      (payload as PullRequestPayload).action
-    ) &&
-    !!(payload as PullRequestPayload).pull_request &&
-    typeof (payload as PullRequestPayload).pull_request.id === "number" &&
-    typeof (payload as PullRequestPayload).pull_request.number === "number" &&
-    isWithLightOrganizationType(payload) &&
-    isWithLightRepositoryType(payload)
-  );
+  const validation = PullRequestPayloadSchema.decode(payload);
+  return isRight(validation);
+}
+
+const DiscussionSchema = t.type({
+  number: t.number,
+});
+
+const DiscussionPayloadSchema = t.type({
+  action: t.union([
+    t.literal("created"),
+    t.literal("edited"),
+    t.literal("deleted"),
+  ]),
+  discussion: DiscussionSchema,
+  organization: OrganizationSchema,
+  repository: RepositorySchema,
+});
+type DiscussionPayload = t.TypeOf<typeof DiscussionPayloadSchema>;
+export function isDiscussionPayload(
+  payload: unknown
+): payload is DiscussionPayload {
+  const validation = DiscussionPayloadSchema.decode(payload);
+  return isRight(validation);
 }
