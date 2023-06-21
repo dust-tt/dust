@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -170,7 +170,7 @@ export function DocumentView({
   const [extractedText, setExtractedText] = useState<string>("");
 
   useEffect(() => {
-    let extractInput = [
+    const extractInput = [
       {
         query: query,
         result: document,
@@ -180,8 +180,8 @@ export function DocumentView({
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-extract"].config
     );
-    runActionStreamed(owner, "gens-extract", config, extractInput).then(
-      (res) => {
+    runActionStreamed(owner, "gens-extract", config, extractInput)
+      .then((res) => {
         if (res.isErr()) {
           console.log("ERROR", res.error);
           return;
@@ -206,20 +206,26 @@ export function DocumentView({
               }
             }
           }
-          eventStream.next().then(({ value, done }) => {
+          eventStream
+            .next()
+            .then(({ value, done }) => {
+              if (!done) {
+                handleEvent(value);
+              }
+            })
+            .catch((e) => console.log(e));
+        };
+
+        eventStream
+          .next()
+          .then(({ value, done }) => {
             if (!done) {
               handleEvent(value);
             }
-          });
-        };
-
-        eventStream.next().then(({ value, done }) => {
-          if (!done) {
-            handleEvent(value);
-          }
-        });
-      }
-    );
+          })
+          .catch((e) => console.log(e));
+      })
+      .catch((e) => console.log("Error during extract", e));
   }, []);
 
   return (
