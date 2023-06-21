@@ -378,6 +378,7 @@ export class GithubIssue extends Model<
 
   declare repoId: string;
   declare issueNumber: number;
+  declare isDiscussion: boolean | null;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -406,6 +407,10 @@ GithubIssue.init(
     issueNumber: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    isDiscussion: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
     },
   },
   {
