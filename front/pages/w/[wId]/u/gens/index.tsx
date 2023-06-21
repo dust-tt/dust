@@ -500,7 +500,6 @@ export default function AppGens({
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-retrieval"].config
     );
-    config.DATASOURCE.target_document_tokens = 3000;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
       .map((ds) => {
