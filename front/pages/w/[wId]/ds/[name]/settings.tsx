@@ -47,6 +47,7 @@ export const getServerSideProps: GetServerSideProps<{
     notionConnectorId: string;
     googleDriveConnectorId: string;
   };
+  githubAppUrl: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -102,6 +103,7 @@ export const getServerSideProps: GetServerSideProps<{
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
+      githubAppUrl: GITHUB_APP_URL,
     },
   };
 };
@@ -114,6 +116,7 @@ export default function DataSourceSettings({
   fetchConnectorError,
   gaTrackingId,
   nangoConfig,
+  githubAppUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId;
 
@@ -136,6 +139,7 @@ export default function DataSourceSettings({
             connector={connector || null}
             fetchConnectorError={fetchConnectorError || false}
             nangoConfig={nangoConfig}
+            githubAppUrl={githubAppUrl}
           />
         )}
       </div>
@@ -471,6 +475,7 @@ function ManagedDataSourceSettings({
   connector,
   fetchConnectorError,
   nangoConfig,
+  githubAppUrl,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -482,6 +487,7 @@ function ManagedDataSourceSettings({
     notionConnectorId: string;
     googleDriveConnectorId: string;
   };
+  githubAppUrl: string;
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
   if (!logo) {
@@ -498,6 +504,7 @@ function ManagedDataSourceSettings({
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
+      console.error("No connector");
       return;
     }
     const provider = connector.type;
@@ -516,7 +523,9 @@ function ManagedDataSourceSettings({
         setGoogleDrivePickerOpen(true);
       }
     } else if (provider === "github") {
-      await githubAuth(GITHUB_APP_URL);
+      await githubAuth(githubAppUrl).catch((e) => {
+        console.error(e);
+      });
     }
   };
 
