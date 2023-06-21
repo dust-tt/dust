@@ -118,6 +118,22 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "gens-rank": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "2a5aadf425",
+      appHash: "59b3692527763a970ee4282209e252a63615de7505e5c22bbfa33716add33667",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "text-davinci-003",
+        use_cache: false,
+        max_tokens: 1,
+        top_logprobs: 1,
+      }
+    }
+  }
 };
 
 export function cloneBaseConfig(config: { [model: string]: any }) {
