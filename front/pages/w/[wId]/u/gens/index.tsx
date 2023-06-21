@@ -164,7 +164,7 @@ export function DocumentView({
 }: {
   document: GensRetrievedDocumentType;
   query: string;
-  owner: any;
+  owner: WorkspaceType;
 }) {
   const provider = providerFromDocument(document);
   const [extractedText, setExtractedText] = useState<string>("");
