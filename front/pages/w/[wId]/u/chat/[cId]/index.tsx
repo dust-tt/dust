@@ -300,15 +300,11 @@ export function RetrievalsView({
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (
-      message.content &&
-      message.content.retrievals &&
-      message.content.retrievals.length > 0
-    ) {
+    if (message.retrievals && message.retrievals.length > 0) {
       const summary = {} as {
         [key: string]: { count: number; provider: string };
       };
-      message.content.retrievals.forEach((r: any) => {
+      message.retrievals.forEach((r: any) => {
         const provider = providerFromDocument(r);
         if (r.dataSourceId in summary) {
           summary[r.dataSourceId].count += 1;
@@ -321,13 +317,9 @@ export function RetrievalsView({
       });
       setSummary(summary);
     }
-  }, [message.content && message.content.retrievals]);
+  }, [message.retrievals]);
 
-  return !(
-    message.content &&
-    message.content.retrievals &&
-    message.content.retrievals.length === 0
-  ) ? (
+  return !(message.retrievals && message.retrievals.length === 0) ? (
     <div className="ml-10 flex flex-col">
       <div className="flex flex-row items-center">
         <div
@@ -338,59 +330,55 @@ export function RetrievalsView({
             isLatest ? "bg-orange-100" : "bg-gray-100"
           )}
         >
-          {message.content &&
-            message.content.retrievals &&
-            message.content.retrievals.length > 0 && (
-              <>
-                <div className="flex flex-initial">Retrieved</div>
-                {Object.keys(summary).map((k) => {
-                  return (
-                    <div
-                      key={k}
-                      className="flex flex-initial flex-row items-center"
-                    >
-                      <div className={classNames("mr-1 flex h-4 w-4")}>
-                        {summary[k].provider !== "none" ? (
-                          <img
-                            src={PROVIDER_LOGO_PATH[summary[k].provider]}
-                          ></img>
-                        ) : (
-                          <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
-                        )}
-                      </div>
-                      <div className="flex-initial text-gray-700">
-                        {summary[k].count}
-                      </div>
+          {message.retrievals && message.retrievals.length > 0 && (
+            <>
+              <div className="flex flex-initial">Retrieved</div>
+              {Object.keys(summary).map((k) => {
+                return (
+                  <div
+                    key={k}
+                    className="flex flex-initial flex-row items-center"
+                  >
+                    <div className={classNames("mr-1 flex h-4 w-4")}>
+                      {summary[k].provider !== "none" ? (
+                        <img
+                          src={PROVIDER_LOGO_PATH[summary[k].provider]}
+                        ></img>
+                      ) : (
+                        <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                      )}
                     </div>
-                  );
-                })}
-                <div className="flex flex-initial">
-                  {expanded ? (
-                    <ChevronDownIcon
-                      className="h-4 w-4 cursor-pointer"
-                      onClick={() => {
-                        setExpanded(false);
-                      }}
-                    />
-                  ) : (
-                    <ChevronRightIcon
-                      className="h-4 w-4 cursor-pointer"
-                      onClick={() => {
-                        setExpanded(true);
-                      }}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          {!(message.content && message.content.retrievals) && (
-            <div className="">Loading...</div>
+                    <div className="flex-initial text-gray-700">
+                      {summary[k].count}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex flex-initial">
+                {expanded ? (
+                  <ChevronDownIcon
+                    className="h-4 w-4 cursor-pointer"
+                    onClick={() => {
+                      setExpanded(false);
+                    }}
+                  />
+                ) : (
+                  <ChevronRightIcon
+                    className="h-4 w-4 cursor-pointer"
+                    onClick={() => {
+                      setExpanded(true);
+                    }}
+                  />
+                )}
+              </div>
+            </>
           )}
+          {!message.retrievals && <div className="">Loading...</div>}
         </div>
       </div>
-      {expanded && message.content && message.content.retrievals && (
+      {expanded && message.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {message.content.retrievals.map((r: any, i: number) => {
+          {message.retrievals.map((r: any, i: number) => {
             return <DocumentView document={r} key={i} />;
           })}
         </div>
@@ -439,11 +427,9 @@ export function MessageView({
   isLatestRetrieval: boolean;
   readOnly: boolean;
 }) {
-  if (message.role === "assistant" && message.function_call !== undefined)
-    return <></>;
   return (
     <div className="">
-      {message.role === "function" && message.name === "retrieve_documents" ? (
+      {message.role === "retrieval" ? (
         <div className="flex flex-row">
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
@@ -759,9 +745,8 @@ export default function AppChat({
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
             return {
-              role: "function",
-              name: "retrieve_documents",
-              content: { retrievals: e.value.retrievals },
+              role: "retrieval",
+              retrievals: e.value.retrievals,
             } as ChatMessageType;
           } else
             throw new Error("Error in chat retrieval execution: " + e.error);
@@ -898,16 +883,12 @@ export default function AppChat({
       const result = await runChatAssistant(m, retrievalMode);
       updateMessages(m, result);
       // has the model decided to run the retrieval function?
-      if (result?.function_call !== undefined) {
-        const functionCall = result.function_call;
-        const query = JSON.parse(functionCall.arguments).query;
-        if (functionCall.name !== "retrieve_documents") {
-          throw new Error(
-            "Unexpected or malformed function call by openai fns: " +
-              JSON.stringify(functionCall)
-          );
-        }
+      if (result?.role === "retrieval") {
+        // the query is stored in the "message" field for a retrieval role
+        const query = result.message;
         const retrievalResult = await runChatRetrieval(m, query);
+        // remove the loading message but save the query
+        retrievalResult.message = m.pop()?.message;
         updateMessages(m, retrievalResult);
         const secondResult = await runChatAssistant(m, "none");
         updateMessages(m, secondResult);
@@ -1054,8 +1035,7 @@ export default function AppChat({
                                   // }
                                   isLatestRetrieval={
                                     !(
-                                      response &&
-                                      response.name === "retrieve_documents"
+                                      response && response.role === "retrieval"
                                     ) &&
                                     (() => {
                                       for (
@@ -1063,10 +1043,7 @@ export default function AppChat({
                                         j >= 0;
                                         j--
                                       ) {
-                                        if (
-                                          messages[j].name ===
-                                          "retrieve_documents"
-                                        ) {
+                                        if (messages[j].role === "retrieval") {
                                           return i === j;
                                         }
                                       }
@@ -1086,7 +1063,7 @@ export default function AppChat({
                                 loading={true}
                                 // isLatest={true}
                                 isLatestRetrieval={
-                                  response.name === "retrieve_documents"
+                                  response.role === "retrieval"
                                 }
                                 readOnly={chatSession.readOnly}
                               />

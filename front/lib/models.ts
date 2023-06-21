@@ -720,7 +720,7 @@ export class ChatMessage extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare role: "user" | "retrieval" | "assistant" | "error" | "function";
+  declare role: "user" | "retrieval" | "assistant" | "error";
   declare message?: string;
   // `retrievals` are stored in a separate table
 

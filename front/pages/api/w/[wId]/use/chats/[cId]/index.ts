@@ -55,9 +55,6 @@ const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
       items: chatRetrievedDocumentSchema,
       nullable: true,
     },
-    content: { type: "object", nullable: true },
-    name: { type: "string", nullable: true },
-    function_call: { type: "string", nullable: true },
   },
   required: ["role"],
 };

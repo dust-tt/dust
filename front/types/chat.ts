@@ -13,11 +13,8 @@ export type ChatRetrievedDocumentType = {
 };
 
 export type ChatMessageType = {
-  role: "user" | "retrieval" | "assistant" | "error" | "function";
-  name?: string; // for `function` messages
-  function_call?: string; // for `function` messages
-  content?: any; // for `function` responses
-  message?: string; // for `user`, `assistant` and `error` messages
+  role: "user" | "retrieval" | "assistant" | "error";
+  message?: string; // for `user`, `assistant` and `error` messages, and `retrieval` messages storing a query
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
 };
 
