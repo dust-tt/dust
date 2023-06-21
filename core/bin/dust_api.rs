@@ -1591,9 +1591,26 @@ async fn main() -> Result<()> {
     let state = state.clone();
     tokio::task::spawn(async move { state.run_loop().await });
 
-    axum::Server::bind(&"[::]:3001".parse().unwrap())
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let srv = axum::Server::bind(&"[::]:3001".parse().unwrap())
         .serve(app.into_make_service())
-        .await?;
+        .with_graceful_shutdown(async {
+            rx.await.ok();
+        });
+
+    tokio::spawn(async move {
+        if let Err(e) = srv.await {
+            eprintln!("server error: {}", e);
+        }
+    });
+
+    // Wait for `ctrl+c` and stop the server
+    tokio::signal::ctrl_c().await.unwrap();
+    println!("Ctrl+C received, stopping server...");
+    let _ = tx.send(());
+
+    // Wait for another `ctrl+c` and exit
+    tokio::signal::ctrl_c().await.unwrap();
 
     Ok(())
 }
