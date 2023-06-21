@@ -233,8 +233,7 @@ export function DocumentView({
       <div className="flex flex-row items-center text-xs">
         <div
           className={classNames(
-            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5",
-            document.chunks.length > 0 ? "cursor-pointer" : ""
+            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5"
           )}
         >
           {document.score.toFixed(2)}
@@ -284,8 +283,8 @@ export function ResultsView({
   owner,
 }: {
   retrieved: GensRetrievedDocumentType[];
-  query: any;
-  owner: any;
+  query: string;
+  owner: WorkspaceType;
 }) {
   return (
     <div className="mt-5 w-full ">
@@ -293,12 +292,12 @@ export function ResultsView({
         <div
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
-            "rounded px-2 py-1",
+            "rounded py-1",
             "mt-2 text-xs font-bold text-gray-700"
           )}
         >
           {retrieved && retrieved.length > 0 && (
-            <p className="text-2xl">
+            <p className="mb-4 text-lg">
               Retrieved {retrieved.length} item
               {retrieved.length == 1 ? "" : "s"}
             </p>
@@ -375,11 +374,12 @@ export default function AppGens({
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const [queryLoading, setQueryLoading] = useState<boolean>(false);
-  const [timRange, setTimeRange] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<string | null>(null);
 
-  const [retrievalLoading, setRetrievalLoading] = useState(false);
-  const [retrieved, setRetrieved] = useState([]);
-  const [dataSources, setDataSources] = useState(workspaceDataSources);
+  const [retrievalLoading, setRetrievalLoading] = useState<boolean>(false);
+  const [retrieved, setRetrieved] = useState<GensRetrievedDocumentType[]>([]);
+  const [dataSources, setDataSources] =
+    useState<DataSource[]>(workspaceDataSources);
 
   const [generateLoading, setGenerateLoading] = useState<boolean>(false);
   const [top_k, setTopK] = useState<number>(32);
@@ -616,54 +616,64 @@ export default function AppGens({
                     </ActionButton>
                   </div>
                 </div>
-                <input
-                  type="number"
-                  value={top_k}
-                  placeholder="Top K"
-                  onChange={(e) => setTopK(Number(e.target.value))}
-                />
-                <div className="flex-rows flex space-x-2">
-                  <div className="flex flex-initial">Query:</div>
-                  <div className="flex flex-initial">{timRange}</div>
+                <div className="flex-rows flex space-x-2 text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">
+                    TimeRange:
+                  </div>
+                  <div className="flex flex-initial">{timeRange}</div>
                 </div>
-              </div>
+                <div className="flex-rows flex items-center space-x-2 text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">TopK:</div>
+                  <div className="flex flex-initial">
+                    <input
+                      type="number"
+                      className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                      value={top_k}
+                      placeholder="Top K"
+                      onChange={(e) => setTopK(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
 
-              <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
-                <div className="flex flex-initial text-gray-400">
-                  Data Sources:
-                </div>
-                <div className="flex flex-row">
-                  {dataSources.map((ds) => {
-                    return (
-                      <div
-                        key={ds.name}
-                        className="group ml-1 flex flex-initial"
-                      >
+                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">
+                    Data Sources:
+                  </div>
+                  <div className="ml-1 flex flex-row">
+                    {dataSources.map((ds) => {
+                      return (
                         <div
-                          className={classNames(
-                            "flex h-4 w-4 flex-initial cursor-pointer",
-                            ds.provider !== "none" ? "mr-1" : "",
-                            ds.selected ? "opacity-100" : "opacity-25"
-                          )}
-                          onClick={() => {
-                            handleSwitchDataSourceSelection(ds.name);
-                          }}
+                          key={ds.name}
+                          className="group ml-1 flex flex-initial"
                         >
-                          {ds.provider !== "none" ? (
-                            <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
-                          ) : (
-                            <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                          )}
+                          <div
+                            className={classNames(
+                              "z-10 flex h-4 w-4 flex-initial cursor-pointer",
+                              ds.provider !== "none" ? "mr-1" : "",
+                              ds.selected ? "opacity-100" : "opacity-25"
+                            )}
+                            onClick={() => {
+                              handleSwitchDataSourceSelection(ds.name);
+                            }}
+                          >
+                            {ds.provider !== "none" ? (
+                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
+                            ) : (
+                              <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                            )}
+                          </div>
+                          <div className="absolute z-0 hidden rounded group-hover:block">
+                            <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                              <span className="text-gray-600">
+                                <span className="font-semibold">{ds.name}</span>
+                                {ds.description ? ` ${ds.description}` : null}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="absolute bottom-16 hidden rounded border bg-white px-1 py-1 group-hover:block sm:bottom-10">
-                          <span className="text-gray-600">
-                            <span className="font-semibold">{ds.name}</span>
-                            {ds.description ? ` ${ds.description}` : null}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
