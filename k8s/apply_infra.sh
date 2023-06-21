@@ -61,6 +61,7 @@ echo "Applying backend configs"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
+kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
 
 echo "-----------------------------------"
 echo "Applying managed certificates"
