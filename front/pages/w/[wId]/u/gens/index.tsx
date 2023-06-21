@@ -367,7 +367,7 @@ export function ResultsView({
         <div
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
-            "rounded px-2 py-1",
+            "rounded py-1",
             "mt-2 text-xs font-bold text-gray-700"
           )}
         >
@@ -708,46 +708,46 @@ export default function AppGens({
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
-                <div className="flex flex-initial text-gray-400">
-                  Data Sources:
-                </div>
-                <div className="ml-1 flex flex-row">
-                  {dataSources.map((ds) => {
-                    return (
-                      <div
-                        key={ds.name}
-                        className="group ml-1 flex flex-initial"
-                      >
+                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">
+                    Data Sources:
+                  </div>
+                  <div className="ml-1 flex flex-row">
+                    {dataSources.map((ds) => {
+                      return (
                         <div
-                          className={classNames(
-                            "z-10 flex h-4 w-4 flex-initial cursor-pointer",
-                            ds.provider !== "none" ? "mr-1" : "",
-                            ds.selected ? "opacity-100" : "opacity-25"
-                          )}
-                          onClick={() => {
-                            handleSwitchDataSourceSelection(ds.name);
-                          }}
+                          key={ds.name}
+                          className="group ml-1 flex flex-initial"
                         >
-                          {ds.provider !== "none" ? (
-                            <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
-                          ) : (
-                            <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                          )}
-                        </div>
-                        <div className="absolute z-0 hidden rounded group-hover:block">
-                          <div className="relative bottom-8 border bg-white px-1 py-1 ">
-                            <span className="text-gray-600">
-                              <span className="font-semibold">{ds.name}</span>
-                              {ds.description ? ` ${ds.description}` : null}
-                            </span>
+                          <div
+                            className={classNames(
+                              "z-10 flex h-4 w-4 flex-initial cursor-pointer",
+                              ds.provider !== "none" ? "mr-1" : "",
+                              ds.selected ? "opacity-100" : "opacity-25"
+                            )}
+                            onClick={() => {
+                              handleSwitchDataSourceSelection(ds.name);
+                            }}
+                          >
+                            {ds.provider !== "none" ? (
+                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
+                            ) : (
+                              <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                            )}
+                          </div>
+                          <div className="absolute z-0 hidden rounded group-hover:block">
+                            <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                              <span className="text-gray-600">
+                                <span className="font-semibold">{ds.name}</span>
+                                {ds.description ? ` ${ds.description}` : null}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
