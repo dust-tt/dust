@@ -113,7 +113,7 @@ export const DustProdActionRegistry: {
     config: {
       DATASOURCE: {
         data_sources: [],
-        top_k: 8,
+        top_k: 32,
         filter: { tags: null, timestamp: null },
         use_cache: false,
       },
