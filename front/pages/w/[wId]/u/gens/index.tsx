@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { SetStateAction, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -339,22 +339,27 @@ export function DocumentView({
 
 export function ResultsView({
   retrieved,
-  setRetrieved,
   query,
   owner,
 }: {
   retrieved: GensRetrievedDocumentType[];
-  setRetrieved: React.Dispatch<SetStateAction<GensRetrievedDocumentType[]>>;
   query: string;
   owner: WorkspaceType;
 }) {
+  const [retrievedDocs, setRetrievedDocs] =
+    useState<GensRetrievedDocumentType[]>(retrieved);
+
+  useEffect(() => {
+    setRetrievedDocs(retrieved);
+  }, [retrieved]);
+
   const scores: { [key: string]: number } = {};
   const onScoreReady = (docId: string, score: number) => {
     scores[docId] = score;
-    const sorted = retrieved.concat().sort((a, b) => {
+    const sorted = retrievedDocs.concat().sort((a, b) => {
       return (scores[b.documentId] || 0) - (scores[a.documentId] || 0);
     });
-    setRetrieved(sorted);
+    setRetrievedDocs(sorted);
   };
   return (
     <div className="mt-5 w-full ">
@@ -366,28 +371,26 @@ export function ResultsView({
             "mt-2 text-xs font-bold text-gray-700"
           )}
         >
-          {retrieved && retrieved.length > 0 && (
-            <p className="text-2xl">
-              Retrieved {retrieved.length} item
-              {retrieved.length == 1 ? "" : "s"}
+          {retrievedDocs && retrievedDocs.length > 0 && (
+            <p className="mb-4 text-lg">
+              Retrieved {retrievedDocs.length} item
+              {retrievedDocs.length == 1 ? "" : "s"}
             </p>
           )}
-          {!retrieved && <div className="">Loading...</div>}
+          {!retrievedDocs && <div className="">Loading...</div>}
         </div>
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {retrieved.length
-            ? retrieved.map((r) => {
-                return (
-                  <DocumentView
-                    document={r}
-                    key={r.documentId}
-                    query={query}
-                    owner={owner}
-                    onScoreReady={onScoreReady}
-                  />
-                );
-              })
-            : ""}
+          {retrievedDocs.map((r) => {
+            return (
+              <DocumentView
+                document={r}
+                key={r.documentId}
+                query={query}
+                owner={owner}
+                onScoreReady={onScoreReady}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
@@ -445,11 +448,12 @@ export default function AppGens({
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const [queryLoading, setQueryLoading] = useState<boolean>(false);
-  const [timRange, setTimeRange] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<string | null>(null);
 
-  const [retrievalLoading, setRetrievalLoading] = useState(false);
+  const [retrievalLoading, setRetrievalLoading] = useState<boolean>(false);
   const [retrieved, setRetrieved] = useState<GensRetrievedDocumentType[]>([]);
-  const [dataSources, setDataSources] = useState(workspaceDataSources);
+  const [dataSources, setDataSources] =
+    useState<DataSource[]>(workspaceDataSources);
 
   const [generateLoading, setGenerateLoading] = useState<boolean>(false);
   const [top_k, setTopK] = useState<number>(32);
@@ -686,15 +690,23 @@ export default function AppGens({
                     </ActionButton>
                   </div>
                 </div>
-                <input
-                  type="number"
-                  value={top_k}
-                  placeholder="Top K"
-                  onChange={(e) => setTopK(Number(e.target.value))}
-                />
-                <div className="flex-rows flex space-x-2">
-                  <div className="flex flex-initial">Query:</div>
-                  <div className="flex flex-initial">{timRange}</div>
+                <div className="flex-rows flex space-x-2 text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">
+                    TimeRange:
+                  </div>
+                  <div className="flex flex-initial">{timeRange}</div>
+                </div>
+                <div className="flex-rows flex items-center space-x-2 text-xs font-normal">
+                  <div className="flex flex-initial text-gray-400">TopK:</div>
+                  <div className="flex flex-initial">
+                    <input
+                      type="number"
+                      className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                      value={top_k}
+                      placeholder="Top K"
+                      onChange={(e) => setTopK(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -702,7 +714,7 @@ export default function AppGens({
                 <div className="flex flex-initial text-gray-400">
                   Data Sources:
                 </div>
-                <div className="flex flex-row">
+                <div className="ml-1 flex flex-row">
                   {dataSources.map((ds) => {
                     return (
                       <div
@@ -711,7 +723,7 @@ export default function AppGens({
                       >
                         <div
                           className={classNames(
-                            "flex h-4 w-4 flex-initial cursor-pointer",
+                            "z-10 flex h-4 w-4 flex-initial cursor-pointer",
                             ds.provider !== "none" ? "mr-1" : "",
                             ds.selected ? "opacity-100" : "opacity-25"
                           )}
@@ -725,11 +737,13 @@ export default function AppGens({
                             <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
                           )}
                         </div>
-                        <div className="absolute bottom-16 hidden rounded border bg-white px-1 py-1 group-hover:block sm:bottom-10">
-                          <span className="text-gray-600">
-                            <span className="font-semibold">{ds.name}</span>
-                            {ds.description ? ` ${ds.description}` : null}
-                          </span>
+                        <div className="absolute z-0 hidden rounded group-hover:block">
+                          <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                            <span className="text-gray-600">
+                              <span className="font-semibold">{ds.name}</span>
+                              {ds.description ? ` ${ds.description}` : null}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -739,7 +753,6 @@ export default function AppGens({
 
               <ResultsView
                 retrieved={retrieved}
-                setRetrieved={setRetrieved}
                 query={genContent}
                 owner={owner}
               />
