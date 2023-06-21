@@ -1228,7 +1228,7 @@ export default function AppChat({
                           >
                             <div
                               className={classNames(
-                                "flex h-4 w-4 flex-initial cursor-pointer",
+                                "z-10 flex h-4 w-4 flex-initial cursor-pointer",
                                 ds.provider !== "none" ? "mr-1" : "",
                                 ds.selected ? "opacity-100" : "opacity-25"
                               )}
@@ -1244,11 +1244,15 @@ export default function AppChat({
                                 <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
                               )}
                             </div>
-                            <div className="absolute bottom-16 hidden rounded border bg-white px-1 py-1 group-hover:block sm:bottom-10">
-                              <span className="text-gray-600">
-                                <span className="font-semibold">{ds.name}</span>
-                                {ds.description ? ` ${ds.description}` : null}
-                              </span>
+                            <div className="absolute z-0 hidden rounded group-hover:block">
+                              <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                                <span className="text-gray-600">
+                                  <span className="font-semibold">
+                                    {ds.name}
+                                  </span>
+                                  {ds.description ? ` ${ds.description}` : null}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
