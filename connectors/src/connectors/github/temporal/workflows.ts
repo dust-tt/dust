@@ -21,6 +21,7 @@ const { githubSaveStartSyncActivity, githubSaveSuccessSyncActivity } =
 const {
   githubGetReposResultPageActivity,
   githubGetRepoIssuesResultPageActivity,
+  githubGetRepoDiscussionsResultPageActivity,
   githubIssueGarbageCollectActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
@@ -32,9 +33,10 @@ const { githubRepoGarbageCollectActivity } = proxyActivities<typeof activities>(
   }
 );
 
-const { githubUpsertIssueActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "60 minute",
-});
+const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "60 minute",
+  });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 3;
@@ -176,6 +178,37 @@ export async function githubRepoSyncWorkflow(
     }
   }
 
+  let nextCursor: string | null = null;
+  for (;;) {
+    const { cursor, discussionNumbers } =
+      await githubGetRepoDiscussionsResultPageActivity(
+        githubInstallationId,
+        repoName,
+        repoLogin,
+        nextCursor,
+        loggerArgs
+      );
+    for (const discussionNumber of discussionNumbers) {
+      promises.push(
+        queue.add(() =>
+          githubUpsertDiscussionActivity(
+            githubInstallationId,
+            repoName,
+            repoId,
+            repoLogin,
+            discussionNumber,
+            dataSourceConfig,
+            loggerArgs
+          )
+        )
+      );
+    }
+    if (!cursor) {
+      break;
+    }
+    nextCursor = cursor;
+  }
+
   await Promise.all(promises);
 }
 
@@ -219,6 +252,51 @@ export async function githubIssueSyncWorkflow(
       dataSourceConfig,
       { ...loggerArgs, debounceCount }
     );
+    await githubSaveSuccessSyncActivity(dataSourceConfig);
+  }
+}
+
+export async function githubDiscussionSyncWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  githubInstallationId: string,
+  repoName: string,
+  repoId: number,
+  repoLogin: string,
+  discussionNumber: number
+) {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    repoName,
+    repoLogin,
+    discussionNumber,
+  };
+
+  let signaled = false;
+  let debounceCount = 0;
+
+  setHandler(newWebhookSignal, () => {
+    signaled = true;
+  });
+
+  while (signaled) {
+    signaled = false;
+    await sleep(10000);
+    if (signaled) {
+      debounceCount += 1;
+      continue;
+    }
+    await githubUpsertDiscussionActivity(
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      discussionNumber,
+      dataSourceConfig,
+      { ...loggerArgs, debounceCount }
+    );
+
     await githubSaveSuccessSyncActivity(dataSourceConfig);
   }
 }

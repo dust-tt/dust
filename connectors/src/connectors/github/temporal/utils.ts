@@ -16,6 +16,14 @@ export function getIssueSyncWorkflowId(
   return `workflow-github-issue-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
 }
 
+export function getDiscussionSyncWorkflowId(
+  dataSourceInfo: DataSourceInfo,
+  repoId: number,
+  discussionNumber: number
+) {
+  return `workflow-github-discussion-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${discussionNumber}`;
+}
+
 export function getIssueGarbageCollectWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number,

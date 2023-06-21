@@ -7,11 +7,13 @@ import {
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
+  getDiscussionSyncWorkflowId,
   getFullSyncWorkflowId,
   getIssueSyncWorkflowId,
   getReposSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
+  githubDiscussionSyncWorkflow,
   githubFullSyncWorkflow,
   githubIssueGarbageCollectWorkflow,
   githubIssueSyncWorkflow,
@@ -134,6 +136,44 @@ export async function launchGithubIssueSyncWorkflow(
       repoId,
       repoLogin,
       issueNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+    signal: newWebhookSignal,
+    signalArgs: undefined,
+  });
+}
+
+export async function launchGithubDiscussionSyncWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  const workflowId = getDiscussionSyncWorkflowId(
+    dataSourceConfig,
+    repoId,
+    discussionNumber
+  );
+
+  await client.workflow.signalWithStart(githubDiscussionSyncWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      discussionNumber,
     ],
     taskQueue: QUEUE_NAME,
     workflowId,
