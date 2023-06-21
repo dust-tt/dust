@@ -109,13 +109,15 @@ export function useRuns(
   app: AppType,
   limit: number,
   offset: number,
-  runType: RunRunType
+  runType: RunRunType,
+  wIdTarget: string | null
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
-  const { data, error } = useSWR(
-    `/api/w/${owner.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`,
-    runsFetcher
-  );
+  let url = `/api/w/${owner.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
+  if (wIdTarget) {
+    url += `&wIdTarget=${wIdTarget}`;
+  }
+  const { data, error } = useSWR(url, runsFetcher);
 
   return {
     runs: data ? data.runs : [],

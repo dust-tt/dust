@@ -157,24 +157,6 @@ const titleFromDocument = (document: GensRetrievedDocumentType) => {
   return title;
 };
 
-export class FunctionSingleArgParser {
-  _textSoFar: string;
-  _inArg: boolean;
-  _functionCall: string;
-  _handler: (token: string) => void;
-
-  constructor(functionCall: string, handler: (token: string) => void) {
-    this._functionCall = functionCall;
-    this._textSoFar = "";
-    this._inArg = false;
-    this._handler = handler;
-  }
-
-  feed(token: string): void {
-    this._textSoFar += token;
-  }
-}
-
 export function DocumentView({
   document,
   query,
@@ -335,6 +317,43 @@ export function ResultsView({
     </div>
   );
 }
+
+export class FunctionSingleArgStreamer {
+  _textSoFar: string;
+  _curParsedPos: number;
+  _arg: string;
+  _handler: (token: string) => void;
+
+  constructor(arg: string, handler: (token: string) => void) {
+    this._arg = arg;
+    this._textSoFar = "";
+    this._curParsedPos = 0;
+    this._handler = handler;
+  }
+
+  feed(token: string): void {
+    this._textSoFar += token;
+
+    let str = this._textSoFar + '"}';
+    if (this._textSoFar.trimEnd().endsWith('"')) {
+      // If _textSoFar ends with a quote, we just add the } to the end.
+      str = this._textSoFar + "}";
+    }
+
+    try {
+      const obj = JSON.parse(str);
+      if (obj[this._arg]) {
+        const tokens = obj[this._arg].slice(this._curParsedPos);
+        this._curParsedPos = obj[this._arg].length;
+        // console.log("STREAM", tokens);
+        this._handler(tokens);
+      }
+    } catch (e) {
+      // Ignore and continue.
+    }
+  }
+}
+
 export default function AppGens({
   user,
   owner,
@@ -419,7 +438,7 @@ export default function AppGens({
       cursorPosition
     )}<CURSOR>${content.slice(cursorPosition)}`;
 
-    console.log(textWithCursor);
+    // console.log(textWithCursor);
 
     const inputs = [
       { text_with_cursor: textWithCursor, context: getContext() },
@@ -433,25 +452,22 @@ export default function AppGens({
     }
 
     const { eventStream } = res.value;
-    let tokensSoFar = "";
+
+    const p = new FunctionSingleArgStreamer("sentence", (tokens) => {
+      content = `${content.slice(0, cursorPosition)}${tokens}${content.slice(
+        cursorPosition
+      )}`;
+      cursorPosition += tokens.length;
+
+      setGenContent(content);
+      setGenCursorPosition(cursorPosition);
+    });
 
     for await (const event of eventStream) {
       if (event.type === "function_call_arguments_tokens") {
         const tokens = event.content.tokens.text;
-        console.log("FN TOKENS event", tokens);
-
-        if (tokensSoFar.includes('"sentence": ')) {
-          content = `${content.slice(
-            0,
-            cursorPosition
-          )}${tokens}${content.slice(cursorPosition)}`;
-          cursorPosition += tokens.length;
-
-          setGenContent(content);
-          setGenCursorPosition(cursorPosition);
-        }
-
-        tokensSoFar += tokens;
+        // console.log(tokens);
+        p.feed(tokens);
       }
       if (event.type === "error") {
         console.log("ERROR error event", event);

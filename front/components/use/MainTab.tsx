@@ -1,10 +1,5 @@
 import { Menu } from "@headlessui/react";
-import {
-  BellAlertIcon,
-  ChatBubbleLeftIcon,
-  MagnifyingGlassCircleIcon,
-  PencilSquareIcon,
-} from "@heroicons/react/24/outline";
+import { ChatBubbleLeftIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 
@@ -24,36 +19,6 @@ export default function MainTab({
       href: `/w/${owner.sId}/u/chat`,
       icon: (
         <ChatBubbleLeftIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
-      name: "Answers",
-      href: `/w/${owner.sId}/u/answers`,
-      icon: (
-        <MagnifyingGlassCircleIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
-      name: "Notes",
-      href: `/w/${owner.sId}/u/notes`,
-      icon: (
-        <PencilSquareIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
-      name: "Alerts",
-      href: `/w/${owner.sId}/u/alerts`,
-      icon: (
-        <BellAlertIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
