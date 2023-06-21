@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -161,13 +161,16 @@ export function DocumentView({
   document,
   query,
   owner,
+  onScoreReady,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
+  onScoreReady: (documentId: string, score: number) => void;
 }) {
   const provider = providerFromDocument(document);
   const [extractedText, setExtractedText] = useState("");
+  const [LLMScore, setLLMScore] = useState(0);
   useMemo(() => {
     setExtractedText("");
     const extractInput = [
@@ -177,10 +180,10 @@ export function DocumentView({
       },
     ];
 
-    const config = cloneBaseConfig(
+    const extract_config = cloneBaseConfig(
       DustProdActionRegistry["gens-extract"].config
     );
-    runActionStreamed(owner, "gens-extract", config, extractInput)
+    runActionStreamed(owner, "gens-extract", extract_config, extractInput)
       .then((res) => {
         if (res.isErr()) {
           console.log("ERROR", res.error);
@@ -226,6 +229,62 @@ export function DocumentView({
           .catch((e) => console.log(e));
       })
       .catch((e) => console.log("Error during extract", e));
+    const rank_config = cloneBaseConfig(
+      DustProdActionRegistry["gens-rank"].config
+    );
+    runActionStreamed(owner, "gens-rank", rank_config, extractInput)
+      .then((res) => {
+        if (res.isErr()) {
+          console.log("ERROR", res.error);
+          return;
+        }
+        const { eventStream } = res.value;
+
+        const handleEvent = (event: any) => {
+          if (event.type == "block_execution") {
+            const e = event.content.execution[0][0];
+            if (event.content.block_name === "MODEL") {
+              if (e.error) {
+                console.log("ERROR block_execution event", e.error);
+                return;
+              }
+              const top_logprobs = e.value.completion.top_logprobs;
+              const key = Object.keys(top_logprobs[0])[0];
+              let score;
+              if (key == "YES" || key == " YES") {
+                score = Math.exp(top_logprobs[0][key]);
+              } else if (key == "NO" || key == " NO") {
+                score = 1 - Math.exp(top_logprobs[0][key]);
+              } else {
+                score = 0;
+              }
+              setLLMScore(score);
+              onScoreReady(document.documentId, score);
+              return;
+            }
+          } else if (event.type == "error") {
+            console.log("ERROR during ranking", event);
+            return;
+          }
+          eventStream
+            .next()
+            .then(({ value, done }) => {
+              if (!done) {
+                handleEvent(value);
+              }
+            })
+            .catch((e) => console.log(e));
+        };
+        eventStream
+          .next()
+          .then(({ value, done }) => {
+            if (!done) {
+              handleEvent(value);
+            }
+          })
+          .catch((e) => console.log(e));
+      })
+      .catch((e) => console.log("Error during ranking", e));
   }, [document]);
 
   return (
@@ -233,10 +292,11 @@ export function DocumentView({
       <div className="flex flex-row items-center text-xs">
         <div
           className={classNames(
-            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5"
+            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5",
+            document.chunks.length > 0 ? "cursor-pointer" : ""
           )}
         >
-          {document.score.toFixed(2)}
+          {document.score.toFixed(2)} | {LLMScore.toFixed(2)}
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>
@@ -286,6 +346,21 @@ export function ResultsView({
   query: string;
   owner: WorkspaceType;
 }) {
+  const [retrievedDocs, setRetrievedDocs] =
+    useState<GensRetrievedDocumentType[]>(retrieved);
+
+  useEffect(() => {
+    setRetrievedDocs(retrieved);
+  }, [retrieved]);
+
+  const scores: { [key: string]: number } = {};
+  const onScoreReady = (docId: string, score: number) => {
+    scores[docId] = score;
+    const sorted = retrievedDocs.concat().sort((a, b) => {
+      return (scores[b.documentId] || 0) - (scores[a.documentId] || 0);
+    });
+    setRetrievedDocs(sorted);
+  };
   return (
     <div className="mt-5 w-full ">
       <div>
@@ -296,27 +371,26 @@ export function ResultsView({
             "mt-2 text-xs font-bold text-gray-700"
           )}
         >
-          {retrieved && retrieved.length > 0 && (
+          {retrievedDocs && retrievedDocs.length > 0 && (
             <p className="mb-4 text-lg">
-              Retrieved {retrieved.length} item
-              {retrieved.length == 1 ? "" : "s"}
+              Retrieved {retrievedDocs.length} item
+              {retrievedDocs.length == 1 ? "" : "s"}
             </p>
           )}
-          {!retrieved && <div className="">Loading...</div>}
+          {!retrievedDocs && <div className="">Loading...</div>}
         </div>
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {retrieved.length
-            ? retrieved.map((r, i) => {
-                return (
-                  <DocumentView
-                    document={r}
-                    key={i}
-                    query={query}
-                    owner={owner}
-                  />
-                );
-              })
-            : ""}
+          {retrievedDocs.map((r) => {
+            return (
+              <DocumentView
+                document={r}
+                key={r.documentId}
+                query={query}
+                owner={owner}
+                onScoreReady={onScoreReady}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
