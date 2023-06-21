@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -159,10 +159,74 @@ const titleFromDocument = (document: GensRetrievedDocumentType) => {
 
 export function DocumentView({
   document,
+  query,
+  owner,
 }: {
   document: GensRetrievedDocumentType;
+  query: string;
+  owner: WorkspaceType;
 }) {
   const provider = providerFromDocument(document);
+  const [extractedText, setExtractedText] = useState<string>("");
+
+  useEffect(() => {
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+      },
+    ];
+
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["gens-extract"].config
+    );
+    runActionStreamed(owner, "gens-extract", config, extractInput)
+      .then((res) => {
+        if (res.isErr()) {
+          console.log("ERROR", res.error);
+          return;
+        }
+
+        const { eventStream } = res.value;
+
+        const handleEvent = (event: any) => {
+          if (event.type === "tokens") {
+            setExtractedText((t) => t + event.content.tokens.text);
+          }
+          if (event.type === "error") {
+            console.log("ERROR error event", event);
+            return;
+          }
+          if (event.type === "block_execution") {
+            const e = event.content.execution[0][0];
+            if (event.content.block_name === "MODEL") {
+              if (e.error) {
+                console.log("ERROR block_execution event", e.error);
+                return;
+              }
+            }
+          }
+          eventStream
+            .next()
+            .then(({ value, done }) => {
+              if (!done) {
+                handleEvent(value);
+              }
+            })
+            .catch((e) => console.log(e));
+        };
+
+        eventStream
+          .next()
+          .then(({ value, done }) => {
+            if (!done) {
+              handleEvent(value);
+            }
+          })
+          .catch((e) => console.log(e));
+      })
+      .catch((e) => console.log("Error during extract", e));
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -198,19 +262,63 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
-        {document.chunks.map((chunk, i) => (
-          <div key={i} className="flex flex-initial">
-            <div className="ml-10 border-l-4 border-slate-400">
-              <p
-                className={classNames(
-                  "cursor-pointer pl-2 text-xs italic text-gray-500"
-                )}
-              >
-                {chunk.text}
-              </p>
-            </div>
+        <div className="flex flex-initial">
+          <div className="ml-10 border-l-4 border-slate-400">
+            <p
+              className={classNames(
+                "cursor-pointer pl-2 text-xs italic text-gray-500"
+              )}
+            >
+              {extractedText}
+            </p>
           </div>
-        ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ResultsView({
+  retrieved,
+  query,
+  owner,
+}: {
+  retrieved: GensRetrievedDocumentType[];
+  query: any;
+  owner: any;
+}) {
+  return (
+    <div className="mt-5 w-full ">
+      <div>
+        <div
+          className={classNames(
+            "flex flex-initial flex-row items-center space-x-2",
+            "rounded px-2 py-1",
+            "mt-2 text-xs font-bold text-gray-700"
+          )}
+        >
+          {retrieved && retrieved.length > 0 && (
+            <p className="text-2xl">
+              Retrieved {retrieved.length} item
+              {retrieved.length == 1 ? "" : "s"}
+            </p>
+          )}
+          {!retrieved && <div className="">Loading...</div>}
+        </div>
+        <div className="ml-4 mt-2 flex flex-col space-y-1">
+          {retrieved.length
+            ? retrieved.map((r, i) => {
+                return (
+                  <DocumentView
+                    document={r}
+                    key={i}
+                    query={query}
+                    owner={owner}
+                  />
+                );
+              })
+            : ""}
+        </div>
       </div>
     </div>
   );
@@ -435,12 +543,8 @@ export default function AppGens({
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
-          console.log(e.value);
           setRetrieved(e.value.retrievals);
           setRetrievalLoading(false);
-          if (!e.error) {
-            console.log("Search results", e.value);
-          }
         }
       }
     }
@@ -554,30 +658,11 @@ export default function AppGens({
                 </div>
               </div>
 
-              <div className="mt-5 w-full">
-                <div>
-                  <div
-                    className={classNames(
-                      "flex flex-initial flex-row items-center space-x-2",
-                      "rounded py-1",
-                      "mt-2 text-xs font-bold text-gray-700"
-                    )}
-                  >
-                    {retrieved && retrieved.length > 0 && (
-                      <p className="text-sm font-medium leading-8 text-gray-700">
-                        Retrieved {retrieved.length} item
-                        {retrieved.length == 1 ? "" : "s"}
-                      </p>
-                    )}
-                    {!retrieved && <div className="">Loading...</div>}
-                  </div>
-                  <div className="ml-4 mt-2 flex flex-col space-y-1">
-                    {retrieved.map((r, i) => {
-                      return <DocumentView document={r} key={i} />;
-                    })}
-                  </div>
-                </div>
-              </div>
+              <ResultsView
+                retrieved={retrieved}
+                query={genContent}
+                owner={owner}
+              />
             </div>
           </div>
         </div>
