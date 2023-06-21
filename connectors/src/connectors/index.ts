@@ -69,7 +69,8 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
 // Should cleanup any state/resources associated with the connector
 type ConnectorCleaner = (
   connectorId: string,
-  transaction: Transaction
+  transaction: Transaction,
+  force: boolean
 ) => Promise<Result<void, Error>>;
 
 export const CLEAN_CONNECTOR_BY_TYPE: Record<

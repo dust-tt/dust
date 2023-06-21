@@ -86,7 +86,8 @@ export async function createGoogleDriveConnector(
 
 export async function cleanupGoogleDriveConnector(
   connectorId: string,
-  transaction: Transaction
+  transaction: Transaction,
+  force = false
 ): Promise<Result<void, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -108,26 +109,34 @@ export async function cleanupGoogleDriveConnector(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET
   );
-  const credentials = await getGoogleCredentials(connector.connectionId);
+  try {
+    const credentials = await getGoogleCredentials(connector.connectionId);
 
-  const revokeTokenRes = await authClient.revokeToken(
-    credentials.credentials.refresh_token
-  );
-
-  if (revokeTokenRes.status !== 200) {
-    logger.error(
-      {
-        error: revokeTokenRes.data,
-      },
-      "Could not revoke token"
+    const revokeTokenRes = await authClient.revokeToken(
+      credentials.credentials.refresh_token
     );
-    return new Err(new Error("Could not revoke token"));
+
+    if (revokeTokenRes.status !== 200) {
+      logger.error(
+        {
+          error: revokeTokenRes.data,
+        },
+        "Could not revoke token"
+      );
+      if (!force) {
+        return new Err(new Error("Could not revoke token"));
+      }
+    }
+  } catch (err) {
+    if (!force) {
+      throw err;
+    }
   }
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID
   );
-  if (nangoRes.isErr()) {
+  if (nangoRes.isErr() && !force) {
     return nangoRes;
   }
 
