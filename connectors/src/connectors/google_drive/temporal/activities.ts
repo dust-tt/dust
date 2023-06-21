@@ -1,3 +1,4 @@
+import StatsD from "hot-shots";
 import PQueue from "p-queue";
 
 import {
@@ -16,7 +17,6 @@ import { Op } from "sequelize";
 
 import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive/parser";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { HTTPError } from "@connectors/lib/error";
 import {
   Connector,
   GoogleDriveFiles,
@@ -25,11 +25,14 @@ import {
   GoogleDriveWebhook,
   ModelId,
 } from "@connectors/lib/models";
+import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
 
 const FILES_SYNC_CONCURRENCY = 30;
 const FILES_GC_CONCURRENCY = 30;
+
+export const statsDClient = new StatsD();
 
 type NangoGetConnectionRes = {
   connection_id: string;
@@ -583,7 +586,7 @@ export async function garbageCollector(
 
   return files.length;
 }
-export async function renewWebhooks(pageSize: number) {
+export async function renewWebhooks(pageSize: number): Promise<number> {
   const webhooks = await GoogleDriveWebhook.findAll({
     where: {
       expiresAt: {
@@ -592,32 +595,52 @@ export async function renewWebhooks(pageSize: number) {
     },
     limit: pageSize,
   });
+
   for (const wh of webhooks) {
-    const connector = await Connector.findByPk(wh.connectorId);
-    if (connector) {
+    await renewOneWebhook(wh.id);
+  }
+
+  return webhooks.length;
+}
+
+export async function renewOneWebhook(webhookId: ModelId) {
+  const wh = await GoogleDriveWebhook.findByPk(webhookId);
+  if (!wh) {
+    throw new Error(`Webhook ${webhookId} not found`);
+  }
+
+  const connector = await Connector.findByPk(wh.connectorId);
+
+  if (connector) {
+    try {
       const webhookInfo = await registerWebhook(connector.connectionId);
       if (webhookInfo.isErr()) {
-        if (webhookInfo.error instanceof HTTPError) {
-          if (webhookInfo.error.statusCode === 401) {
-            // The user has revoked the access to the app.
-            // We don't have a way to handle that yet.
-            continue;
-          } else {
-            throw webhookInfo.error;
-          }
-        } else if (webhookInfo.error instanceof Error) {
-          throw webhookInfo.error;
-        }
+        throw webhookInfo.error;
       } else {
         await wh.update({
           webhookId: webhookInfo.value.id,
           expiresAt: new Date(webhookInfo.value.expirationTsMs),
         });
       }
+    } catch (e) {
+      logger.error(
+        { error: e },
+        `Failed to renew webhook for ${wh.connectorId}`
+      );
+      const tags = [
+        `connector_id:${wh.connectorId}`,
+        `workspaceId:${connector.workspaceId}`,
+      ];
+      statsDClient.increment(
+        "`google_drive_renew_webhook_errors.count",
+        1,
+        tags
+      );
+      await wh.update({
+        expiresAt: new Date(new Date().getTime() + 60 * 60 * 2 * 1000),
+      });
     }
   }
-
-  return webhooks.length;
 }
 export async function populateSyncTokens(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
