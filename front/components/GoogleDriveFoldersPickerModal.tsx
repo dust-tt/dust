@@ -28,7 +28,6 @@ export default function GoogleDriveFoldersPickerModal(props: {
         setFolders([]);
         return;
       }
-      console.log("loading folders ", new Date());
       setIsLoading(true);
       const foldersRes = await fetch(
         `/api/w/${props.owner.sId}/data_sources/google_drive/folders?connectorId=${props.connectorId}`,
