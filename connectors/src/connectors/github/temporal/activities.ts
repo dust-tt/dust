@@ -1,8 +1,12 @@
 import PQueue from "p-queue";
 
 import {
+  getDiscussion,
+  getDiscussionCommentRepliesPage,
+  getDiscussionCommentsPage,
   getIssue,
   getIssueCommentsPage,
+  getRepoDiscussionsPage,
   getRepoIssuesPage,
   getReposPage,
   GithubUser,
@@ -11,7 +15,11 @@ import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector, GithubIssue } from "@connectors/lib/models";
+import {
+  Connector,
+  GithubDiscussion,
+  GithubIssue,
+} from "@connectors/lib/models";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -113,7 +121,11 @@ export async function githubUpsertIssueActivity(
 
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
-  const tags = [`title:${issue.title}`, `isPullRequest:${issue.isPullRequest}`];
+  const tags = [
+    `title:${issue.title}`,
+    `isPullRequest:${issue.isPullRequest}`,
+    `lasUpdatedAt:${issue.updatedAt.getTime()}`,
+  ];
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
   }
@@ -136,7 +148,7 @@ export async function githubUpsertIssueActivity(
     },
   });
   if (!connector) {
-    throw new Error("Connector not found");
+    throw new Error(`Connector not found (installationId: ${installationId})`);
   }
 
   const existingIssueInDb = await GithubIssue.findOne({
@@ -155,6 +167,143 @@ export async function githubUpsertIssueActivity(
       connectorId: connector.id,
     });
   }
+}
+
+export async function githubUpsertDiscussionActivity(
+  installationId: string,
+  repoName: string,
+  repoId: number,
+  login: string,
+  discussionNumber: number,
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    discussionNumber,
+  });
+
+  localLogger.info("Upserting GitHub discussion.");
+
+  const discussion = await getDiscussion(
+    installationId,
+    repoName,
+    login,
+    discussionNumber
+  );
+
+  let renderedDiscussion = `# ${discussion.title}||\n${discussion.bodyText}||\n`;
+
+  let nextCursor: string | null = null;
+
+  for (;;) {
+    const { cursor, comments } = await getDiscussionCommentsPage(
+      installationId,
+      repoName,
+      login,
+      discussionNumber,
+      nextCursor
+    );
+
+    // Not parallelizing here. We can increase the number of concurrent issues/discussions
+    // that are processed when doing the full repo sync, so it's easier to assume
+    // a single job isn't doing more than 1 concurrent request.
+    for (const comment of comments) {
+      if (comment.isAnswer) {
+        renderedDiscussion += "[ACCEPTED ANSWER] ";
+      }
+      renderedDiscussion += `${comment.author.login}: ${comment.bodyText}||`;
+      let nextChildCursor: string | null = null;
+      for (;;) {
+        const { cursor: childCursor, comments: childComments } =
+          await getDiscussionCommentRepliesPage(
+            installationId,
+            comment.id,
+            nextChildCursor
+          );
+        for (const childComment of childComments) {
+          renderedDiscussion += `----${childComment.author.login}: ${childComment.bodyText}||`;
+        }
+
+        if (!childCursor) {
+          break;
+        }
+
+        nextChildCursor = childCursor;
+      }
+    }
+
+    if (!cursor) {
+      break;
+    }
+
+    nextCursor = cursor;
+  }
+
+  const documentId = getDiscussionDocumentId(
+    repoId.toString(),
+    discussionNumber
+  );
+  const tags = [
+    `title:${discussion.title}`,
+    `author:${discussion.author.login}`,
+    `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
+  ];
+
+  await upsertToDatasource(
+    dataSourceConfig,
+    documentId,
+    renderedDiscussion,
+    discussion.url,
+    new Date(discussion.createdAt).getTime(),
+    tags,
+    3,
+    500,
+    { ...loggerArgs, provider: "github" }
+  );
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Connector not found");
+  }
+
+  localLogger.info("Upserting GitHub discussion in DB.");
+  await GithubDiscussion.upsert({
+    repoId: repoId.toString(),
+    discussionNumber: discussionNumber,
+    connectorId: connector.id,
+  });
+}
+
+export async function githubGetRepoDiscussionsResultPageActivity(
+  installationId: string,
+  repoName: string,
+  login: string,
+  cursor: string | null,
+  loggerArgs: Record<string, string | number>
+): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    cursor,
+  });
+
+  localLogger.info("Fetching GitHub discussions result page.");
+
+  const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
+    installationId,
+    repoName,
+    login,
+    cursor
+  );
+
+  return {
+    cursor: nextCursor,
+    discussionNumbers: discussions.map((discussion) => discussion.number),
+  };
 }
 
 export async function githubSaveStartSyncActivity(
@@ -214,6 +363,22 @@ export async function githubIssueGarbageCollectActivity(
   );
 }
 
+export async function githubDiscussionGarbageCollectActivity(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  discussionNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  await deleteDiscussion(
+    dataSourceConfig,
+    installationId,
+    repoId,
+    discussionNumber,
+    loggerArgs
+  );
+}
+
 export async function githubRepoGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
   installationId: string,
@@ -254,6 +419,27 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  const discussionsInRepo = await GithubDiscussion.findAll({
+    where: {
+      repoId,
+      connectorId: connector.id,
+    },
+  });
+
+  for (const discussion of discussionsInRepo) {
+    promises.push(
+      queue.add(() =>
+        deleteDiscussion(
+          dataSourceConfig,
+          installationId,
+          repoId,
+          discussion.discussionNumber,
+          loggerArgs
+        )
+      )
+    );
+  }
+
   await Promise.all(promises);
 }
 
@@ -264,29 +450,93 @@ async function deleteIssue(
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
-  const localLogger = logger.child(loggerArgs);
+  const localLogger = logger.child({ ...loggerArgs, issueNumber });
 
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
     },
   });
-
   if (!connector) {
-    throw new Error("Connector not found");
+    throw new Error(`Connector not found (installationId: ${installationId})`);
   }
 
-  localLogger.info("Deleting GitHub issue from Dust Data Source.");
-  await deleteFromDataSource(
-    dataSourceConfig,
-    getIssueDocumentId(repoId, issueNumber)
+  const issueInDb = await GithubIssue.findOne({
+    where: {
+      repoId: repoId.toString(),
+      issueNumber,
+      connectorId: connector.id,
+    },
+  });
+  if (!issueInDb) {
+    throw new Error(
+      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    );
+  }
+
+  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  localLogger.info(
+    { documentId },
+    "Deleting GitHub issue from Dust Data Source."
   );
+  await deleteFromDataSource(dataSourceConfig, documentId);
 
   localLogger.info("Deleting GitHub issue from database.");
   await GithubIssue.destroy({
     where: {
       repoId: repoId.toString(),
       issueNumber,
+      connectorId: connector.id,
+    },
+  });
+}
+
+async function deleteDiscussion(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  discussionNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child({ ...loggerArgs, discussionNumber });
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (installationId: ${installationId})`);
+  }
+
+  const discussionInDb = await GithubDiscussion.findOne({
+    where: {
+      repoId: repoId.toString(),
+      discussionNumber,
+      connectorId: connector.id,
+    },
+  });
+  if (!discussionInDb) {
+    throw new Error(
+      `Discussion not found in DB (discussionNumber: ${discussionNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    );
+  }
+
+  const documentId = getDiscussionDocumentId(
+    repoId.toString(),
+    discussionNumber
+  );
+  localLogger.info(
+    { documentId },
+    "Deleting GitHub discussion from Dust Data Source."
+  );
+  await deleteFromDataSource(dataSourceConfig, documentId);
+
+  localLogger.info("Deleting GitHub discussion from database.");
+  await GithubDiscussion.destroy({
+    where: {
+      repoId: repoId.toString(),
+      discussionNumber: discussionNumber,
       connectorId: connector.id,
     },
   });
@@ -304,4 +554,11 @@ function renderGithubUser(user: GithubUser | null): string {
 
 function getIssueDocumentId(repoId: string, issueNumber: number): string {
   return `github-issue-${repoId}-${issueNumber}`;
+}
+
+function getDiscussionDocumentId(
+  repoId: string,
+  discussionNumber: number
+): string {
+  return `github-discussion-${repoId}-${discussionNumber}`;
 }

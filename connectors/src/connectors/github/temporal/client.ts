@@ -7,11 +7,17 @@ import {
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
+  getDiscussionGarbageCollectWorkflowId,
+  getDiscussionSyncWorkflowId,
   getFullSyncWorkflowId,
+  getIssueGarbageCollectWorkflowId,
   getIssueSyncWorkflowId,
+  getRepoGarbageCollectWorkflowId,
   getReposSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
+  githubDiscussionGarbageCollectWorkflow,
+  githubDiscussionSyncWorkflow,
   githubFullSyncWorkflow,
   githubIssueGarbageCollectWorkflow,
   githubIssueSyncWorkflow,
@@ -142,6 +148,45 @@ export async function launchGithubIssueSyncWorkflow(
   });
 }
 
+export async function launchGithubDiscussionSyncWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  const workflowId = getDiscussionSyncWorkflowId(
+    connectorId,
+    dataSourceConfig,
+    repoId,
+    discussionNumber
+  );
+
+  await client.workflow.signalWithStart(githubDiscussionSyncWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoName,
+      repoId,
+      repoLogin,
+      discussionNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+    signal: newWebhookSignal,
+    signalArgs: undefined,
+  });
+}
+
 export async function launchGithubIssueGarbageCollectWorkflow(
   connectorId: string,
   repoLogin: string,
@@ -167,7 +212,45 @@ export async function launchGithubIssueGarbageCollectWorkflow(
       issueNumber,
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, issueNumber),
+    workflowId: getIssueGarbageCollectWorkflowId(
+      dataSourceConfig,
+      repoId,
+      issueNumber
+    ),
+  });
+}
+
+export async function launchGithubDiscussionGarbageCollectWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubDiscussionGarbageCollectWorkflow, {
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      repoId.toString(),
+      discussionNumber,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getDiscussionGarbageCollectWorkflowId(
+      connectorId,
+      dataSourceConfig,
+      repoId,
+      discussionNumber
+    ),
   });
 }
 
@@ -190,6 +273,6 @@ export async function launchGithubRepoGarbageCollectWorkflow(
   await client.workflow.start(githubRepoGarbageCollectWorkflow, {
     args: [dataSourceConfig, githubInstallationId, repoId.toString()],
     taskQueue: QUEUE_NAME,
-    workflowId: getIssueSyncWorkflowId(dataSourceConfig, repoId, 0),
+    workflowId: getRepoGarbageCollectWorkflowId(dataSourceConfig, repoId),
   });
 }
