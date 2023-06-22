@@ -198,6 +198,9 @@ export async function githubUpsertDiscussionActivity(
       nextCursor
     );
 
+    // Not parallelizing here. We can increase the number of concurrent issues/discussions
+    // that are processed when doing the full repo sync, so it's easier to assume
+    // a single job isn't doing more than 1 concurrent request.
     for (const comment of comments) {
       renderedDiscussion += `${comment.author.login}: ${comment.bodyText}||`;
       let nextChildCursor: string | null = null;
