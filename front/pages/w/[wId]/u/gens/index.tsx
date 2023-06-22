@@ -162,11 +162,13 @@ export function DocumentView({
   query,
   owner,
   onScoreReady,
+  onExtractUpdate,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
   onScoreReady: (documentId: string, score: number) => void;
+  onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const provider = providerFromDocument(document);
   const [extractedText, setExtractedText] = useState("");
@@ -194,7 +196,12 @@ export function DocumentView({
 
         const handleEvent = (event: any) => {
           if (event.type === "tokens") {
-            setExtractedText((t) => t + event.content.tokens.text);
+            let currText = "";
+            setExtractedText((t) => {
+              currText = t + event.content.tokens.text;
+              return currText;
+            });
+            onExtractUpdate(document.documentId, currText);
           }
           if (event.type === "error") {
             console.log("ERROR error event", event);
@@ -341,10 +348,12 @@ export function ResultsView({
   retrieved,
   query,
   owner,
+  onExtractUpdate,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
+  onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const [retrievedDocs, setRetrievedDocs] =
     useState<GensRetrievedDocumentType[]>(retrieved);
@@ -388,6 +397,7 @@ export function ResultsView({
                 query={query}
                 owner={owner}
                 onScoreReady={onScoreReady}
+                onExtractUpdate={onExtractUpdate}
               />
             );
           })}
@@ -448,6 +458,9 @@ export default function AppGens({
   const [genLoading, setGenLoading] = useState<boolean>(false);
   const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
+    [documentId: string]: string;
+  }>({});
 
   const [queryLoading, setQueryLoading] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<string | null>(null);
@@ -456,7 +469,7 @@ export default function AppGens({
   const [retrieved, setRetrieved] = useState<GensRetrievedDocumentType[]>([]);
   const [dataSources, setDataSources] =
     useState<DataSource[]>(workspaceDataSources);
-  const [top_k, setTopK] = useState<number>(32);
+  const [top_k, setTopK] = useState<number>(16);
 
   const getContext = () => {
     return {
@@ -522,8 +535,14 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     const inputs = [
-      { text_with_cursor: textWithCursor, context: getContext() },
+      {
+        text_with_cursor: textWithCursor,
+        extracts: genDocumentExtracts,
+        context: getContext(),
+      },
     ];
+
+    console.log(JSON.stringify(genDocumentExtracts));
 
     const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
@@ -782,6 +801,14 @@ export default function AppGens({
                 retrieved={retrieved}
                 query={genContent}
                 owner={owner}
+                onExtractUpdate={(documentId, extract) => {
+                  setGenDocumentExtracts((c) => {
+                    return {
+                      ...c,
+                      [documentId]: extract,
+                    };
+                  });
+                }}
               />
             </div>
           </div>
