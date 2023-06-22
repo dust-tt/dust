@@ -74,13 +74,13 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "98a9f9bc61",
       appHash:
-        "8da67c4683214af5750918f476a5ba6ce5235154f7bc0f7883694313109bd711",
+        "f710b3a0107528e89c0b2dbf2e8bea352faa278251e466071f4295191f503919",
     },
     config: {
       MODEL: {
         provider_id: "openai",
         model_id: "gpt-4-0613",
-        function_call: "generate_sentence",
+        function_call: "generate_content_block",
         use_cache: false,
         use_stream: true,
       },

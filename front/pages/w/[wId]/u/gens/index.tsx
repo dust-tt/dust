@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
-import { ActionButton } from "@app/components/Button";
+import { ActionButton, HighlightButton } from "@app/components/Button";
 import MainTab from "@app/components/use/MainTab";
 import {
   cloneBaseConfig,
@@ -162,11 +162,13 @@ export function DocumentView({
   query,
   owner,
   onScoreReady,
+  onExtractUpdate,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
   onScoreReady: (documentId: string, score: number) => void;
+  onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const provider = providerFromDocument(document);
   const [extractedText, setExtractedText] = useState("");
@@ -194,7 +196,12 @@ export function DocumentView({
 
         const handleEvent = (event: any) => {
           if (event.type === "tokens") {
-            setExtractedText((t) => t + event.content.tokens.text);
+            let currText = "";
+            setExtractedText((t) => {
+              currText = t + event.content.tokens.text;
+              return currText;
+            });
+            onExtractUpdate(document.documentId, currText);
           }
           if (event.type === "error") {
             console.log("ERROR error event", event);
@@ -341,10 +348,12 @@ export function ResultsView({
   retrieved,
   query,
   owner,
+  onExtractUpdate,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
+  onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const [retrievedDocs, setRetrievedDocs] =
     useState<GensRetrievedDocumentType[]>(retrieved);
@@ -388,6 +397,7 @@ export function ResultsView({
                 query={query}
                 owner={owner}
                 onScoreReady={onScoreReady}
+                onExtractUpdate={onExtractUpdate}
               />
             );
           })}
@@ -445,7 +455,12 @@ export default function AppGens({
 
   const [genContent, setGenContent] = useState<string>("");
   const [genCursorPosition, setGenCursorPosition] = useState<number>(0);
+  const [genLoading, setGenLoading] = useState<boolean>(false);
+  const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
+    [documentId: string]: string;
+  }>({});
 
   const [queryLoading, setQueryLoading] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<string | null>(null);
@@ -454,9 +469,7 @@ export default function AppGens({
   const [retrieved, setRetrieved] = useState<GensRetrievedDocumentType[]>([]);
   const [dataSources, setDataSources] =
     useState<DataSource[]>(workspaceDataSources);
-
-  const [generateLoading, setGenerateLoading] = useState<boolean>(false);
-  const [top_k, setTopK] = useState<number>(32);
+  const [top_k, setTopK] = useState<number>(16);
 
   const getContext = () => {
     return {
@@ -503,7 +516,8 @@ export default function AppGens({
   };
 
   const handleGenerate = async () => {
-    setGenerateLoading(true);
+    setGenLoading(true);
+    genInterruptRef.current = false;
 
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-generate"].config
@@ -521,19 +535,25 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     const inputs = [
-      { text_with_cursor: textWithCursor, context: getContext() },
+      {
+        text_with_cursor: textWithCursor,
+        extracts: genDocumentExtracts,
+        context: getContext(),
+      },
     ];
+
+    console.log(JSON.stringify(genDocumentExtracts));
 
     const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
       console.log("ERROR", res.error);
-      setGenerateLoading(false);
+      setGenLoading(false);
       return;
     }
 
     const { eventStream } = res.value;
 
-    const p = new FunctionSingleArgStreamer("sentence", (tokens) => {
+    const p = new FunctionSingleArgStreamer("content", (tokens) => {
       content = `${content.slice(0, cursorPosition)}${tokens}${content.slice(
         cursorPosition
       )}`;
@@ -544,6 +564,14 @@ export default function AppGens({
     });
 
     for await (const event of eventStream) {
+      console.log("EVENT", event, genInterruptRef.current);
+      if (genInterruptRef.current) {
+        console.log("INTERRUPT");
+        void eventStream.return();
+        genInterruptRef.current = false;
+        break;
+      }
+
       if (event.type === "function_call_arguments_tokens") {
         const tokens = event.content.tokens.text;
         // console.log(tokens);
@@ -551,7 +579,8 @@ export default function AppGens({
       }
       if (event.type === "error") {
         console.log("ERROR error event", event);
-        setGenerateLoading(false);
+        setGenLoading(false);
+        genInterruptRef.current = false;
         return;
       }
       if (event.type === "block_execution") {
@@ -559,14 +588,16 @@ export default function AppGens({
         if (event.content.block_name === "MODEL") {
           if (e.error) {
             console.log("ERROR block_execution event", e.error);
-            setGenerateLoading(false);
+            setGenLoading(false);
+            genInterruptRef.current = false;
             return;
           }
         }
       }
     }
 
-    setGenerateLoading(false);
+    setGenLoading(false);
+    genInterruptRef.current = false;
   };
 
   const handleSwitchDataSourceSelection = (name: string) => {
@@ -681,13 +712,28 @@ export default function AppGens({
                   </div>
                   <div className="flex flex-initial">
                     <ActionButton
-                      disabled={generateLoading}
+                      disabled={genLoading}
                       onClick={() => {
                         void handleGenerate();
                       }}
                     >
-                      {generateLoading ? "Loading..." : "Generate"}
+                      {genLoading ? "Loading..." : "Generate"}
                     </ActionButton>
+                  </div>
+                  <div
+                    className={classNames(
+                      "flex flex-initial",
+                      genLoading ? "block" : "hidden"
+                    )}
+                  >
+                    <HighlightButton
+                      disabled={!genLoading || genInterruptRef.current}
+                      onClick={() => {
+                        genInterruptRef.current = true;
+                      }}
+                    >
+                      Interrupt
+                    </HighlightButton>
                   </div>
                 </div>
                 <div className="flex-rows flex space-x-2 text-xs font-normal">
@@ -755,6 +801,14 @@ export default function AppGens({
                 retrieved={retrieved}
                 query={genContent}
                 owner={owner}
+                onExtractUpdate={(documentId, extract) => {
+                  setGenDocumentExtracts((c) => {
+                    return {
+                      ...c,
+                      [documentId]: extract,
+                    };
+                  });
+                }}
               />
             </div>
           </div>
