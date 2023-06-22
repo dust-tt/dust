@@ -293,7 +293,7 @@ export function DocumentView({
               setLLMScore(score);
               setExplanation(
                 e.value.completion.text.substring(
-                  e.value.completion.text.indexOf("Explanation:"),
+                  e.value.completion.text.indexOf("Explanation:") + 13,
                   e.value.completion.text.length
                 )
               );
@@ -380,10 +380,10 @@ export function DocumentView({
           </span>
         </div>
       </div>
-      <div className="my-2 flex flex-col space-y-2">
-        <p className="text-black-500 bold pl-2 text-xs italic">{explanation}</p>
+      <div className="my-2 flex flex-col space-y-2 ml-4">
+        <p className="text-black-500 font-bold text-xs">{explanation}</p>
         <div className="flex flex-initial">
-          <div className="ml-10 border-l-4 border-slate-400">
+          <div className="border-l-4 border-slate-400">
             <p
               className={classNames(
                 "cursor-pointer pl-2 text-xs italic text-gray-500"
@@ -465,7 +465,7 @@ export function ResultsView({
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
-        <div className="ml-4 mt-2 flex flex-col space-y-1">
+        <div className="mt-2 flex flex-col space-y-1">
           {retrieved.map((r) => {
             return (
               <DocumentView
