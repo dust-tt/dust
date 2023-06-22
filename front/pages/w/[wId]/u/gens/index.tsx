@@ -293,7 +293,7 @@ export function DocumentView({
               setLLMScore(score);
               setExplanation(
                 e.value.completion.text.substring(
-                  e.value.completion.text.indexOf("Explanation:"),
+                  e.value.completion.text.indexOf("Explanation:") + 13,
                   e.value.completion.text.length
                 )
               );
@@ -335,7 +335,7 @@ export function DocumentView({
       <div className="flex flex-row items-center text-xs">
         <div
           className={classNames(
-            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5",
+            "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 pb-0.5 pt-1",
             document.chunks.length > 0 ? "cursor-pointer" : ""
           )}
           onClick={() => {
@@ -344,19 +344,16 @@ export function DocumentView({
             }
           }}
         >
-          <span className="text-base">
-            {LLMScore != 0.0 ? (
-              <>
-                {LLMScore.toFixed(2)}
-                <span className="pl-1 text-xs">
-                  {" "}
-                  {document.score.toFixed(2)}
-                </span>
-              </>
-            ) : (
-              document.score.toFixed(2)
-            )}
-          </span>
+          {LLMScore > 0 ? (
+            <span>
+              {LLMScore.toFixed(2)}{" "}
+              <span className="text-[0.6rem] text-gray-600">
+                {document.score.toFixed(2)}
+              </span>
+            </span>
+          ) : (
+            <span>{document.score.toFixed(2)}</span>
+          )}
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>
@@ -381,26 +378,22 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
-        <p className="text-black-500 bold pl-2 text-xs italic">{explanation}</p>
-        <div className="flex flex-initial">
-          <div className="ml-10 border-l-4 border-slate-400">
-            <p
-              className={classNames(
-                "cursor-pointer pl-2 text-xs italic text-gray-500"
-              )}
-            >
+        <p className="text-black-500 ml-3 text-xs font-bold">{explanation}</p>
+        <div className="ml-4 flex flex-initial">
+          <div className="border-l-4 border-slate-400">
+            <p className={classNames("pl-2 text-xs italic text-gray-500")}>
               {extractedText}
             </p>
           </div>
         </div>
       </div>
       {chunkExpanded && (
-        <div className="my-2 flex flex-col space-y-2">
-          <p>Chunks:</p>
+        <div className="mb-2 flex flex-col space-y-2">
+          <p className="ml-4 text-xs">Raw chunks:</p>
           {document.chunks.map((chunk, i) => (
             <div key={i} className="flex flex-initial">
               <div
-                className="ml-10 border-l-4 border-slate-400"
+                className="ml-8 border-l-4 border-slate-400"
                 onClick={() => {
                   expandedChunkId == i
                     ? setExpandedChunkId(null)
@@ -465,7 +458,7 @@ export function ResultsView({
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
-        <div className="ml-4 mt-2 flex flex-col space-y-1">
+        <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
             return (
               <DocumentView
