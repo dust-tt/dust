@@ -304,7 +304,7 @@ export function RetrievalsView({
       const summary = {} as {
         [key: string]: { count: number; provider: string };
       };
-      message.retrievals.forEach((r) => {
+      message.retrievals.forEach((r: ChatRetrievedDocumentType) => {
         const provider = providerFromDocument(r);
         if (r.dataSourceId in summary) {
           summary[r.dataSourceId].count += 1;
@@ -378,13 +378,40 @@ export function RetrievalsView({
       </div>
       {expanded && message.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {message.retrievals.map((r, i) => {
+          {message.retrievals.map((r: ChatRetrievedDocumentType, i: number) => {
             return <DocumentView document={r} key={i} />;
           })}
         </div>
       )}
     </div>
   ) : null;
+}
+
+function formatMessageWithLinks(message: string): JSX.Element {
+  /* Format message by replacing markdown links with <Link/> elements*/
+  const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+  const matches = message.matchAll(linkRegex);
+  let lastIndex = 0;
+  const elements = [];
+  for (const match of matches) {
+    const [fullMatch, text, url] = match;
+    elements.push(message.slice(lastIndex, match.index));
+    elements.push(
+      <Link href={url} key={fullMatch}>
+        <span className="text-blue-600 hover:underline">{text}</span>
+      </Link>
+    );
+    lastIndex =
+      match.index !== undefined ? match.index + fullMatch.length : lastIndex;
+  }
+  elements.push(message.slice(lastIndex));
+  return (
+    <span>
+      {elements.map((e, i) => {
+        return <span key={i}>{e}</span>;
+      })}
+    </span>
+  );
 }
 
 export function MessageView({
@@ -438,7 +465,7 @@ export function MessageView({
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
-            {message.message}
+            {formatMessageWithLinks(message.message || "")}
           </div>
         </div>
       )}
@@ -496,11 +523,12 @@ const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/follow-up",
     description:
-      "Follow-up with the assistant without performing a document retrieval",
+      "Forces the assistant to answer *whithout* querying the data sources",
   },
   {
     cmd: "/retrieve",
-    description: "Perform a document retrieval without querying the assistant",
+    description:
+      "Forces the assistant to query the data sources before answering",
   },
 ];
 
@@ -680,11 +708,6 @@ export default function AppChat({
   };
 
   const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
-    const retrievalMessage: ChatMessageType = {
-      role: "retrieval",
-    };
-    setResponse(retrievalMessage);
-
     const config = cloneBaseConfig(
       DustProdActionRegistry["chat-retrieval"].config
     );
@@ -721,17 +744,21 @@ export default function AppChat({
           throw new Error(e.error);
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
+            return {
+              role: "retrieval",
+              retrievals: e.value.retrievals,
+            } as ChatMessageType;
           } else
             throw new Error("Error in chat retrieval execution: " + e.error);
         }
       }
     }
+    throw new Error("Error: no OUTPUT block streamed.");
   };
 
-  const filterMessagesForModel = (messages: ChatMessageType[]) => {
+  const filterMessagesForModel = (
+    messages: ChatMessageType[]
+  ): ChatMessageType[] => {
     // remove retrieval messages except the last one, and only keep the last 8 user messages
 
     const lastRetrievalMessageIndex = messages
@@ -753,7 +780,10 @@ export default function AppChat({
     return result;
   };
 
-  const runChatAssistant = async (m: ChatMessageType[]) => {
+  const runChatAssistant = async (
+    m: ChatMessageType[],
+    retrievalMode: string
+  ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
       role: "assistant",
       message: "",
@@ -761,9 +791,9 @@ export default function AppChat({
     setResponse(assistantMessage);
 
     const config = cloneBaseConfig(
-      DustProdActionRegistry["chat-assistant"].config
+      DustProdActionRegistry["chat-assistant-wfn"].config
     );
-
+    config.MODEL.function_call = retrievalMode;
     const context = {
       user: {
         username: user?.username,
@@ -773,13 +803,12 @@ export default function AppChat({
       date_today: new Date().toISOString().split("T")[0],
     };
 
-    const res = await runActionStreamed(owner, "chat-assistant", config, [
+    const res = await runActionStreamed(owner, "chat-assistant-wfn", config, [
       { messages: filterMessagesForModel(m), context },
     ]);
     if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
     for await (const event of eventStream) {
-      // console.log("EVENT", event);
       if (event.type === "tokens") {
         const message = assistantMessage.message + event.content.tokens.text;
         setResponse({ ...assistantMessage, message: message });
@@ -788,17 +817,91 @@ export default function AppChat({
       if (event.type === "error") throw new Error(event.content.message);
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
-        if (event.content.block_name === "MODEL" && e.error)
+        if (event.content.block_name === "MODEL" && e.error) {
           throw new Error(e.error);
+        }
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            m.push(e.value);
-            setMessages(m);
-            setResponse(null);
-          } else
+            return e.value;
+          } else {
             throw new Error("Error in chat assistant execution: " + e.error);
+          }
         }
       }
+    }
+    throw new Error("Error: no OUTPUT block streamed.");
+  };
+  const updateMessages = (
+    messages: ChatMessageType[],
+    userMessage: ChatMessageType
+  ): void => {
+    messages.push(userMessage);
+    setMessages(messages);
+    setResponse(null);
+  };
+
+  function filterErrorMessages(m: ChatMessageType[]): void {
+    // remove last message if it's an error, and the previous messages until the
+    // last user message, included
+    if (m.length === 0 || m[m.length - 1].role !== "error") return;
+    while (m.pop()?.role !== "user" && m.length > 0);
+  }
+
+  const handleSubmit = async () => {
+    /* Document retrieval is handled by an openai function called
+     * "retrieve_documents". This function is speced for the openai api in the
+     * dust app "chat-assistant-wfn". By default, the chat model decides
+     * whether to run the retrieval function or not. The user can override this
+     * by prepending the message with "/retrieve" or "/follow-up" which will
+     * either force or prevent the model from generating a function call. This
+     * behaviour is stored in `retrievalMode`*/
+    let retrievalMode = "auto";
+    let processedInput = input;
+
+    if (input.startsWith("/retrieve")) {
+      retrievalMode = "retrieve_documents";
+      processedInput = input.substring("/retrieve".length).trim();
+    }
+    if (input.startsWith("/follow-up")) {
+      retrievalMode = "none";
+      processedInput = input.substring("/follow-up".length).trim();
+    }
+
+    // clone messages add new message to the end
+    const m = [...messages];
+    // error messages and messages that caused them are removed from the conversation
+    // to avoid the assistant to get confused. They are not persisted in the database,
+    // since that happens only later on after successful run of the assistant.
+    filterErrorMessages(m);
+    const userMessage: ChatMessageType = {
+      role: "user",
+      message: processedInput,
+    };
+
+    updateMessages(m, userMessage);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const result = await runChatAssistant(m, retrievalMode);
+      updateMessages(m, result);
+      // has the model decided to run the retrieval function?
+      if (result?.role === "retrieval") {
+        const query = result.query as string;
+        const retrievalResult = await runChatRetrieval(m, query);
+        // replace the retrieval message with the result of the retrieval
+        // as a consequence, the query is not stored in the database
+        m.pop();
+        updateMessages(m, retrievalResult);
+        const secondResult = await runChatAssistant(m, "none");
+        updateMessages(m, secondResult);
+      }
+    } catch (e: any) {
+      console.log("ERROR", e.message);
+      updateMessages(m, {
+        role: "error",
+        message: e.message,
+      } as ChatMessageType);
     }
 
     // Update title and save the conversation.
@@ -811,60 +914,6 @@ export default function AppChat({
         setTitleState("saved");
       }
     })();
-  };
-
-  function filterErrorMessages(m: ChatMessageType[]) {
-    // remove last message if it's an error, and the previous messages until the
-    // last user message, included
-    if (m.length === 0 || m[m.length - 1].role !== "error") return;
-    while (m.pop()?.role !== "user" && m.length > 0);
-  }
-
-  const handleSubmit = async () => {
-    let runRetrieval = true;
-    let runAssistant = true;
-    let processedInput = input;
-
-    if (input.startsWith("/retrieve")) {
-      runAssistant = false;
-      runRetrieval = true;
-      processedInput = input.substring("/retrieve".length).trim();
-    }
-    if (input.startsWith("/follow-up")) {
-      runRetrieval = false;
-      processedInput = input.substring("/follow-up".length).trim();
-    }
-
-    // clone messages add new message to the end
-    const m = [...messages];
-    // error messages and messages that caused them are removed from the conversation
-    // to avoid the assistant to get confused. They are not persisted in the database,
-    // since that happens only later on after successful run of the assistant.
-    filterErrorMessages(m);
-    const userMessage: ChatMessageType = {
-      role: "user",
-      runRetrieval,
-      runAssistant,
-      message: processedInput,
-    };
-    m.push(userMessage);
-    setMessages(m);
-    setInput("");
-    setLoading(true);
-
-    try {
-      if (runRetrieval) await runChatRetrieval(m, processedInput);
-      if (runAssistant) await runChatAssistant(m);
-    } catch (e: any) {
-      console.log("ERROR", e.message);
-      m.push({
-        role: "error",
-        message: e.message,
-      } as ChatMessageType);
-      setMessages(m);
-      setResponse(null);
-    }
-
     setLoading(false);
   };
 

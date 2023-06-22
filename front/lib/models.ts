@@ -721,8 +721,6 @@ export class ChatMessage extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare role: "user" | "retrieval" | "assistant" | "error";
-  declare runRetrieval?: boolean;
-  declare runAssistant?: boolean;
   declare message?: string;
   // `retrievals` are stored in a separate table
 
@@ -749,14 +747,6 @@ ChatMessage.init(
     role: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    runRetrieval: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-    },
-    runAssistant: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
     },
     message: {
       type: DataTypes.TEXT,

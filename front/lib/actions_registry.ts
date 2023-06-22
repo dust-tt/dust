@@ -15,7 +15,7 @@ export const DustProdActionRegistry: {
     config: {
       DATASOURCE: {
         data_sources: [],
-        top_k: 8,
+        top_k: 32,
         filter: { tags: null, timestamp: null },
         use_cache: false,
       },
@@ -32,6 +32,23 @@ export const DustProdActionRegistry: {
       MODEL: {
         provider_id: "openai",
         model_id: "gpt-3.5-turbo",
+        use_cache: true,
+        use_stream: true,
+      },
+    },
+  },
+  "chat-assistant-wfn": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "0052be4be7",
+      appHash:
+        "403342886b5b588530bcd82ba264765329a1f599313d54bd50c62d3c8766b735",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-16k-0613",
+        function_call: "auto",
         use_cache: true,
         use_stream: true,
       },

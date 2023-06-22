@@ -49,14 +49,13 @@ const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   type: "object",
   properties: {
     role: { type: "string" },
-    runRetrieval: { type: "boolean", nullable: true },
-    runAssistant: { type: "boolean", nullable: true },
     message: { type: "string", nullable: true },
     retrievals: {
       type: "array",
       items: chatRetrievedDocumentSchema,
       nullable: true,
     },
+    query: { type: "string", nullable: true },
   },
   required: ["role"],
 };
