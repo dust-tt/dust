@@ -1,3 +1,4 @@
+import { GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
 
@@ -437,18 +438,20 @@ export async function incrementalSync(
   const oauth2client = await getAuthObject(nangoConnectionId);
   const driveClient = await getDriveClient(oauth2client);
   logger.info(`Starting incremental sync.`);
-  let nextPageToken: string | undefined = undefined;
+  let nextPageToken: string | undefined = lastSyncToken;
   let changeCount = 0;
   do {
     logger.info(`Querying for changes.`);
-    const changesRes = await driveClient.changes.list({
-      driveId: driveId,
-      pageToken: lastSyncToken,
-      pageSize: 100,
-      fields: "*",
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
+    const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
+      await driveClient.changes.list({
+        driveId: driveId,
+        pageToken: nextPageToken,
+        pageSize: 100,
+        fields: "*",
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      });
+
     logger.info(
       {
         nextPageToken,
