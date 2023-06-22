@@ -174,7 +174,7 @@ export function DocumentView({
 
   const [extractedText, setExtractedText] = useState("");
   const [explanation, setExplanation] = useState("");
-  const [LLMScore, setLLMScore] = useState(0);
+  const [LLMScore, setLLMScore] = useState<number | null>(null);
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
@@ -344,7 +344,7 @@ export function DocumentView({
             }
           }}
         >
-          {LLMScore > 0 ? (
+          {LLMScore !== null ? (
             <span>
               {LLMScore.toFixed(2)}{" "}
               <span className="text-[0.6rem] text-gray-600">
@@ -422,24 +422,14 @@ export function ResultsView({
   query,
   owner,
   onExtractUpdate,
-  onRetrievalChange,
+  onScoreReady,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
   onExtractUpdate: (documentId: string, extract: string) => void;
-  onRetrievalChange: (retrieved: GensRetrievedDocumentType[]) => void;
+  onScoreReady: (documentId: string, score: number) => void;
 }) {
-  const onScoreReady = (docId: string, score: number) => {
-    const newRetrieved = [...retrieved];
-    // TODO: make this more efficient by just moving that doc around
-    newRetrieved.filter((d) => d.documentId == docId)[0].l_score = score;
-    newRetrieved.sort((a, b) => {
-      return (b.l_score || 0) - a.l_score || 0;
-    });
-    onRetrievalChange(newRetrieved);
-  };
-
   return (
     <div className="mt-5 w-full ">
       <div>
@@ -550,6 +540,18 @@ export default function AppGens({
       workspace: owner.name,
       date_today: new Date().toISOString().split("T")[0],
     };
+  };
+
+  const onScoreReady = (docId: string, score: number) => {
+    setRetrieved((r) => {
+      const retrieved = [...r];
+      // TODO: make this more efficient by just moving that doc around
+      retrieved.filter((d) => d.documentId == docId)[0].llm_score = score;
+      retrieved.sort((a, b) => {
+        return (b.llm_score || 0) - a.llm_score || 0;
+      });
+      return retrieved;
+    });
   };
 
   const handleGenChange = (value: string) => {
@@ -877,7 +879,7 @@ export default function AppGens({
                     };
                   });
                 }}
-                onRetrievalChange={(r) => setRetrieved(r)}
+                onScoreReady={onScoreReady}
               />
             </div>
           </div>
