@@ -23,6 +23,7 @@ export const withLogging = (handler: any) => {
           error: err,
           // @ts-expect-error we can't really know what the error is
           error_stack: err?.stack,
+          headers: req.headers,
         },
         "Unhandled API Error"
       );
