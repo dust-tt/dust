@@ -182,7 +182,7 @@ export function DocumentView({
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
     setExtractedText("");
-    console.log("Processing");
+
     const extractInput = [
       {
         query: query,
@@ -193,7 +193,7 @@ export function DocumentView({
     const extract_config = cloneBaseConfig(
       DustProdActionRegistry["gens-extract"].config
     );
-    console.log("Pre-extract");
+
     runActionStreamed(owner, "gens-extract", extract_config, extractInput)
       .then((res) => {
         console.log("Extracting");
@@ -264,6 +264,7 @@ export function DocumentView({
         result: document,
       },
     ];
+
     runActionStreamed(owner, "gens-rank", rank_config, extractInput)
       .then((res) => {
         if (res.isErr()) {
@@ -519,7 +520,10 @@ export default function AppGens({
   const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
-    [documentId: string]: string;
+    [documentId: string]: {
+      extract: string;
+      score: number | null;
+    };
   }>({});
 
   const [queryLoading, setQueryLoading] = useState<boolean>(false);
@@ -542,15 +546,45 @@ export default function AppGens({
     };
   };
 
-  const onScoreReady = (docId: string, score: number) => {
+  const onExtractUpdate = (documentId: string, extract: string) => {
+    setGenDocumentExtracts((c) => {
+      let score = null;
+      if (documentId in c) {
+        score = c[documentId].score;
+      }
+      return {
+        ...c,
+        [documentId]: {
+          extract,
+          score,
+        },
+      };
+    });
+  };
+
+  const onScoreReady = (documentId: string, score: number) => {
     setRetrieved((r) => {
       const retrieved = [...r];
       // TODO: make this more efficient by just moving that doc around
-      retrieved.filter((d) => d.documentId == docId)[0].llm_score = score;
+      retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
       retrieved.sort((a, b) => {
         return (b.llm_score || 0) - a.llm_score || 0;
       });
       return retrieved;
+    });
+
+    setGenDocumentExtracts((c) => {
+      let extract = "";
+      if (documentId in c) {
+        extract = c[documentId].extract;
+      }
+      return {
+        ...c,
+        [documentId]: {
+          extract,
+          score,
+        },
+      };
     });
   };
 
@@ -605,10 +639,32 @@ export default function AppGens({
 
     // console.log(textWithCursor);
 
+    // turn genDocumentExtracts into an array of extracts ordered by score
+    const extracts = Object.entries(genDocumentExtracts)
+      .map(([documentId, { extract, score }]) => {
+        return {
+          documentId,
+          extract,
+          score: score || 0,
+        };
+      })
+      .sort((a, b) => {
+        return (a.score || 0) - (b.score || 0);
+      })
+      .map((e) => {
+        return {
+          documentId: e.documentId,
+          extract: e.extract,
+          score: e.score.toFixed(2),
+        };
+      });
+
+    console.log(JSON.stringify(extracts));
+
     const inputs = [
       {
         text_with_cursor: textWithCursor,
-        extracts: genDocumentExtracts,
+        extracts,
         context: getContext(),
       },
     ];
@@ -686,6 +742,7 @@ export default function AppGens({
   const handleSearch = async () => {
     setRetrievalLoading(true);
     setRetrieved([]);
+    setGenDocumentExtracts({});
     const userContext = {
       user: {
         username: user?.username,
@@ -871,14 +928,7 @@ export default function AppGens({
                 retrieved={retrieved}
                 query={genContent}
                 owner={owner}
-                onExtractUpdate={(documentId, extract) => {
-                  setGenDocumentExtracts((c) => {
-                    return {
-                      ...c,
-                      [documentId]: extract,
-                    };
-                  });
-                }}
+                onExtractUpdate={onExtractUpdate}
                 onScoreReady={onScoreReady}
               />
             </div>
