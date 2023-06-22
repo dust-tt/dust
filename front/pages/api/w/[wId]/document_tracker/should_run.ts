@@ -11,11 +11,21 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDocumentTrackerShouldRunResponseBody>
 ): Promise<void> {
-  // TODO: check that it is a system API key
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
+
+  if (!keyRes.value.isSystem) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
+  }
+
   const { auth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
