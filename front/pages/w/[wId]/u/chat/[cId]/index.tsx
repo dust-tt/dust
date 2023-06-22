@@ -373,7 +373,11 @@ export function RetrievalsView({
               </div>
             </>
           )}
-          {!message.retrievals && <div className="loading-dots">Computed query: {message.query}. Retrieving docs</div>}
+          {!message.retrievals && (
+            <div className="loading-dots">
+              Computed query: {message.query}. Retrieving docs
+            </div>
+          )}
         </div>
       </div>
       {expanded && message.retrievals && (
@@ -528,7 +532,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/retrieve",
     description:
-      "Forces the assistant to query the data sources before answering",
+      "Query-only mode: forces the assistant to *only* query the data sources, with the exact query provided",
   },
 ];
 
@@ -859,7 +863,6 @@ export default function AppChat({
     let processedInput = input;
 
     if (input.startsWith("/retrieve")) {
-      retrievalMode = "retrieve_documents";
       processedInput = input.substring("/retrieve".length).trim();
     }
     if (input.startsWith("/follow-up")) {
@@ -883,18 +886,28 @@ export default function AppChat({
     setLoading(true);
 
     try {
-      const result = await runChatAssistant(m, retrievalMode);
-      updateMessages(m, result);
-      // has the model decided to run the retrieval function?
-      if (result?.role === "retrieval") {
-        const query = result.query as string;
-        const retrievalResult = await runChatRetrieval(m, query);
-        // replace the retrieval message with the result of the retrieval
-        // as a consequence, the query is not stored in the database
+      if (input.startsWith("/retrieve")) {
+        updateMessages(m, {
+          role: "retrieval",
+          query: processedInput,
+        } as ChatMessageType);
+        const retrievalResult = await runChatRetrieval(m, processedInput);
         m.pop();
         updateMessages(m, retrievalResult);
-        const secondResult = await runChatAssistant(m, "none");
-        updateMessages(m, secondResult);
+      } else {
+        const result = await runChatAssistant(m, retrievalMode);
+        updateMessages(m, result);
+        // has the model decided to run the retrieval function?
+        if (result?.role === "retrieval") {
+          const query = result.query as string;
+          const retrievalResult = await runChatRetrieval(m, query);
+          // replace the retrieval message with the result of the retrieval
+          // as a consequence, the query is not stored in the database
+          m.pop();
+          updateMessages(m, retrievalResult);
+          const secondResult = await runChatAssistant(m, "none");
+          updateMessages(m, secondResult);
+        }
       }
     } catch (e: any) {
       console.log("ERROR", e.message);
