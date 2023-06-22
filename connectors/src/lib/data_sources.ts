@@ -2,9 +2,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
+import { POST_UPSERT_HOOKS } from "@connectors/post_upsert_hooks";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const FRONT_API = process.env.FRONT_API;
+const { FRONT_API, SHOULD_RUN_POST_UPSERT_HOOKS = false } = process.env;
 if (!FRONT_API) {
   throw new Error("FRONT_API not set");
 }
@@ -35,6 +36,12 @@ export async function upsertToDatasource(
         tags,
         loggerArgs
       );
+
+      if (SHOULD_RUN_POST_UPSERT_HOOKS) {
+        await Promise.all(
+          POST_UPSERT_HOOKS.map((hook) => hook(dataSourceConfig, documentId))
+        );
+      }
 
       return upsertRes;
     } catch (e) {
@@ -147,4 +154,40 @@ export async function deleteFromDataSource(
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
+}
+
+export async function getDocumentFromDataSource(
+  dataSourceConfig: DataSourceConfig,
+  documentId: string,
+  loggerArgs: Record<string, string | number> = {}
+) {
+  const localLogger = logger.child({ ...loggerArgs, documentId });
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting document from Dust.");
+    throw e;
+  }
+
+  if (!(dustRequestResult.status >= 200 && dustRequestResult.status < 300)) {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+      },
+      "Error getting document from Dust."
+    );
+    throw new Error(`Error getting from dust: ${dustRequestResult}`);
+  }
+
+  return dustRequestResult.data;
 }
