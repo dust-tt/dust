@@ -15,7 +15,7 @@ export const DustProdActionRegistry: {
     config: {
       DATASOURCE: {
         data_sources: [],
-        top_k: 8,
+        top_k: 32,
         filter: { tags: null, timestamp: null },
         use_cache: false,
       },
@@ -47,7 +47,7 @@ export const DustProdActionRegistry: {
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
+        model_id: "gpt-3.5-turbo-16k-0613",
         function_call: "auto",
         use_cache: true,
         use_stream: true,
