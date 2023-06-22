@@ -63,6 +63,7 @@ export const withLogging = (handler: any) => {
         url: req.url,
         statusCode: res.statusCode,
         duration: `${elapsed} ms`,
+        headers: req.headers,
       },
       "Processed request"
     );
