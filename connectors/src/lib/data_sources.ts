@@ -187,39 +187,3 @@ export async function deleteFromDataSource(
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
 }
-
-export async function getDocumentFromDataSource(
-  dataSourceConfig: DataSourceConfig,
-  documentId: string,
-  loggerArgs: Record<string, string | number> = {}
-) {
-  const localLogger = logger.child({ ...loggerArgs, documentId });
-
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axios.get(endpoint, dustRequestConfig);
-  } catch (e) {
-    localLogger.error({ error: e }, "Error getting document from Dust.");
-    throw e;
-  }
-
-  if (!(dustRequestResult.status >= 200 && dustRequestResult.status < 300)) {
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-      },
-      "Error getting document from Dust."
-    );
-    throw new Error(`Error getting from dust: ${dustRequestResult}`);
-  }
-
-  return dustRequestResult.data;
-}
