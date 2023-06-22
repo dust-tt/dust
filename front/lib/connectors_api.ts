@@ -124,10 +124,12 @@ export const ConnectorsAPI = {
 
   async deleteConnector(
     connectorId: string,
-    force=false
+    force = false
   ): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/delete/${connectorId}?force=${force? "true" : "false"}`,
+      `${CONNECTORS_API}/connectors/delete/${connectorId}?force=${
+        force ? "true" : "false"
+      }`,
       {
         method: "DELETE",
         headers: getDefaultHeaders(),
