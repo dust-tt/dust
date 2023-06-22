@@ -174,16 +174,12 @@ export function DocumentView({
 
   const [extractedText, setExtractedText] = useState("");
   const [LLMScore, setLLMScore] = useState(0);
-<<<<<<< Updated upstream
-  useMemo(() => {
-=======
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
 
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
->>>>>>> Stashed changes
     setExtractedText("");
     const extractInput = [
       {
