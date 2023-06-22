@@ -14,8 +14,9 @@ export type ChatRetrievedDocumentType = {
 
 export type ChatMessageType = {
   role: "user" | "retrieval" | "assistant" | "error";
-  message?: string; // for `user`, `assistant` and `error` messages, and `retrieval` messages storing a query
+  message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
+  query?: string; // for `retrieval` messages (not persisted)
 };
 
 export type ChatSessionType = {

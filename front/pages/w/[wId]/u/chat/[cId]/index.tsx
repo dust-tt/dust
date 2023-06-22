@@ -304,7 +304,7 @@ export function RetrievalsView({
       const summary = {} as {
         [key: string]: { count: number; provider: string };
       };
-      message.retrievals.forEach((r: any) => {
+      message.retrievals.forEach((r: ChatRetrievedDocumentType) => {
         const provider = providerFromDocument(r);
         if (r.dataSourceId in summary) {
           summary[r.dataSourceId].count += 1;
@@ -378,7 +378,7 @@ export function RetrievalsView({
       </div>
       {expanded && message.retrievals && (
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {message.retrievals.map((r: any, i: number) => {
+          {message.retrievals.map((r: ChatRetrievedDocumentType, i: number) => {
             return <DocumentView document={r} key={i} />;
           })}
         </div>
@@ -387,7 +387,7 @@ export function RetrievalsView({
   ) : null;
 }
 
-function formatMessageWithLinks(message: string) {
+function formatMessageWithLinks(message: string): JSX.Element {
   /* Format message by replacing markdown links with <Link/> elements*/
   const linkRegex = /\[(.*?)\]\((.*?)\)/g;
   const matches = message.matchAll(linkRegex);
@@ -756,7 +756,9 @@ export default function AppChat({
     throw new Error("Error: no OUTPUT block streamed.");
   };
 
-  const filterMessagesForModel = (messages: ChatMessageType[]) => {
+  const filterMessagesForModel = (
+    messages: ChatMessageType[]
+  ): ChatMessageType[] => {
     // remove retrieval messages except the last one, and only keep the last 8 user messages
 
     const lastRetrievalMessageIndex = messages
@@ -781,7 +783,7 @@ export default function AppChat({
   const runChatAssistant = async (
     m: ChatMessageType[],
     retrievalMode: string
-  ) => {
+  ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
       role: "assistant",
       message: "",
@@ -827,17 +829,18 @@ export default function AppChat({
         }
       }
     }
+    throw new Error("Error: no OUTPUT block streamed.");
   };
   const updateMessages = (
     messages: ChatMessageType[],
     userMessage: ChatMessageType
-  ) => {
+  ): void => {
     messages.push(userMessage);
     setMessages(messages);
     setResponse(null);
   };
 
-  function filterErrorMessages(m: ChatMessageType[]) {
+  function filterErrorMessages(m: ChatMessageType[]): void {
     // remove last message if it's an error, and the previous messages until the
     // last user message, included
     if (m.length === 0 || m[m.length - 1].role !== "error") return;
@@ -884,11 +887,11 @@ export default function AppChat({
       updateMessages(m, result);
       // has the model decided to run the retrieval function?
       if (result?.role === "retrieval") {
-        // the query is stored in the "message" field for a retrieval role
-        const query = result.message;
+        const query = result.query as string;
         const retrievalResult = await runChatRetrieval(m, query);
-        // remove the loading message but save the query
-        retrievalResult.message = m.pop()?.message;
+        // replace the retrieval message with the result of the retrieval
+        // as a consequence, the query is not stored in the database
+        m.pop();
         updateMessages(m, retrievalResult);
         const secondResult = await runChatAssistant(m, "none");
         updateMessages(m, secondResult);
