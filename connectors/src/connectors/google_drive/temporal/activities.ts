@@ -6,9 +6,11 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveFileType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
+import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
@@ -421,14 +423,24 @@ export async function incrementalSync(
     nangoConnectionId,
     driveId
   );
+  const logger = mainLogger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    driveId: driveId,
+    nangoConnectionId: nangoConnectionId,
+    activity: "incrementalSync",
+    lastSyncToken: lastSyncToken,
+    runInstance: uuid4(),
+  });
   const foldersIds = await getFoldersToSync(connectorId);
 
   const oauth2client = await getAuthObject(nangoConnectionId);
   const driveClient = await getDriveClient(oauth2client);
-
+  logger.info(`Starting incremental sync.`);
   let nextPageToken: string | undefined = undefined;
   let changeCount = 0;
   do {
+    logger.info(`Querying for changes.`);
     const changesRes = await driveClient.changes.list({
       driveId: driveId,
       pageToken: lastSyncToken,
@@ -437,15 +449,28 @@ export async function incrementalSync(
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
     });
+    logger.info(
+      {
+        nextPageToken,
+      },
+      `Done fetching changes.`
+    );
     if (changesRes.status !== 200) {
       throw new Error(
         `Error getting changes. status_code: ${changesRes.status}. status_text: ${changesRes.statusText}`
       );
     }
+
     if (changesRes.data.changes === undefined) {
       throw new Error(`changes list is undefined`);
     }
 
+    logger.info(
+      {
+        nbChanges: changesRes.data.changes.length,
+      },
+      `Got changes.`
+    );
     for (const change of changesRes.data.changes) {
       changeCount++;
       if (change.changeType !== "file") {
@@ -465,6 +490,7 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
+      logger.info({ file_id: change.file.id }, "will sync file");
 
       const driveFile: GoogleDriveFileType = {
         id: change.file.id,
@@ -478,8 +504,11 @@ export async function incrementalSync(
           ? { displayName: change.file.lastModifyingUser.displayName as string }
           : undefined,
       };
+
       await syncOneFile(connectorId, oauth2client, dataSourceConfig, driveFile);
+      logger.info({ file_id: change.file.id }, "done syncing file");
     }
+
     nextPageToken = changesRes.data.nextPageToken
       ? changesRes.data.nextPageToken
       : undefined;
