@@ -171,9 +171,13 @@ export function DocumentView({
   onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const provider = providerFromDocument(document);
+
   const [extractedText, setExtractedText] = useState("");
   const [explanation, setExplanation] = useState("");
   const [LLMScore, setLLMScore] = useState(0);
+
+  const [chunkExpanded, setChunkExpanded] = useState(false);
+  const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
 
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
@@ -334,6 +338,11 @@ export function DocumentView({
             "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 py-0.5",
             document.chunks.length > 0 ? "cursor-pointer" : ""
           )}
+          onClick={() => {
+            if (document.chunks.length > 0) {
+              setChunkExpanded(!chunkExpanded);
+            }
+          }}
         >
           {document.score.toFixed(2)} | {LLMScore.toFixed(2)}
         </div>
@@ -373,6 +382,32 @@ export function DocumentView({
           </div>
         </div>
       </div>
+      {chunkExpanded && (
+        <div className="my-2 flex flex-col space-y-2">
+          <p>Chunks:</p>
+          {document.chunks.map((chunk, i) => (
+            <div key={i} className="flex flex-initial">
+              <div
+                className="ml-10 border-l-4 border-slate-400"
+                onClick={() => {
+                  expandedChunkId == i
+                    ? setExpandedChunkId(null)
+                    : setExpandedChunkId(i);
+                }}
+              >
+                <p
+                  className={classNames(
+                    "cursor-pointer pl-2 text-xs italic text-gray-500",
+                    expandedChunkId === i ? "" : "line-clamp-2"
+                  )}
+                >
+                  {chunk.text}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
