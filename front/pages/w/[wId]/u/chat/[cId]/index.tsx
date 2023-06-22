@@ -373,7 +373,7 @@ export function RetrievalsView({
               </div>
             </>
           )}
-          {!message.retrievals && <div className="">Loading...</div>}
+          {!message.retrievals && <div className="loading-dots">Computed query: {message.query}. Retrieving docs</div>}
         </div>
       </div>
       {expanded && message.retrievals && (
