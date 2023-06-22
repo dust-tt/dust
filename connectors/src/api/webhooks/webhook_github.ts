@@ -1,14 +1,19 @@
 import { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 import {
+  GithubWebhookPayloadSchema,
   isCommentPayload,
-  isGithubWebhookPayload,
+  isDiscussionPayload,
   isIssuePayload,
   isPullRequestPayload,
   isRepositoriesAddedPayload,
   isRepositoriesRemovedPayload,
 } from "@connectors/connectors/github/lib/github_webhooks";
 import {
+  launchGithubDiscussionGarbageCollectWorkflow,
+  launchGithubDiscussionSyncWorkflow,
   launchGithubIssueGarbageCollectWorkflow,
   launchGithubIssueSyncWorkflow,
   launchGithubRepoGarbageCollectWorkflow,
@@ -25,6 +30,8 @@ const HANDLED_WEBHOOKS = {
   issues: new Set(["opened", "edited", "deleted"]),
   issue_comment: new Set(["created", "edited", "deleted"]),
   pull_request: new Set(["opened", "edited"]),
+  discussion: new Set(["created", "edited", "deleted"]),
+  discussion_comment: new Set(["created", "edited", "deleted"]),
 } as Record<string, Set<string>>;
 
 const logger = mainLogger.child({ provider: "github" });
@@ -70,23 +77,31 @@ const _webhookGithubAPIHandler = async (
     "Received webhook"
   );
 
-  const rejectEvent = (): Response<GithubWebhookResBody> => {
+  const rejectEvent = (pathError?: string): Response<GithubWebhookResBody> => {
     logger.error(
       {
         event,
         action,
         jsonBody,
+        pathError,
       },
       "Could not process webhook"
     );
     return res.status(500).end();
   };
 
-  if (!isGithubWebhookPayload(jsonBody)) {
-    return rejectEvent();
+  const githubWebookPayloadSchemaValidation =
+    GithubWebhookPayloadSchema.decode(jsonBody);
+  if (isLeft(githubWebookPayloadSchemaValidation)) {
+    const pathError = reporter.formatValidationErrors(
+      githubWebookPayloadSchemaValidation.left
+    );
+    return rejectEvent(pathError.join(", "));
   }
 
-  const installationId = jsonBody.installation.id.toString();
+  const payload = githubWebookPayloadSchemaValidation.right;
+
+  const installationId = payload.installation.id.toString();
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
@@ -227,6 +242,53 @@ const _webhookGithubAPIHandler = async (
       }
       return rejectEvent();
 
+    case "discussion":
+      if (isDiscussionPayload(jsonBody)) {
+        if (jsonBody.action === "created" || jsonBody.action === "edited") {
+          return syncDiscussion(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.discussion.number,
+            res
+          );
+        } else if (jsonBody.action === "deleted") {
+          return garbageCollectDiscussion(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.discussion.number,
+            res
+          );
+        } else {
+          assertNever(jsonBody.action);
+        }
+      }
+      return rejectEvent();
+
+    case "discussion_comment":
+      if (isDiscussionPayload(jsonBody)) {
+        if (
+          jsonBody.action === "created" ||
+          jsonBody.action === "edited" ||
+          jsonBody.action === "deleted"
+        ) {
+          return syncDiscussion(
+            connector,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            jsonBody.discussion.number,
+            res
+          );
+        } else {
+          assertNever(jsonBody.action);
+        }
+      }
+      return rejectEvent();
+
     default:
       return rejectEvent();
   }
@@ -277,6 +339,24 @@ async function syncIssue(
   res.status(200).end();
 }
 
+async function syncDiscussion(
+  connector: Connector,
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number,
+  res: Response<GithubWebhookResBody>
+) {
+  await launchGithubDiscussionSyncWorkflow(
+    connector.id.toString(),
+    orgLogin,
+    repoName,
+    repoId,
+    discussionNumber
+  );
+  res.status(200).end();
+}
+
 async function garbageCollectIssue(
   connector: Connector,
   orgLogin: string,
@@ -291,6 +371,24 @@ async function garbageCollectIssue(
     repoName,
     repoId,
     issueNumber
+  );
+  res.status(200).end();
+}
+
+async function garbageCollectDiscussion(
+  connector: Connector,
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number,
+  res: Response<GithubWebhookResBody>
+) {
+  await launchGithubDiscussionGarbageCollectWorkflow(
+    connector.id.toString(),
+    orgLogin,
+    repoName,
+    repoId,
+    discussionNumber
   );
   res.status(200).end();
 }

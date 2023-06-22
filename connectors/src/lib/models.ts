@@ -420,6 +420,58 @@ GithubIssue.init(
 );
 Connector.hasMany(GithubIssue);
 
+export class GithubDiscussion extends Model<
+  InferAttributes<GithubDiscussion>,
+  InferCreationAttributes<GithubDiscussion>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare discussionNumber: number;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+GithubDiscussion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    discussionNumber: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["repoId", "discussionNumber", "connectorId"], unique: true },
+      { fields: ["connectorId"] },
+      { fields: ["repoId"] },
+    ],
+    modelName: "github_discussions",
+  }
+);
+Connector.hasMany(GithubDiscussion);
+
 export class GoogleDriveFolders extends Model<
   InferAttributes<GoogleDriveFolders>,
   InferCreationAttributes<GoogleDriveFolders>

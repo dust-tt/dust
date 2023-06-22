@@ -1,6 +1,6 @@
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -173,6 +173,7 @@ export function DocumentView({
   const provider = providerFromDocument(document);
 
   const [extractedText, setExtractedText] = useState("");
+  const [explanation, setExplanation] = useState("");
   const [LLMScore, setLLMScore] = useState(0);
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
@@ -181,6 +182,7 @@ export function DocumentView({
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
     setExtractedText("");
+    console.log("Processing");
     const extractInput = [
       {
         query: query,
@@ -191,8 +193,10 @@ export function DocumentView({
     const extract_config = cloneBaseConfig(
       DustProdActionRegistry["gens-extract"].config
     );
+    console.log("Pre-extract");
     runActionStreamed(owner, "gens-extract", extract_config, extractInput)
       .then((res) => {
+        console.log("Extracting");
         if (res.isErr()) {
           console.log("ERROR", res.error);
           return;
@@ -225,9 +229,10 @@ export function DocumentView({
           eventStream
             .next()
             .then(({ value, done }) => {
-              if (!done) {
-                handleEvent(value);
+              if (done || interruptRef.current) {
+                return eventStream.return();
               }
+              handleEvent(value);
             })
             .catch((e) => console.log(e));
         };
@@ -235,16 +240,30 @@ export function DocumentView({
         eventStream
           .next()
           .then(({ value, done }) => {
-            if (!done) {
-              handleEvent(value);
+            if (done || interruptRef.current) {
+              return eventStream.return();
             }
+            handleEvent(value);
           })
           .catch((e) => console.log(e));
       })
       .catch((e) => console.log("Error during extract", e));
+    return () => {
+      console.log("Trying to unmount");
+      interruptRef.current = true;
+    };
+  }, [document.documentId]);
+
+  useEffect(() => {
     const rank_config = cloneBaseConfig(
       DustProdActionRegistry["gens-rank"].config
     );
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+      },
+    ];
     runActionStreamed(owner, "gens-rank", rank_config, extractInput)
       .then((res) => {
         if (res.isErr()) {
@@ -261,17 +280,23 @@ export function DocumentView({
                 console.log("ERROR block_execution event", e.error);
                 return;
               }
-              const top_logprobs = e.value.completion.top_logprobs;
-              const key = Object.keys(top_logprobs[0])[0];
+              const logprobs_score = e.value.completion.top_logprobs[0];
+              const key = Object.keys(logprobs_score)[0];
               let score;
               if (key == "YES" || key == " YES") {
-                score = Math.exp(top_logprobs[0][key]);
+                score = Math.exp(logprobs_score[key]);
               } else if (key == "NO" || key == " NO") {
-                score = 1 - Math.exp(top_logprobs[0][key]);
+                score = 1 - Math.exp(logprobs_score[key]);
               } else {
                 score = 0;
               }
               setLLMScore(score);
+              setExplanation(
+                e.value.completion.text.substring(
+                  e.value.completion.text.indexOf("Explanation:"),
+                  e.value.completion.text.length
+                )
+              );
               onScoreReady(document.documentId, score);
               return;
             }
@@ -282,23 +307,28 @@ export function DocumentView({
           eventStream
             .next()
             .then(({ value, done }) => {
-              if (!done) {
-                handleEvent(value);
+              if (done || interruptRef.current) {
+                return eventStream.return();
               }
+              handleEvent(value);
             })
             .catch((e) => console.log(e));
         };
         eventStream
           .next()
           .then(({ value, done }) => {
-            if (!done) {
-              handleEvent(value);
+            if (done || interruptRef.current) {
+              return eventStream.return();
             }
+            handleEvent(value);
           })
           .catch((e) => console.log(e));
       })
       .catch((e) => console.log("Error during ranking", e));
-  }, [document]);
+    return () => {
+      interruptRef.current = true;
+    };
+  }, [document.documentId]);
 
   return (
     <div className="flex flex-col">
@@ -339,6 +369,7 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
+        <p className="text-black-500 bold pl-2 text-xs italic">{explanation}</p>
         <div className="flex flex-initial">
           <div className="ml-10 border-l-4 border-slate-400">
             <p
@@ -386,27 +417,24 @@ export function ResultsView({
   query,
   owner,
   onExtractUpdate,
+  onRetrievalChange,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
   onExtractUpdate: (documentId: string, extract: string) => void;
+  onRetrievalChange: (retrieved: GensRetrievedDocumentType[]) => void;
 }) {
-  const [retrievedDocs, setRetrievedDocs] =
-    useState<GensRetrievedDocumentType[]>(retrieved);
-
-  useEffect(() => {
-    setRetrievedDocs(retrieved);
-  }, [retrieved]);
-
-  const scores: { [key: string]: number } = {};
   const onScoreReady = (docId: string, score: number) => {
-    scores[docId] = score;
-    const sorted = retrievedDocs.concat().sort((a, b) => {
-      return (scores[b.documentId] || 0) - (scores[a.documentId] || 0);
+    const newRetrieved = [...retrieved];
+    // TODO: make this more efficient by just moving that doc around
+    newRetrieved.filter((d) => d.documentId == docId)[0].l_score = score;
+    newRetrieved.sort((a, b) => {
+      return (b.l_score || 0) - a.l_score || 0;
     });
-    setRetrievedDocs(sorted);
+    onRetrievalChange(newRetrieved);
   };
+
   return (
     <div className="mt-5 w-full ">
       <div>
@@ -417,16 +445,16 @@ export function ResultsView({
             "mt-2 text-xs font-bold text-gray-700"
           )}
         >
-          {retrievedDocs && retrievedDocs.length > 0 && (
+          {retrieved && retrieved.length > 0 && (
             <p className="mb-4 text-lg">
-              Retrieved {retrievedDocs.length} item
-              {retrievedDocs.length == 1 ? "" : "s"}
+              Retrieved {retrieved.length} item
+              {retrieved.length == 1 ? "" : "s"}
             </p>
           )}
-          {!retrievedDocs && <div className="">Loading...</div>}
+          {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {retrievedDocs.map((r) => {
+          {retrieved.map((r) => {
             return (
               <DocumentView
                 document={r}
@@ -548,7 +576,6 @@ export default function AppGens({
         }
       }
     }
-
     setQueryLoading(false);
   };
 
@@ -651,6 +678,7 @@ export default function AppGens({
 
   const handleSearch = async () => {
     setRetrievalLoading(true);
+    setRetrieved([]);
     const userContext = {
       user: {
         username: user?.username,
@@ -844,6 +872,7 @@ export default function AppGens({
                     };
                   });
                 }}
+                onRetrievalChange={(r) => setRetrieved(r)}
               />
             </div>
           </div>

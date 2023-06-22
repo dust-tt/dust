@@ -1,3 +1,4 @@
+import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
 
@@ -6,9 +7,11 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
+import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveFileType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
+import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
@@ -416,83 +419,136 @@ export async function incrementalSync(
   dataSourceConfig: DataSourceConfig,
   driveId: string
 ): Promise<number> {
-  const lastSyncToken = await getSyncPageToken(
-    connectorId,
-    nangoConnectionId,
-    driveId
-  );
-  const foldersIds = await getFoldersToSync(connectorId);
+  const logger = mainLogger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    driveId: driveId,
+    nangoConnectionId: nangoConnectionId,
+    activity: "incrementalSync",
+    runInstance: uuid4(),
+  });
+  try {
+    const lastSyncToken = await getSyncPageToken(
+      connectorId,
+      nangoConnectionId,
+      driveId
+    );
 
-  const oauth2client = await getAuthObject(nangoConnectionId);
-  const driveClient = await getDriveClient(oauth2client);
+    const foldersIds = await getFoldersToSync(connectorId);
 
-  let nextPageToken: string | undefined = undefined;
-  let changeCount = 0;
-  do {
-    const changesRes = await driveClient.changes.list({
-      driveId: driveId,
-      pageToken: lastSyncToken,
-      pageSize: 100,
-      fields: "*",
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
-    if (changesRes.status !== 200) {
-      throw new Error(
-        `Error getting changes. status_code: ${changesRes.status}. status_text: ${changesRes.statusText}`
+    const oauth2client = await getAuthObject(nangoConnectionId);
+    const driveClient = await getDriveClient(oauth2client);
+    logger.info(`Starting incremental sync.`);
+    let nextPageToken: string | undefined = lastSyncToken;
+    let changeCount = 0;
+    do {
+      logger.info(`Querying for changes.`);
+      const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
+        await driveClient.changes.list({
+          driveId: driveId,
+          pageToken: nextPageToken,
+          pageSize: 100,
+          fields: "*",
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true,
+        });
+
+      logger.info(
+        {
+          nextPageToken,
+        },
+        `Done fetching changes.`
       );
-    }
-    if (changesRes.data.changes === undefined) {
-      throw new Error(`changes list is undefined`);
-    }
-
-    for (const change of changesRes.data.changes) {
-      changeCount++;
-      if (change.changeType !== "file") {
-        continue;
-      }
-      if (change.file?.mimeType !== "application/vnd.google-apps.document") {
-        continue;
-      }
-      if (!change.file.id) {
-        continue;
-      }
-      if (!(await objectIsInFolder(oauth2client, change.file.id, foldersIds))) {
-        continue;
-      }
-      if (!change.file.createdTime || !change.file.name || !change.file.id) {
+      if (changesRes.status !== 200) {
         throw new Error(
-          `Invalid file. File is: ${JSON.stringify(change.file)}`
+          `Error getting changes. status_code: ${changesRes.status}. status_text: ${changesRes.statusText}`
         );
       }
 
-      const driveFile: GoogleDriveFileType = {
-        id: change.file.id,
-        name: change.file.name,
-        createdAtMs: new Date(change.file.createdTime).getTime(),
-        updatedAtMs: change.file.modifiedTime
-          ? new Date(change.file.modifiedTime).getTime()
-          : undefined,
-        webViewLink: change.file.webViewLink || undefined,
-        lastEditor: change.file.lastModifyingUser
-          ? { displayName: change.file.lastModifyingUser.displayName as string }
-          : undefined,
-      };
-      await syncOneFile(connectorId, oauth2client, dataSourceConfig, driveFile);
-    }
-    nextPageToken = changesRes.data.nextPageToken
-      ? changesRes.data.nextPageToken
-      : undefined;
-    if (changesRes.data.newStartPageToken) {
-      await GoogleDriveSyncToken.upsert({
-        connectorId: connectorId,
-        driveId: driveId,
-        syncToken: changesRes.data.newStartPageToken,
-      });
-    }
-  } while (nextPageToken);
+      if (changesRes.data.changes === undefined) {
+        throw new Error(`changes list is undefined`);
+      }
 
-  return changeCount;
+      logger.info(
+        {
+          nbChanges: changesRes.data.changes.length,
+        },
+        `Got changes.`
+      );
+      for (const change of changesRes.data.changes) {
+        changeCount++;
+        if (change.changeType !== "file") {
+          continue;
+        }
+        if (change.file?.mimeType !== "application/vnd.google-apps.document") {
+          continue;
+        }
+        if (!change.file.id) {
+          continue;
+        }
+        if (
+          !(await objectIsInFolder(oauth2client, change.file.id, foldersIds))
+        ) {
+          continue;
+        }
+        if (!change.file.createdTime || !change.file.name || !change.file.id) {
+          throw new Error(
+            `Invalid file. File is: ${JSON.stringify(change.file)}`
+          );
+        }
+        logger.info({ file_id: change.file.id }, "will sync file");
+
+        const driveFile: GoogleDriveFileType = {
+          id: change.file.id,
+          name: change.file.name,
+          createdAtMs: new Date(change.file.createdTime).getTime(),
+          updatedAtMs: change.file.modifiedTime
+            ? new Date(change.file.modifiedTime).getTime()
+            : undefined,
+          webViewLink: change.file.webViewLink || undefined,
+          lastEditor: change.file.lastModifyingUser
+            ? {
+                displayName: change.file.lastModifyingUser
+                  .displayName as string,
+              }
+            : undefined,
+        };
+
+        await syncOneFile(
+          connectorId,
+          oauth2client,
+          dataSourceConfig,
+          driveFile
+        );
+        logger.info({ file_id: change.file.id }, "done syncing file");
+      }
+
+      nextPageToken = changesRes.data.nextPageToken
+        ? changesRes.data.nextPageToken
+        : undefined;
+      if (changesRes.data.newStartPageToken) {
+        await GoogleDriveSyncToken.upsert({
+          connectorId: connectorId,
+          driveId: driveId,
+          syncToken: changesRes.data.newStartPageToken,
+        });
+      }
+    } while (nextPageToken);
+
+    return changeCount;
+  } catch (e) {
+    if (e instanceof GaxiosError && e.response?.status === 403) {
+      logger.error(
+        {
+          error: e.message,
+        },
+        `Looks like we lost access to this drive. Skipping`
+      );
+      return 0;
+    } else {
+      throw e;
+    }
+  }
 }
 
 async function getSyncPageToken(
