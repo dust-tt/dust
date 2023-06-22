@@ -335,7 +335,19 @@ export function DocumentView({
             document.chunks.length > 0 ? "cursor-pointer" : ""
           )}
         >
-          {document.score.toFixed(2)} | {LLMScore.toFixed(2)}
+          <span className="text-base">
+            {LLMScore != 0.0 ? (
+              <>
+                {LLMScore.toFixed(2)}
+                <span className="pl-1 text-xs">
+                  {" "}
+                  {document.score.toFixed(2)}
+                </span>
+              </>
+            ) : (
+              document.score.toFixed(2)
+            )}
+          </span>
         </div>
         <div className="ml-2 flex flex-initial">
           <div className={classNames("mr-1 flex h-4 w-4")}>

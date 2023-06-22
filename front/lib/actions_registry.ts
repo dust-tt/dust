@@ -107,7 +107,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "9eb5f48bb5",
       appHash:
-        "d1c9717e73956f66cc0380fa498032ff13bf2fa35d00b35c2381ed0f0cdea18d",
+        "330eec92f79e889fe224562f37945985adc70fd24a62967f0c99dcc49e6333fa",
     },
     config: {
       MODEL: {
@@ -123,7 +123,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "2a5aadf425",
       appHash:
-        "e797270390b2bb23b70c855efabd5c6d19e9b28dab5a3c5637994b611057b7da",
+        "1aab1381ac86e22ef50497eefd3fd882846fc786da4f6df248df94b133533120",
     },
     config: {
       MODEL: {
