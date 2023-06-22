@@ -542,7 +542,7 @@ export default function AppGens({
       },
     ];
 
-    console.log(JSON.stringify(genDocumentExtracts));
+    // console.log(JSON.stringify(genDocumentExtracts));
 
     const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
@@ -564,9 +564,8 @@ export default function AppGens({
     });
 
     for await (const event of eventStream) {
-      console.log("EVENT", event, genInterruptRef.current);
+      // console.log("EVENT", event, genInterruptRef.current);
       if (genInterruptRef.current) {
-        console.log("INTERRUPT");
         void eventStream.return();
         genInterruptRef.current = false;
         break;
@@ -574,7 +573,6 @@ export default function AppGens({
 
       if (event.type === "function_call_arguments_tokens") {
         const tokens = event.content.tokens.text;
-        // console.log(tokens);
         p.feed(tokens);
       }
       if (event.type === "error") {
