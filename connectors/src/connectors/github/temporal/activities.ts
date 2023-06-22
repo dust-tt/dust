@@ -144,7 +144,7 @@ export async function githubUpsertIssueActivity(
     },
   });
   if (!connector) {
-    throw new Error("Connector not found");
+    throw new Error(`Connector not found (installationId: ${installationId})`);
   }
 
   const existingIssueInDb = await GithubIssue.findOne({
@@ -442,7 +442,9 @@ async function deleteDiscussionOrIssue(
   });
 
   if (!issueInDb) {
-    throw new Error("Issue not found in DB");
+    throw new Error(
+      `Issue not found in DB (issueNumber: ${issueOrDiscussionNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    );
   }
 
   const documentId = issueInDb.isDiscussion

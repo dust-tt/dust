@@ -161,6 +161,7 @@ export async function launchGithubDiscussionSyncWorkflow(
   const githubInstallationId = connector.connectionId;
 
   const workflowId = getDiscussionSyncWorkflowId(
+    connectorId,
     dataSourceConfig,
     repoId,
     discussionNumber
