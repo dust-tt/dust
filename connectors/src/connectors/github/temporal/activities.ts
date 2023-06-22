@@ -271,22 +271,12 @@ export async function githubUpsertDiscussionActivity(
     throw new Error("Connector not found");
   }
 
-  const existingDiscussionInDb = await GithubDiscussion.findOne({
-    where: {
-      repoId: repoId.toString(),
-      discussionNumber: discussionNumber,
-      connectorId: connector.id,
-    },
+  localLogger.info("Upserting GitHub discussion in DB.");
+  await GithubDiscussion.upsert({
+    repoId: repoId.toString(),
+    discussionNumber: discussionNumber,
+    connectorId: connector.id,
   });
-
-  if (!existingDiscussionInDb) {
-    localLogger.info("Creating new GitHub discussion in DB.");
-    await GithubDiscussion.create({
-      repoId: repoId.toString(),
-      discussionNumber: discussionNumber,
-      connectorId: connector.id,
-    });
-  }
 }
 
 export async function githubGetRepoDiscussionsResultPageActivity(
