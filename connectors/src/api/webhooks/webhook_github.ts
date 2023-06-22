@@ -12,6 +12,7 @@ import {
   isRepositoriesRemovedPayload,
 } from "@connectors/connectors/github/lib/github_webhooks";
 import {
+  launchGithubDiscussionGarbageCollectWorkflow,
   launchGithubDiscussionSyncWorkflow,
   launchGithubIssueGarbageCollectWorkflow,
   launchGithubIssueSyncWorkflow,
@@ -253,7 +254,7 @@ const _webhookGithubAPIHandler = async (
             res
           );
         } else if (jsonBody.action === "deleted") {
-          return garbageCollectIssue(
+          return garbageCollectDiscussion(
             connector,
             jsonBody.organization.login,
             jsonBody.repository.name,
@@ -370,6 +371,24 @@ async function garbageCollectIssue(
     repoName,
     repoId,
     issueNumber
+  );
+  res.status(200).end();
+}
+
+async function garbageCollectDiscussion(
+  connector: Connector,
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  discussionNumber: number,
+  res: Response<GithubWebhookResBody>
+) {
+  await launchGithubDiscussionGarbageCollectWorkflow(
+    connector.id.toString(),
+    orgLogin,
+    repoName,
+    repoId,
+    discussionNumber
   );
   res.status(200).end();
 }

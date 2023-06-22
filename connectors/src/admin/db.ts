@@ -1,6 +1,7 @@
 import {
   Connector,
   GithubConnectorState,
+  GithubDiscussion,
   GithubIssue,
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -21,12 +22,11 @@ async function main(): Promise<void> {
   await NotionConnectorState.sync({ alter: true });
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
+  await GithubDiscussion.sync({ alter: true });
   await GoogleDriveFolders.sync({ alter: true });
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
-
-  return;
 }
 
 main()

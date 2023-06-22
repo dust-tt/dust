@@ -15,7 +15,11 @@ import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector, GithubIssue } from "@connectors/lib/models";
+import {
+  Connector,
+  GithubDiscussion,
+  GithubIssue,
+} from "@connectors/lib/models";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -161,7 +165,6 @@ export async function githubUpsertIssueActivity(
       repoId: repoId.toString(),
       issueNumber,
       connectorId: connector.id,
-      isDiscussion: false,
     });
   }
 }
@@ -268,21 +271,20 @@ export async function githubUpsertDiscussionActivity(
     throw new Error("Connector not found");
   }
 
-  const existingDiscussionInDb = await GithubIssue.findOne({
+  const existingDiscussionInDb = await GithubDiscussion.findOne({
     where: {
       repoId: repoId.toString(),
-      issueNumber: discussionNumber,
+      discussionNumber: discussionNumber,
       connectorId: connector.id,
     },
   });
 
   if (!existingDiscussionInDb) {
     localLogger.info("Creating new GitHub discussion in DB.");
-    await GithubIssue.create({
+    await GithubDiscussion.create({
       repoId: repoId.toString(),
-      issueNumber: discussionNumber,
+      discussionNumber: discussionNumber,
       connectorId: connector.id,
-      isDiscussion: true,
     });
   }
 }
@@ -362,11 +364,27 @@ export async function githubIssueGarbageCollectActivity(
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
-  await deleteDiscussionOrIssue(
+  await deleteIssue(
     dataSourceConfig,
     installationId,
     repoId,
     issueNumber,
+    loggerArgs
+  );
+}
+
+export async function githubDiscussionGarbageCollectActivity(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  discussionNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  await deleteDiscussion(
+    dataSourceConfig,
+    installationId,
+    repoId,
+    discussionNumber,
     loggerArgs
   );
 }
@@ -400,7 +418,7 @@ export async function githubRepoGarbageCollectActivity(
   for (const issue of issuesInRepo) {
     promises.push(
       queue.add(() =>
-        deleteDiscussionOrIssue(
+        deleteIssue(
           dataSourceConfig,
           installationId,
           repoId,
@@ -411,46 +429,62 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  const discussionsInRepo = await GithubDiscussion.findAll({
+    where: {
+      repoId,
+      connectorId: connector.id,
+    },
+  });
+
+  for (const discussion of discussionsInRepo) {
+    promises.push(
+      queue.add(() =>
+        deleteDiscussion(
+          dataSourceConfig,
+          installationId,
+          repoId,
+          discussion.discussionNumber,
+          loggerArgs
+        )
+      )
+    );
+  }
+
   await Promise.all(promises);
 }
 
-async function deleteDiscussionOrIssue(
+async function deleteIssue(
   dataSourceConfig: DataSourceConfig,
   installationId: string,
   repoId: string,
-  issueOrDiscussionNumber: number,
+  issueNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
-  const localLogger = logger.child({ ...loggerArgs, issueOrDiscussionNumber });
+  const localLogger = logger.child({ ...loggerArgs, issueNumber });
 
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
     },
   });
-
   if (!connector) {
-    throw new Error("Connector not found");
+    throw new Error(`Connector not found (installationId: ${installationId})`);
   }
 
   const issueInDb = await GithubIssue.findOne({
     where: {
       repoId: repoId.toString(),
-      issueNumber: issueOrDiscussionNumber,
+      issueNumber,
       connectorId: connector.id,
     },
   });
-
   if (!issueInDb) {
     throw new Error(
-      `Issue not found in DB (issueNumber: ${issueOrDiscussionNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
     );
   }
 
-  const documentId = issueInDb.isDiscussion
-    ? getDiscussionDocumentId(repoId.toString(), issueOrDiscussionNumber)
-    : getIssueDocumentId(repoId.toString(), issueOrDiscussionNumber);
-
+  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   localLogger.info(
     { documentId },
     "Deleting GitHub issue from Dust Data Source."
@@ -461,7 +495,58 @@ async function deleteDiscussionOrIssue(
   await GithubIssue.destroy({
     where: {
       repoId: repoId.toString(),
-      issueNumber: issueOrDiscussionNumber,
+      issueNumber,
+      connectorId: connector.id,
+    },
+  });
+}
+
+async function deleteDiscussion(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoId: string,
+  discussionNumber: number,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child({ ...loggerArgs, discussionNumber });
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (installationId: ${installationId})`);
+  }
+
+  const discussionInDb = await GithubDiscussion.findOne({
+    where: {
+      repoId: repoId.toString(),
+      discussionNumber,
+      connectorId: connector.id,
+    },
+  });
+  if (!discussionInDb) {
+    throw new Error(
+      `Discussion not found in DB (discussionNumber: ${discussionNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    );
+  }
+
+  const documentId = getDiscussionDocumentId(
+    repoId.toString(),
+    discussionNumber
+  );
+  localLogger.info(
+    { documentId },
+    "Deleting GitHub discussion from Dust Data Source."
+  );
+  await deleteFromDataSource(dataSourceConfig, documentId);
+
+  localLogger.info("Deleting GitHub discussion from database.");
+  await GithubDiscussion.destroy({
+    where: {
+      repoId: repoId.toString(),
+      discussionNumber: discussionNumber,
       connectorId: connector.id,
     },
   });

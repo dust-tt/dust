@@ -23,6 +23,7 @@ const {
   githubGetRepoIssuesResultPageActivity,
   githubGetRepoDiscussionsResultPageActivity,
   githubIssueGarbageCollectActivity,
+  githubDiscussionGarbageCollectActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
 });
@@ -319,6 +320,29 @@ export async function githubIssueGarbageCollectWorkflow(
     githubInstallationId,
     repoId,
     issueNumber,
+    loggerArgs
+  );
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
+}
+
+export async function githubDiscussionGarbageCollectWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  githubInstallationId: string,
+  repoId: string,
+  discussionNumber: number
+) {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    discussionNumber,
+  };
+
+  await githubDiscussionGarbageCollectActivity(
+    dataSourceConfig,
+    githubInstallationId,
+    repoId,
+    discussionNumber,
     loggerArgs
   );
   await githubSaveSuccessSyncActivity(dataSourceConfig);

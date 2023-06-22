@@ -33,6 +33,15 @@ export function getIssueGarbageCollectWorkflowId(
   return `workflow-github-issue-garbage-collect-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
 }
 
+export function getDiscussionGarbageCollectWorkflowId(
+  connectorId: string,
+  dataSourceInfo: DataSourceInfo,
+  repoId: number,
+  issueNumber: number
+) {
+  return `workflow-github-discussion-garbage-collect-${connectorId}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
+}
+
 export function getRepoGarbageCollectWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number
