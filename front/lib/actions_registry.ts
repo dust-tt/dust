@@ -124,7 +124,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "9eb5f48bb5",
       appHash:
-        "330eec92f79e889fe224562f37945985adc70fd24a62967f0c99dcc49e6333fa",
+        "b4ec66af82aa9e43b18d86b45a6e82b8a7a1062d811119d4dceaf84a70f97467",
     },
     config: {
       MODEL: {
