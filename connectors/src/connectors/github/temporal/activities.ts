@@ -117,7 +117,11 @@ export async function githubUpsertIssueActivity(
 
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
-  const tags = [`title:${issue.title}`, `isPullRequest:${issue.isPullRequest}`];
+  const tags = [
+    `title:${issue.title}`,
+    `isPullRequest:${issue.isPullRequest}`,
+    `lasUpdatedAt:${issue.updatedAt.getTime()}`,
+  ];
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
   }
@@ -202,6 +206,9 @@ export async function githubUpsertDiscussionActivity(
     // that are processed when doing the full repo sync, so it's easier to assume
     // a single job isn't doing more than 1 concurrent request.
     for (const comment of comments) {
+      if (comment.isAnswer) {
+        renderedDiscussion += "[ACCEPTED ANSWER] ";
+      }
       renderedDiscussion += `${comment.author.login}: ${comment.bodyText}||`;
       let nextChildCursor: string | null = null;
       for (;;) {
@@ -237,6 +244,7 @@ export async function githubUpsertDiscussionActivity(
   const tags = [
     `title:${discussion.title}`,
     `author:${discussion.author.login}`,
+    `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
   await upsertToDatasource(
