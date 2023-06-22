@@ -15,7 +15,7 @@ export const DustProdActionRegistry: {
     config: {
       DATASOURCE: {
         data_sources: [],
-        top_k: 32,
+        top_k: 16,
         filter: { tags: null, timestamp: null },
         use_cache: false,
       },
@@ -42,7 +42,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0052be4be7",
       appHash:
-        "403342886b5b588530bcd82ba264765329a1f599313d54bd50c62d3c8766b735",
+        "2e9a8dbea83076c23d235f1dce273570542c4f11e9a0e7decefa9c26c78654e9",
     },
     config: {
       MODEL: {
