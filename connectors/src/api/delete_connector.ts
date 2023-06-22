@@ -23,6 +23,7 @@ const _deleteConnectorAPIHandler = async (
   >,
   res: Response<ConnectorDeleteResBody>
 ) => {
+  const force = req.query.force === "true";
   return await sequelize_conn.transaction(async (t) => {
     const connector = await Connector.findByPk(req.params.connector_id, {
       transaction: t,
@@ -62,7 +63,7 @@ const _deleteConnectorAPIHandler = async (
     }
 
     const connectorCleaner = CLEAN_CONNECTOR_BY_TYPE[connector.type];
-    const cleanRes = await connectorCleaner(connector.id.toString(), t);
+    const cleanRes = await connectorCleaner(connector.id.toString(), t, force);
     if (cleanRes.isErr()) {
       return apiError(req, res, {
         api_error: {

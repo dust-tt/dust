@@ -443,7 +443,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      await ConnectorsAPI.deleteConnector(dataSource.connectorId.toString());
+      await ConnectorsAPI.deleteConnector(dataSource.connectorId.toString(), true);
       await CoreAPI.deleteDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name
