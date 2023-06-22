@@ -35,16 +35,16 @@ async function handler(
   switch (req.method) {
     case "GET":
       if (
-        !req.body ||
-        typeof req.body.dataSourceName !== "string" ||
-        typeof req.body.documentId !== "string"
+        !req.query ||
+        typeof req.query.data_source_name !== "string" ||
+        typeof req.query.document_id !== "string"
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "Invalid request body, `dataSourceName` (string) and `documentId` (string) are required.",
+              "Invalid request body, `data_source_name` and `document_id` are required.",
           },
         });
       }

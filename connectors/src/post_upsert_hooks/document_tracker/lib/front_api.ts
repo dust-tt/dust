@@ -40,7 +40,6 @@ export async function shouldRunDocumentTracker(
   }
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    localLogger.info("Successfully checked if document tracker should run.");
     return dustRequestResult.data.should_run;
   }
 

@@ -38,9 +38,12 @@ export async function upsertToDatasource(
       );
 
       if (SHOULD_RUN_POST_UPSERT_HOOKS) {
+        logger.info("Running post upsert hooks");
         await Promise.all(
           POST_UPSERT_HOOKS.map((hook) => hook(dataSourceConfig, documentId))
         );
+      } else {
+        logger.info("Skipping post upsert hooks");
       }
 
       return upsertRes;
