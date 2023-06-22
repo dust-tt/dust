@@ -21,13 +21,53 @@ export async function upsertToDatasource(
   delayBetweenRetriesMs = 500,
   loggerArgs: Record<string, string | number> = {}
 ) {
+  await upsertToDatasourceWithRetries(
+    dataSourceConfig,
+    documentId,
+    documentText,
+    documentUrl,
+    timestampMs,
+    tags,
+    retries,
+    delayBetweenRetriesMs,
+    loggerArgs
+  );
+
+  try {
+    if (!SHOULD_RUN_POST_UPSERT_HOOKS) {
+      logger.info("Skipping post upsert hooks");
+      return;
+    }
+
+    logger.info("Running post upsert hooks");
+    // TODO: figure out max concurrency ?
+    await Promise.all(
+      POST_UPSERT_HOOKS.map((hook) => hook(dataSourceConfig, documentId))
+    );
+  } catch (e) {
+    // TODO: figure out if we want to retry this ?
+    logger.error({ error: e }, "Error running post upsert hooks");
+  }
+}
+
+async function upsertToDatasourceWithRetries(
+  dataSourceConfig: DataSourceConfig,
+  documentId: string,
+  documentText: string,
+  documentUrl?: string,
+  timestampMs?: number,
+  tags?: string[],
+  retries = 3,
+  delayBetweenRetriesMs = 500,
+  loggerArgs: Record<string, string | number> = {}
+) {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
   }
   const errors = [];
   for (let i = 0; i < retries; i++) {
     try {
-      const upsertRes = await _upsertToDatasource(
+      return await _upsertToDatasource(
         dataSourceConfig,
         documentId,
         documentText,
@@ -36,17 +76,6 @@ export async function upsertToDatasource(
         tags,
         loggerArgs
       );
-
-      if (SHOULD_RUN_POST_UPSERT_HOOKS) {
-        logger.info("Running post upsert hooks");
-        await Promise.all(
-          POST_UPSERT_HOOKS.map((hook) => hook(dataSourceConfig, documentId))
-        );
-      } else {
-        logger.info("Skipping post upsert hooks");
-      }
-
-      return upsertRes;
     } catch (e) {
       await new Promise((resolve) =>
         setTimeout(resolve, delayBetweenRetriesMs)
