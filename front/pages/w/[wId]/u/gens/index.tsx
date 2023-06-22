@@ -283,9 +283,19 @@ export function DocumentView({
               const logprobs_score = e.value.completion.top_logprobs[0];
               const key = Object.keys(logprobs_score)[0];
               let score;
-              if (key == "YES" || key == " YES") {
+              if (
+                key == "YES" ||
+                key == " YES" ||
+                key == " Yes" ||
+                key == " yes"
+              ) {
                 score = Math.exp(logprobs_score[key]);
-              } else if (key == "NO" || key == " NO") {
+              } else if (
+                key == "NO" ||
+                key == " NO" ||
+                key == " No" ||
+                key == " no"
+              ) {
                 score = 1 - Math.exp(logprobs_score[key]);
               } else {
                 score = 0;
