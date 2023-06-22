@@ -465,7 +465,7 @@ export function ResultsView({
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
-        <div className="mt-2 flex flex-col space-y-1">
+        <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
             return (
               <DocumentView
