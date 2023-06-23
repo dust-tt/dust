@@ -1,3 +1,5 @@
+import { TimeRangeId } from "@app/components/use/ChatTimeRangePicker";
+
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
   sourceUrl: string;
@@ -12,11 +14,16 @@ export type ChatRetrievedDocumentType = {
   }[];
 };
 
+export type ChatQueryType = {
+  text: string;
+  timeRangeId: TimeRangeId;
+};
+
 export type ChatMessageType = {
   role: "user" | "retrieval" | "assistant" | "error";
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
-  query?: string; // for `retrieval` messages (not persisted)
+  query?: ChatQueryType;  // for `retrieval` messages (not persisted)
 };
 
 export type ChatSessionType = {

@@ -17,7 +17,9 @@ import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
+  TimeRangeId,
   defaultTimeRange,
+  timeRanges,
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
@@ -40,8 +42,13 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
+import {
+  ChatMessageType,
+  ChatQueryType,
+  ChatRetrievedDocumentType,
+} from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { time } from "console";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -375,7 +382,15 @@ export function RetrievalsView({
           )}
           {!message.retrievals && (
             <div className="loading-dots">
-              Computed query: {message.query}. Retrieving docs
+              Computed query:{" "}
+              <span className="font-normal italic">{message.query?.text}</span>
+              <br />
+              Time range:{" "}
+              <span className="font-normal italic">
+                {message.query?.timeRangeId}
+              </span>
+              <br />
+              Retrieving docs
             </div>
           )}
         </div>
@@ -711,7 +726,14 @@ export default function AppChat({
     }
   };
 
-  const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
+  const timestampFilter = (selectedTimeRange: ChatTimeRange) => {
+    if (selectedTimeRange.id === "all") return {};
+    return {
+      timestamp: { gt: Date.now() - selectedTimeRange.ms },
+    };
+  };
+
+  const runChatRetrieval = async (query: ChatQueryType) => {
     const config = cloneBaseConfig(
       DustProdActionRegistry["chat-retrieval"].config
     );
@@ -723,14 +745,12 @@ export default function AppChat({
           data_source_id: ds.name,
         };
       });
-    if (selectedTimeRange.id !== "all") {
-      config.DATASOURCE.filter = {
-        timestamp: { gt: Date.now() - selectedTimeRange.ms },
-      };
-    }
+    config.DATASOURCE.filter = timestampFilter(
+      timeRanges.find((t) => t.id === query.timeRangeId) || defaultTimeRange
+    );
     const res = await runActionStreamed(owner, "chat-retrieval", config, [
       {
-        messages: [{ role: "query", message: query }],
+        messages: [{ role: "query", message: query.text }],
         userContext: {
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           localeString: navigator.language,
@@ -850,6 +870,15 @@ export default function AppChat({
     if (m.length === 0 || m[m.length - 1].role !== "error") return;
     while (m.pop()?.role !== "user" && m.length > 0);
   }
+  const retrievalTimeRangeId = (
+    selectedTimeRange: ChatTimeRange,
+    queryTimeRangeId: TimeRangeId
+  ) => {
+    return selectedTimeRange.id === "auto"
+      ? timeRanges.find((tr) => tr.id === queryTimeRangeId)?.id ||
+          defaultTimeRange.id
+      : selectedTimeRange.id;
+  };
 
   const handleSubmit = async () => {
     /* Document retrieval is handled by an openai function called
@@ -887,20 +916,28 @@ export default function AppChat({
 
     try {
       if (input.startsWith("/retrieve")) {
-        updateMessages(m, {
-          role: "retrieval",
-          query: processedInput,
-        } as ChatMessageType);
-        const retrievalResult = await runChatRetrieval(m, processedInput);
+        const query = {
+          text: processedInput,
+          timeRangeId: "all" as TimeRangeId,
+        };
+        updateMessages(m, { role: "retrieval", query } as ChatMessageType);
+        const retrievalResult = await runChatRetrieval(query);
         m.pop();
         updateMessages(m, retrievalResult);
       } else {
         const result = await runChatAssistant(m, retrievalMode);
+        if (result.query) {
+          result.query.timeRangeId = retrievalTimeRangeId(
+            selectedTimeRange,
+            result.query.timeRangeId
+          );
+        }
         updateMessages(m, result);
         // has the model decided to run the retrieval function?
         if (result?.role === "retrieval") {
-          const query = result.query as string;
-          const retrievalResult = await runChatRetrieval(m, query);
+          const retrievalResult = await runChatRetrieval(
+            result?.query as ChatQueryType
+          );
           // replace the retrieval message with the result of the retrieval
           // as a consequence, the query is not stored in the database
           m.pop();
