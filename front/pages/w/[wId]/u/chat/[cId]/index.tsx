@@ -1230,8 +1230,7 @@ export default function AppChat({
                                 );
                                 e.preventDefault();
                               }
-                              if (e.key === "Enter" && e.shiftKey) {
-                                console.log("shift+enter");
+                              if (e.key === "Enter") {
                                 void handleSelectCommand();
                                 e.preventDefault();
                               }
