@@ -1,3 +1,5 @@
+import { APIResponseError } from "@notionhq/client";
+import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
 import {
@@ -69,17 +71,52 @@ export async function notionGetPagesToSyncActivity(
     skippedDatabases.map((db) => db.notionDatabaseId)
   );
 
-  const { pages, nextCursor } = await getPagesEditedSince(
-    accessToken,
-    lastSyncedAt,
-    cursor,
-    {
-      ...loggerArgs,
-      dataSourceName: dataSourceInfo.dataSourceName,
-      workspaceId: dataSourceInfo.workspaceId,
-    },
-    skippedDatabaseIds
-  );
+  let res;
+  try {
+    res = await getPagesEditedSince(
+      accessToken,
+      lastSyncedAt,
+      cursor,
+      {
+        ...loggerArgs,
+        dataSourceName: dataSourceInfo.dataSourceName,
+        workspaceId: dataSourceInfo.workspaceId,
+      },
+      skippedDatabaseIds
+    );
+  } catch (e) {
+    // Sometimes a cursor will consistently fail with 500.
+    // In this case, there is not much we can do, so we just give up and move on.
+    // Notion workspaces are resynced daily so nothing is lost forever.
+    const potentialNotionError = e as {
+      body: unknown;
+      code: string;
+      status: number;
+    };
+    if (
+      potentialNotionError.code === "internal_server_error" &&
+      potentialNotionError.status === 500
+    ) {
+      if (Context.current().info.attempt > 20) {
+        localLogger.error(
+          {
+            error: potentialNotionError,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to get Notion search result page with cursor. Giving up and moving on"
+        );
+      }
+
+      return {
+        pageIds: [],
+        nextCursor: null,
+      };
+    }
+
+    throw e;
+  }
+
+  const { pages, nextCursor } = res;
 
   if (!excludeUpToDatePages) {
     return {
