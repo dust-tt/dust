@@ -17,6 +17,7 @@ import {
 import {
   Connector,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -56,6 +57,18 @@ export async function notionGetPagesToSyncActivity(
     throw new Error("Could not find connector");
   }
 
+  const skippedDatabases = await NotionDatabase.findAll({
+    where: {
+      connectorId: connector.id,
+      skipReason: {
+        [Op.not]: null,
+      },
+    },
+  });
+  const skippedDatabaseIds = new Set(
+    skippedDatabases.map((db) => db.notionDatabaseId)
+  );
+
   const { pages, nextCursor } = await getPagesEditedSince(
     accessToken,
     lastSyncedAt,
@@ -64,7 +77,8 @@ export async function notionGetPagesToSyncActivity(
       ...loggerArgs,
       dataSourceName: dataSourceInfo.dataSourceName,
       workspaceId: dataSourceInfo.workspaceId,
-    }
+    },
+    skippedDatabaseIds
   );
 
   if (!excludeUpToDatePages) {

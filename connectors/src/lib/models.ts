@@ -324,6 +324,58 @@ NotionPage.init(
 );
 Connector.hasMany(NotionPage);
 
+export class NotionDatabase extends Model<
+  InferAttributes<NotionDatabase>,
+  InferCreationAttributes<NotionDatabase>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare notionDatabaseId: string;
+  declare skipReason?: string | null;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionDatabase.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    notionDatabaseId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["notionDatabaseId", "connectorId"], unique: true },
+      { fields: ["connectorId"] },
+    ],
+    modelName: "notion_databases",
+  }
+);
+
+Connector.hasMany(NotionDatabase);
+
 export class GithubConnectorState extends Model<
   InferAttributes<GithubConnectorState>,
   InferCreationAttributes<GithubConnectorState>

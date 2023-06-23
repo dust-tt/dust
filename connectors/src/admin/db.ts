@@ -8,6 +8,7 @@ import {
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
   SlackConfiguration,
   SlackMessages,
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
   await SlackConfiguration.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await NotionPage.sync({ alter: true });
+  await NotionDatabase.sync({ alter: true });
   await NotionConnectorState.sync({ alter: true });
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
