@@ -401,7 +401,7 @@ function formatMessageWithLinks(message: string): JSX.Element {
     const [fullMatch, text, url] = match;
     elements.push(message.slice(lastIndex, match.index));
     elements.push(
-      <Link href={url} key={fullMatch}>
+      <Link href={url} key={fullMatch} target="_blank">
         <span className="text-blue-600 hover:underline">{text}</span>
       </Link>
     );
@@ -1208,9 +1208,7 @@ export default function AppChat({
                         )}
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={`Ask anything about \`${
-                            owner.name
-                          }\`, press ${isMac ? "⌘" : "ctrl"}+⏎ to submit`}
+                          placeholder={`Ask anything about \`${owner.name}\`. Press ⏎ to submit, shift+⏎ for next line`}
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                             "rounded-sm",
@@ -1242,16 +1240,18 @@ export default function AppChat({
                                 );
                                 e.preventDefault();
                               }
-                              if (e.key === "Enter") {
+                              if (e.key === "Enter" && e.shiftKey) {
+                                console.log("shift+enter");
                                 void handleSelectCommand();
                                 e.preventDefault();
                               }
-                            }
-                            if (e.ctrlKey || e.metaKey) {
-                              if (e.key === "Enter" && !loading) {
-                                void handleSubmit();
-                                e.preventDefault();
-                              }
+                            } else if (
+                              e.key === "Enter" &&
+                              !loading &&
+                              !e.shiftKey
+                            ) {
+                              void handleSubmit();
+                              e.preventDefault();
                             }
                           }}
                           autoFocus={true}
