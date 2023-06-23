@@ -252,6 +252,8 @@ export async function isPageAccessibleAndUnarchived(
           return false;
         }
       }
+
+      tryLogger.error({ error: e }, "Error checking if page is accessible.");
       throw e;
     }
   }

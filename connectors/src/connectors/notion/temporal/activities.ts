@@ -1,4 +1,3 @@
-import { APIResponseError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -451,6 +450,13 @@ export async function garbageCollectActivity(
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
   for (const page of pagesToDelete) {
+    if (page.skipReason) {
+      localLogger.info(
+        { pageId: page.notionPageId, skipReason: page.skipReason },
+        "Page is marked as skipped, not deleting."
+      );
+      continue;
+    }
     if (
       await isPageAccessibleAndUnarchived(
         notionAccessToken,
