@@ -1,10 +1,20 @@
-import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentDuplicateIcon,
+  MagnifyingGlassIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
 import { ActionButton, HighlightButton } from "@app/components/Button";
+import { Spinner } from "@app/components/Spinner";
+import GensTimeRangePicker, {
+  gensDefaultTimeRange,
+  GensTimeRange,
+  msForTimeRange,
+} from "@app/components/use/GensTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
   cloneBaseConfig,
@@ -536,8 +546,10 @@ export default function AppGens({
     };
   }>({});
 
-  const [queryLoading, setQueryLoading] = useState<boolean>(false);
-  const [timeRange, setTimeRange] = useState<string | null>(null);
+  const [inferTimeRangeLoading, setInferTimeRangeLoading] =
+    useState<boolean>(false);
+  const [timeRange, setTimeRange] =
+    useState<GensTimeRange>(gensDefaultTimeRange);
 
   const [retrievalLoading, setRetrievalLoading] = useState<boolean>(false);
   const [retrieved, setRetrieved] = useState<GensRetrievedDocumentType[]>([]);
@@ -602,16 +614,22 @@ export default function AppGens({
     setGenContent(value);
   };
 
-  const handleRefreshQuery = async () => {
-    setQueryLoading(true);
+  const handleInferTimeRange = async () => {
+    setInferTimeRangeLoading(true);
 
-    const config = cloneBaseConfig(DustProdActionRegistry["gens-query"].config);
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["gens-time-range"].config
+    );
     const inputs = [{ text: genContent, context: getContext() }];
 
-    const res = await runActionStreamed(owner, "gens-query", config, inputs);
+    const res = await runActionStreamed(
+      owner,
+      "gens-time-range",
+      config,
+      inputs
+    );
     if (res.isErr()) {
-      setQueryLoading(false);
-      setTimeRange(null);
+      setInferTimeRangeLoading(false);
       return;
     }
 
@@ -622,12 +640,12 @@ export default function AppGens({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            setTimeRange(e.value.time_range);
+            setTimeRange(e.value.time_range as GensTimeRange);
           }
         }
       }
     }
-    setQueryLoading(false);
+    setInferTimeRangeLoading(false);
   };
 
   const handleGenerate = async () => {
@@ -753,6 +771,7 @@ export default function AppGens({
     setRetrievalLoading(true);
     setRetrieved([]);
     setGenDocumentExtracts({});
+
     const userContext = {
       user: {
         username: user?.username,
@@ -761,9 +780,11 @@ export default function AppGens({
       workspace: owner.name,
       date_today: new Date().toISOString().split("T")[0],
     };
+
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-retrieval"].config
     );
+
     config.DATASOURCE.top_k = top_k;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
@@ -773,6 +794,13 @@ export default function AppGens({
           data_source_id: ds.name,
         };
       });
+
+    if (timeRange.unit !== "all") {
+      config.DATASOURCE.filter = {
+        timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
+      };
+    }
+
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
       { text: genContent, userContext },
     ]);
@@ -804,7 +832,7 @@ export default function AppGens({
         <div className="">
           <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
             <div className="flex flex-col">
-              <div className="flex flex-col space-y-4 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex w-full font-normal">
                   <TextareaAutosize
                     minRows={8}
@@ -829,22 +857,13 @@ export default function AppGens({
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
                     <ActionButton
-                      disabled={queryLoading}
-                      onClick={() => {
-                        void handleRefreshQuery();
-                      }}
-                    >
-                      {queryLoading ? "Loading..." : "Refresh Query"}
-                    </ActionButton>
-                  </div>
-                  <div className="flex flex-initial">
-                    <ActionButton
                       disabled={retrievalLoading}
                       onClick={() => {
                         void handleSearch();
                       }}
                     >
-                      {retrievalLoading ? "Loading..." : "Run Search"}
+                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
+                      {retrievalLoading ? "Loading..." : "Search"}
                     </ActionButton>
                   </div>
                   <div className="flex flex-initial">
@@ -854,6 +873,7 @@ export default function AppGens({
                         void handleGenerate();
                       }}
                     >
+                      <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
                       {genLoading ? "Loading..." : "Generate"}
                     </ActionButton>
                   </div>
@@ -873,65 +893,87 @@ export default function AppGens({
                     </HighlightButton>
                   </div>
                 </div>
-                <div className="flex-rows flex space-x-2 text-xs font-normal">
-                  <div className="flex flex-initial text-gray-400">
-                    TimeRange:
+                <div className="items-center space-y-1 text-xs font-normal">
+                  <div className="flex flex-row items-center space-x-2 leading-8">
+                    <div className="flex flex-initial text-gray-400">TopK:</div>
+                    <div className="flex flex-initial">
+                      <input
+                        type="number"
+                        className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                        value={top_k}
+                        placeholder="Top K"
+                        onChange={(e) => setTopK(Number(e.target.value))}
+                      />
+                    </div>
                   </div>
-                  <div className="flex flex-initial">{timeRange}</div>
-                </div>
-                <div className="flex-rows flex items-center space-x-2 text-xs font-normal">
-                  <div className="flex flex-initial text-gray-400">TopK:</div>
-                  <div className="flex flex-initial">
-                    <input
-                      type="number"
-                      className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
-                      value={top_k}
-                      placeholder="Top K"
-                      onChange={(e) => setTopK(Number(e.target.value))}
+                  <div className="flex flex-row items-center space-x-2 leading-8">
+                    <div className="flex flex-initial text-gray-400">
+                      Data Sources:
+                    </div>
+                    <div className="ml-1 flex flex-row">
+                      {dataSources.map((ds) => {
+                        return (
+                          <div
+                            key={ds.name}
+                            className="group ml-1 flex flex-initial"
+                          >
+                            <div
+                              className={classNames(
+                                "z-10 flex h-4 w-4 flex-initial cursor-pointer",
+                                ds.provider !== "none" ? "mr-1" : "",
+                                ds.selected ? "opacity-100" : "opacity-25"
+                              )}
+                              onClick={() => {
+                                handleSwitchDataSourceSelection(ds.name);
+                              }}
+                            >
+                              {ds.provider !== "none" ? (
+                                <img
+                                  src={PROVIDER_LOGO_PATH[ds.provider]}
+                                ></img>
+                              ) : (
+                                <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                              )}
+                            </div>
+                            <div className="absolute z-0 hidden rounded leading-3 group-hover:block">
+                              <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                                <span className="text-gray-600">
+                                  <span className="font-semibold">
+                                    {ds.name}
+                                  </span>
+                                  {ds.description ? ` ${ds.description}` : null}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex flex-row items-center space-x-2 leading-8">
+                    <div className="flex flex-initial text-gray-400">
+                      Time range:
+                    </div>
+                    <div className="flex flex-initial cursor-pointer text-gray-400">
+                      {inferTimeRangeLoading ? (
+                        <div className="mt-0.5">
+                          <Spinner />
+                        </div>
+                      ) : (
+                        <SparklesIcon
+                          className="h-4 w-4 text-yellow-400"
+                          onClick={handleInferTimeRange}
+                        />
+                      )}
+                    </div>
+                    <GensTimeRangePicker
+                      timeRange={timeRange}
+                      onTimeRangeUpdate={setTimeRange}
                     />
                   </div>
                 </div>
 
-                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal">
-                  <div className="flex flex-initial text-gray-400">
-                    Data Sources:
-                  </div>
-                  <div className="ml-1 flex flex-row">
-                    {dataSources.map((ds) => {
-                      return (
-                        <div
-                          key={ds.name}
-                          className="group ml-1 flex flex-initial"
-                        >
-                          <div
-                            className={classNames(
-                              "z-10 flex h-4 w-4 flex-initial cursor-pointer",
-                              ds.provider !== "none" ? "mr-1" : "",
-                              ds.selected ? "opacity-100" : "opacity-25"
-                            )}
-                            onClick={() => {
-                              handleSwitchDataSourceSelection(ds.name);
-                            }}
-                          >
-                            {ds.provider !== "none" ? (
-                              <img src={PROVIDER_LOGO_PATH[ds.provider]}></img>
-                            ) : (
-                              <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                            )}
-                          </div>
-                          <div className="absolute z-0 hidden rounded group-hover:block">
-                            <div className="relative bottom-8 border bg-white px-1 py-1 ">
-                              <span className="text-gray-600">
-                                <span className="font-semibold">{ds.name}</span>
-                                {ds.description ? ` ${ds.description}` : null}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
 
               <ResultsView
