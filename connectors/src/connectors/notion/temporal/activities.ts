@@ -105,12 +105,11 @@ export async function notionGetPagesToSyncActivity(
           },
           "Failed to get Notion search result page with cursor. Giving up and moving on"
         );
+        return {
+          pageIds: [],
+          nextCursor: null,
+        };
       }
-
-      return {
-        pageIds: [],
-        nextCursor: null,
-      };
     }
 
     throw e;
