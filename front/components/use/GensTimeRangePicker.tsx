@@ -55,7 +55,7 @@ export default function GensTimeRangePicker({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="select-none flex flex-row-reverse items-center sm:flex-row">
+    <div className="flex select-none flex-row-reverse items-center sm:flex-row">
       <div
         className="group relative w-full cursor-pointer rounded-md bg-violet-200 py-0.5 pl-2 pr-2 text-left text-xs font-semibold text-violet-800"
         onClick={() => setOpen(!open)}
