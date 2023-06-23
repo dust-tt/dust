@@ -13,6 +13,7 @@ import { Spinner } from "@app/components/Spinner";
 import GensTimeRangePicker, {
   gensDefaultTimeRange,
   GensTimeRange,
+  msForTimeRange,
 } from "@app/components/use/GensTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
@@ -770,6 +771,7 @@ export default function AppGens({
     setRetrievalLoading(true);
     setRetrieved([]);
     setGenDocumentExtracts({});
+
     const userContext = {
       user: {
         username: user?.username,
@@ -778,9 +780,11 @@ export default function AppGens({
       workspace: owner.name,
       date_today: new Date().toISOString().split("T")[0],
     };
+
     const config = cloneBaseConfig(
       DustProdActionRegistry["gens-retrieval"].config
     );
+
     config.DATASOURCE.top_k = top_k;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
@@ -790,6 +794,13 @@ export default function AppGens({
           data_source_id: ds.name,
         };
       });
+
+    if (timeRange.unit !== "all") {
+      config.DATASOURCE.filter = {
+        timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
+      };
+    }
+
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
       { text: genContent, userContext },
     ]);
@@ -851,7 +862,7 @@ export default function AppGens({
                         void handleSearch();
                       }}
                     >
-                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-100 mr-1" />
+                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
                       {retrievalLoading ? "Loading..." : "Search"}
                     </ActionButton>
                   </div>
@@ -862,7 +873,7 @@ export default function AppGens({
                         void handleGenerate();
                       }}
                     >
-                      <SparklesIcon className="h-4 w-4 text-gray-100 mr-1" />
+                      <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
                       {genLoading ? "Loading..." : "Generate"}
                     </ActionButton>
                   </div>

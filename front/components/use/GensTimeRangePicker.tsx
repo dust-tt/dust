@@ -29,7 +29,7 @@ export const msForTimeRange = (timeRange: GensTimeRange) => {
     case "year":
       return timeRange.count * 31622400000;
     case "all":
-      return null;
+      return 0;
   }
 };
 
