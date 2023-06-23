@@ -7,7 +7,7 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
-import { Connector, NotionPage } from "@connectors/lib/models";
+import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 import { isConnectorProvider } from "@connectors/types/connector";
 
@@ -163,6 +163,66 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         });
       }
       return;
+    }
+
+    case "skip-database": {
+      if (!args.databaseId) {
+        throw new Error("Missing --databaseId argument");
+      }
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      const databaseId = args.databaseId as string;
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "notion",
+          workspaceId: args.wId,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and type notion`
+        );
+      }
+
+      const connectorId = connector.id;
+
+      const existingDatabase = await NotionDatabase.findOne({
+        where: {
+          notionDatabaseId: databaseId,
+          connectorId,
+        },
+      });
+
+      if (existingDatabase) {
+        if (args.reason) {
+          console.log(
+            `Updating existing skipped database ${databaseId} with skip reason ${args.reason}`
+          );
+          await existingDatabase.update({
+            skipReason: args.reason,
+          });
+          return;
+        }
+        console.log(
+          `Database ${databaseId} is already skipped with reason ${existingDatabase.skipReason}`
+        );
+        return;
+      }
+
+      const skipReason = args.reason || "blacklisted";
+
+      console.log(
+        `Creating new skipped database ${databaseId} with reason ${skipReason}`
+      );
+
+      await NotionDatabase.create({
+        notionDatabaseId: databaseId,
+        skipReason,
+        connectorId,
+      });
     }
   }
 };
