@@ -457,13 +457,40 @@ export async function garbageCollectActivity(
       );
       continue;
     }
-    if (
-      await isPageAccessibleAndUnarchived(
+    let pageIsAccessible: boolean;
+    try {
+      pageIsAccessible = await isPageAccessibleAndUnarchived(
         notionAccessToken,
         page.notionPageId,
         localLogger
-      )
-    ) {
+      );
+    } catch (e) {
+      // Sometimes a request will consistently fail with a 500
+      // We don't want to delete the page in that case, so we just
+      //  log the error and move on
+      const potentialNotionError = e as {
+        body: unknown;
+        code: string;
+        status: number;
+      };
+      if (
+        potentialNotionError.code === "internal_server_error" &&
+        potentialNotionError.status === 500 &&
+        Context.current().info.attempt > 20
+      ) {
+        localLogger.error(
+          {
+            error: potentialNotionError,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to check if page is accessible. Giving up and moving on"
+        );
+        pageIsAccessible = true;
+      } else {
+        throw e;
+      }
+    }
+    if (pageIsAccessible) {
       localLogger.info(
         { pageId: page.notionPageId },
         "Page is still accessible, not deleting."
