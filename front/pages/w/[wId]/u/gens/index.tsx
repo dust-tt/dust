@@ -171,12 +171,14 @@ export function DocumentView({
   document,
   query,
   owner,
+  template,
   onScoreReady,
   onExtractUpdate,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
+  template: TemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
@@ -189,16 +191,16 @@ export function DocumentView({
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
 
+  const extractInput = [
+    {
+      query: query,
+      result: document,
+      instructions: template?.instructions || [],
+    },
+  ];
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
     setExtractedText("");
-
-    const extractInput = [
-      {
-        query: query,
-        result: document,
-      },
-    ];
 
     const extract_config = cloneBaseConfig(
       DustProdActionRegistry["gens-extract"].config
@@ -213,15 +215,16 @@ export function DocumentView({
         }
 
         const { eventStream } = res.value;
-
+        const p = new FunctionSingleArgStreamer("data", (tokens) =>
+          setExtractedText((t) => {
+            onExtractUpdate(document.documentId, t + tokens);
+            return t + tokens;
+          })
+        );
         const handleEvent = (event: any) => {
-          if (event.type === "tokens") {
-            let currText = "";
-            setExtractedText((t) => {
-              currText = t + event.content.tokens.text;
-              return currText;
-            });
-            onExtractUpdate(document.documentId, currText);
+          if (event.type === "function_call_arguments_tokens") {
+            const tokens = event.content.tokens.text;
+            p.feed(tokens);
           }
           if (event.type === "error") {
             console.log("ERROR error event", event);
@@ -268,12 +271,6 @@ export function DocumentView({
     const rank_config = cloneBaseConfig(
       DustProdActionRegistry["gens-rank"].config
     );
-    const extractInput = [
-      {
-        query: query,
-        result: document,
-      },
-    ];
 
     runActionStreamed(owner, "gens-rank", rank_config, extractInput)
       .then((res) => {
@@ -312,12 +309,16 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              setExplanation(
-                e.value.completion.text.substring(
-                  e.value.completion.text.indexOf("Explanation:") + 13,
-                  e.value.completion.text.length
-                )
-              );
+              if (e.value.completion.text.indexOf("Explanation:") > -1) {
+                setExplanation(
+                  e.value.completion.text.substring(
+                    e.value.completion.text.indexOf("Explanation:") + 13,
+                    e.value.completion.text.length
+                  )
+                );
+              } else {
+                setExplanation(e.value.completion.text);
+              }
               onScoreReady(document.documentId, score);
               return;
             }
@@ -442,12 +443,14 @@ export function ResultsView({
   retrieved,
   query,
   owner,
+  template,
   onExtractUpdate,
   onScoreReady,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
+  template: TemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
 }) {
@@ -477,6 +480,7 @@ export function ResultsView({
                 key={r.documentId}
                 query={query}
                 owner={owner}
+                template={template}
                 onScoreReady={onScoreReady}
                 onExtractUpdate={onExtractUpdate}
               />
@@ -524,6 +528,91 @@ export class FunctionSingleArgStreamer {
   }
 }
 
+type TemplateType = {
+  name: string;
+  color: string;
+  instructions: string[];
+};
+
+export function TemplatesView({
+  onTemplateSelect,
+}: {
+  onTemplateSelect: (template: TemplateType) => void;
+}) {
+  const templates = [
+    {
+      name: "Fact Gatherer",
+      color: "bg-red-500",
+      instructions: [
+        "Extract facts and important information in a list",
+        "Present your answers in list format",
+        "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
+        "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
+        "We just want to gather facts and answers related to the document text",
+      ],
+    },
+    {
+      name: "Contradictor",
+      color: "bg-blue-500",
+      instructions: [
+        "Find documents and ideas that might contradict or disagree with the user's text",
+      ],
+    },
+  ];
+
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedTemplate(templates[0].name);
+    onTemplateSelect(templates[0]);
+  }, []);
+
+  return (
+    <div className="mt-5 p-5">
+      <div>
+        Templates
+        <div className="mt-2 flex flex-col space-y-2">
+          {templates.map((t) => {
+            return (
+              // round circle div with given color
+              <div
+                key={t.name}
+                className="group ml-1 flex flex-initial"
+                onClick={() => {
+                  setSelectedTemplate(t.name);
+                  onTemplateSelect(t);
+                }}
+              >
+                <button
+                  className={classNames(
+                    "flex flex-initial flex-row items-center space-x-2",
+                    "rounded py-1",
+                    "mt-2 text-xs font-bold text-gray-700",
+                    "h-5 w-5 rounded-full",
+                    t.color,
+                    // make opacity lower for unselected
+                    selectedTemplate === t.name ? "opacity-100" : "opacity-30"
+                  )}
+                />
+                <div className="absolute z-0 hidden rounded group-hover:block">
+                  <div className="relative bottom-8 border bg-white px-0.5 py-1 ">
+                    <span className="text-xs text-gray-600">
+                      <span className="font-semibold">{t.name}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*
+instructions = [
+]*/
 export default function AppGens({
   user,
   owner,
@@ -556,6 +645,8 @@ export default function AppGens({
   const [dataSources, setDataSources] =
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
+
+  const template = useRef<TemplateType | null>(null);
 
   const getContext = () => {
     return {
@@ -853,6 +944,10 @@ export default function AppGens({
                       setGenCursorPosition(e.target.selectionStart);
                     }}
                   />
+
+                  <TemplatesView
+                    onTemplateSelect={(t) => (template.current = t)}
+                  />
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
@@ -982,6 +1077,7 @@ export default function AppGens({
                 owner={owner}
                 onExtractUpdate={onExtractUpdate}
                 onScoreReady={onScoreReady}
+                template={template.current}
               />
             </div>
           </div>
