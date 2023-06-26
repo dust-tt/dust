@@ -185,38 +185,39 @@ export function DocumentView({
   const provider = providerFromDocument(document);
 
   const [extractedText, setExtractedText] = useState("");
-  const [explanation, setExplanation] = useState("");
   const [LLMScore, setLLMScore] = useState<number | null>(null);
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
 
-  const extractInput = [
-    {
-      query: query,
-      result: document,
-      instructions: template?.instructions || [],
-    },
-  ];
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
     setExtractedText("");
 
     const extract_config = cloneBaseConfig(
-      DustProdActionRegistry["gens-extract"].config
+      DustProdActionRegistry["gens-summary"].config
     );
 
-    runActionStreamed(owner, "gens-extract", extract_config, extractInput)
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+      },
+    ];
+
+    runActionStreamed(owner, "gens-summary", extract_config, extractInput)
       .then((res) => {
-        console.log("Extracting");
+
+        console.log("Summarizing...");
         if (res.isErr()) {
           console.log("ERROR", res.error);
           return;
         }
 
         const { eventStream } = res.value;
-        const p = new FunctionSingleArgStreamer("data", (tokens) =>
+        const p = new FunctionSingleArgStreamer("summary", (tokens) =>
           setExtractedText((t) => {
+            console.log(t + tokens);
             onExtractUpdate(document.documentId, t + tokens);
             return t + tokens;
           })
@@ -260,7 +261,7 @@ export function DocumentView({
           })
           .catch((e) => console.log(e));
       })
-      .catch((e) => console.log("Error during extract", e));
+      .catch((e) => console.log("Error during summary", e));
     return () => {
       console.log("Trying to unmount");
       interruptRef.current = true;
@@ -268,6 +269,15 @@ export function DocumentView({
   }, [document.documentId]);
 
   useEffect(() => {
+
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+        instructions: template?.instructions || []
+      },
+    ];
+
     const rank_config = cloneBaseConfig(
       DustProdActionRegistry["gens-rank"].config
     );
@@ -309,16 +319,6 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              if (e.value.completion.text.indexOf("Explanation:") > -1) {
-                setExplanation(
-                  e.value.completion.text.substring(
-                    e.value.completion.text.indexOf("Explanation:") + 13,
-                    e.value.completion.text.length
-                  )
-                );
-              } else {
-                setExplanation(e.value.completion.text);
-              }
               onScoreReady(document.documentId, score);
               return;
             }
@@ -400,14 +400,7 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
-        <p className="text-black-500 ml-3 text-xs font-bold">{explanation}</p>
-        <div className="ml-4 flex flex-initial">
-          <div className="border-l-4 border-slate-400">
-            <p className={classNames("pl-2 text-xs italic text-gray-500")}>
-              {extractedText}
-            </p>
-          </div>
-        </div>
+        <p className="text-black-500 ml-3 text-xs">{extractedText}</p>
       </div>
       {chunkExpanded && (
         <div className="mb-2 flex flex-col space-y-2">

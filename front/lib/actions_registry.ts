@@ -119,12 +119,12 @@ export const DustProdActionRegistry: {
       },
     },
   },
-  "gens-extract": {
+  "gens-summary": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "9eb5f48bb5",
+      appId: "6a7495bf9f",
       appHash:
-        "bec6312f88b0030053a8e6f49982782608b7ca34652e71a10395c462bd64367f",
+        "c1522e77be98e0279110bed06c7540ab1fc324cd2b9ebfb78a76b8a2fcd30425",
     },
     config: {
       MODEL: {
@@ -132,7 +132,7 @@ export const DustProdActionRegistry: {
         model_id: "gpt-3.5-turbo-0613",
         use_cache: false,
         use_stream: true,
-        function_call: "extracted_data",
+        function_call: "return_summary",
       },
     },
   },
@@ -141,7 +141,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "2a5aadf425",
       appHash:
-        "611508c6600b4828200b1a433947bcdd8102db3ae3d1f872c2a0798feef6e11a",
+        "68e48affbf7bc2b8b7c468a5a7ccfbdb6fe3cf896d07bbcf9348ab96b3b68f6c",
     },
     config: {
       MODEL: {
