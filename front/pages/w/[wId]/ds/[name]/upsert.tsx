@@ -373,7 +373,7 @@ export default function DataSourceUpsert({
                       rows={20}
                       readOnly={readOnly}
                       className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-md font-mono text-xs",
+                        "font-mono block w-full min-w-0 flex-1 rounded-md text-xs",
                         "border-gray-300",
                         readOnly
                           ? "focus:border-gray-300 focus:ring-0"

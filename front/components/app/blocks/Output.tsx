@@ -279,7 +279,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
                 <div className="flex flex-initial">
                   <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
                 </div>
-                <div className="flex flex-1 font-mono">
+                <div className="font-mono flex flex-1">
                   <ValueViewer
                     value={trace.meta.logs}
                     topLevel={true}
@@ -393,7 +393,7 @@ export default function Output({
                   if (trace.map((t) => t.meta).some((e) => e.logs.length)) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">
-                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                        <div className="font-mono mr-2 flex text-sm text-gray-300">
                           {i}:
                         </div>
                         <Logs trace={trace} />
@@ -439,7 +439,7 @@ export default function Output({
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
-                    <div className="mr-2 flex font-mono text-sm text-gray-300">
+                    <div className="font-mono mr-2 flex text-sm text-gray-300">
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />

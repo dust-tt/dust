@@ -262,7 +262,7 @@ function ExecuteFinalOutput({
         <TextareaAutosize
           minRows={1}
           className={classNames(
-            "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
+            "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
             "text-gray-700"
           )}
           value={
@@ -296,7 +296,7 @@ function ExecuteInput({
         <div className="group flex items-center bg-slate-300">
           <div
             className={classNames(
-              "flex w-1/4 flex-1 border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] font-normal outline-none focus:outline-none",
+              "font-mono flex w-1/4 flex-1 border-0 bg-slate-300 px-1 py-1 text-[13px] font-normal outline-none focus:outline-none",
               "border-white ring-0 focus:border-white focus:ring-0"
             )}
             // readOnly={true}
@@ -308,7 +308,7 @@ function ExecuteInput({
       </div>
       <div
         className={classNames(
-          "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px]",
+          "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px]",
           getValueType(inputValue) === inputType && inputValue?.length > 0
             ? "border-slate-100"
             : "border-red-500"
@@ -337,7 +337,7 @@ function ExecuteInput({
           <TextareaAutosize
             minRows={1}
             className={classNames(
-              "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
+              "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
               "text-gray-700"
             )}
             value={inputValue || ""}

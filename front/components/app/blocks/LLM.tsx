@@ -412,7 +412,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                        "font-mono block w-full resize-none rounded-md bg-slate-100 px-1 py-1 text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -434,7 +434,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                        "font-mono block w-full resize-none rounded-md bg-slate-100 px-1 py-1 text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
