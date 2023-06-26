@@ -16,7 +16,7 @@ import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 import memoize from "lodash.memoize";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive/parser";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -27,6 +27,7 @@ import {
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
   ModelId,
+  sequelize_conn,
 } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 
@@ -643,18 +644,34 @@ export async function garbageCollector(
   return files.length;
 }
 export async function renewWebhooks(pageSize: number): Promise<number> {
+  // Find webhook that are about to expire in the next hour.
   const webhooks = await GoogleDriveWebhook.findAll({
     where: {
-      expiresAt: {
-        [Op.lt]: new Date().getTime() + 60 * 60 * 1000,
+      renewAt: {
+        [Op.lt]: literal("now() + INTERVAL '1 hour'"),
       },
+      renewedByWebhookId: null,
     },
     limit: pageSize,
   });
 
   for (const wh of webhooks) {
+    // Renew each webhook.
     await renewOneWebhook(wh.id);
   }
+
+  // Clean up webhooks pointers that expired more than 1 day ago.
+  await GoogleDriveWebhook.destroy({
+    where: {
+      expiresAt: {
+        [Op.lt]: literal("now() - INTERVAL '1 day'"),
+      },
+      renewedByWebhookId: {
+        [Op.not]: null,
+      },
+    },
+    limit: pageSize,
+  });
 
   return webhooks.length;
 }
@@ -673,9 +690,24 @@ export async function renewOneWebhook(webhookId: ModelId) {
       if (webhookInfo.isErr()) {
         throw webhookInfo.error;
       } else {
-        await wh.update({
-          webhookId: webhookInfo.value.id,
-          expiresAt: new Date(webhookInfo.value.expirationTsMs),
+        await sequelize_conn.transaction(async (t) => {
+          const freshWebhook = await GoogleDriveWebhook.create(
+            {
+              webhookId: webhookInfo.value.id,
+              expiresAt: new Date(webhookInfo.value.expirationTsMs),
+              renewAt: new Date(webhookInfo.value.expirationTsMs),
+              connectorId: connector.id,
+            },
+            { transaction: t }
+          );
+          await wh.update(
+            {
+              renewedByWebhookId: freshWebhook.webhookId,
+            },
+            {
+              transaction: t,
+            }
+          );
         });
       }
     } catch (e) {
@@ -689,9 +721,6 @@ export async function renewOneWebhook(webhookId: ModelId) {
         1,
         tags
       );
-      await wh.update({
-        expiresAt: new Date(new Date().getTime() + 60 * 60 * 2 * 1000),
-      });
     }
   }
 }
