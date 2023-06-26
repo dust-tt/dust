@@ -369,52 +369,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
-    case "delete": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
-
-      // TODO(spolu)
-      const dataSource = await DataSource.findAll({
-        where: {
-          workspaceId: w.id,
-        },
-      });
-
-      if (dataSource.length > 0) {
-        console.log("Found data sources:");
-        dataSource.forEach((ds) => {
-          console.log(
-            `  - name: ${ds.name} provider='${ds.connectorProvider}'`
-          );
-        });
-
-        throw new Error(
-          `Cannot delete workspace with data sources: wId='${args.wId}' dataSourceCount='${dataSource.length}'`
-        );
-      }
-
-      // delete Membership
-      // delete MembershipInvitations
-      // delete Apps
-      // delete Providers
-
-      return;
-    }
-
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `add-user`, `change-role`, `upgrade`, `downgrade`, `delete`"
+        "Possible values: `find`, `show`, `create`, `set-limits`, `add-user`, `change-role`, `upgrade`, `downgrade`"
       );
   }
 };
