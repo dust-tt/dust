@@ -3,6 +3,7 @@ import { ClockIcon } from "@heroicons/react/24/outline";
 import { Fragment, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
+import { TimeRangeId } from "@app/types/chat";
 
 export const timeRanges: ChatTimeRange[] = [
   // { name: "1 day", id: "day", ms: 86400000},
@@ -14,7 +15,6 @@ export const timeRanges: ChatTimeRange[] = [
   { name: "auto", id: "auto", ms: 0 },
 ];
 
-export type TimeRangeId = "week" | "month" | "year" | "all" | "auto";
 export type ChatTimeRange = {
   name: string;
   id: TimeRangeId;

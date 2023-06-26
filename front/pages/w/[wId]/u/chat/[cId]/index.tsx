@@ -18,7 +18,6 @@ import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
   defaultTimeRange,
-  TimeRangeId,
   timeRanges,
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
@@ -46,6 +45,7 @@ import {
   ChatMessageType,
   ChatQueryType,
   ChatRetrievedDocumentType,
+  TimeRangeId,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 

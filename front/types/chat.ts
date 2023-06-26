@@ -1,5 +1,3 @@
-import { TimeRangeId } from "@app/components/use/ChatTimeRangePicker";
-
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
   sourceUrl: string;
@@ -14,6 +12,7 @@ export type ChatRetrievedDocumentType = {
   }[];
 };
 
+export type TimeRangeId = "week" | "month" | "year" | "all" | "auto";
 export type ChatQueryType = {
   text: string;
   timeRangeId: TimeRangeId;
