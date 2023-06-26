@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 
-export const timeRanges : ChatTimeRange[] = [
+export const timeRanges: ChatTimeRange[] = [
   // { name: "1 day", id: "day", ms: 86400000},
   { name: "1 week", id: "week", ms: 604800000 },
   // 31 days in ms, and 366 days in ms so that we do not miss any documents
@@ -20,7 +20,7 @@ export type ChatTimeRange = {
   id: TimeRangeId;
   ms: number;
 };
-export const defaultTimeRange : ChatTimeRange = timeRanges[3];
+export const defaultTimeRange: ChatTimeRange = timeRanges[3];
 
 export default function TimeRangePicker({
   timeRange,
