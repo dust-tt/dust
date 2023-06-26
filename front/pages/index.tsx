@@ -118,9 +118,9 @@ function Cloud() {
       particle.update(p5);
 
       if (p) {
-        p5.strokeWeight(1.5);
-        p5.stroke("#F0FDF4");
-        p5.line(particle.pos.x, particle.pos.y, p.pos.x, p.pos.y);
+        // p5.strokeWeight(1.0);
+        // p5.stroke("#F0FDF4");
+        // p5.line(particle.pos.x, particle.pos.y, p.pos.x, p.pos.y);
       }
 
       p = particle;
@@ -130,7 +130,7 @@ function Cloud() {
     for (const particle of particles) {
       p5.noStroke();
       p5.fill("#A7F3D0");
-      p5.ellipse(particle.pos.x, particle.pos.y, 6, 6);
+      p5.ellipse(particle.pos.x, particle.pos.y, 5, 5);
     }
   };
 
