@@ -1,0 +1,60 @@
+import { SparkleIcon } from '@/components/SparkleIcon'
+import { generateRssFeed } from '@/lib/generateRssFeed'
+
+export async function getStaticProps() {
+  if (process.env.NODE_ENV === 'production') {
+    await generateRssFeed()
+  }
+  return { props: {} }
+}
+export const Line = () => <><hline className="block border-b"/></>;
+
+---
+
+## Why work doesn’t work {{ date: '2023-05-11T00:00Z', id: '2023-05-11-work-doesnt-work' }}
+
+
+![](@/media/2023-05-11-work-doesnt-work/header.png)
+
+
+Information overload is a millenia-old challenge that's only been amplified by digital technology. With Large Language Models (LLMs), we can leverage technology to overcome this challenge that every company faces. A new approach is needed: adaptive software that helps teams better harness information flows with software and free up their own time for value-added worked.
+
+Asynchronous and distributed work is no contemporary invention. The Roman Empire managed remote operations for centuries. The Catholic Church started doing the same almost two millenia ago (1). 
+
+Writing catalysed asynchronous and distributed work, accelerated by Gutenberg and the printing press, more recently fuelled by the Internet and software tools. Claude Shannon, inventor of the [Information Age](https://www.goodreads.com/book/show/32919530-a-mind-at-play) concept, defined ‘Information’ by quantifying it. He first published the word “bit” and anticipated that all information could one day be digitized. The rest, including the ongoing revolution in the communications industry, is history.
+
+We associate new digital technologies with the costs of information overload, but this concept too has deeper roots, as studied by [Ann Blair](https://hbr.org/2011/03/information-overloads-2300-yea.html) (2). In 1255, [Vincent of Beauvais](http://bestiary.ca/prisources/psdetail2601.htm) was already frustrated by “the multitude of books, the shortness of time and the slipperiness of memory.” His solution was to write a single source of truth (of some *4.5 million words*) to encapsulate the “flowers”, the best of all the books he read and to spare others the cost of reading each underlying piece.
+
+We also think trust and control are the two faces of a coin, as opposite or substitute, all the more in a distributed work situation. But Michael O'Leary’s study of the 150 year-long case study of the Hudson Bay Company between 1670 and 1826 proves that trust and control are often mutually reinforced—rather than a trade-off—in approaching to managed distributed work. 
+
+### Undoing Babel
+
+![](@/media/2023-05-11-work-doesnt-work/second.png)
+
+> **Information overload** is the difficulty in understanding an issue and effectively make decisions when one has **too much information** (TMI) about that issue. It is generally associated with the excessive quantity of daily information. (3)
+*Wikipedia contributors*
+> 
+
+This all sounds familiar. 
+
+We all have our "I know it's here somewhere" moments with information. Is it buried in an email? Lost in a Slack thread? Somewhere in Notion? And once finally located, another question arises: is this the most recent update, or is there a newer one somewhere else?
+
+We all know the effort required to understand or communicate in another team's 'language.' Marketing deciphering tech documentation, sales formalizing client feedback for the product teams, engineers sifting through design memos.
+
+We all try to create and maintain own own ways to “keep the data in one place”. This often creates a collection of static views of a company's state, obscuring context that’s emerged since and could be essential for grounded decision-making. 
+
+While we love being a team and achieve great results together, working together sometimes feels less like a joyful energy and more the grind of just “getting things to work” to manage information overload.
+
+At Dust, we think information overload isn’t a fatality. We believe information chaos isn’t a necessary cost of being in a fast-growing companies. We know we can make work work better. 
+
+Large Language Models (LLMs) give us the tools to properly harness information within a company and get back to a “pre-Babel” time of harmonious collaboration.
+
+We're working on shaping a new software era. Making a leap [from static to adaptive software](https://www.notion.so/How-LLMs-change-softwares-decision-making-and-shape-the-future-of-work-now-fc044d027dca42a0aa9bed6f3b50b765?pvs=21). If we can provide them with  the right team Operating System, *Smart Teams* can then focus on the job at hand rather than juggling between different apps and templates to just get a message across.
+
+<Line/>
+
+(1) Hinds, Pamela (2022). “[Distributed Work over the Centuries.](https://people.ece.ubc.ca/leei/519/2002-hbc-DistributedWork.pdf)” In *Distributed Work*, edited by Pamela J. Hinds and Sarah Kiesler, 27–54. Cambridge: MIT Press.
+
+(2) Blair, Ann (14 March 2011). ["Information Overload's 2,300-Year-Old History"](https://hbr.org/2011/03/information-overloads-2300-yea.html). *Harvard Business Review*. 
+
+(3) Wikipedia contributors. (2023, June 16). [Information Overload](https://en.wikipedia.org/wiki/Information_overload). *Wikipedia The Free Encyclopedia* 
