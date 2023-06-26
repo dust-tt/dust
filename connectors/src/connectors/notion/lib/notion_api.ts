@@ -67,6 +67,7 @@ export async function getPagesEditedSince(
   sinceTs: number | null,
   cursor: string | null,
   loggerArgs: Record<string, string | number> = {},
+  skippedDatabaseIds: Set<string> = new Set(),
   retry: { retries: number; backoffFactor: number } = {
     retries: 5,
     backoffFactor: 2,
@@ -145,6 +146,13 @@ export async function getPagesEditedSince(
         editedPages[pageOrDb.id] = lastEditedTime;
       }
     } else if (pageOrDb.object === "database") {
+      if (skippedDatabaseIds.has(pageOrDb.id)) {
+        localLogger.info(
+          { databaseId: pageOrDb.id },
+          "Skipping database that is marked as skipped."
+        );
+        continue;
+      }
       if (isFullDatabase(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
         // skip databases that have a `lastEditedTime` in the future
@@ -244,6 +252,8 @@ export async function isPageAccessibleAndUnarchived(
           return false;
         }
       }
+
+      tryLogger.error({ error: e }, "Error checking if page is accessible.");
       throw e;
     }
   }

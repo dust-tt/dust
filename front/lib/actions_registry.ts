@@ -70,17 +70,17 @@ export const DustProdActionRegistry: {
       },
     },
   },
-  "gens-query": {
+  "gens-time-range": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "699bfebc61",
       appHash:
-        "6d4272ba8a39c333f10ba8ee5e9b228c9d92063cef53e03a89a2f962328f0786",
+        "2e432b4d35b625a5c2ac38813c689b6f3d3a94edc27f74bfb238c69dfe0354d8",
     },
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
+        model_id: "gpt-4-0613",
         function_call: "perform_search",
         use_cache: false,
       },

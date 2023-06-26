@@ -14,9 +14,11 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
 
-const { notionUpsertPageActivity, garbageCollectActivity } = proxyActivities<
-  typeof activities
->({
+const { garbageCollectActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "120 minute",
+});
+
+const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
 });
 

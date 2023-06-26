@@ -1,3 +1,4 @@
+import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
 import {
@@ -17,6 +18,7 @@ import {
 import {
   Connector,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -56,16 +58,63 @@ export async function notionGetPagesToSyncActivity(
     throw new Error("Could not find connector");
   }
 
-  const { pages, nextCursor } = await getPagesEditedSince(
-    accessToken,
-    lastSyncedAt,
-    cursor,
-    {
-      ...loggerArgs,
-      dataSourceName: dataSourceInfo.dataSourceName,
-      workspaceId: dataSourceInfo.workspaceId,
-    }
+  const skippedDatabases = await NotionDatabase.findAll({
+    where: {
+      connectorId: connector.id,
+      skipReason: {
+        [Op.not]: null,
+      },
+    },
+  });
+  const skippedDatabaseIds = new Set(
+    skippedDatabases.map((db) => db.notionDatabaseId)
   );
+
+  let res;
+  try {
+    res = await getPagesEditedSince(
+      accessToken,
+      lastSyncedAt,
+      cursor,
+      {
+        ...loggerArgs,
+        dataSourceName: dataSourceInfo.dataSourceName,
+        workspaceId: dataSourceInfo.workspaceId,
+      },
+      skippedDatabaseIds
+    );
+  } catch (e) {
+    // Sometimes a cursor will consistently fail with 500.
+    // In this case, there is not much we can do, so we just give up and move on.
+    // Notion workspaces are resynced daily so nothing is lost forever.
+    const potentialNotionError = e as {
+      body: unknown;
+      code: string;
+      status: number;
+    };
+    if (
+      potentialNotionError.code === "internal_server_error" &&
+      potentialNotionError.status === 500
+    ) {
+      if (Context.current().info.attempt > 20) {
+        localLogger.error(
+          {
+            error: potentialNotionError,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to get Notion search result page with cursor. Giving up and moving on"
+        );
+        return {
+          pageIds: [],
+          nextCursor: null,
+        };
+      }
+    }
+
+    throw e;
+  }
+
+  const { pages, nextCursor } = res;
 
   if (!excludeUpToDatePages) {
     return {
@@ -401,13 +450,47 @@ export async function garbageCollectActivity(
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
   for (const page of pagesToDelete) {
-    if (
-      await isPageAccessibleAndUnarchived(
+    if (page.skipReason) {
+      localLogger.info(
+        { pageId: page.notionPageId, skipReason: page.skipReason },
+        "Page is marked as skipped, not deleting."
+      );
+      continue;
+    }
+    let pageIsAccessible: boolean;
+    try {
+      pageIsAccessible = await isPageAccessibleAndUnarchived(
         notionAccessToken,
         page.notionPageId,
         localLogger
-      )
-    ) {
+      );
+    } catch (e) {
+      // Sometimes a request will consistently fail with a 500
+      // We don't want to delete the page in that case, so we just
+      //  log the error and move on
+      const potentialNotionError = e as {
+        body: unknown;
+        code: string;
+        status: number;
+      };
+      if (
+        potentialNotionError.code === "internal_server_error" &&
+        potentialNotionError.status === 500 &&
+        Context.current().info.attempt > 20
+      ) {
+        localLogger.error(
+          {
+            error: potentialNotionError,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to check if page is accessible. Giving up and moving on"
+        );
+        pageIsAccessible = true;
+      } else {
+        throw e;
+      }
+    }
+    if (pageIsAccessible) {
       localLogger.info(
         { pageId: page.notionPageId },
         "Page is still accessible, not deleting."
