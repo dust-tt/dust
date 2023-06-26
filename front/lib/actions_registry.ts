@@ -124,14 +124,15 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "9eb5f48bb5",
       appHash:
-        "b4ec66af82aa9e43b18d86b45a6e82b8a7a1062d811119d4dceaf84a70f97467",
+        "72e2eb0830ee8bef916232b1406f645d7361cc32274cbfc7fce1a45652807e30",
     },
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
+        model_id: "gpt-3.5-turbo-0613",
         use_cache: false,
         use_stream: true,
+        function_call: "extracted_data",
       },
     },
   },
@@ -140,7 +141,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "2a5aadf425",
       appHash:
-        "1aab1381ac86e22ef50497eefd3fd882846fc786da4f6df248df94b133533120",
+        "a7faf16e4e4d16f1e0aad21d37e7c2d3832c63406f55c516a977e614fe1eaf3e",
     },
     config: {
       MODEL: {
