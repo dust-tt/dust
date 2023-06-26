@@ -205,7 +205,7 @@ export default function DemoQA({ run }) {
             </div>
           </div>
         </div>
-        <div className="mt-4 flex flex-initial whitespace-pre-wrap font-mono text-sm text-gray-800">
+        <div className="font-mono mt-4 flex flex-initial whitespace-pre-wrap text-sm text-gray-800">
           {(answer === "short" ? short : onePager).split("References:")[0]}
         </div>
 

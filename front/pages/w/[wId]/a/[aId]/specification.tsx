@@ -88,7 +88,7 @@ export default function Specification({
         <div className="w-max-4xl mx-auto">
           <div className="flex flex-auto">
             <div className="my-8 flex flex-auto flex-col">
-              <div className="whitespace-pre font-mono text-[13px] text-gray-700">
+              <div className="font-mono whitespace-pre text-[13px] text-gray-700">
                 {specification}
               </div>
             </div>
