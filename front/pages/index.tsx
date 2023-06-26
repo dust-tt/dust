@@ -8,7 +8,7 @@ import Script from "next/script";
 import { signIn } from "next-auth/react";
 import p5Types from "p5";
 
-import { Button, GoogleSignInButton } from "@app/components/Button";
+import { ActionButton, Button } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -189,40 +189,6 @@ export default function Home({
               <span className="ml-2 mr-1">Sign in with Google</span>
             </ActionButton>
 
-<<<<<<< HEAD
-          <p className="mt-12 text-5xl font-bold tracking-tighter text-gray-800 sm:mt-16 sm:text-7xl lg:text-8xl">
-            Build
-            <br />
-            <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
-              Smarter Teams
-            </span>{" "}
-            <br />
-            with Generative AI
-            <br />
-          </p>
-
-          <div className="mt-12 grid sm:grid-cols-6">
-            <div className="text-lg text-gray-900 sm:col-span-4">
-              <p className="rounded bg-white bg-opacity-50 font-light">
-                While fast-growing companies all feel the pain of rapidly
-                growing internal information debt, LLMs have the potential to
-                fundamentally change how data is created or consumed in the
-                enterprise. Dust harnesses their power to help teams craft
-                better content, understand their environment faster, and
-                ultimately take better decisions.
-              </p>
-
-              <p className="mt-4 bg-white bg-opacity-50 text-lg font-medium">
-                Get better work done faster with Dust, the{" "}
-                <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
-                  Smart Team OS
-                </span>{" "}
-              </p>
-              <div className="mt-12">
-                <GoogleSignInButton
-                  onClick={() =>
-                    signIn("google", {
-=======
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="ml-32 mt-1 text-xs text-gray-500">
                 or{" "}
@@ -230,41 +196,14 @@ export default function Home({
                   className="cursor-pointer hover:font-bold"
                   onClick={() => {
                     void signIn("github", {
->>>>>>> Changes to the landing page
                       callbackUrl: router.query.wId
                         ? `/api/login?wId=${router.query.wId}`
                         : `/api/login`,
                     });
                   }}
                 >
-<<<<<<< HEAD
-                  <img
-                    src="/static/google_white_32x32.png"
-                    className="ml-1 h-4 w-4"
-                  />
-                  <span className="ml-2 mr-1">Sign in with Google</span>
-                </GoogleSignInButton>
-                {!(router.query.signIn && router.query.signIn !== "github") && (
-                  <div className="ml-[7.7rem] mt-1 text-xs text-gray-500">
-                    or{" "}
-                    <span
-                      className="cursor-pointer hover:font-bold"
-                      onClick={() => {
-                        void signIn("github", {
-                          callbackUrl: router.query.wId
-                            ? `/api/login?wId=${router.query.wId}`
-                            : `/api/login`,
-                        });
-                      }}
-                    >
-                      GitHub
-                    </span>
-                  </div>
-                )}
-=======
                   GitHub
                 </span>
->>>>>>> Changes to the landing page
               </div>
             )}
           </div>
