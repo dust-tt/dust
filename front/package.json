@@ -33,6 +33,7 @@
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
     "pino": "^8.11.0",
+    "pino-pretty": "^10.0.0",
     "react": "^18.2.0",
     "react-accessible-treeview": "^2.6.0",
     "react-beforeunload": "^2.5.3",
