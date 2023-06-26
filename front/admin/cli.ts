@@ -1,4 +1,5 @@
 import parseArgs from "minimist";
+import readline from "readline";
 
 import { planForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
@@ -25,6 +26,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
       return;
     }
+
     case "show": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -57,8 +59,41 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         `          sizeMb: ${plan.limits.dataSources.documents.sizeMb}`
       );
       console.log(`        managed:    ${plan.limits.dataSources.managed}`);
+
+      const dataSources = await DataSource.findAll({
+        where: {
+          workspaceId: w.id,
+        },
+      });
+
+      console.log("Data sources:");
+      dataSources.forEach((ds) => {
+        console.log(`  - name: ${ds.name} provider: ${ds.connectorProvider}`);
+      });
+
+      const memberships = await Membership.findAll({
+        where: {
+          workspaceId: w.id,
+        },
+      });
+      const users = await User.findAll({
+        where: {
+          id: memberships.map((m) => m.userId),
+        },
+      });
+
+      console.log("Users:");
+      users.forEach((u) => {
+        console.log(
+          `  - userId: ${u.id} email: ${u.email} role: ${
+            memberships.find((m) => m.userId === u.id)?.role
+          }`
+        );
+      });
+
       return;
     }
+
     case "create": {
       if (!args.name) {
         throw new Error("Missing --name argument");
@@ -76,6 +111,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await workspace("show", args);
       return;
     }
+
     case "set-limits": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -155,6 +191,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await workspace("show", args);
       return;
     }
+
     case "upgrade": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -199,6 +236,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await workspace("show", args);
       return;
     }
+
     case "downgrade": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -243,6 +281,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await workspace("show", args);
       return;
     }
+
     case "add-user": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -281,6 +320,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
       return;
     }
+
     case "change-role": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -328,6 +368,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await m.save();
       return;
     }
+
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
@@ -410,12 +451,12 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "delete-managed": {
+    case "delete": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.provider) {
-        throw new Error("Missing --provider argument");
+      if (!args.name) {
+        throw new Error("Missing --name argument");
       }
       const workspace = await Workspace.findOne({
         where: {
@@ -429,28 +470,45 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       const dataSource = await DataSource.findOne({
         where: {
           workspaceId: workspace.id,
-          connectorProvider: args.provider,
+          name: args.name,
         },
       });
       if (!dataSource) {
         throw new Error(
-          `DataSource not found: wId='${args.wId}' provider='${args.provider}'`
-        );
-      }
-      if (!dataSource.connectorId) {
-        throw new Error(
-          `DataSource does not have a connector: wId='${args.wId}' connectorId='${args.connectorId}'`
+          `DataSource not found: wId='${args.wId}' name='${args.name}'`
         );
       }
 
-      await ConnectorsAPI.deleteConnector(
-        dataSource.connectorId.toString(),
-        true
-      );
+      await new Promise((resolve) => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        rl.question(
+          `Are you sure you want to definitely delete the following data source and all associated data: wId='${args.wId}' name='${args.name}' provider='${dataSource.connectorProvider}'? (y/N) `,
+          (answer: string) => {
+            rl.close();
+            if (answer !== "y") {
+              throw new Error("Aborting");
+            }
+            resolve(null);
+          }
+        );
+      });
+
+      if (dataSource.connectorId) {
+        console.log(`Deleting connectorId=${dataSource.connectorId}}`);
+        await ConnectorsAPI.deleteConnector(
+          dataSource.connectorId.toString(),
+          true
+        );
+      }
+
       await CoreAPI.deleteDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name
       );
+
       await dataSource.destroy();
 
       return;
