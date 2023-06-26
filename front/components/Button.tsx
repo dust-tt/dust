@@ -81,3 +81,23 @@ export function HighlightButton({
     </button>
   );
 }
+
+export function GoogleSignInButton({
+  onClick = null,
+  children,
+}: React.PropsWithChildren<{
+  onClick?: any;
+}>) {
+  return (
+    <button
+      type="button"
+      className={classNames(
+        "inline-flex items-center rounded-md border  px-3 py-1 text-sm leading-6 shadow-sm" +
+          "border-gray-700 bg-white font-roboto hover:bg-[#4285F4] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#4285F4] focus:ring-offset-2"
+      )}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}

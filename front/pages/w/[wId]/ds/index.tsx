@@ -66,7 +66,7 @@ const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
     fetchConnectorError: null,
   },
   {
-    name: "Google Drive",
+    name: "Google Drive™",
     connectorProvider: "google_drive",
     isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
