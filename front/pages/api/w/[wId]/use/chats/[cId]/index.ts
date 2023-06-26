@@ -56,6 +56,7 @@ const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
       nullable: true,
     },
     query: { type: "string", nullable: true },
+    feedback: { type: "string", nullable: true },
   },
   required: ["role"],
 };

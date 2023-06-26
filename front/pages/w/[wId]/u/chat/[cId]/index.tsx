@@ -1,4 +1,9 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+} from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
@@ -40,7 +45,11 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
+import {
+  ChatMessageType,
+  ChatRetrievedDocumentType,
+  MessageFeedbackStatus,
+} from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -418,6 +427,43 @@ function formatMessageWithLinks(message: string): JSX.Element {
   );
 }
 
+export function MessageFeedback({
+  message,
+  feedbackHandler,
+}: {
+  message: ChatMessageType;
+  feedbackHandler: (
+    message: ChatMessageType,
+    status: MessageFeedbackStatus
+  ) => void;
+}) {
+  return (
+    <div className="flex-end flex h-2 flex-row-reverse text-gray-400">
+      <div
+        onClick={() => feedbackHandler(message, "positive")}
+        className={classNames(
+          "ml-2 rounded-md p-px",
+          message.feedback === "positive"
+            ? "bg-violet-50 text-violet-800"
+            : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
+        )}
+      >
+        <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
+      </div>
+      <div
+        onClick={() => feedbackHandler(message, "negative")}
+        className={classNames(
+          "ml-2 rounded-md p-px",
+          message.feedback === "negative"
+            ? "bg-violet-50 text-violet-800"
+            : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
+        )}
+      >
+        <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
+      </div>
+    </div>
+  );
+}
 export function MessageView({
   user,
   message,
@@ -919,6 +965,19 @@ export default function AppChat({
     })();
     setLoading(false);
   };
+  const handleFeedback = (
+    message: ChatMessageType,
+    feedback: MessageFeedbackStatus
+  ) => {
+    setMessages(
+      messages.map((m) => {
+        if (m === message) {
+          m.feedback = feedback;
+        }
+        return m;
+      })
+    );
+  };
 
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
@@ -1031,7 +1090,7 @@ export default function AppChat({
                                 </div>
                               </div>
                             ) : (
-                              <div key={i}>
+                              <div key={i} className="group">
                                 <MessageView
                                   user={user}
                                   message={m}
@@ -1058,6 +1117,14 @@ export default function AppChat({
                                   }
                                   readOnly={chatSession.readOnly}
                                 />
+                                {m.role === "assistant" && (
+                                  <div className="invisible group-hover:visible">
+                                    <MessageFeedback
+                                      message={m}
+                                      feedbackHandler={handleFeedback}
+                                    />
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
