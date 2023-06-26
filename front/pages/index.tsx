@@ -168,11 +168,11 @@ export default function Home({
         <Cloud />
       </div>
       <main className="z-10 mx-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-left">
+        <div className="grid grid-cols-5 gap-1">
+          <div className="col-span-2 text-left">
             <Logo />
           </div>
-          <div className="mr-2 mt-8 text-right">
+          <div className="col-span-3 mr-2 mt-8 text-right">
             <ActionButton
               onClick={() =>
                 signIn("google", {
