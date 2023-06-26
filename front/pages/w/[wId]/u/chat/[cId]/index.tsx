@@ -45,13 +45,13 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
   MessageFeedbackStatus,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
