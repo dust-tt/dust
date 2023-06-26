@@ -51,6 +51,7 @@ import {
   MessageFeedbackStatus,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -977,6 +978,13 @@ export default function AppChat({
         return m;
       })
     );
+    const chatUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
+    logger.info({
+      topic: "Feedback",
+      message,
+      chatUrl,
+      chatSession,
+    });
   };
 
   return (
