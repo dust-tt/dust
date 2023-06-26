@@ -6,14 +6,24 @@ import {
 } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
+import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";
+
+const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
+const RUN_DOCUMENT_TRACKER_FOR_CONNECTOR_TYPES: ConnectorProvider[] = [
+  "google_drive",
+  "github",
+  "notion",
+];
 
 export const config = {
   api: {
@@ -277,6 +287,33 @@ async function handler(
             data_source_error: upsertRes.error,
           },
         });
+      }
+
+      const whitelistedWorkspaceIds =
+        RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
+      if (
+        whitelistedWorkspaceIds.includes(owner.sId.toString()) &&
+        dataSource.connectorProvider &&
+        RUN_DOCUMENT_TRACKER_FOR_CONNECTOR_TYPES.includes(
+          dataSource.connectorProvider
+        )
+      ) {
+        try {
+          await updateTrackedDocuments(
+            dataSource.id,
+            req.query.documentId as string,
+            req.body.text
+          );
+        } catch (error) {
+          logger.error(
+            {
+              error,
+              dataSourceId: dataSource.id,
+              documentId: req.query.documentId as string,
+            },
+            "Error updating tracked documents"
+          );
+        }
       }
 
       res.status(200).json({

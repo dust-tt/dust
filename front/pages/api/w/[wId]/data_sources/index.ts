@@ -176,6 +176,7 @@ async function handler(
 
       res.status(201).json({
         dataSource: {
+          id: ds.id,
           name: ds.name,
           description: ds.description,
           visibility: ds.visibility,

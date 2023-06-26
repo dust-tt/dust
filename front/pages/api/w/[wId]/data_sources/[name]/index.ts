@@ -66,6 +66,7 @@ async function handler(
     case "GET":
       res.status(200).json({
         dataSource: {
+          id: dataSource.id,
           name: dataSource.name,
           description: dataSource.description,
           visibility: dataSource.visibility,
@@ -114,6 +115,7 @@ async function handler(
 
       return res.status(200).json({
         dataSource: {
+          id: ds.id,
           name: ds.name,
           description: ds.description,
           visibility: ds.visibility,

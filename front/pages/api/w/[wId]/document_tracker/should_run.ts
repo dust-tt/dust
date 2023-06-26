@@ -1,7 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { DataSource, TrackedDocument } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 
 export type GetDocumentTrackerShouldRunResponseBody = {
   should_run: boolean;
@@ -58,7 +62,38 @@ async function handler(
           },
         });
       }
-      res.status(200).json({ should_run: false });
+
+      const whitelistedWorkspaceIds =
+        RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
+
+      if (!whitelistedWorkspaceIds.includes(owner.sId.toString())) {
+        res.status(200).json({ should_run: false });
+        return;
+      }
+
+      const workspaceDataSourceIds = (
+        await DataSource.findAll({
+          where: {
+            workspaceId: owner.id,
+          },
+          attributes: ["id"],
+        })
+      ).map((ds) => ds.id);
+
+      // only run if the workspace has tracked documents
+      // (excluding the doc that was just upserted)
+      const hasTrackedDocuments = !!(await TrackedDocument.count({
+        where: {
+          dataSourceId: {
+            [Op.in]: workspaceDataSourceIds,
+          },
+          documentId: {
+            [Op.not]: req.query.document_id,
+          },
+        },
+      }));
+
+      res.status(200).json({ should_run: hasTrackedDocuments });
       return;
 
     default:
