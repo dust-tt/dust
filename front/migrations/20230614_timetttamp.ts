@@ -24,7 +24,7 @@ async function migrateCollection(
   let currentTime = Date.now(),
     points,
     updated = 0;
-  let nb_points = await client.count(collectionName);
+  const nb_points = await client.count(collectionName);
   console.log(
     "Migrating Collection ",
     collectionName,

@@ -17,8 +17,8 @@ import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
-  TimeRangeId,
   defaultTimeRange,
+  TimeRangeId,
   timeRanges,
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
@@ -48,7 +48,6 @@ import {
   ChatRetrievedDocumentType,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { time } from "console";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

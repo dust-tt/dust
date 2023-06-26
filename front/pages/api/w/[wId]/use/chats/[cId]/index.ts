@@ -55,7 +55,15 @@ const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
       items: chatRetrievedDocumentSchema,
       nullable: true,
     },
-    query: { type: "string", nullable: true },
+    query: {
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        timeRangeId: { type: "string" },
+      },
+      nullable: true,
+      required: ["text"],
+    },
   },
   required: ["role"],
 };
