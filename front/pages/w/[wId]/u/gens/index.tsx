@@ -535,9 +535,9 @@ type TemplateType = {
 };
 
 export function TemplatesView({
-  onTemplateTypeSelect,
+  onTemplateSelect,
 }: {
-  onTemplateTypeSelect: (template: TemplateType) => void;
+  onTemplateSelect: (template: TemplateType) => void;
 }) {
   const templates = [
     {
@@ -551,25 +551,26 @@ export function TemplatesView({
         "We just want to gather facts and answers related to the document text",
       ],
     },
+    {
+      name: "Contradictor",
+      color: "bg-blue-500",
+      instructions: [
+        "Find documents and ideas that might contradict or disagree with the user's text",
+      ],
+    },
   ];
-  //const [templates, setTemplateTypes] = useState<string[]>([]);
+
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
-  /*
   useEffect(() => {
-    setTemplateTypeLoading(true);
-    fetch("/api/templates")
-      .then((res) => res.json())
-      .then((json) => {
-        setTemplateTypes(json);
-        setTemplateTypeLoading(false);
-      });
-  }, []);*/
+    setSelectedTemplate(templates[0].name);
+    onTemplateSelect(templates[0]);
+  }, []);
 
   return (
     <div className="mt-5 p-5">
       <div>
-        TemplateTypes
+        Templates
         <div className="mt-2 flex flex-col space-y-2">
           {templates.map((t) => {
             return (
@@ -579,7 +580,7 @@ export function TemplatesView({
                 className="group ml-1 flex flex-initial"
                 onClick={() => {
                   setSelectedTemplate(t.name);
-                  onTemplateTypeSelect(t);
+                  onTemplateSelect(t);
                 }}
               >
                 <button
@@ -590,7 +591,7 @@ export function TemplatesView({
                     "h-5 w-5 rounded-full",
                     t.color,
                     // make opacity lower for unselected
-                    selectedTemplate === t.name ? "opacity-100" : "opacity-50"
+                    selectedTemplate === t.name ? "opacity-100" : "opacity-30"
                   )}
                 />
                 <div className="absolute z-0 hidden rounded group-hover:block">
@@ -945,7 +946,7 @@ export default function AppGens({
                   />
 
                   <TemplatesView
-                    onTemplateTypeSelect={(t) => (template.current = t)}
+                    onTemplateSelect={(t) => (template.current = t)}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">
