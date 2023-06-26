@@ -64,7 +64,7 @@ async function upsertToDatasourceWithRetries(
       );
     } catch (e) {
       await new Promise((resolve) =>
-        setTimeout(resolve, delayBetweenRetriesMs)
+        setTimeout(resolve, delayBetweenRetriesMs * (i + 1) ** 2)
       );
       errors.push(e);
     }
