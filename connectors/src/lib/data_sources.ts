@@ -17,7 +17,7 @@ export async function upsertToDatasource(
   documentUrl?: string,
   timestampMs?: number,
   tags?: string[],
-  retries = 3,
+  retries = 10,
   delayBetweenRetriesMs = 500,
   loggerArgs: Record<string, string | number> = {}
 ) {
@@ -43,7 +43,7 @@ async function upsertToDatasourceWithRetries(
   documentUrl?: string,
   timestampMs?: number,
   tags?: string[],
-  retries = 3,
+  retries = 10,
   delayBetweenRetriesMs = 500,
   loggerArgs: Record<string, string | number> = {}
 ) {
@@ -63,9 +63,17 @@ async function upsertToDatasourceWithRetries(
         loggerArgs
       );
     } catch (e) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, delayBetweenRetriesMs)
+      const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
+      logger.warn(
+        {
+          error: e,
+          attempt: i + 1,
+          retries: retries,
+          sleepTime: sleepTime,
+        },
+        "Error upserting to data source. Retrying..."
       );
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
       errors.push(e);
     }
   }
