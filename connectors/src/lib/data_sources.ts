@@ -2,10 +2,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { POST_UPSERT_HOOKS } from "@connectors/post_upsert_hooks";
+import { runPostUpsertHooks } from "@connectors/post_upsert_hooks";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { FRONT_API, SHOULD_RUN_POST_UPSERT_HOOKS = false } = process.env;
+const { FRONT_API } = process.env;
 if (!FRONT_API) {
   throw new Error("FRONT_API not set");
 }
@@ -33,21 +33,7 @@ export async function upsertToDatasource(
     loggerArgs
   );
 
-  try {
-    if (!SHOULD_RUN_POST_UPSERT_HOOKS) {
-      logger.info("Skipping post upsert hooks");
-      return;
-    }
-
-    logger.info("Running post upsert hooks");
-    // TODO: figure out max concurrency ?
-    await Promise.all(
-      POST_UPSERT_HOOKS.map((hook) => hook(dataSourceConfig, documentId))
-    );
-  } catch (e) {
-    // TODO: figure out if we want to retry this ?
-    logger.error({ error: e }, "Error running post upsert hooks");
-  }
+  await runPostUpsertHooks(dataSourceConfig, documentId);
 }
 
 async function upsertToDatasourceWithRetries(

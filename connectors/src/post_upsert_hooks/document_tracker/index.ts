@@ -1,5 +1,9 @@
 import mainLogger from "@connectors/logger/logger";
-import { PostUpsertHook } from "@connectors/post_upsert_hooks";
+import {
+  PostUpsertHook,
+  PostUpsertHookFilter,
+  PostUpsertHookWorkflowLauncher,
+} from "@connectors/post_upsert_hooks";
 
 import { shouldRunDocumentTracker } from "./lib/front_api";
 import { launchDocumentTrackerHandleUpsertWorkflow } from "./temporal/client";
@@ -8,7 +12,23 @@ const logger = mainLogger.child({
   postUpsertHook: "document_tracker",
 });
 
-export const documentTrackerPostUpsertHook: PostUpsertHook = async (
+const documentTrackerPostUpsertHookWorfklowLauncher: PostUpsertHookWorkflowLauncher =
+  async (dataSourceConfig, documentId) => {
+    const localLogger = logger.child({
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      documentId,
+    });
+
+    localLogger.info("Launching document tracker post upsert hook workflow.");
+
+    await launchDocumentTrackerHandleUpsertWorkflow(
+      dataSourceConfig,
+      documentId
+    );
+  };
+
+const documentTrackerPostUpsertHookFilter: PostUpsertHookFilter = async (
   dataSourceConfig,
   documentId
 ) => {
@@ -17,12 +37,25 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = async (
     dataSourceName: dataSourceConfig.dataSourceName,
     documentId,
   });
-  if (!(await shouldRunDocumentTracker(dataSourceConfig, documentId))) {
-    localLogger.info("Not running document tracker post upsert hook.");
-    return;
-  }
 
-  localLogger.info("Running document tracker post upsert hook.");
+  localLogger.info("Checking if document tracker post upsert hook should run.");
 
-  await launchDocumentTrackerHandleUpsertWorkflow(dataSourceConfig, documentId);
+  const shouldRun = await shouldRunDocumentTracker(
+    dataSourceConfig,
+    documentId
+  );
+
+  localLogger.info(
+    {
+      shouldRun,
+    },
+    "Checked if document tracker post upsert hook should run."
+  );
+
+  return shouldRun;
+};
+
+export const documentTrackerPostUpsertHook: PostUpsertHook = {
+  filter: documentTrackerPostUpsertHookFilter,
+  workflowLauncher: documentTrackerPostUpsertHookWorfklowLauncher,
 };
