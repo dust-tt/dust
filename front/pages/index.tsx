@@ -215,7 +215,7 @@ export default function Home({
                 Smarter Teams
               </span>{" "}
               <br />
-              with secure and accessible&nbsp;AI
+              with safe generative&nbsp;AI
               <br />
             </p>
           </div>
@@ -229,8 +229,8 @@ export default function Home({
               Harnessing its potential swiftly and effectively is
               a&nbsp;key&nbsp;competitive advantage for&nbsp;any&nbsp;company.
             </p>
-            <p className="rounded font-light lg:col-span-2">
-              With Dust, get all the might of AI's language processing models
+            <p className="rounded font-light lg:col-span-2 lg:pr-8">
+              With Dust, get all the might of large language models
               in&nbsp;a&nbsp;user-friendly&nbsp;package, while&nbsp;ensuring
               the&nbsp;safety of your&nbsp;company's&nbsp;data.
             </p>
