@@ -10,11 +10,14 @@ Source code for the dust blog
 - put all the media files for the post under the directory *src/media/[post-id]*
 - copy paste the markdown for your blog post in the file
   - don't forget the JS header as in other files
-  - use a h2 header for your main title
+  - use a h2 header for your main title, h3 for subs
   - add a date and your post's id to the h2 header
 - update references to media in the blog post .mdx file (img1.gif -> @/media/[post-id]/img1.gif)
 
 See [this example post](src/pages/2023-06-02-speculative-sampling.mdx) for reference
+### !! Caveats
+- triple-dash must be converted to <Line> component
+- mailto links must be hand corrected
 
 ### Blog post listing in homepage
 Add the post listing on top of the file src/pages/index.mdx. Follow this example
