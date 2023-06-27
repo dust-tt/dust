@@ -215,7 +215,7 @@ export default function Home({
                 Smarter Teams
               </span>{" "}
               <br />
-              with generative&nbsp;AI
+              with safe generative&nbsp;AI
               <br />
             </p>
           </div>
