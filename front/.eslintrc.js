@@ -5,7 +5,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["simple-import-sort", "unused-imports"],
+  plugins: ["simple-import-sort"],
   rules: {
     /**
     "@typescript-eslint/naming-convention": [
@@ -16,7 +16,6 @@ module.exports = {
       }
     ],
     */
-    "unused-imports/no-unused-imports": "error",
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/no-explicit-any": 0,
     "no-case-declarations": 0,
