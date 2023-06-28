@@ -35,7 +35,6 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
 
 type DataSource = {
   name: string;
@@ -530,7 +529,7 @@ export function TemplatesView({
 }: {
   onTemplateSelect: (template: TemplateType) => void;
 }) {
-  let defaults = [
+  const defaults = [
     {
       name: "Fact Gatherer",
       color: "bg-red-500",
@@ -570,7 +569,7 @@ export function TemplatesView({
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    let savedTemplates = localStorage?.getItem("templates");
+    const savedTemplates = localStorage?.getItem("templates");
     if (savedTemplates) {
       setTemplates(JSON.parse(savedTemplates));
     }
@@ -611,7 +610,7 @@ export function TemplatesView({
               onSubmit={(e) => {
                 e.preventDefault();
                 setFormExpanded(false);
-                let new_template = {
+                const new_template = {
                   name: newTemplateTitle,
                   // set random color
                   color:
