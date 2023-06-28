@@ -42,7 +42,6 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
@@ -450,7 +449,7 @@ export function MessageFeedback({
       <div
         onClick={() => feedbackHandler(message, "positive")}
         className={classNames(
-          "ml-2 rounded-md p-px",
+          "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "positive"
             ? "bg-violet-50 text-violet-800"
             : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
@@ -461,7 +460,7 @@ export function MessageFeedback({
       <div
         onClick={() => feedbackHandler(message, "negative")}
         className={classNames(
-          "ml-2 rounded-md p-px",
+          "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "negative"
             ? "bg-violet-50 text-violet-800"
             : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
@@ -994,13 +993,8 @@ export default function AppChat({
         return m;
       })
     );
-    const chatUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
-    logger.info({
-      topic: "Feedback",
-      message,
-      chatUrl,
-      chatSession,
-    });
+
+    void storeChatSession(titleState, messages);
   };
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role
