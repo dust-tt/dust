@@ -1,7 +1,6 @@
 import { Disclosure, Menu } from "@headlessui/react";
 import {
   ChevronRightIcon,
-  ComputerDesktopIcon,
 } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import Link from "next/link";
@@ -250,11 +249,18 @@ export default function AppLayout({
                         <div className="-mr-2 sm:mr-0">
                           <ActionButton
                             onClick={() =>
-                              signIn("github", { callbackUrl: "/api/login" })
+                              signIn("google", {
+                                callbackUrl: `/api/login`,
+                              })
                             }
                           >
-                            <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
-                            Sign in with Github
+                            <img
+                              src="/static/google_white_32x32.png"
+                              className="ml-1 h-4 w-4"
+                            />
+                            <span className="ml-2 mr-1">
+                              Sign in with Google
+                            </span>
                           </ActionButton>
                         </div>
                       </div>
