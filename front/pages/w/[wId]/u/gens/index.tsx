@@ -569,7 +569,7 @@ export function TemplatesView({
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    const savedTemplates = localStorage?.getItem("templates");
+    const savedTemplates = localStorage.getItem("dust_gens_templates");
     if (savedTemplates) {
       setTemplates(JSON.parse(savedTemplates));
     }
@@ -580,7 +580,7 @@ export function TemplatesView({
     const newTemplates = [...templates, temp];
     // handle browser local storage:
     const templatesString = JSON.stringify(newTemplates);
-    localStorage.setItem("templates", templatesString);
+    localStorage.setItem("dust_gens_templates", templatesString);
   }
 
   useEffect(() => {
@@ -597,7 +597,7 @@ export function TemplatesView({
           <ActionButton
             onClick={() => {
               setTemplates(defaults);
-              localStorage.removeItem("templates");
+              localStorage.removeItem("dust_gens_templates");
             }}
           >
             Reset
@@ -814,7 +814,7 @@ export default function AppGens({
         return {
           documentId: d.documentId,
           text: text,
-          score: d.llm_score || d.score,
+          score: d.llm_score || 0,
         };
       })
       .sort((a, b) => a.score - b.score)
