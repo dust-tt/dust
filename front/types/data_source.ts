@@ -3,7 +3,6 @@ import { ConnectorProvider } from "@app/lib/connectors_api";
 export type DataSourceVisibility = "public" | "private";
 
 export type DataSourceType = {
-  id: number;
   name: string;
   description?: string;
   visibility: DataSourceVisibility;

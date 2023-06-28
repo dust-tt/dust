@@ -222,7 +222,6 @@ async function handler(
 
       return res.status(201).json({
         dataSource: {
-          id: dataSource.id,
           name: dataSource.name,
           description: dataSource.description,
           visibility: dataSource.visibility,

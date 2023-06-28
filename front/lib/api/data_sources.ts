@@ -35,7 +35,6 @@ export async function getDataSource(
   }
 
   return {
-    id: dataSource.id,
     name: dataSource.name,
     description: dataSource.description,
     visibility: dataSource.visibility,
@@ -73,7 +72,6 @@ export async function getDataSources(
 
   return dataSources.map((dataSource): DataSourceType => {
     return {
-      id: dataSource.id,
       name: dataSource.name,
       description: dataSource.description,
       visibility: dataSource.visibility,
