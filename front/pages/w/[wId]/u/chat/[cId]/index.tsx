@@ -946,7 +946,11 @@ export default function AppChat({
     setMessages(
       messages.map((m) => {
         if (m === message) {
-          m.feedback = feedback;
+          if (m.feedback !== feedback) {
+            m.feedback = feedback;
+          } else {
+            m.feedback = null;
+          }
         }
         return m;
       })
