@@ -1,7 +1,5 @@
 import { Disclosure, Menu } from "@headlessui/react";
-import {
-  ChevronRightIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
