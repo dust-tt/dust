@@ -11,7 +11,7 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { shouldTriggerPostUpserHookWorkflow } from "@app/post_upsert_hooks/hooks";
+import { shouldTriggerPostUpsertHookWorkflow } from "@app/post_upsert_hooks/hooks";
 import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
@@ -287,7 +287,7 @@ async function handler(
       });
 
       if (
-        await shouldTriggerPostUpserHookWorkflow(
+        await shouldTriggerPostUpsertHookWorkflow(
           dataSource.name,
           owner.sId,
           req.query.documentId as string,
