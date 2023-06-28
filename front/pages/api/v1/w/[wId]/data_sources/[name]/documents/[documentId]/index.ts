@@ -11,6 +11,8 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { shouldTriggerPostUpserHookWorkflow } from "@app/post_upsert_hooks/hooks";
+import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";
@@ -283,6 +285,21 @@ async function handler(
         document: upsertRes.value.document,
         data_source: dataSource,
       });
+
+      if (
+        await shouldTriggerPostUpserHookWorkflow(
+          dataSource.name,
+          owner.sId,
+          req.query.documentId as string,
+          req.body.text
+        )
+      ) {
+        await launchRunPostUpsertHooksWorkflow(
+          dataSource.name,
+          owner.sId,
+          req.query.documentId as string
+        );
+      }
       return;
 
     case "DELETE":
