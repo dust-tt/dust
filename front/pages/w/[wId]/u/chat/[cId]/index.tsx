@@ -42,7 +42,6 @@ import {
 import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
@@ -952,13 +951,8 @@ export default function AppChat({
         return m;
       })
     );
-    const chatUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
-    logger.info({
-      topic: "Feedback",
-      message,
-      chatUrl,
-      chatSession,
-    });
+
+    void storeChatSession(titleState, messages);
   };
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role
