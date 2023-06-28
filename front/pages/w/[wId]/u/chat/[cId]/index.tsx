@@ -403,7 +403,7 @@ export function RetrievalsView({
 
 function formatMessageWithLinks(message: string): JSX.Element {
   /* Format message by replacing markdown links with <Link/> elements*/
-  const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+  const linkRegex = /\[([^\]]*?)\]\((.*?)\)/g;
   const matches = message.matchAll(linkRegex);
   let lastIndex = 0;
   const elements = [];
