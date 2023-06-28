@@ -2,9 +2,10 @@ import {
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, Fragment, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -35,6 +36,10 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+import { Dialog, Transition } from "@headlessui/react";
+import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
+import { TrashIcon } from "@heroicons/react/20/solid";
 
 type DataSource = {
   name: string;
@@ -561,12 +566,14 @@ export function TemplatesView({
   ];
 
   const [templates, setTemplates] = useState(defaults);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
   const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
   const [newTemplateInstructions, setNewTemplateInstructions] = useState<
     string[]
   >([]);
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
+  const [hover, setHover] = useState<number>(-1);
+  const writeMode = useRef(true);
 
   useEffect(() => {
     const savedTemplates = localStorage.getItem("dust_gens_templates");
@@ -574,6 +581,16 @@ export function TemplatesView({
       setTemplates(JSON.parse(savedTemplates));
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("dust_gens_templates", JSON.stringify(templates));
+  }, [templates]);
+
+  useEffect(() => {
+    if (selectedTemplate != -1) {
+      onTemplateSelect(templates[selectedTemplate]);
+    }
+  }, [selectedTemplate]);
 
   function saveTemplate(temp: TemplateType) {
     // save template to local storage
@@ -584,105 +601,194 @@ export function TemplatesView({
   }
 
   useEffect(() => {
-    setSelectedTemplate(templates[0].name);
     onTemplateSelect(templates[0]);
   }, []);
 
+  const handleInstructionChange = (index: number, value: string) => {
+    setNewTemplateInstructions((prevInstructions) => {
+      const newInstructions = [...prevInstructions];
+      newInstructions[index] = value;
+      return newInstructions;
+    });
+  };
+
   return (
-    <div className="mt-5 p-5">
+    <div className="mt-5 w-48 flex-initial flex-shrink-0 p-5">
       <div>
         Templates
         <div className="justify-items flex space-x-2">
-          <ActionButton onClick={() => setFormExpanded(true)}>New</ActionButton>
           <ActionButton
             onClick={() => {
-              setTemplates(defaults);
-              localStorage.removeItem("dust_gens_templates");
+              setSelectedTemplate(-1);
+              setFormExpanded(true);
             }}
           >
-            Reset
+            +
           </ActionButton>
         </div>
-        <div style={{ position: "relative" }}>
-          {formExpanded && (
-            <form
-              className="absolute left-0 flex h-full w-full items-center justify-center"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setFormExpanded(false);
-                const new_template = {
-                  name: newTemplateTitle,
-                  // set random color
-                  color:
-                    "bg-" +
-                    ["red", "blue", "yellow", "green"][
-                      Math.floor(Math.random() * 4)
-                    ] +
-                    "-500",
-                  instructions: newTemplateInstructions,
-                };
-                saveTemplate(new_template);
-                setTemplates(templates.concat([new_template]));
-                onTemplateSelect(new_template);
-                setFormExpanded(false);
-                setNewTemplateInstructions([]);
-                setNewTemplateTitle("");
-              }}
+        <Transition.Root show={formExpanded} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-10"
+            onClose={() => setFormExpanded(false)}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
             >
-              <div className="z-50 bg-gray-100 p-5">
-                <input
-                  type="text"
-                  value={newTemplateTitle}
-                  placeholder="Template title"
-                  onChange={(e) => setNewTemplateTitle(e.target.value)}
-                />
-                <textarea
-                  className="my-2"
-                  value={newTemplateInstructions.join("\n")}
-                  placeholder="Template instructions, each instruction on a new line"
-                  onChange={(e) =>
-                    setNewTemplateInstructions(e.target.value.split("\n"))
-                  }
-                />
-                <div className="flex items-center justify-center space-x-2">
-                  <ActionButton type="submit">Create</ActionButton>
-                  <ActionButton onClick={() => setFormExpanded(false)}>
-                    Cancel
-                  </ActionButton>
-                </div>
+              <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 z-10 overflow-y-auto">
+              <div className="flex min-h-full items-end items-center justify-center p-4">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  leave="ease-in duration-200"
+                  leaveTo="opacity-0"
+                >
+                  <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
+                    <div>
+                      <div className="mt-3">
+                        <Dialog.Title
+                          as="h3"
+                          className="text-lg font-medium leading-6 text-gray-900"
+                        >
+                          Edit Template
+                        </Dialog.Title>
+                        <div className="mt-6">
+                          <input
+                            type="text"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                            placeholder="Template title"
+                            value={newTemplateTitle}
+                            onChange={(e) =>
+                              setNewTemplateTitle(e.target.value)
+                            }
+                          />
+                        </div>
+                        <p className="my-2">Instructions</p>
+                        {newTemplateInstructions.map((instruction, i) => {
+                          return (
+                            <div className="my-2" key={i}>
+                              <input
+                                type="text"
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                                value={instruction}
+                                onChange={(e) =>
+                                  handleInstructionChange(i, e.target.value)
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                        <ActionButton
+                          onClick={() => {
+                            setNewTemplateInstructions(
+                              newTemplateInstructions.concat([""])
+                            );
+                          }}
+                        >
+                          +
+                        </ActionButton>
+                      </div>
+                    </div>
+                    <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
+                      <div className="flex-1"></div>
+                      <div className="flex flex-initial">
+                        <ActionButton onClick={() => setFormExpanded(false)}>
+                          Cancel
+                        </ActionButton>
+                      </div>
+                      <ActionButton
+                        onClick={() => {
+                          setFormExpanded(false);
+                          let colors = ["red", "yellow", "green", "blue"];
+                          const new_template = {
+                            name: newTemplateTitle,
+                            // set random color
+                            color: `bg-${
+                              colors[Math.floor(Math.random() * colors.length)]
+                            }-500`,
+                            instructions: newTemplateInstructions,
+                          };
+                          console.log(new_template);
+                          let curr_templates = templates.map((d) => d);
+                          if (selectedTemplate == -1) {
+                            curr_templates.push(new_template);
+                          } else {
+                            curr_templates[selectedTemplate] = new_template;
+                          }
+                          console.log(curr_templates);
+                          setTemplates(curr_templates);
+                          setFormExpanded(false);
+                          setNewTemplateInstructions([]);
+                          setNewTemplateTitle("");
+                        }}
+                      >
+                        Save
+                      </ActionButton>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
               </div>
-            </form>
-          )}
-        </div>
+            </div>
+          </Dialog>
+        </Transition.Root>
         <div className="mt-2 flex flex-col space-y-2">
-          {templates.map((t) => {
+          {templates.map((t, i) => {
             return (
               // round circle div with given color
               <div
-                key={t.name}
-                className="group ml-1 flex flex-initial"
+                key={i}
+                className="align-items group ml-1 mt-2 flex items-center space-x-2"
                 onClick={() => {
-                  setSelectedTemplate(t.name);
+                  setSelectedTemplate(i);
                   onTemplateSelect(t);
                 }}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(-1)}
               >
                 <button
                   className={classNames(
                     "rounded py-1",
-                    "mt-2 text-xs font-bold text-gray-700",
+                    "text-xs font-bold text-gray-700",
                     "h-5 w-5 rounded-full",
                     t.color,
                     // make opacity lower for unselected
-                    selectedTemplate === t.name ? "opacity-100" : "opacity-30"
+                    selectedTemplate === i ? "opacity-100" : "opacity-30"
                   )}
                 />
-                <div className="absolute z-0 hidden rounded group-hover:block">
-                  <div className="relative bottom-8 border bg-white px-0.5 py-1 ">
+                {hover === i && (
+                  <>
                     <span className="text-xs text-gray-600">
                       <span className="font-semibold">{t.name}</span>
                     </span>
-                  </div>
-                </div>
+
+                    <PencilSquareIcon
+                      onClick={() => {
+                        setSelectedTemplate(i);
+                        setNewTemplateInstructions(t.instructions);
+                        setNewTemplateTitle(t.name);
+                        setFormExpanded(true);
+                      }}
+                      className="h-5 w-5"
+                    />
+                    <TrashIcon
+                      onClick={() => {
+                        let curr_templates = templates.map((d) => d);
+                        curr_templates.splice(i, 1);
+                        setTemplates(curr_templates);
+                      }}
+                      className="h-5 w-5"
+                    />
+                  </>
+                )}
               </div>
             );
           })}
@@ -691,6 +797,14 @@ export function TemplatesView({
     </div>
   );
 }
+
+/*
+
+                <div className="absolute z-0 hidden rounded group-hover:block">
+                  <div className="relative bottom-8 border bg-white px-0.5 py-1 ">
+                  </div>
+                </div>
+*/
 
 export default function AppGens({
   user,
@@ -973,7 +1087,7 @@ export default function AppGens({
           <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
             <div className="flex flex-col">
               <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
-                <div className="flex w-full font-normal">
+                <div className="w-70 flex font-normal">
                   <TextareaAutosize
                     minRows={8}
                     ref={genTextAreaRef}
