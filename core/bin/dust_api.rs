@@ -1456,19 +1456,16 @@ async fn data_sources_delete(
                 }),
             ),
             Some(ds) => match ds.delete(state.store.clone()).await {
-                Err(e) => {
-                    utils::error(&format!("Failed to delete Data Source: {}", e));
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(APIResponse {
-                            error: Some(APIError {
-                                code: String::from("internal_server_error"),
-                                message: format!("Failed to delete Data Source: {}", e),
-                            }),
-                            response: None,
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to delete Data Source: {}", e),
                         }),
-                    )
-                }
+                        response: None,
+                    }),
+                ),
                 Ok(_) => (
                     StatusCode::OK,
                     Json(APIResponse {
