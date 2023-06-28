@@ -47,7 +47,7 @@ export const DustProdActionRegistry: {
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-16k-0613",
+        model_id: "gpt-4-0613",
         function_call: "auto",
         use_cache: true,
         use_stream: true,
@@ -91,7 +91,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "98a9f9bc61",
       appHash:
-        "bac1ca32077166fc8a19f861456340612543724e87eb23a9d2cb5f9299faaaf0",
+        "b11c07d4700d3154dc56e528cf9f5e8b2d25d89526a6b0869015d4f3fbcea42d",
     },
     config: {
       MODEL: {
@@ -119,19 +119,20 @@ export const DustProdActionRegistry: {
       },
     },
   },
-  "gens-extract": {
+  "gens-summary": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "9eb5f48bb5",
+      appId: "6a7495bf9f",
       appHash:
-        "b4ec66af82aa9e43b18d86b45a6e82b8a7a1062d811119d4dceaf84a70f97467",
+        "c1522e77be98e0279110bed06c7540ab1fc324cd2b9ebfb78a76b8a2fcd30425",
     },
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
+        model_id: "gpt-3.5-turbo-0613",
         use_cache: false,
         use_stream: true,
+        function_call: "return_summary",
       },
     },
   },
@@ -140,7 +141,7 @@ export const DustProdActionRegistry: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "2a5aadf425",
       appHash:
-        "1aab1381ac86e22ef50497eefd3fd882846fc786da4f6df248df94b133533120",
+        "c5b6c60f8a1e6e15e074c929fdcfa23144bc2cb333a7ed2fdbbea5921f247b02",
     },
     config: {
       MODEL: {

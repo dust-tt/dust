@@ -105,7 +105,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
               <ul className="my-4">
                 <li>
                   - Use
-                  <span className="mx-1 font-mono font-bold text-gray-300">
+                  <span className="font-mono mx-1 font-bold text-gray-300">
                     {isMac ? "⌘" : "Ctrl"}
                     +↑
                   </span>
@@ -117,7 +117,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
                 </li>
                 <li>
                   - Use{" "}
-                  <span className="mx-1 font-mono font-bold text-gray-300">
+                  <span className="font-mono mx-1 font-bold text-gray-300">
                     `[[`
                   </span>{" "}
                   to select tabs content to include in the context of your
@@ -125,7 +125,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
                 </li>
                 <li>
                   - Use
-                  <span className="mx-1 font-mono font-bold text-gray-300">
+                  <span className="font-mono mx-1 font-bold text-gray-300">
                     {isMac ? "⌘" : "Ctrl"}
                     +⏎
                   </span>
@@ -133,7 +133,7 @@ export default function Home({ ga_tracking_id, chrome_web_store_url }) {
                 </li>
                 <li>
                   - Use
-                  <span className="mx-1 font-mono font-bold text-gray-300">
+                  <span className="font-mono mx-1 font-bold text-gray-300">
                     /reset
                   </span>
                   to clear the conversation.

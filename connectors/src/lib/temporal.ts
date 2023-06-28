@@ -2,13 +2,20 @@ import { Client, Connection, ConnectionOptions } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
+// This is a singleton connection to the Temporal server.
+let TEMPORAL_CLIENT: Client | undefined;
+
 export async function getTemporalClient(): Promise<Client> {
+  if (TEMPORAL_CLIENT) {
+    return TEMPORAL_CLIENT;
+  }
   const connectionOptions = await getConnectionOptions();
   const connection = await Connection.connect(connectionOptions);
   const client = new Client({
     connection,
     namespace: process.env.TEMPORAL_NAMESPACE,
   });
+  TEMPORAL_CLIENT = client;
 
   return client;
 }

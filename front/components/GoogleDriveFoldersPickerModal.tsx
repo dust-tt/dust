@@ -96,7 +96,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-10 h-4/5 overflow-y-auto">
+        <div className="h-5/5 fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <Transition.Child
               as={Fragment}
@@ -110,7 +110,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
               <Dialog.Panel className="sm:max-w-3/4 relative w-1/2 transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:p-6">
                 <div>
                   <div className="mx-auto flex h-12 w-12 items-center justify-center ">
-                    <img src="/static/google_drive_32x32.png" />
+                    <img src="/static/google_drive_64x64.png" />
                   </div>
                   <div className="mt-3 text-center sm:mt-5">
                     <Dialog.Title

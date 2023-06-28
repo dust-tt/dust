@@ -435,7 +435,7 @@ export default function DatasetView({
                     <div className="flex flex-1">
                       <input
                         className={classNames(
-                          "w-full border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] font-normal outline-none focus:outline-none",
+                          "font-mono w-full border-0 bg-slate-300 px-1 py-1 text-[13px] font-normal outline-none focus:outline-none",
                           readOnly
                             ? "border-white ring-0 focus:border-white focus:ring-0"
                             : "border-white ring-0 focus:border-gray-300 focus:ring-0"
@@ -487,7 +487,7 @@ export default function DatasetView({
                             datasetTypes && datasetTypes[j] == type
                               ? "font-semibold text-gray-900 underline underline-offset-4"
                               : "font-normal text-gray-700 hover:text-gray-900",
-                            "px-1 py-1 font-mono text-[13px]"
+                            "font-mono px-1 py-1 text-[13px]"
                           )}
                           onClick={() => {
                             const types = [...datasetTypes];
@@ -525,7 +525,7 @@ export default function DatasetView({
                           <div className="group flex items-center bg-slate-300">
                             <input
                               className={classNames(
-                                "flex-1 border-0 bg-slate-300 px-1 py-1 font-mono text-[13px] outline-none focus:outline-none",
+                                "font-mono flex-1 border-0 bg-slate-300 px-1 py-1 text-[13px] outline-none focus:outline-none",
                                 readOnly
                                   ? "border-white ring-0 focus:border-white focus:ring-0"
                                   : "border-white ring-0 focus:border-gray-300 focus:ring-0"
@@ -537,7 +537,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px]",
+                            "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px]",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               getValueType(d[k]) ===
@@ -571,7 +571,7 @@ export default function DatasetView({
                             <TextareaAutosize
                               minRows={1}
                               className={classNames(
-                                "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
+                                "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
                                 readOnly ? "text-gray-500" : "text-gray-700"
                               )}
                               readOnly={readOnly}

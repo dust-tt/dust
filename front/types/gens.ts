@@ -5,7 +5,7 @@ export type GensRetrievedDocumentType = {
   timestamp: string;
   tags: string[];
   score: number;
-  llm_score: number;
+  llm_score: number | null;
   chunks: {
     text: string;
     offset: number;

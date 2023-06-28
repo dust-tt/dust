@@ -127,7 +127,7 @@ export default function ProfileKeys({
                     <div className="flex items-center">
                       <p
                         className={classNames(
-                          "truncate font-mono text-sm text-slate-700"
+                          "font-mono truncate text-sm text-slate-700"
                         )}
                       >
                         {isRevealed[key.secret] ? (

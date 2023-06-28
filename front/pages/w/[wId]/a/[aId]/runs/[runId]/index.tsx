@@ -146,10 +146,10 @@ export default function AppRun({
               <div className="flex items-center">
                 <span>
                   Viewing run:{" "}
-                  <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
+                  <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
                     {run.run_id}
                   </span>
-                  <span className="ml-1 font-mono text-gray-600 sm:hidden">
+                  <span className="font-mono ml-1 text-gray-600 sm:hidden">
                     {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                   </span>
                 </span>

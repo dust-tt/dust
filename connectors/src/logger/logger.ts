@@ -1,19 +1,28 @@
-import pino from "pino";
+import pino, { LoggerOptions } from "pino";
 
 const NODE_ENV = process.env.NODE_ENV;
+const defaultPinoOptions: LoggerOptions = {
+  formatters: {
+    level(level) {
+      return { level };
+    },
+  },
+};
 
-const pinoOtions =
-  NODE_ENV === "development"
-    ? {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            errorLikeObjectKeys: ["err", "error", "error_stack", "stack"],
-          },
-        },
-      }
-    : {};
-const logger = pino(pinoOtions);
+const devOptions = {
+  transport: {
+    target: "pino-pretty",
+    options: {
+      errorLikeObjectKeys: ["err", "error", "error_stack", "stack"],
+    },
+  },
+};
+let pinoOptions = defaultPinoOptions;
+if (NODE_ENV === "development") {
+  pinoOptions = { ...defaultPinoOptions, ...devOptions };
+}
+
+const logger = pino(pinoOptions);
 
 export default logger;
 export type { Logger } from "pino";

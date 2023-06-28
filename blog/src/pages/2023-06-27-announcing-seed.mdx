@@ -1,0 +1,74 @@
+import { SparkleIcon } from '@/components/SparkleIcon'
+import { generateRssFeed } from '@/lib/generateRssFeed'
+
+export async function getStaticProps() {
+  if (process.env.NODE_ENV === 'production') {
+    await generateRssFeed()
+  }
+  return { props: {} }
+}
+export const Line = () => <><hline className="block border-b"/></>;
+
+---
+
+## Announcing our seed round {{ date: '2023-06-27T00:00Z', id: '2023-06-27-announcing-seed' }}
+
+![](@/media/2023-06-27-announcing-seed/header.png)
+
+Dust is an AI-native company based in Paris, France.
+
+We’re excited to share that we’ve raised €5M in seed funding led by Sequoia Capital with participation from XYZ, GG1, AIGrant, Connect Ventures, Motier VC, Remote First, Tiny Supercomputer, Seedcamp, and others, to build the operating system for smart teams.
+
+### **Who we’re building Dust for**
+
+Working at Open AI, Stripe, Alan, Withings, Aurora, or other companies has forged our convictions on the current AI revolution, data safety, and empathetic product development.
+
+**[Work doesn’t work](https://blog.dust.tt/2023-05-11-work-doesnt-work)** as well as it could. It’s 2023, software could do so much more to help teams do better work together. “Information chaos” is still very much a problem despite companies knowing how important it is to strive for operational excellence as they grow.
+
+Building great, enduring companies takes a lot, and keeping teams empowered and available to focus on high-value work is essential. We feel that the internal software companies use to collaborate deserves an overhaul. The best operating principles only work as well as the spaghetti of internal information management processes they’re embodied in.
+
+Serious developers wouldn’t join a company that didn’t offer a solid developer experience. The same should be true of any talented, ambitious human. We believe in creating the ***operating software that lets smart teams do better work together*** because it’s these smart teams that eventually define the standards that others then seek to emulate.
+
+### **Why we’re starting Dust**
+
+Large Language Models (LLMs) are a disruption that justifies **creating a new company to develop a new kind of software**.
+
+A company **[built around artificial intelligence](https://blog.dust.tt/2023-05-15-product-constitution)**, rather than sprinkling it around here and there.
+
+A product that can reshape software as we’ve grown used to it, to safely leverage the power of LLMs and truly embrace the unique needs of each user, by adapting to their skills, their context, and their preferences. Here is our slightly nerdy way of seeing things: knowledge in a company has stayed rasterized for too long and we’re excited to make it vectorized.
+
+Feedback from users and months of iteration on the **[Dust platform](https://docs.dust.tt/)** have strengthened our ambition to make Dust for tinkerers: people who don’t just accept the status quo with the tools they’re given but have the curiosity and creativity to bend them to their will. These tinkerers share our goals: to make machines do more of the tasks they should have taken on a while ago, and keep more time for higher-value work for their teammates and themselves.
+
+We’re building them the R2-D2 they deserve on their journey to make work just work better.
+
+### **Who we’re building Dust with**
+
+The journey we’re embarking on will be long and full of surprises. We’re incredibly fortunate to partner with leading institutional investors who have experience both with leading players in AI and collaborative software, and who’ve gotten their fair share of training in the art of building operational scale while preserving excellence.
+
+![](@/media/2023-06-27-announcing-seed/blog_venture.png)
+
+It’s valuable to us to have partners across the U.S. and Europe, matching the global ambition Dust has for its future, remaining true to its European roots. These partners give us access to the leaders that have pushed software innovation for decades as well as a vast community of companies, large and small, technology-focused or not, that we want Dust to work for.
+
+The angels who’ve also joined Dust bring with them a diversity of skills, experiences, and convictions as operators, leaders of fast-growing companies, and AI researchers. Dust has a better chance at being a component of the way teams work together in the future with them on board.
+
+### **What Dust is now and where it’s going**
+
+Today, thousands of users are building applications using the Dust platform that enables the orchestration of LLMs with code, data sources, etc... We’ve also recently broadened support for managed data sources to let users unleash the potential of LLMs with continuously updated information and knowledge from across internal applications like GDrive, GitHub, Notion, or Slack.
+
+Going forward, we’ll continue to focus on the teams and tinkerers that want to use Dust to maximize the benefits of deploying artificial intelligence in safe and intuitive ways within their company.
+
+For the design partners we’re iterating on our product with, conversation agents with access to a company’s knowledge are a logical first step (**[email us](mailto:team@dust.tt)** if you’re interested). As are bots that can jump into threads and conversations when a question remains unanswered but seems answerable.
+
+But those are only that—the first steps. We’re experimenting with products that revisit what “writing internal memos” should even feel like, now that the company’s latest state is at the fingertips of any of its team members. We’re tinkering with documents that let you know themselves when they’re too stale to be trusted.
+
+And being focused on the application layer of this technological swell won’t mean shying away from the models themselves. Over time, we expect to invest in applied research when it can pragmatically help improve this new class of software. Speed is a feature: that’s why **[faster inference interests us](https://blog.dust.tt/2023-06-02-speculative-sampling)**. There’s currently no model aligned with information retrieval in mind and factuality as a default. We feel that’s missing…
+
+### **Back to building**
+
+To our users: thank you for being on this journey with us. We’re excited to hear your thoughts and feedback on how we can improve. Dust, please **[reach out](mailto:team@dust.tt)**!
+
+To our partners, once again: thank you for your trust. We’re thrilled to be pushing further with you.
+
+To anybody interested in joining the team: we’re hiring, you should **[get in touch](mailto:team@dust.tt)**.
+
+_The Dust Team_

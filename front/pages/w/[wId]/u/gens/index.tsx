@@ -171,19 +171,20 @@ export function DocumentView({
   document,
   query,
   owner,
+  template,
   onScoreReady,
   onExtractUpdate,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
+  template: TemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
   const provider = providerFromDocument(document);
 
   const [extractedText, setExtractedText] = useState("");
-  const [explanation, setExplanation] = useState("");
   const [LLMScore, setLLMScore] = useState<number | null>(null);
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
@@ -193,6 +194,10 @@ export function DocumentView({
   useEffect(() => {
     setExtractedText("");
 
+    const extract_config = cloneBaseConfig(
+      DustProdActionRegistry["gens-summary"].config
+    );
+
     const extractInput = [
       {
         query: query,
@@ -200,28 +205,25 @@ export function DocumentView({
       },
     ];
 
-    const extract_config = cloneBaseConfig(
-      DustProdActionRegistry["gens-extract"].config
-    );
-
-    runActionStreamed(owner, "gens-extract", extract_config, extractInput)
+    runActionStreamed(owner, "gens-summary", extract_config, extractInput)
       .then((res) => {
-        console.log("Extracting");
+        console.log("Summarizing...");
         if (res.isErr()) {
           console.log("ERROR", res.error);
           return;
         }
 
         const { eventStream } = res.value;
-
+        const p = new FunctionSingleArgStreamer("summary", (tokens) =>
+          setExtractedText((t) => {
+            onExtractUpdate(document.documentId, t + tokens);
+            return t + tokens;
+          })
+        );
         const handleEvent = (event: any) => {
-          if (event.type === "tokens") {
-            let currText = "";
-            setExtractedText((t) => {
-              currText = t + event.content.tokens.text;
-              return currText;
-            });
-            onExtractUpdate(document.documentId, currText);
+          if (event.type === "function_call_arguments_tokens") {
+            const tokens = event.content.tokens.text;
+            p.feed(tokens);
           }
           if (event.type === "error") {
             console.log("ERROR error event", event);
@@ -257,7 +259,7 @@ export function DocumentView({
           })
           .catch((e) => console.log(e));
       })
-      .catch((e) => console.log("Error during extract", e));
+      .catch((e) => console.log("Error during summary", e));
     return () => {
       console.log("Trying to unmount");
       interruptRef.current = true;
@@ -265,15 +267,17 @@ export function DocumentView({
   }, [document.documentId]);
 
   useEffect(() => {
-    const rank_config = cloneBaseConfig(
-      DustProdActionRegistry["gens-rank"].config
-    );
     const extractInput = [
       {
         query: query,
         result: document,
+        instructions: template?.instructions || [],
       },
     ];
+
+    const rank_config = cloneBaseConfig(
+      DustProdActionRegistry["gens-rank"].config
+    );
 
     runActionStreamed(owner, "gens-rank", rank_config, extractInput)
       .then((res) => {
@@ -312,12 +316,6 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              setExplanation(
-                e.value.completion.text.substring(
-                  e.value.completion.text.indexOf("Explanation:") + 13,
-                  e.value.completion.text.length
-                )
-              );
               onScoreReady(document.documentId, score);
               return;
             }
@@ -399,14 +397,7 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
-        <p className="text-black-500 ml-3 text-xs font-bold">{explanation}</p>
-        <div className="ml-4 flex flex-initial">
-          <div className="border-l-4 border-slate-400">
-            <p className={classNames("pl-2 text-xs italic text-gray-500")}>
-              {extractedText}
-            </p>
-          </div>
-        </div>
+        <p className="text-black-500 ml-3 text-xs">{extractedText}</p>
       </div>
       {chunkExpanded && (
         <div className="mb-2 flex flex-col space-y-2">
@@ -442,12 +433,14 @@ export function ResultsView({
   retrieved,
   query,
   owner,
+  template,
   onExtractUpdate,
   onScoreReady,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
+  template: TemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
 }) {
@@ -477,6 +470,7 @@ export function ResultsView({
                 key={r.documentId}
                 query={query}
                 owner={owner}
+                template={template}
                 onScoreReady={onScoreReady}
                 onExtractUpdate={onExtractUpdate}
               />
@@ -524,6 +518,98 @@ export class FunctionSingleArgStreamer {
   }
 }
 
+type TemplateType = {
+  name: string;
+  color: string;
+  instructions: string[];
+};
+
+export function TemplatesView({
+  onTemplateSelect,
+}: {
+  onTemplateSelect: (template: TemplateType) => void;
+}) {
+  const templates = [
+    {
+      name: "Fact Gatherer",
+      color: "bg-red-500",
+      instructions: [
+        "Extract facts and important information in a list",
+        "Present your answers in list format",
+        "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
+        "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
+        "We just want to gather facts and answers related to the document text",
+      ],
+    },
+    {
+      name: "Contradictor",
+      color: "bg-blue-500",
+      instructions: [
+        "Find documents and ideas that might contradict or disagree with the user's text",
+      ],
+    },
+    {
+      name: "Poet",
+      color: "bg-yellow-500",
+      instructions: ["Be creative, fanciful, and only speak in poetry"],
+    },
+    {
+      name: "Pirate",
+      color: "bg-green-500",
+      instructions: ["Be a pirate, and only speak in pirate language"],
+    },
+  ];
+
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedTemplate(templates[0].name);
+    onTemplateSelect(templates[0]);
+  }, []);
+
+  return (
+    <div className="mt-5 p-5">
+      <div>
+        Templates
+        <div className="mt-2 flex flex-col space-y-2">
+          {templates.map((t) => {
+            return (
+              // round circle div with given color
+              <div
+                key={t.name}
+                className="group ml-1 flex flex-initial"
+                onClick={() => {
+                  setSelectedTemplate(t.name);
+                  onTemplateSelect(t);
+                }}
+              >
+                <button
+                  className={classNames(
+                    "flex flex-initial flex-row items-center space-x-2",
+                    "rounded py-1",
+                    "mt-2 text-xs font-bold text-gray-700",
+                    "h-5 w-5 rounded-full",
+                    t.color,
+                    // make opacity lower for unselected
+                    selectedTemplate === t.name ? "opacity-100" : "opacity-30"
+                  )}
+                />
+                <div className="absolute z-0 hidden rounded group-hover:block">
+                  <div className="relative bottom-8 border bg-white px-0.5 py-1 ">
+                    <span className="text-xs text-gray-600">
+                      <span className="font-semibold">{t.name}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppGens({
   user,
   owner,
@@ -539,12 +625,6 @@ export default function AppGens({
   const [genLoading, setGenLoading] = useState<boolean>(false);
   const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
-    [documentId: string]: {
-      extract: string;
-      score: number | null;
-    };
-  }>({});
 
   const [inferTimeRangeLoading, setInferTimeRangeLoading] =
     useState<boolean>(false);
@@ -557,6 +637,8 @@ export default function AppGens({
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
 
+  const template = useRef<TemplateType | null>(null);
+
   const getContext = () => {
     return {
       user: {
@@ -568,20 +650,9 @@ export default function AppGens({
     };
   };
 
+  // keeping this here for later:
   const onExtractUpdate = (documentId: string, extract: string) => {
-    setGenDocumentExtracts((c) => {
-      let score = null;
-      if (documentId in c) {
-        score = c[documentId].score;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
-    });
+    return [documentId, extract];
   };
 
   const onScoreReady = (documentId: string, score: number) => {
@@ -590,23 +661,9 @@ export default function AppGens({
       // TODO: make this more efficient by just moving that doc around
       retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
       retrieved.sort((a, b) => {
-        return (b.llm_score || 0) - a.llm_score || 0;
+        return (b.llm_score || 0) - (a.llm_score || 0);
       });
       return retrieved;
-    });
-
-    setGenDocumentExtracts((c) => {
-      let extract = "";
-      if (documentId in c) {
-        extract = c[documentId].extract;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
     });
   };
 
@@ -668,34 +725,36 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const extracts = Object.entries(genDocumentExtracts)
-      .map(([documentId, { extract, score }]) => {
+    const extracts = retrieved
+      .map((d) => {
+        const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
+        const text = chunks.map((c) => c.text).join("");
         return {
-          documentId,
-          extract,
-          score: score || 0,
+          documentId: d.documentId,
+          text: text,
+          score: d.llm_score || d.score,
         };
       })
-      .sort((a, b) => {
-        return (a.score || 0) - (b.score || 0);
-      })
+      .sort((a, b) => a.score - b.score)
       .map((e) => {
         return {
           documentId: e.documentId,
-          extract: e.extract,
-          score: e.score.toFixed(2),
+          extract: e.text,
+          score: (e.score || 0).toFixed(2),
         };
       });
 
-    console.log(JSON.stringify(extracts));
+    console.log(extracts);
 
     const inputs = [
       {
         text_with_cursor: textWithCursor,
         extracts,
         context: getContext(),
+        instructions: template.current?.instructions,
       },
     ];
+    console.log(template.current?.instructions);
 
     // console.log(JSON.stringify(genDocumentExtracts));
 
@@ -770,7 +829,6 @@ export default function AppGens({
   const handleSearch = async () => {
     setRetrievalLoading(true);
     setRetrieved([]);
-    setGenDocumentExtracts({});
 
     const userContext = {
       user: {
@@ -838,7 +896,7 @@ export default function AppGens({
                     minRows={8}
                     ref={genTextAreaRef}
                     className={classNames(
-                      "block w-full resize-none rounded-md bg-slate-100 px-2 py-1 font-mono text-[13px] font-normal",
+                      "font-mono block w-full resize-none rounded-md bg-slate-100 px-2 py-1 text-[13px] font-normal",
                       readOnly
                         ? "border-gray-200 ring-0 focus:border-white focus:ring-0"
                         : "border-gray-200 focus:border-gray-300 focus:ring-0"
@@ -852,6 +910,10 @@ export default function AppGens({
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
                     }}
+                  />
+
+                  <TemplatesView
+                    onTemplateSelect={(t) => (template.current = t)}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">
@@ -982,6 +1044,7 @@ export default function AppGens({
                 owner={owner}
                 onExtractUpdate={onExtractUpdate}
                 onScoreReady={onScoreReady}
+                template={template.current}
               />
             </div>
           </div>

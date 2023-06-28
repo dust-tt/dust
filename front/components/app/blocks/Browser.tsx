@@ -270,7 +270,7 @@ export default function Browser({
               type="text"
               placeholder=""
               className={classNames(
-                "block w-full resize-none bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                "font-mono block w-full resize-none bg-slate-100 px-1 py-1 text-[13px] font-normal",
                 readOnly
                   ? "border-white ring-0 focus:border-white focus:ring-0"
                   : "border-white focus:border-white focus:ring-0"
@@ -290,7 +290,7 @@ export default function Browser({
               type="text"
               placeholder=""
               className={classNames(
-                "block w-full resize-none bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                "font-mono block w-full resize-none bg-slate-100 px-1 py-1 text-[13px] font-normal",
                 readOnly
                   ? "border-white ring-0 focus:border-white focus:ring-0"
                   : "border-white focus:border-white focus:ring-0"
