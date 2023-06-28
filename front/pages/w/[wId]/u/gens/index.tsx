@@ -650,8 +650,9 @@ export default function AppGens({
     };
   };
 
+  // keeping this here for later:
   const onExtractUpdate = (documentId: string, extract: string) => {
-    return;
+    return [documentId, extract];
   };
 
   const onScoreReady = (documentId: string, score: number) => {
@@ -726,8 +727,8 @@ export default function AppGens({
     // turn genDocumentExtracts into an array of extracts ordered by score
     const extracts = retrieved
       .map((d) => {
-        let chunks = d.chunks.sort((a, b) => a.offset - b.offset);
-        let text = chunks.map((c) => c.text).join("");
+        const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
+        const text = chunks.map((c) => c.text).join("");
         return {
           documentId: d.documentId,
           text: text,
