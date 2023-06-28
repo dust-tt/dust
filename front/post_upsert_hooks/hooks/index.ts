@@ -37,7 +37,7 @@ export const POST_UPSERT_HOOK_BY_TYPE: Record<
   return acc;
 }, {} as Record<PostUpsertHookType, PostUpsertHook>);
 
-export async function shouldTriggerPostUpserHookWorkflow(
+export async function shouldTriggerPostUpsertHookWorkflow(
   dataSourceName: string,
   workspaceId: string,
   documentId: string,
