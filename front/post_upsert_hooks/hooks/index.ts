@@ -43,6 +43,9 @@ export async function shouldTriggerPostUpserHookWorkflow(
   documentId: string,
   documentText: string
 ): Promise<boolean> {
+  if (!process.env.POST_UPSERT_HOOKS_ENABLED) {
+    return false;
+  }
   // TODO: parallel
   for (const hook of POST_UPSERT_HOOKS) {
     if (
