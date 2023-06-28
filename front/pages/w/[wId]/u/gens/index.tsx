@@ -38,7 +38,6 @@ import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import { Dialog, Transition } from "@headlessui/react";
-import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
 import { TrashIcon } from "@heroicons/react/20/solid";
 
 type DataSource = {
@@ -573,7 +572,6 @@ export function TemplatesView({
   >([]);
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
-  const writeMode = useRef(true);
 
   useEffect(() => {
     const savedTemplates = localStorage.getItem("dust_gens_templates");
@@ -591,14 +589,6 @@ export function TemplatesView({
       onTemplateSelect(templates[selectedTemplate]);
     }
   }, [selectedTemplate]);
-
-  function saveTemplate(temp: TemplateType) {
-    // save template to local storage
-    const newTemplates = [...templates, temp];
-    // handle browser local storage:
-    const templatesString = JSON.stringify(newTemplates);
-    localStorage.setItem("dust_gens_templates", templatesString);
-  }
 
   useEffect(() => {
     onTemplateSelect(templates[0]);
@@ -718,7 +708,7 @@ export function TemplatesView({
                             instructions: newTemplateInstructions,
                           };
                           console.log(new_template);
-                          let curr_templates = templates.map((d) => d);
+                          const curr_templates = templates.map((d) => d);
                           if (selectedTemplate == -1) {
                             curr_templates.push(new_template);
                           } else {
@@ -781,7 +771,7 @@ export function TemplatesView({
                     />
                     <TrashIcon
                       onClick={() => {
-                        let curr_templates = templates.map((d) => d);
+                        const curr_templates = templates.map((d) => d);
                         curr_templates.splice(i, 1);
                         setTemplates(curr_templates);
                       }}
