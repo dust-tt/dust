@@ -28,9 +28,13 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
     return false;
   },
   fn: async (dataSourceName, workspaceId, documentId) => {
-    void dataSourceName;
-    void workspaceId;
-    void documentId;
-    // TODO: do the thing
+    logger.info(
+      {
+        workspaceId,
+        dataSourceName,
+        documentId,
+      },
+      "Running document tracker post upsert hook (TODO)."
+    );
   },
 };
