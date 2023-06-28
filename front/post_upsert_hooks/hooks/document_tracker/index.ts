@@ -1,5 +1,18 @@
+import { Op } from "sequelize";
+
+import { ConnectorProvider } from "@app/lib/connectors_api";
+import { updateTrackedDocuments } from "@app/lib/document_tracker";
+import { DataSource, TrackedDocument } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
+
+const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
+
+const TRACKABLE_CONNECTOR_TYPES: ConnectorProvider[] = [
+  "google_drive",
+  "github",
+  "notion",
+];
 
 const logger = mainLogger.child({
   postUpsertHook: "document_tracker",
@@ -17,6 +30,29 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       "Checking if document tracker post upsert hook should run."
     );
 
+    const whitelistedWorkspaceIds =
+      RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
+
+    if (!whitelistedWorkspaceIds.includes(workspaceId)) {
+      localLogger.info(
+        "Workspace not whitelisted, document_tracker post upsert hook should not run."
+      );
+      return false;
+    }
+
+    const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+    if (
+      !TRACKABLE_CONNECTOR_TYPES.includes(
+        dataSource.connectorProvider as ConnectorProvider
+      )
+    ) {
+      localLogger.info(
+        "Data source connector provider is not trackable yet, document_tracker post upsert hook should not run."
+      );
+      return false;
+    }
+
     if (documentText.includes("DUST_TRACK(")) {
       localLogger.info(
         "Document includes DUST_TRACK tags, document_tracker post upsert hook should run."
@@ -24,17 +60,61 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       return true;
     }
 
-    // TODO: check tracked docs in WS
-    return false;
+    const workspaceDataSourceIds = (
+      await DataSource.findAll({
+        where: { workspaceId },
+        attributes: ["id"],
+      })
+    ).map((ds) => ds.id);
+
+    const hasTrackedDocuments = !!(await TrackedDocument.count({
+      where: {
+        dataSourceId: {
+          [Op.in]: workspaceDataSourceIds,
+        },
+        documentId: {
+          [Op.not]: documentId,
+        },
+      },
+    }));
+
+    return hasTrackedDocuments;
   },
-  fn: async (dataSourceName, workspaceId, documentId) => {
+
+  fn: async (dataSourceName, workspaceId, documentId, documentText) => {
     logger.info(
       {
         workspaceId,
         dataSourceName,
         documentId,
       },
-      "Running document tracker post upsert hook (TODO)."
+      "Running document tracker post upsert hook."
+    );
+
+    logger.info("Updating tracked documents.");
+    const dataSource = await getDatasource(dataSourceName, workspaceId);
+    await updateTrackedDocuments(dataSource.id, documentId, documentText);
+
+    logger.info(
+      "Should check if any tracked documents need to be updated. [TODO]"
     );
   },
 };
+
+async function getDatasource(
+  dataSourceName: string,
+  workspaceId: string
+): Promise<DataSource> {
+  const dataSource = await DataSource.findOne({
+    where: {
+      name: dataSourceName,
+      workspaceId,
+    },
+  });
+  if (!dataSource) {
+    throw new Error(
+      `Could not find data source with name ${dataSourceName} and workspaceId ${workspaceId}`
+    );
+  }
+  return dataSource;
+}
