@@ -4,8 +4,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   DocumentDuplicateIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -22,6 +20,10 @@ import TimeRangePicker, {
   defaultTimeRange,
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
+import {
+  FeedbackHandler,
+  MessageFeedback,
+} from "@app/components/use/MessageFeedback";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -49,10 +51,6 @@ import {
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import {
-  FeedbackHandler,
-  MessageFeedback,
-} from "@app/components/use/MessageFeedback";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -943,20 +941,19 @@ export default function AppChat({
     message: ChatMessageType,
     feedback: MessageFeedbackStatus
   ) => {
-    setMessages(
-      messages.map((m) => {
-        if (m === message) {
-          if (m.feedback !== feedback) {
-            m.feedback = feedback;
-          } else {
-            m.feedback = null;
-          }
+    const messagesPlusFeedback = messages.map((m) => {
+      if (m === message) {
+        if (m.feedback !== feedback) {
+          m.feedback = feedback;
+        } else {
+          m.feedback = null;
         }
-        return m;
-      })
-    );
+      }
+      return m;
+    });
+    setMessages(messagesPlusFeedback);
 
-    void storeChatSession(titleState, messages);
+    void storeChatSession(title, messagesPlusFeedback);
   };
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role

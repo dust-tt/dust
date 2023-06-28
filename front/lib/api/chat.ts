@@ -90,6 +90,7 @@ export async function getChatSession(
         id: m.id,
         role: m.role,
         message: m.message,
+        feedback: m.feedback,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
           return {
             dataSourceId: r.dataSourceId,
@@ -187,12 +188,12 @@ export async function storeChatSession(
             },
             { transaction: t }
           );
-          const chatSession2 : ChatSessionType = {
+          const chatSession2: ChatSessionType = {
             id: chatSession.id,
             userId: chatSession.userId,
             created: chatSession.createdAt.getTime(),
             sId: chatSession.sId,
-            messages: messages
+            messages: messages,
           };
           logChatMessageFeedback(m, owner, chatSession2);
 

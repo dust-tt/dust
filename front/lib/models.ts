@@ -721,7 +721,7 @@ export class ChatMessage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare feedback : MessageFeedbackStatus;
+  declare feedback: MessageFeedbackStatus;
 
   declare role: "user" | "retrieval" | "assistant" | "error";
   declare message?: string;
@@ -755,10 +755,10 @@ ChatMessage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    feedback:{
+    feedback: {
       type: DataTypes.STRING,
       allowNull: true,
-    }
+    },
   },
   {
     modelName: "chat_message",

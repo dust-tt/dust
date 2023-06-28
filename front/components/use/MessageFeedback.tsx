@@ -1,9 +1,10 @@
-import { classNames } from "@app/lib/utils";
-import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
+
+import { classNames } from "@app/lib/utils";
+import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
 
 export type FeedbackHandler = (
   message: ChatMessageType,
@@ -44,7 +45,7 @@ export function MessageFeedback({
           message.feedback === "negative"
             ? "text-violet-800"
             : "hover:text-violet-400",
-            message.feedback !== "negative" && hover
+          message.feedback !== "negative" && hover
             ? "invisible group-hover:visible"
             : ""
         )}
