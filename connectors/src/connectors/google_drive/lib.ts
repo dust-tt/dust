@@ -34,7 +34,7 @@ export async function registerWebhook(
         id: uuid,
         type: "web_hook",
         address: webhookURL,
-        expiration: new Date().getTime() + 60 * 60 * 5 * 1000,
+        expiration: new Date().getTime() + 60 * 60 * 7 * 1000,
       }),
     }
   );
