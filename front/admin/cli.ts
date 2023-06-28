@@ -1,3 +1,4 @@
+import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
@@ -6,6 +7,8 @@ import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { DataSource, Membership, User, Workspace } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
+
+const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -479,6 +482,8 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
+      const dustAPIProjectId = dataSource.dustAPIProjectId;
+
       await new Promise((resolve) => {
         const rl = readline.createInterface({
           input: process.stdin,
@@ -511,12 +516,58 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       await dataSource.destroy();
 
+      console.log("Data source deleted. Make sure to run: \n\n");
+      console.log(
+        "\x1b[32m%s\x1b[0m",
+        `./admin/cli.sh data-source scrub --dustAPIProjectId ${dustAPIProjectId}`
+      );
+      console.log(
+        "\n\n...to fully scrub the customer data from our infra (GCS clean-up)."
+      );
+
+      return;
+    }
+
+    case "scrub": {
+      if (!args.dustAPIProjectId) {
+        throw new Error("Missing --dustAPIProjectId argument");
+      }
+
+      const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+
+      const [files] = await storage
+        .bucket(DUST_DATA_SOURCES_BUCKET)
+        .getFiles({ prefix: `${args.dustAPIProjectId}` });
+
+      console.log(`Chunking ${files.length} files...`);
+      const chunkSize = 32;
+      const chunks = [];
+      for (let i = 0; i < files.length; i += chunkSize) {
+        chunks.push(files.slice(i, i + chunkSize));
+      }
+
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`Processing chunk ${i}/${chunks.length}...`);
+        const chunk = chunks[i];
+        if (!chunk) {
+          continue;
+        }
+        await Promise.all(
+          chunk.map((f) => {
+            return (async () => {
+              console.log(`Deleting file: ${f.name}`);
+              await f.delete();
+            })();
+          })
+        );
+      }
+
       return;
     }
 
     default:
       console.log(`Unknown data-source command: ${command}`);
-      console.log("Possible values: `delete-managed`");
+      console.log("Possible values: `delete`, `scrub`");
   }
 };
 
