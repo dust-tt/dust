@@ -1,11 +1,13 @@
+import { Dialog, Transition } from "@headlessui/react";
+import { TrashIcon } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
-  SparklesIcon,
   PencilSquareIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useEffect, Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -36,9 +38,6 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-
-import { Dialog, Transition } from "@headlessui/react";
-import { TrashIcon } from "@heroicons/react/20/solid";
 
 type DataSource = {
   name: string;
@@ -698,7 +697,7 @@ export function TemplatesView({
                       <ActionButton
                         onClick={() => {
                           setFormExpanded(false);
-                          let colors = ["red", "yellow", "green", "blue"];
+                          const colors = ["red", "yellow", "green", "blue"];
                           const new_template = {
                             name: newTemplateTitle,
                             // set random color
