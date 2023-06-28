@@ -50,6 +50,10 @@ import {
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import {
+  FeedbackHandler,
+  MessageFeedback,
+} from "@app/components/use/MessageFeedback";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -426,52 +430,6 @@ function formatMessageWithLinks(message: string): JSX.Element {
   );
 }
 
-type FeedbackHandler = (
-  message: ChatMessageType,
-  status: MessageFeedbackStatus
-) => void;
-
-export function MessageFeedback({
-  message,
-  feedbackHandler,
-  hover, // should the feedback be always visible or only on hover?
-}: {
-  message: ChatMessageType;
-  feedbackHandler: FeedbackHandler;
-  hover: boolean;
-}) {
-  return (
-    <div
-      className={classNames(
-        "flex-end flex h-2 flex-row-reverse text-gray-400",
-        hover ? "invisible group-hover:visible" : ""
-      )}
-    >
-      <div
-        onClick={() => feedbackHandler(message, "positive")}
-        className={classNames(
-          "ml-2 rounded-md p-px",
-          message.feedback === "positive"
-            ? "bg-violet-50 text-violet-800"
-            : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
-        )}
-      >
-        <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
-      </div>
-      <div
-        onClick={() => feedbackHandler(message, "negative")}
-        className={classNames(
-          "ml-2 rounded-md p-px",
-          message.feedback === "negative"
-            ? "bg-violet-50 text-violet-800"
-            : "bg-gray-50 hover:bg-violet-50 hover:text-violet-400"
-        )}
-      >
-        <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
-      </div>
-    </div>
-  );
-}
 export function MessageView({
   user,
   message,
