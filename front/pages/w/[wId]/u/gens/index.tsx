@@ -35,6 +35,7 @@ import {
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
 
 type DataSource = {
   name: string;
@@ -529,7 +530,7 @@ export function TemplatesView({
 }: {
   onTemplateSelect: (template: TemplateType) => void;
 }) {
-  const templates = [
+  let defaults = [
     {
       name: "Fact Gatherer",
       color: "bg-red-500",
@@ -560,7 +561,28 @@ export function TemplatesView({
     },
   ];
 
+  const [templates, setTemplates] = useState(defaults);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
+  const [newTemplateInstructions, setNewTemplateInstructions] = useState<
+    string[]
+  >([]);
+  const [formExpanded, setFormExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
+    let savedTemplates = localStorage?.getItem("templates");
+    if (savedTemplates) {
+      setTemplates(JSON.parse(savedTemplates));
+    }
+  }, []);
+
+  function saveTemplate(temp: TemplateType) {
+    // save template to local storage
+    const newTemplates = [...templates, temp];
+    // handle browser local storage:
+    const templatesString = JSON.stringify(newTemplates);
+    localStorage.setItem("templates", templatesString);
+  }
 
   useEffect(() => {
     setSelectedTemplate(templates[0].name);
@@ -571,6 +593,68 @@ export function TemplatesView({
     <div className="mt-5 p-5">
       <div>
         Templates
+        <div className="justify-items flex space-x-2">
+          <ActionButton onClick={() => setFormExpanded(true)}>New</ActionButton>
+          <ActionButton
+            onClick={() => {
+              setTemplates(defaults);
+              localStorage.removeItem("templates");
+            }}
+          >
+            Reset
+          </ActionButton>
+        </div>
+        <div style={{ position: "relative" }}>
+          {formExpanded && (
+            <form
+              className="absolute left-0 flex h-full w-full items-center justify-center"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setFormExpanded(false);
+                let new_template = {
+                  name: newTemplateTitle,
+                  // set random color
+                  color:
+                    "bg-" +
+                    ["red", "blue", "yellow", "green"][
+                      Math.floor(Math.random() * 4)
+                    ] +
+                    "-500",
+                  instructions: newTemplateInstructions,
+                };
+                saveTemplate(new_template);
+                setTemplates(templates.concat([new_template]));
+                onTemplateSelect(new_template);
+                setFormExpanded(false);
+                setNewTemplateInstructions([]);
+                setNewTemplateTitle("");
+              }}
+            >
+              <div className="z-50 bg-gray-100 p-5">
+                <input
+                  type="text"
+                  value={newTemplateTitle}
+                  placeholder="Template title"
+                  onChange={(e) => setNewTemplateTitle(e.target.value)}
+                />
+                <textarea
+                  className="my-2"
+                  value={newTemplateInstructions.join("\n")}
+                  placeholder="Template instructions, each instruction on a new line"
+                  onChange={(e) =>
+                    setNewTemplateInstructions(e.target.value.split("\n"))
+                  }
+                />
+                <div className="flex items-center justify-center space-x-2">
+                  <ActionButton type="submit">Create</ActionButton>
+                  <ActionButton onClick={() => setFormExpanded(false)}>
+                    Cancel
+                  </ActionButton>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
         <div className="mt-2 flex flex-col space-y-2">
           {templates.map((t) => {
             return (
@@ -585,7 +669,6 @@ export function TemplatesView({
               >
                 <button
                   className={classNames(
-                    "flex flex-initial flex-row items-center space-x-2",
                     "rounded py-1",
                     "mt-2 text-xs font-bold text-gray-700",
                     "h-5 w-5 rounded-full",
@@ -740,7 +823,7 @@ export default function AppGens({
         return {
           documentId: e.documentId,
           extract: e.text,
-          score: (e.score || 0).toFixed(2),
+          score: e.score.toFixed(2),
         };
       });
 
