@@ -207,7 +207,6 @@ export function DocumentView({
 
     runActionStreamed(owner, "gens-summary", extract_config, extractInput)
       .then((res) => {
-
         console.log("Summarizing...");
         if (res.isErr()) {
           console.log("ERROR", res.error);
@@ -217,7 +216,6 @@ export function DocumentView({
         const { eventStream } = res.value;
         const p = new FunctionSingleArgStreamer("summary", (tokens) =>
           setExtractedText((t) => {
-            console.log(t + tokens);
             onExtractUpdate(document.documentId, t + tokens);
             return t + tokens;
           })
@@ -269,12 +267,11 @@ export function DocumentView({
   }, [document.documentId]);
 
   useEffect(() => {
-
     const extractInput = [
       {
         query: query,
         result: document,
-        instructions: template?.instructions || []
+        instructions: template?.instructions || [],
       },
     ];
 
@@ -551,6 +548,16 @@ export function TemplatesView({
         "Find documents and ideas that might contradict or disagree with the user's text",
       ],
     },
+    {
+      name: "Poet",
+      color: "bg-yellow-500",
+      instructions: ["Be creative, fanciful, and only speak in poetry"],
+    },
+    {
+      name: "Pirate",
+      color: "bg-green-500",
+      instructions: ["Be a pirate, and only speak in pirate language"],
+    },
   ];
 
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -603,9 +610,6 @@ export function TemplatesView({
   );
 }
 
-/*
-instructions = [
-]*/
 export default function AppGens({
   user,
   owner,
@@ -621,12 +625,6 @@ export default function AppGens({
   const [genLoading, setGenLoading] = useState<boolean>(false);
   const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
-    [documentId: string]: {
-      extract: string;
-      score: number | null;
-    };
-  }>({});
 
   const [inferTimeRangeLoading, setInferTimeRangeLoading] =
     useState<boolean>(false);
@@ -653,19 +651,7 @@ export default function AppGens({
   };
 
   const onExtractUpdate = (documentId: string, extract: string) => {
-    setGenDocumentExtracts((c) => {
-      let score = null;
-      if (documentId in c) {
-        score = c[documentId].score;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
-    });
+    return;
   };
 
   const onScoreReady = (documentId: string, score: number) => {
@@ -674,23 +660,9 @@ export default function AppGens({
       // TODO: make this more efficient by just moving that doc around
       retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
       retrieved.sort((a, b) => {
-        return (b.llm_score || 0) - a.llm_score || 0;
+        return (b.llm_score || 0) - (a.llm_score || 0);
       });
       return retrieved;
-    });
-
-    setGenDocumentExtracts((c) => {
-      let extract = "";
-      if (documentId in c) {
-        extract = c[documentId].extract;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
     });
   };
 
@@ -752,34 +724,36 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const extracts = Object.entries(genDocumentExtracts)
-      .map(([documentId, { extract, score }]) => {
+    const extracts = retrieved
+      .map((d) => {
+        let chunks = d.chunks.sort((a, b) => a.offset - b.offset);
+        let text = chunks.map((c) => c.text).join("");
         return {
-          documentId,
-          extract,
-          score: score || 0,
+          documentId: d.documentId,
+          text: text,
+          score: d.llm_score || d.score,
         };
       })
-      .sort((a, b) => {
-        return (a.score || 0) - (b.score || 0);
-      })
+      .sort((a, b) => a.score - b.score)
       .map((e) => {
         return {
           documentId: e.documentId,
-          extract: e.extract,
-          score: e.score.toFixed(2),
+          extract: e.text,
+          score: (e.score || 0).toFixed(2),
         };
       });
 
-    console.log(JSON.stringify(extracts));
+    console.log(extracts);
 
     const inputs = [
       {
         text_with_cursor: textWithCursor,
         extracts,
         context: getContext(),
+        instructions: template.current?.instructions,
       },
     ];
+    console.log(template.current?.instructions);
 
     // console.log(JSON.stringify(genDocumentExtracts));
 
@@ -854,7 +828,6 @@ export default function AppGens({
   const handleSearch = async () => {
     setRetrievalLoading(true);
     setRetrieved([]);
-    setGenDocumentExtracts({});
 
     const userContext = {
       user: {
