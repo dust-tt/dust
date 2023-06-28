@@ -859,6 +859,34 @@ export default function AppChat({
     while (m.pop()?.role !== "user" && m.length > 0);
   }
 
+  function logFeedback(message: ChatMessageType): void {
+    const chatSessionUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
+
+    // gets the user message preceding `message` in the chat session
+    const messagesCopy = [...messages];
+    let previousUserMessage: ChatMessageType | undefined;
+    while (messagesCopy.pop() !== message);
+    while ((previousUserMessage = messagesCopy.pop())?.role !== "user");
+
+    // create the logging message
+    const loggingMessage = {
+      topic: "Feedback",
+      feedback: message.feedback,
+      message,
+      previousUserMessage,
+      chatUrl: chatSessionUrl,
+    };
+
+    // call the logging endpoint
+    fetch(`/api/w/${owner.sId}/log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(loggingMessage),
+    }).catch((e) => console.error(e));
+  }
+
   const handleSubmit = async () => {
     /* Document retrieval is handled by an openai function called
      * "retrieve_documents". This function is speced for the openai api in the
@@ -953,7 +981,14 @@ export default function AppChat({
     });
     setMessages(messagesPlusFeedback);
 
+    // if the feedback was given on the latest message a few seconds after it
+    // finished (potentially common use case), said latest message might not yet
+    // have been persisted in the database and thus not have an id. This is why
+    // we use storeChatSession
     void storeChatSession(title, messagesPlusFeedback);
+
+    // feedback is logged serverside to datadog for easy monitoring
+    logFeedback(message);
   };
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role

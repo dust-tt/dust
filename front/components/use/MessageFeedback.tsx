@@ -27,7 +27,7 @@ export function MessageFeedback({
       <div
         onClick={() => feedbackHandler(message, "positive")}
         className={classNames(
-          "ml-2 rounded-md p-px",
+          "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "positive"
             ? "text-violet-800"
             : "hover:text-violet-400",
@@ -41,7 +41,7 @@ export function MessageFeedback({
       <div
         onClick={() => feedbackHandler(message, "negative")}
         className={classNames(
-          "ml-2 rounded-md p-px",
+          "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "negative"
             ? "text-violet-800"
             : "hover:text-violet-400",

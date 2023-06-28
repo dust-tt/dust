@@ -48,7 +48,6 @@ const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
 const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   type: "object",
   properties: {
-    id: { type: "number", nullable: true },
     role: { type: "string" },
     message: { type: "string", nullable: true },
     retrievals: {

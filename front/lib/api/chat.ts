@@ -1,5 +1,4 @@
 import { new_id } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 import { ChatMessageType, ChatSessionType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -175,7 +174,6 @@ export async function storeChatSession(
       },
       { transaction: t }
     );
-
     await Promise.all(
       messages.map((m) => {
         return (async () => {
@@ -188,15 +186,6 @@ export async function storeChatSession(
             },
             { transaction: t }
           );
-          const chatSession2: ChatSessionType = {
-            id: chatSession.id,
-            userId: chatSession.userId,
-            created: chatSession.createdAt.getTime(),
-            sId: chatSession.sId,
-            messages: messages,
-          };
-          logChatMessageFeedback(m, owner, chatSession2);
-
           await Promise.all(
             m.retrievals?.map((r) => {
               return (async () => {
@@ -227,19 +216,5 @@ export async function storeChatSession(
       title: chatSession.title,
       messages,
     };
-  });
-}
-
-export function logChatMessageFeedback(
-  message: ChatMessageType,
-  owner: WorkspaceType,
-  chatSession: ChatSessionType
-) {
-  const chatUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
-  logger.info({
-    topic: "Feedback",
-    message,
-    chatUrl,
-    chatSession,
   });
 }
