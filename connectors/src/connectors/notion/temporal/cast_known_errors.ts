@@ -20,6 +20,13 @@ export class NotionCastKnownErrorsInterceptor
       return await next(input);
     } catch (err: unknown) {
       if (APIResponseError.isAPIResponseError(err)) {
+        if (err.code === APIErrorCode.ServiceUnavailable) {
+          throw {
+            __is_dust_error: true,
+            message: err.message,
+            type: "notion_service_unavailable",
+          };
+        }
         if (err.code === APIErrorCode.RateLimited) {
           throw {
             __is_dust_error: true,
