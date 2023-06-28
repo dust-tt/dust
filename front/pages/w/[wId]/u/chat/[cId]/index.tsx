@@ -1,14 +1,14 @@
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
 } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
   ClockIcon,
   DocumentDuplicateIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -50,6 +50,7 @@ import {
   ChatMessageType,
   ChatRetrievedDocumentType,
   MessageFeedbackStatus,
+  MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -428,18 +429,27 @@ function formatMessageWithLinks(message: string): JSX.Element {
   );
 }
 
+type FeedbackHandler = (
+  message: ChatMessageType,
+  status: MessageFeedbackStatus
+) => void;
+
 export function MessageFeedback({
   message,
   feedbackHandler,
+  hover, // should the feedback be always visible or only on hover?
 }: {
   message: ChatMessageType;
-  feedbackHandler: (
-    message: ChatMessageType,
-    status: MessageFeedbackStatus
-  ) => void;
+  feedbackHandler: FeedbackHandler;
+  hover: boolean;
 }) {
   return (
-    <div className="flex-end flex h-2 flex-row-reverse text-gray-400">
+    <div
+      className={classNames(
+        "flex-end flex h-2 flex-row-reverse text-gray-400",
+        hover ? "invisible group-hover:visible" : ""
+      )}
+    >
       <div
         onClick={() => feedbackHandler(message, "positive")}
         className={classNames(
@@ -471,12 +481,14 @@ export function MessageView({
   loading,
   isLatestRetrieval,
   readOnly,
+  feedback,
 }: {
   user: UserType | null;
   message: ChatMessageType;
   loading: boolean;
   isLatestRetrieval: boolean;
   readOnly: boolean;
+  feedback?: { handler: FeedbackHandler; hover: boolean } | false;
 }) {
   return (
     <div className="">
@@ -512,12 +524,19 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
-              message.role === "user" ? "italic text-gray-500" : "text-gray-700"
+              "ml-2 pt-1 flex flex-1 flex-col whitespace-pre-wrap",
+              message.role === "user" ? "italic text-gray-500" : "text-gray-700",
             )}
           >
             {formatMessageWithLinks(message.message || "")}
           </div>
+          {feedback && (
+            <MessageFeedback
+              message={message}
+              feedbackHandler={feedback.handler}
+              hover={feedback.hover}
+            />
+          )}
         </div>
       )}
     </div>
@@ -986,7 +1005,21 @@ export default function AppChat({
       chatSession,
     });
   };
-
+  function isLatest(messageRole: MessageRole, index: number): boolean {
+    // returns whether the message is the latest message of the given role
+    // in the conversation
+    return (
+      !(response && response.role === messageRole) &&
+      (() => {
+        for (let j = messages.length - 1; j >= 0; j--) {
+          if (messages[j].role === messageRole) {
+            return index === j;
+          }
+        }
+        return false;
+      })()
+    );
+  }
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex h-full flex-col">
@@ -1106,33 +1139,17 @@ export default function AppChat({
                                   // isLatest={
                                   //   !response && i === messages.length - 1
                                   // }
-                                  isLatestRetrieval={
-                                    !(
-                                      response && response.role === "retrieval"
-                                    ) &&
-                                    (() => {
-                                      for (
-                                        let j = messages.length - 1;
-                                        j >= 0;
-                                        j--
-                                      ) {
-                                        if (messages[j].role === "retrieval") {
-                                          return i === j;
-                                        }
-                                      }
-                                      return false;
-                                    })()
-                                  }
+                                  isLatestRetrieval={isLatest("retrieval", i)}
                                   readOnly={chatSession.readOnly}
+                                  feedback={
+                                    m.role === "assistant" && {
+                                      handler: handleFeedback,
+                                      hover: response
+                                        ? true
+                                        : i !== messages.length - 1,
+                                    }
+                                  }
                                 />
-                                {m.role === "assistant" && (
-                                  <div className="invisible group-hover:visible">
-                                    <MessageFeedback
-                                      message={m}
-                                      feedbackHandler={handleFeedback}
-                                    />
-                                  </div>
-                                )}
                               </div>
                             );
                           })}

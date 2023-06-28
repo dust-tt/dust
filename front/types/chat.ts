@@ -14,8 +14,9 @@ export type ChatRetrievedDocumentType = {
 
 export type MessageFeedbackStatus = "positive" | "negative" | undefined;
 
+export type MessageRole = "user" | "retrieval" | "assistant" | "error";
 export type ChatMessageType = {
-  role: "user" | "retrieval" | "assistant" | "error";
+  role: MessageRole;
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
   query?: string; // for `retrieval` messages (not persisted)
