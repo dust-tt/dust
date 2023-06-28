@@ -47,7 +47,7 @@ export const DustProdActionRegistry: {
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-16k-0613",
+        model_id: "gpt-4-0613",
         function_call: "auto",
         use_cache: true,
         use_stream: true,
