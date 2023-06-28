@@ -185,37 +185,36 @@ export function DocumentView({
   const provider = providerFromDocument(document);
 
   const [extractedText, setExtractedText] = useState("");
-  const [explanation, setExplanation] = useState("");
   const [LLMScore, setLLMScore] = useState<number | null>(null);
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
 
-  const extractInput = [
-    {
-      query: query,
-      result: document,
-      instructions: template?.instructions || [],
-    },
-  ];
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
     setExtractedText("");
 
     const extract_config = cloneBaseConfig(
-      DustProdActionRegistry["gens-extract"].config
+      DustProdActionRegistry["gens-summary"].config
     );
 
-    runActionStreamed(owner, "gens-extract", extract_config, extractInput)
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+      },
+    ];
+
+    runActionStreamed(owner, "gens-summary", extract_config, extractInput)
       .then((res) => {
-        console.log("Extracting");
+        console.log("Summarizing...");
         if (res.isErr()) {
           console.log("ERROR", res.error);
           return;
         }
 
         const { eventStream } = res.value;
-        const p = new FunctionSingleArgStreamer("data", (tokens) =>
+        const p = new FunctionSingleArgStreamer("summary", (tokens) =>
           setExtractedText((t) => {
             onExtractUpdate(document.documentId, t + tokens);
             return t + tokens;
@@ -260,7 +259,7 @@ export function DocumentView({
           })
           .catch((e) => console.log(e));
       })
-      .catch((e) => console.log("Error during extract", e));
+      .catch((e) => console.log("Error during summary", e));
     return () => {
       console.log("Trying to unmount");
       interruptRef.current = true;
@@ -268,6 +267,14 @@ export function DocumentView({
   }, [document.documentId]);
 
   useEffect(() => {
+    const extractInput = [
+      {
+        query: query,
+        result: document,
+        instructions: template?.instructions || [],
+      },
+    ];
+
     const rank_config = cloneBaseConfig(
       DustProdActionRegistry["gens-rank"].config
     );
@@ -309,16 +316,6 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              if (e.value.completion.text.indexOf("Explanation:") > -1) {
-                setExplanation(
-                  e.value.completion.text.substring(
-                    e.value.completion.text.indexOf("Explanation:") + 13,
-                    e.value.completion.text.length
-                  )
-                );
-              } else {
-                setExplanation(e.value.completion.text);
-              }
               onScoreReady(document.documentId, score);
               return;
             }
@@ -400,14 +397,7 @@ export function DocumentView({
         </div>
       </div>
       <div className="my-2 flex flex-col space-y-2">
-        <p className="text-black-500 ml-3 text-xs font-bold">{explanation}</p>
-        <div className="ml-4 flex flex-initial">
-          <div className="border-l-4 border-slate-400">
-            <p className={classNames("pl-2 text-xs italic text-gray-500")}>
-              {extractedText}
-            </p>
-          </div>
-        </div>
+        <p className="text-black-500 ml-3 text-xs">{extractedText}</p>
       </div>
       {chunkExpanded && (
         <div className="mb-2 flex flex-col space-y-2">
@@ -558,6 +548,16 @@ export function TemplatesView({
         "Find documents and ideas that might contradict or disagree with the user's text",
       ],
     },
+    {
+      name: "Poet",
+      color: "bg-yellow-500",
+      instructions: ["Be creative, fanciful, and only speak in poetry"],
+    },
+    {
+      name: "Pirate",
+      color: "bg-green-500",
+      instructions: ["Be a pirate, and only speak in pirate language"],
+    },
   ];
 
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -610,9 +610,6 @@ export function TemplatesView({
   );
 }
 
-/*
-instructions = [
-]*/
 export default function AppGens({
   user,
   owner,
@@ -628,12 +625,6 @@ export default function AppGens({
   const [genLoading, setGenLoading] = useState<boolean>(false);
   const genInterruptRef = useRef<boolean>(false);
   const genTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  const [genDocumentExtracts, setGenDocumentExtracts] = useState<{
-    [documentId: string]: {
-      extract: string;
-      score: number | null;
-    };
-  }>({});
 
   const [inferTimeRangeLoading, setInferTimeRangeLoading] =
     useState<boolean>(false);
@@ -659,20 +650,9 @@ export default function AppGens({
     };
   };
 
+  // keeping this here for later:
   const onExtractUpdate = (documentId: string, extract: string) => {
-    setGenDocumentExtracts((c) => {
-      let score = null;
-      if (documentId in c) {
-        score = c[documentId].score;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
-    });
+    return [documentId, extract];
   };
 
   const onScoreReady = (documentId: string, score: number) => {
@@ -681,23 +661,9 @@ export default function AppGens({
       // TODO: make this more efficient by just moving that doc around
       retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
       retrieved.sort((a, b) => {
-        return (b.llm_score || 0) - a.llm_score || 0;
+        return (b.llm_score || 0) - (a.llm_score || 0);
       });
       return retrieved;
-    });
-
-    setGenDocumentExtracts((c) => {
-      let extract = "";
-      if (documentId in c) {
-        extract = c[documentId].extract;
-      }
-      return {
-        ...c,
-        [documentId]: {
-          extract,
-          score,
-        },
-      };
     });
   };
 
@@ -759,34 +725,36 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const extracts = Object.entries(genDocumentExtracts)
-      .map(([documentId, { extract, score }]) => {
+    const extracts = retrieved
+      .map((d) => {
+        const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
+        const text = chunks.map((c) => c.text).join("");
         return {
-          documentId,
-          extract,
-          score: score || 0,
+          documentId: d.documentId,
+          text: text,
+          score: d.llm_score || d.score,
         };
       })
-      .sort((a, b) => {
-        return (a.score || 0) - (b.score || 0);
-      })
+      .sort((a, b) => a.score - b.score)
       .map((e) => {
         return {
           documentId: e.documentId,
-          extract: e.extract,
-          score: e.score.toFixed(2),
+          extract: e.text,
+          score: (e.score || 0).toFixed(2),
         };
       });
 
-    console.log(JSON.stringify(extracts));
+    console.log(extracts);
 
     const inputs = [
       {
         text_with_cursor: textWithCursor,
         extracts,
         context: getContext(),
+        instructions: template.current?.instructions,
       },
     ];
+    console.log(template.current?.instructions);
 
     // console.log(JSON.stringify(genDocumentExtracts));
 
@@ -861,7 +829,6 @@ export default function AppGens({
   const handleSearch = async () => {
     setRetrievalLoading(true);
     setRetrieved([]);
-    setGenDocumentExtracts({});
 
     const userContext = {
       user: {
