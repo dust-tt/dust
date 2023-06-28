@@ -1,7 +1,4 @@
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
@@ -524,8 +521,8 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "ml-2 pt-1 flex flex-1 flex-col whitespace-pre-wrap",
-              message.role === "user" ? "italic text-gray-500" : "text-gray-700",
+              "ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
             {formatMessageWithLinks(message.message || "")}
