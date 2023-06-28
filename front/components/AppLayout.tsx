@@ -11,7 +11,7 @@ import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { ActionButton } from "./Button";
+import { GoogleSignInButton } from "./Button";
 import WorkspacePicker from "./WorkspacePicker";
 
 export default function AppLayout({
@@ -245,7 +245,7 @@ export default function AppLayout({
                     ) : (
                       <div className="static static inset-auto inset-auto right-0 hidden flex-initial items-center pr-2 sm:flex sm:pr-0">
                         <div className="-mr-2 sm:mr-0">
-                          <ActionButton
+                          <GoogleSignInButton
                             onClick={() =>
                               signIn("google", {
                                 callbackUrl: `/api/login`,
@@ -259,7 +259,7 @@ export default function AppLayout({
                             <span className="ml-2 mr-1">
                               Sign in with Google
                             </span>
-                          </ActionButton>
+                          </GoogleSignInButton>
                         </div>
                       </div>
                     )}

@@ -8,7 +8,7 @@ import Script from "next/script";
 import { signIn } from "next-auth/react";
 import p5Types from "p5";
 
-import { ActionButton, Button } from "@app/components/Button";
+import { Button, GoogleSignInButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -217,7 +217,7 @@ export default function Home({
             <Logo />
           </div>
           <div className="col-span-3 mr-2 mt-8 text-right">
-            <ActionButton
+            <GoogleSignInButton
               onClick={() =>
                 signIn("google", {
                   callbackUrl: router.query.wId
@@ -231,7 +231,7 @@ export default function Home({
                 className="ml-1 h-4 w-4"
               />
               <span className="ml-2 mr-1">Sign in with Google</span>
-            </ActionButton>
+            </GoogleSignInButton>
 
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="ml-32 mt-1 text-xs text-gray-500">
