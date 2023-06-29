@@ -260,7 +260,13 @@ export async function slackGarbageCollectorWorkflow(
   }
 }
 
-export function workspaceFullSyncWorkflowId(connectorId: string) {
+export function workspaceFullSyncWorkflowId(
+  connectorId: string,
+  fromTs: number | null
+) {
+  if (fromTs) {
+    return `slack-workspaceFullSync-${connectorId}-fromTs-${fromTs}`;
+  }
   return `slack-workspaceFullSync-${connectorId}`;
 }
 

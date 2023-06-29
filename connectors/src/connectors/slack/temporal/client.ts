@@ -22,7 +22,10 @@ import {
 
 const logger = mainLogger.child({ provider: "slack" });
 
-export async function launchSlackSyncWorkflow(connectorId: string) {
+export async function launchSlackSyncWorkflow(
+  connectorId: string,
+  fromTs: number | null
+) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
@@ -36,10 +39,10 @@ export async function launchSlackSyncWorkflow(connectorId: string) {
   };
   const nangoConnectionId = connector.connectionId;
 
-  const workflowId = workspaceFullSyncWorkflowId(connectorId);
+  const workflowId = workspaceFullSyncWorkflowId(connectorId, fromTs);
   try {
     await client.workflow.start(workspaceFullSync, {
-      args: [connectorId, dataSourceConfig, nangoConnectionId],
+      args: [connectorId, dataSourceConfig, nangoConnectionId, fromTs],
       taskQueue: "slack-queue",
       workflowId: workflowId,
     });

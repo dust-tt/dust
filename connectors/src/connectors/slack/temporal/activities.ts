@@ -134,6 +134,8 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   }
+  // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
+  // first).
   let allSkip = true;
   for (const message of messages.messages) {
     if (!message.user) {
