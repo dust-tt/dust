@@ -8,7 +8,8 @@ export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 export type PostUpsertHookFunction = (
   dataSourceName: string,
   workspaceId: string,
-  documentId: string
+  documentId: string,
+  documentText: string
 ) => Promise<void>;
 
 // returns true if the post upsert hook should run for this document

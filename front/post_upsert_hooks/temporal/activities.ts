@@ -1,5 +1,5 @@
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource } from "@app/lib/models";
+import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import {
   POST_UPSERT_HOOK_BY_TYPE,
@@ -13,35 +13,12 @@ export async function getPostUpsertHooksToRunActivity(
   documentId: string
 ): Promise<PostUpsertHookType[]> {
   const hooksToRun: PostUpsertHookType[] = [];
-  const dataSource = await DataSource.findOne({
-    where: {
-      name: dataSourceName,
-      workspaceId,
-    },
-  });
-  if (!dataSource) {
-    throw new Error(`Could not find data source ${dataSourceName}`);
-  }
-  const docText = await CoreAPI.getDataSourceDocument(
-    dataSource?.dustAPIProjectId,
-    dataSourceName,
-    documentId
-  );
-  if (docText.isErr()) {
-    throw new Error(`Could not get document text for ${documentId}`);
-  }
-  const docTextStr = docText.value.document.text;
+
+  const docText = await getDocText(dataSourceName, workspaceId, documentId);
 
   // TODO: parallel
   for (const hook of POST_UPSERT_HOOKS) {
-    if (
-      await hook.filter(
-        dataSourceName,
-        workspaceId,
-        documentId,
-        docTextStr || ""
-      )
-    ) {
+    if (await hook.filter(dataSourceName, workspaceId, documentId, docText)) {
       hooksToRun.push(hook.type);
     }
   }
@@ -69,6 +46,41 @@ export async function runPostUpsertHookActivity(
   }
 
   localLogger.info("Running post upsert hook function.");
-  await hook.fn(dataSourceName, workspaceId, documentId);
+  const docText = await getDocText(dataSourceName, workspaceId, documentId);
+  await hook.fn(dataSourceName, workspaceId, documentId, docText);
   localLogger.info("Ran post upsert hook function.");
+}
+
+async function getDocText(
+  dataSourceName: string,
+  workspaceId: string,
+  documentId: string
+): Promise<string> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace ${workspaceId}`);
+  }
+
+  const dataSource = await DataSource.findOne({
+    where: {
+      name: dataSourceName,
+      workspaceId: workspace.id,
+    },
+  });
+  if (!dataSource) {
+    throw new Error(`Could not find data source ${dataSourceName}`);
+  }
+  const docText = await CoreAPI.getDataSourceDocument(
+    dataSource?.dustAPIProjectId,
+    dataSourceName,
+    documentId
+  );
+  if (docText.isErr()) {
+    throw new Error(`Could not get document text for ${documentId}`);
+  }
+  return docText.value.document.text || "";
 }

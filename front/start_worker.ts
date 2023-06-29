@@ -1,5 +1,6 @@
-// Temporal workers should be started from here.
-
 import logger from "@app/logger/logger";
+import { runPostUpsertHooksWorker } from "@app/post_upsert_hooks/temporal/worker";
 
-logger.info("No workers to start.");
+runPostUpsertHooksWorker().catch((err) =>
+  logger.error({ error: err }, "Error running post upsert hooks worker")
+);
