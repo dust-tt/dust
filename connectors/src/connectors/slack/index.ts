@@ -13,6 +13,7 @@ import {
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client.js";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -101,41 +102,78 @@ export async function cleanupSlackConnector(
   connectorId: string,
   transaction: Transaction
 ): Promise<Result<void, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await Connector.findByPk(connectorId, {
+    transaction: transaction,
+  });
   if (!connector) {
     return new Err(
       new Error(`Could not find connector with id ${connectorId}`)
     );
   }
-  if (!NANGO_SLACK_CONNECTOR_ID) {
-    return new Err(new Error("NANGO_SLACK_CONNECTOR_ID is not defined"));
-  }
-  if (!SLACK_CLIENT_ID) {
-    return new Err(new Error("SLACK_CLIENT_ID is not defined"));
-  }
-  if (!SLACK_CLIENT_SECRET) {
-    return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
-  }
-  const accessToken = await getAccessToken(connector.connectionId);
-  const slackClient = getSlackClient(accessToken);
-  const deleteRes = await slackClient.apps.uninstall({
-    client_id: SLACK_CLIENT_ID,
-    client_secret: SLACK_CLIENT_SECRET,
+
+  const configuration = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+    transaction: transaction,
   });
-  if (!deleteRes.ok) {
+  if (!configuration) {
     return new Err(
-      new Error(
-        `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
-      )
+      new Error(`Could not find configuration for connector id ${connectorId}`)
     );
   }
 
-  const nangoRes = await nangoDeleteConnection(
-    connector.connectionId,
-    NANGO_SLACK_CONNECTOR_ID
-  );
-  if (nangoRes.isErr()) {
-    return nangoRes;
+  const configurations = await SlackConfiguration.findAll({
+    where: {
+      slackTeamId: configuration.slackTeamId,
+    },
+    transaction: transaction,
+  });
+
+  // We deactivate our connections only if we are the only live slack connection for this team.
+  if (configurations.length == 1) {
+    if (!NANGO_SLACK_CONNECTOR_ID) {
+      return new Err(new Error("NANGO_SLACK_CONNECTOR_ID is not defined"));
+    }
+    if (!SLACK_CLIENT_ID) {
+      return new Err(new Error("SLACK_CLIENT_ID is not defined"));
+    }
+    if (!SLACK_CLIENT_SECRET) {
+      return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
+    }
+    const accessToken = await getAccessToken(connector.connectionId);
+    const slackClient = getSlackClient(accessToken);
+    const deleteRes = await slackClient.apps.uninstall({
+      client_id: SLACK_CLIENT_ID,
+      client_secret: SLACK_CLIENT_SECRET,
+    });
+    if (!deleteRes.ok) {
+      return new Err(
+        new Error(
+          `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
+        )
+      );
+    }
+
+    const nangoRes = await nangoDeleteConnection(
+      connector.connectionId,
+      NANGO_SLACK_CONNECTOR_ID
+    );
+    if (nangoRes.isErr()) {
+      return nangoRes;
+    }
+    logger.info(
+      { slackTeamId: configuration.slackTeamId },
+      `Deactivated the Slack app`
+    );
+  } else {
+    logger.info(
+      {
+        slackTeamId: configuration.slackTeamId,
+        activeConfigurations: configurations.length - 1,
+      },
+      `Skipping deactivation of the Slack app`
+    );
   }
 
   await SlackMessages.destroy({
