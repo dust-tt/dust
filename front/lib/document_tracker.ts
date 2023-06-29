@@ -9,16 +9,16 @@ export async function updateTrackedDocuments(
   documentContent: string
 ) {
   const emailPattern = "\\S+@\\S+\\.\\S+";
+  const emailRegex = new RegExp(emailPattern);
 
-  const dustTrackTagRegex = new RegExp(
-    "DUST_TRACK\\(\\s*((?:" + emailPattern + "\\s*,?\\s*)+)\\)",
-    "g"
-  );
+  // Match any DUST_TRACK tag, regardless of its content
+  const dustTrackTagRegex = /DUST_TRACK\(\s*(.*?)\)/g;
 
   const dustTrackTags = documentContent.match(dustTrackTagRegex);
   if (!dustTrackTags) {
     return;
   }
+
   const allEmails: Set<string> = new Set();
   for (const dustTrackTag of dustTrackTags) {
     // remove 'DUST_TRACK(' and ')' from the tag
@@ -26,12 +26,25 @@ export async function updateTrackedDocuments(
       .replace(/DUST_TRACK\(/, "")
       .replace(/\)/, "");
 
-    // split emails by comma and map over them to remove any trailing or leading spaces
+    // split emails by comma, map over them to remove any trailing or leading spaces, and validate
     const emails = emailsInTag
       .split(",")
       .map((email) => email.trim().toLowerCase());
     for (const email of emails) {
-      allEmails.add(email);
+      // only add the email if it's valid
+      if (emailRegex.test(email)) {
+        allEmails.add(email);
+      } else {
+        // log invalid email
+        logger.warn(
+          {
+            email,
+            dataSourceId,
+            documentId,
+          },
+          "Invalid email in DUST_TRACK tag"
+        );
+      }
     }
   }
 
