@@ -10,10 +10,11 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -31,7 +32,7 @@ type SlackWebhookReqBody = {
 type SlackWebhookResBody =
   | { challenge: string }
   | null
-  | ConnectorsAPIErrorResponse;
+  | APIErrorWithStatusCode;
 
 const _webhookSlackAPIHandler = async (
   req: Request<
@@ -45,55 +46,110 @@ const _webhookSlackAPIHandler = async (
     return res.status(200).send({
       challenge: req.body.challenge,
     });
-  } else if (req.body.type === "event_callback") {
+  }
+
+  if (req.body.type === "event_callback") {
     if (!req.body.team_id) {
-      return res.status(400).send({
-        error: {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
           message: "Missing team_id in request body",
         },
+        status_code: 400,
       });
     }
-    const slackConfiguration = await SlackConfiguration.findOne({
+    const slackConfigurations = await SlackConfiguration.findAll({
       where: {
         slackTeamId: req.body.team_id,
       },
     });
-    if (!slackConfiguration) {
-      return res.status(404).send({
-        error: {
+    if (slackConfigurations.length === 0) {
+      return apiError(req, res, {
+        api_error: {
+          type: "connector_configuration_not_found",
           message: `Slack configuration not found for teamId ${req.body.team_id}`,
         },
+        status_code: 404,
       });
     }
 
-    if (req.body.event?.type === "message") {
-      if (req.body.team_id) {
-        let workflowRes = null;
-        if (req.body.event?.channel && req.body.event?.thread_ts) {
-          workflowRes = await launchSlackSyncOneThreadWorkflow(
-            slackConfiguration.connectorId.toString(),
-            req.body.event.channel,
-            req.body.event.thread_ts
-          );
-        } else if (req.body.event?.channel && req.body.event?.ts) {
-          workflowRes = await launchSlackSyncOneMessageWorkflow(
-            slackConfiguration.connectorId.toString(),
-            req.body.event.channel,
-            req.body.event.ts
-          );
-        } else {
-          return res.status(400).send({
-            error: {
-              message: `Webhook message without thread id or message id.`,
+    switch (req.body.event?.type) {
+      /**
+       * `message` handler.
+       */
+      case "message": {
+        if (!req.body.team_id) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: "Missing team_id in request body for message event",
             },
+            status_code: 400,
           });
         }
 
-        if (workflowRes.isErr()) {
-          return res.status(500).send({
-            error: {
-              message: workflowRes.error.message,
+        if (!req.body.event?.channel) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: "Missing channel in request body for message event",
             },
+            status_code: 400,
+          });
+        }
+
+        const channel = req.body.event.channel;
+        let err: Error | null = null;
+
+        if (req.body.event?.thread_ts) {
+          const thread_ts = req.body.event.thread_ts;
+          const results = await Promise.all(
+            slackConfigurations.map((c) => {
+              return launchSlackSyncOneThreadWorkflow(
+                c.connectorId.toString(),
+                channel,
+                thread_ts
+              );
+            })
+          );
+          for (const r of results) {
+            if (r.isErr()) {
+              err = r.error;
+            }
+          }
+        } else if (req.body.event?.ts) {
+          const ts = req.body.event.ts;
+          const results = await Promise.all(
+            slackConfigurations.map((c) => {
+              return launchSlackSyncOneMessageWorkflow(
+                c.connectorId.toString(),
+                channel,
+                ts
+              );
+            })
+          );
+          for (const r of results) {
+            if (r.isErr()) {
+              err = r.error;
+            }
+          }
+        } else {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: `Webhook message without 'thread_ts' or message 'ts'.`,
+            },
+            status_code: 400,
+          });
+        }
+
+        if (err) {
+          return apiError(req, res, {
+            api_error: {
+              type: "internal_server_error",
+              message: err.message,
+            },
+            status_code: 500,
           });
         } else {
           logger.info(
@@ -108,91 +164,140 @@ const _webhookSlackAPIHandler = async (
           );
           return res.status(200).send();
         }
-      }
-    } else if (req.body.event?.type === "member_joined_channel") {
-      if (!req.body.event?.channel || !req.body.event?.user) {
-        return res.status(400).send({
-          error: {
-            message:
-              "Missing channel or user in request body for member_joined_channel event",
-          },
-        });
-      }
-      const connector = await Connector.findByPk(
-        slackConfiguration.connectorId
-      );
-      if (!connector) {
-        return res.status(500).send({
-          error: {
-            message: `Connector not found for id ${slackConfiguration.connectorId}`,
-          },
-        });
+        break;
       }
 
-      const slackAccessToken = await getAccessToken(connector.connectionId);
-      const myUserId = await whoAmI(slackAccessToken);
-      if (myUserId !== req.body.event.user) {
-        return res.status(200).send();
+      /**
+       * `member_joined_channel` handler.
+       */
+      case "member_joined_channel": {
+        if (!req.body.event?.channel || !req.body.event?.user) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Missing channel or user in request body for member_joined_channel event",
+            },
+            status_code: 400,
+          });
+        }
+        const channel = req.body.event.channel;
+        const user = req.body.event.user;
+        let err: Error | null = null;
+
+        const results = await Promise.all(
+          slackConfigurations.map((c) =>
+            (async (): Promise<Err<Error> | Ok<string>> => {
+              const connector = await Connector.findByPk(c.connectorId);
+              if (!connector) {
+                return new Err(
+                  new Error(`Connector ${c.connectorId} not found`)
+                );
+              }
+
+              const slackAccessToken = await getAccessToken(
+                connector.connectionId
+              );
+              const myUserId = await whoAmI(slackAccessToken);
+              if (myUserId !== user) {
+                return new Ok("");
+              }
+              return await launchSlackBotJoinedWorkflow(
+                c.connectorId.toString(),
+                channel
+              );
+            })()
+          )
+        );
+        for (const r of results) {
+          if (r.isErr()) {
+            err = r.error;
+          }
+        }
+
+        if (err) {
+          return apiError(req, res, {
+            api_error: {
+              type: "internal_server_error",
+              message: err.message,
+            },
+            status_code: 500,
+          });
+        } else {
+          logger.info(
+            {
+              type: req.body.event.type,
+              channel: req.body.event.channel,
+              user: req.body.event.user,
+            },
+            `Successfully processed Slack Webhook`
+          );
+          return res.status(200).send();
+        }
+        break;
       }
-      const launchRes = await launchSlackBotJoinedWorkflow(
-        slackConfiguration.connectorId.toString(),
-        req.body.event.channel
-      );
-      logger.info(
-        {
-          type: req.body.event.type,
-          channel: req.body.event.channel,
-          user: req.body.event.user,
-        },
-        `Successfully processed Slack Webhook`
-      );
-      if (launchRes.isErr()) {
-        return res.status(500).send({
-          error: {
-            message: launchRes.error.message,
-          },
-        });
+
+      /**
+       * `channel_left`, `channel_deleted` handler.
+       */
+      case "channel_left":
+      case "channel_deleted": {
+        if (!req.body.event?.channel) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Missing channel in request body for [channel_left, channel_deleted] event",
+            },
+            status_code: 400,
+          });
+        }
+
+        let err: Error | null = null;
+
+        const results = await Promise.all(
+          slackConfigurations.map((c) => {
+            return launchSlackGarbageCollectWorkflow(c.connectorId.toString());
+          })
+        );
+        for (const r of results) {
+          if (r.isErr()) {
+            err = r.error;
+          }
+        }
+
+        if (err) {
+          return apiError(req, res, {
+            api_error: {
+              type: "internal_server_error",
+              message: err.message,
+            },
+            status_code: 500,
+          });
+        } else {
+          logger.info(
+            {
+              type: req.body.event.type,
+            },
+            `Successfully processed Slack Webhook`
+          );
+          return res.status(200).send();
+        }
+        break;
       }
-    } else if (
-      req.body.event?.type &&
-      ["channel_left", "channel_deleted"].includes(req.body.event?.type)
-    ) {
-      if (!req.body.event?.channel) {
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Missing channel in request body for [channel_left, channel_deleted] event",
-          },
-          status_code: 400,
-        });
-      }
-      const launchRes = await launchSlackGarbageCollectWorkflow(
-        slackConfiguration.connectorId.toString()
-      );
-      if (launchRes.isErr()) {
-        return apiError(req, res, {
-          api_error: {
-            type: "internal_server_error",
-            message: launchRes.error.message,
-          },
-          status_code: 500,
-        });
-      }
-      return res.status(200).send();
     }
-  }
 
-  // returns 200 on all non supported messages types because slack will retry
-  // indefinitely otherwise.
-  return res.status(200).end();
+    // returns 200 on all non supported messages types because slack will retry
+    // indefinitely otherwise.
+    return res.status(200).end();
+  }
 };
 
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
 /**
  * Webhhok payload example. Can be handy for working on it.
  * This is what Slack sends us when a new message is posted in a channel.
- * 
+ *
  * {
   token: '6OiSmwn7QoyS8A3yL6tddCHd',
   team_id: 'T050RH73H9P',
