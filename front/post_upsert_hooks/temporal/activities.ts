@@ -1,5 +1,5 @@
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource } from "@app/lib/models";
+import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import {
   POST_UPSERT_HOOK_BY_TYPE,
@@ -56,10 +56,19 @@ async function getDocText(
   workspaceId: string,
   documentId: string
 ): Promise<string> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace ${workspaceId}`);
+  }
+
   const dataSource = await DataSource.findOne({
     where: {
       name: dataSourceName,
-      workspaceId,
+      workspaceId: workspace.id,
     },
   });
   if (!dataSource) {

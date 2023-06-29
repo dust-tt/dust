@@ -43,17 +43,11 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
     const dataSource = await getDatasource(dataSourceName, workspaceId);
 
     if (
-      !TRACKABLE_CONNECTOR_TYPES.includes(
+      documentText.includes("DUST_TRACK(") &&
+      TRACKABLE_CONNECTOR_TYPES.includes(
         dataSource.connectorProvider as ConnectorProvider
       )
     ) {
-      localLogger.info(
-        "Data source connector provider is not trackable yet, document_tracker post upsert hook should not run."
-      );
-      return false;
-    }
-
-    if (documentText.includes("DUST_TRACK(")) {
       localLogger.info(
         "Document includes DUST_TRACK tags, document_tracker post upsert hook should run."
       );
@@ -91,9 +85,15 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       "Running document tracker post upsert hook."
     );
 
-    logger.info("Updating tracked documents.");
     const dataSource = await getDatasource(dataSourceName, workspaceId);
-    await updateTrackedDocuments(dataSource.id, documentId, documentText);
+    if (
+      TRACKABLE_CONNECTOR_TYPES.includes(
+        dataSource.connectorProvider as ConnectorProvider
+      )
+    ) {
+      logger.info("Updating tracked documents.");
+      await updateTrackedDocuments(dataSource.id, documentId, documentText);
+    }
 
     logger.info(
       "Should check if any tracked documents need to be updated. [TODO]"
