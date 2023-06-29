@@ -134,7 +134,7 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   }
-  let all_skip = true;
+  let allSkip = true;
   for (const message of messages.messages) {
     if (!message.user) {
       // We do not support messages not posted by users for now
@@ -169,9 +169,10 @@ export async function syncChannel(
       }
     }
     if (!skip) {
-      all_skip = false;
+      allSkip = false;
     }
   }
+
   await syncThreads(
     dataSourceConfig,
     slackAccessToken,
@@ -196,7 +197,7 @@ export async function syncChannel(
   unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
 
   return {
-    nextCursor: messages.response_metadata?.next_cursor,
+    nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
     weeksSynced: weeksSynced,
   };
 }
