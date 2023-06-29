@@ -178,7 +178,7 @@ export async function getPagesEditedSince(
             {
               database_id: pageOrDb.id,
             },
-            localLogger
+            localLogger.child({ databaseId: pageOrDb.id })
           )) {
             if (isFullPage(child)) {
               editedPages[child.id] = lastEditedTime;
@@ -472,7 +472,7 @@ async function renderChildDatabase(
       {
         database_id: block.id,
       },
-      pageLogger
+      pageLogger.child({ databaseId: block.id, blockType: block.type })
     )) {
       if (isFullPage(page)) {
         if (!header) {
@@ -616,7 +616,7 @@ async function parsePageBlock(
         {
           block_id: block.id,
         },
-        pageLogger
+        pageLogger.child({ blockId: block.id, blockType: block.type })
       )) {
         if (isFullBlock(child)) {
           if (!parentsIds.has(child.id)) {
