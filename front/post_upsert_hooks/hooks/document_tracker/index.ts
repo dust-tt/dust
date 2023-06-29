@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
-import { DataSource, TrackedDocument } from "@app/lib/models";
+import { DataSource, TrackedDocument, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 
@@ -105,10 +105,18 @@ async function getDatasource(
   dataSourceName: string,
   workspaceId: string
 ): Promise<DataSource> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace with sId ${workspaceId}`);
+  }
   const dataSource = await DataSource.findOne({
     where: {
       name: dataSourceName,
-      workspaceId,
+      workspaceId: workspace.id,
     },
   });
   if (!dataSource) {
