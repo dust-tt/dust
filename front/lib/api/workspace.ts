@@ -1,6 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
-import { Membership, MembershipInvitation, User, Workspace } from "@app/lib/models";
+import {
+  Membership,
+  MembershipInvitation,
+  User,
+  Workspace,
+} from "@app/lib/models";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType } from "@app/types/user";
 
