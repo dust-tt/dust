@@ -34,6 +34,10 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+
           resources:
             requests:
               cpu: 2000m
@@ -42,3 +46,8 @@ spec:
             limits:
               cpu: 2000m
               memory: 8Gi
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-front-cert

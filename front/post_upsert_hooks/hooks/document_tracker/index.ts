@@ -56,7 +56,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
 
     const workspaceDataSourceIds = (
       await DataSource.findAll({
-        where: { workspaceId },
+        where: { workspaceId: dataSource.workspaceId },
         attributes: ["id"],
       })
     ).map((ds) => ds.id);
