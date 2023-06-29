@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
-import { Membership, MembershipInvitation, User } from "@app/lib/models";
+import { Membership, MembershipInvitation, User, Workspace } from "@app/lib/models";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType } from "@app/types/user";
 
@@ -83,4 +83,40 @@ export async function getPendingInvitations(
       inviteEmail: i.inviteEmail,
     };
   });
+}
+
+export async function upgradeWorkspace(workspaceId: number) {
+  const workspace = await Workspace.findByPk(workspaceId);
+
+  if (!workspace) {
+    throw new Error(`Workspace not found. id=${workspaceId}`);
+  }
+  let plan = {} as any;
+  if (workspace.plan) {
+    try {
+      plan = JSON.parse(workspace.plan);
+    } catch (err) {
+      console.log("Ignoring existing plan since not parseable JSON.");
+    }
+  }
+
+  if (!plan.limits) {
+    plan.limits = {};
+  }
+  if (!plan.limits.dataSources) {
+    plan.limits.dataSources = {};
+  }
+  if (!plan.limits.dataSources.documents) {
+    plan.limits.dataSources.documents = {};
+  }
+
+  plan.limits.dataSources.count = -1;
+  plan.limits.dataSources.documents.count = -1;
+  plan.limits.dataSources.documents.sizeMb = -1;
+  plan.limits.dataSources.managed = true;
+
+  workspace.plan = JSON.stringify(plan);
+  await workspace.save();
+
+  return workspace;
 }

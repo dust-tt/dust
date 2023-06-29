@@ -2,6 +2,7 @@ import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
+import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
@@ -16,6 +17,12 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { authOptions } from "./auth/[...nextauth]";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
+
+// List of emails for which all worksapces should be upgraded
+// at sign-up time.
+const EMAILS_TO_AUTO_UPGRADE = [
+"oauthtest121@gmail.com"
+];
 
 async function handler(
   req: NextApiRequest,
@@ -244,6 +251,14 @@ async function handler(
               "Could not find user or workspace for user, contact us at team@dust.tt for assistance.",
           },
         });
+      }
+
+      if (EMAILS_TO_AUTO_UPGRADE.includes(u.email)) {
+        await Promise.all(
+          u.workspaces.map(async (w) => {
+            return upgradeWorkspace(w.id);
+          })
+        );
       }
 
       if (targetWorkspace) {

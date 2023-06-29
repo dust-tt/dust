@@ -2,6 +2,7 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
+import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { planForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
@@ -209,33 +210,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      let plan = {} as any;
-      if (w.plan) {
-        try {
-          plan = JSON.parse(w.plan);
-        } catch (err) {
-          console.log("Ignoring existing plan since not parseable JSON.");
-        }
-      }
-
-      if (!plan.limits) {
-        plan.limits = {};
-      }
-      if (!plan.limits.dataSources) {
-        plan.limits.dataSources = {};
-      }
-      if (!plan.limits.dataSources.documents) {
-        plan.limits.dataSources.documents = {};
-      }
-
-      plan.limits.dataSources.count = -1;
-      plan.limits.dataSources.documents.count = -1;
-      plan.limits.dataSources.documents.sizeMb = -1;
-      plan.limits.dataSources.managed = true;
-
-      w.plan = JSON.stringify(plan);
-      await w.save();
-
+      await upgradeWorkspace(w.id);
       await workspace("show", args);
       return;
     }
