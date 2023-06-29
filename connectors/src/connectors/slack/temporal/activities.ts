@@ -147,8 +147,15 @@ export async function syncChannel(
       const threadTs = parseInt(message.thread_ts, 10) * 1000;
       if (fromTs && threadTs < fromTs) {
         skip = true;
-        console.log(
-          `SKIPPING THREAD: messaage.thred_ts=${message.thread_ts} threadTs=${threadTs} fromTs=${fromTs}`
+        logger.info(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            channelId,
+            channelName,
+            threadTs,
+            fromTs,
+          },
+          "FromTs Skipping thread"
         );
       }
       if (!skip && threadsToSync.indexOf(message.thread_ts) === -1) {
@@ -162,8 +169,17 @@ export async function syncChannel(
       const weekEndTsMs = getWeekEnd(new Date(messageTs)).getTime();
       if (fromTs && weekEndTsMs < fromTs) {
         skip = true;
-        console.log(
-          `SKIPPING NON-THREAD: messageTs=${messageTs} fromTs=${fromTs} weekEndTsMs=${weekEndTsMs} weekStartTsMs=${weekStartTsMs}`
+        logger.info(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            channelId,
+            channelName,
+            messageTs,
+            fromTs,
+            weekEndTsMs,
+            weekStartTsMs,
+          },
+          "FromTs Skipping non-thread"
         );
       }
       if (!skip && unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
