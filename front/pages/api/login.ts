@@ -161,6 +161,10 @@ async function handler(
             userId: user.id,
             workspaceId: w.id,
           });
+
+          if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
+            await upgradeWorkspace(w.id);
+          }
         }
       }
 
@@ -249,14 +253,6 @@ async function handler(
               "Could not find user or workspace for user, contact us at team@dust.tt for assistance.",
           },
         });
-      }
-
-      if (EMAILS_TO_AUTO_UPGRADE.includes(u.email)) {
-        await Promise.all(
-          u.workspaces.map(async (w) => {
-            return upgradeWorkspace(w.id);
-          })
-        );
       }
 
       if (targetWorkspace) {
