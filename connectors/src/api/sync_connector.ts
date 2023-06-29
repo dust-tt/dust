@@ -31,7 +31,8 @@ const _syncConnectorAPIHandler = async (
     return;
   }
   const launchRes = await SYNC_CONNECTOR_BY_TYPE[connector.type](
-    connector.id.toString()
+    connector.id.toString(),
+    null
   );
   if (launchRes.isErr()) {
     res.status(500).send({

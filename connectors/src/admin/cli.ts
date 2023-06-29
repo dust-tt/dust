@@ -49,8 +49,12 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
     case "full-resync": {
+      let fromTs: number | null = null;
+      if (args.fromTs) {
+        fromTs = parseInt(args.fromTs as string, 10);
+      }
       await throwOnError(
-        SYNC_CONNECTOR_BY_TYPE[provider](connector.id.toString())
+        SYNC_CONNECTOR_BY_TYPE[provider](connector.id.toString(), fromTs)
       );
       return;
     }

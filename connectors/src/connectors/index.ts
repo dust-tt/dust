@@ -102,7 +102,10 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   },
 };
 
-type SyncConnector = (connectorId: string) => Promise<Result<string, Error>>;
+type SyncConnector = (
+  connectorId: string,
+  fromTs: number | null
+) => Promise<Result<string, Error>>;
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
