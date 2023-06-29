@@ -46,7 +46,8 @@ const {
 export async function workspaceFullSync(
   connectorId: string,
   dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  nangoConnectionId: string,
+  fromTs: number | null
 ): Promise<void> {
   const slackAccessToken = await getAccessToken(nangoConnectionId);
   await fetchUsers(slackAccessToken, connectorId);
@@ -65,6 +66,7 @@ export async function workspaceFullSync(
         channel.id,
         channel.name,
         false,
+        fromTs,
       ],
     });
     i++;
@@ -81,7 +83,8 @@ export async function syncOneChannel(
   dataSourceConfig: DataSourceConfig,
   channelId: string,
   channelName: string,
-  updateSyncStatus: boolean
+  updateSyncStatus: boolean,
+  fromTs: number | null
 ) {
   console.log(`Syncing channel ${channelName} (${channelId})`);
 
@@ -96,6 +99,7 @@ export async function syncOneChannel(
       channelName,
       dataSourceConfig,
       connectorId,
+      fromTs,
       weeksSynced,
       messagesCursor
     );
@@ -256,7 +260,13 @@ export async function slackGarbageCollectorWorkflow(
   }
 }
 
-export function workspaceFullSyncWorkflowId(connectorId: string) {
+export function workspaceFullSyncWorkflowId(
+  connectorId: string,
+  fromTs: number | null
+) {
+  if (fromTs) {
+    return `slack-workspaceFullSync-${connectorId}-fromTs-${fromTs}`;
+  }
   return `slack-workspaceFullSync-${connectorId}`;
 }
 

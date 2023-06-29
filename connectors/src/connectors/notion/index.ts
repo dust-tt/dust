@@ -138,7 +138,10 @@ export async function resumeNotionConnector(
   return new Ok(connector.id.toString());
 }
 
-export async function fullResyncNotionConnector(connectorId: string) {
+export async function fullResyncNotionConnector(
+  connectorId: string,
+  fromTs: number | null
+) {
   const connector = await Connector.findOne({
     where: { type: "notion", id: connectorId },
   });
@@ -146,6 +149,11 @@ export async function fullResyncNotionConnector(connectorId: string) {
   if (!connector) {
     logger.error({ connectorId }, "Notion connector not found.");
     return new Err(new Error("Connector not found"));
+  }
+  if (fromTs) {
+    return new Err(
+      new Error("Notion connector does not support partial resync")
+    );
   }
 
   try {

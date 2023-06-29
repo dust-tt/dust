@@ -114,6 +114,7 @@ export async function syncChannel(
   channelName: string,
   dataSourceConfig: DataSourceConfig,
   connectorId: string,
+  fromTs: number | null,
   weeksSynced: Record<number, boolean>,
   messagesCursor?: string
 ): Promise<SyncChannelRes | undefined> {
@@ -133,13 +134,24 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   }
+  // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
+  // first).
+  let allSkip = true;
   for (const message of messages.messages) {
     if (!message.user) {
       // We do not support messages not posted by users for now
       continue;
     }
+    let skip = false;
     if (message.thread_ts) {
-      if (threadsToSync.indexOf(message.thread_ts) === -1) {
+      const threadTs = parseInt(message.thread_ts, 10) * 1000;
+      if (fromTs && threadTs < fromTs) {
+        skip = true;
+        console.log(
+          `SKIPPING THREAD: messaage.thred_ts=${message.thread_ts} threadTs=${threadTs} fromTs=${fromTs}`
+        );
+      }
+      if (!skip && threadsToSync.indexOf(message.thread_ts) === -1) {
         // We can end up getting two messages from the same thread if a message from a thread
         // has also been "posted to channel".
         threadsToSync.push(message.thread_ts);
@@ -147,12 +159,22 @@ export async function syncChannel(
     } else {
       const messageTs = parseInt(message.ts as string, 10) * 1000;
       const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
-      // const weekEndTsMss = getWeekEnd(new Date(messageTs)).getTime();
-      if (unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
+      const weekEndTsMs = getWeekEnd(new Date(messageTs)).getTime();
+      if (fromTs && weekEndTsMs < fromTs) {
+        skip = true;
+        console.log(
+          `SKIPPING NON-THREAD: messageTs=${messageTs} fromTs=${fromTs} weekEndTsMs=${weekEndTsMs} weekStartTsMs=${weekStartTsMs}`
+        );
+      }
+      if (!skip && unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
         unthreadedTimeframesToSync.push(weekStartTsMs);
       }
     }
+    if (!skip) {
+      allSkip = false;
+    }
   }
+
   await syncThreads(
     dataSourceConfig,
     slackAccessToken,
@@ -177,7 +199,7 @@ export async function syncChannel(
   unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
 
   return {
-    nextCursor: messages.response_metadata?.next_cursor,
+    nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
     weeksSynced: weeksSynced,
   };
 }
