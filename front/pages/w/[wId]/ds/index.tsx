@@ -17,6 +17,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
+import { isUserWhiteListed } from "@app/lib/user_whitelist";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
@@ -177,7 +178,9 @@ export const getServerSideProps: GetServerSideProps<{
           };
         }
       ),
-      canUseManagedDataSources: owner.plan.limits.dataSources.managed,
+      canUseManagedDataSources:
+        owner.plan.limits.dataSources.managed ||
+        (await isUserWhiteListed(owner.id)),
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,

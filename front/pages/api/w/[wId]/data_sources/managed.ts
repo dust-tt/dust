@@ -11,6 +11,7 @@ import {
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
+import { isUserWhiteListed } from "@app/lib/user_whitelist";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
@@ -99,7 +100,10 @@ async function handler(
       const dataSourceMaxChunkSize = 256;
 
       // Enforce plan limits: managed DataSources.
-      if (!owner.plan.limits.dataSources.managed) {
+      if (
+        !owner.plan.limits.dataSources.managed &&
+        !(await isUserWhiteListed(owner.id))
+      ) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
