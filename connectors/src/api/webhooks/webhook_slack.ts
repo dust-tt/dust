@@ -50,10 +50,12 @@ const _webhookSlackAPIHandler = async (
 
   if (req.body.type === "event_callback") {
     if (!req.body.team_id) {
-      return res.status(400).send({
-        error: {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
           message: "Missing team_id in request body",
         },
+        status_code: 400,
       });
     }
     const slackConfigurations = await SlackConfiguration.findAll({
@@ -62,10 +64,12 @@ const _webhookSlackAPIHandler = async (
       },
     });
     if (slackConfigurations.length === 0) {
-      return res.status(404).send({
-        error: {
+      return apiError(req, res, {
+        api_error: {
+          type: "connector_configuration_not_found",
           message: `Slack configuration not found for teamId ${req.body.team_id}`,
         },
+        status_code: 404,
       });
     }
 
