@@ -13,6 +13,7 @@ import {
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client.js";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -161,6 +162,18 @@ export async function cleanupSlackConnector(
     if (nangoRes.isErr()) {
       return nangoRes;
     }
+    logger.info(
+      { slackTeamId: configuration.slackTeamId },
+      `Deactivated the Slack app`
+    );
+  } else {
+    logger.info(
+      {
+        slackTeamId: configuration.slackTeamId,
+        activeConfigurations: configurations.length - 1,
+      },
+      `Skipping deactivation of the Slack app`
+    );
   }
 
   await SlackMessages.destroy({
