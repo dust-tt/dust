@@ -6,6 +6,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
+import { QUEUE_NAME } from "./config";
 import { botJoinedChanelSignal, newWebhookSignal } from "./signals";
 import {
   botJoinedChannelWorkflowId,
@@ -43,7 +44,7 @@ export async function launchSlackSyncWorkflow(
   try {
     await client.workflow.start(workspaceFullSync, {
       args: [connectorId, dataSourceConfig, nangoConnectionId, fromTs],
-      taskQueue: "slack-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
     });
     logger.info(
@@ -100,7 +101,7 @@ export async function launchSlackSyncOneThreadWorkflow(
           channelId,
           threadTs,
         ],
-        taskQueue: "slack-queue",
+        taskQueue: QUEUE_NAME,
         workflowId: workflowId,
         signal: newWebhookSignal,
         signalArgs: undefined,
@@ -149,7 +150,7 @@ export async function launchSlackSyncOneMessageWorkflow(
           channelId,
           threadTs,
         ],
-        taskQueue: "slack-queue",
+        taskQueue: QUEUE_NAME,
         workflowId: workflowId,
         signal: newWebhookSignal,
         signalArgs: undefined,
@@ -183,7 +184,7 @@ export async function launchSlackBotJoinedWorkflow(
   try {
     await client.workflow.signalWithStart(memberJoinedChannel, {
       args: [connectorId, nangoConnectionId, dataSourceConfig],
-      taskQueue: "slack-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       signal: botJoinedChanelSignal,
       signalArgs: [{ channelId: channelId }],
@@ -224,7 +225,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: string) {
   try {
     await client.workflow.start(slackGarbageCollectorWorkflow, {
       args: [connectorId, dataSourceConfig, nangoConnectionId],
-      taskQueue: "slack-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
     });
     logger.info(
