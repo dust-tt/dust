@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-worker-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: front-worker
+  template:
+    metadata:
+      labels:
+        app: front-worker
+        name: front-worker-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "front-worker","service": "front-worker","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/front-image:latest
+          command: ["npm", "run", "start:worker"]
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: front-worker-config
+            - secretRef:
+                name: front-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 8Gi
+
+            limits:
+              cpu: 2000m
+              memory: 8Gi
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-front-cert

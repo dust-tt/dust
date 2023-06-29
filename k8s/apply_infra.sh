@@ -49,6 +49,7 @@ echo "Applying configmaps"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-configmap.yaml"
@@ -86,6 +87,7 @@ echo "Applying deployments"
 echo "-----------------------------------"
 
 apply_deployment front-deployment
+apply_deployment front-worker-deployment
 apply_deployment front-edge-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
