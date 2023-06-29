@@ -10,11 +10,11 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -32,7 +32,7 @@ type SlackWebhookReqBody = {
 type SlackWebhookResBody =
   | { challenge: string }
   | null
-  | ConnectorsAPIErrorResponse;
+  | APIErrorWithStatusCode;
 
 const _webhookSlackAPIHandler = async (
   req: Request<
@@ -78,7 +78,7 @@ const _webhookSlackAPIHandler = async (
        * `message` handler.
        */
       case "message": {
-        if (req.body.team_id) {
+        if (!req.body.team_id) {
           return apiError(req, res, {
             api_error: {
               type: "invalid_request_error",
