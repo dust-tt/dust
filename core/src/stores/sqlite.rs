@@ -1082,6 +1082,7 @@ impl Store for SQLiteStore {
                 chunk_count: chunk_count as usize,
                 chunks: vec![],
                 text: None,
+                token_count: None,
             }))
         })
         .await?
@@ -1238,6 +1239,7 @@ impl Store for SQLiteStore {
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
                     text: None,
+                    token_count: None
                 });
             }
 

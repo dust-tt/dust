@@ -1095,6 +1095,7 @@ impl Store for PostgresStore {
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
                     text: None,
+                    token_count: None,
                 }))
             }
         }
@@ -1257,6 +1258,7 @@ impl Store for PostgresStore {
                     chunk_count: chunk_count as usize,
                     chunks: vec![],
                     text: None,
+                    token_count: None,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
