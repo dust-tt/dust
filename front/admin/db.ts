@@ -11,6 +11,7 @@ import {
   MembershipInvitation,
   Provider,
   Run,
+  TrackedDocument,
   User,
   Workspace,
   XP1Run,
@@ -32,6 +33,7 @@ async function main() {
   await ChatSession.sync({ alter: true });
   await ChatMessage.sync({ alter: true });
   await ChatRetrievedDocument.sync({ alter: true });
+  await TrackedDocument.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

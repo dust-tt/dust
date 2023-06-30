@@ -839,6 +839,67 @@ ChatRetrievedDocument.init(
 
 ChatMessage.hasMany(ChatRetrievedDocument);
 
+export class TrackedDocument extends Model<
+  InferAttributes<TrackedDocument>,
+  InferCreationAttributes<TrackedDocument>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare documentId: string;
+  declare trackingEnabledAt: Date | null;
+
+  declare userId: ForeignKey<User["id"]>;
+  declare dataSourceId: ForeignKey<DataSource["id"]>;
+}
+
+TrackedDocument.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    trackingEnabledAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    modelName: "tracked_document",
+    sequelize: front_sequelize,
+    indexes: [
+      { fields: ["userId", "dataSourceId", "documentId"], unique: true },
+      { fields: ["dataSourceId"] },
+    ],
+  }
+);
+
+DataSource.hasMany(TrackedDocument, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+User.hasMany(TrackedDocument, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;

@@ -685,7 +685,9 @@ export class GoogleDriveWebhook extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare webhookId: string;
+  declare renewedByWebhookId: string | null;
   declare expiresAt: Date;
+  declare renewAt: Date | null;
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -714,17 +716,27 @@ GoogleDriveWebhook.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    renewedByWebhookId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    renewAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
     },
   },
   {
     sequelize: sequelize_conn,
     modelName: "google_drive_webhooks",
     indexes: [
-      { fields: ["connectorId"], unique: true },
-      { fields: ["expiresAt"] },
+      { fields: ["webhookId"], unique: true },
+      { fields: ["renewAt"] },
+      { fields: ["connectorId"] },
     ],
   }
 );

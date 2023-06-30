@@ -1,8 +1,5 @@
 import { Disclosure, Menu } from "@headlessui/react";
-import {
-  ChevronRightIcon,
-  ComputerDesktopIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -14,7 +11,7 @@ import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { ActionButton } from "./Button";
+import { GoogleSignInButton } from "./Button";
 import WorkspacePicker from "./WorkspacePicker";
 
 export default function AppLayout({
@@ -248,14 +245,21 @@ export default function AppLayout({
                     ) : (
                       <div className="static static inset-auto inset-auto right-0 hidden flex-initial items-center pr-2 sm:flex sm:pr-0">
                         <div className="-mr-2 sm:mr-0">
-                          <ActionButton
+                          <GoogleSignInButton
                             onClick={() =>
-                              signIn("github", { callbackUrl: "/api/login" })
+                              signIn("google", {
+                                callbackUrl: `/api/login`,
+                              })
                             }
                           >
-                            <ComputerDesktopIcon className="-ml-1 mr-2 mt-0.5 h-5 w-5" />
-                            Sign in with Github
-                          </ActionButton>
+                            <img
+                              src="/static/google_white_32x32.png"
+                              className="ml-1 h-4 w-4"
+                            />
+                            <span className="ml-2 mr-1">
+                              Sign in with Google
+                            </span>
+                          </GoogleSignInButton>
                         </div>
                       </div>
                     )}

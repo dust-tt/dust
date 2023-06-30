@@ -134,8 +134,15 @@ export async function resumeGithubConnector(
 }
 
 export async function fullResyncGithubConnector(
-  connectorId: string
+  connectorId: string,
+  fromTs: number | null
 ): Promise<Result<string, Error>> {
+  if (fromTs) {
+    return new Err(
+      new Error("Github connector does not support partial resync")
+    );
+  }
+
   try {
     await launchGithubFullSyncWorkflow(connectorId);
     return new Ok(connectorId);

@@ -3,7 +3,7 @@ export type APIErrorType =
   | "unknown_connector_provider"
   | "invalid_request_error"
   | "connector_not_found"
-  | "connector_configugration_not_found"
+  | "connector_configuration_not_found"
   | "not_found";
 
 export type APIError = {

@@ -2,7 +2,6 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { runPostUpsertHooks } from "@connectors/post_upsert_hooks";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { FRONT_API } = process.env;
@@ -11,32 +10,6 @@ if (!FRONT_API) {
 }
 
 export async function upsertToDatasource(
-  dataSourceConfig: DataSourceConfig,
-  documentId: string,
-  documentText: string,
-  documentUrl?: string,
-  timestampMs?: number,
-  tags?: string[],
-  retries = 10,
-  delayBetweenRetriesMs = 500,
-  loggerArgs: Record<string, string | number> = {}
-) {
-  await upsertToDatasourceWithRetries(
-    dataSourceConfig,
-    documentId,
-    documentText,
-    documentUrl,
-    timestampMs,
-    tags,
-    retries,
-    delayBetweenRetriesMs,
-    loggerArgs
-  );
-
-  await runPostUpsertHooks(dataSourceConfig, documentId);
-}
-
-async function upsertToDatasourceWithRetries(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
   documentText: string,

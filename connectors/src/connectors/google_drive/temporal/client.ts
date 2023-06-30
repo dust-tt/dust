@@ -18,12 +18,20 @@ import {
 const logger = mainLogger.child({ provider: "google" });
 
 export async function launchGoogleDriveFullSyncWorkflow(
-  connectorId: string
+  connectorId: string,
+  fromTs: number | null
 ): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  if (fromTs) {
+    return new Err(
+      new Error("Github connector does not support partial resync")
+    );
+  }
+
   const client = await getTemporalClient();
   const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
 
