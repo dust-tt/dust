@@ -90,6 +90,7 @@ export async function getChatSession(
         role: m.role,
         message: m.message,
         feedback: m.feedback,
+        uuid: m.uuid,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
           return {
             dataSourceId: r.dataSourceId,

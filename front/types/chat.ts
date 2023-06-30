@@ -16,6 +16,7 @@ export type MessageFeedbackStatus = "positive" | "negative" | null;
 
 export type MessageRole = "user" | "retrieval" | "assistant" | "error";
 export type ChatMessageType = {
+  uuid: string;
   role: MessageRole;
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages

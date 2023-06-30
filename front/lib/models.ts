@@ -719,14 +719,13 @@ export class ChatMessage extends Model<
   InferCreationAttributes<ChatMessage>
 > {
   declare id: CreationOptional<number>;
+  declare uuid: string;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare feedback: MessageFeedbackStatus;
-
   declare role: "user" | "retrieval" | "assistant" | "error";
   declare message?: string;
   // `retrievals` are stored in a separate table
-
   declare chatSessionId: ForeignKey<ChatSession["id"]>;
 }
 
@@ -736,6 +735,11 @@ ChatMessage.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      allowNull: false,
     },
     createdAt: {
       type: DataTypes.DATE,
