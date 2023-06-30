@@ -6,61 +6,8 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  ChatMessageType,
-  ChatRetrievedDocumentType,
-  ChatSessionType,
-} from "@app/types/chat";
-
-const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
-  type: "object",
-  properties: {
-    dataSourceId: { type: "string" },
-    sourceUrl: { type: "string" },
-    documentId: { type: "string" },
-    timestamp: { type: "string" },
-    tags: { type: "array", items: { type: "string" } },
-    score: { type: "number" },
-    chunks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          text: { type: "string" },
-          offset: { type: "number" },
-          score: { type: "number" },
-        },
-        required: ["text", "offset", "score"],
-      },
-    },
-  },
-  required: [
-    "dataSourceId",
-    "sourceUrl",
-    "documentId",
-    "timestamp",
-    "tags",
-    "score",
-    "chunks",
-  ],
-};
-
-const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
-  type: "object",
-  properties: {
-    uuid: { type: "string" },
-    role: { type: "string" },
-    message: { type: "string", nullable: true },
-    retrievals: {
-      type: "array",
-      items: chatRetrievedDocumentSchema,
-      nullable: true,
-    },
-    query: { type: "string", nullable: true },
-    feedback: { type: "string", nullable: true },
-  },
-  required: ["role"],
-};
+import { ChatMessageType, ChatSessionType } from "@app/types/chat";
+import { chatMessageSchema } from "./messages/[mId]";
 
 const chatSessionCreateSchema: JSONSchemaType<{
   title?: string;

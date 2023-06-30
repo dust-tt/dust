@@ -90,7 +90,7 @@ export async function getChatSession(
         role: m.role,
         message: m.message,
         feedback: m.feedback,
-        uuid: m.uuid,
+        mId: m.mId,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
           return {
             dataSourceId: r.dataSourceId,
@@ -107,11 +107,88 @@ export async function getChatSession(
   };
 }
 
+export async function getChatMessage(
+  sessionId: number,
+  mId: string
+): Promise<ChatMessageType | null> {
+  const chatMessage = await ChatMessage.findOne({
+    where: {
+      chatSessionId: sessionId,
+      mId,
+    },
+  });
+  if (!chatMessage) {
+    return null;
+  }
+  const retrievedDocuments = await ChatRetrievedDocument.findAll({
+    where: {
+      chatMessageId: chatMessage.id,
+    },
+    order: [["score", "DESC"]],
+  });
+
+  return {
+    role: chatMessage.role,
+    message: chatMessage.message,
+    feedback: chatMessage.feedback,
+    mId: chatMessage.mId,
+    retrievals: retrievedDocuments.map((r) => {
+      return {
+        dataSourceId: r.dataSourceId,
+        sourceUrl: r.sourceUrl,
+        documentId: r.documentId,
+        timestamp: r.timestamp,
+        tags: r.tags,
+        score: r.score,
+        chunks: [],
+      };
+    }),
+  };
+}
+
 export function newChatSessionId() {
   const uId = new_id();
   return uId.slice(0, 10);
 }
 
+export async function upsertChatMessage(
+  sessionId: number,
+  m: ChatMessageType,
+  mId: string
+): Promise<ChatMessageType> {
+  return await front_sequelize.transaction(async (t) => {
+    const [message, _] = await ChatMessage.upsert(
+      {
+        mId,
+        chatSessionId: sessionId,
+        role: m.role,
+        message: m.message,
+        feedback: m.feedback,
+      },
+      { transaction: t }
+    );
+
+    await Promise.all(
+      m.retrievals?.map((r) => {
+        return (async () => {
+          await ChatRetrievedDocument.upsert(
+            {
+              dataSourceId: r.dataSourceId,
+              sourceUrl: r.sourceUrl,
+              documentId: r.documentId,
+              timestamp: r.timestamp,
+              tags: r.tags,
+              score: r.score,
+              chatMessageId: message.id,
+            },
+            { transaction: t }
+          );
+        })();
+      }) || []
+    );
+    return m;
+  });
+}
 export async function storeChatSession(
   sId: string,
   owner: WorkspaceType,
@@ -181,6 +258,7 @@ export async function storeChatSession(
           const chatMessage = await ChatMessage.create(
             {
               role: m.role,
+              mId: m.mId,
               message: m.message,
               chatSessionId: chatSession.id,
               feedback: m.feedback,
