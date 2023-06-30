@@ -4,11 +4,11 @@ import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]"
 import { UserMetadataType } from "@app/types/user";
 
 /**
- * Retrieves a metadata value for the current user. See also `useUserMetadata` for an SWR version of
- * it. This function never errors and is best effort.
+ * Client-side: retrieves a metadata value for the current user. See also `useUserMetadata` for an
+ * SWR version of it. This function never errors and is best effort.
  * @param key string the key of the metadata to retrieve.
  */
-export async function getUserMetadata(key: string) {
+export async function getUserMetadataFromClient(key: string) {
   try {
     const res = await fetch(`/api/user/metadata/${encodeURIComponent(key)}`);
     if (!res.ok) {
@@ -26,10 +26,11 @@ export async function getUserMetadata(key: string) {
 }
 
 /**
- * Sets the metadata for the current user. This function is best effort, and never errors.
+ * Client-side: sets the metadata for the current user. This function is best effort, and never
+ * errors.
  * @param metadata MetadataType the metadata to set for the current user.
  */
-export function setUserMetadata(metadata: UserMetadataType) {
+export function setUserMetadataFromClient(metadata: UserMetadataType) {
   void (async () => {
     try {
       const res = await fetch(
