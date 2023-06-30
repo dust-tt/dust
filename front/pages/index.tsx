@@ -32,10 +32,7 @@ export const getServerSideProps: GetServerSideProps<{
 
     const m = await getUserMetadata(user, "sticky_path");
     if (m) {
-      console.log("INDEX STICKY PATH", m.value);
       url = m.value;
-    } else {
-      console.log("INDEX STICKY PATH NOT FOUND");
     }
 
     if (context.query.wId) {

@@ -263,10 +263,8 @@ async function handler(
 
       const m = await getUserMetadata(u, "sticky_path");
       if (m) {
-        console.log("LOGIN STICKY PATH", m.value);
         res.redirect(m.value);
       } else {
-        console.log("LOGIN STICKY PATH NOT FOUND");
         res.redirect(`/w/${u.workspaces[0].sId}`);
       }
       return;
