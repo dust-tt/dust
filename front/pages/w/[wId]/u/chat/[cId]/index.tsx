@@ -532,7 +532,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/retrieve",
     description:
-      "Query-only mode: forces the assistant to *only* query the data sources, with the exact query provided",
+      "Forces the assistant to *only* query the data sources",
   },
 ];
 
