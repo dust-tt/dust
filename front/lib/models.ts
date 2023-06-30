@@ -114,7 +114,7 @@ UserMetadata.init(
   {
     modelName: "user_metadata",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["userId"] }],
+    indexes: [{ fields: ["userId", "key"] }],
   }
 );
 User.hasMany(UserMetadata);
