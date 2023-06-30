@@ -13,6 +13,7 @@ import {
   Run,
   TrackedDocument,
   User,
+  UserMetadata,
   Workspace,
   XP1Run,
   XP1User,
@@ -20,6 +21,7 @@ import {
 
 async function main() {
   await User.sync({ alter: true });
+  await UserMetadata.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await Membership.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
