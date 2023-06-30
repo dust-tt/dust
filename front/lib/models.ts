@@ -117,7 +117,10 @@ UserMetadata.init(
     indexes: [{ fields: ["userId", "key"], unique: true }],
   }
 );
-User.hasMany(UserMetadata);
+User.hasMany(UserMetadata, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
