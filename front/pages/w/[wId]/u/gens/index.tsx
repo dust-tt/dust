@@ -1,9 +1,9 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { TrashIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
-  PencilSquareIcon,
+  PencilIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -129,6 +129,42 @@ export const getServerSideProps: GetServerSideProps<{
     },
   };
 };
+
+export class FunctionSingleArgStreamer {
+  _textSoFar: string;
+  _curParsedPos: number;
+  _arg: string;
+  _handler: (token: string) => void;
+
+  constructor(arg: string, handler: (token: string) => void) {
+    this._arg = arg;
+    this._textSoFar = "";
+    this._curParsedPos = 0;
+    this._handler = handler;
+  }
+
+  feed(token: string): void {
+    this._textSoFar += token;
+
+    let str = this._textSoFar + '"}';
+    if (this._textSoFar.trimEnd().endsWith('"')) {
+      // If _textSoFar ends with a quote, we just add the } to the end.
+      str = this._textSoFar + "}";
+    }
+
+    try {
+      const obj = JSON.parse(str);
+      if (obj[this._arg]) {
+        const tokens = obj[this._arg].slice(this._curParsedPos);
+        this._curParsedPos = obj[this._arg].length;
+        // console.log("STREAM", tokens);
+        this._handler(tokens);
+      }
+    } catch (e) {
+      // Ignore and continue.
+    }
+  }
+}
 
 const providerFromDocument = (document: GensRetrievedDocumentType) => {
   let provider = "none";
@@ -485,42 +521,6 @@ export function ResultsView({
   );
 }
 
-export class FunctionSingleArgStreamer {
-  _textSoFar: string;
-  _curParsedPos: number;
-  _arg: string;
-  _handler: (token: string) => void;
-
-  constructor(arg: string, handler: (token: string) => void) {
-    this._arg = arg;
-    this._textSoFar = "";
-    this._curParsedPos = 0;
-    this._handler = handler;
-  }
-
-  feed(token: string): void {
-    this._textSoFar += token;
-
-    let str = this._textSoFar + '"}';
-    if (this._textSoFar.trimEnd().endsWith('"')) {
-      // If _textSoFar ends with a quote, we just add the } to the end.
-      str = this._textSoFar + "}";
-    }
-
-    try {
-      const obj = JSON.parse(str);
-      if (obj[this._arg]) {
-        const tokens = obj[this._arg].slice(this._curParsedPos);
-        this._curParsedPos = obj[this._arg].length;
-        // console.log("STREAM", tokens);
-        this._handler(tokens);
-      }
-    } catch (e) {
-      // Ignore and continue.
-    }
-  }
-}
-
 type TemplateType = {
   name: string;
   color: string;
@@ -602,19 +602,9 @@ export function TemplatesView({
   };
 
   return (
-    <div className="mt-5 w-48 flex-initial flex-shrink-0 p-5">
+    <div className="w-48 flex-initial flex-shrink-0 px-2">
       <div>
-        Templates
-        <div className="justify-items flex space-x-2">
-          <ActionButton
-            onClick={() => {
-              setSelectedTemplate(-1);
-              setFormExpanded(true);
-            }}
-          >
-            +
-          </ActionButton>
-        </div>
+        <div className="justify-items flex space-x-2"></div>
         <Transition.Root show={formExpanded} as={Fragment}>
           <Dialog
             as="div"
@@ -729,6 +719,7 @@ export function TemplatesView({
             </div>
           </Dialog>
         </Transition.Root>
+
         <div className="mt-2 flex flex-col space-y-2">
           {templates.map((t, i) => {
             return (
@@ -759,28 +750,34 @@ export function TemplatesView({
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    <PencilSquareIcon
+                    <PencilIcon
                       onClick={() => {
                         setSelectedTemplate(i);
                         setNewTemplateInstructions(t.instructions);
                         setNewTemplateTitle(t.name);
                         setFormExpanded(true);
                       }}
-                      className="h-5 w-5"
-                    />
-                    <TrashIcon
-                      onClick={() => {
-                        const curr_templates = templates.map((d) => d);
-                        curr_templates.splice(i, 1);
-                        setTemplates(curr_templates);
-                      }}
-                      className="h-5 w-5"
+                      className="h-3 w-3"
                     />
                   </>
                 )}
               </div>
             );
           })}
+          <button
+            className={classNames(
+              "ml-1 rounded pl-0.5",
+              "text-xs font-bold text-gray-700",
+              "h-5 w-5 rounded-full",
+              "bg-gray-100"
+            )}
+            onClick={() => {
+              setSelectedTemplate(-1);
+              setFormExpanded(true);
+            }}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
