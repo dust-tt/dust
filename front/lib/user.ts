@@ -1,0 +1,54 @@
+import { mutate } from "swr";
+
+import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import { UserMetadataType } from "@app/types/user";
+
+/**
+ * Retrieves a metadata value for the current user. See also `useUserMetadata` for an SWR version of
+ * it. This function never errors and is best effort.
+ * @param key string the key of the metadata to retrieve.
+ */
+export async function getUserMetadata(key: string) {
+  try {
+    const res = await fetch(`/api/user/metadata/${encodeURIComponent(key)}`);
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("getUserMetadata error", err);
+      return null;
+    }
+
+    const json = (await res.json()) as GetUserMetadataResponseBody;
+    return json.metadata;
+  } catch (err) {
+    console.error("getUserMetadata error", err);
+    return null;
+  }
+}
+
+/**
+ * Sets the metadata for the current user. This function is best effort, and never errors.
+ * @param metadata MetadataType the metadata to set for the current user.
+ */
+export function setUserMetadata(metadata: UserMetadataType) {
+  void (async () => {
+    try {
+      const res = await fetch(
+        `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
+        {
+          method: "POST",
+          body: JSON.stringify(metadata),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("setUserMetadata error", err);
+      }
+
+      // Finally mutate to kick SWR to revalidate.
+      await mutate(`/api/user/metadata/${encodeURIComponent(metadata.key)}`);
+    } catch (err) {
+      console.error("setUserMetadata error", err);
+    }
+  });
+}

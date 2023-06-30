@@ -2,6 +2,7 @@ import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
+import { getUserMetadata } from "@app/lib/api/user";
 import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -257,8 +258,15 @@ async function handler(
 
       if (targetWorkspace) {
         res.redirect(`/w/${targetWorkspace.sId}`);
+        return;
+      }
+
+      const m = await getUserMetadata(u, "sticky_path");
+      if (m) {
+        console.log("LOGIN STICKY PATH", m.value);
+        res.redirect(m.value);
       } else {
-        // TODO(spolu): persist latest workspace in session?
+        console.log("LOGIN STICKY PATH NOT FOUND");
         res.redirect(`/w/${u.workspaces[0].sId}`);
       }
       return;
