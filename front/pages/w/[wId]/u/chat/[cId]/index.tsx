@@ -549,8 +549,7 @@ const COMMANDS: { cmd: string; description: string }[] = [
   },
   {
     cmd: "/retrieve",
-    description:
-      "Forces the assistant to *only* query the data sources",
+    description: "Forces the assistant to *only* query the data sources",
   },
 ];
 
