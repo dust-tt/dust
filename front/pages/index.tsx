@@ -10,6 +10,7 @@ import p5Types from "p5";
 
 import { Button, GoogleSignInButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
+import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
 // Will only import `react-p5` on client-side
@@ -28,12 +29,19 @@ export const getServerSideProps: GetServerSideProps<{
   if (user && user.workspaces.length > 0) {
     // TODO(spolu): persist latest workspace in session?
     let url = `/w/${user.workspaces[0].sId}`;
+
+    const m = await getUserMetadata(user, "sticky_path");
+    if (m) {
+      url = m.value;
+    }
+
     if (context.query.wId) {
       url = `/api/login?wId=${context.query.wId}`;
     }
     if (context.query.inviteToken) {
       url = `/api/login?inviteToken=${context.query.inviteToken}`;
     }
+
     return {
       redirect: {
         destination: url,

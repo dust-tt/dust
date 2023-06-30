@@ -6,6 +6,7 @@ import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/profile/MainTab";
 import { getApps } from "@app/lib/api/app";
+import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames, communityApps } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
@@ -28,11 +29,16 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !user) {
     return {
       notFound: true,
     };
   }
+
+  void setUserMetadata(user, {
+    key: "sticky_path",
+    value: `/w/${context.query.wId}/a`,
+  });
 
   const readOnly = !auth.isBuilder();
 

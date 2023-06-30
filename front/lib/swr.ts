@@ -1,5 +1,6 @@
 import useSWR, { Fetcher } from "swr";
 
+import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
@@ -202,5 +203,20 @@ export function useChatSessions(
     sessions: data ? data.sessions : [],
     isChatSessionsLoading: !error && !data,
     isChatSessionsError: error,
+  };
+}
+
+export function useUserMetadata(key: string) {
+  const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
+
+  const { data, error } = useSWR(
+    `/api/user/metadata/${encodeURIComponent(key)}`,
+    userMetadataFetcher
+  );
+
+  return {
+    metadata: data ? data.metadata : null,
+    isMetadataLoading: !error && !data,
+    isMetadataError: error,
   };
 }
