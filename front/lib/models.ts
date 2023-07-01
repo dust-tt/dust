@@ -767,7 +767,10 @@ ChatMessage.init(
   {
     modelName: "chat_message",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["chatSessionId", "createdAt"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["chatSessionId", "createdAt"] },
+    ],
   }
 );
 
