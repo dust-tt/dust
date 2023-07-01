@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   CreationOptional,
   DataTypes,
@@ -8,6 +7,7 @@ import {
   Model,
   Sequelize,
 } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 import { MessageFeedbackStatus } from "@app/types/chat";
 
