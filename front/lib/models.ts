@@ -719,7 +719,7 @@ export class ChatMessage extends Model<
   InferCreationAttributes<ChatMessage>
 > {
   declare id: CreationOptional<number>;
-  declare mId: string;
+  declare sId: string;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare feedback: MessageFeedbackStatus;
@@ -736,7 +736,7 @@ ChatMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    mId: {
+    sId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       allowNull: false,

@@ -51,7 +51,7 @@ const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
 export const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   type: "object",
   properties: {
-    mId: { type: "string" },
+    sId: { type: "string" },
     role: { type: "string" },
     message: { type: "string", nullable: true },
     retrievals: {
@@ -130,7 +130,6 @@ async function handler(
       },
     });
   }
-  const mId = req.query.mId;
 
   switch (req.method) {
     case "POST": {
@@ -156,14 +155,14 @@ async function handler(
         return;
       }
       const m = pRes.value;
-      const message = await upsertChatMessage(chatSession.id, m, mId);
+      const message = await upsertChatMessage(chatSession.id, m, req.query.mId);
       res.status(200).json({
         message,
       });
       return;
     }
     case "GET": {
-      const message = await getChatMessage(mId);
+      const message = await getChatMessage(req.query.mId);
       if (!message) {
         return apiError(req, res, {
           status_code: 404,
@@ -181,7 +180,7 @@ async function handler(
     }
     case "DELETE": {
       const message = await ChatMessage.findOne({
-        where: { mId },
+        where: { sId: req.query.mId },
       });
       if (!message) {
         return apiError(req, res, {

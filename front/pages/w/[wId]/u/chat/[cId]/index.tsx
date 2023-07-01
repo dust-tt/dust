@@ -692,6 +692,28 @@ export default function AppChat({
     setTitle(title);
     return title;
   };
+  const upsertNewMessage = async (
+    message: ChatMessageType
+  ): Promise<boolean> => {
+    // Upsert new message by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error saving message: ${data.error.message}`);
+      return false;
+    }
+  };
 
   const storeChatSession = async (
     title: string,
@@ -797,7 +819,7 @@ export default function AppChat({
     retrievalMode: string
   ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
-      mId: uuidv4(),
+      sId: uuidv4(),
       role: "assistant",
       message: "",
     };
@@ -846,9 +868,10 @@ export default function AppChat({
   };
   const updateMessages = (
     messages: ChatMessageType[],
-    userMessage: ChatMessageType
+    newMessage: ChatMessageType
   ): void => {
-    messages.push(userMessage);
+    upsertNewMessage(newMessage);
+    messages.push(newMessage);
     setMessages(messages);
     setResponse(null);
   };
@@ -914,7 +937,7 @@ export default function AppChat({
     // since that happens only later on after successful run of the assistant.
     filterErrorMessages(m);
     const userMessage: ChatMessageType = {
-      mId: uuidv4(),
+      sId: uuidv4(),
       role: "user",
       message: processedInput,
     };

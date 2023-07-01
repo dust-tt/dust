@@ -90,7 +90,7 @@ export async function getChatSession(
         role: m.role,
         message: m.message,
         feedback: m.feedback,
-        mId: m.mId,
+        sId: m.sId,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
           return {
             dataSourceId: r.dataSourceId,
@@ -108,10 +108,10 @@ export async function getChatSession(
 }
 
 export async function getChatMessage(
-  mId: string
+  sId: string
 ): Promise<ChatMessageType | null> {
   const chatMessage = await ChatMessage.findOne({
-    where: { mId },
+    where: { sId },
   });
   if (!chatMessage) {
     return null;
@@ -127,7 +127,7 @@ export async function getChatMessage(
     role: chatMessage.role,
     message: chatMessage.message,
     feedback: chatMessage.feedback,
-    mId: chatMessage.mId,
+    sId: chatMessage.sId,
     retrievals: retrievedDocuments.map((r) => {
       return {
         dataSourceId: r.dataSourceId,
@@ -150,12 +150,12 @@ export function newChatSessionId() {
 export async function upsertChatMessage(
   sessionId: number,
   m: ChatMessageType,
-  mId: string
+  sId: string
 ): Promise<ChatMessageType> {
   return await front_sequelize.transaction(async (t) => {
     const [message, _] = await ChatMessage.upsert(
       {
-        mId,
+        sId,
         chatSessionId: sessionId,
         role: m.role,
         message: m.message,
@@ -254,7 +254,7 @@ export async function storeChatSession(
           const chatMessage = await ChatMessage.create(
             {
               role: m.role,
-              mId: m.mId,
+              sId: m.sId,
               message: m.message,
               chatSessionId: chatSession.id,
               feedback: m.feedback,
