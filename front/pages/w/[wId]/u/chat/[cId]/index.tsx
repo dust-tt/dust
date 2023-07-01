@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -12,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
+import { v4 as uuidv4 } from "uuid";
 
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
@@ -902,24 +902,24 @@ export default function AppChat({
     }
     throw new Error("Error: no OUTPUT block streamed.");
   };
-  const updateMessages = (
+  const updateMessages = async (
     messages: ChatMessageType[],
     newMessage: ChatMessageType
-  ): void => {
-    if (newMessage.role !== "error") upsertNewMessage(newMessage);
+  ): Promise<void> => {
+    if (newMessage.role !== "error") await upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);
     setResponse(null);
   };
 
-  function filterErrorMessages(m: ChatMessageType[]): void {
+  async function filterErrorMessages(m: ChatMessageType[]): Promise<void> {
     // remove last message if it's an error, and the previous messages until the
     // last user message, included
     if (m.length === 0 || m[m.length - 1].role !== "error") return;
     let message = m.pop(); // remove error message which has not been stored
     while (m.length > 0 && (message = m.pop())?.role !== "user")
-      deleteMessage(message as ChatMessageType); // remove messages until last user message
-    if (message?.role === "user") deleteMessage(message); // also remove last user message
+      await deleteMessage(message as ChatMessageType); // remove messages until last user message
+    if (message?.role === "user") await deleteMessage(message); // also remove last user message
   }
 
   function logFeedback(message: ChatMessageType): void {
@@ -974,7 +974,7 @@ export default function AppChat({
     // error messages and messages that caused them are removed from the conversation
     // to avoid the assistant to get confused. They are not persisted in the database,
     // since that happens only later on after successful run of the assistant.
-    filterErrorMessages(m);
+    await filterErrorMessages(m);
     const userMessage: ChatMessageType = {
       sId: uuidv4(),
       role: "user",
@@ -985,22 +985,22 @@ export default function AppChat({
     if (m.length === 0) {
       await storeChatSession();
     }
-    updateMessages(m, userMessage);
+    await updateMessages(m, userMessage);
     setInput("");
     setLoading(true);
 
     try {
       if (input.startsWith("/retrieve")) {
-        updateMessages(m, {
+        await updateMessages(m, {
           role: "retrieval",
           query: processedInput,
         } as ChatMessageType);
         const retrievalResult = await runChatRetrieval(m, processedInput);
         m.pop();
-        updateMessages(m, retrievalResult);
+        await updateMessages(m, retrievalResult);
       } else {
         const result = await runChatAssistant(m, retrievalMode);
-        updateMessages(m, result);
+        await updateMessages(m, result);
         // has the model decided to run the retrieval function?
         if (result?.role === "retrieval") {
           const query = result.query as string;
@@ -1008,14 +1008,14 @@ export default function AppChat({
           // replace the retrieval message with the result of the retrieval
           // as a consequence, the query is not stored in the database
           m.pop();
-          updateMessages(m, retrievalResult);
+          await updateMessages(m, retrievalResult);
           const secondResult = await runChatAssistant(m, "none");
-          updateMessages(m, secondResult);
+          await updateMessages(m, secondResult);
         }
       }
     } catch (e: any) {
       console.log("ERROR", e.message);
-      updateMessages(m, {
+      await updateMessages(m, {
         role: "error",
         message: e.message,
       } as ChatMessageType);
@@ -1024,7 +1024,7 @@ export default function AppChat({
     // Update title and save the conversation.
     void (async () => {
       setTitleState("writing");
-      const t = await updateTitle(title, m);
+      await updateTitle(title, m);
       setTitleState("saving");
       const r = await storeChatSession();
       if (r) {

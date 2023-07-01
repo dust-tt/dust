@@ -1,23 +1,13 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
+import { validate } from "uuid";
 
-import { getChatMessage, upsertChatMessage } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
+import { ChatMessage } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  ChatMessageType,
-  ChatRetrievedDocumentType,
-  MessageFeedbackStatus,
-} from "@app/types/chat";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
-  front_sequelize,
-} from "@app/lib/models";
-import { validate } from "uuid";
+import { MessageFeedbackStatus } from "@app/types/chat";
 
 export const messageFeedbackSchema: JSONSchemaType<{
   feedback: MessageFeedbackStatus;

@@ -1,19 +1,19 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
+import { validate } from "uuid";
 
 import { getChatMessage, upsertChatMessage } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 import {
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
   front_sequelize,
 } from "@app/lib/models";
-import { validate } from "uuid";
+import { apiError, withLogging } from "@app/logger/withlogging";
+import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 
 const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
   type: "object",
@@ -210,6 +210,7 @@ async function handler(
       res.status(200).json({
         message,
       });
+      return;
     }
     default:
       return apiError(req, res, {

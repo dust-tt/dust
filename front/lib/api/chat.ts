@@ -157,7 +157,7 @@ export async function upsertChatMessage(
   sId: string
 ): Promise<ChatMessageType> {
   return await front_sequelize.transaction(async (t) => {
-    const [message, _] = await ChatMessage.upsert(
+    const [message] = await ChatMessage.upsert(
       {
         sId,
         chatSessionId: sessionId,
@@ -195,7 +195,7 @@ export async function storeChatSession(
   user: UserType,
   title: string | null
 ): Promise<LightChatSessionType> {
-  const [chatSession, _] = await ChatSession.upsert({
+  const [chatSession] = await ChatSession.upsert({
     sId,
     workspaceId: owner.id,
     userId: user.id,

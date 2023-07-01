@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+
 import { ChatMessage } from "@app/lib/models";
 
 async function main() {
@@ -19,7 +20,6 @@ async function main() {
             await m.update({
               sId: uuidv4(),
             });
-          } else {
           }
         })();
       })
