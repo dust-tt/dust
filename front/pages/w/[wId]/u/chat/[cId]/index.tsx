@@ -715,6 +715,23 @@ export default function AppChat({
     }
   };
 
+  const deleteMessage = async (message: ChatMessageType) => {
+    // Delete message by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error deleting message: ${data.error.message}`);
+      return false;
+    }
+  };
+
   const storeChatSession = async (
     title: string,
     messages: ChatMessageType[]
@@ -870,7 +887,7 @@ export default function AppChat({
     messages: ChatMessageType[],
     newMessage: ChatMessageType
   ): void => {
-    upsertNewMessage(newMessage);
+    if (newMessage.role !== "error") upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);
     setResponse(null);
@@ -880,7 +897,10 @@ export default function AppChat({
     // remove last message if it's an error, and the previous messages until the
     // last user message, included
     if (m.length === 0 || m[m.length - 1].role !== "error") return;
-    while (m.pop()?.role !== "user" && m.length > 0);
+    let message = m.pop(); // remove error message which has not been stored
+    while (m.length > 0 && (message = m.pop())?.role !== "user")
+      deleteMessage(message as ChatMessageType); // remove messages until last user message
+    if (message?.role === "user") deleteMessage(message); // also remove last user message
   }
 
   function logFeedback(message: ChatMessageType): void {
