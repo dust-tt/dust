@@ -906,6 +906,7 @@ export default function AppChat({
     messages: ChatMessageType[],
     newMessage: ChatMessageType
   ): Promise<void> => {
+    if (!newMessage.sId) newMessage.sId = uuidv4();
     if (newMessage.role !== "error") await upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);

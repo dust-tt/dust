@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import {
   CreationOptional,
   DataTypes,
@@ -738,8 +739,6 @@ ChatMessage.init(
     },
     sId: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      allowNull: false,
     },
     createdAt: {
       type: DataTypes.DATE,

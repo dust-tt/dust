@@ -16,7 +16,7 @@ import { chatMessageSchema } from "./messages/[mId]";
 
 const chatSessionCreateSchema: JSONSchemaType<{
   title?: string;
-  messages: ChatMessageType[];
+  messages?: ChatMessageType[];
 }> = {
   type: "object",
   properties: {
@@ -24,9 +24,9 @@ const chatSessionCreateSchema: JSONSchemaType<{
     messages: {
       type: "array",
       items: chatMessageSchema,
+      nullable: true,
     },
   },
-  required: ["messages"],
 };
 
 export type ChatSessionResponseBody = {
