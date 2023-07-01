@@ -24,11 +24,14 @@ export type ChatMessageType = {
   feedback?: MessageFeedbackStatus;
 };
 
-export type ChatSessionType = {
+export type LightChatSessionType = {
   id: number;
   userId: number;
   created: number;
   sId: string;
   title?: string;
+};
+
+export type ChatSessionType = LightChatSessionType & {
   messages: ChatMessageType[];
 };

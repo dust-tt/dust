@@ -731,11 +731,31 @@ export default function AppChat({
       return false;
     }
   };
+  const updateMessageFeedback = async (
+    message: ChatMessageType,
+    feedback: MessageFeedbackStatus
+  ): Promise<boolean> => {
+    // Update message feedback by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ feedback }),
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error updating feedback: ${data.error.message}`);
+      return false;
+    }
+  };
 
-  const storeChatSession = async (
-    title: string,
-    messages: ChatMessageType[]
-  ) => {
+  const storeChatSession = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
       {
@@ -745,7 +765,6 @@ export default function AppChat({
         },
         body: JSON.stringify({
           title,
-          messages,
         }),
       }
     );
@@ -962,6 +981,10 @@ export default function AppChat({
       message: processedInput,
     };
 
+    // on first message, persist chat session
+    if (m.length === 0) {
+      await storeChatSession();
+    }
     updateMessages(m, userMessage);
     setInput("");
     setLoading(true);
@@ -1003,7 +1026,7 @@ export default function AppChat({
       setTitleState("writing");
       const t = await updateTitle(title, m);
       setTitleState("saving");
-      const r = await storeChatSession(t, m);
+      const r = await storeChatSession();
       if (r) {
         setTitleState("saved");
       }
@@ -1029,8 +1052,8 @@ export default function AppChat({
     // if the feedback was given on the latest message a few seconds after it
     // finished (potentially common use case), said latest message might not yet
     // have been persisted in the database and thus not have an id. This is why
-    // we use storeChatSession
-    void storeChatSession(title, messagesPlusFeedback);
+    // we use storeghatSession
+    void updateMessageFeedback(message, feedback);
 
     // feedback is logged serverside to datadog for easy monitoring
     logFeedback(message);

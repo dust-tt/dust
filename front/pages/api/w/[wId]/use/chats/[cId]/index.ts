@@ -6,7 +6,11 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ChatMessageType, ChatSessionType } from "@app/types/chat";
+import {
+  ChatMessageType,
+  ChatSessionType,
+  LightChatSessionType,
+} from "@app/types/chat";
 import { chatMessageSchema } from "./messages/[mId]";
 
 const chatSessionCreateSchema: JSONSchemaType<{
@@ -25,7 +29,7 @@ const chatSessionCreateSchema: JSONSchemaType<{
 };
 
 export type ChatSessionResponseBody = {
-  session: ChatSessionType;
+  session: ChatSessionType | LightChatSessionType;
 };
 
 async function handler(
@@ -91,13 +95,7 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await storeChatSession(
-        cId,
-        owner,
-        user,
-        s.title || null,
-        s.messages
-      );
+      const session = await storeChatSession(cId, owner, user, s.title || null);
 
       res.status(200).json({
         session,
