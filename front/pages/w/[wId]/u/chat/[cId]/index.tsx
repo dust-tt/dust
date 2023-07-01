@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -42,7 +43,7 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
-import { classNames, new_id } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
   ChatMessageType,
@@ -796,7 +797,7 @@ export default function AppChat({
     retrievalMode: string
   ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
-      mId: new_id(),
+      mId: uuidv4(),
       role: "assistant",
       message: "",
     };
@@ -913,7 +914,7 @@ export default function AppChat({
     // since that happens only later on after successful run of the assistant.
     filterErrorMessages(m);
     const userMessage: ChatMessageType = {
-      mId: new_id(),
+      mId: uuidv4(),
       role: "user",
       message: processedInput,
     };

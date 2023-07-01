@@ -108,14 +108,10 @@ export async function getChatSession(
 }
 
 export async function getChatMessage(
-  sessionId: number,
   mId: string
 ): Promise<ChatMessageType | null> {
   const chatMessage = await ChatMessage.findOne({
-    where: {
-      chatSessionId: sessionId,
-      mId,
-    },
+    where: { mId },
   });
   if (!chatMessage) {
     return null;

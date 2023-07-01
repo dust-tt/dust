@@ -13,6 +13,7 @@ import {
   ChatSession,
   front_sequelize,
 } from "@app/lib/models";
+import { validate } from "uuid";
 
 const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
   type: "object",
@@ -120,29 +121,12 @@ async function handler(
     });
   }
 
-  const chatSession = await ChatSession.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: req.query.cId,
-    },
-  });
-  if (!chatSession) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "chat_session_not_found",
-        message:
-          "The chat session for the message you're trying to modify was not found.",
-      },
-    });
-  }
-
-  if (!(typeof req.query.mId === "string")) {
+  if (!(typeof req.query.mId === "string" && validate(req.query.mId))) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
+        message: "Invalid query parameters, `mId` (UUID string) is required.",
       },
     });
   }
@@ -150,6 +134,22 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
+      const chatSession = await ChatSession.findOne({
+        where: {
+          workspaceId: owner.id,
+          sId: req.query.cId,
+        },
+      });
+      if (!chatSession) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "chat_session_not_found",
+            message:
+              "The chat session for the message you're trying to modify was not found.",
+          },
+        });
+      }
       const pRes = parse_payload(chatMessageSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
@@ -163,7 +163,7 @@ async function handler(
       return;
     }
     case "GET": {
-      const message = await getChatMessage(chatSession.id, mId);
+      const message = await getChatMessage(mId);
       if (!message) {
         return apiError(req, res, {
           status_code: 404,
@@ -181,10 +181,7 @@ async function handler(
     }
     case "DELETE": {
       const message = await ChatMessage.findOne({
-        where: {
-          chatSessionId: chatSession.id,
-          mId,
-        },
+        where: { mId },
       });
       if (!message) {
         return apiError(req, res, {
