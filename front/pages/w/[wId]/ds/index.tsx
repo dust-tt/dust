@@ -326,6 +326,7 @@ export default function DataSourcesView({
                   ...ds,
                   connector: createdManagedDataSource.connector,
                   setupWithSuffix: null,
+                  dataSourceName: createdManagedDataSource.dataSource.name,
                 }
               : ds;
           })
@@ -378,7 +379,7 @@ export default function DataSourcesView({
                 </h1>
 
                 <p className="text-sm text-gray-500">
-                  Data Sources let you perform semantic searches on your data.
+                  Data Sources let you expose your data to Dust.
                 </p>
               </div>
               <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
@@ -426,12 +427,8 @@ export default function DataSourcesView({
                     <>
                       <p>Welcome to Dust Data Sources 🔎</p>
                       <p className="mt-2">
-                        Data sources let you upload documents to perform
-                        semantic searches on them (
-                        <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                          data_source
-                        </span>{" "}
-                        block).
+                        Data sources let you upload documents to expose
+                        information to Dust.
                       </p>
                     </>
                   )}
