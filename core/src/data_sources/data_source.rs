@@ -1,3 +1,4 @@
+use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -392,8 +393,51 @@ impl DataSource {
         tags: &Vec<String>,
         source_url: &Option<String>,
         text: &str,
+        preserve_system_tags: bool,
     ) -> Result<Document> {
+        // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
+        // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
+        if preserve_system_tags
+            && tags
+                .iter()
+                .any(|tag| tag.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
+        {
+            Err(anyhow!(
+                "preserve_system_tags=true is not allowed if `tags` contains a string starting with \"{}\"",
+                DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX
+            ))?;
+        }
+
         let store = store.clone();
+
+        let current_system_tags = if preserve_system_tags {
+            let current_doc = store
+                .load_data_source_document(
+                    &self.project,
+                    &self.data_source_id(),
+                    &document_id.to_string(),
+                )
+                .await?;
+
+            let current_tags = match current_doc {
+                Some(current_doc) => current_doc.tags,
+                None => vec![],
+            };
+
+            current_tags
+                .iter()
+                .filter(|tag| tag.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
+                .map(|tag| tag.to_string())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let tags: Vec<String> = tags
+            .iter()
+            .chain(current_system_tags.iter())
+            .map(|tag| tag.to_string())
+            .collect();
 
         let timestamp = match timestamp {
             Some(timestamp) => timestamp,
@@ -418,7 +462,7 @@ impl DataSource {
             &self.data_source_id,
             document_id,
             timestamp,
-            tags,
+            &tags,
             source_url,
             &document_hash,
             text.len() as u64,
@@ -457,7 +501,7 @@ impl DataSource {
             ),
             Object::create(
                 &bucket,
-                serde_json::to_string(tags).unwrap().as_bytes().to_vec(),
+                serde_json::to_string(&tags).unwrap().as_bytes().to_vec(),
                 &tags_path,
                 "application/json",
             ),
@@ -1034,6 +1078,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
+        remove_system_tags: bool,
     ) -> Result<Option<Document>> {
         let store = store.clone();
 
@@ -1045,6 +1090,16 @@ impl DataSource {
             None => {
                 return Ok(None);
             }
+        };
+
+        d.tags = if remove_system_tags {
+            // remove tags that are prefixed with the system tag prefix
+            d.tags
+                .into_iter()
+                .filter(|t| !t.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
+                .collect::<Vec<_>>()
+        } else {
+            d.tags
         };
 
         let mut hasher = blake3::Hasher::new();
@@ -1192,6 +1247,7 @@ pub async fn cmd_upsert(
             tags,
             source_url,
             text,
+            true, // preserve system tags
         )
         .await?;
 
@@ -1264,7 +1320,10 @@ pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()>
         None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
     };
 
-    let d = match ds.retrieve(Box::new(store.clone()), document_id).await? {
+    let d = match ds
+        .retrieve(Box::new(store.clone()), document_id, true)
+        .await?
+    {
         Some(d) => d,
         None => Err(anyhow!("Document not found: document_id={}", document_id))?,
     };
@@ -1320,7 +1379,12 @@ pub async fn cmd_list(data_source_id: &str) -> Result<()> {
     let project = Project::new_from_id(1);
 
     let r = store
-        .list_data_source_documents(&project, data_source_id, None)
+        .list_data_source_documents(
+            &project,
+            data_source_id,
+            None,
+            true, // remove system tags
+        )
         .await?;
 
     utils::info(&format!("{} documents", r.0.len(),));
