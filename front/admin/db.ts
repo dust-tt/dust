@@ -6,6 +6,8 @@ import {
   Clone,
   Dataset,
   DataSource,
+  EventSchema,
+  ExtractedEvent,
   GensTemplate,
   Key,
   Membership,
@@ -38,6 +40,8 @@ async function main() {
   await ChatRetrievedDocument.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await GensTemplate.sync({ alter: true });
+  await EventSchema.sync({ alter: true });
+  await ExtractedEvent.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

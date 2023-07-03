@@ -1016,6 +1016,126 @@ User.hasMany(TrackedDocument, {
   onDelete: "CASCADE",
 });
 
+// Events
+export class EventSchema extends Model<
+  InferAttributes<EventSchema>,
+  InferCreationAttributes<EventSchema>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare marker: string;
+  declare description?: string;
+  declare status: "active" | "disabled";
+  declare properties: {
+    name: string;
+    type: number[] | Date[] | string[];
+    description: string;
+  }[];
+  declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+}
+EventSchema.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    marker: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "active",
+    },
+    properties: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "event_schema",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["workspaceId", "marker"], unique: true }],
+  }
+);
+Workspace.hasMany(EventSchema, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+User.hasMany(EventSchema, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+
+export class ExtractedEvent extends Model<
+  InferAttributes<ExtractedEvent>,
+  InferCreationAttributes<ExtractedEvent>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare properties: any;
+
+  declare eventSchemaId: ForeignKey<EventSchema["id"]>;
+  declare documentId: string;
+}
+ExtractedEvent.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    properties: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "extracted_event",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["eventSchemaId"] }, { fields: ["documentId"] }],
+  }
+);
+EventSchema.hasMany(ExtractedEvent, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE", // @todo daph define if we really want to delete the extracted event when the schema is deleted
+});
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;
