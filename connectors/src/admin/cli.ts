@@ -9,7 +9,6 @@ import {
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
-import { isConnectorProvider } from "@connectors/types/connector";
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   if (!args.wId) {
