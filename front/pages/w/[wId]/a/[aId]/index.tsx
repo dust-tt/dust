@@ -398,18 +398,6 @@ export default function AppView({
                 <p className="mt-4">To get started:</p>
                 <p className="mt-2">
                   <Link
-                    href="https://docs.dust.tt"
-                    target="_blank"
-                    className="mr-2"
-                  >
-                    <Button>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      View Documentation
-                    </Button>
-                  </Link>
-                </p>
-                <p className="mt-2">
-                  <Link
                     href="https://docs.dust.tt/quickstart"
                     target="_blank"
                     className="mr-2"
