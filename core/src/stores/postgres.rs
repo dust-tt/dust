@@ -1135,7 +1135,7 @@ impl Store for PostgresStore {
         let current_tags_result = tx
             .query(
                 "SELECT tags_json FROM data_sources_documents WHERE data_source = $1 \
-            AND document_id = $2 FOR UPDATE",
+            AND document_id = $2 AND status = 'latest' FOR UPDATE",
                 &[&data_source_row_id, &document_id],
             )
             .await?;
@@ -1165,7 +1165,7 @@ impl Store for PostgresStore {
 
         tx.execute(
             "UPDATE data_sources_documents SET tags_json = $1 \
-            WHERE data_source = $2 AND document_id = $3",
+            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
             &[&updated_tags_json, &data_source_row_id, &document_id],
         )
         .await?;
