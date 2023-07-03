@@ -1,5 +1,10 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+  PlusCircleIcon,
+  PlusIcon,
+  TrashIcon,
+  XCircleIcon,
+} from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
@@ -89,17 +94,19 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const templates = (await GensTemplate.findAll({
-    where: {
-      workspaceId: owner.id
-    }
-  })).map((temp) => {
+  const templates = (
+    await GensTemplate.findAll({
+      where: {
+        workspaceId: owner.id,
+      },
+    })
+  ).map((temp) => {
     return {
       name: temp.name,
       instructions: temp.instructions,
-      id: temp.id
-    }
-  })
+      id: temp.id,
+    };
+  });
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
@@ -140,7 +147,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly: false,
       gaTrackingId: GA_TRACKING_ID,
       workspaceDataSources: dataSources,
-      templates
+      templates,
     },
   };
 };
@@ -541,10 +548,10 @@ type TemplateType = {
 export function TemplatesView({
   onTemplateSelect,
   workspaceId,
-  savedTemplates
+  savedTemplates,
 }: {
   onTemplateSelect: (template: TemplateType) => void;
-  workspaceId: string,
+  workspaceId: string;
   savedTemplates: GensTemplateType[];
 }) {
   const defaults = [
@@ -610,6 +617,15 @@ export function TemplatesView({
       return newInstructions;
     });
   };
+
+  const handleInstructionDelete = (index: number) => {
+    setNewTemplateInstructions((prevInstructions) => {
+      const newInstructions = [...prevInstructions];
+      newInstructions.splice(index, 1);
+      return newInstructions;
+    });
+  };
+
   console.log(newTemplateInstructions);
 
   return (
@@ -651,41 +667,60 @@ export function TemplatesView({
                         >
                           Edit Template
                         </Dialog.Title>
-                        <div className="mt-6">
+                        <div className="mt-2">
+                          <label
+                            htmlFor="templateTitle"
+                            className="my-2 block text-sm font-medium text-gray-700"
+                          >
+                            Template Name
+                          </label>
                           <input
                             type="text"
+                            name="templateTitle"
                             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                            placeholder="Template title"
                             value={newTemplateTitle}
                             onChange={(e) =>
                               setNewTemplateTitle(e.target.value)
                             }
                           />
                         </div>
-                        <p className="my-2">Instructions</p>
+                        <label className="my-2 block text-sm font-medium text-gray-700">
+                          Instructions
+                        </label>
                         {newTemplateInstructions.map((instruction, i) => {
                           return (
-                            <div className="my-2" key={i}>
-                              <input
-                                type="text"
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                                value={instruction}
-                                onChange={(e) =>
-                                  handleInstructionChange(i, e.target.value)
-                                }
-                              />
+                            <div className="group my-2 flex items-center border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500">
+                              <div className="flex flex-1">
+                                <input
+                                  className={classNames(
+                                    "font-mono w-full border-0 px-1 py-1 text-[13px] font-normal outline-none focus:outline-none",
+                                    "border-white ring-0 focus:border-gray-300 focus:ring-0"
+                                  )}
+                                  value={instruction}
+                                  onChange={(e) =>
+                                    handleInstructionChange(i, e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div className="flex w-4 flex-initial">
+                                <XCircleIcon
+                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
+                                  onClick={() => handleInstructionDelete(i)}
+                                />
+                              </div>
+                              <div className="mr-2 flex w-4 flex-initial">
+                                <PlusCircleIcon
+                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
+                                  onClick={() => {
+                                    setNewTemplateInstructions(
+                                      newTemplateInstructions.concat([""])
+                                    );
+                                  }}
+                                />
+                              </div>
                             </div>
                           );
                         })}
-                        <ActionButton
-                          onClick={() => {
-                            setNewTemplateInstructions(
-                              newTemplateInstructions.concat([""])
-                            );
-                          }}
-                        >
-                          +
-                        </ActionButton>
                       </div>
                     </div>
                     <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
@@ -709,7 +744,7 @@ export function TemplatesView({
                           };
                           console.log(new_template);
                           const curr_templates = templates.map((d) => d);
-                          console.log("SAVINGGG")
+                          console.log("SAVINGGG");
                           if (selectedTemplate == -1) {
                             await fetch(`/api/w/${workspaceId}/templates`, {
                               method: "POST",
@@ -718,12 +753,12 @@ export function TemplatesView({
                               },
                               body: JSON.stringify({
                                 name: newTemplateTitle,
-                                instructions: newTemplateInstructions
-                              })
-                            })
+                                instructions: newTemplateInstructions,
+                              }),
+                            });
                             curr_templates.push(new_template);
                           } else {
-                            console.log("UPDATING")
+                            console.log("UPDATING");
                             await fetch(`/api/w/${workspaceId}/templates`, {
                               method: "PUT",
                               headers: {
@@ -732,9 +767,9 @@ export function TemplatesView({
                               body: JSON.stringify({
                                 name: newTemplateTitle,
                                 instructions: newTemplateInstructions,
-                                id: templates[selectedTemplate].id
-                              })
-                            })
+                                id: templates[selectedTemplate].id,
+                              }),
+                            });
                             curr_templates[selectedTemplate] = new_template;
                           }
                           setTemplates(curr_templates);
@@ -772,7 +807,7 @@ export function TemplatesView({
                     "rounded py-1",
                     "text-xs font-bold text-gray-700",
                     "h-5 w-5 rounded-full",
-                    t.color,
+                    t.color || "bg-gray-100",
                     // make opacity lower for unselected
                     selectedTemplate === i ? "opacity-100" : "opacity-30"
                   )}
@@ -786,8 +821,7 @@ export function TemplatesView({
                     <PencilIcon
                       onClick={() => {
                         setSelectedTemplate(i);
-                        console.log(t.name, t.instructions)
-                        setNewTemplateInstructions(t.instructions || []);
+                        setNewTemplateInstructions(t.instructions || [""]);
                         setNewTemplateTitle(t.name);
                         setFormExpanded(true);
                       }}
@@ -833,7 +867,7 @@ export default function AppGens({
   readOnly,
   gaTrackingId,
   workspaceDataSources,
-  templates
+  templates,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   console.log(templates);
   const prodAPI = new DustAPI(prodCredentials);
@@ -1078,7 +1112,7 @@ export default function AppGens({
     }
     let text = window.getSelection().toString();
     if (text == "") {
-      text = genContent
+      text = genContent;
     }
     console.log(text);
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
