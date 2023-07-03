@@ -99,7 +99,7 @@ export default function ModelPicker({
             !(model.provider_id && model.provider_id.length > 0) &&
             !readOnly ? (
               <Link
-                href={`/w/${owner.sId}/providers`}
+                href={`/w/${owner.sId}/a`}
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   model.provider_id && model.provider_id.length > 0

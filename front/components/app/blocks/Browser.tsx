@@ -250,7 +250,7 @@ export default function Browser({
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
               <div className="px-2">
                 <Link
-                  href={`/w/${owner.sId}/providers`}
+                  href={`/w/${owner.sId}/a`}
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
                     "border px-3",
