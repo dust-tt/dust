@@ -74,7 +74,7 @@ export default function MainTab({
                 "border-gray-500 font-bold text-gray-700"
               )}
             >
-              Use
+              Assistant
             </div>
             <Link
               href={`/w/${owner.sId}/a`}
@@ -83,7 +83,7 @@ export default function MainTab({
                 "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
               )}
             >
-              Build
+              Admin
             </Link>
           </div>
         ) : null}
@@ -118,7 +118,7 @@ export default function MainTab({
                     "border-gray-500 font-bold text-gray-700"
                   )}
                 >
-                  Use
+                  Assistant
                 </div>
                 <Link
                   href={`/w/${owner.sId}/a`}
@@ -127,7 +127,7 @@ export default function MainTab({
                     "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
                   )}
                 >
-                  Build
+                  Admin
                 </Link>
               </div>
             ) : null}

@@ -3,10 +3,10 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import MainTab from "@app/components/admin/MainTab";
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";

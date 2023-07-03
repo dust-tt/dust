@@ -195,20 +195,6 @@ export default function AppLayout({
                             <Menu.Item>
                               {({ active }) => (
                                 <a
-                                  href="https://discord.gg/8NJR3zQU5X"
-                                  target="_blank"
-                                  className={classNames(
-                                    active ? "bg-gray-50" : "",
-                                    "block px-4 py-2 text-sm text-gray-700"
-                                  )}
-                                >
-                                  Discord
-                                </a>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <a
                                   href="https://github.com/dust-tt/dust"
                                   target="_blank"
                                   className={classNames(

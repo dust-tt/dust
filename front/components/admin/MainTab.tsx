@@ -1,7 +1,5 @@
 import { Menu } from "@headlessui/react";
 import {
-  KeyIcon,
-  LinkIcon,
   MagnifyingGlassCircleIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
@@ -20,16 +18,6 @@ export default function MainTab({
 }) {
   const tabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
-      name: "Apps",
-      href: `/w/${owner.sId}/a`,
-      icon: (
-        <CodeBracketIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    },
-    {
       name: "Data Sources",
       href: `/w/${owner.sId}/ds`,
       icon: (
@@ -41,12 +29,12 @@ export default function MainTab({
     },
   ];
 
-  if (owner.role === "builder" || owner.role === "admin") {
+  if (owner.role === "admin") {
     tabs.push({
-      name: "API Keys",
-      href: `/w/${owner.sId}/keys`,
+      name: "Workspace",
+      href: `/w/${owner.sId}/workspace`,
       icon: (
-        <KeyIcon
+        <UsersIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
@@ -54,22 +42,12 @@ export default function MainTab({
     });
   }
 
-  if (owner.role === "admin") {
+  if (owner.role === "builder" || owner.role === "admin") {
     tabs.push({
-      name: "Providers",
-      href: `/w/${owner.sId}/providers`,
+      name: "Developers",
+      href: `/w/${owner.sId}/a`,
       icon: (
-        <LinkIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-      ),
-    });
-    tabs.push({
-      name: "Workspace",
-      href: `/w/${owner.sId}/workspace`,
-      icon: (
-        <UsersIcon
+        <CodeBracketIcon
           className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
@@ -125,7 +103,7 @@ export default function MainTab({
               "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
             )}
           >
-            Use
+            Assistant
           </Link>
           <div
             className={classNames(
@@ -133,7 +111,7 @@ export default function MainTab({
               "border-gray-500 font-bold text-gray-700"
             )}
           >
-            Build
+            Admin
           </div>
         </div>
       </div>
@@ -167,7 +145,7 @@ export default function MainTab({
                   "border-transparent font-medium text-violet-600 hover:border-gray-200 hover:text-violet-700"
                 )}
               >
-                Use
+                Assistant
               </Link>
               <div
                 className={classNames(
@@ -175,7 +153,7 @@ export default function MainTab({
                   "border-gray-500 font-bold text-gray-700"
                 )}
               >
-                Build
+                Admin
               </div>
             </div>
           </nav>

@@ -10,7 +10,7 @@ const guides = [
   {
     href: "/overview",
     name: "Overview",
-    description: "Get an overview of the Dust Platform.",
+    description: "Get an overview of the Dust Developer Platform.",
   },
   {
     href: "/quickstart",
@@ -23,12 +23,6 @@ const guides = [
     description:
       "Step-by-step guide to creating a document Q&A app using Data Sources.",
   },
-  // {
-  //   href: '/webhooks',
-  //   name: 'Webhooks',
-  //   description:
-  //     'Learn how to programmatically configure webhooks for your app.',
-  // },
 ];
 
 export function Guides() {
