@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 
-import { TrackedDocument, User } from "@app/lib/models";
+import { CoreAPI } from "@app/lib/core_api";
+import { DataSource, TrackedDocument, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
 export async function updateTrackedDocuments(
@@ -8,6 +9,18 @@ export async function updateTrackedDocuments(
   documentId: string,
   documentContent: string
 ) {
+  const dataSource = await DataSource.findByPk(dataSourceId);
+  if (!dataSource) {
+    throw new Error(`Could not find data source with id ${dataSourceId}`);
+  }
+
+  const hasExistingTrackedDocs = !!(await TrackedDocument.count({
+    where: {
+      dataSourceId: dataSource.id,
+      documentId,
+    },
+  }));
+
   const emailPattern = "\\S+@\\S+\\.\\S+";
   const emailRegex = new RegExp(emailPattern);
 
@@ -112,4 +125,30 @@ export async function updateTrackedDocuments(
       },
     },
   });
+  const hasRemainingTrackedDocs = !!(await TrackedDocument.count({
+    where: {
+      dataSourceId: dataSource.id,
+      documentId,
+    },
+  }));
+
+  if (hasExistingTrackedDocs && !hasRemainingTrackedDocs) {
+    await CoreAPI.updateDataSourceDocumentTags(
+      dataSource.dustAPIProjectId,
+      dataSource.name,
+      {
+        documentId,
+        remove_tags: ["__DUST_TRACKED"],
+      }
+    );
+  } else if (!hasExistingTrackedDocs && hasRemainingTrackedDocs) {
+    await CoreAPI.updateDataSourceDocumentTags(
+      dataSource.dustAPIProjectId,
+      dataSource.name,
+      {
+        documentId,
+        add_tags: ["__DUST_TRACKED"],
+      }
+    );
+  }
 }

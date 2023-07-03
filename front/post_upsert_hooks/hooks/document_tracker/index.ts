@@ -54,6 +54,23 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       return true;
     }
 
+    const docIsTracked = !!(await TrackedDocument.count({
+      where: {
+        dataSourceId: dataSource.id,
+        documentId,
+      },
+    }));
+
+    if (docIsTracked) {
+      // Always run the document tracker for tracked documents, so we can
+      // garbage collect the TrackedDocuments if all the DUST_TRACK tags are removed.
+
+      localLogger.info(
+        "Document is tracked, document_tracker post upsert hook should run."
+      );
+      return true;
+    }
+
     const workspaceDataSourceIds = (
       await DataSource.findAll({
         where: { workspaceId: dataSource.workspaceId },
