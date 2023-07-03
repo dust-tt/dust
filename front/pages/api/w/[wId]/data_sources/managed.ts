@@ -54,6 +54,12 @@ async function handler(
         });
       }
 
+      // retrieve suffix GET parameter
+      let suffix: string | null = null;
+      if (req.query.suffix && typeof req.query.suffix === "string") {
+        suffix = req.query.suffix;
+      }
+
       if (!req.body || typeof req.body.connectionId !== "string") {
         return apiError(req, res, {
           status_code: 400,
@@ -92,7 +98,10 @@ async function handler(
 
       const provider = req.body.provider as ConnectorProvider;
 
-      const dataSourceName = `managed-${provider}`;
+      // TODO(spolu): add suffix to dataSourceName
+      const dataSourceName = suffix
+        ? `managed-${provider}-${suffix}`
+        : `managed-${provider}`;
       const dataSourceDescription = `Managed Data Source for ${provider}`;
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
