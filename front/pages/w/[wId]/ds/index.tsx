@@ -494,7 +494,10 @@ export default function DataSourcesView({
             {localIntegrations.map((ds) => {
               return (
                 <li
-                  key={`managed-${ds.connectorProvider}`}
+                  key={
+                    ds.dataSourceName ||
+                    `managed-to-connect-${ds.connectorProvider}`
+                  }
                   className="px-2 py-4"
                 >
                   <div className="flex items-center justify-between">

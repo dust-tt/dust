@@ -102,7 +102,9 @@ async function handler(
       const dataSourceName = suffix
         ? `managed-${provider}-${suffix}`
         : `managed-${provider}`;
-      const dataSourceDescription = `Managed Data Source for ${provider}`;
+      const dataSourceDescription = suffix
+        ? `Managed Data Source for ${provider} (${suffix})`
+        : `Managed Data Source for ${provider}`;
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 256;

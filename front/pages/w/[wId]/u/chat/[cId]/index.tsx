@@ -167,19 +167,17 @@ export const getServerSideProps: GetServerSideProps<{
 
 const providerFromDocument = (document: ChatRetrievedDocumentType) => {
   let provider = "none";
-  switch (document.dataSourceId) {
-    case "managed-slack":
-      provider = "slack";
-      break;
-    case "managed-notion":
-      provider = "notion";
-      break;
-    case "managed-google_drive":
-      provider = "google_drive";
-      break;
-    case "managed-github":
-      provider = "github";
-      break;
+  if (document.dataSourceId.startsWith("managed-slack")) {
+    provider = "slack";
+  }
+  if (document.dataSourceId.startsWith("managed-notion")) {
+    provider = "notion";
+  }
+  if (document.dataSourceId.startsWith("managed-google_drive")) {
+    provider = "google_drive";
+  }
+  if (document.dataSourceId.startsWith("managed-github")) {
+    provider = "github";
   }
   return provider;
 };
@@ -193,14 +191,12 @@ const titleFromDocument = (document: ChatRetrievedDocumentType) => {
     }
   }
 
-  switch (document.dataSourceId) {
-    case "managed-slack":
-      for (const tag of document.tags) {
-        if (tag.startsWith("channelName:")) {
-          title = "#" + tag.substring("channelName:".length);
-        }
+  if (document.dataSourceId.startsWith("managed-slack")) {
+    for (const tag of document.tags) {
+      if (tag.startsWith("channelName:")) {
+        title = "#" + tag.substring("channelName:".length);
       }
-      break;
+    }
   }
   return title;
 };
