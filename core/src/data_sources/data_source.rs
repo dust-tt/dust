@@ -396,6 +396,7 @@ impl DataSource {
         preserve_system_tags: bool,
     ) -> Result<Document> {
         // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
+        // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
         if preserve_system_tags
             && tags
                 .iter()
@@ -409,7 +410,7 @@ impl DataSource {
 
         let store = store.clone();
 
-        let additional_tags = if preserve_system_tags {
+        let current_system_tags = if preserve_system_tags {
             let current_doc = store
                 .load_data_source_document(
                     &self.project,
@@ -434,7 +435,7 @@ impl DataSource {
 
         let tags: Vec<String> = tags
             .iter()
-            .chain(additional_tags.iter())
+            .chain(current_system_tags.iter())
             .map(|tag| tag.to_string())
             .collect();
 
