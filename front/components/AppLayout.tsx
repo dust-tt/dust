@@ -182,47 +182,6 @@ export default function AppLayout({
                             <Menu.Item>
                               {({ active }) => (
                                 <a
-                                  href="https://docs.dust.tt"
-                                  className={classNames(
-                                    active ? "bg-gray-50" : "",
-                                    "block px-4 py-2 text-sm text-gray-700"
-                                  )}
-                                >
-                                  Documentation
-                                </a>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <a
-                                  href="https://discord.gg/8NJR3zQU5X"
-                                  target="_blank"
-                                  className={classNames(
-                                    active ? "bg-gray-50" : "",
-                                    "block px-4 py-2 text-sm text-gray-700"
-                                  )}
-                                >
-                                  Discord
-                                </a>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <a
-                                  href="https://github.com/dust-tt/dust"
-                                  target="_blank"
-                                  className={classNames(
-                                    active ? "bg-gray-50" : "",
-                                    "block px-4 py-2 text-sm text-gray-700"
-                                  )}
-                                >
-                                  GitHub
-                                </a>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <a
                                   href="#"
                                   onClick={() =>
                                     signOut({
@@ -235,7 +194,7 @@ export default function AppLayout({
                                     "block px-4 py-2 text-sm text-gray-700"
                                   )}
                                 >
-                                  Sign out
+                                  Sign&nbsp;out
                                 </a>
                               )}
                             </Menu.Item>

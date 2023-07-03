@@ -147,7 +147,7 @@ export default function Deploy({
                               This command is ready to copy with your first
                               active API key.{" "}
                               <Link
-                                href={`/w/${owner.sId}/keys`}
+                                href={`/w/${owner.sId}/a`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                                   "text-violet-600"
@@ -160,7 +160,7 @@ export default function Deploy({
                           ) : (
                             <p className="text-sm text-gray-500">
                               <Link
-                                href={`/w/${owner.sId}/keys`}
+                                href={`/w/${owner.sId}/a`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                                   "text-violet-600"

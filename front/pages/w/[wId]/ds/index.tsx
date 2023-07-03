@@ -4,11 +4,12 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import MainTab from "@app/components/admin/MainTab";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
-import MainTab from "@app/components/profile/MainTab";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
   connectorIsUsingNango,
@@ -92,7 +93,14 @@ export const getServerSideProps: GetServerSideProps<{
   githubAppUrl: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
+
   const user = await getUserFromSession(session);
+  if (!user) {
+    return {
+      notFound: true,
+    };
+  }
+
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -104,6 +112,11 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+
+  void setUserMetadata(user, {
+    key: "sticky_path",
+    value: `/w/${context.query.wId}/ds`,
+  });
 
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();

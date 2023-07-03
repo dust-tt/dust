@@ -189,7 +189,7 @@ export const navigation = [
     links: [
       { title: "Welcome", href: "/" },
       { title: "Introduction", href: "/introduction" },
-      { title: "Platform overview", href: "/overview" },
+      { title: "Developer Platform overview", href: "/overview" },
       { title: "Core Blocks", href: "/core-blocks" },
       { title: "Integration Blocks", href: "/integration-blocks" },
       { title: "Data Sources", href: "/data-sources-overview" },
