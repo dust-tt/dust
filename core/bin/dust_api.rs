@@ -7,14 +7,15 @@ use axum::{
         sse::{Event, KeepAlive, Sse},
         Json,
     },
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use dust::{
     app,
     blocks::block::BlockType,
     data_sources::data_source::{self, SearchFilter},
-    dataset, project, run,
+    dataset, project,
+    run::{self},
     stores::store,
     stores::{postgres, sqlite},
     utils,
@@ -24,7 +25,7 @@ use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
@@ -1156,6 +1157,107 @@ async fn data_sources_search(
     }
 }
 
+/// Update tags of a document in a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsUpdateTagsPayload {
+    add_tags: Option<Vec<String>>,
+    remove_tags: Option<Vec<String>>,
+}
+
+async fn data_sources_documents_update_tags(
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DataSourcesDocumentsUpdateTagsPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let add_tags = match payload.add_tags {
+        Some(tags) => tags,
+        None => vec![],
+    };
+    let remove_tags = match payload.remove_tags {
+        Some(tags) => tags,
+        None => vec![],
+    };
+    let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
+    let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
+    if add_tags_set.intersection(&remove_tags_set).count() > 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("bad_request"),
+                    message: String::from(
+                        "The `add_tags` and `remove_tags` lists have a non-empty intersection.",
+                    ),
+                }),
+                response: None,
+            }),
+        );
+    }
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve Data Source: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(ds) => match ds {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("data_source_not_found"),
+                        message: format!("No Data Source found for id `{}`", data_source_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(ds) => match ds
+                .update_tags(
+                    state.store.clone(),
+                    document_id,
+                    add_tags_set.into_iter().collect(),
+                    remove_tags_set.into_iter().collect(),
+                )
+                .await
+            {
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to update document tags: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_source": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "config": ds.config(),
+                            },
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 /// Upsert a document in a data source.
 
 #[derive(serde::Deserialize)]
@@ -1556,6 +1658,10 @@ async fn main() -> Result<()> {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
             post(data_sources_documents_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
+            patch(data_sources_documents_update_tags),
         )
         // Provided by the data_source block.
         .route(

@@ -98,6 +98,14 @@ pub trait Store {
         data_source_id: &str,
         document: &Document,
     ) -> Result<()>;
+    async fn update_data_source_document_tags(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        add_tags: &Vec<String>,
+        remove_tags: &Vec<String>,
+    ) -> Result<Vec<String>>;
     async fn list_data_source_documents(
         &self,
         project: &Project,

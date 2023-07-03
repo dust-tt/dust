@@ -527,6 +527,38 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
+  async updateDataSourceDocumentTags(
+    projectId: string,
+    dataSourceName: string,
+    payload: {
+      documentId: string;
+      add_tags?: string[];
+      remove_tags?: string[];
+    }
+  ): Promise<
+    CoreAPIResponse<{
+      data_source: CoreAPIDataSource;
+    }>
+  > {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+        payload.documentId
+      )}/tags`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          add_tags: payload.add_tags,
+          remove_tags: payload.remove_tags,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
   async deleteDataSourceDocument(
     projectId: string,
     dataSourceName: string,

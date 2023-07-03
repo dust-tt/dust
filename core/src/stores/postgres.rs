@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use tokio_postgres::NoTls;
 
@@ -1098,6 +1098,80 @@ impl Store for PostgresStore {
                 }))
             }
         }
+    }
+
+    async fn update_data_source_document_tags(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        add_tags: &Vec<String>,
+        remove_tags: &Vec<String>,
+    ) -> Result<Vec<String>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        // get current tags and put them into a set
+        let current_tags_result = tx
+            .query(
+                "SELECT tags_json FROM data_sources_documents WHERE data_source = $1 \
+            AND document_id = $2 FOR UPDATE",
+                &[&data_source_row_id, &document_id],
+            )
+            .await?;
+        let mut current_tags: HashSet<String> = match current_tags_result.len() {
+            0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+            _ => {
+                let tags_json: String = current_tags_result[0].get(0);
+                let tags_vec: Vec<String> = match serde_json::from_str(&tags_json) {
+                    Ok(v) => v,
+                    Err(_) => vec![],
+                };
+                tags_vec.into_iter().collect()
+            }
+        };
+
+        // update the set of tags based on the add and remove lists
+        for tag in add_tags {
+            current_tags.insert(tag.clone());
+        }
+        for tag in remove_tags {
+            current_tags.remove(tag);
+        }
+
+        // Serialize the updated tags into a JSON string
+        let updated_tags_vec: Vec<String> = current_tags.into_iter().collect();
+        let updated_tags_json = serde_json::to_string(&updated_tags_vec)?;
+
+        tx.execute(
+            "UPDATE data_sources_documents SET tags_json = $1 \
+            WHERE data_source = $2 AND document_id = $3",
+            &[&updated_tags_json, &data_source_row_id, &document_id],
+        )
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(updated_tags_vec)
     }
 
     async fn upsert_data_source_document(
