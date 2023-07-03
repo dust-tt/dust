@@ -59,6 +59,15 @@ async function handler(
       if (req.query.suffix && typeof req.query.suffix === "string") {
         suffix = req.query.suffix;
       }
+      if (suffix && !/^[a-z0-9\-_]{1,16}$/.test(suffix)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid suffix.",
+          },
+        });
+      }
 
       if (!req.body || typeof req.body.connectionId !== "string") {
         return apiError(req, res, {
