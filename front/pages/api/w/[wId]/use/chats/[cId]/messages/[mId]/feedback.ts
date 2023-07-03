@@ -1,10 +1,10 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getChatSession, updateChatMessageFeedback } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { ChatMessage, ChatSession } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { MessageFeedbackStatus } from "@app/types/chat";
 
@@ -84,12 +84,12 @@ async function handler(
     });
   }
 
-  const chatSession = await ChatSession.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: req.query.cId,
-    },
+  const chatSession = await getChatSession({
+    owner,
+    user,
+    sId: req.query.cId as string,
   });
+
   if (!chatSession) {
     return apiError(req, res, {
       status_code: 404,
@@ -108,15 +108,12 @@ async function handler(
         res.status(400).end();
         return;
       }
-      const m = pRes.value;
-      const result = await ChatMessage.update(
-        {
-          feedback: m.feedback,
-        },
-        {
-          where: { sId: req.query.mId, chatSessionId: chatSession.id },
-        }
-      );
+      const feedback = pRes.value.feedback;
+      const result = await updateChatMessageFeedback({
+        chatSession,
+        feedback,
+        sId: req.query.mId as string,
+      });
 
       res.status(200).json({
         count: result[0],

@@ -1,7 +1,10 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getChatSession, storeChatSession } from "@app/lib/api/chat";
+import {
+  getChatSessionWithMessages,
+  storeChatSession,
+} from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
@@ -113,7 +116,11 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const session = await getChatSession(owner, cId);
+      const session = await getChatSessionWithMessages({
+        owner,
+        user,
+        sId: cId,
+      });
       if (!session) {
         return apiError(req, res, {
           status_code: 404,

@@ -15,7 +15,8 @@ export function new_id() {
 
 export function client_side_new_id() {
   // blake3 is not available in the browser
-  const u = uuidv4();
+  // remove the dashes from the uuid
+  const u = uuidv4().replace(/-/g, "");
   // return the last 10 characters of the uuid
   return u.substring(u.length - 10);
 }

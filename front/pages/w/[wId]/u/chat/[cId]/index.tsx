@@ -28,7 +28,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions_registry";
-import { getChatSession } from "@app/lib/api/chat";
+import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
   getSession,
@@ -138,7 +138,11 @@ export const getServerSideProps: GetServerSideProps<{
   });
 
   const cId = context.params?.cId as string;
-  const chatSession = await getChatSession(owner, cId);
+  const chatSession = await getChatSessionWithMessages({
+    owner,
+    user,
+    sId: cId,
+  });
 
   if (!chatSession) {
     return {
@@ -692,6 +696,7 @@ export default function AppChat({
     setTitle(title);
     return title;
   };
+
   const upsertNewMessage = async (
     message: ChatMessageType
   ): Promise<boolean> => {
@@ -731,6 +736,7 @@ export default function AppChat({
       return false;
     }
   };
+
   const updateMessageFeedback = async (
     message: ChatMessageType,
     feedback: MessageFeedbackStatus
@@ -1006,23 +1012,17 @@ export default function AppChat({
     })();
     setLoading(false);
   };
+
   const handleFeedback = (
     message: ChatMessageType,
     feedback: MessageFeedbackStatus
   ) => {
-    const messagesPlusFeedback = messages.map((m) => {
-      if (m.sId === message.sId) {
-        if (m.feedback !== feedback) {
-          m.feedback = feedback;
-        } else {
-          m.feedback = null;
-        }
-      }
-      return m;
-    });
-    setMessages(messagesPlusFeedback);
+    setMessages((ms) =>
+      ms.map((m) => (m.sId === message.sId ? { ...m, feedback: feedback } : m))
+    );
     void updateMessageFeedback(message, feedback);
   };
+
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role
     // in the conversation

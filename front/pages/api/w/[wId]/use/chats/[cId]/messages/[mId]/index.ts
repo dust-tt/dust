@@ -1,14 +1,17 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getChatMessage, upsertChatMessage } from "@app/lib/api/chat";
+import {
+  getChatMessage,
+  getChatSession,
+  upsertChatMessage,
+} from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import {
   ChatMessage,
   ChatRetrievedDocument,
-  ChatSession,
   front_sequelize,
 } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -125,19 +128,14 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (stringg) is required.",
+        message: "Invalid query parameters, `mId` (string) is required.",
       },
     });
   }
 
-  const dbChatSession = await ChatSession.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: req.query.cId,
-    },
-  });
+  const chatSession = await getChatSession({ owner, user, sId: req.query.cId });
 
-  if (!dbChatSession) {
+  if (!chatSession) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -147,10 +145,6 @@ async function handler(
       },
     });
   }
-  const chatSession = {
-    ...dbChatSession,
-    created: dbChatSession.createdAt.getTime(),
-  };
 
   switch (req.method) {
     case "POST": {
@@ -160,11 +154,7 @@ async function handler(
         return;
       }
       const m = pRes.value;
-      const message = await upsertChatMessage(
-        dbChatSession.id,
-        m,
-        req.query.mId
-      );
+      const message = await upsertChatMessage(chatSession, m);
       res.status(200).json({
         message,
       });
@@ -189,7 +179,7 @@ async function handler(
     }
     case "DELETE": {
       const message = await ChatMessage.findOne({
-        where: { sId: req.query.mId, chatSessionId: dbChatSession.id },
+        where: { sId: req.query.mId, chatSessionId: chatSession.id },
       });
       if (!message) {
         return apiError(req, res, {

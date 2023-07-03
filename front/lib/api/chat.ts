@@ -1,5 +1,9 @@
 import { new_id } from "@app/lib/utils";
-import { ChatMessageType, ChatSessionType } from "@app/types/chat";
+import {
+  ChatMessageType,
+  ChatSessionType,
+  MessageFeedbackStatus,
+} from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
@@ -37,16 +41,55 @@ export async function getChatSessions(
   });
 }
 
-export async function getChatSession(
-  owner: WorkspaceType,
-  cId: string
-): Promise<ChatSessionType | null> {
+export async function getChatSession({
+  owner,
+  user,
+  sId,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+  sId: string;
+}): Promise<ChatSessionType | null> {
+  const whereClause: {
+    workspaceId: number;
+    sId: string;
+    userId?: number;
+  } = {
+    workspaceId: owner.id,
+    sId,
+  };
+
+  if (user) {
+    whereClause.userId = user.id;
+  }
+
   const chatSession = await ChatSession.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: cId,
-    },
+    where: whereClause,
   });
+
+  if (!chatSession) {
+    return null;
+  }
+
+  return {
+    id: chatSession.id,
+    userId: chatSession.userId,
+    created: chatSession.createdAt.getTime(),
+    sId: chatSession.sId,
+    title: chatSession.title,
+  };
+}
+
+export async function getChatSessionWithMessages({
+  owner,
+  user,
+  sId,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+  sId: string;
+}): Promise<ChatSessionType | null> {
+  const chatSession = await getChatSession({ owner, user, sId });
 
   if (!chatSession) {
     return null;
@@ -79,11 +122,7 @@ export async function getChatSession(
   );
 
   return {
-    id: chatSession.id,
-    userId: chatSession.userId,
-    created: chatSession.createdAt.getTime(),
-    sId: chatSession.sId,
-    title: chatSession.title,
+    ...chatSession,
     messages: messages.map((m) => {
       return {
         role: m.role,
@@ -148,22 +187,21 @@ export function newChatSessionId() {
 }
 
 export async function upsertChatMessage(
-  sessionId: number,
-  m: ChatMessageType,
-  sId: string
+  session: ChatSessionType,
+  m: ChatMessageType
 ): Promise<ChatMessageType> {
   return await front_sequelize.transaction(async (t) => {
     const [message, created] = await ChatMessage.findOrCreate({
       where: {
-        sId,
-        chatSessionId: sessionId,
+        sId: m.sId,
+        chatSessionId: session.id,
       },
       defaults: {
-        sId,
+        sId: m.sId,
         role: m.role,
         message: m.message,
         feedback: m.feedback,
-        chatSessionId: sessionId,
+        chatSessionId: session.id,
       },
       transaction: t,
     });
@@ -216,6 +254,25 @@ export async function upsertChatMessage(
     );
     return m;
   });
+}
+
+export async function updateChatMessageFeedback({
+  chatSession,
+  feedback,
+  sId,
+}: {
+  chatSession: ChatSessionType;
+  feedback: MessageFeedbackStatus;
+  sId: string;
+}): Promise<number[]> {
+  return await ChatMessage.update(
+    {
+      feedback: feedback,
+    },
+    {
+      where: { sId, chatSessionId: chatSession.id },
+    }
+  );
 }
 export async function storeChatSession(
   sId: string,
