@@ -350,6 +350,20 @@ export default function AppView({
                 </div>
               ) : null}
               <div className="flex-1"></div>
+              {!readOnly ? (
+                <div className="hidden flex-initial sm:block">
+                  <Link
+                    href="https://docs.dust.tt"
+                    target="_blank"
+                    className="mr-2"
+                  >
+                    <Button>
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      Documentation
+                    </Button>
+                  </Link>
+                </div>
+              ) : null}
               {!readOnly && run ? (
                 <div className="flex-initial">
                   <Deploy
@@ -382,18 +396,6 @@ export default function AppView({
               <div className="mx-auto mt-8 text-sm text-gray-400">
                 <p className="">Welcome to your new Dust app.</p>
                 <p className="mt-4">To get started:</p>
-                <p className="mt-2">
-                  <Link
-                    href="https://docs.dust.tt"
-                    target="_blank"
-                    className="mr-2"
-                  >
-                    <Button>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      View Documentation
-                    </Button>
-                  </Link>
-                </p>
                 <p className="mt-2">
                   <Link
                     href="https://docs.dust.tt/quickstart"
