@@ -11,7 +11,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { v4 as uuidv4 } from "uuid";
 
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
@@ -43,6 +42,7 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
+import { new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
@@ -166,7 +166,7 @@ export const getServerSideProps: GetServerSideProps<{
         chatSession: {
           sId: cId,
           title: chatSession.title || null,
-          messages: chatSession.messages,
+          messages: chatSession.messages || [],
           readOnly: user?.id !== chatSession.userId,
         },
         gaTrackingId: GA_TRACKING_ID,
@@ -855,7 +855,7 @@ export default function AppChat({
     retrievalMode: string
   ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
-      sId: uuidv4(),
+      sId: new_id(),
       role: "assistant",
       message: "",
     };
@@ -906,7 +906,7 @@ export default function AppChat({
     messages: ChatMessageType[],
     newMessage: ChatMessageType
   ): Promise<void> => {
-    if (!newMessage.sId) newMessage.sId = uuidv4();
+    if (!newMessage.sId) newMessage.sId = new_id();
     if (newMessage.role !== "error") await upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);
@@ -921,34 +921,6 @@ export default function AppChat({
     while (m.length > 0 && (message = m.pop())?.role !== "user")
       await deleteMessage(message as ChatMessageType); // remove messages until last user message
     if (message?.role === "user") await deleteMessage(message); // also remove last user message
-  }
-
-  function logFeedback(message: ChatMessageType): void {
-    const chatSessionUrl = `https://dust.tt/w/${owner.sId}/u/chat/${chatSession.sId}`;
-
-    // gets the user message preceding `message` in the chat session
-    const messagesCopy = [...messages];
-    let previousUserMessage: ChatMessageType | undefined;
-    while (messagesCopy.pop() !== message);
-    while ((previousUserMessage = messagesCopy.pop())?.role !== "user");
-
-    // create the logging message
-    const loggingMessage = {
-      topic: "Feedback",
-      feedback: message.feedback,
-      message,
-      previousUserMessage,
-      chatUrl: chatSessionUrl,
-    };
-
-    // call the logging endpoint
-    fetch(`/api/w/${owner.sId}/log`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(loggingMessage),
-    }).catch((e) => console.error(e));
   }
 
   const handleSubmit = async () => {
@@ -977,7 +949,7 @@ export default function AppChat({
     // since that happens only later on after successful run of the assistant.
     await filterErrorMessages(m);
     const userMessage: ChatMessageType = {
-      sId: uuidv4(),
+      sId: new_id(),
       role: "user",
       message: processedInput,
     };
@@ -1039,7 +1011,7 @@ export default function AppChat({
     feedback: MessageFeedbackStatus
   ) => {
     const messagesPlusFeedback = messages.map((m) => {
-      if (m === message) {
+      if (m.sId === message.sId) {
         if (m.feedback !== feedback) {
           m.feedback = feedback;
         } else {
@@ -1049,15 +1021,7 @@ export default function AppChat({
       return m;
     });
     setMessages(messagesPlusFeedback);
-
-    // if the feedback was given on the latest message a few seconds after it
-    // finished (potentially common use case), said latest message might not yet
-    // have been persisted in the database and thus not have an id. This is why
-    // we use storeghatSession
     void updateMessageFeedback(message, feedback);
-
-    // feedback is logged serverside to datadog for easy monitoring
-    logFeedback(message);
   };
   function isLatest(messageRole: MessageRole, index: number): boolean {
     // returns whether the message is the latest message of the given role

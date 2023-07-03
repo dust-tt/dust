@@ -1,9 +1,5 @@
 import { new_id } from "@app/lib/utils";
-import {
-  ChatMessageType,
-  ChatSessionType,
-  LightChatSessionType,
-} from "@app/types/chat";
+import { ChatMessageType, ChatSessionType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
@@ -90,7 +86,6 @@ export async function getChatSession(
     title: chatSession.title,
     messages: messages.map((m) => {
       return {
-        id: m.id,
         role: m.role,
         message: m.message,
         feedback: m.feedback,
@@ -112,10 +107,11 @@ export async function getChatSession(
 }
 
 export async function getChatMessage(
-  sId: string
+  sId: string,
+  chatSession: ChatSessionType
 ): Promise<ChatMessageType | null> {
   const chatMessage = await ChatMessage.findOne({
-    where: { sId },
+    where: { sId, chatSessionId: chatSession.id },
   });
   if (!chatMessage) {
     return null;
@@ -157,22 +153,40 @@ export async function upsertChatMessage(
   sId: string
 ): Promise<ChatMessageType> {
   return await front_sequelize.transaction(async (t) => {
-    const [message] = await ChatMessage.upsert(
-      {
+    const [message, created] = await ChatMessage.findOrCreate({
+      where: {
         sId,
         chatSessionId: sessionId,
+      },
+      defaults: {
+        sId,
         role: m.role,
         message: m.message,
         feedback: m.feedback,
+        chatSessionId: sessionId,
       },
-      { transaction: t }
-    );
+      transaction: t,
+    });
+    if (!created) {
+      await message.update(
+        {
+          role: m.role,
+          message: m.message,
+          feedback: m.feedback,
+        },
+        { transaction: t }
+      );
+    }
 
     await Promise.all(
       m.retrievals?.map((r) => {
         return (async () => {
-          await ChatRetrievedDocument.upsert(
-            {
+          const [document, created] = await ChatRetrievedDocument.findOrCreate({
+            where: {
+              documentId: r.documentId,
+              chatMessageId: message.id,
+            },
+            defaults: {
               dataSourceId: r.dataSourceId,
               sourceUrl: r.sourceUrl,
               documentId: r.documentId,
@@ -181,8 +195,22 @@ export async function upsertChatMessage(
               score: r.score,
               chatMessageId: message.id,
             },
-            { transaction: t }
-          );
+            transaction: t,
+          });
+          if (!created) {
+            await document.update(
+              {
+                dataSourceId: r.dataSourceId,
+                sourceUrl: r.sourceUrl,
+                documentId: r.documentId,
+                timestamp: r.timestamp,
+                tags: r.tags,
+                score: r.score,
+                chatMessageId: message.id,
+              },
+              { transaction: t }
+            );
+          }
         })();
       }) || []
     );
@@ -194,7 +222,7 @@ export async function storeChatSession(
   owner: WorkspaceType,
   user: UserType,
   title: string | null
-): Promise<LightChatSessionType> {
+): Promise<ChatSessionType> {
   const [chatSession] = await ChatSession.upsert({
     sId,
     workspaceId: owner.id,

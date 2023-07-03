@@ -1,4 +1,4 @@
-import { hash as blake3 } from "blake3";
+import { hash as blake3 } from "blake3/browser";
 import { v4 as uuidv4 } from "uuid";
 
 export const MODELS_STRING_MAX_LENGTH = 255;

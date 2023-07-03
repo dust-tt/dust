@@ -7,7 +7,6 @@ import {
   Model,
   Sequelize,
 } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
 import { MessageFeedbackStatus } from "@app/types/chat";
 
@@ -738,7 +737,7 @@ ChatMessage.init(
       primaryKey: true,
     },
     sId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
     },
     createdAt: {
       type: DataTypes.DATE,

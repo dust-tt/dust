@@ -1,11 +1,10 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
-import { validate } from "uuid";
 
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { ChatMessage } from "@app/lib/models";
+import { ChatMessage, ChatSession } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { MessageFeedbackStatus } from "@app/types/chat";
 
@@ -75,12 +74,29 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string" && validate(req.query.mId))) {
+  if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (UUID string) is required.",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
+  }
+
+  const chatSession = await ChatSession.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId: req.query.cId,
+    },
+  });
+  if (!chatSession) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "chat_session_not_found",
+        message:
+          "The chat session for the message you're trying to modify was not found.",
       },
     });
   }
@@ -98,7 +114,7 @@ async function handler(
           feedback: m.feedback,
         },
         {
-          where: { sId: req.query.mId },
+          where: { sId: req.query.mId, chatSessionId: chatSession.id },
         }
       );
 

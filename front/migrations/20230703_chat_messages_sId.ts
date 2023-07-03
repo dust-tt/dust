@@ -1,6 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
-
 import { ChatMessage } from "@app/lib/models";
+import { new_id } from "@app/lib/utils";
 
 async function main() {
   const messages = await ChatMessage.findAll();
@@ -18,7 +17,7 @@ async function main() {
         return (async () => {
           if (!m.sId) {
             await m.update({
-              sId: uuidv4(),
+              sId: new_id(),
             });
           }
         })();

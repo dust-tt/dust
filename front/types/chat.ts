@@ -16,7 +16,7 @@ export type MessageFeedbackStatus = "positive" | "negative" | null;
 
 export type MessageRole = "user" | "retrieval" | "assistant" | "error";
 export type ChatMessageType = {
-  sId: string;
+  sId: string | null;
   role: MessageRole;
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
@@ -24,14 +24,11 @@ export type ChatMessageType = {
   feedback?: MessageFeedbackStatus;
 };
 
-export type LightChatSessionType = {
+export type ChatSessionType = {
   id: number;
   userId: number;
   created: number;
   sId: string;
   title?: string;
-};
-
-export type ChatSessionType = LightChatSessionType & {
-  messages: ChatMessageType[];
+  messages?: ChatMessageType[];
 };

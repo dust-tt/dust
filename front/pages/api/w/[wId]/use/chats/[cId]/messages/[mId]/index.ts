@@ -1,6 +1,5 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
-import { validate } from "uuid";
 
 import { getChatMessage, upsertChatMessage } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -121,48 +120,58 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string" && validate(req.query.mId))) {
+  if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (UUID string) is required.",
+        message: "Invalid query parameters, `mId` (stringg) is required.",
       },
     });
   }
 
+  const dbChatSession = await ChatSession.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId: req.query.cId,
+    },
+  });
+
+  if (!dbChatSession) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "chat_session_not_found",
+        message:
+          "The chat session for the message you're trying to modify was not found.",
+      },
+    });
+  }
+  const chatSession = {
+    ...dbChatSession,
+    created: dbChatSession.createdAt.getTime(),
+  };
+
   switch (req.method) {
     case "POST": {
-      const chatSession = await ChatSession.findOne({
-        where: {
-          workspaceId: owner.id,
-          sId: req.query.cId,
-        },
-      });
-      if (!chatSession) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "chat_session_not_found",
-            message:
-              "The chat session for the message you're trying to modify was not found.",
-          },
-        });
-      }
       const pRes = parse_payload(chatMessageSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
         return;
       }
       const m = pRes.value;
-      const message = await upsertChatMessage(chatSession.id, m, req.query.mId);
+      const message = await upsertChatMessage(
+        dbChatSession.id,
+        m,
+        req.query.mId
+      );
       res.status(200).json({
         message,
       });
       return;
     }
     case "GET": {
-      const message = await getChatMessage(req.query.mId);
+      const message = await getChatMessage(req.query.mId, chatSession);
       if (!message) {
         return apiError(req, res, {
           status_code: 404,
@@ -180,7 +189,7 @@ async function handler(
     }
     case "DELETE": {
       const message = await ChatMessage.findOne({
-        where: { sId: req.query.mId },
+        where: { sId: req.query.mId, chatSessionId: dbChatSession.id },
       });
       if (!message) {
         return apiError(req, res, {
