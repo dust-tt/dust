@@ -107,7 +107,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="sm:max-w-3/4 relative w-1/2 transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:p-6">
+              <Dialog.Panel className="relative max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:p-6 lg:w-1/2">
                 <div>
                   <div className="mx-auto flex h-12 w-12 items-center justify-center ">
                     <img src="/static/google_drive_64x64.png" />
@@ -121,12 +121,12 @@ export default function GoogleDriveFoldersPickerModal(props: {
                     </Dialog.Title>
 
                     {isLoading && (
-                      <div className="mt-2 flex h-[500px] items-center  justify-center overflow-y-auto	rounded border-2 border-x-gray-100">
+                      <div className="mt-2 flex h-[500px] items-center justify-center overflow-y-auto rounded border-2 border-x-gray-100 text-gray-500">
                         <div>Loading...</div>
                       </div>
                     )}
                     {!isLoading && folders.length > 0 && (
-                      <div className="mt-2  h-[500px] overflow-y-auto	rounded border-2 border-x-gray-100">
+                      <div className="mt-2 h-[500px] overflow-y-auto rounded border-2 border-x-gray-100">
                         <GoogleDriveFoldersPicker
                           folders={initialFolders}
                           owner={props.owner}
@@ -135,6 +135,14 @@ export default function GoogleDriveFoldersPickerModal(props: {
                             setSelectedFoldersToSave(folders);
                           }}
                         />
+                      </div>
+                    )}
+                    {!isLoading && folders.length === 0 && (
+                      <div className="mt-2 flex h-[500px] items-center justify-center overflow-y-auto rounded border-2 border-x-gray-100 px-4 text-gray-500">
+                        <div>
+                          No folder available for synchronization (only shared
+                          drives are supported at the moment)
+                        </div>
                       </div>
                     )}
                   </div>
@@ -157,6 +165,7 @@ export default function GoogleDriveFoldersPickerModal(props: {
                         }
                         props.setOpen(false);
                       }}
+                      disabled={!selectedFoldersToSave}
                     >
                       Save
                     </ActionButton>
