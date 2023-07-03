@@ -56,3 +56,5 @@ pub mod blocks {
 pub mod deno {
     pub mod script;
 }
+
+pub mod consts;

@@ -1312,6 +1312,7 @@ async fn data_sources_documents_upsert(
                         &payload.tags,
                         &payload.source_url,
                         &payload.text,
+                        true, // preserve system tags
                     )
                     .await
                 {
@@ -1361,7 +1362,12 @@ async fn data_sources_documents_list(
     let project = project::Project::new_from_id(project_id);
     match state
         .store
-        .list_data_source_documents(&project, &data_source_id, Some((query.limit, query.offset)))
+        .list_data_source_documents(
+            &project,
+            &data_source_id,
+            Some((query.limit, query.offset)),
+            true, // remove system tags
+        )
         .await
     {
         Err(e) => (
@@ -1422,7 +1428,7 @@ async fn data_sources_documents_retrieve(
                     response: None,
                 }),
             ),
-            Some(ds) => match ds.retrieve(state.store.clone(), &document_id).await {
+            Some(ds) => match ds.retrieve(state.store.clone(), &document_id, true).await {
                 Err(e) => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(APIResponse {

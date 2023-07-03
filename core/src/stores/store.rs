@@ -111,6 +111,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
+        remove_system_tags: bool,
     ) -> Result<(Vec<Document>, usize)>;
     async fn delete_data_source_document(
         &self,

@@ -1,4 +1,5 @@
 use crate::blocks::block::BlockType;
+use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -1256,6 +1257,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
+        remove_system_tags: bool,
     ) -> Result<(Vec<Document>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1318,6 +1320,14 @@ impl Store for PostgresStore {
                 let chunk_count: i64 = r.get(8);
 
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+                let tags = if remove_system_tags {
+                    // remove tags that are prefixed with the system tag prefix
+                    tags.into_iter()
+                        .filter(|t| !t.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
+                        .collect()
+                } else {
+                    tags
+                };
 
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
