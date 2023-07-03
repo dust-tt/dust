@@ -1129,7 +1129,7 @@ impl Store for SQLiteStore {
                 // get current tags and put them in a set
                 let current_tags_result: Option<String> = match tx.query_row(
                     "SELECT tags_json FROM data_sources_documents \
-                       WHERE data_source = ?1 AND document_id = ?2",
+                       WHERE data_source = ?1 AND document_id = ?2 AND status='latest'",
                     params![data_source_row_id, document_id],
                     |row| Ok(row.get(0).unwrap()),
                 ) {
@@ -1162,7 +1162,7 @@ impl Store for SQLiteStore {
 
                 let mut stmt = tx.prepare_cached(
                     "UPDATE data_sources_documents SET tags_json = ?1 \
-                WHERE data_source = ?2 AND document_id = ?3",
+                WHERE data_source = ?2 AND document_id = ?3 AND status='latest'",
                 )?;
 
                 match stmt.execute(params![updated_tags_json, data_source_row_id, document_id]) {
