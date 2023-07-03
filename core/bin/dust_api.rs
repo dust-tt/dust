@@ -1180,31 +1180,7 @@ async fn data_sources_documents_update_tags(
         None => vec![],
     };
     let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
-    if add_tags.len() != add_tags_set.len() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("bad_request"),
-                    message: String::from("The `add_tags` parameter contains duplicates."),
-                }),
-                response: None,
-            }),
-        );
-    }
     let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
-    if remove_tags.len() != remove_tags_set.len() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("bad_request"),
-                    message: String::from("The `remove_tags` parameter contains duplicates."),
-                }),
-                response: None,
-            }),
-        );
-    }
     if add_tags_set.intersection(&remove_tags_set).count() > 0 {
         return (
             StatusCode::BAD_REQUEST,
@@ -1212,7 +1188,7 @@ async fn data_sources_documents_update_tags(
                 error: Some(APIError {
                     code: String::from("bad_request"),
                     message: String::from(
-                        "The `add_tags` and `remove_tags` parameters contain duplicates.",
+                        "The `add_tags` and `remove_tags` lists have a non-empty intersection.",
                     ),
                 }),
                 response: None,
@@ -1246,7 +1222,12 @@ async fn data_sources_documents_update_tags(
                 }),
             ),
             Some(ds) => match ds
-                .update_tags(state.store.clone(), document_id, add_tags, remove_tags)
+                .update_tags(
+                    state.store.clone(),
+                    document_id,
+                    add_tags_set.into_iter().collect(),
+                    remove_tags_set.into_iter().collect(),
+                )
                 .await
             {
                 Err(e) => (
