@@ -626,8 +626,6 @@ export function TemplatesView({
     });
   };
 
-  console.log(newTemplateInstructions);
-
   return (
     <div className="w-48 flex-initial flex-shrink-0 px-2">
       <div>
@@ -742,9 +740,7 @@ export function TemplatesView({
                             }-500`,
                             instructions: newTemplateInstructions,
                           };
-                          console.log(new_template);
                           const curr_templates = templates.map((d) => d);
-                          console.log("SAVINGGG");
                           if (selectedTemplate == -1) {
                             await fetch(`/api/w/${workspaceId}/templates`, {
                               method: "POST",
@@ -758,7 +754,6 @@ export function TemplatesView({
                             });
                             curr_templates.push(new_template);
                           } else {
-                            console.log("UPDATING");
                             await fetch(`/api/w/${workspaceId}/templates`, {
                               method: "PUT",
                               headers: {
@@ -869,7 +864,6 @@ export default function AppGens({
   workspaceDataSources,
   templates,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  console.log(templates);
   const prodAPI = new DustAPI(prodCredentials);
 
   const [genContent, setGenContent] = useState<string>("");
@@ -1110,7 +1104,8 @@ export default function AppGens({
         timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
       };
     }
-    let text = window.getSelection().toString();
+    let textarea = genTextAreaRef.current!;
+    let text = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
     if (text == "") {
       text = genContent;
     }
@@ -1178,7 +1173,8 @@ export default function AppGens({
                   <div className="flex flex-initial">
                     <ActionButton
                       disabled={retrievalLoading}
-                      onClick={() => {
+                        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                        e.preventDefault();
                         void handleSearch();
                       }}
                     >
