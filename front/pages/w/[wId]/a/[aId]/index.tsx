@@ -350,6 +350,20 @@ export default function AppView({
                 </div>
               ) : null}
               <div className="flex-1"></div>
+              {!readOnly ? (
+                <div className="hidden flex-initial sm:block">
+                  <Link
+                    href="https://docs.dust.tt"
+                    target="_blank"
+                    className="mr-2"
+                  >
+                    <Button>
+                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                      Documentation
+                    </Button>
+                  </Link>
+                </div>
+              ) : null}
               {!readOnly && run ? (
                 <div className="flex-initial">
                   <Deploy
