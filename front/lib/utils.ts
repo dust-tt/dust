@@ -1,4 +1,4 @@
-import { hash as blake3 } from "blake3/browser";
+import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
@@ -11,6 +11,13 @@ export function new_id() {
   const u = uuidv4();
   const b = blake3(u);
   return Buffer.from(b).toString("hex");
+}
+
+export function client_side_new_id() {
+  // blake3 is not available in the browser
+  const u = uuidv4();
+  // return the last 10 characters of the uuid
+  return u.substring(u.length - 10);
 }
 
 export const shallowBlockClone = (block: any) => {

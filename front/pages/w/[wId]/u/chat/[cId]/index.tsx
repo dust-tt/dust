@@ -42,7 +42,7 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
-import { new_id } from "@app/lib/utils";
+import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
@@ -855,7 +855,7 @@ export default function AppChat({
     retrievalMode: string
   ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
-      sId: new_id(),
+      sId: client_side_new_id(),
       role: "assistant",
       message: "",
     };
@@ -906,7 +906,7 @@ export default function AppChat({
     messages: ChatMessageType[],
     newMessage: ChatMessageType
   ): Promise<void> => {
-    if (!newMessage.sId) newMessage.sId = new_id();
+    if (!newMessage.sId) newMessage.sId = client_side_new_id();
     if (newMessage.role !== "error") await upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);
@@ -949,7 +949,7 @@ export default function AppChat({
     // since that happens only later on after successful run of the assistant.
     await filterErrorMessages(m);
     const userMessage: ChatMessageType = {
-      sId: new_id(),
+      sId: client_side_new_id(),
       role: "user",
       message: processedInput,
     };
