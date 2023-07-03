@@ -32,48 +32,51 @@ const {
   GITHUB_APP_URL = "",
 } = process.env;
 
-type UpcomingConnectorProvider = "google_drive" | "github";
-
 type DataSourceIntegration = {
   name: string;
-  connector?: ConnectorType | null;
-  fetchConnectorError: boolean | null;
+  dataSourceName: string | null;
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
   isBuilt: boolean;
-  connectorProvider: ConnectorProvider | UpcomingConnectorProvider;
+  connectorProvider: ConnectorProvider;
   logoPath?: string;
   synchronizedAgo?: string | null;
+  setupWithSuffix: string | null;
 };
 
-const DATA_SOURCE_INTEGRATIONS: DataSourceIntegration[] = [
-  {
+const DATA_SOURCE_INTEGRATIONS: {
+  [key in ConnectorProvider]: {
+    name: string;
+    connectorProvider: ConnectorProvider;
+    isBuilt: boolean;
+    logoPath: string;
+  };
+} = {
+  notion: {
     name: "Notion",
     connectorProvider: "notion",
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
-    fetchConnectorError: null,
   },
-  {
+  slack: {
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
-    fetchConnectorError: null,
   },
-  {
+  github: {
     name: "GitHub",
     connectorProvider: "github",
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
-    fetchConnectorError: null,
   },
-  {
+  google_drive: {
     name: "Google Drive™",
     connectorProvider: "google_drive",
     isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
-    fetchConnectorError: null,
   },
-];
+};
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
@@ -124,24 +127,32 @@ export const getServerSideProps: GetServerSideProps<{
   const allDataSources = await getDataSources(auth);
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
   const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
-  const provider2Connector = await Promise.all(
+
+  const managedConnector: {
+    dataSourceName: string;
+    provider: ConnectorProvider;
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+  }[] = await Promise.all(
     managedDataSources.map(async (mds) => {
-      if (!mds.connectorId) {
+      if (!mds.connectorId || !mds.connectorProvider) {
         throw new Error(
           // Should never happen, but we need to make eslint happy
-          "Unexpected empty connectorId for managed data sources"
+          "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
         );
       }
       try {
         const statusRes = await ConnectorsAPI.getConnector(mds.connectorId);
         if (statusRes.isErr()) {
           return {
+            dataSourceName: mds.name,
             provider: mds.connectorProvider,
-            connector: undefined,
+            connector: null,
             fetchConnectorError: true,
           };
         }
         return {
+          dataSourceName: mds.name,
           provider: mds.connectorProvider,
           connector: statusRes.value,
           fetchConnectorError: false,
@@ -157,13 +168,65 @@ export const getServerSideProps: GetServerSideProps<{
           "Failed to get connector"
         );
         return {
+          dataSourceName: mds.name,
           provider: mds.connectorProvider,
-          connector: undefined,
+          connector: null,
           fetchConnectorError: true,
         };
       }
     })
   );
+
+  const integrations: DataSourceIntegration[] = managedConnector.map((mc) => {
+    const integration = DATA_SOURCE_INTEGRATIONS[mc.provider];
+    return {
+      ...integration,
+      dataSourceName: mc.dataSourceName,
+      connector: mc.connector,
+      fetchConnectorError: mc.fetchConnectorError,
+      synchronizedAgo: mc.connector?.lastSyncSuccessfulTime
+        ? timeAgoFrom(mc.connector.lastSyncSuccessfulTime)
+        : null,
+      setupWithSuffix: null,
+    };
+  });
+
+  let setupWithSuffix: {
+    connector: ConnectorProvider;
+    suffix: string;
+  } | null = null;
+  if (
+    context.query.setupWithSuffixConnector &&
+    Object.keys(DATA_SOURCE_INTEGRATIONS).includes(
+      context.query.setupWithSuffixConnector as string
+    ) &&
+    context.query.setupWithSuffixSuffix &&
+    typeof context.query.setupWithSuffixSuffix === "string"
+  ) {
+    setupWithSuffix = {
+      connector: context.query.setupWithSuffixConnector as ConnectorProvider,
+      suffix: context.query.setupWithSuffixSuffix,
+    };
+  }
+
+  for (const key in DATA_SOURCE_INTEGRATIONS) {
+    if (
+      !integrations.find(
+        (i) => i.connectorProvider === (key as ConnectorProvider)
+      ) ||
+      setupWithSuffix?.connector === key
+    ) {
+      integrations.push({
+        ...DATA_SOURCE_INTEGRATIONS[key as ConnectorProvider],
+        dataSourceName: null,
+        connector: null,
+        fetchConnectorError: false,
+        synchronizedAgo: null,
+        setupWithSuffix:
+          setupWithSuffix?.connector === key ? setupWithSuffix.suffix : null,
+      });
+    }
+  }
 
   return {
     props: {
@@ -172,24 +235,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       isAdmin,
       dataSources,
-      integrations: DATA_SOURCE_INTEGRATIONS.map(
-        (managedDs): DataSourceIntegration => {
-          const p2c = provider2Connector.find(
-            (p) => p.provider == managedDs.connectorProvider
-          );
-          return {
-            ...managedDs,
-            connector: p2c?.connector || null,
-            fetchConnectorError:
-              p2c?.fetchConnectorError === undefined
-                ? null
-                : p2c.fetchConnectorError,
-            synchronizedAgo: p2c?.connector?.lastSyncSuccessfulTime
-              ? timeAgoFrom(p2c.connector.lastSyncSuccessfulTime)
-              : null,
-          };
-        }
-      ),
+      integrations,
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
@@ -222,7 +268,10 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
-  const handleEnableManagedDataSource = async (provider: ConnectorProvider) => {
+  const handleEnableManagedDataSource = async (
+    provider: ConnectorProvider,
+    suffix: string | null
+  ) => {
     try {
       let connectionId: string;
       if (connectorIsUsingNango(provider)) {
@@ -247,16 +296,23 @@ export default function DataSourcesView({
 
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
 
-      const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          provider,
-          connectionId,
-        }),
-      });
+      const res = await fetch(
+        suffix
+          ? `/api/w/${
+              owner.sId
+            }/data_sources/managed?suffix=${encodeURIComponent(suffix)}`
+          : `/api/w/${owner.sId}/data_sources/managed`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider,
+            connectionId,
+          }),
+        }
+      );
 
       if (res.ok) {
         const createdManagedDataSource: {
@@ -265,8 +321,13 @@ export default function DataSourcesView({
         } = await res.json();
         setLocalIntegrations((prev) =>
           prev.map((ds) => {
-            return ds.connectorProvider == provider
-              ? { ...ds, connector: createdManagedDataSource.connector }
+            return ds.connector === null && ds.connectorProvider == provider
+              ? {
+                  ...ds,
+                  connector: createdManagedDataSource.connector,
+                  setupWithSuffix: null,
+                  dataSourceName: createdManagedDataSource.dataSource.name,
+                }
               : ds;
           })
         );
@@ -318,7 +379,7 @@ export default function DataSourcesView({
                 </h1>
 
                 <p className="text-sm text-gray-500">
-                  Data Sources let you perform semantic searches on your data.
+                  Data Sources let you expose your data to Dust.
                 </p>
               </div>
               <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
@@ -366,12 +427,8 @@ export default function DataSourcesView({
                     <>
                       <p>Welcome to Dust Data Sources 🔎</p>
                       <p className="mt-2">
-                        Data sources let you upload documents to perform
-                        semantic searches on them (
-                        <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                          data_source
-                        </span>{" "}
-                        block).
+                        Data sources let you upload documents to expose
+                        information to Dust.
                       </p>
                     </>
                   )}
@@ -437,7 +494,10 @@ export default function DataSourcesView({
             {localIntegrations.map((ds) => {
               return (
                 <li
-                  key={`managed-${ds.connectorProvider}`}
+                  key={
+                    ds.dataSourceName ||
+                    `managed-to-connect-${ds.connectorProvider}`
+                  }
                   className="px-2 py-4"
                 >
                   <div className="flex items-center justify-between">
@@ -449,9 +509,7 @@ export default function DataSourcesView({
                       ) : null}
                       {ds.connector ? (
                         <Link
-                          href={`/w/${
-                            owner.sId
-                          }/ds/${`managed-${ds.connectorProvider}`}`}
+                          href={`/w/${owner.sId}/ds/${ds.dataSourceName}`}
                           className="block"
                         >
                           <p
@@ -500,7 +558,8 @@ export default function DataSourcesView({
                                 canUseManagedDataSources
                                   ? async () => {
                                       await handleEnableManagedDataSource(
-                                        ds.connectorProvider as ConnectorProvider
+                                        ds.connectorProvider as ConnectorProvider,
+                                        ds.setupWithSuffix
                                       );
                                     }
                                   : () => {

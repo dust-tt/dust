@@ -12,20 +12,19 @@ import { Result } from "@connectors/lib/result";
 import { isConnectorProvider } from "@connectors/types/connector";
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
-  if (!args.provider) {
-    throw new Error("Missing --provider argument");
-  }
-  if (!isConnectorProvider(args.provider)) {
-    throw new Error(`Unknown provider: ${args.provider}`);
-  }
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
+  if (!args.name) {
+    throw new Error("Missing --dataSourceName argument");
+  }
 
+  // We retrieve by data source name as we can have multiple data source with the same provider for
+  // a given workspace.
   const connector = await Connector.findOne({
     where: {
-      type: args.provider,
       workspaceId: args.wId,
+      dataSourceName: args.dataSourceName,
     },
   });
 
@@ -34,7 +33,8 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
       `Could not find connector for provider ${args.provider} and workspace ${args.wId}`
     );
   }
-  const provider = args.provider;
+  const provider = connector.type;
+
   switch (command) {
     case "stop": {
       await throwOnError(
@@ -126,11 +126,14 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     case "skip-page": {
-      if (!args.pageId) {
-        throw new Error("Missing --pageId argument");
-      }
       if (!args.wId) {
         throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.pageId) {
+        throw new Error("Missing --pageId argument");
       }
       const pageId = args.pageId as string;
 
@@ -138,17 +141,19 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         where: {
           type: "notion",
           workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
         },
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
       const connectorId = connector.id;
       const existingPage = await NotionPage.findOne({
         where: {
           notionPageId: pageId,
+          connectorId: connector.id,
         },
       });
 
@@ -170,11 +175,14 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     case "skip-database": {
-      if (!args.databaseId) {
-        throw new Error("Missing --databaseId argument");
-      }
       if (!args.wId) {
         throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.databaseId) {
+        throw new Error("Missing --databaseId argument");
       }
       const databaseId = args.databaseId as string;
 
@@ -182,12 +190,13 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         where: {
           type: "notion",
           workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
         },
       });
 
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}, and type notion`
         );
       }
 
