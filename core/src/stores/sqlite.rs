@@ -14,7 +14,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -1085,6 +1085,108 @@ impl Store for SQLiteStore {
             }))
         })
         .await?
+    }
+
+    async fn update_data_source_document_tags(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        add_tags: &Vec<String>,
+        remove_tags: &Vec<String>,
+    ) -> Result<Vec<String>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let document_id = document_id.to_string();
+
+        let pool = self.pool.clone();
+
+        let add_tags = add_tags.clone();
+        let remove_tags = remove_tags.clone();
+
+        let tags_or_error = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let mut c = pool.get()?;
+            let tx = c.transaction()?;
+            let tags = {
+                let row_id: Option<i64> = match tx.query_row(
+                    "SELECT id FROM data_sources WHERE project = ?1 AND data_source_id = ?2",
+                    params![project_id, data_source_id],
+                    |row| Ok(row.get(0).unwrap()),
+                ) {
+                    Err(e) => match e {
+                        rusqlite::Error::QueryReturnedNoRows => None,
+                        _ => Err(e)?,
+                    },
+                    Ok(row_id) => Some(row_id),
+                };
+
+                let data_source_row_id = match row_id {
+                    Some(r) => r,
+                    None => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+                };
+
+                // get current tags and put them in a set
+                let current_tags_result: Option<String> = match tx.query_row(
+                    "SELECT tags_json FROM data_sources_documents \
+                       WHERE data_source = ?1 AND document_id = ?2",
+                    params![data_source_row_id, document_id],
+                    |row| Ok(row.get(0).unwrap()),
+                ) {
+                    Err(e) => match e {
+                        rusqlite::Error::QueryReturnedNoRows => Err(anyhow!(
+                            "Unknown Document: {} in DataSource: {}",
+                            document_id,
+                            data_source_id
+                        ))?,
+                        _ => Err(e)?,
+                    },
+                    Ok(tags_data) => tags_data,
+                };
+                let mut current_tags: HashSet<String> = match current_tags_result {
+                    Some(tags_data) => serde_json::from_str(&tags_data)?,
+                    None => HashSet::new(),
+                };
+
+                // update the set of tags based on the add and remove lists
+                for tag in add_tags {
+                    current_tags.insert(tag.clone());
+                }
+                for tag in remove_tags {
+                    current_tags.remove(&tag);
+                }
+
+                // Serialize the updated tags into a JSON string
+                let updated_tags_vec: Vec<String> = current_tags.into_iter().collect();
+                let updated_tags_json = serde_json::to_string(&updated_tags_vec)?;
+
+                let mut stmt = tx.prepare_cached(
+                    "UPDATE data_sources_documents SET tags_json = ?1 \
+                WHERE data_source = ?2 AND document_id = ?3",
+                )?;
+
+                match stmt.execute(params![updated_tags_json, data_source_row_id, document_id]) {
+                    Ok(rows_updated) => match rows_updated {
+                        0 => Err(anyhow!(
+                            "Unknown Document: {} in DataSource: {}",
+                            document_id,
+                            data_source_id
+                        ))?,
+                        _ => {}
+                    },
+                    Err(e) => Err(e)?,
+                }
+
+                updated_tags_vec
+            };
+            tx.commit()?;
+            Ok(tags)
+        })
+        .await?;
+
+        match tags_or_error {
+            Err(e) => Err(e),
+            Ok(tags) => Ok(tags),
+        }
     }
 
     async fn upsert_data_source_document(

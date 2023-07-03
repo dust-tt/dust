@@ -10,6 +10,7 @@ use cloud_storage::Object;
 use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
 use qdrant_client::{
     prelude::{Payload, QdrantClient, QdrantClientConfig},
     qdrant,
@@ -336,6 +337,50 @@ impl DataSource {
         ));
 
         Ok(())
+    }
+
+    pub async fn update_tags(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: String,
+        add_tags: Vec<String>,
+        remove_tags: Vec<String>,
+    ) -> Result<Vec<String>> {
+        let qdrant_client = self.qdrant_client().await?;
+        let new_tags = store
+            .update_data_source_document_tags(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &add_tags,
+                &remove_tags,
+            )
+            .await?;
+        let mut payload = Payload::new();
+        payload.insert("tags", new_tags.clone());
+        let field_condition = qdrant::FieldCondition {
+            key: "document_id".to_string(),
+            r#match: Some(qdrant::Match {
+                match_value: Some(qdrant::r#match::MatchValue::Text(document_id)),
+            }),
+            ..Default::default()
+        };
+        let points_selector = PointsSelector {
+            points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter {
+                must: vec![field_condition.into()],
+                ..Default::default()
+            })),
+        };
+        qdrant_client
+            .set_payload(
+                self.qdrant_collection().to_string(),
+                &points_selector,
+                payload,
+                None,
+            )
+            .await?;
+
+        Ok(new_tags)
     }
 
     pub async fn upsert(
