@@ -12,3 +12,8 @@ export type GensRetrievedDocumentType = {
     score: number;
   }[];
 };
+
+export type GensTemplateType = {
+  name: string;
+  instructions: string[]
+};

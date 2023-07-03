@@ -892,6 +892,54 @@ ChatRetrievedDocument.init(
 
 ChatMessage.hasMany(ChatRetrievedDocument);
 
+export class GensTemplate extends Model<
+  InferAttributes<GensTemplate>,
+  InferCreationAttributes<GensTemplate>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare instructions: string[];
+  declare name: string;
+}
+
+GensTemplate.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    instructions: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    }
+  },
+  {
+    modelName: "gens_template",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["workspaceId"] }],
+  }
+)
+
+Workspace.hasMany(GensTemplate)
+
+
 export class TrackedDocument extends Model<
   InferAttributes<TrackedDocument>,
   InferCreationAttributes<TrackedDocument>

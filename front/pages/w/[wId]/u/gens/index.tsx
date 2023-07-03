@@ -36,8 +36,9 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
-import { GensRetrievedDocumentType } from "@app/types/gens";
+import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { GensTemplate } from "@app/lib/models";
 
 type DataSource = {
   name: string;
@@ -62,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   gaTrackingId: string;
   workspaceDataSources: DataSource[];
+  templates: GensTemplateType[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -86,6 +88,18 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+
+  const templates = (await GensTemplate.findAll({
+    where: {
+      workspaceId: owner.id
+    }
+  })).map((temp) => {
+    return {
+      name: temp.name,
+      instructions: temp.instructions,
+      id: temp.id
+    }
+  })
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
@@ -126,6 +140,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly: false,
       gaTrackingId: GA_TRACKING_ID,
       workspaceDataSources: dataSources,
+      templates
     },
   };
 };
@@ -525,8 +540,12 @@ type TemplateType = {
 
 export function TemplatesView({
   onTemplateSelect,
+  workspaceId,
+  savedTemplates
 }: {
   onTemplateSelect: (template: TemplateType) => void;
+  workspaceId: string,
+  savedTemplates: GensTemplateType[];
 }) {
   const defaults = [
     {
@@ -540,6 +559,7 @@ export function TemplatesView({
         "We just want to gather facts and answers related to the document text",
       ],
     },
+    /*
     {
       name: "Contradictor",
       color: "bg-blue-500",
@@ -557,7 +577,8 @@ export function TemplatesView({
       color: "bg-green-500",
       instructions: ["Be a pirate, and only speak in pirate language"],
     },
-  ];
+    */
+  ].concat(savedTemplates);
 
   const [templates, setTemplates] = useState(defaults);
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
@@ -567,13 +588,6 @@ export function TemplatesView({
   >([]);
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
-
-  useEffect(() => {
-    const savedTemplates = localStorage.getItem("dust_gens_templates");
-    if (savedTemplates) {
-      setTemplates(JSON.parse(savedTemplates));
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("dust_gens_templates", JSON.stringify(templates));
@@ -596,6 +610,7 @@ export function TemplatesView({
       return newInstructions;
     });
   };
+  console.log(newTemplateInstructions);
 
   return (
     <div className="w-48 flex-initial flex-shrink-0 px-2">
@@ -681,7 +696,7 @@ export function TemplatesView({
                         </ActionButton>
                       </div>
                       <ActionButton
-                        onClick={() => {
+                        onClick={async () => {
                           setFormExpanded(false);
                           const colors = ["red", "yellow", "green", "blue"];
                           const new_template = {
@@ -694,12 +709,34 @@ export function TemplatesView({
                           };
                           console.log(new_template);
                           const curr_templates = templates.map((d) => d);
+                          console.log("SAVINGGG")
                           if (selectedTemplate == -1) {
+                            await fetch(`/api/w/${workspaceId}/templates`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                name: newTemplateTitle,
+                                instructions: newTemplateInstructions
+                              })
+                            })
                             curr_templates.push(new_template);
                           } else {
+                            console.log("UPDATING")
+                            await fetch(`/api/w/${workspaceId}/templates`, {
+                              method: "PUT",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                name: newTemplateTitle,
+                                instructions: newTemplateInstructions,
+                                id: templates[selectedTemplate].id
+                              })
+                            })
                             curr_templates[selectedTemplate] = new_template;
                           }
-                          console.log(curr_templates);
                           setTemplates(curr_templates);
                           setFormExpanded(false);
                           setNewTemplateInstructions([]);
@@ -749,7 +786,8 @@ export function TemplatesView({
                     <PencilIcon
                       onClick={() => {
                         setSelectedTemplate(i);
-                        setNewTemplateInstructions(t.instructions);
+                        console.log(t.name, t.instructions)
+                        setNewTemplateInstructions(t.instructions || []);
                         setNewTemplateTitle(t.name);
                         setFormExpanded(true);
                       }}
@@ -795,7 +833,9 @@ export default function AppGens({
   readOnly,
   gaTrackingId,
   workspaceDataSources,
+  templates
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  console.log(templates);
   const prodAPI = new DustAPI(prodCredentials);
 
   const [genContent, setGenContent] = useState<string>("");
@@ -1036,9 +1076,13 @@ export default function AppGens({
         timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
       };
     }
-
+    let text = window.getSelection().toString();
+    if (text == "") {
+      text = genContent
+    }
+    console.log(text);
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
-      { text: genContent, userContext },
+      { text: text, userContext },
     ]);
     if (res.isErr()) {
       window.alert("Error runing `gens-retrieval`: " + res.error);
@@ -1092,6 +1136,8 @@ export default function AppGens({
 
                   <TemplatesView
                     onTemplateSelect={(t) => (template.current = t)}
+                    workspaceId={owner.sId}
+                    savedTemplates={templates}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">

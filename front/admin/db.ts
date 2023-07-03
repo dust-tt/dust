@@ -12,6 +12,7 @@ import {
   Provider,
   Run,
   TrackedDocument,
+  GensTemplate,
   User,
   UserMetadata,
   Workspace,
@@ -36,6 +37,7 @@ async function main() {
   await ChatMessage.sync({ alter: true });
   await ChatRetrievedDocument.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
+  await GensTemplate.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
