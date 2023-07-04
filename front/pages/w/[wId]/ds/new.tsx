@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import MainTab from "@app/components/admin/MainTab";
-import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -70,12 +69,6 @@ export default function DataSourceNew({
   const [dataSourceVisibility, setDataSourceVisibility] = useState(
     "public" as DataSourceVisibility
   );
-  const [dataSourceModel, setDataSourceModel] = useState({
-    provider_id: "",
-    model_id: "",
-  });
-  const [dataSourceMaxChunkSize, setDataSourceMaxChunkSize] = useState(256);
-  const [userUpsertable, setUserUpsertable] = useState(false);
 
   const formValidation = () => {
     let exists = false;
@@ -108,12 +101,8 @@ export default function DataSourceNew({
   };
 
   useEffect(() => {
-    setDisabled(
-      !formValidation() ||
-        !dataSourceModel.provider_id ||
-        !dataSourceModel.model_id
-    );
-  }, [dataSourceName, dataSourceModel]);
+    setDisabled(!formValidation());
+  }, [dataSourceName]);
 
   const router = useRouter();
 
@@ -128,10 +117,6 @@ export default function DataSourceNew({
         name: dataSourceName,
         description: dataSourceDescription,
         visibility: dataSourceVisibility,
-        provider_id: dataSourceModel.provider_id,
-        model_id: dataSourceModel.model_id,
-        max_chunk_size: `${dataSourceMaxChunkSize}`,
-        userUpsertable: userUpsertable,
       }),
     });
     if (res.ok) {
@@ -291,86 +276,6 @@ export default function DataSourceNew({
                           </div>
                         </div>
                       </fieldset>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                    <div className="sm:col-span-6">
-                      <label
-                        htmlFor="embedder"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Embedder
-                      </label>
-                      <div className="mt-1 flex">
-                        <ModelPicker
-                          owner={owner}
-                          readOnly={false}
-                          model={dataSourceModel}
-                          onModelUpdate={(model) => {
-                            setDataSourceModel(model);
-                          }}
-                          chatOnly={false}
-                          embedOnly={true}
-                        />
-                      </div>
-                      <p className="mt-2 text-sm text-gray-500">
-                        The embedder is the model that will be used by the data
-                        source to embed documents' chunks and search queries.
-                      </p>
-                    </div>
-
-                    <div className="sm:col-span-6">
-                      <div className="flex justify-between">
-                        <label
-                          htmlFor="dataSourceDescription"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Max Chunk Size
-                        </label>
-                      </div>
-                      <div className="mt-1 flex w-32 rounded-md shadow-sm">
-                        <input
-                          type="number"
-                          name="max_chunk_size"
-                          id="dataSourceMaxChunkSize"
-                          className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
-                          value={dataSourceMaxChunkSize}
-                          onChange={(e) =>
-                            setDataSourceMaxChunkSize(parseInt(e.target.value))
-                          }
-                        />
-                      </div>
-                      <p className="mt-2 text-sm text-gray-500">
-                        The (maximum) number of tokens used to chunk the
-                        documents. 256 tokens is recommended.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex justify-between">
-                      <label
-                        htmlFor="upsertable"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Upload Rights
-                      </label>
-                    </div>
-                    <div className="mt-2 flex items-center">
-                      <input
-                        id="dataSourceUpsertable"
-                        name="upsertable"
-                        type="checkbox"
-                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                        checked={userUpsertable}
-                        onChange={(e) => setUserUpsertable(e.target.checked)}
-                      />
-                      <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                        Users (non-builders) of your workspace can upload
-                        documents to the data source
-                      </p>
                     </div>
                   </div>
                 </div>

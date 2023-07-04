@@ -1,11 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { credentialsFromProviders } from "@app/lib/api/credentials";
+import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
@@ -69,14 +68,6 @@ async function handler(
           },
         });
       }
-
-      const [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-      ]);
 
       if (!req.body || !(typeof req.body.text == "string")) {
         return apiError(req, res, {
@@ -182,7 +173,8 @@ async function handler(
         });
       }
 
-      const credentials = credentialsFromProviders(providers);
+      // Dust managed credentials: all data sources.
+      const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
       const data = await CoreAPI.upsertDataSourceDocument(
