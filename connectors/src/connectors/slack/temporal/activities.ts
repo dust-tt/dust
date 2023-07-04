@@ -239,6 +239,12 @@ export async function getMessagesForChannel(
     limit: limit,
     cursor: nextCursor,
   });
+  // Despite the typing, in practice `conversations.history` can be undefined at times.
+  if (!c) {
+    throw new Error(
+      "Received unexpected conversations.history replies from Slack API in getMessagesForChannel (generally transient)"
+    );
+  }
   if (c.error) {
     throw new Error(
       `Failed getting messages for channel ${channelId}: ${c.error}`
