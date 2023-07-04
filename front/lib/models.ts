@@ -8,6 +8,8 @@ import {
   Sequelize,
 } from "sequelize";
 
+import { MessageFeedbackStatus } from "@app/types/chat";
+
 import { ConnectorProvider } from "./connectors_api";
 
 const { FRONT_DATABASE_URI } = process.env;
@@ -765,13 +767,13 @@ export class ChatMessage extends Model<
   InferCreationAttributes<ChatMessage>
 > {
   declare id: CreationOptional<number>;
+  declare sId: string;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
+  declare feedback: MessageFeedbackStatus;
   declare role: "user" | "retrieval" | "assistant" | "error";
   declare message?: string;
   // `retrievals` are stored in a separate table
-
   declare chatSessionId: ForeignKey<ChatSession["id"]>;
 }
 
@@ -781,6 +783,9 @@ ChatMessage.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    sId: {
+      type: DataTypes.STRING,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -800,11 +805,18 @@ ChatMessage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    feedback: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "chat_message",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["chatSessionId", "createdAt"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["chatSessionId", "createdAt"] },
+    ],
   }
 );
 

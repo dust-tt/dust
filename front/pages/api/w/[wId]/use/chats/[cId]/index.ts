@@ -1,68 +1,21 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getChatSession, storeChatSession } from "@app/lib/api/chat";
+import {
+  getChatSessionWithMessages,
+  storeChatSession,
+} from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  ChatMessageType,
-  ChatRetrievedDocumentType,
-  ChatSessionType,
-} from "@app/types/chat";
+import { ChatMessageType, ChatSessionType } from "@app/types/chat";
 
-const chatRetrievedDocumentSchema: JSONSchemaType<ChatRetrievedDocumentType> = {
-  type: "object",
-  properties: {
-    dataSourceId: { type: "string" },
-    sourceUrl: { type: "string" },
-    documentId: { type: "string" },
-    timestamp: { type: "string" },
-    tags: { type: "array", items: { type: "string" } },
-    score: { type: "number" },
-    chunks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          text: { type: "string" },
-          offset: { type: "number" },
-          score: { type: "number" },
-        },
-        required: ["text", "offset", "score"],
-      },
-    },
-  },
-  required: [
-    "dataSourceId",
-    "sourceUrl",
-    "documentId",
-    "timestamp",
-    "tags",
-    "score",
-    "chunks",
-  ],
-};
-
-const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
-  type: "object",
-  properties: {
-    role: { type: "string" },
-    message: { type: "string", nullable: true },
-    retrievals: {
-      type: "array",
-      items: chatRetrievedDocumentSchema,
-      nullable: true,
-    },
-    query: { type: "string", nullable: true },
-  },
-  required: ["role"],
-};
+import { chatMessageSchema } from "./messages/[mId]";
 
 const chatSessionCreateSchema: JSONSchemaType<{
   title?: string;
-  messages: ChatMessageType[];
+  messages?: ChatMessageType[];
 }> = {
   type: "object",
   properties: {
@@ -70,9 +23,9 @@ const chatSessionCreateSchema: JSONSchemaType<{
     messages: {
       type: "array",
       items: chatMessageSchema,
+      nullable: true,
     },
   },
-  required: ["messages"],
 };
 
 export type ChatSessionResponseBody = {
@@ -142,13 +95,7 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await storeChatSession(
-        cId,
-        owner,
-        user,
-        s.title || null,
-        s.messages
-      );
+      const session = await storeChatSession(cId, owner, user, s.title || null);
 
       res.status(200).json({
         session,
@@ -169,7 +116,11 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const session = await getChatSession(owner, cId);
+      const session = await getChatSessionWithMessages({
+        owner,
+        user,
+        sId: cId,
+      });
       if (!session) {
         return apiError(req, res, {
           status_code: 404,

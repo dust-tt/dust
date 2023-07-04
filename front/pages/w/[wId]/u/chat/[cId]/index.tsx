@@ -21,10 +21,14 @@ import TimeRangePicker, {
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
+  FeedbackHandler,
+  MessageFeedback,
+} from "@app/components/use/MessageFeedback";
+import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions_registry";
-import { getChatSession } from "@app/lib/api/chat";
+import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
   getSession,
@@ -38,9 +42,15 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
+import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import { timeAgoFrom } from "@app/lib/utils";
-import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
+import {
+  ChatMessageType,
+  ChatRetrievedDocumentType,
+  MessageFeedbackStatus,
+  MessageRole,
+} from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -128,7 +138,11 @@ export const getServerSideProps: GetServerSideProps<{
   });
 
   const cId = context.params?.cId as string;
-  const chatSession = await getChatSession(owner, cId);
+  const chatSession = await getChatSessionWithMessages({
+    owner,
+    user,
+    sId: cId,
+  });
 
   if (!chatSession) {
     return {
@@ -156,7 +170,7 @@ export const getServerSideProps: GetServerSideProps<{
         chatSession: {
           sId: cId,
           title: chatSession.title || null,
-          messages: chatSession.messages,
+          messages: chatSession.messages || [],
           readOnly: user?.id !== chatSession.userId,
         },
         gaTrackingId: GA_TRACKING_ID,
@@ -389,7 +403,7 @@ export function RetrievalsView({
 
 function formatMessageWithLinks(message: string): JSX.Element {
   /* Format message by replacing markdown links with <Link/> elements*/
-  const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+  const linkRegex = /\[([^\]]*?)\]\((.*?)\)/g;
   const matches = message.matchAll(linkRegex);
   let lastIndex = 0;
   const elements = [];
@@ -420,12 +434,14 @@ export function MessageView({
   loading,
   isLatestRetrieval,
   readOnly,
+  feedback,
 }: {
   user: UserType | null;
   message: ChatMessageType;
   loading: boolean;
   isLatestRetrieval: boolean;
   readOnly: boolean;
+  feedback?: { handler: FeedbackHandler; hover: boolean } | false;
 }) {
   return (
     <div className="">
@@ -461,12 +477,19 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "ml-2 mt-1 flex flex-1 flex-col whitespace-pre-wrap",
+              "ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
             {formatMessageWithLinks(message.message || "")}
           </div>
+          {feedback && (
+            <MessageFeedback
+              message={message}
+              feedbackHandler={feedback.handler}
+              hover={feedback.hover}
+            />
+          )}
         </div>
       )}
     </div>
@@ -670,10 +693,71 @@ export default function AppChat({
     return title;
   };
 
-  const storeChatSession = async (
-    title: string,
-    messages: ChatMessageType[]
-  ) => {
+  const upsertNewMessage = async (
+    message: ChatMessageType
+  ): Promise<boolean> => {
+    // Upsert new message by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error saving message: ${data.error.message}`);
+      return false;
+    }
+  };
+
+  const deleteMessage = async (message: ChatMessageType) => {
+    // Delete message by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error deleting message: ${data.error.message}`);
+      return false;
+    }
+  };
+
+  const updateMessageFeedback = async (
+    message: ChatMessageType,
+    feedback: MessageFeedbackStatus
+  ): Promise<boolean> => {
+    // Update message feedback by making a REST call to the backend.
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ feedback }),
+      }
+    );
+    if (res.ok) {
+      return true;
+    } else {
+      const data = await res.json();
+      window.alert(`Error updating feedback: ${data.error.message}`);
+      return false;
+    }
+  };
+
+  const storeChatSession = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
       {
@@ -683,7 +767,6 @@ export default function AppChat({
         },
         body: JSON.stringify({
           title,
-          messages,
         }),
       }
     );
@@ -774,6 +857,7 @@ export default function AppChat({
     retrievalMode: string
   ): Promise<ChatMessageType> => {
     const assistantMessage: ChatMessageType = {
+      sId: client_side_new_id(),
       role: "assistant",
       message: "",
     };
@@ -820,20 +904,25 @@ export default function AppChat({
     }
     throw new Error("Error: no OUTPUT block streamed.");
   };
-  const updateMessages = (
+  const updateMessages = async (
     messages: ChatMessageType[],
-    userMessage: ChatMessageType
-  ): void => {
-    messages.push(userMessage);
+    newMessage: ChatMessageType
+  ): Promise<void> => {
+    if (!newMessage.sId) newMessage.sId = client_side_new_id();
+    if (newMessage.role !== "error") await upsertNewMessage(newMessage);
+    messages.push(newMessage);
     setMessages(messages);
     setResponse(null);
   };
 
-  function filterErrorMessages(m: ChatMessageType[]): void {
+  async function filterErrorMessages(m: ChatMessageType[]): Promise<void> {
     // remove last message if it's an error, and the previous messages until the
     // last user message, included
     if (m.length === 0 || m[m.length - 1].role !== "error") return;
-    while (m.pop()?.role !== "user" && m.length > 0);
+    let message = m.pop(); // remove error message which has not been stored
+    while (m.length > 0 && (message = m.pop())?.role !== "user")
+      await deleteMessage(message as ChatMessageType); // remove messages until last user message
+    if (message?.role === "user") await deleteMessage(message); // also remove last user message
   }
 
   const handleSubmit = async () => {
@@ -860,28 +949,33 @@ export default function AppChat({
     // error messages and messages that caused them are removed from the conversation
     // to avoid the assistant to get confused. They are not persisted in the database,
     // since that happens only later on after successful run of the assistant.
-    filterErrorMessages(m);
+    await filterErrorMessages(m);
     const userMessage: ChatMessageType = {
+      sId: client_side_new_id(),
       role: "user",
       message: processedInput,
     };
 
-    updateMessages(m, userMessage);
+    // on first message, persist chat session
+    if (m.length === 0) {
+      await storeChatSession();
+    }
+    await updateMessages(m, userMessage);
     setInput("");
     setLoading(true);
 
     try {
       if (input.startsWith("/retrieve")) {
-        updateMessages(m, {
+        await updateMessages(m, {
           role: "retrieval",
           query: processedInput,
         } as ChatMessageType);
         const retrievalResult = await runChatRetrieval(m, processedInput);
         m.pop();
-        updateMessages(m, retrievalResult);
+        await updateMessages(m, retrievalResult);
       } else {
         const result = await runChatAssistant(m, retrievalMode);
-        updateMessages(m, result);
+        await updateMessages(m, result);
         // has the model decided to run the retrieval function?
         if (result?.role === "retrieval") {
           const query = result.query as string;
@@ -889,14 +983,14 @@ export default function AppChat({
           // replace the retrieval message with the result of the retrieval
           // as a consequence, the query is not stored in the database
           m.pop();
-          updateMessages(m, retrievalResult);
+          await updateMessages(m, retrievalResult);
           const secondResult = await runChatAssistant(m, "none");
-          updateMessages(m, secondResult);
+          await updateMessages(m, secondResult);
         }
       }
     } catch (e: any) {
       console.log("ERROR", e.message);
-      updateMessages(m, {
+      await updateMessages(m, {
         role: "error",
         message: e.message,
       } as ChatMessageType);
@@ -905,9 +999,9 @@ export default function AppChat({
     // Update title and save the conversation.
     void (async () => {
       setTitleState("writing");
-      const t = await updateTitle(title, m);
+      await updateTitle(title, m);
       setTitleState("saving");
-      const r = await storeChatSession(t, m);
+      const r = await storeChatSession();
       if (r) {
         setTitleState("saved");
       }
@@ -915,6 +1009,31 @@ export default function AppChat({
     setLoading(false);
   };
 
+  const handleFeedback = (
+    message: ChatMessageType,
+    feedback: MessageFeedbackStatus
+  ) => {
+    setMessages((ms) =>
+      ms.map((m) => (m.sId === message.sId ? { ...m, feedback: feedback } : m))
+    );
+    void updateMessageFeedback(message, feedback);
+  };
+
+  function isLatest(messageRole: MessageRole, index: number): boolean {
+    // returns whether the message is the latest message of the given role
+    // in the conversation
+    return (
+      !(response && response.role === messageRole) &&
+      (() => {
+        for (let j = messages.length - 1; j >= 0; j--) {
+          if (messages[j].role === messageRole) {
+            return index === j;
+          }
+        }
+        return false;
+      })()
+    );
+  }
   return (
     <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex h-full flex-col">
@@ -1026,7 +1145,7 @@ export default function AppChat({
                                 </div>
                               </div>
                             ) : (
-                              <div key={i}>
+                              <div key={i} className="group">
                                 <MessageView
                                   user={user}
                                   message={m}
@@ -1034,24 +1153,16 @@ export default function AppChat({
                                   // isLatest={
                                   //   !response && i === messages.length - 1
                                   // }
-                                  isLatestRetrieval={
-                                    !(
-                                      response && response.role === "retrieval"
-                                    ) &&
-                                    (() => {
-                                      for (
-                                        let j = messages.length - 1;
-                                        j >= 0;
-                                        j--
-                                      ) {
-                                        if (messages[j].role === "retrieval") {
-                                          return i === j;
-                                        }
-                                      }
-                                      return false;
-                                    })()
-                                  }
+                                  isLatestRetrieval={isLatest("retrieval", i)}
                                   readOnly={chatSession.readOnly}
+                                  feedback={
+                                    m.role === "assistant" && {
+                                      handler: handleFeedback,
+                                      hover: response
+                                        ? true
+                                        : i !== messages.length - 1,
+                                    }
+                                  }
                                 />
                               </div>
                             );
