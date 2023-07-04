@@ -753,7 +753,7 @@ export default function AppChat({
     }
   };
 
-  const storeChatSession = async (title: string) => {
+  const upsertChatSession = async (title: string) => {
     const res = await fetch(
       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
       {
@@ -954,7 +954,7 @@ export default function AppChat({
 
     // on first message, persist chat session
     if (m.length === 0) {
-      await storeChatSession("Chat");
+      await upsertChatSession("Chat");
     }
     await updateMessages(m, userMessage);
     setInput("");
@@ -997,7 +997,7 @@ export default function AppChat({
       setTitleState("writing");
       const t = await updateTitle(title, m);
       setTitleState("saving");
-      const r = await storeChatSession(t);
+      const r = await upsertChatSession(t);
       if (r) {
         setTitleState("saved");
       }

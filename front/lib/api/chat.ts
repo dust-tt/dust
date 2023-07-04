@@ -65,11 +65,42 @@ export async function getChatSession(
   };
 }
 
-export function userIsChatSessionOwner(
+export async function upsertChatSession(
+  sId: string,
+  owner: WorkspaceType,
   user: UserType,
-  chatSession: ChatSessionType
-): boolean {
-  return user.id === chatSession.userId;
+  title: string | null
+): Promise<ChatSessionType> {
+  return await front_sequelize.transaction(async (t) => {
+    const [chatSession, created] = await ChatSession.findOrCreate({
+      where: {
+        sId,
+        workspaceId: owner.id,
+      },
+      defaults: {
+        sId,
+        workspaceId: owner.id,
+        userId: user.id,
+        title: title ? title : undefined,
+      },
+      transaction: t,
+    });
+    if (!created) {
+      await chatSession.update(
+        {
+          title: title ? title : undefined,
+        },
+        { transaction: t }
+      );
+    }
+    return {
+      id: chatSession.id,
+      userId: chatSession.userId,
+      created: chatSession.createdAt.getTime(),
+      sId: chatSession.sId,
+      title: chatSession.title,
+    };
+  });
 }
 
 export async function getChatSessionWithMessages(
@@ -130,6 +161,13 @@ export async function getChatSessionWithMessages(
       };
     }),
   };
+}
+
+export function userIsChatSessionOwner(
+  user: UserType,
+  chatSession: ChatSessionType
+): boolean {
+  return user.id === chatSession.userId;
 }
 
 export async function getChatMessage(
@@ -260,25 +298,4 @@ export async function updateChatMessageFeedback({
       where: { sId, chatSessionId: chatSession.id },
     }
   );
-}
-export async function storeChatSession(
-  sId: string,
-  owner: WorkspaceType,
-  user: UserType,
-  title: string | null
-): Promise<ChatSessionType> {
-  const [chatSession] = await ChatSession.upsert({
-    sId,
-    workspaceId: owner.id,
-    userId: user.id,
-    title: title ? title : undefined,
-  });
-
-  return {
-    id: chatSession.id,
-    userId: chatSession.userId,
-    created: chatSession.createdAt.getTime(),
-    sId: chatSession.sId,
-    title: chatSession.title,
-  };
 }
