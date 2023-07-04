@@ -89,6 +89,7 @@ export async function getChatSessionWithMessages({
   user: UserType | null;
   sId: string;
 }): Promise<ChatSessionType | null> {
+  user = null;
   const chatSession = await getChatSession({ owner, user, sId });
 
   if (!chatSession) {
