@@ -145,6 +145,8 @@ export async function githubUpsertIssueActivity(
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
     },
   });
   if (!connector) {
@@ -265,6 +267,8 @@ export async function githubUpsertDiscussionActivity(
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
     },
   });
   if (!connector) {
@@ -455,6 +459,8 @@ async function deleteIssue(
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
     },
   });
   if (!connector) {
@@ -503,6 +509,8 @@ async function deleteDiscussion(
   const connector = await Connector.findOne({
     where: {
       connectionId: installationId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
     },
   });
   if (!connector) {
