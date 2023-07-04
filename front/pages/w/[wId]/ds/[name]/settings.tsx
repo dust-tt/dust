@@ -48,6 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
+  canUpdatePermissions: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -74,6 +75,11 @@ export const getServerSideProps: GetServerSideProps<{
     return {
       notFound: true,
     };
+  }
+
+  let canUpdatePermissions = false;
+  if (context.query.updatePermissions === "enabled") {
+    canUpdatePermissions = true;
   }
 
   let connector: ConnectorType | null = null;
@@ -104,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<{
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
+      canUpdatePermissions,
     },
   };
 };
@@ -117,6 +124,7 @@ export default function DataSourceSettings({
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
+  canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId;
 
@@ -140,6 +148,7 @@ export default function DataSourceSettings({
             fetchConnectorError={fetchConnectorError || false}
             nangoConfig={nangoConfig}
             githubAppUrl={githubAppUrl}
+            canUpdatePermissions={canUpdatePermissions}
           />
         )}
       </div>
@@ -476,6 +485,7 @@ function ManagedDataSourceSettings({
   fetchConnectorError,
   nangoConfig,
   githubAppUrl,
+  canUpdatePermissions,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -488,6 +498,7 @@ function ManagedDataSourceSettings({
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
+  canUpdatePermissions: boolean;
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
   if (!logo) {
@@ -503,6 +514,13 @@ function ManagedDataSourceSettings({
   const { total } = useDocuments(owner, dataSource, 0, 0);
 
   const handleUpdatePermissions = async () => {
+    if (!canUpdatePermissions) {
+      window.alert(
+        "Please contact us at team@dust.tt if you wish to update the permissions of this managed data source."
+      );
+      return;
+    }
+
     if (!connector) {
       console.error("No connector");
       return;
