@@ -41,30 +41,15 @@ export async function getChatSessions(
   });
 }
 
-export async function getChatSession({
-  owner,
-  user,
-  sId,
-}: {
-  owner: WorkspaceType;
-  user: UserType | null;
-  sId: string;
-}): Promise<ChatSessionType | null> {
-  const whereClause: {
-    workspaceId: number;
-    sId: string;
-    userId?: number;
-  } = {
-    workspaceId: owner.id,
-    sId,
-  };
-
-  if (user) {
-    whereClause.userId = user.id;
-  }
-
+export async function getChatSession(
+  owner: WorkspaceType,
+  sId: string
+): Promise<ChatSessionType | null> {
   const chatSession = await ChatSession.findOne({
-    where: whereClause,
+    where: {
+      workspaceId: owner.id,
+      sId,
+    },
   });
 
   if (!chatSession) {
@@ -80,17 +65,18 @@ export async function getChatSession({
   };
 }
 
-export async function getChatSessionWithMessages({
-  owner,
-  user,
-  sId,
-}: {
-  owner: WorkspaceType;
-  user: UserType | null;
-  sId: string;
-}): Promise<ChatSessionType | null> {
-  user = null;
-  const chatSession = await getChatSession({ owner, user, sId });
+export function userIsChatSessionOwner(
+  user: UserType,
+  chatSession: ChatSessionType
+): boolean {
+  return user.id === chatSession.userId;
+}
+
+export async function getChatSessionWithMessages(
+  owner: WorkspaceType,
+  sId: string
+): Promise<ChatSessionType | null> {
+  const chatSession = await getChatSession(owner, sId);
 
   if (!chatSession) {
     return null;

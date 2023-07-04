@@ -116,11 +116,8 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const session = await getChatSessionWithMessages({
-        owner,
-        user,
-        sId: cId,
-      });
+      const session = await getChatSessionWithMessages(owner, cId);
+
       if (!session) {
         return apiError(req, res, {
           status_code: 404,

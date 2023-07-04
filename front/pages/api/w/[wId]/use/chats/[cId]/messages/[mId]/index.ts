@@ -5,6 +5,7 @@ import {
   getChatMessage,
   getChatSession,
   upsertChatMessage,
+  userIsChatSessionOwner,
 } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -133,7 +134,7 @@ async function handler(
     });
   }
 
-  const chatSession = await getChatSession({ owner, user, sId: req.query.cId });
+  const chatSession = await getChatSession(owner, req.query.cId);
 
   if (!chatSession) {
     return apiError(req, res, {
@@ -148,6 +149,17 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
+      if (!userIsChatSessionOwner(user, chatSession)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "chat_session_auth_error",
+            message:
+              "The chat session for the message you're trying to modify does not belong to you.",
+          },
+        });
+      }
+
       const pRes = parse_payload(chatMessageSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
