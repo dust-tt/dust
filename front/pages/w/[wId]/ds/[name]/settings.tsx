@@ -171,6 +171,9 @@ function StandardDataSourceSettings({
   const [dataSourceVisibility, setDataSourceVisibility] = useState(
     dataSource.visibility
   );
+  const [userUpsertable, setUserUpsertable] = useState(
+    dataSource.userUpsertable
+  );
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -214,6 +217,7 @@ function StandardDataSourceSettings({
         body: JSON.stringify({
           description: dataSourceDescription,
           visibility: dataSourceVisibility,
+          userUpsertable: userUpsertable,
         }),
       }
     );
@@ -408,6 +412,30 @@ function StandardDataSourceSettings({
                       readOnly={true}
                     />
                   </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <div className="flex justify-between">
+                  <label
+                    htmlFor="upsertable"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Upload Rights
+                  </label>
+                </div>
+                <div className="mt-2 flex items-center">
+                  <input
+                    id="dataSourceUpsertable"
+                    name="upsertable"
+                    type="checkbox"
+                    className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                    checked={userUpsertable}
+                    onChange={(e) => setUserUpsertable(e.target.checked)}
+                  />
+                  <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                    Users (non-builders) of your workspace can upload documents
+                    to the data source
+                  </p>
                 </div>
               </div>
             </div>
