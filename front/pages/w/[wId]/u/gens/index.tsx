@@ -836,8 +836,7 @@ export default function AppGens({
         space -= d.tokenCount;
       }
       return space;
-    }, 8000);
-    console.log(extracts);
+    }, 7000);
 
     const inputs = [
       {
@@ -847,9 +846,6 @@ export default function AppGens({
         instructions: template.current?.instructions,
       },
     ];
-    console.log(template.current?.instructions);
-
-    // console.log(JSON.stringify(genDocumentExtracts));
 
     const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
@@ -967,7 +963,6 @@ export default function AppGens({
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
-          console.log(e.value.retrievals);
           setRetrieved(e.value.retrievals);
           console.log("Search completed");
           setRetrievalLoading(false);
