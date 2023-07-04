@@ -1,18 +1,16 @@
 steps:
-  - name: ghcr.io/depot/cli:latest
+  - name: "gcr.io/cloud-builders/docker"
     args:
       [
         "build",
-        "--project",
-        "3vz0lnf16v",
         "-t",
         "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA",
-        "--load",
         "-f",
         "Dockerfile",
+        "--cache-from",
+        "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest",
         ".",
       ]
-    secretEnv: ["DEPOT_TOKEN"]
   - name: "gcr.io/cloud-builders/docker"
     args: ["push", "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA"]
   - name: "gcr.io/cloud-builders/docker"
@@ -24,12 +22,6 @@ steps:
       ]
   - name: "gcr.io/cloud-builders/docker"
     args: ["push", "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest"]
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
-      env: DEPOT_TOKEN
-
 images:
   - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA"
   - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest"
