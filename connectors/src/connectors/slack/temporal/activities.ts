@@ -426,6 +426,12 @@ export async function syncThread(
         cursor: next_cursor,
         limit: 100,
       });
+    // Despite the typing, in practice `replies` can be undefined at times.
+    if (!replies) {
+      throw new Error(
+        "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
+      );
+    }
     if (replies.error) {
       throw new Error(replies.error);
     }
