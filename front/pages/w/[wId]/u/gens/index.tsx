@@ -815,7 +815,7 @@ export default function AppGens({
           documentId: d.documentId,
           text: text,
           score: d.llm_score || 0,
-          token_count: d.token_count,
+          tokenCount: d.tokenCount,
         };
       })
       .sort((a, b) => a.score - b.score)
@@ -824,14 +824,14 @@ export default function AppGens({
 
     potentialExtracts.reduce((space, d) => {
       console.log(d.token_count)
-      if (d.token_count <= space)
+      if (d.tokenCount <= space)
       {
         extracts.push({
           documentId: d.documentId,
           extract: d.text,
           score: d.score.toFixed(2),
         })
-        space -= d.token_count
+        space -= d.tokenCount
       }
       return space;
     }, 7000)

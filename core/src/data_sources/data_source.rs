@@ -108,7 +108,7 @@ impl Document {
             chunk_count: 0,
             chunks: vec![],
             text: None,
-            token_count: None
+            token_count: None,
         })
     }
 }
@@ -809,6 +809,7 @@ impl DataSource {
                         let chunk_size = self.config.max_chunk_size;
                         let qdrant_client = l_qdrant_client.clone();
                         let mut token_count = chunks.len() * chunk_size;
+                        d.token_count = Some(token_count);
                         tokio::spawn(async move {
                             let mut offset_set = std::collections::HashSet::new();
                             for chunk in chunks.iter() {
@@ -966,6 +967,7 @@ impl DataSource {
                         .filter(|(document_id, _)| document_id == &d.document_id)
                         .map(|(_, c)| c.clone())
                         .collect::<Vec<Chunk>>();
+                    d.token_count = Some(chunks.len() * self.config.max_chunk_size);
                     d.chunks = chunks;
                     d
                 })
@@ -981,7 +983,6 @@ impl DataSource {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        utils::info(&format!("{:?}", documents[0]));
         utils::done(&format!(
             "Searched Data Source: data_source_id={} document_count={} chunk_count={}",
             self.data_source_id,
