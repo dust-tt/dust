@@ -473,7 +473,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
