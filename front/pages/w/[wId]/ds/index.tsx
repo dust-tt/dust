@@ -284,8 +284,12 @@ export default function DataSourcesView({
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const {
           connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } =
-          await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+        }: { providerConfigKey: string; connectionId: string } = suffix
+          ? await nango.auth(
+              nangoConnectorId,
+              `${provider}-${owner.sId}-${suffix}`
+            )
+          : await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
         connectionId = nangoConnectionId;
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
