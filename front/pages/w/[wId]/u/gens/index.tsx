@@ -836,7 +836,7 @@ export default function AppGens({
         space -= d.tokenCount;
       }
       return space;
-    }, 7000);
+    }, 7168);
 
     const inputs = [
       {
@@ -932,7 +932,7 @@ export default function AppGens({
       DustProdActionRegistry["gens-retrieval"].config
     );
 
-    config.DATASOURCE.target_document_tokens = 800;
+    config.DATASOURCE.target_document_tokens = 768;
     config.DATASOURCE.top_k = top_k;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)
