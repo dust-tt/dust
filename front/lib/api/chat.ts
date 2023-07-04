@@ -60,7 +60,7 @@ export async function getChatSession({
   };
 
   if (user) {
-    whereClause.userId = user.id;
+    user = null; // whereClause.userId = user.id;
   }
 
   const chatSession = await ChatSession.findOne({
