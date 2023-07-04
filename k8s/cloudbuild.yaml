@@ -1,30 +1,19 @@
 steps:
-  - name: "gcr.io/cloud-builders/docker"
+  - name: ghcr.io/depot/cli:latest
     args:
-      [
-        "build",
-        "-t",
-        "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA",
-        "-f",
-        "Dockerfile",
-        "--cache-from",
-        "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest",
-        ".",
-      ]
-  - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA"]
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      [
-        "tag",
-        "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA",
-        "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest",
-      ]
-  - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest"]
-images:
-  - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA"
-  - "gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest"
+      - build
+      - -t
+      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA
+      - -t
+      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest
+      - --push
+      - .
+    secretEnv: ["DEPOT_TOKEN"]
+
+availableSecrets:
+  secretManager:
+    - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
+      env: DEPOT_TOKEN
 
 options:
   logging: CLOUD_LOGGING_ONLY
