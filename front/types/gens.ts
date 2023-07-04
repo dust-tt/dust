@@ -11,5 +11,5 @@ export type GensRetrievedDocumentType = {
     offset: number;
     score: number;
   }[];
-  token_count: number;
+  tokenCount: number;
 };

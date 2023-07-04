@@ -818,23 +818,25 @@ export default function AppGens({
           tokenCount: d.tokenCount,
         };
       })
-      .sort((a, b) => a.score - b.score)
+      .sort((a, b) => a.score - b.score);
 
-    let extracts = [];
+    let extracts: {
+      documentId: string;
+      extract: string;
+      score: string;
+    }[] = [];
 
     potentialExtracts.reduce((space, d) => {
-      console.log(d.token_count)
-      if (d.tokenCount <= space)
-      {
+      if (d.tokenCount <= space) {
         extracts.push({
           documentId: d.documentId,
           extract: d.text,
           score: d.score.toFixed(2),
-        })
-        space -= d.tokenCount
+        });
+        space -= d.tokenCount;
       }
       return space;
-    }, 7000)
+    }, 8000);
     console.log(extracts);
 
     const inputs = [
@@ -965,7 +967,7 @@ export default function AppGens({
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
-          console.log(e.value.retrievals)
+          console.log(e.value.retrievals);
           setRetrieved(e.value.retrievals);
           console.log("Search completed");
           setRetrievalLoading(false);
