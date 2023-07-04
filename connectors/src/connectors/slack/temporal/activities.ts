@@ -93,6 +93,12 @@ export async function getChannel(
 ): Promise<Channel> {
   const client = getSlackClient(slackAccessToken);
   const res = await client.conversations.info({ channel: channelId });
+  // Despite the typing, in practice `conversations.info` can be undefined at times.
+  if (!res) {
+    throw new Error(
+      "Received unexpected conversations.info replies from Slack API in getChannel (generally transient)"
+    );
+  }
   if (res.error) {
     throw new Error(res.error);
   }
@@ -233,6 +239,12 @@ export async function getMessagesForChannel(
     limit: limit,
     cursor: nextCursor,
   });
+  // Despite the typing, in practice `conversations.history` can be undefined at times.
+  if (!c) {
+    throw new Error(
+      "Received unexpected conversations.history replies from Slack API in getMessagesForChannel (generally transient)"
+    );
+  }
   if (c.error) {
     throw new Error(
       `Failed getting messages for channel ${channelId}: ${c.error}`
