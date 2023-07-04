@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { GensTemplate } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
 import { GensTemplateType } from "@app/types/gens";
+import { getGensTemplates } from "@app/lib/api/gens";
 
 export type GetTemplatesResponseBody = {
   templates: GensTemplateType[];
@@ -28,12 +29,13 @@ async function handler(
   );
 
   const owner = auth.workspace();
+  const user = await getUserFromSession(session);
   if (!owner) {
     res.status(404).end();
     return;
   }
 
-  if (!auth.isBuilder()) {
+  if (!user) {
     res.status(403).end();
     return;
   }
@@ -42,38 +44,35 @@ async function handler(
   let template;
   switch (req.method) {
     case "GET":
-      const templates = await GensTemplate.findAll({
-        where: {
-          workspaceId: owner.id,
-        },
-        order: [["createdAt", "DESC"]],
-      });
-
+      const temp_data = await getGensTemplates(owner, user);
       res.status(200).json({
-        templates: templates.map((t) => {
-          return {
-            name: t.name,
-            instructions: t.instructions
-          };
-        }),
+        templates: temp_data
       });
       return;
 
     case "POST":
       body = req.body;
+      let visibility;
+      if (body.visibility === "workspace" && !auth.isBuilder()) {
+        res.status(403).end();
+        return;
+      }
 
-      template = await GensTemplate.create({
+      const temp_attrs = {
         name: body.name,
         instructions: body.instructions,
         workspaceId: owner.id,
-      });
+        userId: user.id,
+        color: body.color,
+        sId: body.sId || new_id(),
+        visibility: body.visibility,
+      };
+      
+      template = await GensTemplate.create(temp_attrs);
 
       res.status(201).json({
-        template: {
-          name: template.name,
-          instructions: template.instructions,
-        },
-      });
+        template: temp_attrs
+      })
       return;
     case "PUT":
       body = req.body;

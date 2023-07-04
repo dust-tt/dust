@@ -900,8 +900,12 @@ export class GensTemplate extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare userId: ForeignKey<User["id"]>;
   declare instructions: string[];
   declare name: string;
+  declare visibility: "user" | "workspace";
+  declare color: string;
+  declare sId: string;
 }
 
 GensTemplate.init(
@@ -922,12 +926,23 @@ GensTemplate.init(
       defaultValue: DataTypes.NOW,
     },
     instructions: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    color: {
+      type: DataTypes.STRING,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     }
   },
   {
@@ -937,6 +952,7 @@ GensTemplate.init(
   }
 )
 
+User.hasMany(GensTemplate)
 Workspace.hasMany(GensTemplate)
 
 

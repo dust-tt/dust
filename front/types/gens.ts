@@ -16,4 +16,8 @@ export type GensRetrievedDocumentType = {
 export type GensTemplateType = {
   name: string;
   instructions: string[]
+  color: string;
+  sId: string;
+  userId: number;
+  visibility: string;
 };

@@ -44,6 +44,7 @@ import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 import { GensTemplate } from "@app/lib/models";
+import { getGensTemplates } from "@app/lib/api/gens";
 
 type DataSource = {
   name: string;
@@ -71,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
   templates: GensTemplateType[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
+  const user = (await getUserFromSession(session))!;
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -91,22 +92,19 @@ export const getServerSideProps: GetServerSideProps<{
   if (dsRes.isErr()) {
     return {
       notFound: true,
-    };
+    };user
   }
 
-  const templates = (
-    await GensTemplate.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-    })
-  ).map((temp) => {
-    return {
-      name: temp.name,
-      instructions: temp.instructions,
-      id: temp.id,
-    };
-  });
+
+  const templates = (await getGensTemplates(owner, user))
+    .map((temp) => {
+      return {
+        name: temp.name,
+        instructions: temp.instructions,
+        sId: temp.sId,
+        color: temp.color,
+      };
+    });
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
@@ -554,7 +552,8 @@ export function TemplatesView({
   workspaceId: string;
   savedTemplates: GensTemplateType[];
 }) {
-  const defaults = [
+
+  const [templates, setTemplates] = useState<GensTemplateType[]>([
     {
       name: "Fact Gatherer",
       color: "bg-red-500",
@@ -565,29 +564,9 @@ export function TemplatesView({
         "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
         "We just want to gather facts and answers related to the document text",
       ],
+      sId: "0000" // fix this
     },
-    /*
-    {
-      name: "Contradictor",
-      color: "bg-blue-500",
-      instructions: [
-        "Find documents and ideas that might contradict or disagree with the user's text",
-      ],
-    },
-    {
-      name: "Poet",
-      color: "bg-yellow-500",
-      instructions: ["Be creative, fanciful, and only speak in poetry"],
-    },
-    {
-      name: "Pirate",
-      color: "bg-green-500",
-      instructions: ["Be a pirate, and only speak in pirate language"],
-    },
-    */
-  ].concat(savedTemplates);
-
-  const [templates, setTemplates] = useState(defaults);
+  ].concat(savedTemplates));
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
   const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
   const [newTemplateInstructions, setNewTemplateInstructions] = useState<
@@ -732,13 +711,15 @@ export function TemplatesView({
                         onClick={async () => {
                           setFormExpanded(false);
                           const colors = ["red", "yellow", "green", "blue"];
-                          const new_template = {
+                          let new_template = {
                             name: newTemplateTitle,
                             // set random color
                             color: `bg-${
                               colors[Math.floor(Math.random() * colors.length)]
                             }-500`,
                             instructions: newTemplateInstructions,
+                            sId: newGensTemplateId(),
+                            visibility: "workspace"
                           };
                           const curr_templates = templates.map((d) => d);
                           if (selectedTemplate == -1) {
@@ -750,10 +731,14 @@ export function TemplatesView({
                               body: JSON.stringify({
                                 name: newTemplateTitle,
                                 instructions: newTemplateInstructions,
+                                sId: new_template.sId,
                               }),
                             });
+                            
                             curr_templates.push(new_template);
                           } else {
+                            new_template.sId = templates[selectedTemplate].sId;
+                            new_template.color = templates[selectedTemplate].color;
                             await fetch(`/api/w/${workspaceId}/templates`, {
                               method: "PUT",
                               headers: {
@@ -762,7 +747,7 @@ export function TemplatesView({
                               body: JSON.stringify({
                                 name: newTemplateTitle,
                                 instructions: newTemplateInstructions,
-                                id: templates[selectedTemplate].id,
+                                id: templates[selectedTemplate].sId,
                               }),
                             });
                             curr_templates[selectedTemplate] = new_template;
