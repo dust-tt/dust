@@ -60,7 +60,7 @@ export async function getChatSession({
   };
 
   if (user) {
-    user = null; // whereClause.userId = user.id;
+    whereClause.userId = user.id;
   }
 
   const chatSession = await ChatSession.findOne({
@@ -89,6 +89,7 @@ export async function getChatSessionWithMessages({
   user: UserType | null;
   sId: string;
 }): Promise<ChatSessionType | null> {
+  user = null;
   const chatSession = await getChatSession({ owner, user, sId });
 
   if (!chatSession) {
