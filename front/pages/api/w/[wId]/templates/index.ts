@@ -1,11 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  deleteTemplate,
+  getGensTemplates,
+  getTemplate,
+  updateTemplate,
+} from "@app/lib/api/gens";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { GensTemplate } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
 import { GensTemplateType } from "@app/types/gens";
-import { getGensTemplates } from "@app/lib/api/gens";
 
 export type GetTemplatesResponseBody = {
   templates: GensTemplateType[];
@@ -20,7 +25,7 @@ export type UpdateTemplatesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetTemplatesResponseBody | PostTemplatesResponseBody | UpdateTemplatesResponseBody>
+  res: NextApiResponse<GetTemplatesResponseBody | PostTemplatesResponseBody>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -40,19 +45,17 @@ async function handler(
     return;
   }
 
-  let body;
+  const body = req.body;
   let template;
   switch (req.method) {
     case "GET":
       const temp_data = await getGensTemplates(owner, user);
       res.status(200).json({
-        templates: temp_data
+        templates: temp_data,
       });
       return;
 
     case "POST":
-      body = req.body;
-      let visibility;
       if (body.visibility === "workspace" && !auth.isBuilder()) {
         res.status(403).end();
         return;
@@ -67,39 +70,24 @@ async function handler(
         sId: body.sId || new_id(),
         visibility: body.visibility,
       };
-      
-      template = await GensTemplate.create(temp_attrs);
-
-      res.status(201).json({
-        template: temp_attrs
-      })
-      return;
-    case "PUT":
-      body = req.body;
-
-      template = await GensTemplate.findOne({
-        where: {
-          id: body.id,
-          workspaceId: owner.id,
-        },
-      });
-
-      if (!template) {
-        res.status(404).end();
-        return;
+      // check if template exists
+      template = await getTemplate(owner, user, temp_attrs.sId);
+      if (template) {
+        // update template:
+        template = await updateTemplate(temp_attrs, owner, user);
+      } else {
+        template = await GensTemplate.create(temp_attrs);
       }
-
-      await template.update({
-        name: body.name,
-        instructions: body.instructions,
+      if (!template) {
+        res.status(500).end();
+      }
+      res.status(201).json({
+        template: temp_attrs,
       });
-
-      res.status(200).json({
-        template: {
-          name: template.name,
-          instructions: template.instructions,
-        },
-      });
+      return;
+    case "DELETE":
+      await deleteTemplate(owner, user, body.sId);
+      res.status(200).end();
       return;
     default:
       res.status(405).end();

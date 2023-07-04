@@ -2,7 +2,6 @@ import { Dialog, Transition } from "@headlessui/react";
 import {
   PlusCircleIcon,
   PlusIcon,
-  TrashIcon,
   XCircleIcon,
 } from "@heroicons/react/20/solid";
 import {
@@ -28,6 +27,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions_registry";
+import { getGensTemplates } from "@app/lib/api/gens";
 import {
   Authenticator,
   getSession,
@@ -41,10 +41,9 @@ import {
   runActionStreamed,
 } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
+import { client_side_new_id } from "@app/lib/utils";
 import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { GensTemplate } from "@app/lib/models";
-import { getGensTemplates } from "@app/lib/api/gens";
 
 type DataSource = {
   name: string;
@@ -70,16 +69,18 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
   workspaceDataSources: DataSource[];
   templates: GensTemplateType[];
+  isBuilder: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = (await getUserFromSession(session))!;
+  const user = await getUserFromSession(session);
+
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
+  if (!owner || !auth.isUser() || !user) {
     return {
       notFound: true,
     };
@@ -92,19 +93,11 @@ export const getServerSideProps: GetServerSideProps<{
   if (dsRes.isErr()) {
     return {
       notFound: true,
-    };user
+    };
+    user;
   }
 
-
-  const templates = (await getGensTemplates(owner, user))
-    .map((temp) => {
-      return {
-        name: temp.name,
-        instructions: temp.instructions,
-        sId: temp.sId,
-        color: temp.color,
-      };
-    });
+  const templates = await getGensTemplates(owner, user);
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
@@ -146,6 +139,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
       workspaceDataSources: dataSources,
       templates,
+      isBuilder: auth.isBuilder(),
     },
   };
 };
@@ -547,31 +541,37 @@ export function TemplatesView({
   onTemplateSelect,
   workspaceId,
   savedTemplates,
+  isBuilder,
 }: {
   onTemplateSelect: (template: TemplateType) => void;
   workspaceId: string;
   savedTemplates: GensTemplateType[];
+  isBuilder: boolean;
 }) {
-
-  const [templates, setTemplates] = useState<GensTemplateType[]>([
-    {
-      name: "Fact Gatherer",
-      color: "bg-red-500",
-      instructions: [
-        "Extract facts and important information in a list",
-        "Present your answers in list format",
-        "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
-        "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
-        "We just want to gather facts and answers related to the document text",
-      ],
-      sId: "0000" // fix this
-    },
-  ].concat(savedTemplates));
+  const [templates, setTemplates] = useState<GensTemplateType[]>(
+    [
+      {
+        name: "Fact Gatherer",
+        color: "bg-red-500",
+        instructions: [
+          "Extract facts and important information in a list",
+          "Present your answers in list format",
+          "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
+          "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
+          "We just want to gather facts and answers related to the document text",
+        ],
+        sId: "0000",
+        visibility: "default",
+      },
+    ].concat(savedTemplates)
+  );
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
   const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
   const [newTemplateInstructions, setNewTemplateInstructions] = useState<
     string[]
   >([]);
+  const [newTemplateVisibility, setNewTemplateVisibility] =
+    useState<string>("user");
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
 
@@ -602,6 +602,14 @@ export function TemplatesView({
       const newInstructions = [...prevInstructions];
       newInstructions.splice(index, 1);
       return newInstructions;
+    });
+  };
+  const handleTemplateDelete = (index: number) => {
+    setTemplates((prevTemplates) => {
+      // remove template from thing
+      const newTemplates = [...prevTemplates];
+      newTemplates.splice(index, 1);
+      return newTemplates;
     });
   };
 
@@ -666,7 +674,10 @@ export function TemplatesView({
                         </label>
                         {newTemplateInstructions.map((instruction, i) => {
                           return (
-                            <div className="group my-2 flex items-center border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500">
+                            <div
+                              key={i}
+                              className="group my-2 flex items-center border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                            >
                               <div className="flex flex-1">
                                 <input
                                   className={classNames(
@@ -698,6 +709,28 @@ export function TemplatesView({
                             </div>
                           );
                         })}
+                        {isBuilder && (
+                          <div className="mt-2">
+                            <label className="my-2 block text-sm font-medium text-gray-700">
+                              Visibility
+                            </label>
+                            <input
+                              type="checkbox"
+                              id="workspace"
+                              name="visibility"
+                              value="workspace"
+                              checked={newTemplateVisibility == "workspace"}
+                              onChange={(e) => {
+                                console.log(e.target.checked);
+                                if (e.target.checked) {
+                                  setNewTemplateVisibility("workspace");
+                                } else {
+                                  setNewTemplateVisibility("user");
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
@@ -711,15 +744,15 @@ export function TemplatesView({
                         onClick={async () => {
                           setFormExpanded(false);
                           const colors = ["red", "yellow", "green", "blue"];
-                          let new_template = {
+                          const new_template = {
                             name: newTemplateTitle,
                             // set random color
                             color: `bg-${
                               colors[Math.floor(Math.random() * colors.length)]
                             }-500`,
                             instructions: newTemplateInstructions,
-                            sId: newGensTemplateId(),
-                            visibility: "workspace"
+                            sId: client_side_new_id(),
+                            visibility: newTemplateVisibility,
                           };
                           const curr_templates = templates.map((d) => d);
                           if (selectedTemplate == -1) {
@@ -728,27 +761,20 @@ export function TemplatesView({
                               headers: {
                                 "Content-Type": "application/json",
                               },
-                              body: JSON.stringify({
-                                name: newTemplateTitle,
-                                instructions: newTemplateInstructions,
-                                sId: new_template.sId,
-                              }),
+                              body: JSON.stringify(new_template),
                             });
-                            
+
                             curr_templates.push(new_template);
                           } else {
                             new_template.sId = templates[selectedTemplate].sId;
-                            new_template.color = templates[selectedTemplate].color;
+                            new_template.color =
+                              templates[selectedTemplate].color;
                             await fetch(`/api/w/${workspaceId}/templates`, {
-                              method: "PUT",
+                              method: "POST",
                               headers: {
                                 "Content-Type": "application/json",
                               },
-                              body: JSON.stringify({
-                                name: newTemplateTitle,
-                                instructions: newTemplateInstructions,
-                                id: templates[selectedTemplate].sId,
-                              }),
+                              body: JSON.stringify(new_template),
                             });
                             curr_templates[selectedTemplate] = new_template;
                           }
@@ -756,10 +782,32 @@ export function TemplatesView({
                           setFormExpanded(false);
                           setNewTemplateInstructions([]);
                           setNewTemplateTitle("");
+                          setNewTemplateVisibility("user");
                         }}
                       >
                         Save
                       </ActionButton>
+                      {selectedTemplate != -1 && (
+                        <div className="flex flex-initial">
+                          <ActionButton
+                            onClick={async () => {
+                              await fetch(`/api/w/${workspaceId}/templates`, {
+                                method: "DELETE",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify(
+                                  templates[selectedTemplate]
+                                ),
+                              });
+                              handleTemplateDelete(selectedTemplate);
+                              setFormExpanded(false);
+                            }}
+                          >
+                            Delete
+                          </ActionButton>
+                        </div>
+                      )}
                     </div>
                   </Dialog.Panel>
                 </Transition.Child>
@@ -798,15 +846,18 @@ export function TemplatesView({
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    <PencilIcon
-                      onClick={() => {
-                        setSelectedTemplate(i);
-                        setNewTemplateInstructions(t.instructions || [""]);
-                        setNewTemplateTitle(t.name);
-                        setFormExpanded(true);
-                      }}
-                      className="h-3 w-3"
-                    />
+                    {templates[i].visibility != "default" && (
+                      <PencilIcon
+                        onClick={() => {
+                          setSelectedTemplate(i);
+                          setNewTemplateInstructions(t.instructions || [""]);
+                          setNewTemplateTitle(t.name);
+                          setFormExpanded(true);
+                          setNewTemplateVisibility(t.visibility);
+                        }}
+                        className="h-3 w-3"
+                      />
+                    )}
                   </>
                 )}
               </div>
@@ -821,6 +872,7 @@ export function TemplatesView({
             )}
             onClick={() => {
               setSelectedTemplate(-1);
+              setNewTemplateInstructions([""]);
               setFormExpanded(true);
             }}
           >
@@ -848,6 +900,7 @@ export default function AppGens({
   gaTrackingId,
   workspaceDataSources,
   templates,
+  isBuilder,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const prodAPI = new DustAPI(prodCredentials);
 
@@ -1089,8 +1142,15 @@ export default function AppGens({
         timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
       };
     }
-    let textarea = genTextAreaRef.current!;
-    let text = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+    const textarea = genTextAreaRef.current;
+    if (!textarea) {
+      console.log("Textarea not found");
+      return;
+    }
+    let text = textarea.value.substring(
+      textarea.selectionStart,
+      textarea.selectionEnd
+    );
     if (text == "") {
       text = genContent;
     }
@@ -1152,13 +1212,14 @@ export default function AppGens({
                     onTemplateSelect={(t) => (template.current = t)}
                     workspaceId={owner.sId}
                     savedTemplates={templates}
+                    isBuilder={isBuilder}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
                     <ActionButton
                       disabled={retrievalLoading}
-                        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                         e.preventDefault();
                         void handleSearch();
                       }}

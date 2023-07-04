@@ -18,6 +18,5 @@ export type GensTemplateType = {
   instructions: string[]
   color: string;
   sId: string;
-  userId: number;
   visibility: string;
 };
