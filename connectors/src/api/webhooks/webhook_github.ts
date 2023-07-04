@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
+import { Op } from "sequelize";
 
 import {
   GithubWebhookPayloadSchema,
@@ -102,62 +103,74 @@ const _webhookGithubAPIHandler = async (
   const payload = githubWebookPayloadSchemaValidation.right;
 
   const installationId = payload.installation.id.toString();
-  const connector = await Connector.findOne({
+
+  const connectors = await Connector.findAll({
     where: {
       connectionId: installationId,
+      type: "github",
     },
   });
 
-  if (!connector) {
+  if (!connectors.length) {
     logger.error(
       {
         installationId,
       },
-      "Connector not found"
+      "No GitHub connectors found for installation"
     );
     // return 200 to avoid github retrying
     return res.status(200);
   }
 
-  const githubConnectorState = await GithubConnectorState.findOne({
-    where: {
-      connectorId: connector?.id,
-    },
-  });
-
-  if (!githubConnectorState) {
-    logger.error(
-      {
-        connectorId: connector.id,
-        installationId,
+  const githubConnectorStates = (
+    await GithubConnectorState.findAll({
+      where: {
+        connectorId: {
+          [Op.in]: connectors.map((c) => c.id),
+        },
       },
-      "Connector state not found"
-    );
-    // return 200 to avoid github retrying
-    return res.status(200);
-  }
+    })
+  ).reduce(
+    (acc, curr) => Object.assign(acc, { [curr.connectorId]: curr }),
+    {} as Record<string, GithubConnectorState>
+  );
 
-  if (
-    !githubConnectorState.webhooksEnabledAt ||
-    githubConnectorState.webhooksEnabledAt.getTime() > Date.now()
-  ) {
-    logger.info(
-      {
-        connectorId: connector.id,
-        installationId,
-        webhooksEnabledAt: githubConnectorState.webhooksEnabledAt,
-      },
-      "Ignoring webhook because webhooks are disabled for connector,"
-    );
-
-    return res.status(200);
+  const enabledConnectors: Connector[] = [];
+  for (const connector of connectors) {
+    const connectorState = githubConnectorStates[connector.id];
+    if (!connectorState) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          installationId,
+        },
+        "Connector state not found"
+      );
+      // return 200 to avoid github retrying
+      continue;
+    }
+    if (
+      !connectorState.webhooksEnabledAt ||
+      connectorState.webhooksEnabledAt.getTime() > Date.now()
+    ) {
+      logger.info(
+        {
+          connectorId: connectorState.connectorId,
+          installationId,
+          webhooksEnabledAt: connectorState.webhooksEnabledAt,
+        },
+        "Ignoring webhook because webhooks are disabled for connector,"
+      );
+    } else {
+      enabledConnectors.push(connector);
+    }
   }
 
   switch (event) {
     case "installation_repositories":
       if (isRepositoriesAddedPayload(jsonBody)) {
         return syncRepos(
-          connector,
+          enabledConnectors,
           jsonBody.installation.account.login,
           jsonBody.repositories_added.map((r) => ({
             name: r.name,
@@ -167,7 +180,7 @@ const _webhookGithubAPIHandler = async (
         );
       } else if (isRepositoriesRemovedPayload(jsonBody)) {
         return garbageCollectRepos(
-          connector,
+          enabledConnectors,
           jsonBody.installation.account.login,
           jsonBody.repositories_removed.map((r) => ({
             name: r.name,
@@ -181,7 +194,7 @@ const _webhookGithubAPIHandler = async (
       if (isIssuePayload(jsonBody)) {
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -190,7 +203,7 @@ const _webhookGithubAPIHandler = async (
           );
         } else if (jsonBody.action === "deleted") {
           return garbageCollectIssue(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -212,7 +225,7 @@ const _webhookGithubAPIHandler = async (
           jsonBody.action === "deleted"
         ) {
           return syncIssue(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -229,7 +242,7 @@ const _webhookGithubAPIHandler = async (
       if (isPullRequestPayload(jsonBody)) {
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -246,7 +259,7 @@ const _webhookGithubAPIHandler = async (
       if (isDiscussionPayload(jsonBody)) {
         if (jsonBody.action === "created" || jsonBody.action === "edited") {
           return syncDiscussion(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -255,7 +268,7 @@ const _webhookGithubAPIHandler = async (
           );
         } else if (jsonBody.action === "deleted") {
           return garbageCollectDiscussion(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -276,7 +289,7 @@ const _webhookGithubAPIHandler = async (
           jsonBody.action === "deleted"
         ) {
           return syncDiscussion(
-            connector,
+            enabledConnectors,
             jsonBody.organization.login,
             jsonBody.repository.name,
             jsonBody.repository.id,
@@ -295,102 +308,244 @@ const _webhookGithubAPIHandler = async (
 };
 
 async function syncRepos(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repos: { name: string; id: number }[],
   res: Response<GithubWebhookResBody>
 ) {
-  await launchGithubReposSyncWorkflow(connector.id.toString(), orgLogin, repos);
-  res.status(200).end();
+  let hasErrors = false;
+  await Promise.all(
+    connectors.map((c) =>
+      launchGithubReposSyncWorkflow(c.id.toString(), orgLogin, repos).catch(
+        (err) => {
+          logger.error(
+            {
+              err,
+              connectorId: c.id,
+              orgLogin,
+              repos,
+            },
+            "Failed to launch github repos sync workflow"
+          );
+          hasErrors = true;
+        }
+      )
+    )
+  );
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
 }
 
 async function garbageCollectRepos(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repos: { name: string; id: number }[],
   res: Response<GithubWebhookResBody>
 ) {
-  for (const { name, id } of repos) {
-    await launchGithubRepoGarbageCollectWorkflow(
-      connector.id.toString(),
-      orgLogin,
-      name,
-      id
-    );
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map(async (c) => {
+      for (const { name, id } of repos) {
+        try {
+          await launchGithubRepoGarbageCollectWorkflow(
+            c.id.toString(),
+            orgLogin,
+            name,
+            id
+          );
+        } catch (err) {
+          logger.error(
+            {
+              err,
+              connectorId: c.id,
+              orgLogin,
+              repos,
+            },
+            "Failed to launch github repo garbage collect workflow"
+          );
+          hasErrors = true;
+        }
+      }
+    })
+  );
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
   }
-  res.status(200).end();
 }
 
 async function syncIssue(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repoName: string,
   repoId: number,
   issueNumber: number,
   res: Response<GithubWebhookResBody>
 ) {
-  await launchGithubIssueSyncWorkflow(
-    connector.id.toString(),
-    orgLogin,
-    repoName,
-    repoId,
-    issueNumber
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map((c) =>
+      launchGithubIssueSyncWorkflow(
+        c.id.toString(),
+        orgLogin,
+        repoName,
+        repoId,
+        issueNumber
+      ).catch((err) => {
+        logger.error(
+          {
+            err,
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            issueNumber,
+          },
+          "Failed to launch github issue sync workflow"
+        );
+        hasErrors = true;
+      })
+    )
   );
-  res.status(200).end();
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
 }
 
 async function syncDiscussion(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repoName: string,
   repoId: number,
   discussionNumber: number,
   res: Response<GithubWebhookResBody>
 ) {
-  await launchGithubDiscussionSyncWorkflow(
-    connector.id.toString(),
-    orgLogin,
-    repoName,
-    repoId,
-    discussionNumber
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map((c) =>
+      launchGithubDiscussionSyncWorkflow(
+        c.id.toString(),
+        orgLogin,
+        repoName,
+        repoId,
+        discussionNumber
+      ).catch((err) => {
+        logger.error(
+          {
+            err,
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            discussionNumber,
+          },
+          "Failed to launch github discussion sync workflow"
+        );
+        hasErrors = true;
+      })
+    )
   );
-  res.status(200).end();
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
 }
 
 async function garbageCollectIssue(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repoName: string,
   repoId: number,
   issueNumber: number,
   res: Response<GithubWebhookResBody>
 ) {
-  await launchGithubIssueGarbageCollectWorkflow(
-    connector.id.toString(),
-    orgLogin,
-    repoName,
-    repoId,
-    issueNumber
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map((c) =>
+      launchGithubIssueGarbageCollectWorkflow(
+        c.id.toString(),
+        orgLogin,
+        repoName,
+        repoId,
+        issueNumber
+      ).catch((err) => {
+        logger.error(
+          {
+            err,
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            issueNumber,
+          },
+          "Failed to launch github issue garbage collect workflow"
+        );
+        hasErrors = true;
+      })
+    )
   );
-  res.status(200).end();
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
 }
 
 async function garbageCollectDiscussion(
-  connector: Connector,
+  connectors: Connector[],
   orgLogin: string,
   repoName: string,
   repoId: number,
   discussionNumber: number,
   res: Response<GithubWebhookResBody>
 ) {
-  await launchGithubDiscussionGarbageCollectWorkflow(
-    connector.id.toString(),
-    orgLogin,
-    repoName,
-    repoId,
-    discussionNumber
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map((c) =>
+      launchGithubDiscussionGarbageCollectWorkflow(
+        c.id.toString(),
+        orgLogin,
+        repoName,
+        repoId,
+        discussionNumber
+      ).catch((err) => {
+        logger.error(
+          {
+            err,
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            discussionNumber,
+          },
+          "Failed to launch github discussion garbage collect workflow"
+        );
+        hasErrors = true;
+      })
+    )
   );
-  res.status(200).end();
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
 }
 
 export const webhookGithubAPIHandler = withLogging(_webhookGithubAPIHandler);
