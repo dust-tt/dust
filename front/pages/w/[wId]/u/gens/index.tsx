@@ -903,7 +903,7 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const extracts = retrieved
+    const potentialExtracts = retrieved
       .map((d) => {
         const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
         const text = chunks.map((c) => c.text).join("");
@@ -911,18 +911,28 @@ export default function AppGens({
           documentId: d.documentId,
           text: text,
           score: d.llm_score || 0,
+          tokenCount: d.tokenCount,
         };
       })
-      .sort((a, b) => a.score - b.score)
-      .map((e) => {
-        return {
-          documentId: e.documentId,
-          extract: e.text,
-          score: e.score.toFixed(2),
-        };
-      });
+      .sort((a, b) => a.score - b.score);
 
-    console.log(extracts);
+    const extracts: {
+      documentId: string;
+      extract: string;
+      score: string;
+    }[] = [];
+
+    potentialExtracts.reduce((space, d) => {
+      if (d.tokenCount <= space) {
+        extracts.push({
+          documentId: d.documentId,
+          extract: d.text,
+          score: d.score.toFixed(2),
+        });
+        space -= d.tokenCount;
+      }
+      return space;
+    }, 7168);
 
     const inputs = [
       {
@@ -932,9 +942,6 @@ export default function AppGens({
         instructions: template.current?.instructions,
       },
     ];
-    console.log(template.current?.instructions);
-
-    // console.log(JSON.stringify(genDocumentExtracts));
 
     const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
@@ -1021,6 +1028,7 @@ export default function AppGens({
       DustProdActionRegistry["gens-retrieval"].config
     );
 
+    config.DATASOURCE.target_document_tokens = 768;
     config.DATASOURCE.top_k = top_k;
     config.DATASOURCE.data_sources = dataSources
       .filter((ds) => ds.selected)

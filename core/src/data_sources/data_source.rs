@@ -85,6 +85,7 @@ pub struct Document {
     pub chunks: Vec<Chunk>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    pub token_count: Option<usize>,
 }
 
 impl Document {
@@ -109,6 +110,7 @@ impl Document {
             chunk_count: 0,
             chunks: vec![],
             text: None,
+            token_count: None,
         })
     }
 }
@@ -575,6 +577,7 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
         document.chunk_count = document.chunks.len();
+        document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
         // Clean-up previous document chunks (vector search db).
         let qdrant_client = self.qdrant_client().await?;
@@ -894,6 +897,8 @@ impl DataSource {
                         let collection = self.qdrant_collection();
                         let chunk_size = self.config.max_chunk_size;
                         let qdrant_client = l_qdrant_client.clone();
+                        let mut token_count = chunks.len() * chunk_size;
+                        d.token_count = Some(token_count);
                         tokio::spawn(async move {
                             let mut offset_set = std::collections::HashSet::new();
                             for chunk in chunks.iter() {
@@ -1013,6 +1018,7 @@ impl DataSource {
                                             );
                                         }
                                         counter += 1;
+                                        token_count += chunk_size;
                                     }
                                     chunk.text = prepend + &chunk.text;
                                     chunk
@@ -1026,6 +1032,7 @@ impl DataSource {
                                     .unwrap_or(std::cmp::Ordering::Equal)
                             });
                             d.chunks = chunks;
+                            d.token_count = Some(token_count);
 
                             Ok::<Document, anyhow::Error>(d)
                         })
@@ -1049,6 +1056,7 @@ impl DataSource {
                         .filter(|(document_id, _)| document_id == &d.document_id)
                         .map(|(_, c)| c.clone())
                         .collect::<Vec<Chunk>>();
+                    d.token_count = Some(chunks.len() * self.config.max_chunk_size);
                     d.chunks = chunks;
                     d
                 })
