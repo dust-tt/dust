@@ -932,11 +932,11 @@ GensTemplate.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     visibility: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     color: {
       type: DataTypes.STRING,
@@ -944,18 +944,17 @@ GensTemplate.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
+    },
   },
   {
     modelName: "gens_template",
     sequelize: front_sequelize,
     indexes: [{ fields: ["workspaceId"] }],
   }
-)
+);
 
-User.hasMany(GensTemplate)
-Workspace.hasMany(GensTemplate)
-
+User.hasMany(GensTemplate);
+Workspace.hasMany(GensTemplate);
 
 export class TrackedDocument extends Model<
   InferAttributes<TrackedDocument>,
