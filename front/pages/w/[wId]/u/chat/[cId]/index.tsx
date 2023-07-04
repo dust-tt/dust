@@ -563,6 +563,7 @@ export default function AppChat({
   const prodAPI = new DustAPI(prodCredentials);
 
   const [title, setTitle] = useState<string>(chatSession.title || "Chat");
+  const [smallScreen, setSmallScreen] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
@@ -592,6 +593,7 @@ export default function AppChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    setSmallScreen(window.innerWidth < 640);
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -1301,7 +1303,12 @@ export default function AppChat({
                         )}
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={`Ask anything about \`${owner.name}\`. Press ⏎ to submit, shift+⏎ for next line`}
+                          placeholder={
+                            (smallScreen
+                              ? ""
+                              : `Ask anything about \`${owner.name}\`.`) +
+                            "Press ⏎ to submit, shift+⏎ for next line"
+                          }
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                             "rounded-sm",
