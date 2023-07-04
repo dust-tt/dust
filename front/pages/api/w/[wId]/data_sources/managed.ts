@@ -107,7 +107,6 @@ async function handler(
 
       const provider = req.body.provider as ConnectorProvider;
 
-      // TODO(spolu): add suffix to dataSourceName
       const dataSourceName = suffix
         ? `managed-${provider}-${suffix}`
         : `managed-${provider}`;
