@@ -820,7 +820,7 @@ export default function AppGens({
       })
       .sort((a, b) => a.score - b.score);
 
-    let extracts: {
+    const extracts: {
       documentId: string;
       extract: string;
       score: string;
