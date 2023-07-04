@@ -1,7 +1,7 @@
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource, TrackedDocument, User } from "@app/lib/models";
+import { DataSource, Membership, TrackedDocument, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
 export async function updateTrackedDocuments(
@@ -27,10 +27,7 @@ export async function updateTrackedDocuments(
   // Match any DUST_TRACK tag, regardless of its content
   const dustTrackTagRegex = /DUST_TRACK\(\s*(.*?)\)/g;
 
-  const dustTrackTags = documentContent.match(dustTrackTagRegex);
-  if (!dustTrackTags) {
-    return;
-  }
+  const dustTrackTags = documentContent.match(dustTrackTagRegex) || [];
 
   const allEmails: Set<string> = new Set();
   for (const dustTrackTag of dustTrackTags) {
@@ -61,18 +58,36 @@ export async function updateTrackedDocuments(
     }
   }
 
+  // find users with matching emails
   const emails = Array.from(allEmails);
-  const users = await User.findAll({
+  let users = emails.length
+    ? await User.findAll({
+        where: literal(`lower(email) IN (:emails)`),
+        replacements: {
+          emails,
+        },
+      })
+    : [];
+
+  // restrict to users in the workspace
+  const memberships = await Membership.findAll({
     where: {
-      email: {
-        [Op.in]: emails,
+      userId: {
+        [Op.in]: users.map((user) => user.id),
       },
+      workspaceId: dataSource.workspaceId,
     },
   });
+  const userIdsInWorkspace = new Set(
+    memberships.map((membership) => membership.userId)
+  );
+  users = users.filter((user) => userIdsInWorkspace.has(user.id));
+
   const userByEmail: Map<string, User> = new Map();
   for (const user of users) {
     userByEmail.set(user.email.toLowerCase(), user);
   }
+
   const upsertTrackedDoc = async (email: string) => {
     const user = userByEmail.get(email);
     if (!user) {
