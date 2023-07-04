@@ -1152,6 +1152,7 @@ export default function AppChat({
                                   isLatestRetrieval={isLatest("retrieval", i)}
                                   readOnly={chatSession.readOnly}
                                   feedback={
+                                    !chatSession.readOnly &&
                                     m.role === "assistant" && {
                                       handler: handleFeedback,
                                       hover: response
