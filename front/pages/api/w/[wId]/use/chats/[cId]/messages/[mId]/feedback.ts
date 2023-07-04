@@ -9,7 +9,8 @@ import {
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
+import { apiError, statsDClient, withLogging } from "@app/logger/withlogging";
 import { MessageFeedbackStatus } from "@app/types/chat";
 
 export const messageFeedbackSchema: JSONSchemaType<{
@@ -125,6 +126,26 @@ async function handler(
         feedback,
         sId: req.query.mId as string,
       });
+
+      const loggerArgs = {
+        workspace: {
+          sId: owner.sId,
+          name: owner.name,
+        },
+        chatSessionId: chatSession.sId,
+        messageId: req.query.mId,
+        feedback,
+      };
+
+      logger.info(loggerArgs, "Chat feedback");
+
+      const tags = [`workspace:${owner.sId}`, `workspace_name:${owner.name}`];
+      if (feedback === "positive") {
+        statsDClient.increment("chat_feedback_positive.count", 1, tags);
+      }
+      if (feedback === "negative") {
+        statsDClient.increment("chat_feedback_negative.count", 1, tags);
+      }
 
       res.status(200).json({
         count: result[0],
