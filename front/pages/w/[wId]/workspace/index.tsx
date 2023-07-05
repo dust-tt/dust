@@ -340,7 +340,7 @@ export default function WorkspaceAdmin({
                         value={inviteEmail || ""}
                         onChange={(e) => {
                           if (e.target.value.length > 0) {
-                            setInviteEmail(e.target.value);
+                            setInviteEmail(e.target.value.trim());
                           } else {
                             setInviteEmail("");
                           }
