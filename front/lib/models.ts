@@ -949,7 +949,7 @@ GensTemplate.init(
   {
     modelName: "gens_template",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["workspaceId"] }],
+    indexes: [{ fields: ["workspaceId", "sId"], unique: true }],
   }
 );
 

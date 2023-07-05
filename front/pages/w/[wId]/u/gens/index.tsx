@@ -794,13 +794,16 @@ export function TemplatesView({
                               };
                               const curr_templates = templates.map((d) => d);
                               if (editingTemplate == -1) {
-                                await fetch(`/api/w/${workspaceId}/templates`, {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify(new_template),
-                                });
+                                await fetch(
+                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(new_template),
+                                  }
+                                );
 
                                 curr_templates.push(new_template);
                               } else {
@@ -808,13 +811,16 @@ export function TemplatesView({
                                   templates[editingTemplate].sId;
                                 new_template.color =
                                   templates[editingTemplate].color;
-                                await fetch(`/api/w/${workspaceId}/templates`, {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify(new_template),
-                                });
+                                await fetch(
+                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(new_template),
+                                  }
+                                );
                                 curr_templates[editingTemplate] = new_template;
                               }
                               setTemplates(curr_templates);
@@ -831,7 +837,7 @@ export function TemplatesView({
                               <ActionButton
                                 onClick={async () => {
                                   await fetch(
-                                    `/api/w/${workspaceId}/templates`,
+                                    `/api/w/${workspaceId}/templates/${templates[editingTemplate].sId}`,
                                     {
                                       method: "DELETE",
                                       headers: {
