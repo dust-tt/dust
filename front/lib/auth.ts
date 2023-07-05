@@ -462,3 +462,30 @@ export async function prodAPICredentialsForOwner(
     workspaceId: owner.sId,
   };
 }
+
+/**
+ * Retrieves a builder owner for a given workspace
+ * Used for internal calls to the Dust API, when the system is calling something for the workspace
+ * @param workspaceId
+ */
+export async function getInternalBuilderOwner(
+  workspaceId: string
+): Promise<WorkspaceType> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace with sId ${workspaceId}`);
+  }
+  return {
+    id: workspace.id,
+    uId: workspace.uId,
+    sId: workspace.sId,
+    name: workspace.name,
+    allowedDomain: workspace.allowedDomain || null,
+    role: "builder",
+    plan: planForWorkspace(workspace),
+  };
+}
