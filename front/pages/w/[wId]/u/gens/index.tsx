@@ -1,11 +1,11 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
+  BookmarkIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   SparklesIcon,
-  BookmarkIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -880,7 +880,7 @@ export default function AppGens({
       // TODO: make this more efficient by just moving that doc around
       // we can also re-rank a document that was pinned
       // TODO: should make this cleaner
-      let index = retrieved.findIndex((d) => d.documentId == documentId);
+      const index = retrieved.findIndex((d) => d.documentId == documentId);
       retrieved[index].llm_score = score;
       retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
