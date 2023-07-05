@@ -228,7 +228,7 @@ export function DocumentView({
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
-  template: TemplateType | null;
+  template: ClientTemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
 }) {
@@ -490,7 +490,7 @@ export function ResultsView({
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
-  template: TemplateType | null;
+  template: ClientTemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
 }) {
@@ -532,10 +532,12 @@ export function ResultsView({
   );
 }
 
-type TemplateType = {
+type ClientTemplateType = {
   name: string;
   color: string;
   instructions: string[];
+  sId: string;
+  visibility: string;
 };
 
 export function TemplatesView({
@@ -544,12 +546,12 @@ export function TemplatesView({
   savedTemplates,
   isBuilder,
 }: {
-  onTemplateSelect: (template: TemplateType) => void;
+  onTemplateSelect: (template: ClientTemplateType) => void;
   workspaceId: string;
   savedTemplates: GensTemplateType[];
   isBuilder: boolean;
 }) {
-  const [templates, setTemplates] = useState<GensTemplateType[]>(
+  const [templates, setTemplates] = useState<ClientTemplateType[]>(
     [
       {
         name: "Fact Gatherer",
@@ -976,7 +978,7 @@ export default function AppGens({
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
 
-  const template = useRef<TemplateType | null>(null);
+  const template = useRef<ClientTemplateType | null>(null);
 
   const getContext = () => {
     return {

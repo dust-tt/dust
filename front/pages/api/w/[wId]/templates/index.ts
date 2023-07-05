@@ -9,7 +9,7 @@ import {
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { GensTemplate } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError,withLogging } from "@app/logger/withlogging";
 import { GensTemplateType } from "@app/types/gens";
 
 export type GetTemplatesResponseBody = {
@@ -37,13 +37,23 @@ async function handler(
   const user = await getUserFromSession(session);
   const isBuilder = auth.isBuilder();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
+      },
+    });
   }
 
   if (!user) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_user_not_found",
+        message: "Could not find the user of the current session.",
+      },
+    });
   }
 
   const body = req.body;
@@ -58,8 +68,14 @@ async function handler(
 
     case "POST":
       if (body.visibility === "workspace" && !isBuilder) {
-        res.status(403).end();
-        return;
+        apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only builders of the current workspace can create templates with 'workspace' visibility.",
+          },
+        });
       }
 
       const temp_attrs = {
@@ -71,32 +87,52 @@ async function handler(
         sId: body.sId || new_id(),
         visibility: body.visibility,
       };
-      // check if template exists
+
       template = await getTemplate(owner, user, temp_attrs.sId);
       if (template) {
+        if (template.userId !== user.id && !isBuilder) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Only builders of the current workspace can update templates that they did not create.",
+            },
+          });
+        }
+
         result = await updateTemplate(temp_attrs, owner, user, isBuilder);
         if (!result) {
-          res.status(500).end();
-          return;
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "template_not_found",
+              message: "Could not find the template you're trying to update.",
+            },
+          });
         }
       } else {
         template = await GensTemplate.create(temp_attrs);
-      }
-      if (!template) {
-        res.status(500).end();
       }
       res.status(201).json({
         template: temp_attrs,
       });
       return;
+
     case "DELETE":
       result = await deleteTemplate(owner, user, body.sId, isBuilder);
       if (!result) {
-        res.status(500).end();
-        return;
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "template_not_found",
+            message: "Could not find the template you're trying to update.",
+          },
+        });
       }
       res.status(200).end();
       return;
+
     default:
       res.status(405).end();
       return;

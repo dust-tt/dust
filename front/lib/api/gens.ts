@@ -65,6 +65,7 @@ export async function getTemplate(
     sId: template.sId,
     color: template.color,
     visibility: template.visibility,
+    userId: template.userId,
   };
 }
 
