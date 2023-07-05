@@ -5,14 +5,9 @@ import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { DataSource, TrackedDocument, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
+import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
-
-const TRACKABLE_CONNECTOR_TYPES: ConnectorProvider[] = [
-  "google_drive",
-  "github",
-  "notion",
-];
 
 const logger = mainLogger.child({
   postUpsertHook: "document_tracker",
