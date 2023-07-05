@@ -615,9 +615,12 @@ export function TemplatesView({
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {
       // remove template from thing
-      const editingTemplates = [...prevTemplates];
-      editingTemplates.splice(index, 1);
-      return editingTemplates;
+      const newTemplates = [...prevTemplates];
+      newTemplates.splice(index, 1);
+      if (index == selectedTemplate) {
+        setSelectedTemplate(0);
+      }
+      return newTemplates;
     });
   };
 
