@@ -185,7 +185,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       }
       sgMail.setApiKey(SENDGRID_API_KEY);
 
-      const docUrl = actionResult.matched_doc_id;
+      const docUrl = actionResult.matched_doc_url;
       const suggestedChanges = actionResult.suggested_changes;
 
       const sendEmail = async (email: string) => {
@@ -205,12 +205,13 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
           to: email,
           from: "team@dust.tt",
           subject: "DUST: Document update suggestion",
-          text: `Hello !
+          text: `Hello!
+
 We have a suggestion for you to update the document ${docUrl}:
 
 ${suggestedChanges}
 
-The DUST team`,
+The Dust team`,
         };
 
         await sgMail.send(msg);
