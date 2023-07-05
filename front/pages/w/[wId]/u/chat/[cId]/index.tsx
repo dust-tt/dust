@@ -138,11 +138,7 @@ export const getServerSideProps: GetServerSideProps<{
   });
 
   const cId = context.params?.cId as string;
-  const chatSession = await getChatSessionWithMessages({
-    owner,
-    user,
-    sId: cId,
-  });
+  const chatSession = await getChatSessionWithMessages(owner, cId);
 
   if (!chatSession) {
     return {
@@ -477,7 +473,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -567,6 +563,7 @@ export default function AppChat({
   const prodAPI = new DustAPI(prodCredentials);
 
   const [title, setTitle] = useState<string>(chatSession.title || "Chat");
+  const [smallScreen, setSmallScreen] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
@@ -596,6 +593,7 @@ export default function AppChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    setSmallScreen(window.innerWidth < 640);
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -757,7 +755,7 @@ export default function AppChat({
     }
   };
 
-  const storeChatSession = async (title: string) => {
+  const upsertChatSession = async (title: string) => {
     const res = await fetch(
       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
       {
@@ -958,7 +956,7 @@ export default function AppChat({
 
     // on first message, persist chat session
     if (m.length === 0) {
-      await storeChatSession("Chat");
+      await upsertChatSession("Chat");
     }
     await updateMessages(m, userMessage);
     setInput("");
@@ -1001,7 +999,7 @@ export default function AppChat({
       setTitleState("writing");
       const t = await updateTitle(title, m);
       setTitleState("saving");
-      const r = await storeChatSession(t);
+      const r = await upsertChatSession(t);
       if (r) {
         setTitleState("saved");
       }
@@ -1156,6 +1154,7 @@ export default function AppChat({
                                   isLatestRetrieval={isLatest("retrieval", i)}
                                   readOnly={chatSession.readOnly}
                                   feedback={
+                                    !chatSession.readOnly &&
                                     m.role === "assistant" && {
                                       handler: handleFeedback,
                                       hover: response
@@ -1304,7 +1303,12 @@ export default function AppChat({
                         )}
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={`Ask anything about \`${owner.name}\`. Press ⏎ to submit, shift+⏎ for next line`}
+                          placeholder={
+                            (smallScreen
+                              ? ""
+                              : `Ask anything about \`${owner.name}\`.`) +
+                            "Press ⏎ to submit, shift+⏎ for next line"
+                          }
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
                             "rounded-sm",

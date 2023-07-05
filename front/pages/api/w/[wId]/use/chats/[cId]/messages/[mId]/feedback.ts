@@ -1,11 +1,16 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getChatSession, updateChatMessageFeedback } from "@app/lib/api/chat";
+import {
+  getChatSession,
+  updateChatMessageFeedback,
+  userIsChatSessionOwner,
+} from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
+import { apiError, statsDClient, withLogging } from "@app/logger/withlogging";
 import { MessageFeedbackStatus } from "@app/types/chat";
 
 export const messageFeedbackSchema: JSONSchemaType<{
@@ -84,11 +89,7 @@ async function handler(
     });
   }
 
-  const chatSession = await getChatSession({
-    owner,
-    user,
-    sId: req.query.cId as string,
-  });
+  const chatSession = await getChatSession(owner, req.query.cId as string);
 
   if (!chatSession) {
     return apiError(req, res, {
@@ -103,6 +104,17 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
+      if (!userIsChatSessionOwner(user, chatSession)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "chat_session_auth_error",
+            message:
+              "The chat session for the message you're trying to modify does not belong to you.",
+          },
+        });
+      }
+
       const pRes = parse_payload(messageFeedbackSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
@@ -114,6 +126,26 @@ async function handler(
         feedback,
         sId: req.query.mId as string,
       });
+
+      const loggerArgs = {
+        workspace: {
+          sId: owner.sId,
+          name: owner.name,
+        },
+        chatSessionId: chatSession.sId,
+        messageId: req.query.mId,
+        feedback,
+      };
+
+      logger.info(loggerArgs, "Chat feedback");
+
+      const tags = [`workspace:${owner.sId}`, `workspace_name:${owner.name}`];
+      if (feedback === "positive") {
+        statsDClient.increment("chat_feedback_positive.count", 1, tags);
+      }
+      if (feedback === "negative") {
+        statsDClient.increment("chat_feedback_negative.count", 1, tags);
+      }
 
       res.status(200).json({
         count: result[0],

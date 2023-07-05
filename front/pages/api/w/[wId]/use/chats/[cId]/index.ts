@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getChatSessionWithMessages,
-  storeChatSession,
+  upsertChatSession,
 } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -95,7 +95,12 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await storeChatSession(cId, owner, user, s.title || null);
+      const session = await upsertChatSession(
+        cId,
+        owner,
+        user,
+        s.title || null
+      );
 
       res.status(200).json({
         session,
@@ -116,11 +121,8 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const session = await getChatSessionWithMessages({
-        owner,
-        user,
-        sId: cId,
-      });
+      const session = await getChatSessionWithMessages(owner, cId);
+
       if (!session) {
         return apiError(req, res, {
           status_code: 404,
@@ -146,7 +148,6 @@ async function handler(
             "The method passed is not supported, GET or POST is expected.",
         },
       });
-      break;
   }
 }
 

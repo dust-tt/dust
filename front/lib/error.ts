@@ -33,7 +33,9 @@ export type APIErrorType =
   | "plan_limit_error"
   | "chat_session_not_found"
   | "chat_message_not_found"
-  | "template_not_found";
+  | "chat_session_auth_error"
+  | "template_not_found"
+  | "chat_message_not_found";
 
 export type APIError = {
   type: APIErrorType;

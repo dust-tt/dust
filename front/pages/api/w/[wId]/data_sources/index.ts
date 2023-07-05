@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { credentialsFromProviders } from "@app/lib/api/credentials";
+import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { DataSource, Provider } from "@app/lib/models";
+import { DataSource } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 
@@ -65,9 +65,6 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !(typeof req.body.provider_id == "string") ||
-        !(typeof req.body.model_id == "string") ||
-        !(typeof req.body.max_chunk_size == "string") ||
         !["public", "private"].includes(req.body.visibility)
       ) {
         return apiError(req, res, {
@@ -105,6 +102,10 @@ async function handler(
         });
       }
 
+      const dataSourceProviderId = "openai";
+      const dataSourceModelId = "text-embedding-ada-002";
+      const dataSourceMaxChunkSize = 256;
+
       const dustProject = await CoreAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
@@ -118,35 +119,19 @@ async function handler(
       }
 
       const description = req.body.description ? req.body.description : null;
-      const maxChunkSize = parseInt(req.body.max_chunk_size);
-      if (isNaN(maxChunkSize)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "`max_chunk_size` must be a parseable integer.",
-          },
-        });
-      }
 
-      const [providers] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-      ]);
-      const credentials = credentialsFromProviders(providers);
+      // Dust managed credentials: all data sources.
+      const credentials = dustManagedCredentials();
 
       const dustDataSource = await CoreAPI.createDataSource(
         dustProject.value.project.project_id.toString(),
         {
           dataSourceId: req.body.name as string,
           config: {
-            provider_id: req.body.provider_id as string,
-            model_id: req.body.model_id as string,
+            provider_id: dataSourceProviderId,
+            model_id: dataSourceModelId,
             splitter_id: "base_v0",
-            max_chunk_size: maxChunkSize,
+            max_chunk_size: dataSourceMaxChunkSize,
             use_cache: false,
           },
           credentials,

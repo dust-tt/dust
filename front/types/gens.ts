@@ -11,6 +11,7 @@ export type GensRetrievedDocumentType = {
     offset: number;
     score: number;
   }[];
+  tokenCount: number;
 };
 
 export type GensTemplateType = {

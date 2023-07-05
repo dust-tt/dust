@@ -90,9 +90,20 @@ async function handler(
         });
       }
 
+      if (dataSource.connectorId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Managed data sources cannot be updated.",
+          },
+        });
+      }
+
       if (
         !req.body ||
         !(typeof req.body.description == "string") ||
+        !(typeof req.body.userUpsertable == "boolean") ||
         !["public", "private"].includes(req.body.visibility)
       ) {
         return apiError(req, res, {
@@ -110,6 +121,7 @@ async function handler(
       const ds = await dataSource.update({
         description,
         visibility: req.body.visibility,
+        userUpsertable: req.body.userUpsertable,
       });
 
       return res.status(200).json({
@@ -133,6 +145,16 @@ async function handler(
             type: "data_source_auth_error",
             message:
               "Only the users that are `builders` for the current workspace can delete a Data Source.",
+          },
+        });
+      }
+
+      if (dataSource.connectorId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Managed data sources cannot be deleted.",
           },
         });
       }

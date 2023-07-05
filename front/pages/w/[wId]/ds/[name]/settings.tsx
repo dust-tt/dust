@@ -48,6 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
+  canUpdatePermissions: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -74,6 +75,11 @@ export const getServerSideProps: GetServerSideProps<{
     return {
       notFound: true,
     };
+  }
+
+  let canUpdatePermissions = false;
+  if (context.query.updatePermissions === "enabled") {
+    canUpdatePermissions = true;
   }
 
   let connector: ConnectorType | null = null;
@@ -104,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<{
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
+      canUpdatePermissions,
     },
   };
 };
@@ -117,6 +124,7 @@ export default function DataSourceSettings({
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
+  canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId;
 
@@ -140,6 +148,7 @@ export default function DataSourceSettings({
             fetchConnectorError={fetchConnectorError || false}
             nangoConfig={nangoConfig}
             githubAppUrl={githubAppUrl}
+            canUpdatePermissions={canUpdatePermissions}
           />
         )}
       </div>
@@ -161,6 +170,9 @@ function StandardDataSourceSettings({
   );
   const [dataSourceVisibility, setDataSourceVisibility] = useState(
     dataSource.visibility
+  );
+  const [userUpsertable, setUserUpsertable] = useState(
+    dataSource.userUpsertable
   );
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -205,6 +217,7 @@ function StandardDataSourceSettings({
         body: JSON.stringify({
           description: dataSourceDescription,
           visibility: dataSourceVisibility,
+          userUpsertable: userUpsertable,
         }),
       }
     );
@@ -401,6 +414,30 @@ function StandardDataSourceSettings({
                   </div>
                 </div>
               </div>
+              <div className="mt-4">
+                <div className="flex justify-between">
+                  <label
+                    htmlFor="upsertable"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Upload Rights
+                  </label>
+                </div>
+                <div className="mt-2 flex items-center">
+                  <input
+                    id="dataSourceUpsertable"
+                    name="upsertable"
+                    type="checkbox"
+                    className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                    checked={userUpsertable}
+                    onChange={(e) => setUserUpsertable(e.target.checked)}
+                  />
+                  <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                    Users (non-builders) of your workspace can upload documents
+                    to the data source
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -476,6 +513,7 @@ function ManagedDataSourceSettings({
   fetchConnectorError,
   nangoConfig,
   githubAppUrl,
+  canUpdatePermissions,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -488,6 +526,7 @@ function ManagedDataSourceSettings({
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
+  canUpdatePermissions: boolean;
 }) {
   const logo = getProviderLogoPathForDataSource(dataSource);
   if (!logo) {
@@ -503,6 +542,13 @@ function ManagedDataSourceSettings({
   const { total } = useDocuments(owner, dataSource, 0, 0);
 
   const handleUpdatePermissions = async () => {
+    if (!canUpdatePermissions) {
+      window.alert(
+        "Please contact us at team@dust.tt if you wish to update the permissions of this managed data source."
+      );
+      return;
+    }
+
     if (!connector) {
       console.error("No connector");
       return;
