@@ -598,7 +598,7 @@ export function TemplatesView({
   };
 
   return (
-    <div className="w-48 flex-initial flex-shrink-0 px-2">
+    <div className="flex-initial flex-shrink-0 px-2">
       <div>
         <div className="justify-items flex space-x-2"></div>
         <Transition.Root show={formExpanded} as={Fragment}>
@@ -716,13 +716,13 @@ export function TemplatesView({
           </Dialog>
         </Transition.Root>
 
-        <div className="mt-2 flex flex-col space-y-2">
+        <div className="mt-2 flex justify-start items-center space-x-2">
           {templates.map((t, i) => {
             return (
               // round circle div with given color
               <div
                 key={i}
-                className="align-items group ml-1 mt-2 flex items-center space-x-2"
+                className="align-items group flex items-center space-x-2"
                 onClick={() => {
                   setSelectedTemplate(i);
                   onTemplateSelect(t);
@@ -734,7 +734,7 @@ export function TemplatesView({
                   className={classNames(
                     "rounded py-1",
                     "text-xs font-bold text-gray-700",
-                    "h-5 w-5 rounded-full",
+                    "h-5 w-5 rounded-full flex-shrink-0",
                     t.color,
                     // make opacity lower for unselected
                     selectedTemplate === i ? "opacity-100" : "opacity-30"
@@ -742,18 +742,18 @@ export function TemplatesView({
                 />
                 {hover === i && (
                   <>
-                    <span className="text-xs text-gray-600">
+                    <span className="text-xs text-gray-600 flex-shrink-0">
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    <PencilIcon
+                    <PencilIcon 
                       onClick={() => {
                         setSelectedTemplate(i);
                         setNewTemplateInstructions(t.instructions);
                         setNewTemplateTitle(t.name);
                         setFormExpanded(true);
                       }}
-                      className="h-3 w-3"
+                      className="h-3 w-3 flex-shrink-0"
                     />
                   </>
                 )}
@@ -1077,6 +1077,9 @@ export default function AppGens({
           <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
             <div className="flex flex-col">
               <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+                <TemplatesView
+                  onTemplateSelect={(t) => (template.current = t)}
+                />
                 <div className="w-70 flex font-normal">
                   <TextareaAutosize
                     minRows={8}
@@ -1098,9 +1101,6 @@ export default function AppGens({
                     }}
                   />
 
-                  <TemplatesView
-                    onTemplateSelect={(t) => (template.current = t)}
-                  />
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
