@@ -5,6 +5,7 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   SparklesIcon,
+  BookmarkIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -209,6 +210,8 @@ export function DocumentView({
   template,
   onScoreReady,
   onExtractUpdate,
+  onPin,
+  onRemove,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
@@ -216,6 +219,8 @@ export function DocumentView({
   template: TemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
+  onPin: (documentId: string) => void;
+  onRemove: (documentId: string) => void;
 }) {
   const provider = providerFromDocument(document);
 
@@ -224,6 +229,8 @@ export function DocumentView({
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
+
+  const [pinned, setPinned] = useState(false);
 
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
@@ -351,7 +358,9 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              onScoreReady(document.documentId, score);
+              if (!pinned) {
+                onScoreReady(document.documentId, score);
+              }
               return;
             }
           } else if (event.type == "error") {
@@ -431,8 +440,34 @@ export function DocumentView({
           </span>
         </div>
       </div>
-      <div className="my-2 flex flex-col space-y-2">
+      <div className="my-2 flex items-center">
         <p className="text-black-500 ml-3 text-xs">{extractedText}</p>
+        <div className="ml-auto flex flex-shrink-0">
+          <button
+            className="mx-1 text-base font-bold"
+            onClick={() => {
+              if (!pinned) {
+                onPin(document.documentId);
+              } else {
+                onScoreReady(document.documentId, LLMScore || document.score);
+              }
+              setPinned(!pinned);
+            }}
+          >
+            <BookmarkIcon
+              className={classNames(
+                "h-4 w-4",
+                pinned ? "text-gray-500" : "text-slate-300"
+              )}
+            />
+          </button>
+          <button
+            className="mx-1 text-base font-bold"
+            onClick={() => onRemove(document.documentId)}
+          >
+            <TrashIcon className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
       </div>
       {chunkExpanded && (
         <div className="mb-2 flex flex-col space-y-2">
@@ -471,6 +506,8 @@ export function ResultsView({
   template,
   onExtractUpdate,
   onScoreReady,
+  onPin,
+  onRemove,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
@@ -478,6 +515,8 @@ export function ResultsView({
   template: TemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
+  onPin: (documentId: string) => void;
+  onRemove: (documentId: string) => void;
 }) {
   return (
     <div className="mt-5 w-full ">
@@ -508,6 +547,8 @@ export function ResultsView({
                 template={template}
                 onScoreReady={onScoreReady}
                 onExtractUpdate={onExtractUpdate}
+                onPin={onPin}
+                onRemove={onRemove}
               />
             );
           })}
@@ -837,10 +878,37 @@ export default function AppGens({
     setRetrieved((r) => {
       const retrieved = [...r];
       // TODO: make this more efficient by just moving that doc around
-      retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
+      // we can also re-rank a document that was pinned
+      // TODO: should make this cleaner
+      let index = retrieved.findIndex((d) => d.documentId == documentId);
+      retrieved[index].llm_score = score;
+      retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        else if (!a.pinned && b.pinned) return 1;
         return (b.llm_score || 0) - (a.llm_score || 0);
       });
+      return retrieved;
+    });
+  };
+
+  const onPin = (documentId: string) => {
+    setRetrieved((r) => {
+      const retrieved = [...r];
+      const index = retrieved.findIndex((d) => d.documentId === documentId);
+      const pinnedDoc = retrieved[index];
+      pinnedDoc.pinned = !pinnedDoc.pinned;
+      retrieved.splice(index, 1);
+      retrieved.unshift(pinnedDoc);
+      return retrieved;
+    });
+  };
+
+  const onRemove = (documentId: string) => {
+    setRetrieved((r) => {
+      const retrieved = [...r];
+      const index = retrieved.findIndex((d) => d.documentId === documentId);
+      retrieved.splice(index, 1);
       return retrieved;
     });
   };
@@ -1013,7 +1081,7 @@ export default function AppGens({
 
   const handleSearch = async () => {
     setRetrievalLoading(true);
-    setRetrieved([]);
+    setRetrieved(retrieved.map((d) => d).filter((d) => d.pinned));
 
     const userContext = {
       user: {
@@ -1059,7 +1127,16 @@ export default function AppGens({
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
-          setRetrieved(e.value.retrievals);
+          setRetrieved((r) => {
+            const existingDocs = r.map((d) => d.documentId);
+            return [
+              ...r,
+              ...e.value.retrievals.filter(
+                (d: GensRetrievedDocumentType) =>
+                  !existingDocs.includes(d.documentId)
+              ),
+            ];
+          });
           console.log("Search completed");
           setRetrievalLoading(false);
         }
@@ -1231,6 +1308,8 @@ export default function AppGens({
                 onExtractUpdate={onExtractUpdate}
                 onScoreReady={onScoreReady}
                 template={template.current}
+                onPin={onPin}
+                onRemove={onRemove}
               />
             </div>
           </div>
