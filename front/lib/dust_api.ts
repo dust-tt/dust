@@ -13,6 +13,25 @@ export type DustAPIErrorResponse = {
 };
 export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
 
+export type DustAPINonStreamedResponse = Result<
+  DustAPINonStreamedResponseSuccess,
+  DustAPIErrorResponse
+>;
+
+export type DustAPINonStreamedResponseSuccess = {
+  run_id: string;
+  created_at: number;
+  run_type: "deploy";
+  config: DustAppConfigType;
+  status: {
+    run: "running" | "succeeded" | "errored";
+    blocks: DustAppRunBlockStatusEvent[];
+  };
+  traces: any;
+  specification_hash: string;
+  results: any;
+};
+
 export type DustAppType = {
   workspaceId: string;
   appId: string;
@@ -303,6 +322,43 @@ export class DustAPI {
 
   workspaceId(): string {
     return this._credentials.workspaceId;
+  }
+
+  /**
+   * This functions talks directly to the Dust production API to create a run.
+   *
+   * @param app DustAppType the app to run streamed
+   * @param config DustAppConfigType the app config
+   * @param inputs any[] the app inputs
+   */
+  async runApp(
+    app: DustAppType,
+    config: DustAppConfigType,
+    inputs: any[]
+  ): Promise<DustAPINonStreamedResponse> {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+        },
+        body: JSON.stringify({
+          specification_hash: app.appHash,
+          config: config,
+          stream: false,
+          blocking: true,
+          inputs: inputs,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error);
+    }
+    return new Ok(json.run);
   }
 
   /**
