@@ -477,7 +477,8 @@ export const CoreAPI = {
   async getDataSourceDocument(
     projectId: string,
     dataSourceName: string,
-    documentId: string
+    documentId: string,
+    getPreviousVersion = false
   ): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
@@ -487,7 +488,7 @@ export const CoreAPI = {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId
-      )}`,
+      )}?previous_version=${getPreviousVersion}`,
       {
         method: "GET",
       }
