@@ -1,9 +1,14 @@
-import { DustAppType } from "./dust_api";
+import { DustAppType } from "@app/lib/dust_api";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
+export type Action = {
+  app: DustAppType;
+  config: { [key: string]: unknown };
+};
+
 export const DustProdActionRegistry: {
-  [key: string]: { app: DustAppType; config: { [model: string]: any } };
+  [key: string]: Action;
 } = {
   "chat-retrieval": {
     app: {
@@ -150,6 +155,41 @@ export const DustProdActionRegistry: {
         use_cache: false,
         max_tokens: 1,
         top_logprobs: 1,
+      },
+    },
+  },
+  "doc-tracker": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "a48139b64b",
+      appHash:
+        "220619d771aa8f292e6e929faf509651eb67dc6928c7c27cd87274a50f86b230",
+    },
+    config: {
+      SUGGEST_CHANGES: {
+        provider_id: "openai",
+        model_id: "gpt-4-0613",
+        use_cache: false,
+        function_call: "suggest_changes",
+      },
+      SEMANTIC_SEARCH: {
+        data_sources: [],
+        top_k: 8,
+        filter: {
+          tags: {
+            in: ["__DUST_TRACKED"],
+            not: null,
+          },
+          timestamp: null,
+        },
+        use_cache: false,
+        full_text: true,
+      },
+      SUMMARIZE_INCOMING_DOC: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-0613",
+        function_call: "return_summary",
+        use_cache: false,
       },
     },
   },
