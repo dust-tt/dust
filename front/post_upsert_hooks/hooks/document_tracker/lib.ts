@@ -35,6 +35,7 @@ type DocTrackerActionResultMatchValue = {
   match: true;
   matched_doc_url: string;
   matched_doc_id: string;
+  matched_data_source_id: string;
   suggested_changes: string;
 };
 
