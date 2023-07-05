@@ -3,7 +3,7 @@ import {
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
@@ -570,9 +570,8 @@ export function TemplatesView({
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
   const [editingTemplate, setEditingTemplate] = useState<number>(-1);
   const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
-  const [editingTemplateInstructions, setEditingTemplateInstructions] = useState<
-    string[]
-  >([]);
+  const [editingTemplateInstructions, setEditingTemplateInstructions] =
+    useState<string[]>([]);
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
     useState<string>("user");
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
@@ -581,9 +580,11 @@ export function TemplatesView({
     if (editingTemplate == -1) {
       return true;
     }
-    return templates[editingTemplate].visibility != "default" && (isBuilder || templates[editingTemplate].visibility == "user");
+    return (
+      templates[editingTemplate].visibility != "default" &&
+      (isBuilder || templates[editingTemplate].visibility == "user")
+    );
   }, [editingTemplate, templates]);
-
 
   useEffect(() => {
     if (selectedTemplate != -1) {
@@ -697,20 +698,23 @@ export function TemplatesView({
                                     handleInstructionChange(i, e.target.value)
                                   }
                                   readOnly={!editable}
-
                                 />
                               </div>
 
                               {editable && (
                                 <>
                                   <div
-                                    className={classNames("ml-2 w-4 flex-initial")}
+                                    className={classNames(
+                                      "ml-2 w-4 flex-initial"
+                                    )}
                                   >
                                     <PlusCircleIcon
                                       className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
                                       onClick={() => {
                                         setEditingTemplateInstructions(
-                                          editingTemplateInstructions.concat([""])
+                                          editingTemplateInstructions.concat([
+                                            "",
+                                          ])
                                         );
                                       }}
                                     />
@@ -733,27 +737,30 @@ export function TemplatesView({
                             </div>
                           );
                         })}
-                        {isBuilder && editingTemplateVisibility != "default" && (
-                          <div className="mt-4 flex flex-row items-center">
-                            <input
-                              type="checkbox"
-                              id="workspace"
-                              name="visibility"
-                              value="workspace"
-                              checked={editingTemplateVisibility == "workspace"}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEditingTemplateVisibility("workspace");
-                                } else {
-                                  setEditingTemplateVisibility("user");
+                        {isBuilder &&
+                          editingTemplateVisibility != "default" && (
+                            <div className="mt-4 flex flex-row items-center">
+                              <input
+                                type="checkbox"
+                                id="workspace"
+                                name="visibility"
+                                value="workspace"
+                                checked={
+                                  editingTemplateVisibility == "workspace"
                                 }
-                              }}
-                            />
-                            <label className="ml-2 text-sm font-medium text-gray-700">
-                              Visible to entire workspace
-                            </label>
-                          </div>
-                        )}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingTemplateVisibility("workspace");
+                                  } else {
+                                    setEditingTemplateVisibility("user");
+                                  }
+                                }}
+                              />
+                              <label className="ml-2 text-sm font-medium text-gray-700">
+                                Visible to entire workspace
+                              </label>
+                            </div>
+                          )}
                       </div>
                     </div>
                     <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
@@ -773,7 +780,9 @@ export function TemplatesView({
                                 name: editingTemplateTitle,
                                 // set random color
                                 color: `bg-${
-                                  colors[Math.floor(Math.random() * colors.length)]
+                                  colors[
+                                    Math.floor(Math.random() * colors.length)
+                                  ]
                                 }-500`,
                                 instructions: editingTemplateInstructions,
                                 sId: client_side_new_id(),
@@ -791,7 +800,8 @@ export function TemplatesView({
 
                                 curr_templates.push(new_template);
                               } else {
-                                new_template.sId = templates[editingTemplate].sId;
+                                new_template.sId =
+                                  templates[editingTemplate].sId;
                                 new_template.color =
                                   templates[editingTemplate].color;
                                 await fetch(`/api/w/${workspaceId}/templates`, {
@@ -816,15 +826,18 @@ export function TemplatesView({
                             <div className="flex flex-initial">
                               <ActionButton
                                 onClick={async () => {
-                                  await fetch(`/api/w/${workspaceId}/templates`, {
-                                    method: "DELETE",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify(
-                                      templates[editingTemplate]
-                                    ),
-                                  });
+                                  await fetch(
+                                    `/api/w/${workspaceId}/templates`,
+                                    {
+                                      method: "DELETE",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify(
+                                        templates[editingTemplate]
+                                      ),
+                                    }
+                                  );
                                   handleTemplateDelete(editingTemplate);
                                   setFormExpanded(false);
                                 }}
@@ -873,11 +886,14 @@ export function TemplatesView({
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    {templates[i].visibility != "default" && (isBuilder || templates[i].visibility == "user") ? (
+                    {templates[i].visibility != "default" &&
+                    (isBuilder || templates[i].visibility == "user") ? (
                       <PencilIcon
                         onClick={() => {
                           setEditingTemplate(i);
-                          setEditingTemplateInstructions(t.instructions || [""]);
+                          setEditingTemplateInstructions(
+                            t.instructions || [""]
+                          );
                           setEditingTemplateTitle(t.name);
                           setFormExpanded(true);
                           setEditingTemplateVisibility(t.visibility);
@@ -888,7 +904,9 @@ export function TemplatesView({
                       <InformationCircleIcon
                         onClick={() => {
                           setEditingTemplate(i);
-                          setEditingTemplateInstructions(t.instructions || [""]);
+                          setEditingTemplateInstructions(
+                            t.instructions || [""]
+                          );
                           setEditingTemplateTitle(t.name);
                           setFormExpanded(true);
                           setEditingTemplateVisibility(t.visibility);
