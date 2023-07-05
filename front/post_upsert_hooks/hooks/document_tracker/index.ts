@@ -2,6 +2,7 @@ import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
@@ -185,8 +186,22 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       }
       sgMail.setApiKey(SENDGRID_API_KEY);
 
-      const docUrl = actionResult.matched_doc_id;
+      const docUrl = actionResult.matched_doc_url;
       const suggestedChanges = actionResult.suggested_changes;
+
+      const incomingDocument = await CoreAPI.getDataSourceDocument(
+        dataSource.dustAPIProjectId,
+        dataSource.name,
+        documentId
+      );
+
+      if (incomingDocument.isErr()) {
+        throw new Error(
+          `Could not get document ${documentId} from data source ${dataSource.name}`
+        );
+      }
+
+      const incomingDocumentUrl = incomingDocument.value.document.source_url;
 
       const sendEmail = async (email: string) => {
         logger.info(
@@ -205,12 +220,13 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
           to: email,
           from: "team@dust.tt",
           subject: "DUST: Document update suggestion",
-          text: `Hello !
-We have a suggestion for you to update the document ${docUrl}:
+          text: `Hello!
+
+We have a suggestion for you to update the document ${docUrl}, based on the new document ${incomingDocumentUrl}:
 
 ${suggestedChanges}
 
-The DUST team`,
+The Dust team`,
         };
 
         await sgMail.send(msg);
