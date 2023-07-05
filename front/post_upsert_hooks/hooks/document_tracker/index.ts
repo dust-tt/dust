@@ -1,13 +1,16 @@
+import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
-import { DataSource, TrackedDocument, Workspace } from "@app/lib/models";
+import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
+import { callDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
+const { SENDGRID_API_KEY } = process.env;
 
 const logger = mainLogger.child({
   postUpsertHook: "document_tracker",
@@ -107,9 +110,100 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       await updateTrackedDocuments(dataSource.id, documentId, documentText);
     }
 
-    logger.info(
-      "Should check if any tracked documents need to be updated. [TODO]"
-    );
+    const actionResult = await callDocTrackerAction(workspaceId, documentText);
+
+    if (actionResult.match) {
+      const workspace = await Workspace.findOne({
+        where: { sId: workspaceId },
+      });
+
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      const matchedDsName = actionResult.matched_data_source_id;
+      const matchedDs = await DataSource.findOne({
+        where: {
+          name: matchedDsName,
+          workspaceId: workspace.id,
+        },
+      });
+
+      if (!matchedDs) {
+        throw new Error(
+          `Could not find data source with name ${matchedDsName} and workspaceId ${workspaceId}`
+        );
+      }
+
+      const docId = actionResult.matched_doc_id;
+      const trackedDocuments = await TrackedDocument.findAll({
+        where: {
+          documentId: docId,
+          dataSourceId: matchedDs.id,
+        },
+      });
+
+      if (!trackedDocuments.length) {
+        logger.warn(
+          {
+            workspaceId,
+            dataSourceName,
+            documentId,
+            matchedDsName,
+            docId,
+          },
+          "Could not find tracked documents for matched document."
+        );
+        return;
+      }
+
+      const users = await User.findAll({
+        where: {
+          id: {
+            [Op.in]: trackedDocuments.map((td) => td.userId),
+          },
+        },
+      });
+      const emails = users.map((u) => u.email);
+
+      if (!SENDGRID_API_KEY) {
+        throw new Error("Missing SENDGRID_API_KEY env variable");
+      }
+      sgMail.setApiKey(SENDGRID_API_KEY);
+
+      const docUrl = actionResult.matched_doc_id;
+      const suggestedChanges = actionResult.suggested_changes;
+
+      const sendEmail = async (email: string) => {
+        logger.info(
+          {
+            workspaceId,
+            dataSourceName,
+            documentId,
+            matchedDsName,
+            docId,
+            email,
+          },
+          "Sending email to user."
+        );
+
+        const msg = {
+          to: email,
+          from: "team@dust.tt",
+          subject: "DUST: Document update suggestion",
+          text: `Hello !
+We have a suggestion for you to update the document ${docUrl}:
+
+${suggestedChanges}
+
+The DUST team`,
+        };
+
+        await sgMail.send(msg);
+      };
+
+      await Promise.all(emails.map(sendEmail));
+    }
   },
 };
 
