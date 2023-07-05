@@ -75,7 +75,7 @@ export async function updateTemplate(
   isBuilder: boolean
 ) {
   if (template.visibility == "workspace" || template.visibility == "user") {
-    let or_filters = [];
+    const or_filters = [];
     if (isBuilder) {
       or_filters.push({ workspaceId: owner.id });
     }
@@ -105,7 +105,7 @@ export async function deleteTemplate(
   sId: string,
   isBuilder: boolean
 ) {
-  let or_filters = [];
+  const or_filters = [];
   if (isBuilder) {
     or_filters.push({ workspaceId: owner.id });
   }

@@ -1,9 +1,9 @@
 import { Dialog, Transition } from "@headlessui/react";
 import {
+  InformationCircleIcon,
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
-  InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
@@ -45,7 +45,6 @@ import { classNames } from "@app/lib/utils";
 import { client_side_new_id } from "@app/lib/utils";
 import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { setRevalidateHeaders } from "next/dist/server/send-payload";
 
 type DataSource = {
   name: string;
@@ -576,7 +575,7 @@ export function TemplatesView({
     useState<string>("user");
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
-  let editable = useMemo(() => {
+  const editable = useMemo(() => {
     if (editingTemplate == -1) {
       return true;
     }
