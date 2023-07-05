@@ -9,7 +9,7 @@ import {
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { GensTemplate } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
-import { apiError,withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { GensTemplateType } from "@app/types/gens";
 
 export type GetTemplatesResponseBody = {
@@ -101,7 +101,7 @@ async function handler(
           });
         }
 
-        result = await updateTemplate(temp_attrs, owner, user, isBuilder);
+        result = await updateTemplate(temp_attrs, owner, isBuilder);
         if (!result) {
           return apiError(req, res, {
             status_code: 404,
@@ -120,7 +120,7 @@ async function handler(
       return;
 
     case "DELETE":
-      result = await deleteTemplate(owner, user, body.sId, isBuilder);
+      result = await deleteTemplate(owner, body.sId, isBuilder);
       if (!result) {
         return apiError(req, res, {
           status_code: 404,

@@ -72,15 +72,9 @@ export async function getTemplate(
 export async function updateTemplate(
   template: GensTemplateType,
   owner: WorkspaceType,
-  user: UserType,
   isBuilder: boolean
 ) {
   if (template.visibility == "workspace" || template.visibility == "user") {
-    const or_filters = [];
-    if (isBuilder) {
-      or_filters.push({ workspaceId: owner.id });
-    }
-    or_filters.push({ userId: user.id });
     return await GensTemplate.update(
       {
         name: template.name,
@@ -90,7 +84,7 @@ export async function updateTemplate(
       },
       {
         where: {
-          [Op.or]: or_filters,
+          workspaceId: owner.id,
           sId: template.sId,
         },
       }
@@ -102,18 +96,12 @@ export async function updateTemplate(
 
 export async function deleteTemplate(
   owner: WorkspaceType,
-  user: UserType,
   sId: string,
   isBuilder: boolean
 ) {
-  const or_filters = [];
-  if (isBuilder) {
-    or_filters.push({ workspaceId: owner.id });
-  }
-  or_filters.push({ userId: user.id });
   return await GensTemplate.destroy({
     where: {
-      [Op.or]: or_filters,
+      workspaceId: owner.id,
       sId: sId,
     },
   });
