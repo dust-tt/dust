@@ -35,9 +35,7 @@ export function MessageFeedback({
           message.feedback === "positive"
             ? "text-violet-800"
             : "hover:text-violet-800",
-          message.feedback !== "positive" && hover
-            ? "invisible group-hover:visible"
-            : ""
+          !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >
         {message.feedback === "positive" ? (
@@ -53,9 +51,7 @@ export function MessageFeedback({
           message.feedback === "negative"
             ? "text-violet-800"
             : "hover:text-violet-800",
-          message.feedback !== "negative" && hover
-            ? "invisible group-hover:visible"
-            : ""
+          !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >
         {message.feedback === "negative" ? (
