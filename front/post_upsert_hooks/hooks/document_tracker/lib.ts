@@ -2,9 +2,11 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions_registry";
-import { planForWorkspace, prodAPICredentialsForOwner } from "@app/lib/auth";
+import {
+  getInternalBuilderOwner,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
-import { Workspace } from "@app/lib/models";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 
 const DOC_TRACKER_ACTION_NAME = "doc-tracker";
@@ -60,24 +62,9 @@ export async function callDocTrackerAction(
   const config = cloneBaseConfig(action.config);
   const app = cloneBaseConfig(action.app);
 
-  const ws = await Workspace.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
-  if (!ws) {
-    throw new Error(`Could not find workspace with sId ${workspaceId}`);
-  }
+  const owner = await getInternalBuilderOwner(workspaceId);
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const prodCredentials = await prodAPICredentialsForOwner({
-    id: ws.id,
-    uId: ws.uId,
-    sId: ws.sId,
-    name: ws.name,
-    allowedDomain: ws.allowedDomain || null,
-    role: "system",
-    plan: planForWorkspace(ws),
-  });
   const prodAPI = new DustAPI(prodCredentials);
 
   // add data sources to config
