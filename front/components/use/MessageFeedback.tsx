@@ -2,6 +2,10 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
+import {
+  HandThumbDownIcon as HTDIFull,
+  HandThumbUpIcon as HTUIFull,
+} from "@heroicons/react/24/solid";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
@@ -30,13 +34,17 @@ export function MessageFeedback({
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "positive"
             ? "text-violet-800"
-            : "hover:text-violet-400",
+            : "hover:text-violet-800",
           message.feedback !== "positive" && hover
             ? "invisible group-hover:visible"
             : ""
         )}
       >
-        <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
+        {message.feedback === "positive" ? (
+          <HTUIFull className="h-4 w-4"></HTUIFull>
+        ) : (
+          <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
+        )}
       </div>
       <div
         onClick={() => feedbackHandler(message, "negative")}
@@ -44,13 +52,17 @@ export function MessageFeedback({
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "negative"
             ? "text-violet-800"
-            : "hover:text-violet-400",
+            : "hover:text-violet-800",
           message.feedback !== "negative" && hover
             ? "invisible group-hover:visible"
             : ""
         )}
       >
-        <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
+        {message.feedback === "negative" ? (
+          <HTDIFull className="h-4 w-4"></HTDIFull>
+        ) : (
+          <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
+        )}
       </div>
     </div>
   );
