@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 
-import { new_id } from "@app/lib/utils";
 import { GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -71,8 +70,7 @@ export async function getTemplate(
 
 export async function updateTemplate(
   template: GensTemplateType,
-  owner: WorkspaceType,
-  isBuilder: boolean
+  owner: WorkspaceType
 ) {
   if (template.visibility == "workspace" || template.visibility == "user") {
     return await GensTemplate.update(
@@ -94,11 +92,7 @@ export async function updateTemplate(
   }
 }
 
-export async function deleteTemplate(
-  owner: WorkspaceType,
-  sId: string,
-  isBuilder: boolean
-) {
+export async function deleteTemplate(owner: WorkspaceType, sId: string) {
   return await GensTemplate.destroy({
     where: {
       workspaceId: owner.id,

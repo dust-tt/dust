@@ -101,7 +101,7 @@ async function handler(
           });
         }
 
-        result = await updateTemplate(temp_attrs, owner, isBuilder);
+        result = await updateTemplate(temp_attrs, owner);
         if (!result) {
           return apiError(req, res, {
             status_code: 404,
@@ -120,7 +120,7 @@ async function handler(
       return;
 
     case "DELETE":
-      result = await deleteTemplate(owner, body.sId, isBuilder);
+      result = await deleteTemplate(owner, body.sId);
       if (!result) {
         return apiError(req, res, {
           status_code: 404,
