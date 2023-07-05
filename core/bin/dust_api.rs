@@ -1396,11 +1396,17 @@ async fn data_sources_documents_list(
 }
 
 /// Retrieve document from a data source.
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsRetrieveQuery {
+    previous_version: Option<bool>,
+}
 
 async fn data_sources_documents_retrieve(
     extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Query(query): extract::Query<DataSourcesDocumentsRetrieveQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let get_previous_version = query.previous_version.unwrap_or(false);
     let project = project::Project::new_from_id(project_id);
     match state
         .store
@@ -1428,7 +1434,15 @@ async fn data_sources_documents_retrieve(
                     response: None,
                 }),
             ),
-            Some(ds) => match ds.retrieve(state.store.clone(), &document_id, true).await {
+            Some(ds) => match ds
+                .retrieve(
+                    state.store.clone(),
+                    &document_id,
+                    true,
+                    get_previous_version,
+                )
+                .await
+            {
                 Err(e) => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(APIResponse {

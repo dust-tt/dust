@@ -1034,6 +1034,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
+        get_previous_version: bool,
     ) -> Result<Option<Document>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1055,14 +1056,25 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let r = c
+        let r = if get_previous_version {
+            c
+            .query(
+                "SELECT id, created, timestamp, tags_json, source_url, hash, text_size, chunk_count \
+                   FROM data_sources_documents \
+                   WHERE data_source = $1 AND document_id = $2 AND status='superseded' ORDER BY created DESC LIMIT 1",
+                &[&data_source_row_id, &document_id],
+            )
+            .await?
+        } else {
+            c
             .query(
                 "SELECT id, created, timestamp, tags_json, source_url, hash, text_size, chunk_count \
                    FROM data_sources_documents \
                    WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
                 &[&data_source_row_id, &document_id],
             )
-            .await?;
+            .await?
+        };
 
         let d: Option<(i64, i64, i64, String, Option<String>, String, i64, i64)> = match r.len() {
             0 => None,

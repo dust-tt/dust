@@ -1005,7 +1005,13 @@ impl Store for SQLiteStore {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
+        // NOTE: doesn't work on SQLITE
+        get_previous_version: bool,
     ) -> Result<Option<Document>> {
+        if get_previous_version {
+            return Err(anyhow!("get_previous_version not supported on SQLITE"));
+        }
+
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let document_id = document_id.to_string();

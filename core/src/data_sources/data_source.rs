@@ -418,6 +418,7 @@ impl DataSource {
                     &self.project,
                     &self.data_source_id(),
                     &document_id.to_string(),
+                    false,
                 )
                 .await?;
 
@@ -847,7 +848,7 @@ impl DataSource {
                 let internal_id = self.internal_id.clone();
                 tokio::spawn(async move {
                     let mut d: Document = match store
-                        .load_data_source_document(&project, &data_source_id, &document_id)
+                        .load_data_source_document(&project, &data_source_id, &document_id, false)
                         .await?
                     {
                         Some(d) => d,
@@ -1087,11 +1088,17 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
         remove_system_tags: bool,
+        get_previous_version: bool,
     ) -> Result<Option<Document>> {
         let store = store.clone();
 
         let mut d = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id)
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                get_previous_version,
+            )
             .await?
         {
             Some(d) => d,
@@ -1329,7 +1336,7 @@ pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()>
     };
 
     let d = match ds
-        .retrieve(Box::new(store.clone()), document_id, true)
+        .retrieve(Box::new(store.clone()), document_id, true, false)
         .await?
     {
         Some(d) => d,
