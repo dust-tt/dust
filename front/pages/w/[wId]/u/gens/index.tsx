@@ -576,10 +576,6 @@ export function TemplatesView({
   const [hover, setHover] = useState<number>(-1);
 
   useEffect(() => {
-    localStorage.setItem("dust_gens_templates", JSON.stringify(templates));
-  }, [templates]);
-
-  useEffect(() => {
     if (selectedTemplate != -1) {
       onTemplateSelect(templates[selectedTemplate]);
     }
@@ -662,7 +658,7 @@ export function TemplatesView({
                           <input
                             type="text"
                             name="templateTitle"
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                            className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
                             value={newTemplateTitle}
                             onChange={(e) =>
                               setNewTemplateTitle(e.target.value)
@@ -676,27 +672,24 @@ export function TemplatesView({
                           return (
                             <div
                               key={i}
-                              className="group my-2 flex items-center border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                              className="group my-2 flex items-center "
                             >
                               <div className="flex flex-1">
-                                <input
-                                  className={classNames(
-                                    "font-mono w-full border-0 px-1 py-1 text-[13px] font-normal outline-none focus:outline-none",
-                                    "border-white ring-0 focus:border-gray-300 focus:ring-0"
-                                  )}
+                                <TextareaAutosize
+                                  minRows={2}
+                                  className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
                                   value={instruction}
+                                  placeholder={
+                                    "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
+                                  }
                                   onChange={(e) =>
                                     handleInstructionChange(i, e.target.value)
                                   }
                                 />
                               </div>
-                              <div className="flex w-4 flex-initial">
-                                <XCircleIcon
-                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                                  onClick={() => handleInstructionDelete(i)}
-                                />
-                              </div>
-                              <div className="mr-2 flex w-4 flex-initial">
+                              <div
+                                className={classNames("ml-2 w-4 flex-initial")}
+                              >
                                 <PlusCircleIcon
                                   className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
                                   onClick={() => {
@@ -706,14 +699,24 @@ export function TemplatesView({
                                   }}
                                 />
                               </div>
+                              <div
+                                className={classNames(
+                                  "w-4 flex-initial",
+                                  newTemplateInstructions.length > 1
+                                    ? ""
+                                    : "invisible"
+                                )}
+                              >
+                                <XCircleIcon
+                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
+                                  onClick={() => handleInstructionDelete(i)}
+                                />
+                              </div>
                             </div>
                           );
                         })}
                         {isBuilder && (
-                          <div className="mt-2">
-                            <label className="my-2 block text-sm font-medium text-gray-700">
-                              Visibility
-                            </label>
+                          <div className="mt-4 flex flex-row items-center">
                             <input
                               type="checkbox"
                               id="workspace"
@@ -729,6 +732,9 @@ export function TemplatesView({
                                 }
                               }}
                             />
+                            <label className="ml-2 text-sm font-medium text-gray-700">
+                              Visible to entire workspace
+                            </label>
                           </div>
                         )}
                       </div>
