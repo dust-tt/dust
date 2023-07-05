@@ -22,7 +22,7 @@ const {
   NODE_ENV,
 } = process.env;
 
-export type RoleType = "admin" | "builder" | "user" | "none" | "system";
+export type RoleType = "admin" | "builder" | "user" | "none";
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -464,10 +464,11 @@ export async function prodAPICredentialsForOwner(
 }
 
 /**
- * Retrieves the system owner for a given workspace
+ * Retrieves a builder owner for a given workspace
+ * Used for internal calls to the Dust API, when the system is calling something for the workspace
  * @param workspaceId
  */
-export async function getSystemOwner(
+export async function getInternalBuilderOwner(
   workspaceId: string
 ): Promise<WorkspaceType> {
   const workspace = await Workspace.findOne({
@@ -484,7 +485,7 @@ export async function getSystemOwner(
     sId: workspace.sId,
     name: workspace.name,
     allowedDomain: workspace.allowedDomain || null,
-    role: "system",
+    role: "builder",
     plan: planForWorkspace(workspace),
   };
 }
