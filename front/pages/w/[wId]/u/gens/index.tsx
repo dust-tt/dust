@@ -3,6 +3,7 @@ import {
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
+  InformationCircleIcon
 } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
@@ -11,7 +12,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -44,6 +45,7 @@ import { classNames } from "@app/lib/utils";
 import { client_side_new_id } from "@app/lib/utils";
 import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { setRevalidateHeaders } from "next/dist/server/send-payload";
 
 type DataSource = {
   name: string;
@@ -566,14 +568,22 @@ export function TemplatesView({
     ].concat(savedTemplates)
   );
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
-  const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
-  const [newTemplateInstructions, setNewTemplateInstructions] = useState<
+  const [editingTemplate, setEditingTemplate] = useState<number>(-1);
+  const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
+  const [editingTemplateInstructions, setEditingTemplateInstructions] = useState<
     string[]
   >([]);
-  const [newTemplateVisibility, setNewTemplateVisibility] =
+  const [editingTemplateVisibility, setEditingTemplateVisibility] =
     useState<string>("user");
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
+  let editable = useMemo(() => {
+    if (editingTemplate == -1) {
+      return true;
+    }
+    return templates[editingTemplate].visibility != "default" && (isBuilder || templates[editingTemplate].visibility == "user");
+  }, [editingTemplate, templates]);
+
 
   useEffect(() => {
     if (selectedTemplate != -1) {
@@ -586,7 +596,7 @@ export function TemplatesView({
   }, []);
 
   const handleInstructionChange = (index: number, value: string) => {
-    setNewTemplateInstructions((prevInstructions) => {
+    setEditingTemplateInstructions((prevInstructions) => {
       const newInstructions = [...prevInstructions];
       newInstructions[index] = value;
       return newInstructions;
@@ -594,7 +604,7 @@ export function TemplatesView({
   };
 
   const handleInstructionDelete = (index: number) => {
-    setNewTemplateInstructions((prevInstructions) => {
+    setEditingTemplateInstructions((prevInstructions) => {
       const newInstructions = [...prevInstructions];
       newInstructions.splice(index, 1);
       return newInstructions;
@@ -603,9 +613,9 @@ export function TemplatesView({
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {
       // remove template from thing
-      const newTemplates = [...prevTemplates];
-      newTemplates.splice(index, 1);
-      return newTemplates;
+      const editingTemplates = [...prevTemplates];
+      editingTemplates.splice(index, 1);
+      return editingTemplates;
     });
   };
 
@@ -646,7 +656,7 @@ export function TemplatesView({
                           as="h3"
                           className="text-lg font-medium leading-6 text-gray-900"
                         >
-                          Edit Template
+                          {editable ? "Edit Template" : "View Template"}
                         </Dialog.Title>
                         <div className="mt-2">
                           <label
@@ -659,16 +669,17 @@ export function TemplatesView({
                             type="text"
                             name="templateTitle"
                             className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
-                            value={newTemplateTitle}
+                            value={editingTemplateTitle}
                             onChange={(e) =>
-                              setNewTemplateTitle(e.target.value)
+                              setEditingTemplateTitle(e.target.value)
                             }
+                            readOnly={!editable}
                           />
                         </div>
                         <label className="my-2 block text-sm font-medium text-gray-700">
                           Instructions
                         </label>
-                        {newTemplateInstructions.map((instruction, i) => {
+                        {editingTemplateInstructions.map((instruction, i) => {
                           return (
                             <div
                               key={i}
@@ -685,50 +696,56 @@ export function TemplatesView({
                                   onChange={(e) =>
                                     handleInstructionChange(i, e.target.value)
                                   }
+                                  readOnly={!editable}
+
                                 />
                               </div>
-                              <div
-                                className={classNames("ml-2 w-4 flex-initial")}
-                              >
-                                <PlusCircleIcon
-                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
-                                  onClick={() => {
-                                    setNewTemplateInstructions(
-                                      newTemplateInstructions.concat([""])
-                                    );
-                                  }}
-                                />
-                              </div>
-                              <div
-                                className={classNames(
-                                  "w-4 flex-initial",
-                                  newTemplateInstructions.length > 1
-                                    ? ""
-                                    : "invisible"
-                                )}
-                              >
-                                <XCircleIcon
-                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                                  onClick={() => handleInstructionDelete(i)}
-                                />
-                              </div>
+
+                              {editable && (
+                                <>
+                                  <div
+                                    className={classNames("ml-2 w-4 flex-initial")}
+                                  >
+                                    <PlusCircleIcon
+                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
+                                      onClick={() => {
+                                        setEditingTemplateInstructions(
+                                          editingTemplateInstructions.concat([""])
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                  <div
+                                    className={classNames(
+                                      "w-4 flex-initial",
+                                      editingTemplateInstructions.length > 1
+                                        ? ""
+                                        : "invisible"
+                                    )}
+                                  >
+                                    <XCircleIcon
+                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
+                                      onClick={() => handleInstructionDelete(i)}
+                                    />
+                                  </div>
+                                </>
+                              )}
                             </div>
                           );
                         })}
-                        {isBuilder && (
+                        {isBuilder && editingTemplateVisibility != "default" && (
                           <div className="mt-4 flex flex-row items-center">
                             <input
                               type="checkbox"
                               id="workspace"
                               name="visibility"
                               value="workspace"
-                              checked={newTemplateVisibility == "workspace"}
+                              checked={editingTemplateVisibility == "workspace"}
                               onChange={(e) => {
-                                console.log(e.target.checked);
                                 if (e.target.checked) {
-                                  setNewTemplateVisibility("workspace");
+                                  setEditingTemplateVisibility("workspace");
                                 } else {
-                                  setNewTemplateVisibility("user");
+                                  setEditingTemplateVisibility("user");
                                 }
                               }}
                             />
@@ -743,76 +760,80 @@ export function TemplatesView({
                       <div className="flex-1"></div>
                       <div className="flex flex-initial">
                         <ActionButton onClick={() => setFormExpanded(false)}>
-                          Cancel
+                          {editable ? "Cancel" : "Close"}
                         </ActionButton>
                       </div>
-                      <ActionButton
-                        onClick={async () => {
-                          setFormExpanded(false);
-                          const colors = ["red", "yellow", "green", "blue"];
-                          const new_template = {
-                            name: newTemplateTitle,
-                            // set random color
-                            color: `bg-${
-                              colors[Math.floor(Math.random() * colors.length)]
-                            }-500`,
-                            instructions: newTemplateInstructions,
-                            sId: client_side_new_id(),
-                            visibility: newTemplateVisibility,
-                          };
-                          const curr_templates = templates.map((d) => d);
-                          if (selectedTemplate == -1) {
-                            await fetch(`/api/w/${workspaceId}/templates`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify(new_template),
-                            });
-
-                            curr_templates.push(new_template);
-                          } else {
-                            new_template.sId = templates[selectedTemplate].sId;
-                            new_template.color =
-                              templates[selectedTemplate].color;
-                            await fetch(`/api/w/${workspaceId}/templates`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify(new_template),
-                            });
-                            curr_templates[selectedTemplate] = new_template;
-                          }
-                          setTemplates(curr_templates);
-                          setFormExpanded(false);
-                          setNewTemplateInstructions([]);
-                          setNewTemplateTitle("");
-                          setNewTemplateVisibility("user");
-                        }}
-                      >
-                        Save
-                      </ActionButton>
-                      {selectedTemplate != -1 && (
-                        <div className="flex flex-initial">
+                      {editable && (
+                        <>
                           <ActionButton
                             onClick={async () => {
-                              await fetch(`/api/w/${workspaceId}/templates`, {
-                                method: "DELETE",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify(
-                                  templates[selectedTemplate]
-                                ),
-                              });
-                              handleTemplateDelete(selectedTemplate);
                               setFormExpanded(false);
+                              const colors = ["red", "yellow", "green", "blue"];
+                              const new_template = {
+                                name: editingTemplateTitle,
+                                // set random color
+                                color: `bg-${
+                                  colors[Math.floor(Math.random() * colors.length)]
+                                }-500`,
+                                instructions: editingTemplateInstructions,
+                                sId: client_side_new_id(),
+                                visibility: editingTemplateVisibility,
+                              };
+                              const curr_templates = templates.map((d) => d);
+                              if (editingTemplate == -1) {
+                                await fetch(`/api/w/${workspaceId}/templates`, {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify(new_template),
+                                });
+
+                                curr_templates.push(new_template);
+                              } else {
+                                new_template.sId = templates[editingTemplate].sId;
+                                new_template.color =
+                                  templates[editingTemplate].color;
+                                await fetch(`/api/w/${workspaceId}/templates`, {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify(new_template),
+                                });
+                                curr_templates[editingTemplate] = new_template;
+                              }
+                              setTemplates(curr_templates);
+                              setFormExpanded(false);
+                              setEditingTemplateInstructions([]);
+                              setEditingTemplateTitle("");
+                              setEditingTemplateVisibility("user");
                             }}
                           >
-                            Delete
+                            Save
                           </ActionButton>
-                        </div>
+                          {editingTemplate != -1 && (
+                            <div className="flex flex-initial">
+                              <ActionButton
+                                onClick={async () => {
+                                  await fetch(`/api/w/${workspaceId}/templates`, {
+                                    method: "DELETE",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(
+                                      templates[editingTemplate]
+                                    ),
+                                  });
+                                  handleTemplateDelete(editingTemplate);
+                                  setFormExpanded(false);
+                                }}
+                              >
+                                Delete
+                              </ActionButton>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </Dialog.Panel>
@@ -852,14 +873,25 @@ export function TemplatesView({
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    {templates[i].visibility != "default" && (
+                    {templates[i].visibility != "default" && (isBuilder || templates[i].visibility == "user") ? (
                       <PencilIcon
                         onClick={() => {
-                          setSelectedTemplate(i);
-                          setNewTemplateInstructions(t.instructions || [""]);
-                          setNewTemplateTitle(t.name);
+                          setEditingTemplate(i);
+                          setEditingTemplateInstructions(t.instructions || [""]);
+                          setEditingTemplateTitle(t.name);
                           setFormExpanded(true);
-                          setNewTemplateVisibility(t.visibility);
+                          setEditingTemplateVisibility(t.visibility);
+                        }}
+                        className="h-3 w-3"
+                      />
+                    ) : (
+                      <InformationCircleIcon
+                        onClick={() => {
+                          setEditingTemplate(i);
+                          setEditingTemplateInstructions(t.instructions || [""]);
+                          setEditingTemplateTitle(t.name);
+                          setFormExpanded(true);
+                          setEditingTemplateVisibility(t.visibility);
                         }}
                         className="h-3 w-3"
                       />
@@ -877,8 +909,8 @@ export function TemplatesView({
               "bg-gray-100"
             )}
             onClick={() => {
-              setSelectedTemplate(-1);
-              setNewTemplateInstructions([""]);
+              setEditingTemplate(-1);
+              setEditingTemplateInstructions([""]);
               setFormExpanded(true);
             }}
           >

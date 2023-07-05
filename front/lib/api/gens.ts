@@ -12,12 +12,13 @@ export async function getGensTemplates(
 ): Promise<GensTemplateType[]> {
   const templates = await GensTemplate.findAll({
     where: {
+      workspaceId: owner.id,
       [Op.or]: [
         {
-          userId: user.id,
+          visibility: "workspace",
         },
         {
-          workspaceId: owner.id,
+          userId: user.id,
         },
       ],
     },
@@ -43,12 +44,13 @@ export async function getTemplate(
 ): Promise<GensTemplateType | null> {
   const template = await GensTemplate.findOne({
     where: {
+      workspaceId: owner.id,
       [Op.or]: [
         {
-          userId: user.id,
+          visibility: "workspace",
         },
         {
-          workspaceId: owner.id,
+          userId: user.id,
         },
       ],
       sId: sId,
@@ -69,9 +71,15 @@ export async function getTemplate(
 export async function updateTemplate(
   template: GensTemplateType,
   owner: WorkspaceType,
-  user: UserType
+  user: UserType,
+  isBuilder: boolean,
 ) {
   if (template.visibility == "workspace" || template.visibility == "user") {
+    let or_filters = []
+    if (isBuilder) {
+      or_filters.push({workspaceId: owner.id})
+    }
+    or_filters.push({userId: user.id})
     return await GensTemplate.update(
       {
         name: template.name,
@@ -81,14 +89,7 @@ export async function updateTemplate(
       },
       {
         where: {
-          [Op.or]: [
-            {
-              userId: user.id,
-            },
-            {
-              workspaceId: owner.id,
-            },
-          ],
+          [Op.or]: or_filters,
           sId: template.sId,
         },
       }
@@ -101,18 +102,18 @@ export async function updateTemplate(
 export async function deleteTemplate(
   owner: WorkspaceType,
   user: UserType,
-  sId: string
+  sId: string,
+  isBuilder: boolean,
 ) {
-  await GensTemplate.destroy({
+
+  let or_filters = []
+  if (isBuilder) {
+    or_filters.push({workspaceId: owner.id})
+  }
+  or_filters.push({userId: user.id})
+  return await GensTemplate.destroy({
     where: {
-      [Op.or]: [
-        {
-          userId: user.id,
-        },
-        {
-          workspaceId: owner.id,
-        },
-      ],
+      [Op.or]: or_filters,
       sId: sId,
     },
   });

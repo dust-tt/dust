@@ -35,6 +35,7 @@ async function handler(
 
   const owner = auth.workspace();
   const user = await getUserFromSession(session);
+  const isBuilder = auth.isBuilder();
   if (!owner) {
     res.status(404).end();
     return;
@@ -46,7 +47,7 @@ async function handler(
   }
 
   const body = req.body;
-  let template;
+  let template, result;
   switch (req.method) {
     case "GET":
       const temp_data = await getGensTemplates(owner, user);
@@ -56,7 +57,7 @@ async function handler(
       return;
 
     case "POST":
-      if (body.visibility === "workspace" && !auth.isBuilder()) {
+      if (body.visibility === "workspace" && !isBuilder) {
         res.status(403).end();
         return;
       }
@@ -73,8 +74,11 @@ async function handler(
       // check if template exists
       template = await getTemplate(owner, user, temp_attrs.sId);
       if (template) {
-        // update template:
-        template = await updateTemplate(temp_attrs, owner, user);
+        result = await updateTemplate(temp_attrs, owner, user, isBuilder);
+        if (!result) {
+          res.status(500).end();
+          return;
+        }
       } else {
         template = await GensTemplate.create(temp_attrs);
       }
@@ -86,7 +90,11 @@ async function handler(
       });
       return;
     case "DELETE":
-      await deleteTemplate(owner, user, body.sId);
+      result = await deleteTemplate(owner, user, body.sId, isBuilder);
+      if (!result) {
+        res.status(500).end();
+        return;
+      }
       res.status(200).end();
       return;
     default:
