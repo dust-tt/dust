@@ -27,7 +27,7 @@ export type DustAPINonStreamedResponseSuccess = {
     run: "running" | "succeeded" | "errored";
     blocks: DustAppRunBlockStatusEvent[];
   };
-  traces: any;
+  traces: unknown;
   specification_hash: string;
   results: any;
 };

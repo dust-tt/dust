@@ -462,3 +462,29 @@ export async function prodAPICredentialsForOwner(
     workspaceId: owner.sId,
   };
 }
+
+/**
+ * Retrieves the system owner for a given workspace
+ * @param workspaceId
+ */
+export async function getSystemOwner(
+  workspaceId: string
+): Promise<WorkspaceType> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace with sId ${workspaceId}`);
+  }
+  return {
+    id: workspace.id,
+    uId: workspace.uId,
+    sId: workspace.sId,
+    name: workspace.name,
+    allowedDomain: workspace.allowedDomain || null,
+    role: "system",
+    plan: planForWorkspace(workspace),
+  };
+}
