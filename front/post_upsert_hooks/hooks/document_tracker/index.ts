@@ -110,6 +110,20 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       await updateTrackedDocuments(dataSource.id, documentId, documentText);
     }
 
+    const isDocTracked = !!(await TrackedDocument.count({
+      where: {
+        dataSourceId: dataSource.id,
+        documentId,
+      },
+    }));
+
+    // TODO: see how we want to support this. Obviously the action in the current form will
+    // just match the document that was just upserted
+    if (isDocTracked) {
+      logger.info("Document is tracked, not checking for matches.");
+      return;
+    }
+
     const actionResult = await callDocTrackerAction(workspaceId, documentText);
 
     if (actionResult.match) {
