@@ -585,7 +585,7 @@ export function TemplatesView({
       templates[editingTemplate].visibility != "default" &&
       (isBuilder || templates[editingTemplate].visibility == "user")
     );
-  }, [editingTemplate, templates]);
+  }, [editingTemplate]);
 
   useEffect(() => {
     if (selectedTemplate != -1) {
