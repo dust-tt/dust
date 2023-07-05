@@ -106,8 +106,3 @@ export async function deleteTemplate(
     },
   });
 }
-
-export function newGensTemplateId() {
-  const uId = new_id();
-  return uId.slice(0, 10);
-}
