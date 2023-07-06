@@ -4,7 +4,13 @@ import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { Project } from "@app/types/project";
 import { CredentialsType } from "@app/types/provider";
-import { BlockType, RunConfig, RunRunType, RunStatus } from "@app/types/run";
+import {
+  BlockType,
+  RunConfig,
+  RunRunType,
+  RunStatus,
+  TraceType,
+} from "@app/types/run";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
@@ -67,12 +73,11 @@ export type CoreAPIRun = {
   run_id: string;
   created: number;
   run_type: RunRunType;
-  app_hash: string;
+  app_hash?: string | null;
+  specification_hash?: string | null;
   config: RunConfig;
   status: RunStatus;
-  traces: Array<
-    [[BlockType, string], Array<Array<{ value?: any; error?: string }>>]
-  >;
+  traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
 };
 
 type CoreAPICreateRunPayload = {

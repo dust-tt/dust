@@ -678,7 +678,7 @@ export default function AppChat({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            title = e.value.title;
+            title = (e.value as { title: string }).title;
           }
         }
       }
@@ -813,7 +813,9 @@ export default function AppChat({
           if (!e.error) {
             return {
               role: "retrieval",
-              retrievals: e.value.retrievals,
+              retrievals: (
+                e.value as { retrievals: ChatRetrievedDocumentType[] }
+              ).retrievals,
             } as ChatMessageType;
           } else
             throw new Error("Error in chat retrieval execution: " + e.error);
@@ -890,7 +892,7 @@ export default function AppChat({
         }
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            return e.value;
+            return e.value as ChatMessageType;
           } else {
             throw new Error("Error in chat assistant execution: " + e.error);
           }

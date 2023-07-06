@@ -1,34 +1,15 @@
 import { createParser } from "eventsource-parser";
 
-import { Err, Ok, Result } from "@app/lib/result";
+import { Err, Ok } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
+import { RunType } from "@app/types/run";
 
 const { DUST_API = "https://dust.tt" } = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
   message: string;
-};
-export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
-
-export type DustAPINonStreamedResponse = Result<
-  DustAPINonStreamedResponseSuccess,
-  DustAPIErrorResponse
->;
-
-export type DustAPINonStreamedResponseSuccess = {
-  run_id: string;
-  created_at: number;
-  run_type: "deploy";
-  config: DustAppConfigType;
-  status: {
-    run: "running" | "succeeded" | "errored";
-    blocks: DustAppRunBlockStatusEvent[];
-  };
-  traces: unknown;
-  specification_hash: string;
-  results: any;
 };
 
 export type DustAppType = {
@@ -38,7 +19,7 @@ export type DustAppType = {
 };
 
 export type DustAppConfigType = {
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type DustAppRunErrorEvent = {
@@ -74,9 +55,9 @@ export type DustAppRunBlockExecutionEvent = {
     block_type: string;
     block_name: string;
     execution: {
-      value: any | null;
+      value: unknown | null;
       error: string | null;
-      meta: any | null;
+      meta: unknown | null;
     }[][];
   };
 };
@@ -146,23 +127,7 @@ export type DustAPICredentials = {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-export async function processStreamedRunResponse(res: Response): Promise<
-  DustAPIResponse<{
-    eventStream: AsyncGenerator<
-      | DustAppRunErrorEvent
-      | DustAppRunRunStatusEvent
-      | DustAppRunBlockStatusEvent
-      | DustAppRunBlockExecutionEvent
-      | DustAppRunTokensEvent
-      | DustAppRunFunctionCallEvent
-      | DustAppRunFunctionCallArgumentsTokensEvent
-      | DustAppRunFinalEvent,
-      void,
-      unknown
-    >;
-    dustRunId: Promise<string>;
-  }>
-> {
+export async function processStreamedRunResponse(res: Response) {
   if (!res.ok || !res.body) {
     return new Err({
       type: "dust_api_error",
@@ -330,11 +295,7 @@ export class DustAPI {
    * @param config DustAppConfigType the app config
    * @param inputs any[] the app inputs
    */
-  async runApp(
-    app: DustAppType,
-    config: DustAppConfigType,
-    inputs: any[]
-  ): Promise<DustAPINonStreamedResponse> {
+  async runApp(app: DustAppType, config: DustAppConfigType, inputs: unknown[]) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
       {
@@ -355,9 +316,9 @@ export class DustAPI {
 
     const json = await res.json();
     if (json.error) {
-      return new Err(json.error);
+      return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.run);
+    return new Ok(json.run as RunType);
   }
 
   /**
@@ -371,23 +332,7 @@ export class DustAPI {
     app: DustAppType,
     config: DustAppConfigType,
     inputs: any[]
-  ): Promise<
-    DustAPIResponse<{
-      eventStream: AsyncGenerator<
-        | DustAppRunErrorEvent
-        | DustAppRunRunStatusEvent
-        | DustAppRunBlockStatusEvent
-        | DustAppRunBlockExecutionEvent
-        | DustAppRunTokensEvent
-        | DustAppRunFunctionCallEvent
-        | DustAppRunFunctionCallArgumentsTokensEvent
-        | DustAppRunFinalEvent,
-        void,
-        unknown
-      >;
-      dustRunId: Promise<string>;
-    }>
-  > {
+  ) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
       {
@@ -415,9 +360,7 @@ export class DustAPI {
    *
    * @param workspaceId string the workspace id to fetch data sources for
    */
-  async getDataSources(
-    workspaceId: string
-  ): Promise<DustAPIResponse<DataSourceType[]>> {
+  async getDataSources(workspaceId: string) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${workspaceId}/data_sources`,
       {
@@ -430,8 +373,8 @@ export class DustAPI {
 
     const json = await res.json();
     if (json.error) {
-      return new Err(json.error);
+      return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.data_sources);
+    return new Ok(json.data_sources as DataSourceType[]);
   }
 }
