@@ -3,7 +3,6 @@ import { createParser } from "eventsource-parser";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
-import { WorkspaceType } from "@app/types/user";
 
 const { DUST_API = "https://dust.tt" } = process.env;
 
@@ -147,7 +146,7 @@ export type DustAPICredentials = {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-async function processStreamedRunResponse(res: Response): Promise<
+export async function processStreamedRunResponse(res: Response): Promise<
   DustAPIResponse<{
     eventStream: AsyncGenerator<
       | DustAppRunErrorEvent
@@ -435,52 +434,4 @@ export class DustAPI {
     }
     return new Ok(json.data_sources);
   }
-}
-
-/**
- * This function is intended to be used by the client directly. It proxies through the local
- * `front` instance to execute an action while injecting the system API key of the owner. This is
- * required as we can't push the system API key to the client to talk direclty to Dust production.
- *
- * See /front/pages/api/w/[wId]/use/actions/[action]/index.ts
- *
- * @param owner WorkspaceType the owner workspace running the action
- * @param action string the action name
- * @param config DustAppConfigType the action config
- * @param inputs any[] the action inputs
- */
-export async function runActionStreamed(
-  owner: WorkspaceType,
-  action: string,
-  config: DustAppConfigType,
-  inputs: any[]
-): Promise<
-  DustAPIResponse<{
-    eventStream: AsyncGenerator<
-      | DustAppRunErrorEvent
-      | DustAppRunRunStatusEvent
-      | DustAppRunBlockStatusEvent
-      | DustAppRunBlockExecutionEvent
-      | DustAppRunTokensEvent
-      | DustAppRunFunctionCallEvent
-      | DustAppRunFunctionCallArgumentsTokensEvent
-      | DustAppRunFinalEvent,
-      void,
-      unknown
-    >;
-    dustRunId: Promise<string>;
-  }>
-> {
-  const res = await fetch(`/api/w/${owner.sId}/use/actions/${action}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      config: config,
-      inputs: inputs,
-    }),
-  });
-
-  return processStreamedRunResponse(res);
 }

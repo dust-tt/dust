@@ -24,10 +24,11 @@ import {
   FeedbackHandler,
   MessageFeedback,
 } from "@app/components/use/MessageFeedback";
+import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-} from "@app/lib/actions_registry";
+} from "@app/lib/actions/registry";
 import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
@@ -36,11 +37,7 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import {
-  DustAPI,
-  DustAPICredentials,
-  runActionStreamed,
-} from "@app/lib/dust_api";
+import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
 import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";

@@ -1,7 +1,7 @@
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-} from "@app/lib/actions_registry";
+} from "@app/lib/actions/registry";
 import {
   getInternalBuilderOwner,
   prodAPICredentialsForOwner,
