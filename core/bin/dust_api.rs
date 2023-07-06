@@ -1447,7 +1447,7 @@ async fn data_sources_documents_list(
 /// Retrieve document from a data source.
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsRetrieveQuery {
-    previous_version: Option<bool>,
+    version_hash: Option<String>,
 }
 
 async fn data_sources_documents_retrieve(
@@ -1455,7 +1455,6 @@ async fn data_sources_documents_retrieve(
     extract::Query(query): extract::Query<DataSourcesDocumentsRetrieveQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let get_previous_version = query.previous_version.unwrap_or(false);
     let project = project::Project::new_from_id(project_id);
     match state
         .store
@@ -1484,12 +1483,7 @@ async fn data_sources_documents_retrieve(
                 }),
             ),
             Some(ds) => match ds
-                .retrieve(
-                    state.store.clone(),
-                    &document_id,
-                    true,
-                    get_previous_version,
-                )
+                .retrieve(state.store.clone(), &document_id, true, &query.version_hash)
                 .await
             {
                 Err(e) => (
