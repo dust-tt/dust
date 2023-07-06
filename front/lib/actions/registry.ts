@@ -1,4 +1,4 @@
-import { DustAppType } from "@app/lib/dust_api";
+import { DustAppType } from "../dust_api";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 

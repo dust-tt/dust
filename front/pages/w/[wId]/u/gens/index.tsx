@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { PlusIcon } from "@heroicons/react/20/solid";
 import {
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
@@ -19,10 +19,11 @@ import GensTimeRangePicker, {
   msForTimeRange,
 } from "@app/components/use/GensTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
+import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-} from "@app/lib/actions_registry";
+} from "@app/lib/actions/registry";
 import {
   Authenticator,
   getSession,
@@ -30,11 +31,7 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import {
-  DustAPI,
-  DustAPICredentials,
-  runActionStreamed,
-} from "@app/lib/dust_api";
+import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { GensRetrievedDocumentType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -240,7 +237,12 @@ export function DocumentView({
       },
     ];
 
-    runActionStreamed(owner, "gens-summary", extract_config, extractInput)
+    runActionStreamed(
+      owner,
+      "gens-summary",
+      extract_config,
+      extractInput
+    )
       .then((res) => {
         console.log("Summarizing...");
         if (res.isErr()) {
@@ -943,7 +945,12 @@ export default function AppGens({
       },
     ];
 
-    const res = await runActionStreamed(owner, "gens-generate", config, inputs);
+    const res = await runActionStreamed(
+      owner,
+      "gens-generate",
+      config,
+      inputs
+    );
     if (res.isErr()) {
       console.log("ERROR", res.error);
       setGenLoading(false);
@@ -1045,9 +1052,12 @@ export default function AppGens({
       };
     }
 
-    const res = await runActionStreamed(owner, "gens-retrieval", config, [
-      { text: genContent, userContext },
-    ]);
+    const res = await runActionStreamed(
+      owner,
+      "gens-retrieval",
+      config,
+      [{ text: genContent, userContext }]
+    );
     if (res.isErr()) {
       window.alert("Error runing `gens-retrieval`: " + res.error);
       return;
