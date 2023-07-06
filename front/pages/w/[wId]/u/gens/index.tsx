@@ -24,6 +24,7 @@ import GensTimeRangePicker, {
   msForTimeRange,
 } from "@app/components/use/GensTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
+import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -36,11 +37,7 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import {
-  DustAPI,
-  DustAPICredentials,
-  runActionStreamed,
-} from "@app/lib/dust_api";
+import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { client_side_new_id } from "@app/lib/utils";
 import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";

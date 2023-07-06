@@ -1,24 +1,17 @@
-import { createParser } from "eventsource-parser";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { DustProdActionRegistry } from "@app/lib/actions_registry";
-import {
-  Authenticator,
-  getSession,
-  prodAPICredentialsForOwner,
-} from "@app/lib/auth";
+import { DustProdActionRegistry } from "@app/lib/actions/registry";
+import { runActionStreamed } from "@app/lib/actions/server";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppConfigType } from "@app/lib/dust_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import logger from "@app/logger/logger";
-import { apiError, statsDClient, withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
   api: {
     responseLimit: "8mb",
   },
 };
-
-const { DUST_API = "https://dust.tt" } = process.env;
 
 async function handler(
   req: NextApiRequest,
@@ -88,127 +81,39 @@ async function handler(
         });
       }
 
-      const action = DustProdActionRegistry[req.query.action];
       const config = req.body.config as DustAppConfigType;
       const inputs = req.body.inputs as Array<any>;
 
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
-
-      const loggerArgs = {
-        workspace: {
-          sId: owner.sId,
-          name: owner.name,
-        },
-        action: req.query.action,
-        app: action.app,
-        url: `${DUST_API}/api/v1/w/${action.app.workspaceId}/apps/${action.app.appId}/runs`,
-      };
-
-      logger.info(loggerArgs, "Action run creation");
-
-      const tags = [
-        `action:${req.query.action}`,
-        `workspace:${owner.sId}`,
-        `workspace_name:${owner.name}`,
-      ];
-
-      statsDClient.increment("use_actions.count", 1, tags);
-
-      const apiRes = await fetch(
-        `${DUST_API}/api/v1/w/${action.app.workspaceId}/apps/${action.app.appId}/runs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${prodCredentials.apiKey}`,
-          },
-          body: JSON.stringify({
-            specification_hash: action.app.appHash,
-            config: config,
-            stream: true,
-            blocking: false,
-            inputs: inputs,
-          }),
-        }
+      const actionRes = await runActionStreamed(
+        owner,
+        req.query.action,
+        config,
+        inputs
       );
 
-      // Record an event and a log for the action error.
-      const logActionError = (
-        errorType: string,
-        errorArgs: Record<string, any>
-      ) => {
-        statsDClient.increment("use_actions_error.count", 1, [
-          `error_type:${errorType}`,
-          ...tags,
-        ]);
-
-        logger.error(
-          {
-            error_type: errorType,
-            ...errorArgs,
-            ...loggerArgs,
-          },
-          "Action run error"
-        );
-      };
-
-      if (!apiRes.ok || !apiRes.body) {
-        logActionError("api_error", { status_code: apiRes.status });
+      if (actionRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "action_api_error",
-            message: `Error running streamed app: action=${req.query.action} status_code=${apiRes.status}`,
+            message: `Error running action: action=${req.query.action} error=${actionRes.error.message}`,
           },
         });
       }
+
+      const { eventStream } = actionRes.value;
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       });
+      res.flushHeaders();
 
-      const reader = apiRes.body.getReader();
-
-      const errorDetector = createParser((event) => {
-        if (event.type === "event") {
-          if (event.data) {
-            const data = JSON.parse(event.data);
-
-            switch (data.type) {
-              case "error": {
-                logActionError("run_error", { error: data.content });
-                break;
-              }
-              case "block_execution": {
-                const e = data.content.execution[0][0];
-                if (e.error) {
-                  logActionError("block_execution_error", { error: e.error });
-                }
-                break;
-              }
-            }
-          }
-        }
-      });
-
-      try {
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          errorDetector.feed(new TextDecoder().decode(value));
-          res.write(value);
-          // @ts-expect-error - We need it for streaming but it does not exists in the types.
-          res.flush();
-        }
-      } catch (e) {
-        logActionError("streaming_error", { error: e });
-      } finally {
-        reader.releaseLock();
+      for await (const event of eventStream) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        // @ts-expect-error - We need it for streaming but it does not exists in the types.
+        res.flush();
       }
 
       res.end();

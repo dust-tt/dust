@@ -3,7 +3,6 @@ import { createParser } from "eventsource-parser";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
-import { WorkspaceType } from "@app/types/user";
 
 const { DUST_API = "https://dust.tt" } = process.env;
 
@@ -12,6 +11,25 @@ export type DustAPIErrorResponse = {
   message: string;
 };
 export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
+
+export type DustAPINonStreamedResponse = Result<
+  DustAPINonStreamedResponseSuccess,
+  DustAPIErrorResponse
+>;
+
+export type DustAPINonStreamedResponseSuccess = {
+  run_id: string;
+  created_at: number;
+  run_type: "deploy";
+  config: DustAppConfigType;
+  status: {
+    run: "running" | "succeeded" | "errored";
+    blocks: DustAppRunBlockStatusEvent[];
+  };
+  traces: unknown;
+  specification_hash: string;
+  results: any;
+};
 
 export type DustAppType = {
   workspaceId: string;
@@ -128,7 +146,7 @@ export type DustAPICredentials = {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-async function processStreamedRunResponse(res: Response): Promise<
+export async function processStreamedRunResponse(res: Response): Promise<
   DustAPIResponse<{
     eventStream: AsyncGenerator<
       | DustAppRunErrorEvent
@@ -306,6 +324,43 @@ export class DustAPI {
   }
 
   /**
+   * This functions talks directly to the Dust production API to create a run.
+   *
+   * @param app DustAppType the app to run streamed
+   * @param config DustAppConfigType the app config
+   * @param inputs any[] the app inputs
+   */
+  async runApp(
+    app: DustAppType,
+    config: DustAppConfigType,
+    inputs: any[]
+  ): Promise<DustAPINonStreamedResponse> {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+        },
+        body: JSON.stringify({
+          specification_hash: app.appHash,
+          config: config,
+          stream: false,
+          blocking: true,
+          inputs: inputs,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error);
+    }
+    return new Ok(json.run);
+  }
+
+  /**
    * This functions talks directly to the Dust production API to create a streamed run.
    *
    * @param app DustAppType the app to run streamed
@@ -379,52 +434,4 @@ export class DustAPI {
     }
     return new Ok(json.data_sources);
   }
-}
-
-/**
- * This function is intended to be used by the client directly. It proxies through the local
- * `front` instance to execute an action while injecting the system API key of the owner. This is
- * required as we can't push the system API key to the client to talk direclty to Dust production.
- *
- * See /front/pages/api/w/[wId]/use/actions/[action]/index.ts
- *
- * @param owner WorkspaceType the owner workspace running the action
- * @param action string the action name
- * @param config DustAppConfigType the action config
- * @param inputs any[] the action inputs
- */
-export async function runActionStreamed(
-  owner: WorkspaceType,
-  action: string,
-  config: DustAppConfigType,
-  inputs: any[]
-): Promise<
-  DustAPIResponse<{
-    eventStream: AsyncGenerator<
-      | DustAppRunErrorEvent
-      | DustAppRunRunStatusEvent
-      | DustAppRunBlockStatusEvent
-      | DustAppRunBlockExecutionEvent
-      | DustAppRunTokensEvent
-      | DustAppRunFunctionCallEvent
-      | DustAppRunFunctionCallArgumentsTokensEvent
-      | DustAppRunFinalEvent,
-      void,
-      unknown
-    >;
-    dustRunId: Promise<string>;
-  }>
-> {
-  const res = await fetch(`/api/w/${owner.sId}/use/actions/${action}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      config: config,
-      inputs: inputs,
-    }),
-  });
-
-  return processStreamedRunResponse(res);
 }
