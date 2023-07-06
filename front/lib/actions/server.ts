@@ -111,6 +111,14 @@ export async function runActionStreamed(
   return new Ok({ eventStream: streamEvents(), dustRunId });
 }
 
+/**
+ * This function is intended to be used server-side to run an action without streaming.
+ * @param owner WorkspaceType
+ * @param actionName string Action name as per DustProdActionRegistry
+ * @param config DustAppConfigType
+ * @param inputs Array<any> the action inputs
+ * @returns RunType
+ */
 export async function runAction(
   owner: WorkspaceType,
   actionName: string,
