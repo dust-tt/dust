@@ -1,5 +1,11 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { PlusIcon } from "@heroicons/react/20/solid";
+import {
+  InformationCircleIcon,
+  PlusCircleIcon,
+  PlusIcon,
+  TrashIcon,
+  XCircleIcon,
+} from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
   DocumentDuplicateIcon,
@@ -8,7 +14,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -25,6 +31,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
+import { getGensTemplates } from "@app/lib/api/gens";
 import {
   Authenticator,
   getSession,
@@ -34,7 +41,8 @@ import {
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
-import { GensRetrievedDocumentType } from "@app/types/gens";
+import { client_side_new_id } from "@app/lib/utils";
+import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 type DataSource = {
@@ -60,16 +68,19 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   gaTrackingId: string;
   workspaceDataSources: DataSource[];
+  templates: GensTemplateType[];
+  isBuilder: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
+
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
+  if (!owner || !auth.isUser() || !user) {
     return {
       notFound: true,
     };
@@ -83,7 +94,10 @@ export const getServerSideProps: GetServerSideProps<{
     return {
       notFound: true,
     };
+    user;
   }
+
+  const templates = await getGensTemplates(owner, user);
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
@@ -124,6 +138,8 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly: false,
       gaTrackingId: GA_TRACKING_ID,
       workspaceDataSources: dataSources,
+      templates,
+      isBuilder: auth.isBuilder(),
     },
   };
 };
@@ -213,7 +229,7 @@ export function DocumentView({
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
-  template: TemplateType | null;
+  template: ClientTemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onPin: (documentId: string) => void;
@@ -509,7 +525,7 @@ export function ResultsView({
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
-  template: TemplateType | null;
+  template: ClientTemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
   onPin: (documentId: string) => void;
@@ -555,67 +571,60 @@ export function ResultsView({
   );
 }
 
-type TemplateType = {
+type ClientTemplateType = {
   name: string;
   color: string;
   instructions: string[];
+  sId: string;
+  visibility: string;
 };
 
 export function TemplatesView({
   onTemplateSelect,
+  workspaceId,
+  savedTemplates,
+  isBuilder,
 }: {
-  onTemplateSelect: (template: TemplateType) => void;
+  onTemplateSelect: (template: ClientTemplateType) => void;
+  workspaceId: string;
+  savedTemplates: GensTemplateType[];
+  isBuilder: boolean;
 }) {
-  const defaults = [
-    {
-      name: "Fact Gatherer",
-      color: "bg-red-500",
-      instructions: [
-        "Extract facts and important information in a list",
-        "Present your answers in list format",
-        "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
-        "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
-        "We just want to gather facts and answers related to the document text",
-      ],
-    },
-    {
-      name: "Contradictor",
-      color: "bg-blue-500",
-      instructions: [
-        "Find documents and ideas that might contradict or disagree with the user's text",
-      ],
-    },
-    {
-      name: "Poet",
-      color: "bg-yellow-500",
-      instructions: ["Be creative, fanciful, and only speak in poetry"],
-    },
-    {
-      name: "Pirate",
-      color: "bg-green-500",
-      instructions: ["Be a pirate, and only speak in pirate language"],
-    },
-  ];
-
-  const [templates, setTemplates] = useState(defaults);
+  const [templates, setTemplates] = useState<ClientTemplateType[]>(
+    [
+      {
+        name: "Fact Gatherer",
+        color: "bg-red-500",
+        instructions: [
+          "Extract facts and important information in a list",
+          "Present your answers in list format",
+          "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
+          "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
+          "We just want to gather facts and answers related to the document text",
+        ],
+        sId: "0000",
+        visibility: "default",
+      },
+    ].concat(savedTemplates)
+  );
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
-  const [newTemplateTitle, setNewTemplateTitle] = useState<string>("");
-  const [newTemplateInstructions, setNewTemplateInstructions] = useState<
-    string[]
-  >([]);
+  const [editingTemplate, setEditingTemplate] = useState<number>(-1);
+  const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
+  const [editingTemplateInstructions, setEditingTemplateInstructions] =
+    useState<string[]>([]);
+  const [editingTemplateVisibility, setEditingTemplateVisibility] =
+    useState<string>("user");
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
-
-  useEffect(() => {
-    const savedTemplates = localStorage.getItem("dust_gens_templates");
-    if (savedTemplates) {
-      setTemplates(JSON.parse(savedTemplates));
+  const editable = useMemo(() => {
+    if (editingTemplate == -1) {
+      return true;
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("dust_gens_templates", JSON.stringify(templates));
-  }, [templates]);
+    return (
+      templates[editingTemplate].visibility != "default" &&
+      (isBuilder || templates[editingTemplate].visibility == "user")
+    );
+  }, [editingTemplate]);
 
   useEffect(() => {
     if (selectedTemplate != -1) {
@@ -628,10 +637,29 @@ export function TemplatesView({
   }, []);
 
   const handleInstructionChange = (index: number, value: string) => {
-    setNewTemplateInstructions((prevInstructions) => {
+    setEditingTemplateInstructions((prevInstructions) => {
       const newInstructions = [...prevInstructions];
       newInstructions[index] = value;
       return newInstructions;
+    });
+  };
+
+  const handleInstructionDelete = (index: number) => {
+    setEditingTemplateInstructions((prevInstructions) => {
+      const newInstructions = [...prevInstructions];
+      newInstructions.splice(index, 1);
+      return newInstructions;
+    });
+  };
+  const handleTemplateDelete = (index: number) => {
+    setTemplates((prevTemplates) => {
+      // remove template from thing
+      const newTemplates = [...prevTemplates];
+      newTemplates.splice(index, 1);
+      if (index == selectedTemplate) {
+        setSelectedTemplate(0);
+      }
+      return newTemplates;
     });
   };
 
@@ -672,80 +700,203 @@ export function TemplatesView({
                           as="h3"
                           className="text-lg font-medium leading-6 text-gray-900"
                         >
-                          Edit Template
+                          {editable ? "Edit Template" : "View Template"}
                         </Dialog.Title>
-                        <div className="mt-6">
+                        <div className="mt-2">
+                          <label
+                            htmlFor="templateTitle"
+                            className="my-2 block text-sm font-medium text-gray-700"
+                          >
+                            Template Name
+                          </label>
                           <input
                             type="text"
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                            placeholder="Template title"
-                            value={newTemplateTitle}
+                            name="templateTitle"
+                            className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                            value={editingTemplateTitle}
                             onChange={(e) =>
-                              setNewTemplateTitle(e.target.value)
+                              setEditingTemplateTitle(e.target.value)
                             }
+                            readOnly={!editable}
                           />
                         </div>
-                        <p className="my-2">Instructions</p>
-                        {newTemplateInstructions.map((instruction, i) => {
+                        <label className="my-2 block text-sm font-medium text-gray-700">
+                          Instructions
+                        </label>
+                        {editingTemplateInstructions.map((instruction, i) => {
                           return (
-                            <div className="my-2" key={i}>
-                              <input
-                                type="text"
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                                value={instruction}
-                                onChange={(e) =>
-                                  handleInstructionChange(i, e.target.value)
-                                }
-                              />
+                            <div
+                              key={i}
+                              className="group my-2 flex items-center "
+                            >
+                              <div className="flex flex-1">
+                                <TextareaAutosize
+                                  minRows={2}
+                                  className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                                  value={instruction}
+                                  placeholder={
+                                    "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
+                                  }
+                                  onChange={(e) =>
+                                    handleInstructionChange(i, e.target.value)
+                                  }
+                                  readOnly={!editable}
+                                />
+                              </div>
+
+                              {editable && (
+                                <>
+                                  <div
+                                    className={classNames(
+                                      "ml-2 w-4 flex-initial"
+                                    )}
+                                  >
+                                    <PlusCircleIcon
+                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
+                                      onClick={() => {
+                                        setEditingTemplateInstructions(
+                                          editingTemplateInstructions.concat([
+                                            "",
+                                          ])
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                  <div
+                                    className={classNames(
+                                      "w-4 flex-initial",
+                                      editingTemplateInstructions.length > 1
+                                        ? ""
+                                        : "invisible"
+                                    )}
+                                  >
+                                    <XCircleIcon
+                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
+                                      onClick={() => handleInstructionDelete(i)}
+                                    />
+                                  </div>
+                                </>
+                              )}
                             </div>
                           );
                         })}
-                        <ActionButton
-                          onClick={() => {
-                            setNewTemplateInstructions(
-                              newTemplateInstructions.concat([""])
-                            );
-                          }}
-                        >
-                          +
-                        </ActionButton>
+                        {isBuilder &&
+                          editingTemplateVisibility != "default" && (
+                            <div className="mt-4 flex flex-row items-center">
+                              <input
+                                type="checkbox"
+                                id="workspace"
+                                name="visibility"
+                                value="workspace"
+                                checked={
+                                  editingTemplateVisibility == "workspace"
+                                }
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingTemplateVisibility("workspace");
+                                  } else {
+                                    setEditingTemplateVisibility("user");
+                                  }
+                                }}
+                              />
+                              <label className="ml-2 text-sm font-medium text-gray-700">
+                                Visible to entire workspace
+                              </label>
+                            </div>
+                          )}
                       </div>
                     </div>
                     <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
                       <div className="flex-1"></div>
                       <div className="flex flex-initial">
                         <ActionButton onClick={() => setFormExpanded(false)}>
-                          Cancel
+                          {editable ? "Cancel" : "Close"}
                         </ActionButton>
                       </div>
-                      <ActionButton
-                        onClick={() => {
-                          setFormExpanded(false);
-                          const colors = ["red", "yellow", "green", "blue"];
-                          const new_template = {
-                            name: newTemplateTitle,
-                            // set random color
-                            color: `bg-${
-                              colors[Math.floor(Math.random() * colors.length)]
-                            }-500`,
-                            instructions: newTemplateInstructions,
-                          };
-                          console.log(new_template);
-                          const curr_templates = templates.map((d) => d);
-                          if (selectedTemplate == -1) {
-                            curr_templates.push(new_template);
-                          } else {
-                            curr_templates[selectedTemplate] = new_template;
-                          }
-                          console.log(curr_templates);
-                          setTemplates(curr_templates);
-                          setFormExpanded(false);
-                          setNewTemplateInstructions([]);
-                          setNewTemplateTitle("");
-                        }}
-                      >
-                        Save
-                      </ActionButton>
+                      {editable && (
+                        <>
+                          <ActionButton
+                            onClick={async () => {
+                              setFormExpanded(false);
+                              const colors = ["red", "yellow", "green", "blue"];
+                              const new_template = {
+                                name: editingTemplateTitle,
+                                // set random color
+                                color: `bg-${
+                                  colors[
+                                    Math.floor(Math.random() * colors.length)
+                                  ]
+                                }-500`,
+                                instructions: editingTemplateInstructions,
+                                sId: client_side_new_id(),
+                                visibility: editingTemplateVisibility,
+                              };
+                              const curr_templates = templates.map((d) => d);
+                              if (editingTemplate == -1) {
+                                await fetch(
+                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(new_template),
+                                  }
+                                );
+
+                                curr_templates.push(new_template);
+                              } else {
+                                new_template.sId =
+                                  templates[editingTemplate].sId;
+                                new_template.color =
+                                  templates[editingTemplate].color;
+                                await fetch(
+                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(new_template),
+                                  }
+                                );
+                                curr_templates[editingTemplate] = new_template;
+                              }
+                              setTemplates(curr_templates);
+                              setFormExpanded(false);
+                              setEditingTemplateInstructions([]);
+                              setEditingTemplateTitle("");
+                              setEditingTemplateVisibility("user");
+                            }}
+                          >
+                            Save
+                          </ActionButton>
+                          {editingTemplate != -1 && (
+                            <div className="flex flex-initial">
+                              <ActionButton
+                                onClick={async () => {
+                                  await fetch(
+                                    `/api/w/${workspaceId}/templates/${templates[editingTemplate].sId}`,
+                                    {
+                                      method: "DELETE",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify(
+                                        templates[editingTemplate]
+                                      ),
+                                    }
+                                  );
+                                  handleTemplateDelete(editingTemplate);
+                                  setFormExpanded(false);
+                                }}
+                              >
+                                Delete
+                              </ActionButton>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </Dialog.Panel>
                 </Transition.Child>
@@ -772,6 +923,7 @@ export function TemplatesView({
                   className={classNames(
                     "rounded py-1",
                     "text-xs font-bold text-gray-700",
+                    t.color || "bg-gray-100",
                     "h-5 w-5 flex-shrink-0 rounded-full",
                     t.color,
                     // make opacity lower for unselected
@@ -784,15 +936,34 @@ export function TemplatesView({
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    <PencilIcon
-                      onClick={() => {
-                        setSelectedTemplate(i);
-                        setNewTemplateInstructions(t.instructions);
-                        setNewTemplateTitle(t.name);
-                        setFormExpanded(true);
-                      }}
-                      className="h-3 w-3 flex-shrink-0"
-                    />
+                    {templates[i].visibility != "default" &&
+                    (isBuilder || templates[i].visibility == "user") ? (
+                      <PencilIcon
+                        onClick={() => {
+                          setEditingTemplate(i);
+                          setEditingTemplateInstructions(
+                            t.instructions || [""]
+                          );
+                          setEditingTemplateTitle(t.name);
+                          setFormExpanded(true);
+                          setEditingTemplateVisibility(t.visibility);
+                        }}
+                        className="h-3 w-3 flex-shrink-0"
+                      />
+                    ) : (
+                      <InformationCircleIcon
+                        onClick={() => {
+                          setEditingTemplate(i);
+                          setEditingTemplateInstructions(
+                            t.instructions || [""]
+                          );
+                          setEditingTemplateTitle(t.name);
+                          setFormExpanded(true);
+                          setEditingTemplateVisibility(t.visibility);
+                        }}
+                        className="h-3 w-3 flex-shrink-0"
+                      />
+                    )}
                   </>
                 )}
               </div>
@@ -806,7 +977,8 @@ export function TemplatesView({
               "bg-gray-100"
             )}
             onClick={() => {
-              setSelectedTemplate(-1);
+              setEditingTemplate(-1);
+              setEditingTemplateInstructions([""]);
               setFormExpanded(true);
             }}
           >
@@ -833,6 +1005,8 @@ export default function AppGens({
   readOnly,
   gaTrackingId,
   workspaceDataSources,
+  templates,
+  isBuilder,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const prodAPI = new DustAPI(prodCredentials);
 
@@ -853,7 +1027,7 @@ export default function AppGens({
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
 
-  const template = useRef<TemplateType | null>(null);
+  const template = useRef<ClientTemplateType | null>(null);
 
   const getContext = () => {
     return {
@@ -1109,9 +1283,21 @@ export default function AppGens({
         timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
       };
     }
-
+    const textarea = genTextAreaRef.current;
+    if (!textarea) {
+      console.log("Textarea not found");
+      return;
+    }
+    let text = textarea.value.substring(
+      textarea.selectionStart,
+      textarea.selectionEnd
+    );
+    if (text == "") {
+      text = genContent;
+    }
+    console.log(text);
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
-      { text: genContent, userContext },
+      { text: text, userContext },
     ]);
     if (res.isErr()) {
       window.alert("Error runing `gens-retrieval`: " + res.error);
@@ -1153,6 +1339,9 @@ export default function AppGens({
               <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
                 <TemplatesView
                   onTemplateSelect={(t) => (template.current = t)}
+                  workspaceId={owner.sId}
+                  savedTemplates={templates}
+                  isBuilder={isBuilder}
                 />
                 <div className="w-70 flex font-normal">
                   <TextareaAutosize
@@ -1179,7 +1368,8 @@ export default function AppGens({
                   <div className="flex flex-initial">
                     <ActionButton
                       disabled={retrievalLoading}
-                      onClick={() => {
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                        e.preventDefault();
                         void handleSearch();
                       }}
                     >

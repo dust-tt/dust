@@ -14,3 +14,12 @@ export type GensRetrievedDocumentType = {
   tokenCount: number;
   pinned: boolean | null;
 };
+
+export type GensTemplateType = {
+  name: string;
+  instructions: string[];
+  color: string;
+  sId: string;
+  visibility: string;
+  userId?: number;
+};

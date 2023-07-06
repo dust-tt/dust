@@ -29,11 +29,13 @@ export function Button({
 export function ActionButton({
   type = "button",
   onClick = null,
+  onMouseDown = null,
   disabled = false,
   children,
 }: React.PropsWithChildren<{
   type?: "button" | "submit" | "reset" | undefined;
   onClick?: any;
+  onMouseDown?: any; // useful when you don't want to end selection
   disabled?: boolean;
 }>) {
   return (
@@ -47,6 +49,7 @@ export function ActionButton({
         "shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
       )}
       onClick={onClick}
+      onMouseDown={onMouseDown}
       disabled={disabled}
     >
       {children}
