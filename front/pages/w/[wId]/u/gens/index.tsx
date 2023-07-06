@@ -551,6 +551,13 @@ export function ResultsView({
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
+        <p>Gens's power also comes from the curation experience it provides in terms of pinning and removing results you don't like, to therefore help the model in its generations. Click the Pin button to give a document importance and delete irrelevant ones.</p>
+        <button onClick={() => {
+          const unpinned = retrieved.filter((r) => !r.pinned);
+          unpinned.forEach((r) => onRemove(r.documentId));
+        }}>
+          Delete Unpinned
+        </button>
         <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
             return (
