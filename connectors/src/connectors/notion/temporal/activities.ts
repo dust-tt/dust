@@ -476,7 +476,7 @@ export async function garbageCollectActivity(
       if (
         potentialNotionError.code === "internal_server_error" &&
         potentialNotionError.status === 500 &&
-        Context.current().info.attempt > 20
+        Context.current().info.attempt >= 15
       ) {
         localLogger.error(
           {
