@@ -20,7 +20,7 @@ export async function runActionStreamed(
   owner: WorkspaceType,
   action: string,
   config: DustAppConfigType,
-  inputs: any[]
+  inputs: Array<unknown>
 ) {
   const res = await fetch(`/api/w/${owner.sId}/use/actions/${action}`, {
     method: "POST",

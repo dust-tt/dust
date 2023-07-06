@@ -36,9 +36,9 @@ export type BlockStatus = {
 };
 
 export type TraceType = {
-  value?: any;
-  error?: string;
-  meta?: any;
+  value: unknown | null;
+  error: string | null;
+  meta: unknown | null;
 };
 
 export type RunType = {
@@ -52,7 +52,7 @@ export type RunType = {
   traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
   results?:
     | {
-        value?: any | null;
+        value?: unknown | null;
         error?: string | null;
       }[][]
     | null;

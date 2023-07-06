@@ -1136,7 +1136,7 @@ export default function AppGens({
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
           if (!e.error) {
-            setTimeRange(e.value.time_range as GensTimeRange);
+            setTimeRange((e.value as { time_range: GensTimeRange }).time_range);
           }
         }
       }
@@ -1336,7 +1336,9 @@ export default function AppGens({
             const existingDocs = r.map((d) => d.documentId);
             return [
               ...r,
-              ...e.value.retrievals.filter(
+              ...(
+                e.value as { retrievals: GensRetrievedDocumentType[] }
+              ).retrievals.filter(
                 (d: GensRetrievedDocumentType) =>
                   !existingDocs.includes(d.documentId)
               ),

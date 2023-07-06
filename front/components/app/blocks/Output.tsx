@@ -272,7 +272,8 @@ export function Logs({ trace }: { trace: TraceType[] }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
       {trace.map((trace, i) => {
-        if (trace.meta && trace.meta.logs) {
+        const meta = (trace.meta as { logs: any[] } | undefined) || null;
+        if (meta && meta.logs) {
           return (
             <div key={i} className="flex-auto flex-col">
               <div className="flex flex-row">
@@ -281,7 +282,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
                 </div>
                 <div className="font-mono flex flex-1">
                   <ValueViewer
-                    value={trace.meta.logs}
+                    value={meta.logs}
                     topLevel={true}
                     k={null}
                     block={null}
@@ -346,8 +347,8 @@ export default function Output({
         if (input.find((t) => t.error)) {
           return input;
         }
-        return input[0].value.map((v: any) => {
-          return { value: v, error: null };
+        return (input[0].value as unknown[]).map((v) => {
+          return { value: v, error: null, meta: null } as TraceType;
         });
       });
     }
@@ -359,7 +360,11 @@ export default function Output({
       return acc + t.filter((t) => t.error !== null).length;
     }, 0);
     const logs = traces.reduce((acc, t) => {
-      return acc + t.filter((t) => t.meta && t.meta.logs.length).length;
+      return (
+        acc +
+        t.filter((t) => t.meta && (t.meta as { logs: any[] }).logs.length)
+          .length
+      );
     }, 0);
 
     return (
@@ -390,7 +395,11 @@ export default function Output({
               <>
                 {/* Expand all logs for the traces and then flatten,  .flat().flat() is not clean... */}
                 {traces.map((trace, i) => {
-                  if (trace.map((t) => t.meta).some((e) => e.logs.length)) {
+                  if (
+                    trace
+                      .map((t) => t.meta)
+                      .some((e) => (e as { logs: any[] }).logs.length)
+                  ) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">
                         <div className="font-mono mr-2 flex text-sm text-gray-300">
