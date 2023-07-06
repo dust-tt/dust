@@ -28,7 +28,7 @@ import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-} from "@app/lib/actions_registry";
+} from "@app/lib/actions/registry";
 import { getGensTemplates } from "@app/lib/api/gens";
 import {
   Authenticator,
