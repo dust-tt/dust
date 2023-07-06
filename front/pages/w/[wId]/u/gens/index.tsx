@@ -614,6 +614,9 @@ export function TemplatesView({
     useState<string[]>([]);
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
     useState<string>("user");
+  const [editingTemplateColor, setEditingTemplateColor] =
+    useState<string>("bg-red-500");
+
   const [formExpanded, setFormExpanded] = useState<boolean>(false);
   const [hover, setHover] = useState<number>(-1);
   const editable = useMemo(() => {
@@ -625,6 +628,14 @@ export function TemplatesView({
       (isBuilder || templates[editingTemplate].visibility == "user")
     );
   }, [editingTemplate]);
+
+  const colorOptions = [
+    "bg-red-500",
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-yellow-500",
+    "bg-purple-500",
+  ];
 
   useEffect(() => {
     if (selectedTemplate != -1) {
@@ -661,6 +672,14 @@ export function TemplatesView({
       }
       return newTemplates;
     });
+  };
+
+  const handleSetEditingTemplate = (t: number) => {
+    setEditingTemplate(t);
+    setEditingTemplateTitle(templates[t].name);
+    setEditingTemplateInstructions(templates[t].instructions || [""]);
+    setEditingTemplateVisibility(templates[t].visibility);
+    setEditingTemplateColor(templates[t].color);
   };
 
   return (
@@ -780,6 +799,31 @@ export function TemplatesView({
                             </div>
                           );
                         })}
+                        <div className="mt-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Color
+                          </label>
+                          <div className="my-3 flex items-center space-x-1">
+                            {colorOptions.map((option) => (
+                              <button
+                                key={option}
+                                onClick={() => {
+                                  if (editable) {
+                                    setEditingTemplateColor(option);
+                                  }
+                                }}
+                                className={classNames(
+                                  "h-6 w-6 rounded-full",
+                                  option,
+                                  editingTemplateColor == option
+                                    ? "opacity-100"
+                                    : "opacity-30"
+                                )}
+                              ></button>
+                            ))}
+                          </div>
+                        </div>
+
                         {isBuilder &&
                           editingTemplateVisibility != "default" && (
                             <div className="mt-4 flex flex-row items-center">
@@ -818,15 +862,10 @@ export function TemplatesView({
                           <ActionButton
                             onClick={async () => {
                               setFormExpanded(false);
-                              const colors = ["red", "yellow", "green", "blue"];
                               const new_template = {
                                 name: editingTemplateTitle,
                                 // set random color
-                                color: `bg-${
-                                  colors[
-                                    Math.floor(Math.random() * colors.length)
-                                  ]
-                                }-500`,
+                                color: editingTemplateColor,
                                 instructions: editingTemplateInstructions,
                                 sId: client_side_new_id(),
                                 visibility: editingTemplateVisibility,
@@ -866,6 +905,7 @@ export function TemplatesView({
                               setFormExpanded(false);
                               setEditingTemplateInstructions([]);
                               setEditingTemplateTitle("");
+                              setEditingTemplateColor("bg-red-500");
                               setEditingTemplateVisibility("user");
                             }}
                           >
@@ -940,26 +980,16 @@ export function TemplatesView({
                     (isBuilder || templates[i].visibility == "user") ? (
                       <PencilIcon
                         onClick={() => {
-                          setEditingTemplate(i);
-                          setEditingTemplateInstructions(
-                            t.instructions || [""]
-                          );
-                          setEditingTemplateTitle(t.name);
                           setFormExpanded(true);
-                          setEditingTemplateVisibility(t.visibility);
+                          handleSetEditingTemplate(i);
                         }}
                         className="h-3 w-3 flex-shrink-0"
                       />
                     ) : (
                       <InformationCircleIcon
                         onClick={() => {
-                          setEditingTemplate(i);
-                          setEditingTemplateInstructions(
-                            t.instructions || [""]
-                          );
-                          setEditingTemplateTitle(t.name);
                           setFormExpanded(true);
-                          setEditingTemplateVisibility(t.visibility);
+                          handleSetEditingTemplate(i);
                         }}
                         className="h-3 w-3 flex-shrink-0"
                       />
@@ -989,14 +1019,6 @@ export function TemplatesView({
     </div>
   );
 }
-
-/*
-
-                <div className="absolute z-0 hidden rounded group-hover:block">
-                  <div className="relative bottom-8 border bg-white px-0.5 py-1 ">
-                  </div>
-                </div>
-*/
 
 export default function AppGens({
   user,
