@@ -1,8 +1,14 @@
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DEFAULT_POST_UPSERT_HOOKS_DEBOUNCE_MS } from "@app/post_upsert_hooks/hooks/consts";
-import { documentTrackerPostUpsertHook } from "@app/post_upsert_hooks/hooks/document_tracker";
+import {
+  documentTrackerSuggestChangesPostUpsertHook,
+  documentTrackerUpdateTrackedDocumentsPostUpsertHook,
+} from "@app/post_upsert_hooks/hooks/document_tracker";
 
-export const POST_UPSERT_HOOK_TYPES = ["document_tracker"] as const;
+export const POST_UPSERT_HOOK_TYPES = [
+  "document_tracker_update_tracked_documents",
+  "document_tracker_suggest_changes",
+] as const;
 export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 
 // asyc function that will run in a temporal workflow
@@ -43,7 +49,10 @@ export type PostUpsertHook = {
   getDebounceMs?: PostUpsertHookDebounceMs;
 };
 
-export const POST_UPSERT_HOOKS = [documentTrackerPostUpsertHook];
+export const POST_UPSERT_HOOKS = [
+  documentTrackerUpdateTrackedDocumentsPostUpsertHook,
+  documentTrackerSuggestChangesPostUpsertHook,
+];
 
 export const POST_UPSERT_HOOK_BY_TYPE: Record<
   PostUpsertHookType,

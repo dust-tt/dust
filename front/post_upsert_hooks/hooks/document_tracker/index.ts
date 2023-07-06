@@ -17,9 +17,90 @@ const logger = mainLogger.child({
   postUpsertHook: "document_tracker",
 });
 
-export const documentTrackerPostUpsertHook: PostUpsertHook = {
-  type: "document_tracker",
-  debounceMs: async (
+export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook =
+  {
+    type: "document_tracker_update_tracked_documents",
+    getDebounceMs: async () => {
+      return 1000;
+    },
+    filter: async (dataSourceName, workspaceId, documentId, documentText) => {
+      const localLogger = logger.child({
+        workspaceId,
+        dataSourceName,
+        documentId,
+      });
+      localLogger.info(
+        "Checking if document_tracker_update_tracked_documents post upsert hook should run."
+      );
+
+      const whitelistedWorkspaceIds =
+        RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
+
+      if (!whitelistedWorkspaceIds.includes(workspaceId)) {
+        localLogger.info(
+          "Workspace not whitelisted, document_tracker_update_tracked_documents post upsert hook should not run."
+        );
+        return false;
+      }
+
+      const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+      if (
+        documentText.includes("DUST_TRACK(") &&
+        TRACKABLE_CONNECTOR_TYPES.includes(
+          dataSource.connectorProvider as ConnectorProvider
+        )
+      ) {
+        localLogger.info(
+          "Document includes DUST_TRACK tags, document_tracker_update_tracked_documents post upsert hook should run."
+        );
+        return true;
+      }
+
+      const docIsTracked = !!(await TrackedDocument.count({
+        where: {
+          dataSourceId: dataSource.id,
+          documentId,
+        },
+      }));
+
+      if (docIsTracked) {
+        // Always run the document tracker for tracked documents, so we can
+        // garbage collect the TrackedDocuments if all the DUST_TRACK tags are removed.
+
+        localLogger.info(
+          "Document is tracked, document_tracker_update_tracked_documents post upsert hook should run."
+        );
+        return true;
+      }
+
+      return false;
+    },
+    fn: async (dataSourceName, workspaceId, documentId, documentText) => {
+      logger.info(
+        {
+          workspaceId,
+          dataSourceName,
+          documentId,
+        },
+        "Running document_tracker_update_tracked_documents post upsert hook."
+      );
+
+      const dataSource = await getDatasource(dataSourceName, workspaceId);
+      if (
+        TRACKABLE_CONNECTOR_TYPES.includes(
+          dataSource.connectorProvider as ConnectorProvider
+        )
+      ) {
+        logger.info("Updating tracked documents.");
+        await updateTrackedDocuments(dataSource.id, documentId, documentText);
+      }
+    },
+  };
+
+export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
+  type: "document_tracker_suggest_changes",
+  getDebounceMs: async (
     _dataSourceName,
     _workspaceId,
     _documentId,
@@ -34,14 +115,14 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
     }
     return 3600000; // 1 hour
   },
-  filter: async (dataSourceName, workspaceId, documentId, documentText) => {
+  filter: async (dataSourceName, workspaceId, documentId) => {
     const localLogger = logger.child({
       workspaceId,
       dataSourceName,
       documentId,
     });
     localLogger.info(
-      "Checking if document tracker post upsert hook should run."
+      "Checking if document_tracker_suggest_changes post upsert hook should run."
     );
 
     const whitelistedWorkspaceIds =
@@ -49,24 +130,12 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
 
     if (!whitelistedWorkspaceIds.includes(workspaceId)) {
       localLogger.info(
-        "Workspace not whitelisted, document_tracker post upsert hook should not run."
+        "Workspace not whitelisted, document_tracker_suggest_changes post upsert hook should not run."
       );
       return false;
     }
 
     const dataSource = await getDatasource(dataSourceName, workspaceId);
-
-    if (
-      documentText.includes("DUST_TRACK(") &&
-      TRACKABLE_CONNECTOR_TYPES.includes(
-        dataSource.connectorProvider as ConnectorProvider
-      )
-    ) {
-      localLogger.info(
-        "Document includes DUST_TRACK tags, document_tracker post upsert hook should run."
-      );
-      return true;
-    }
 
     const docIsTracked = !!(await TrackedDocument.count({
       where: {
@@ -76,13 +145,14 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
     }));
 
     if (docIsTracked) {
-      // Always run the document tracker for tracked documents, so we can
-      // garbage collect the TrackedDocuments if all the DUST_TRACK tags are removed.
-
+      // Never run document_tracker_suggest_changes for tracked documents.
+      // Documents are either sources or targets, not both.
+      // TODO: let's revisit this decision later.
+      // TODO: should we also skip docs that have DUST_TRACK tags?
       localLogger.info(
-        "Document is tracked, document_tracker post upsert hook should run."
+        "Document is tracked, document_tracker_suggest_changes post upsert hook should not run."
       );
-      return true;
+      return false;
     }
 
     const workspaceDataSourceIds = (
@@ -103,7 +173,18 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       },
     }));
 
-    return hasTrackedDocuments;
+    if (hasTrackedDocuments) {
+      localLogger.info(
+        "Workspace has tracked documents, document_tracker_suggest_changes post upsert hook should run."
+      );
+      return true;
+    }
+
+    localLogger.info(
+      "Workspace has no tracked documents, document_tracker_suggest_changes post upsert hook should not run."
+    );
+
+    return false;
   },
 
   fn: async (dataSourceName, workspaceId, documentId, documentText) => {
@@ -113,18 +194,10 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
         dataSourceName,
         documentId,
       },
-      "Running document tracker post upsert hook."
+      "Running document_tracker_suggest_changes post upsert hook."
     );
 
     const dataSource = await getDatasource(dataSourceName, workspaceId);
-    if (
-      TRACKABLE_CONNECTOR_TYPES.includes(
-        dataSource.connectorProvider as ConnectorProvider
-      )
-    ) {
-      logger.info("Updating tracked documents.");
-      await updateTrackedDocuments(dataSource.id, documentId, documentText);
-    }
 
     const isDocTracked = !!(await TrackedDocument.count({
       where: {
@@ -134,9 +207,17 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
     }));
 
     // TODO: see how we want to support this. Obviously the action in the current form will
-    // just match the document that was just upserted
+    // just match the document that was just upserted if it's tracked.
+    // We check this in the filter, but there could be a race condition.
     if (isDocTracked) {
-      logger.info("Document is tracked, not checking for matches.");
+      logger.info(
+        {
+          workspaceId,
+          dataSourceName,
+          documentId,
+        },
+        "Document is tracked: not searching for matches."
+      );
       return;
     }
 
@@ -165,10 +246,27 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
         );
       }
 
-      const docId = actionResult.matched_doc_id;
+      const matchedDocId = actionResult.matched_doc_id;
+
+      // again, checking for race condition here and skipping if the
+      // matched doc is the doc that was just upserted.
+      if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
+        logger.info(
+          {
+            workspaceId,
+            dataSourceName,
+            documentId,
+            matchedDsName,
+            matchedDocId,
+          },
+          "Matched document is the document that was just upserted."
+        );
+        return;
+      }
+
       const trackedDocuments = await TrackedDocument.findAll({
         where: {
-          documentId: docId,
+          documentId: matchedDocId,
           dataSourceId: matchedDs.id,
         },
       });
@@ -180,7 +278,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
             dataSourceName,
             documentId,
             matchedDsName,
-            docId,
+            matchedDocId,
           },
           "Could not find tracked documents for matched document."
         );
@@ -201,7 +299,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
       }
       sgMail.setApiKey(SENDGRID_API_KEY);
 
-      const docUrl = actionResult.matched_doc_url;
+      const matchedDocUrl = actionResult.matched_doc_url;
       const suggestedChanges = actionResult.suggested_changes;
 
       const incomingDocument = await CoreAPI.getDataSourceDocument(
@@ -225,7 +323,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
             dataSourceName,
             documentId,
             matchedDsName,
-            docId,
+            matchedDocId,
             email,
           },
           "Sending email to user."
@@ -237,7 +335,7 @@ export const documentTrackerPostUpsertHook: PostUpsertHook = {
           subject: "DUST: Document update suggestion",
           text: `Hello!
 
-We have a suggestion for you to update the document ${docUrl}, based on the new document ${incomingDocumentUrl}:
+We have a suggestion for you to update the document ${matchedDocUrl}, based on the new document ${incomingDocumentUrl}:
 
 ${suggestedChanges}
 
