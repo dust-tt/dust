@@ -115,6 +115,12 @@ impl Document {
     }
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct DocumentVersion {
+    pub created: u64,
+    pub hash: String,
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct DataSourceConfig {
     pub provider_id: ProviderID,

@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document};
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -1195,6 +1195,19 @@ impl Store for SQLiteStore {
             Err(e) => Err(e),
             Ok(tags) => Ok(tags),
         }
+    }
+
+    async fn list_data_source_document_versions(
+        &self,
+        _project: &Project,
+        _data_source_id: &str,
+        _document_id: &str,
+        _limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DocumentVersion>, usize)> {
+        // not implemented for SQLite
+        Err(anyhow!(
+            "list_data_source_document_versions not implemented for SQLite"
+        ))
     }
 
     async fn upsert_data_source_document(

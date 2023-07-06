@@ -1258,6 +1258,55 @@ async fn data_sources_documents_update_tags(
     }
 }
 
+// List versions of a document in a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsVersionsListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn data_sources_documents_versions_list(
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Query(query): extract::Query<DataSourcesDocumentsVersionsListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .list_data_source_document_versions(
+            &project,
+            &data_source_id,
+            &document_id,
+            Some((query.limit, query.offset)),
+        )
+        .await
+    {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to list document versions: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok((versions, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
+                    "versions": versions,
+                })),
+            }),
+        ),
+    }
+}
+
 /// Upsert a document in a data source.
 
 #[derive(serde::Deserialize)]
@@ -1674,6 +1723,10 @@ async fn main() -> Result<()> {
         .route(
             "/projects/:project_id/data_sources",
             post(data_sources_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/versions",
+            get(data_sources_documents_versions_list),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",

@@ -1,5 +1,5 @@
 use crate::blocks::block::BlockType;
-use crate::data_sources::data_source::{DataSource, Document};
+use crate::data_sources::data_source::{DataSource, Document, DocumentVersion};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -107,6 +107,13 @@ pub trait Store {
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>>;
+    async fn list_data_source_document_versions(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DocumentVersion>, usize)>;
     async fn list_data_source_documents(
         &self,
         project: &Project,
