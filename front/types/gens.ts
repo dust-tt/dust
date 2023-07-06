@@ -12,6 +12,7 @@ export type GensRetrievedDocumentType = {
     score: number;
   }[];
   tokenCount: number;
+  pinned: boolean | null;
 };
 
 export type GensTemplateType = {
