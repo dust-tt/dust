@@ -19,6 +19,21 @@ const logger = mainLogger.child({
 
 export const documentTrackerPostUpsertHook: PostUpsertHook = {
   type: "document_tracker",
+  debounceMs: async (
+    _dataSourceName,
+    _workspaceId,
+    _documentId,
+    _documentText,
+    dataSourceConnectorProvider
+  ) => {
+    if (!dataSourceConnectorProvider) {
+      return 10000; // 10 seconds
+    }
+    if (dataSourceConnectorProvider === "notion") {
+      return 600000; // 10 minutes
+    }
+    return 3600000; // 1 hour
+  },
   filter: async (dataSourceName, workspaceId, documentId, documentText) => {
     const localLogger = logger.child({
       workspaceId,
