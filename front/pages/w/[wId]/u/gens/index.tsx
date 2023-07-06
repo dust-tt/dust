@@ -1,6 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import {
+  BookmarkIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   PencilIcon,
@@ -206,6 +207,8 @@ export function DocumentView({
   template,
   onScoreReady,
   onExtractUpdate,
+  onPin,
+  onRemove,
 }: {
   document: GensRetrievedDocumentType;
   query: string;
@@ -213,6 +216,8 @@ export function DocumentView({
   template: TemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
+  onPin: (documentId: string) => void;
+  onRemove: (documentId: string) => void;
 }) {
   const provider = providerFromDocument(document);
 
@@ -221,6 +226,8 @@ export function DocumentView({
 
   const [chunkExpanded, setChunkExpanded] = useState(false);
   const [expandedChunkId, setExpandedChunkId] = useState<number | null>(null);
+
+  const [pinned, setPinned] = useState(false);
 
   const interruptRef = useRef<boolean>(false);
   useEffect(() => {
@@ -348,7 +355,9 @@ export function DocumentView({
                 score = 0;
               }
               setLLMScore(score);
-              onScoreReady(document.documentId, score);
+              if (!pinned) {
+                onScoreReady(document.documentId, score);
+              }
               return;
             }
           } else if (event.type == "error") {
@@ -428,8 +437,34 @@ export function DocumentView({
           </span>
         </div>
       </div>
-      <div className="my-2 flex flex-col space-y-2">
+      <div className="my-2 flex items-center">
         <p className="text-black-500 ml-3 text-xs">{extractedText}</p>
+        <div className="ml-auto flex flex-shrink-0">
+          <button
+            className="mx-1 text-base font-bold"
+            onClick={() => {
+              if (!pinned) {
+                onPin(document.documentId);
+              } else {
+                onScoreReady(document.documentId, LLMScore || document.score);
+              }
+              setPinned(!pinned);
+            }}
+          >
+            <BookmarkIcon
+              className={classNames(
+                "h-4 w-4",
+                pinned ? "text-gray-500" : "text-slate-300"
+              )}
+            />
+          </button>
+          <button
+            className="mx-1 text-base font-bold"
+            onClick={() => onRemove(document.documentId)}
+          >
+            <TrashIcon className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
       </div>
       {chunkExpanded && (
         <div className="mb-2 flex flex-col space-y-2">
@@ -468,6 +503,8 @@ export function ResultsView({
   template,
   onExtractUpdate,
   onScoreReady,
+  onPin,
+  onRemove,
 }: {
   retrieved: GensRetrievedDocumentType[];
   query: string;
@@ -475,6 +512,8 @@ export function ResultsView({
   template: TemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
+  onPin: (documentId: string) => void;
+  onRemove: (documentId: string) => void;
 }) {
   return (
     <div className="mt-5 w-full ">
@@ -505,6 +544,8 @@ export function ResultsView({
                 template={template}
                 onScoreReady={onScoreReady}
                 onExtractUpdate={onExtractUpdate}
+                onPin={onPin}
+                onRemove={onRemove}
               />
             );
           })}
@@ -595,7 +636,7 @@ export function TemplatesView({
   };
 
   return (
-    <div className="w-48 flex-initial flex-shrink-0 px-2">
+    <div className="flex-initial flex-shrink-0 px-2">
       <div>
         <div className="justify-items flex space-x-2"></div>
         <Transition.Root show={formExpanded} as={Fragment}>
@@ -713,13 +754,13 @@ export function TemplatesView({
           </Dialog>
         </Transition.Root>
 
-        <div className="mt-2 flex flex-col space-y-2">
+        <div className="mt-2 flex items-center justify-start space-x-2">
           {templates.map((t, i) => {
             return (
               // round circle div with given color
               <div
                 key={i}
-                className="align-items group ml-1 mt-2 flex items-center space-x-2"
+                className="align-items group flex items-center space-x-2"
                 onClick={() => {
                   setSelectedTemplate(i);
                   onTemplateSelect(t);
@@ -731,7 +772,7 @@ export function TemplatesView({
                   className={classNames(
                     "rounded py-1",
                     "text-xs font-bold text-gray-700",
-                    "h-5 w-5 rounded-full",
+                    "h-5 w-5 flex-shrink-0 rounded-full",
                     t.color,
                     // make opacity lower for unselected
                     selectedTemplate === i ? "opacity-100" : "opacity-30"
@@ -739,7 +780,7 @@ export function TemplatesView({
                 />
                 {hover === i && (
                   <>
-                    <span className="text-xs text-gray-600">
+                    <span className="flex-shrink-0 text-xs text-gray-600">
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
@@ -750,7 +791,7 @@ export function TemplatesView({
                         setNewTemplateTitle(t.name);
                         setFormExpanded(true);
                       }}
-                      className="h-3 w-3"
+                      className="h-3 w-3 flex-shrink-0"
                     />
                   </>
                 )}
@@ -834,10 +875,37 @@ export default function AppGens({
     setRetrieved((r) => {
       const retrieved = [...r];
       // TODO: make this more efficient by just moving that doc around
-      retrieved.filter((d) => d.documentId == documentId)[0].llm_score = score;
+      // we can also re-rank a document that was pinned
+      // TODO: should make this cleaner
+      const index = retrieved.findIndex((d) => d.documentId == documentId);
+      retrieved[index].llm_score = score;
+      retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        else if (!a.pinned && b.pinned) return 1;
         return (b.llm_score || 0) - (a.llm_score || 0);
       });
+      return retrieved;
+    });
+  };
+
+  const onPin = (documentId: string) => {
+    setRetrieved((r) => {
+      const retrieved = [...r];
+      const index = retrieved.findIndex((d) => d.documentId === documentId);
+      const pinnedDoc = retrieved[index];
+      pinnedDoc.pinned = !pinnedDoc.pinned;
+      retrieved.splice(index, 1);
+      retrieved.unshift(pinnedDoc);
+      return retrieved;
+    });
+  };
+
+  const onRemove = (documentId: string) => {
+    setRetrieved((r) => {
+      const retrieved = [...r];
+      const index = retrieved.findIndex((d) => d.documentId === documentId);
+      retrieved.splice(index, 1);
       return retrieved;
     });
   };
@@ -1010,7 +1078,7 @@ export default function AppGens({
 
   const handleSearch = async () => {
     setRetrievalLoading(true);
-    setRetrieved([]);
+    setRetrieved(retrieved.map((d) => d).filter((d) => d.pinned));
 
     const userContext = {
       user: {
@@ -1056,7 +1124,16 @@ export default function AppGens({
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (event.content.block_name === "OUTPUT") {
-          setRetrieved(e.value.retrievals);
+          setRetrieved((r) => {
+            const existingDocs = r.map((d) => d.documentId);
+            return [
+              ...r,
+              ...e.value.retrievals.filter(
+                (d: GensRetrievedDocumentType) =>
+                  !existingDocs.includes(d.documentId)
+              ),
+            ];
+          });
           console.log("Search completed");
           setRetrievalLoading(false);
         }
@@ -1074,6 +1151,9 @@ export default function AppGens({
           <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
             <div className="flex flex-col">
               <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+                <TemplatesView
+                  onTemplateSelect={(t) => (template.current = t)}
+                />
                 <div className="w-70 flex font-normal">
                   <TextareaAutosize
                     minRows={8}
@@ -1093,10 +1173,6 @@ export default function AppGens({
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
                     }}
-                  />
-
-                  <TemplatesView
-                    onTemplateSelect={(t) => (template.current = t)}
                   />
                 </div>
                 <div className="flex-rows flex space-x-2">
@@ -1228,6 +1304,8 @@ export default function AppGens({
                 onExtractUpdate={onExtractUpdate}
                 onScoreReady={onScoreReady}
                 template={template.current}
+                onPin={onPin}
+                onRemove={onRemove}
               />
             </div>
           </div>
