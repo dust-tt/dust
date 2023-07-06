@@ -901,6 +901,7 @@ export default function AppChat({
     }
     throw new Error("Error: no OUTPUT block streamed.");
   };
+
   const updateMessages = async (
     messages: ChatMessageType[],
     newMessage: ChatMessageType

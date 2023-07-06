@@ -1,24 +1,38 @@
 import { new_id } from "@app/lib/utils";
 import {
   ChatMessageType,
+  ChatRetrievedDocumentType,
   ChatSessionType,
   MessageFeedbackStatus,
+  MessageRole,
 } from "@app/types/chat";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { UserType } from "@app/types/user";
 
+import { cloneBaseConfig, DustProdActionRegistry } from "../actions/registry";
+import { runAction, runActionStreamed } from "../actions/server";
+import { Authenticator } from "../auth";
 import {
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
   front_sequelize,
 } from "../models";
+import { getDataSources } from "./data_sources";
 
 export async function getChatSessions(
-  owner: WorkspaceType,
-  user: UserType,
+  auth: Authenticator,
   limit: number,
   offset: number
 ): Promise<ChatSessionType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+  const user = auth.user();
+  if (!user) {
+    return [];
+  }
+
   const chatSessions = await ChatSession.findAll({
     where: {
       workspaceId: owner.id,
@@ -42,9 +56,14 @@ export async function getChatSessions(
 }
 
 export async function getChatSession(
-  owner: WorkspaceType,
+  auth: Authenticator,
   sId: string
 ): Promise<ChatSessionType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+
   const chatSession = await ChatSession.findOne({
     where: {
       workspaceId: owner.id,
@@ -66,11 +85,20 @@ export async function getChatSession(
 }
 
 export async function upsertChatSession(
+  auth: Authenticator,
   sId: string,
-  owner: WorkspaceType,
-  user: UserType,
   title: string | null
-): Promise<ChatSessionType> {
+): Promise<ChatSessionType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+
+  const user = auth.user();
+  if (!user) {
+    return null;
+  }
+
   return await front_sequelize.transaction(async (t) => {
     const [chatSession, created] = await ChatSession.findOrCreate({
       where: {
@@ -80,7 +108,7 @@ export async function upsertChatSession(
       defaults: {
         sId,
         workspaceId: owner.id,
-        userId: user.id,
+        userId: user?.id,
         title: title ? title : undefined,
       },
       transaction: t,
@@ -104,10 +132,10 @@ export async function upsertChatSession(
 }
 
 export async function getChatSessionWithMessages(
-  owner: WorkspaceType,
+  auth: Authenticator,
   sId: string
 ): Promise<ChatSessionType | null> {
-  const chatSession = await getChatSession(owner, sId);
+  const chatSession = await getChatSession(auth, sId);
 
   if (!chatSession) {
     return null;
@@ -298,4 +326,336 @@ export async function updateChatMessageFeedback({
       where: { sId, chatSessionId: chatSession.id },
     }
   );
+}
+
+/**
+ * Chat API Implementation
+ */
+
+const filterMessagesForModel = (
+  messages: ChatMessageType[]
+): ChatMessageType[] => {
+  // remove retrieval messages except the last one, and only keep the last 8 user messages
+
+  const lastRetrievalMessageIndex = messages
+    .map((m, i) => (m.role === "retrieval" ? i : -1))
+    .filter((i) => i !== -1)
+    .pop();
+
+  const eighthButLastUserMessageIndex =
+    messages
+      .map((m, i) => (m.role === "user" ? i : -1))
+      .filter((i) => i !== -1)
+      .reverse()[7] || 0;
+
+  const result = messages.filter(
+    (m, i) =>
+      i >= eighthButLastUserMessageIndex &&
+      (m.role !== "retrieval" || i === lastRetrievalMessageIndex)
+  );
+  return result;
+};
+
+// Event sent when the session is initially created.
+export type ChatSessionCreateEvent = {
+  session: ChatSessionType;
+};
+
+// Event received when we know what will be the type of the next message.
+// It is sent initially when the user message is created for consistency and
+// then each time we know we're going for a retrieval or an assistant
+// response.
+export type ChatMessageTriggerEvent = {
+  role: MessageRole;
+  // We might want to add some data here in the future e.g including
+  // information about the query being used in the case of retrieval.
+};
+
+// Event sent once the message is fully constructed.
+export type ChatMessageCreateEvent = {
+  message: ChatMessageType;
+};
+
+// Event sent when receiving streamed response from the model.
+export type ChatMessageTokensEvent = {
+  messageId: string;
+  text: string;
+};
+
+// Event received when the session is updated (eg title is set).
+export type ChatSessionUpdateEvent = {
+  session: ChatSessionType;
+};
+
+/**
+ * Function that emulates starting a new chat session.
+ *
+ * @param auth Authenticator
+ * @param userMessage string
+ * @param dataSources list of data sources to use for retrieval
+ * @param filter filter to use for retrieval (timestamp)
+ * @param timeZone timezone to use for retrieval
+ */
+export async function* newChat(
+  auth: Authenticator,
+  userMessage: string,
+  dataSources:
+    | {
+        workspace_id: string;
+        data_source_id: string;
+      }[]
+    | null,
+  filter: {
+    timestamp: { gt: number };
+  } | null,
+  timeZone: string
+): AsyncGenerator<
+  | ChatSessionCreateEvent
+  | ChatMessageTriggerEvent
+  | ChatMessageCreateEvent
+  | ChatMessageTokensEvent
+  | ChatSessionUpdateEvent
+> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Could not authenticate against the workspace.");
+  }
+
+  // create a Session
+  const sId = newChatSessionId();
+  const session = await upsertChatSession(auth, sId, null);
+
+  if (!session) {
+    // If we fail to create the session we simply yield error messages events and return.
+    yield { role: "error" } as ChatMessageTriggerEvent;
+    yield {
+      message: {
+        sId: new_id(),
+        role: "error",
+        message: "Could not create chat session.",
+      },
+    };
+    return;
+  }
+
+  yield { session } as ChatSessionCreateEvent;
+
+  const assistantConfig = cloneBaseConfig(
+    DustProdActionRegistry["chat-assistant-wfn"].config
+  );
+
+  const assistantContext = {
+    user: {
+      username: auth.user()?.username,
+      full_name: auth.user()?.name,
+    },
+    workspace: owner.name,
+    date_today: new Date().toISOString().split("T")[0],
+  };
+
+  const messages: ChatMessageType[] = [
+    {
+      sId: new_id(),
+      role: "user",
+      message: userMessage,
+    },
+  ];
+
+  // This is an helper function that adds an error message to the `messages` array and yield the
+  // proper events in case of error.
+  function* handleError(
+    errorMessage: string
+  ): Generator<ChatMessageTriggerEvent | ChatMessageCreateEvent> {
+    messages.push({
+      sId: new_id(),
+      role: "error",
+      message: errorMessage,
+    });
+
+    yield { role: "error" } as ChatMessageTriggerEvent;
+    yield {
+      message: messages[messages.length - 1],
+    } as ChatMessageCreateEvent;
+  }
+
+  // Master loop that will run until the last message is not a "retrieval" request. It will call the
+  // assistant and push to the `messages` array. The assistant either push an "assistant" message
+  // with a response or a "retrieval" message that will contain a query, if that's the case we run
+  // the retrieval and add the retrieved documents to that last message and loop back here.
+  //
+  // At any point if an error occured an "error" message is pushed to the `messages` array and we
+  // will exit from this loop.
+  while (messages[messages.length - 1].role !== "retrieval") {
+    const res = await runActionStreamed(
+      owner,
+      "chat-assistant-wfn",
+      assistantConfig,
+      [{ messages: filterMessagesForModel(messages), assistantContext }]
+    );
+
+    if (res.isErr()) {
+      yield* handleError(
+        `Chat error: [${res.error.type}] ${res.error.message}`
+      );
+      break;
+    }
+
+    const { eventStream } = res.value;
+
+    let assistantMessageTriggered = false;
+
+    for await (const event of eventStream) {
+      if (event.type === "tokens") {
+        yield { text: event.content.tokens.text } as ChatMessageTokensEvent;
+        if (!assistantMessageTriggered) {
+          assistantMessageTriggered = true;
+          yield { role: "assistant" } as ChatMessageTriggerEvent;
+        }
+      }
+
+      if (event.type === "error") {
+        yield* handleError(event.content.message);
+        break;
+      }
+
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (e.error) {
+          yield* handleError(e.error);
+          break;
+        }
+
+        if (event.content.block_name === "OUTPUT" && e.value) {
+          const m = e.value as {
+            role: MessageRole;
+            message?: string;
+            query?: string;
+          };
+
+          if (m.role === "assistant") {
+            if (!assistantMessageTriggered) {
+              assistantMessageTriggered = true;
+              yield { role: "assistant" } as ChatMessageTriggerEvent;
+            }
+            yield { message: m } as ChatMessageCreateEvent;
+            messages.push({
+              sId: new_id(),
+              role: "assistant",
+              message: m.message,
+            });
+          }
+
+          if (m.role === "retrieval" && m.query) {
+            yield { role: "retrieval" } as ChatMessageTriggerEvent;
+            messages.push({
+              sId: new_id(),
+              role: "retrieval",
+              query: m.query,
+            });
+          }
+        }
+      }
+    }
+
+    if (messages[messages.length - 1].role === "retrieval") {
+      const m = messages[messages.length - 1];
+      const configRetrieval = cloneBaseConfig(
+        DustProdActionRegistry["chat-retrieval"].config
+      );
+
+      if (dataSources) {
+        configRetrieval.DATASOURCE.data_sources = dataSources;
+      } else {
+        const ds = await getDataSources(auth);
+        configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
+          return {
+            workspace_id: owner.sId,
+            data_source_id: d.name,
+          };
+        });
+      }
+
+      configRetrieval.DATASOURCE.filter = filter;
+
+      const res = await runAction(owner, "chat-retrieval", configRetrieval, [
+        {
+          messages: [{ role: "query", message: m.query }],
+          userContext: {
+            timeZone,
+          },
+        },
+      ]);
+
+      if (res.isErr()) {
+        yield* handleError(
+          `Chat retrieval error: [${res.error.type}] ${res.error.message}`
+        );
+        break;
+      }
+
+      const run = res.value;
+
+      for (const t of run.traces) {
+        if (t[1][0][0].error) {
+          yield* handleError(t[1][0][0].error);
+          break;
+        }
+        if (t[0][1] === "OUTPUT") {
+          messages[messages.length - 1].retrievals = (
+            t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
+          ).retrievals;
+          yield {
+            message: messages[messages.length - 1],
+          } as ChatMessageCreateEvent;
+        }
+      }
+    }
+  }
+
+  // Store messages in DB.
+  await Promise.all(
+    messages.map((m) => {
+      return upsertChatMessage(session, m);
+    })
+  );
+
+  // Update session title.
+  const configTitle = cloneBaseConfig(
+    DustProdActionRegistry["chat-title"].config
+  );
+
+  const contextTitle = {
+    user: {
+      username: auth.user()?.username,
+      full_name: auth.user()?.name,
+    },
+    workspace: owner.name,
+    date_today: new Date().toISOString().split("T")[0],
+  };
+
+  const res = await runAction(owner, "chat-title", configTitle, [
+    {
+      messages: messages.filter(
+        (m) => m.role === "user" || m.role === "assistant"
+      ),
+      context: contextTitle,
+    },
+  ]);
+
+  if (res.isErr()) {
+    // No error handling for title, we just ignore.
+  } else {
+    const run = res.value;
+
+    for (const t of run.traces) {
+      if (t[0][1] === "OUTPUT") {
+        const title = (t[1][0][0].value as { title: string }).title;
+        const session = await upsertChatSession(auth, sId, title);
+        if (session) {
+          yield { session } as ChatSessionUpdateEvent;
+        }
+        // If there was an error we just ignore.
+      }
+    }
+  }
 }

@@ -5,7 +5,7 @@ import {
   getChatSessionWithMessages,
   upsertChatSession,
 } from "@app/lib/api/chat";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -37,7 +37,6 @@ async function handler(
   res: NextApiResponse<ChatSessionResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     req.query.wId as string
@@ -54,7 +53,7 @@ async function handler(
     });
   }
 
-  if (!user) {
+  if (!auth.user()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -95,12 +94,16 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await upsertChatSession(
-        cId,
-        owner,
-        user,
-        s.title || null
-      );
+      const session = await upsertChatSession(auth, cId, s.title || null);
+      if (!session) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not create the chat session.",
+          },
+        });
+      }
 
       res.status(200).json({
         session,
@@ -121,7 +124,7 @@ async function handler(
 
       const cId = req.query.cId;
 
-      const session = await getChatSessionWithMessages(owner, cId);
+      const session = await getChatSessionWithMessages(auth, cId);
 
       if (!session) {
         return apiError(req, res, {
