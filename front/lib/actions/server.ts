@@ -1,11 +1,10 @@
+import { DustProdActionRegistry } from "@app/lib/actions/registry";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { DustAPI, DustAppConfigType } from "@app/lib/dust_api";
+import { Err, Ok } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
-
-import { prodAPICredentialsForOwner } from "../auth";
-import { DustAPI, DustAppConfigType } from "../dust_api";
-import { Err, Ok } from "../result";
-import { DustProdActionRegistry } from "./registry";
 
 /**
  * This function is intended to be used server side to run an action. Logs and monitors the

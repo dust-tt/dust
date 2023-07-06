@@ -1,6 +1,8 @@
+import {
+  DustAppConfigType,
+  processStreamedRunResponse,
+} from "@app/lib/dust_api";
 import { WorkspaceType } from "@app/types/user";
-
-import { DustAppConfigType, processStreamedRunResponse } from "../dust_api";
 
 /**
  * This function is intended to be used by the client directly. It proxies through the local
