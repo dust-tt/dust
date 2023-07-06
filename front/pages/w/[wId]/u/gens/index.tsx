@@ -757,7 +757,7 @@ export function TemplatesView({
           </Dialog>
         </Transition.Root>
 
-        <div className="mt-2 flex justify-start items-center space-x-2">
+        <div className="mt-2 flex items-center justify-start space-x-2">
           {templates.map((t, i) => {
             return (
               // round circle div with given color
@@ -775,7 +775,7 @@ export function TemplatesView({
                   className={classNames(
                     "rounded py-1",
                     "text-xs font-bold text-gray-700",
-                    "h-5 w-5 rounded-full flex-shrink-0",
+                    "h-5 w-5 flex-shrink-0 rounded-full",
                     t.color,
                     // make opacity lower for unselected
                     selectedTemplate === i ? "opacity-100" : "opacity-30"
@@ -783,11 +783,11 @@ export function TemplatesView({
                 />
                 {hover === i && (
                   <>
-                    <span className="text-xs text-gray-600 flex-shrink-0">
+                    <span className="flex-shrink-0 text-xs text-gray-600">
                       <span className="font-semibold">{t.name}</span>
                     </span>
 
-                    <PencilIcon 
+                    <PencilIcon
                       onClick={() => {
                         setSelectedTemplate(i);
                         setNewTemplateInstructions(t.instructions);
@@ -1177,7 +1177,6 @@ export default function AppGens({
                       setGenCursorPosition(e.target.selectionStart);
                     }}
                   />
-
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
