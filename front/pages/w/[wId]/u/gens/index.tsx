@@ -4,6 +4,7 @@ import {
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
+  TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
@@ -1338,6 +1339,9 @@ export default function AppGens({
               <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
                 <TemplatesView
                   onTemplateSelect={(t) => (template.current = t)}
+                  workspaceId={owner.sId}
+                  savedTemplates={templates}
+                  isBuilder={isBuilder}
                 />
                 <div className="w-70 flex font-normal">
                   <TextareaAutosize
@@ -1359,14 +1363,6 @@ export default function AppGens({
                       setGenCursorPosition(e.target.selectionStart);
                     }}
                   />
-
-                  <TemplatesView
-                    onTemplateSelect={(t) => (template.current = t)}
-                    workspaceId={owner.sId}
-                    savedTemplates={templates}
-                    isBuilder={isBuilder}
-                  />
-
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-initial">
