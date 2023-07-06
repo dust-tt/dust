@@ -3,7 +3,8 @@ import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 import type { ConnectorProvider } from "@app/lib/connectors_api";
 import type { PostUpsertHookType } from "@app/post_upsert_hooks/hooks";
 import type * as activities from "@app/post_upsert_hooks/temporal/activities";
-import { newUpsertSignal } from "@app/post_upsert_hooks/temporal/signals";
+
+import { newUpsertSignal } from "./signals";
 
 const { runPostUpsertHookActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
