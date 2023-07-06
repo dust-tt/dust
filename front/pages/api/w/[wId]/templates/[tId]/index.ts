@@ -94,7 +94,7 @@ async function handler(
         });
       }
 
-      template = await getTemplate(owner, user, req.query.sId as string);
+      template = await getTemplate(owner, user, req.query.tId as string);
       if (template) {
         if (template.userId !== user.id && !isBuilder) {
           return apiError(req, res, {
@@ -124,7 +124,7 @@ async function handler(
           color: pRes.value.color,
           visibility: pRes.value.visibility as "workspace" | "user",
           workspaceId: owner.id,
-          sId: req.query.sId as string,
+          sId: req.query.tId as string,
           userId: user.id,
         });
       }
@@ -134,7 +134,7 @@ async function handler(
       return;
 
     case "DELETE":
-      result = await deleteTemplate(owner, req.query.sId as string);
+      result = await deleteTemplate(owner, req.query.tId as string);
       if (!result) {
         return apiError(req, res, {
           status_code: 404,
