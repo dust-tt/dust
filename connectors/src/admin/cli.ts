@@ -14,7 +14,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
-  if (!args.name) {
+  if (!args.dataSourceName) {
     throw new Error("Missing --dataSourceName argument");
   }
 
