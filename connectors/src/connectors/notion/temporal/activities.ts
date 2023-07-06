@@ -474,11 +474,15 @@ export async function garbageCollectActivity(
         status: number;
       };
       if (
-        [
+        ([
           "internal_server_error",
           "notionhq_client_request_timeout",
           "service_unavailable",
-        ].includes(potentialNotionError.code) &&
+          "notionhq_client_response_error",
+        ].includes(potentialNotionError.code) ||
+          (typeof potentialNotionError.status === "number" &&
+            potentialNotionError.status >= 500 &&
+            potentialNotionError.status < 600)) &&
         Context.current().info.attempt >= 15
       ) {
         localLogger.error(
