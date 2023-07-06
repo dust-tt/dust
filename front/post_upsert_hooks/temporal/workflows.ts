@@ -1,5 +1,7 @@
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
+import type { ConnectorProvider } from "@app/lib/connectors_api";
+import type { PostUpsertHookType } from "@app/post_upsert_hooks/hooks";
 import type * as activities from "@app/post_upsert_hooks/temporal/activities";
 
 import { newUpsertSignal } from "./signals";
@@ -7,14 +9,14 @@ import { newUpsertSignal } from "./signals";
 const { runPostUpsertHookActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
 });
-const { getPostUpsertHooksToRunActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minute",
-});
 
 export async function runPostUpsertHooksWorkflow(
   dataSourceName: string,
   workspaceId: string,
-  documentId: string
+  documentId: string,
+  dataSourceConnectorProvider: ConnectorProvider | null,
+  hookType: PostUpsertHookType,
+  debounceMs: number
 ) {
   let signaled = false;
 
@@ -24,23 +26,18 @@ export async function runPostUpsertHooksWorkflow(
 
   while (signaled) {
     signaled = false;
-    // TODO: maybe a bit more ?
-    await sleep(10000);
+
+    await sleep(debounceMs);
     if (signaled) {
       continue;
     }
-    const hooksToRun = await getPostUpsertHooksToRunActivity(
+
+    await runPostUpsertHookActivity(
       dataSourceName,
       workspaceId,
-      documentId
+      documentId,
+      dataSourceConnectorProvider,
+      hookType
     );
-    for (const hookType of hooksToRun) {
-      await runPostUpsertHookActivity(
-        dataSourceName,
-        workspaceId,
-        documentId,
-        hookType
-      );
-    }
   }
 }

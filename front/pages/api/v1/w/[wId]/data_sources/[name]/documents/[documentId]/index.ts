@@ -11,7 +11,7 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { shouldTriggerPostUpsertHookWorkflow } from "@app/post_upsert_hooks/hooks";
+import { getPostUpsertHooksToRun } from "@app/post_upsert_hooks/hooks";
 import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
@@ -286,18 +286,22 @@ async function handler(
         data_source: dataSource,
       });
 
-      if (
-        await shouldTriggerPostUpsertHookWorkflow(
-          dataSource.name,
-          owner.sId,
-          req.query.documentId as string,
-          req.body.text
-        )
-      ) {
+      const postUpsertHooksToRun = await getPostUpsertHooksToRun(
+        dataSource.name,
+        owner.sId,
+        req.query.documentId as string,
+        req.body.text,
+        dataSource.connectorProvider || null
+      );
+      // TODO: parallel.
+      for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
         await launchRunPostUpsertHooksWorkflow(
           dataSource.name,
           owner.sId,
-          req.query.documentId as string
+          req.query.documentId as string,
+          dataSource.connectorProvider || null,
+          hookType,
+          debounceMs
         );
       }
       return;
