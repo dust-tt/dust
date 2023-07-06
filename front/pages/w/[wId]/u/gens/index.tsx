@@ -237,12 +237,7 @@ export function DocumentView({
       },
     ];
 
-    runActionStreamed(
-      owner,
-      "gens-summary",
-      extract_config,
-      extractInput
-    )
+    runActionStreamed(owner, "gens-summary", extract_config, extractInput)
       .then((res) => {
         console.log("Summarizing...");
         if (res.isErr()) {
@@ -945,12 +940,7 @@ export default function AppGens({
       },
     ];
 
-    const res = await runActionStreamed(
-      owner,
-      "gens-generate",
-      config,
-      inputs
-    );
+    const res = await runActionStreamed(owner, "gens-generate", config, inputs);
     if (res.isErr()) {
       console.log("ERROR", res.error);
       setGenLoading(false);
@@ -1052,12 +1042,9 @@ export default function AppGens({
       };
     }
 
-    const res = await runActionStreamed(
-      owner,
-      "gens-retrieval",
-      config,
-      [{ text: genContent, userContext }]
-    );
+    const res = await runActionStreamed(owner, "gens-retrieval", config, [
+      { text: genContent, userContext },
+    ]);
     if (res.isErr()) {
       window.alert("Error runing `gens-retrieval`: " + res.error);
       return;

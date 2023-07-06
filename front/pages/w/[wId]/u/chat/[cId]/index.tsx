@@ -791,20 +791,15 @@ export default function AppChat({
         timestamp: { gt: Date.now() - selectedTimeRange.ms },
       };
     }
-    const res = await runActionStreamed(
-      owner,
-      "chat-retrieval",
-      config,
-      [
-        {
-          messages: [{ role: "query", message: query }],
-          userContext: {
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            localeString: navigator.language,
-          },
+    const res = await runActionStreamed(owner, "chat-retrieval", config, [
+      {
+        messages: [{ role: "query", message: query }],
+        userContext: {
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          localeString: navigator.language,
         },
-      ]
-    );
+      },
+    ]);
     if (res.isErr()) throw new Error(res.error.message);
 
     const { eventStream } = res.value;
@@ -876,12 +871,9 @@ export default function AppChat({
       date_today: new Date().toISOString().split("T")[0],
     };
 
-    const res = await runActionStreamed(
-      owner,
-      "chat-assistant-wfn",
-      config,
-      [{ messages: filterMessagesForModel(m), context }]
-    );
+    const res = await runActionStreamed(owner, "chat-assistant-wfn", config, [
+      { messages: filterMessagesForModel(m), context },
+    ]);
     if (res.isErr()) throw new Error(res.error.message);
     const { eventStream } = res.value;
     for await (const event of eventStream) {
