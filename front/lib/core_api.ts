@@ -482,17 +482,42 @@ export const CoreAPI = {
   async getDataSourceDocument(
     projectId: string,
     dataSourceName: string,
-    documentId: string
+    documentId: string,
+    versionHash?: string | null
   ): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
       data_source: CoreAPIDataSource;
     }>
   > {
+    const qs = versionHash ? `?version_hash=${versionHash}` : "";
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId
-      )}`,
+      )}${qs}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDataSourceDocumentVersions(
+    projectId: string,
+    dataSourceName: string,
+    documentId: string,
+    limit = 10,
+    offset = 0
+  ): Promise<
+    CoreAPIResponse<{
+      document_versions: { hash: string; created: number }[];
+    }>
+  > {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+        documentId
+      )}/versions?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }

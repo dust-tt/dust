@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document};
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -1005,7 +1005,13 @@ impl Store for SQLiteStore {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
+        // NOTE: doesn't work on SQLITE
+        version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
+        if version_hash.is_some() {
+            return Err(anyhow!("version_hash is not supported on SQLite"));
+        }
+
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let document_id = document_id.to_string();
@@ -1189,6 +1195,19 @@ impl Store for SQLiteStore {
             Err(e) => Err(e),
             Ok(tags) => Ok(tags),
         }
+    }
+
+    async fn list_data_source_document_versions(
+        &self,
+        _project: &Project,
+        _data_source_id: &str,
+        _document_id: &str,
+        _limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DocumentVersion>, usize)> {
+        // not implemented for SQLite
+        Err(anyhow!(
+            "list_data_source_document_versions not implemented for SQLite"
+        ))
     }
 
     async fn upsert_data_source_document(
