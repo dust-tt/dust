@@ -1,5 +1,5 @@
 import { DustProdActionRegistry } from "@app/lib/actions/registry";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import {
   DustAPI,
   DustAPIErrorResponse,
@@ -9,7 +9,6 @@ import {
 import { Err, Ok } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { WorkspaceType } from "@app/types/user";
 
 // Record an event and a log for the action error.
 const logActionError = (
@@ -40,18 +39,26 @@ const logActionError = (
 /**
  * This function is intended to be used server side to run an action. Logs and monitors the
  * execution and actions as well as any error happening while running the action.
- * @param owner WorkspaceType
+ * @param auth Authenticator
  * @param actionName string Action name as per DustProdActionRegistry
  * @param config DustAppConfigType
  * @param inputs Array<any> the action inputs
  * @returns an eventStream and a dustRunId promise
  */
 export async function runActionStreamed(
-  owner: WorkspaceType,
+  auth: Authenticator,
   actionName: string,
   config: DustAppConfigType,
   inputs: Array<unknown>
 ) {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err({
+      type: "workspace_not_found",
+      message: "The workspace you're trying to access was not found.",
+    });
+  }
+
   if (!DustProdActionRegistry[actionName]) {
     return new Err({
       type: "action_unknown_error",
@@ -120,11 +127,19 @@ export async function runActionStreamed(
  * @returns RunType
  */
 export async function runAction(
-  owner: WorkspaceType,
+  auth: Authenticator,
   actionName: string,
   config: DustAppConfigType,
   inputs: Array<unknown>
 ) {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err({
+      type: "workspace_not_found",
+      message: "The workspace you're trying to access was not found.",
+    });
+  }
+
   if (!DustProdActionRegistry[actionName]) {
     return new Err({
       type: "action_unknown_error",

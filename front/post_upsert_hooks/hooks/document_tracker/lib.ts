@@ -2,10 +2,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import {
-  getInternalBuilderOwner,
-  prodAPICredentialsForOwner,
-} from "@app/lib/auth";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 
@@ -62,7 +59,14 @@ export async function callDocTrackerAction(
   const config = cloneBaseConfig(action.config);
   const app = cloneBaseConfig(action.app);
 
-  const owner = await getInternalBuilderOwner(workspaceId);
+  const owner = (
+    await Authenticator.internalBuilderForWorkspace(workspaceId)
+  ).workspace();
+  if (!owner) {
+    throw new Error(
+      `Could not get internal builder for workspace ${workspaceId}`
+    );
+  }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
   const prodAPI = new DustAPI(prodCredentials);
