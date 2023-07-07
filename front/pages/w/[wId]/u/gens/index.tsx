@@ -14,7 +14,6 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import {
   Fragment,
-  ReactEventHandler,
   useEffect,
   useMemo,
   useRef,
@@ -1387,7 +1386,7 @@ export default function AppGens({
                       setSelecting(false);
                     }}
                     onSelect={(e) => {
-                      let target = e.target as HTMLTextAreaElement;
+                      const target = e.target as HTMLTextAreaElement;
                       if (target.selectionStart !== target.selectionEnd) {
                         setSelecting(true);
                       } else {
