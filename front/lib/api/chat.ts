@@ -356,6 +356,7 @@ const filterMessagesForModel = (
 
 // Event sent when the session is initially created.
 export type ChatSessionCreateEvent = {
+  type: "chat_session_create";
   session: ChatSessionType;
 };
 
@@ -363,6 +364,7 @@ export type ChatSessionCreateEvent = {
 // user message is created for consistency and then each time we know we're going for a retrieval or
 // an assistant response.
 export type ChatMessageTriggerEvent = {
+  type: "chat_message_trigger";
   role: MessageRole;
   // We might want to add some data here in the future e.g including
   // information about the query being used in the case of retrieval.
@@ -370,17 +372,20 @@ export type ChatMessageTriggerEvent = {
 
 // Event sent once the message is fully constructed.
 export type ChatMessageCreateEvent = {
+  type: "chat_message_create";
   message: ChatMessageType;
 };
 
 // Event sent when receiving streamed response from the model.
 export type ChatMessageTokensEvent = {
+  type: "chat_message_tokens";
   messageId: string;
   text: string;
 };
 
 // Event sent when the session is updated (eg title is set).
 export type ChatSessionUpdateEvent = {
+  type: "chat_session_update";
   session: ChatSessionType;
 };
 
@@ -466,7 +471,7 @@ export async function* newChat(
     } as ChatMessageCreateEvent;
   }
 
-  // Master loop that will run until the last message is not a "retrieval" request. It will call the
+  // Master loop that will run until the last message is an "assistant" response. It will call the
   // assistant and push to the `messages` array. The assistant either push an "assistant" message
   // with a response or a "retrieval" message that will contain a query, if that's the case we run
   // the retrieval and add the retrieved documents to that last message and loop back here.
@@ -476,7 +481,7 @@ export async function* newChat(
   //
   // So the invariant is the following: if an error occured the last message is an error message and
   // there is only one of them in messages.
-  while (messages[messages.length - 1].role !== "retrieval") {
+  while (messages[messages.length - 1].role !== "assistant") {
     const res = await runActionStreamed(
       auth,
       "chat-assistant-wfn",

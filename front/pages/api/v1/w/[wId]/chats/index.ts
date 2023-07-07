@@ -106,7 +106,12 @@ async function handler(
         "New chat API call"
       );
 
-      const eventStream = newChat(auth, userMessage, null, null, timeZone);
+      const eventStream = newChat(auth, {
+        userMessage,
+        dataSources: null,
+        filter: null,
+        timeZone,
+      });
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
