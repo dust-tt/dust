@@ -127,7 +127,7 @@ export async function upsertChatSession(
         sId: owner.sId,
         name: owner.name,
       },
-      userId: user.id,
+      userId: user?.id,
       chatSessionId: chatSession.id,
       chatSessionCreated: created,
     };
@@ -137,7 +137,7 @@ export async function upsertChatSession(
       const tags = [
         `workspace:${owner.sId}`,
         `workspace_name:${owner.name}`,
-        `user_id:${user.id}`,
+        `user_id:${user?.id}`,
         `chat_session_id:${chatSession.id}`,
       ];
       statsDClient.increment("chat_session.created", 1, tags);
