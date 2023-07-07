@@ -59,7 +59,7 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      const sessions = await getChatSessions(owner, user, limit, offset);
+      const sessions = await getChatSessions(auth, limit, offset);
 
       res.status(200).json({
         sessions,

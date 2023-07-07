@@ -487,7 +487,7 @@ export async function* newChat(
   // will exit from this loop.
   while (messages[messages.length - 1].role !== "retrieval") {
     const res = await runActionStreamed(
-      owner,
+      auth,
       "chat-assistant-wfn",
       assistantConfig,
       [{ messages: filterMessagesForModel(messages), assistantContext }]
@@ -577,7 +577,7 @@ export async function* newChat(
 
       configRetrieval.DATASOURCE.filter = filter;
 
-      const res = await runAction(owner, "chat-retrieval", configRetrieval, [
+      const res = await runAction(auth, "chat-retrieval", configRetrieval, [
         {
           messages: [{ role: "query", message: m.query }],
           userContext: {
@@ -633,7 +633,7 @@ export async function* newChat(
     date_today: new Date().toISOString().split("T")[0],
   };
 
-  const res = await runAction(owner, "chat-title", configTitle, [
+  const res = await runAction(auth, "chat-title", configTitle, [
     {
       messages: messages.filter(
         (m) => m.role === "user" || m.role === "assistant"
