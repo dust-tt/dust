@@ -3,9 +3,12 @@
  *  See: https://www.notion.so/dust-tt/Design-Doc-Chat-Eval-0b849d4c66564f1e9c0c31d537c96f78
  */
 
+import * as fs from "fs";
+import * as path from "path";
+
 import {
-  DustProdActionRegistry,
   cloneBaseConfig,
+  DustProdActionRegistry,
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
@@ -13,8 +16,6 @@ import { Workspace } from "@app/lib/models";
 import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-import * as fs from "fs";
-import * as path from "path";
 
 type ChatEvalInput = {
   question: string;
@@ -38,7 +39,7 @@ async function main() {
 
   /* Load the JSON test data from data/chat-eval-inputs.jsonl */
 
-  let evalData = JSON.parse(
+  const evalData = JSON.parse(
     fs.readFileSync(path.join(__dirname, "data/chat-eval-inputs.json"), "utf8")
   );
   const dataWithAnswers = await Promise.all(
