@@ -15,11 +15,13 @@ export type GensRetrievedDocumentType = {
   pinned: boolean | null;
 };
 
+export type GensTemplateVisibilityType = "default" | "workspace" | "user";
+
 export type GensTemplateType = {
   name: string;
   instructions: string[];
   color: string;
   sId: string;
-  visibility: string;
+  visibility: GensTemplateVisibilityType;
   userId?: number;
 };

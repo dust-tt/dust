@@ -40,7 +40,11 @@ import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { client_side_new_id } from "@app/lib/utils";
-import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
+import {
+  GensRetrievedDocumentType,
+  GensTemplateType,
+  GensTemplateVisibilityType,
+} from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 type DataSource = {
@@ -593,7 +597,7 @@ export function TemplatesView({
           "We just want to gather facts and answers related to the document text",
         ],
         sId: "0000",
-        visibility: "default",
+        visibility: "default" as GensTemplateVisibilityType,
       },
     ].concat(savedTemplates)
   );
@@ -603,7 +607,7 @@ export function TemplatesView({
   const [editingTemplateInstructions, setEditingTemplateInstructions] =
     useState<string[]>([]);
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
-    useState<string>("user");
+    useState<GensTemplateVisibilityType>("user");
   const [editingTemplateColor, setEditingTemplateColor] =
     useState<string>("bg-red-500");
 
@@ -880,7 +884,7 @@ export function TemplatesView({
                           <ActionButton
                             onClick={async () => {
                               setFormExpanded(false);
-                              const new_template = {
+                              const new_template: GensTemplateType = {
                                 name: editingTemplateTitle,
                                 // set random color
                                 color: editingTemplateColor,
