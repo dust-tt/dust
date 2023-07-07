@@ -1,5 +1,5 @@
-import { processExtractEvents } from "@app/lib/extract_events";
 import { hasExtractEventMarker } from "@app/lib/extract_event_markers";
+import { processExtractEvents } from "@app/lib/extract_events";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 
