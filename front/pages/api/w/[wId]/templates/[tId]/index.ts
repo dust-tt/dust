@@ -16,7 +16,7 @@ export type PostTemplatesResponseBody = {
   template: GensTemplateType;
 };
 
-export type ClientTemplateType = {
+export type GensPostTemplateQuery = {
   name: string;
   instructions: string[];
   color: string;
@@ -24,7 +24,7 @@ export type ClientTemplateType = {
   sId: string;
 };
 
-const gens_template_scheme: JSONSchemaType<ClientTemplateType> = {
+const gens_template_scheme: JSONSchemaType<GensPostTemplateQuery> = {
   type: "object",
   properties: {
     name: { type: "string" },
