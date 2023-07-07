@@ -13,8 +13,6 @@ export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
 export function isDuringGarbageCollectStartWindow(): boolean {
   const now = new Date();
 
-  now.setMinutes(now.getMinutes() + now.getTimezoneOffset());
-
   const start = new Date(
     Date.UTC(
       now.getUTCFullYear(),
