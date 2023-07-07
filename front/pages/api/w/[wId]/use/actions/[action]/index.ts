@@ -29,7 +29,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
+        message: "The workspace you're trying to access was not found.",
       },
     });
   }
@@ -85,7 +85,7 @@ async function handler(
       const inputs = req.body.inputs as Array<any>;
 
       const actionRes = await runActionStreamed(
-        owner,
+        auth,
         req.query.action,
         config,
         inputs
