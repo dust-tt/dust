@@ -38,6 +38,8 @@ export interface ParsedPage {
   author: string;
   lastEditor: string;
   hasBody: boolean;
+  parentType: "database" | "page" | "block" | "workspace";
+  parentId: string;
 }
 
 export type ParsedProperty = {
@@ -361,6 +363,36 @@ export async function getParsedPage(
   // remove base64 images from rendered page
   renderedPage = renderedPage.replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
 
+  const pageParent = page.parent;
+  let parentId: string;
+  let parentType: string;
+
+  switch (pageParent.type) {
+    case "database_id":
+      parentId = pageParent.database_id;
+      parentType = "database";
+      break;
+    case "page_id":
+      parentId = pageParent.page_id;
+      parentType = "page";
+      break;
+    case "block_id":
+      parentId = pageParent.block_id;
+      parentType = "block";
+      break;
+    case "workspace":
+      parentId = "workspace";
+      parentType = "workspace";
+      break;
+    default:
+      ((pageParent: never) => {
+        logger.warn({ pageParent }, "Unknown page parent type.");
+      })(pageParent);
+      parentId = "unknown";
+      parentType = "unknown";
+      break;
+  }
+
   return {
     id: page.id,
     url: page.url,
@@ -372,6 +404,8 @@ export async function getParsedPage(
     author,
     lastEditor,
     hasBody: pageHasBody,
+    parentId,
+    parentType: parentType as ParsedPage["parentType"],
   };
 }
 

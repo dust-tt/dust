@@ -275,6 +275,9 @@ export class NotionPage extends Model<
 
   declare skipReason?: string | null;
 
+  declare parentType?: string | null;
+  declare parentId?: string | null;
+
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -308,6 +311,14 @@ NotionPage.init(
       allowNull: true,
     },
     skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
