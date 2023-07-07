@@ -1,4 +1,6 @@
 import { new_id } from "@app/lib/utils";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/withlogging";
 import {
   ChatMessageType,
   ChatSessionType,
@@ -93,6 +95,28 @@ export async function upsertChatSession(
         { transaction: t }
       );
     }
+
+    const loggerArgs = {
+      workspace: {
+        sId: owner.sId,
+        name: owner.name,
+      },
+      userId: user.id,
+      chatSessionId: chatSession.id,
+      chatSessionCreated: created,
+    };
+    logger.info(loggerArgs, "Chat Session upserted");
+
+    if (created) {
+      const tags = [
+        `workspace:${owner.sId}`,
+        `workspace_name:${owner.name}`,
+        `user_id:${user.id}`,
+        `chat_session_id:${chatSession.id}`,
+      ];
+      statsDClient.increment("chat_session.created", 1, tags);
+    }
+
     return {
       id: chatSession.id,
       userId: chatSession.userId,
