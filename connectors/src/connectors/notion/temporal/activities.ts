@@ -200,6 +200,8 @@ export async function notionUpsertPageActivity(
       dataSourceConfig,
       pageId,
       runTimestamp,
+      parsedPage.parentType,
+      parsedPage.parentId,
       upsertTs,
       "body_too_large"
     );
@@ -229,6 +231,8 @@ export async function notionUpsertPageActivity(
     dataSourceConfig,
     pageId,
     runTimestamp,
+    parsedPage ? parsedPage.parentType : null,
+    parsedPage ? parsedPage.parentId : null,
     upsertTs
   );
 }
