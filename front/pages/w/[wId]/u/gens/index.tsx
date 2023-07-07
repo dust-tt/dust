@@ -1,6 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
 import {
-  InformationCircleIcon,
   PlusCircleIcon,
   PlusIcon,
   TrashIcon,
@@ -10,7 +9,6 @@ import {
   BookmarkIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
-  PencilIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
