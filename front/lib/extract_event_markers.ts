@@ -15,7 +15,7 @@ export function hasExtractEventMarker(text: string) {
  * @param text
  * @returns an array of markers
  */
-export function getRawExtractEventMarkersFromText(text: string) {
+export function getRawExtractEventMarkersFromText(text: string): string[] {
   const regex = new RegExp(EXTRACT_EVENT_PATTERN, "g"); // global matching
   const matches = text.match(regex);
   if (matches) {

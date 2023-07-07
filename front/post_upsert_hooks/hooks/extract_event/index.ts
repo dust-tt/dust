@@ -35,5 +35,9 @@ async function processDocument(
 ) {
   const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
   localLogger.info("[Extract event] Processing doc.");
-  await processExtractEvents(workspaceId, documentId, documentText);
+  await processExtractEvents({
+    workspaceId,
+    documentId,
+    documentText,
+  });
 }
