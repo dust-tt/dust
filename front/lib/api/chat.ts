@@ -361,10 +361,9 @@ export type ChatSessionCreateEvent = {
   session: ChatSessionType;
 };
 
-// Event received when we know what will be the type of the next message.
-// It is sent initially when the user message is created for consistency and
-// then each time we know we're going for a retrieval or an assistant
-// response.
+// Event sent when we know what will be the type of the next message. It is sent initially when the
+// user message is created for consistency and then each time we know we're going for a retrieval or
+// an assistant response.
 export type ChatMessageTriggerEvent = {
   role: MessageRole;
   // We might want to add some data here in the future e.g including
@@ -382,33 +381,40 @@ export type ChatMessageTokensEvent = {
   text: string;
 };
 
-// Event received when the session is updated (eg title is set).
+// Event sent when the session is updated (eg title is set).
 export type ChatSessionUpdateEvent = {
   session: ChatSessionType;
 };
 
 /**
- * Function that emulates starting a new chat session.
+ * This function starts a new chat session.
  *
  * @param auth Authenticator
  * @param userMessage string
  * @param dataSources list of data sources to use for retrieval
  * @param filter filter to use for retrieval (timestamp)
- * @param timeZone timezone to use for retrieval
+ * @param timeZone timezone to use for retrieval must be valid `Intl.DateTimeFormat`
  */
 export async function* newChat(
   auth: Authenticator,
-  userMessage: string,
-  dataSources:
-    | {
-        workspace_id: string;
-        data_source_id: string;
-      }[]
-    | null,
-  filter: {
-    timestamp: { gt: number };
-  } | null,
-  timeZone: string
+  {
+    userMessage,
+    dataSources,
+    filter,
+    timeZone,
+  }: {
+    userMessage: string;
+    dataSources:
+      | {
+          workspace_id: string;
+          data_source_id: string;
+        }[]
+      | null;
+    filter: {
+      timestamp: { gt?: number; lt?: number };
+    } | null;
+    timeZone: string;
+  }
 ): AsyncGenerator<
   | ChatSessionCreateEvent
   | ChatMessageTriggerEvent
