@@ -14,6 +14,7 @@ import {
 } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
 
@@ -157,10 +158,11 @@ async function handler(
             name: session.user.username,
           });
 
-          await Membership.create({
-            role: "admin",
-            userId: user.id,
+          await _createAndLogMembership({
             workspaceId: w.id,
+            userId: user.id,
+            role: "admin",
+            invitationFlow: "personal",
           });
 
           if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
@@ -182,10 +184,11 @@ async function handler(
         });
 
         if (!m) {
-          m = await Membership.create({
-            role: "user",
-            userId: user.id,
+          m = await _createAndLogMembership({
             workspaceId: workspaceInvite.id,
+            userId: user.id,
+            role: "user",
+            invitationFlow: "domain",
           });
         }
 
@@ -215,10 +218,11 @@ async function handler(
         });
 
         if (!m) {
-          m = await Membership.create({
-            role: "user",
-            userId: user.id,
+          m = await _createAndLogMembership({
             workspaceId: membershipInvite.workspaceId,
+            userId: user.id,
+            role: "user",
+            invitationFlow: "email",
           });
         }
         membershipInvite.status = "consumed";
@@ -278,6 +282,29 @@ async function handler(
         },
       });
   }
+}
+
+async function _createAndLogMembership(data: {
+  userId: number;
+  workspaceId: number;
+  role: "admin" | "user";
+  invitationFlow: "domain" | "email" | "personal";
+}) {
+  const m = await Membership.create({
+    role: data.role,
+    userId: data.userId,
+    workspaceId: data.workspaceId,
+  });
+
+  const tags = [
+    `workspace_id:${data.workspaceId}`,
+    `user_id:${data.userId}`,
+    `role:${data.role}`,
+    `invitation_flow:${data.invitationFlow}`,
+  ];
+  statsDClient.increment("user.membership_created", 1, tags);
+
+  return m;
 }
 
 export default withLogging(handler);
