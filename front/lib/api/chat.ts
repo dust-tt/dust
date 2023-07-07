@@ -491,6 +491,9 @@ export async function* newChat(
   //
   // At any point if an error occured an "error" message is pushed to the `messages` array and we
   // will exit from this loop.
+  //
+  // So the invariant is the following: if an error occured the last message is an error message and
+  // there is only one of them in messages.
   while (messages[messages.length - 1].role !== "retrieval") {
     const res = await runActionStreamed(
       auth,
@@ -618,12 +621,17 @@ export async function* newChat(
     }
   }
 
-  // Store messages in DB.
-  await Promise.all(
-    messages.map((m) => {
-      return upsertChatMessage(session, m);
-    })
-  );
+  // Store messages in DB if we didn't get an error as we don't want to store interactions that led
+  // to an error.
+  if (messages[messages.length - 1].role !== "error") {
+    await Promise.all(
+      messages.map((m) => {
+        return (async () => {
+          await upsertChatMessage(session, m);
+        })();
+      })
+    );
+  }
 
   // Update session title.
   const configTitle = cloneBaseConfig(
