@@ -4,6 +4,7 @@ import {
   PlusIcon,
   TrashIcon,
   XCircleIcon,
+  BookmarkIcon as BookmarkIconSolid,
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
@@ -469,12 +470,15 @@ export function DocumentView({
               setPinned(!pinned);
             }}
           >
-            <BookmarkIcon
-              className={classNames(
-                "h-4 w-4",
-                pinned ? "text-gray-500" : "text-slate-300"
-              )}
-            />
+            {pinned ? (
+              <BookmarkIconSolid
+                className="h-4 w-4"
+              />
+            ) : (
+              <BookmarkIcon
+                className="h-4 w-4"
+              />
+            )}
           </button>
           <button
             className="mx-1 text-base font-bold"
@@ -540,16 +544,29 @@ export function ResultsView({
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
             "rounded py-1",
-            "mt-2 text-xs font-bold text-gray-700"
+            "mt-2 text-xs font-bold text-gray-700 mb-4 justify-between"
           )}
         >
           {retrieved && retrieved.length > 0 && (
-            <p className="mb-4 text-lg">
-              Retrieved {retrieved.length} item
-              {retrieved.length == 1 ? "" : "s"}
-            </p>
+            <>
+              <p className="text-lg">
+                Retrieved {retrieved.length} item
+                {retrieved.length == 1 ? "" : "s"}
+              </p>
+
+              <div
+                className="text-sm font-bold"
+                onClick={() => {
+                  const unPinned = retrieved.filter((r) => !r.pinned);
+                  unPinned.forEach((r) => onRemove(r.documentId));
+                }}
+              >
+                Clear
+              </div>
+            </>
           )}
           {!retrieved && <div className="">Loading...</div>}
+
         </div>
         <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
@@ -1444,15 +1461,6 @@ export default function AppGens({
                         placeholder="Top K"
                         onChange={(e) => setTopK(Number(e.target.value))}
                       />
-                    </div>
-                    <div
-                      className="text-sm font-bold text-red-500"
-                      onClick={() => {
-                        const unpinned = retrieved.filter((r) => !r.pinned);
-                        unpinned.forEach((r) => onRemove(r.documentId));
-                      }}
-                    >
-                      Delete Unpinned
                     </div>
                   </div>
                   <div className="flex flex-row items-center space-x-2 leading-8">
