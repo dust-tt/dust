@@ -11,6 +11,7 @@ export async function runPostUpsertHookActivity(
   dataSourceName: string,
   workspaceId: string,
   documentId: string,
+  documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: PostUpsertHookType
 ) {
@@ -29,14 +30,19 @@ export async function runPostUpsertHookActivity(
   }
 
   localLogger.info("Running post upsert hook function.");
-  const docText = await getDocText(dataSourceName, workspaceId, documentId);
-  await hook.fn(
+  const documentText = await getDocText(
+    dataSourceName,
+    workspaceId,
+    documentId
+  );
+  await hook.fn({
     dataSourceName,
     workspaceId,
     documentId,
-    docText,
-    dataSourceConnectorProvider
-  );
+    documentText,
+    documentHash,
+    dataSourceConnectorProvider,
+  });
   localLogger.info("Ran post upsert hook function.");
 }
 

@@ -286,19 +286,22 @@ async function handler(
         data_source: dataSource,
       });
 
-      const postUpsertHooksToRun = await getPostUpsertHooksToRun(
-        dataSource.name,
-        owner.sId,
-        req.query.documentId as string,
-        req.body.text,
-        dataSource.connectorProvider || null
-      );
+      const postUpsertHooksToRun = await getPostUpsertHooksToRun({
+        dataSourceName: dataSource.name,
+        workspaceId: owner.sId,
+        documentId: req.query.documentId as string,
+        documentText: req.body.text,
+        documentHash: upsertRes.value.document.hash,
+        dataSourceConnectorProvider: dataSource.connectorProvider || null,
+      });
+
       // TODO: parallel.
       for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
         await launchRunPostUpsertHooksWorkflow(
           dataSource.name,
           owner.sId,
           req.query.documentId as string,
+          upsertRes.value.document.hash,
           dataSource.connectorProvider || null,
           hookType,
           debounceMs

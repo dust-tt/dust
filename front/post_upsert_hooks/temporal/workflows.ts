@@ -14,6 +14,7 @@ export async function runPostUpsertHooksWorkflow(
   dataSourceName: string,
   workspaceId: string,
   documentId: string,
+  documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: PostUpsertHookType,
   debounceMs: number
@@ -36,6 +37,7 @@ export async function runPostUpsertHooksWorkflow(
       dataSourceName,
       workspaceId,
       documentId,
+      documentHash,
       dataSourceConnectorProvider,
       hookType
     );
