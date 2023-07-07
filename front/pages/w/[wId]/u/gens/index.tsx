@@ -40,7 +40,11 @@ import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { classNames } from "@app/lib/utils";
 import { client_side_new_id } from "@app/lib/utils";
-import { GensRetrievedDocumentType, GensTemplateType } from "@app/types/gens";
+import {
+  GensRetrievedDocumentType,
+  GensTemplateType,
+  GensTemplateVisibilityType,
+} from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 type DataSource = {
@@ -227,7 +231,7 @@ export function DocumentView({
   document: GensRetrievedDocumentType;
   query: string;
   owner: WorkspaceType;
-  template: ClientTemplateType | null;
+  template: GensTemplateType | null;
   onScoreReady: (documentId: string, score: number) => void;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onPin: (documentId: string) => void;
@@ -523,7 +527,7 @@ export function ResultsView({
   retrieved: GensRetrievedDocumentType[];
   query: string;
   owner: WorkspaceType;
-  template: ClientTemplateType | null;
+  template: GensTemplateType | null;
   onExtractUpdate: (documentId: string, extract: string) => void;
   onScoreReady: (documentId: string, score: number) => void;
   onPin: (documentId: string) => void;
@@ -569,26 +573,18 @@ export function ResultsView({
   );
 }
 
-type ClientTemplateType = {
-  name: string;
-  color: string;
-  instructions: string[];
-  sId: string;
-  visibility: string;
-};
-
 export function TemplatesView({
   onTemplateSelect,
   workspaceId,
   savedTemplates,
   isBuilder,
 }: {
-  onTemplateSelect: (template: ClientTemplateType) => void;
+  onTemplateSelect: (template: GensTemplateType) => void;
   workspaceId: string;
   savedTemplates: GensTemplateType[];
   isBuilder: boolean;
 }) {
-  const [templates, setTemplates] = useState<ClientTemplateType[]>(
+  const [templates, setTemplates] = useState<GensTemplateType[]>(
     [
       {
         name: "Fact Gatherer",
@@ -601,7 +597,7 @@ export function TemplatesView({
           "We just want to gather facts and answers related to the document text",
         ],
         sId: "0000",
-        visibility: "default",
+        visibility: "default" as GensTemplateVisibilityType,
       },
     ].concat(savedTemplates)
   );
@@ -611,7 +607,7 @@ export function TemplatesView({
   const [editingTemplateInstructions, setEditingTemplateInstructions] =
     useState<string[]>([]);
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
-    useState<string>("user");
+    useState<GensTemplateVisibilityType>("user");
   const [editingTemplateColor, setEditingTemplateColor] =
     useState<string>("bg-red-500");
 
@@ -888,7 +884,7 @@ export function TemplatesView({
                           <ActionButton
                             onClick={async () => {
                               setFormExpanded(false);
-                              const new_template = {
+                              const new_template: GensTemplateType = {
                                 name: editingTemplateTitle,
                                 // set random color
                                 color: editingTemplateColor,
@@ -1043,7 +1039,7 @@ export default function AppGens({
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
 
-  const template = useRef<ClientTemplateType | null>(null);
+  const template = useRef<GensTemplateType | null>(null);
 
   const getContext = () => {
     return {

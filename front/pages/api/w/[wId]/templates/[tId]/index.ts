@@ -6,7 +6,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import { GensTemplate } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { GensTemplateType } from "@app/types/gens";
+import { GensTemplateType, GensTemplateVisibilityType } from "@app/types/gens";
 
 export type GetTemplatesResponseBody = {
   templates: GensTemplateType[];
@@ -16,15 +16,15 @@ export type PostTemplatesResponseBody = {
   template: GensTemplateType;
 };
 
-export type ClientTemplateType = {
+export type GensPostTemplateQuery = {
   name: string;
   instructions: string[];
   color: string;
-  visibility: string;
+  visibility: GensTemplateVisibilityType;
   sId: string;
 };
 
-const gens_template_scheme: JSONSchemaType<ClientTemplateType> = {
+const gens_template_scheme: JSONSchemaType<GensPostTemplateQuery> = {
   type: "object",
   properties: {
     name: { type: "string" },
