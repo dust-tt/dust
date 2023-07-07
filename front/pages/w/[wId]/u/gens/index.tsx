@@ -471,13 +471,9 @@ export function DocumentView({
             }}
           >
             {pinned ? (
-              <BookmarkIconSolid
-                className="h-4 w-4"
-              />
+              <BookmarkIconSolid className="h-4 w-4" />
             ) : (
-              <BookmarkIcon
-                className="h-4 w-4"
-              />
+              <BookmarkIcon className="h-4 w-4" />
             )}
           </button>
           <button
@@ -544,7 +540,7 @@ export function ResultsView({
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
             "rounded py-1",
-            "mt-2 text-xs font-bold text-gray-700 mb-4 justify-between"
+            "mb-4 mt-2 justify-between text-xs font-bold text-gray-700"
           )}
         >
           {retrieved && retrieved.length > 0 && (
@@ -566,7 +562,6 @@ export function ResultsView({
             </>
           )}
           {!retrieved && <div className="">Loading...</div>}
-
         </div>
         <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
