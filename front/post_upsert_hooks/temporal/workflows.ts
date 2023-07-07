@@ -6,7 +6,7 @@ import type * as activities from "@app/post_upsert_hooks/temporal/activities";
 
 import { newUpsertSignal } from "./signals";
 
-const { runPostUpsertHookActivity } = proxyActivities<typeof activities>({
+const { runPostUpsertHookActivityV2 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
 });
 
@@ -33,7 +33,7 @@ export async function runPostUpsertHooksWorkflow(
       continue;
     }
 
-    await runPostUpsertHookActivity(
+    await runPostUpsertHookActivityV2(
       dataSourceName,
       workspaceId,
       documentId,
