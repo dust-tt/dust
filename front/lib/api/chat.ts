@@ -18,7 +18,6 @@ import {
   ChatSession,
   front_sequelize,
 } from "../models";
-import { getDataSources } from "./data_sources";
 
 export async function getChatSessions(
   auth: Authenticator,
@@ -486,7 +485,11 @@ export async function* newChat(
   //
   // So the invariant is the following: if an error occured the last message is an error message and
   // there is only one of them in messages.
-  while (messages[messages.length - 1].role !== "assistant") {
+  //
+  // We also limit this main loop to 4 iterations.
+  let iteration = 0;
+  while (messages[messages.length - 1].role !== "assistant" && iteration < 4) {
+    iteration += 1;
     const res = await runActionStreamed(
       auth,
       "chat-assistant-wfn",
