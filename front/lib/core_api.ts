@@ -567,7 +567,10 @@ export const CoreAPI = {
     latest_hash?: string | null;
   }): Promise<
     CoreAPIResponse<{
-      document_versions: { hash: string; created: number }[];
+      versions: { hash: string; created: number }[];
+      offset: number;
+      limit: number;
+      total: number;
     }>
   > {
     const params = new URLSearchParams({

@@ -8,7 +8,10 @@ import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
-import { callDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
+import {
+  callDocTrackerAction,
+  getDatasource,
+} from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
