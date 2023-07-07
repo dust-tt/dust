@@ -12,6 +12,7 @@ import {
   ChatSession,
   front_sequelize,
 } from "../models";
+import logger from "@app/logger/logger";
 
 export async function getChatSessions(
   owner: WorkspaceType,
@@ -93,6 +94,18 @@ export async function upsertChatSession(
         { transaction: t }
       );
     }
+
+    const loggerArgs = {
+      workspace: {
+        sId: owner.sId,
+        name: owner.name,
+      },
+      userId: user.id,
+      chatSessionId: chatSession.id,
+      chatSessionCreated: created,
+    };
+    logger.info(loggerArgs, "Chat Session upserted");
+
     return {
       id: chatSession.id,
       userId: chatSession.userId,
