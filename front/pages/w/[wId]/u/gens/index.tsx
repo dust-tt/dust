@@ -18,7 +18,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
-import { ActionButton, HighlightButton } from "@app/components/Button";
+import { ActionButton, Button, HighlightButton } from "@app/components/Button";
 import { Spinner } from "@app/components/Spinner";
 import GensTimeRangePicker, {
   gensDefaultTimeRange,
@@ -715,12 +715,6 @@ export function TemplatesView({
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div>
                       <div className="mt-3">
-                        <Dialog.Title
-                          as="h3"
-                          className="text-lg font-medium leading-6 text-gray-900"
-                        >
-                          {editable ? "Edit Template" : "View Template"}
-                        </Dialog.Title>
                         <div className="mt-2">
                           <label
                             htmlFor="templateTitle"
@@ -799,30 +793,33 @@ export function TemplatesView({
                             </div>
                           );
                         })}
-                        <div className="mt-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Color
-                          </label>
-                          <div className="my-3 flex items-center space-x-1">
-                            {colorOptions.map((option) => (
-                              <button
-                                key={option}
-                                onClick={() => {
-                                  if (editable) {
-                                    setEditingTemplateColor(option);
-                                  }
-                                }}
-                                className={classNames(
-                                  "h-6 w-6 rounded-full",
-                                  option,
-                                  editingTemplateColor == option
-                                    ? "opacity-100"
-                                    : "opacity-30"
-                                )}
-                              ></button>
-                            ))}
+                        {editable && (
+                          <div className="mt-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Color
+                            </label>
+                            <div className="my-3 flex items-center space-x-1">
+                              {colorOptions.map((option) => (
+                                <button
+                                  disabled={!editable}
+                                  key={option}
+                                  onClick={() => {
+                                    if (editable) {
+                                      setEditingTemplateColor(option);
+                                    }
+                                  }}
+                                  className={classNames(
+                                    "h-6 w-6 rounded-full",
+                                    option,
+                                    editingTemplateColor == option
+                                      ? "opacity-100"
+                                      : "opacity-30"
+                                  )}
+                                ></button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {isBuilder &&
                           editingTemplateVisibility != "default" && (
@@ -851,11 +848,42 @@ export function TemplatesView({
                       </div>
                     </div>
                     <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
+                      {editingTemplate != -1 && editable && (
+                        <div className="flex flex-initial">
+                          <div
+                            className="flex-initial cursor-pointer text-sm font-bold text-red-500"
+                            onClick={async () => {
+                              if (
+                                window.confirm(
+                                  "Are you sure you want to delete this template?"
+                                )
+                              ) {
+                                await fetch(
+                                  `/api/w/${workspaceId}/templates/${templates[editingTemplate].sId}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify(
+                                      templates[editingTemplate]
+                                    ),
+                                  }
+                                );
+                                handleTemplateDelete(editingTemplate);
+                                setFormExpanded(false);
+                              }
+                            }}
+                          >
+                            Delete
+                          </div>
+                        </div>
+                      )}
                       <div className="flex-1"></div>
                       <div className="flex flex-initial">
-                        <ActionButton onClick={() => setFormExpanded(false)}>
+                        <Button onClick={() => setFormExpanded(false)}>
                           {editable ? "Cancel" : "Close"}
-                        </ActionButton>
+                        </Button>
                       </div>
                       {editable && (
                         <>
@@ -911,30 +939,6 @@ export function TemplatesView({
                           >
                             Save
                           </ActionButton>
-                          {editingTemplate != -1 && (
-                            <div className="flex flex-initial">
-                              <ActionButton
-                                onClick={async () => {
-                                  await fetch(
-                                    `/api/w/${workspaceId}/templates/${templates[editingTemplate].sId}`,
-                                    {
-                                      method: "DELETE",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: JSON.stringify(
-                                        templates[editingTemplate]
-                                      ),
-                                    }
-                                  );
-                                  handleTemplateDelete(editingTemplate);
-                                  setFormExpanded(false);
-                                }}
-                              >
-                                Delete
-                              </ActionButton>
-                            </div>
-                          )}
                         </>
                       )}
                     </div>
@@ -972,28 +976,17 @@ export function TemplatesView({
                 />
                 {hover === i && (
                   <>
-                    <span className="flex-shrink-0 text-xs text-gray-600">
+                    <span
+                      className={classNames(
+                        "flex-shrink-0 cursor-pointer text-xs text-gray-600"
+                      )}
+                      onClick={() => {
+                        setFormExpanded(true);
+                        handleSetEditingTemplate(i);
+                      }}
+                    >
                       <span className="font-semibold">{t.name}</span>
                     </span>
-
-                    {templates[i].visibility != "default" &&
-                    (isBuilder || templates[i].visibility == "user") ? (
-                      <PencilIcon
-                        onClick={() => {
-                          setFormExpanded(true);
-                          handleSetEditingTemplate(i);
-                        }}
-                        className="h-3 w-3 flex-shrink-0"
-                      />
-                    ) : (
-                      <InformationCircleIcon
-                        onClick={() => {
-                          setFormExpanded(true);
-                          handleSetEditingTemplate(i);
-                        }}
-                        className="h-3 w-3 flex-shrink-0"
-                      />
-                    )}
                   </>
                 )}
               </div>
@@ -1008,7 +1001,10 @@ export function TemplatesView({
             )}
             onClick={() => {
               setEditingTemplate(-1);
+              setEditingTemplateTitle("");
               setEditingTemplateInstructions([""]);
+              setEditingTemplateVisibility("user");
+              setEditingTemplateColor("bg-red-500");
               setFormExpanded(true);
             }}
           >
