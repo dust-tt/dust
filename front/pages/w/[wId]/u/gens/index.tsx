@@ -1,10 +1,10 @@
 import { Dialog, Transition } from "@headlessui/react";
 import {
+  BookmarkIcon as BookmarkIconSolid,
   PlusCircleIcon,
   PlusIcon,
   TrashIcon,
   XCircleIcon,
-  BookmarkIcon as BookmarkIconSolid,
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
