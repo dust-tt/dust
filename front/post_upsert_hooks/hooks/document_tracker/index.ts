@@ -115,7 +115,13 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
     }
     return 3600000; // 1 hour
   },
-  filter: async (dataSourceName, workspaceId, documentId) => {
+  filter: async (
+    dataSourceName,
+    workspaceId,
+    documentId,
+    _documentText,
+    dataSourceConnectorProvider
+  ) => {
     const localLogger = logger.child({
       workspaceId,
       dataSourceName,
@@ -133,6 +139,16 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
         "Workspace not whitelisted, document_tracker_suggest_changes post upsert hook should not run."
       );
       return false;
+    }
+
+    if (dataSourceConnectorProvider === "slack") {
+      // kind of a hack, but we don't want to run this hook for slack non-thread docs
+      if (!documentId.includes("-thread-")) {
+        localLogger.info(
+          "Slack Document is not a thread, document_tracker_suggest_changes post upsert hook should not run."
+        );
+        return false;
+      }
     }
 
     const dataSource = await getDatasource(dataSourceName, workspaceId);
