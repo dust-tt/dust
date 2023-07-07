@@ -302,7 +302,7 @@ async function _createAndLogMembership(data: {
     `role:${data.role}`,
     `invitation_flow:${data.invitationFlow}`,
   ];
-  statsDClient.increment("user.membership_created", 1, tags);
+  statsDClient.increment("workspace.membership_created", 1, tags);
 
   return m;
 }
