@@ -78,7 +78,6 @@ async function _processExtractEvent(data: {
     documentId,
     documentText,
   } = data;
-
   const schema: EventSchema | null = await EventSchema.findOne({
     where: {
       workspaceId: auth.workspace()?.id,
