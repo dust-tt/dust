@@ -33,10 +33,13 @@ export type RoleType = "admin" | "builder" | "user" | "none";
  */
 export class Authenticator {
   _workspace: Workspace | null;
+  _user: User | null;
   _role: RoleType;
 
-  constructor(workspace: Workspace | null, role: RoleType) {
+  // Should only be called from the static methods below.
+  constructor(workspace: Workspace | null, user: User | null, role: RoleType) {
     this._workspace = workspace;
+    this._user = user;
     this._role = role;
   }
 
@@ -94,9 +97,17 @@ export class Authenticator {
       }
     }
 
-    return new Authenticator(workspace, role);
+    return new Authenticator(workspace, user, role);
   }
 
+  /**
+   * Get an Authenticator from an API key for a given workspace. Why? because by API you may want to
+   * access a workspace that is not the API key's workspace (eg include running another's workspace
+   * app (dust-apps))
+   * @param key Key the API key
+   * @param wId string the target workspaceId
+   * @returns an Authenticator for wId and the key's own workspaceId
+   */
   static async fromKey(
     key: Key,
     wId: string
@@ -129,9 +140,28 @@ export class Authenticator {
     }
 
     return {
-      auth: new Authenticator(workspace, role),
+      auth: new Authenticator(workspace, null, role),
       keyWorkspaceId: keyWorkspace.sId,
     };
+  }
+
+  /**
+   * Creates an Authenticator for a given workspace (with role `builder`). Used for internal calls
+   * to the Dust API or other functions, when the system is calling something for the workspace.
+   * @param workspaceId string
+   */
+  static async internalBuilderForWorkspace(
+    workspaceId: string
+  ): Promise<Authenticator> {
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: workspaceId,
+      },
+    });
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+    return new Authenticator(workspace, null, "builder");
   }
 
   role(): RoleType {
@@ -178,6 +208,27 @@ export class Authenticator {
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           plan: planForWorkspace(this._workspace),
+        }
+      : null;
+  }
+
+  /**
+   * This is a convenience method to get the user from the Authenticator. The returned UserType
+   * object won't have the user's workspaces set.
+   * @returns
+   */
+  user(): UserType | null {
+    return this._user
+      ? {
+          id: this._user.id,
+          provider: this._user.provider,
+          providerId: this._user.providerId,
+          username: this._user.username,
+          email: this._user.email,
+          name: this._user.name,
+          // Not available from this method
+          image: null,
+          workspaces: [],
         }
       : null;
   }
@@ -460,32 +511,5 @@ export async function prodAPICredentialsForOwner(
   return {
     apiKey: systemAPIKeyRes.value.secret,
     workspaceId: owner.sId,
-  };
-}
-
-/**
- * Retrieves a builder owner for a given workspace
- * Used for internal calls to the Dust API, when the system is calling something for the workspace
- * @param workspaceId
- */
-export async function getInternalBuilderOwner(
-  workspaceId: string
-): Promise<WorkspaceType> {
-  const workspace = await Workspace.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
-  if (!workspace) {
-    throw new Error(`Could not find workspace with sId ${workspaceId}`);
-  }
-  return {
-    id: workspace.id,
-    uId: workspace.uId,
-    sId: workspace.sId,
-    name: workspace.name,
-    allowedDomain: workspace.allowedDomain || null,
-    role: "builder",
-    plan: planForWorkspace(workspace),
   };
 }
