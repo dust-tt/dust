@@ -6,6 +6,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { parse_payload } from "@app/lib/http_utils";
+import { apiError } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
 export type DatasourceSearchQuery = {
@@ -50,23 +51,38 @@ export default async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
   }
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
   }
 
   switch (req.method) {
     case "GET": {
       // Only member of the workspace can search a DataSource since it costs money for embedding.
       if (!auth.isUser()) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
       }
 
       // I could not find a way to make the query params be an array if there is only one tag.
@@ -84,8 +100,14 @@ export default async function handler(
       const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
 
       if (searchQueryRes.isErr()) {
-        res.status(400).end();
-        return;
+        const err = searchQueryRes.error;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid body sent: ${err.message}`,
+          },
+        });
       }
       const searchQuery = searchQueryRes.value;
 
@@ -112,8 +134,14 @@ export default async function handler(
       );
 
       if (data.isErr()) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "data_source_error",
+            message: "There was an error performing the Data Source search.",
+            data_source_error: data.error,
+          },
+        });
       }
 
       res.status(200).json({
@@ -123,7 +151,13 @@ export default async function handler(
     }
 
     default:
-      res.status(405).end();
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
       break;
   }
 }
