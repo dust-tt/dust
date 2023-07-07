@@ -11,6 +11,7 @@ export async function runPostUpsertHookActivity(
   dataSourceName: string,
   workspaceId: string,
   documentId: string,
+  documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: PostUpsertHookType
 ) {
