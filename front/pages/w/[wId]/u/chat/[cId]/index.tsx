@@ -135,7 +135,7 @@ export const getServerSideProps: GetServerSideProps<{
   });
 
   const cId = context.params?.cId as string;
-  const chatSession = await getChatSessionWithMessages(owner, cId);
+  const chatSession = await getChatSessionWithMessages(auth, cId);
 
   if (!chatSession) {
     return {
