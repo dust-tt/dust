@@ -88,16 +88,14 @@ export async function upsertChatSession(
   auth: Authenticator,
   sId: string,
   title: string | null
-): Promise<ChatSessionType | null> {
+): Promise<ChatSessionType> {
   const owner = auth.workspace();
   if (!owner) {
-    return null;
+    throw new Error("Unexpected auth without workspace in upsertChatSession.");
   }
 
+  // User can be null if we are calling from API.
   const user = auth.user();
-  if (!user) {
-    return null;
-  }
 
   return await front_sequelize.transaction(async (t) => {
     const [chatSession, created] = await ChatSession.findOrCreate({
@@ -431,19 +429,6 @@ export async function* newChat(
   const sId = newChatSessionId();
   const session = await upsertChatSession(auth, sId, null);
 
-  if (!session) {
-    // If we fail to create the session we simply yield error messages events and return.
-    yield { role: "error" } as ChatMessageTriggerEvent;
-    yield {
-      message: {
-        sId: new_id(),
-        role: "error",
-        message: "Could not create chat session.",
-      },
-    };
-    return;
-  }
-
   yield { session } as ChatSessionCreateEvent;
 
   const assistantConfig = cloneBaseConfig(
@@ -665,9 +650,7 @@ export async function* newChat(
       if (t[0][1] === "OUTPUT") {
         const title = (t[1][0][0].value as { title: string }).title;
         const session = await upsertChatSession(auth, sId, title);
-        if (session) {
-          yield { session } as ChatSessionUpdateEvent;
-        }
+        yield { session } as ChatSessionUpdateEvent;
         // If there was an error we just ignore.
       }
     }

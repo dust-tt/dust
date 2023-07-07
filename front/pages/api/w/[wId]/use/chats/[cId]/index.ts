@@ -95,15 +95,6 @@ async function handler(
       const s = pRes.value;
 
       const session = await upsertChatSession(auth, cId, s.title || null);
-      if (!session) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Could not create the chat session.",
-          },
-        });
-      }
 
       res.status(200).json({
         session,
