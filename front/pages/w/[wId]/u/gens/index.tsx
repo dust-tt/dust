@@ -551,13 +551,6 @@ export function ResultsView({
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
-        <p>Gens's power also comes from the curation experience it provides in terms of pinning and removing results you don't like, to therefore help the model in its generations. Click the Pin button to give a document importance and delete irrelevant ones.</p>
-        <button onClick={() => {
-          const unpinned = retrieved.filter((r) => !r.pinned);
-          unpinned.forEach((r) => onRemove(r.documentId));
-        }}>
-          Delete Unpinned
-        </button>
         <div className="mt-2 flex flex-col space-y-2">
           {retrieved.map((r) => {
             return (
@@ -1048,6 +1041,8 @@ export default function AppGens({
 
   const template = useRef<GensTemplateType | null>(null);
 
+  const [selecting, setSelecting] = useState<boolean>(false);
+
   const getContext = () => {
     return {
       user: {
@@ -1382,6 +1377,14 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
+                      setSelecting(false);
+                    }}
+                    onSelect={(e) => {
+                      if (e.target.selectionStart !== e.target.selectionEnd) {
+                        setSelecting(true);
+                      } else {
+                        setSelecting(false);
+                      }
                     }}
                   />
                 </div>
@@ -1395,7 +1398,11 @@ export default function AppGens({
                       }}
                     >
                       <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading ? "Loading..." : "Search"}
+                      {retrievalLoading
+                        ? "Loading..."
+                        : selecting
+                        ? "Search selection"
+                        : "Search"}
                     </ActionButton>
                   </div>
                   <div className="flex flex-initial">
@@ -1437,6 +1444,12 @@ export default function AppGens({
                         onChange={(e) => setTopK(Number(e.target.value))}
                       />
                     </div>
+                    <div className="text-sm font-bold text-red-500"
+                      onClick={() => {
+                        const unpinned = retrieved.filter((r) => !r.pinned);
+                        unpinned.forEach((r) => onRemove(r.documentId))
+                      }}
+                    >Delete Unpinned</div>
                   </div>
                   <div className="flex flex-row items-center space-x-2 leading-8">
                     <div className="flex flex-initial text-gray-400">
