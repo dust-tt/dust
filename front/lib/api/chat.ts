@@ -10,7 +10,8 @@ import { UserType } from "@app/types/user";
 
 import { cloneBaseConfig, DustProdActionRegistry } from "../actions/registry";
 import { runAction, runActionStreamed } from "../actions/server";
-import { Authenticator } from "../auth";
+import { Authenticator, prodAPICredentialsForOwner } from "../auth";
+import { DustAPI } from "../dust_api";
 import {
   ChatMessage,
   ChatRetrievedDocument,
@@ -465,8 +466,12 @@ export async function* newChat(
       message: errorMessage,
     });
 
-    yield { role: "error" } as ChatMessageTriggerEvent;
     yield {
+      type: "chat_message_trigger",
+      role: "error",
+    } as ChatMessageTriggerEvent;
+    yield {
+      type: "chat_message_create",
       message: messages[messages.length - 1],
     } as ChatMessageCreateEvent;
   }
@@ -493,7 +498,7 @@ export async function* newChat(
       yield* handleError(
         `Chat error: [${res.error.type}] ${res.error.message}`
       );
-      break;
+      return;
     }
 
     const { eventStream } = res.value;
@@ -502,23 +507,29 @@ export async function* newChat(
 
     for await (const event of eventStream) {
       if (event.type === "tokens") {
-        yield { text: event.content.tokens.text } as ChatMessageTokensEvent;
+        yield {
+          type: "chat_message_tokens",
+          text: event.content.tokens.text,
+        } as ChatMessageTokensEvent;
         if (!assistantMessageTriggered) {
           assistantMessageTriggered = true;
-          yield { role: "assistant" } as ChatMessageTriggerEvent;
+          yield {
+            type: "chat_message_trigger",
+            role: "assistant",
+          } as ChatMessageTriggerEvent;
         }
       }
 
       if (event.type === "error") {
         yield* handleError(event.content.message);
-        break;
+        return;
       }
 
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
           yield* handleError(e.error);
-          break;
+          return;
         }
 
         if (event.content.block_name === "OUTPUT" && e.value) {
@@ -531,7 +542,10 @@ export async function* newChat(
           if (m.role === "assistant") {
             if (!assistantMessageTriggered) {
               assistantMessageTriggered = true;
-              yield { role: "assistant" } as ChatMessageTriggerEvent;
+              yield {
+                type: "chat_message_trigger",
+                role: "assistant",
+              } as ChatMessageTriggerEvent;
             }
             yield { message: m } as ChatMessageCreateEvent;
             messages.push({
@@ -542,7 +556,10 @@ export async function* newChat(
           }
 
           if (m.role === "retrieval" && m.query) {
-            yield { role: "retrieval" } as ChatMessageTriggerEvent;
+            yield {
+              type: "chat_message_trigger",
+              role: "retrieval",
+            } as ChatMessageTriggerEvent;
             messages.push({
               sId: new_id(),
               role: "retrieval",
@@ -562,16 +579,28 @@ export async function* newChat(
       if (dataSources) {
         configRetrieval.DATASOURCE.data_sources = dataSources;
       } else {
-        const ds = await getDataSources(auth);
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const api = new DustAPI(prodCredentials);
+
+        const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+        if (dsRes.isErr()) {
+          yield* handleError(dsRes.error.message);
+          return;
+        }
+
+        const ds = dsRes.value;
+
         configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
           return {
-            workspace_id: owner.sId,
+            workspace_id: prodCredentials.workspaceId,
             data_source_id: d.name,
           };
         });
       }
 
-      configRetrieval.DATASOURCE.filter = filter;
+      if (filter) {
+        configRetrieval.DATASOURCE.filter = filter;
+      }
 
       const res = await runAction(auth, "chat-retrieval", configRetrieval, [
         {
@@ -586,7 +615,7 @@ export async function* newChat(
         yield* handleError(
           `Chat retrieval error: [${res.error.type}] ${res.error.message}`
         );
-        break;
+        return;
       }
 
       const run = res.value;
@@ -594,13 +623,14 @@ export async function* newChat(
       for (const t of run.traces) {
         if (t[1][0][0].error) {
           yield* handleError(t[1][0][0].error);
-          break;
+          return;
         }
         if (t[0][1] === "OUTPUT") {
           messages[messages.length - 1].retrievals = (
             t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
           ).retrievals;
           yield {
+            type: "chat_message_create",
             message: messages[messages.length - 1],
           } as ChatMessageCreateEvent;
         }
@@ -615,7 +645,7 @@ export async function* newChat(
   }
 
   const session = await upsertChatSession(auth, sId, null);
-  yield { session } as ChatSessionCreateEvent;
+  yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
   await Promise.all(
     messages.map((m) => {
@@ -656,7 +686,10 @@ export async function* newChat(
       if (t[0][1] === "OUTPUT") {
         const title = (t[1][0][0].value as { title: string }).title;
         const session = await upsertChatSession(auth, sId, title);
-        yield { session } as ChatSessionUpdateEvent;
+        yield {
+          type: "chat_session_update",
+          session,
+        } as ChatSessionUpdateEvent;
       }
     }
   }
