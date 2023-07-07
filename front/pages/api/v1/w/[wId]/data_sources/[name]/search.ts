@@ -99,7 +99,7 @@ export default async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: err.message,
+            message: `Invalid body sent: ${err.message}`,
           },
         });
       }
