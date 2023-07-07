@@ -307,7 +307,7 @@ async function getNotionAccessToken(
 async function shouldGarbageCollect(
   dataSourceConfig: DataSourceConfig
 ): Promise<boolean> {
-  if (!isDuringGarbageCollectStartWindow) {
+  if (!isDuringGarbageCollectStartWindow()) {
     // Never garbage collect if we are not in the start window
     return false;
   }
@@ -416,7 +416,7 @@ export async function syncGarbageCollectorPagesActivity(
 // - for each page, query notion API and check if the page still exists
 // - if the page does not exist, delete it from the database
 // - update the lastGarbageCollectionFinishTime
-// - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds
+// - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
 export async function garbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number,

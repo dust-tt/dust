@@ -5,7 +5,7 @@ const GARBAGE_COLLECT_START_TIME_OF_DAY_UTC_WINDOW = {
 };
 
 // the garbageCollect function will be stopped if it runs longer than this
-// (a bit less than 2 hours)
+// (a bit less than 2 hours). This includes retries.
 export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
   1000 * 60 * 60 * 2 * 0.9
 );
@@ -13,10 +13,8 @@ export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
 export function isDuringGarbageCollectStartWindow(): boolean {
   const now = new Date();
 
-  // Convert now to UTC
   now.setMinutes(now.getMinutes() + now.getTimezoneOffset());
 
-  // Create start and end dates using the day, month, year from now
   const start = new Date(
     Date.UTC(
       now.getUTCFullYear(),
@@ -40,10 +38,5 @@ export function isDuringGarbageCollectStartWindow(): boolean {
     )
   );
 
-  // If now is within the maintenance window, return true
-  if (now.getTime() >= start.getTime() && now.getTime() < end.getTime()) {
-    return true;
-  }
-
-  return false;
+  return now.getTime() >= start.getTime() && now.getTime() < end.getTime();
 }
