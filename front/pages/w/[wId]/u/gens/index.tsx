@@ -853,7 +853,7 @@ export function TemplatesView({
                                 )
                               ) {
                                 await fetch(
-                                  `/api/w/${workspaceId}/templates/${templates[editingTemplate].sId}`,
+                                  `/api/w/${workspaceId}/use/gens/templates/${templates[editingTemplate].sId}`,
                                   {
                                     method: "DELETE",
                                     headers: {
@@ -895,7 +895,7 @@ export function TemplatesView({
                               const curr_templates = templates.map((d) => d);
                               if (editingTemplate == -1) {
                                 await fetch(
-                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  `/api/w/${workspaceId}/use/gens/templates/${new_template.sId}`,
                                   {
                                     method: "POST",
                                     headers: {
@@ -912,7 +912,7 @@ export function TemplatesView({
                                 new_template.color =
                                   templates[editingTemplate].color;
                                 await fetch(
-                                  `/api/w/${workspaceId}/templates/${new_template.sId}`,
+                                  `/api/w/${workspaceId}/use/gens/templates/${new_template.sId}`,
                                   {
                                     method: "POST",
                                     headers: {

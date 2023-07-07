@@ -8,10 +8,6 @@ import { GensTemplate } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { GensTemplateType, GensTemplateVisibilityType } from "@app/types/gens";
 
-export type GetTemplatesResponseBody = {
-  templates: GensTemplateType[];
-};
-
 export type PostTemplatesResponseBody = {
   template: GensTemplateType;
 };
@@ -38,7 +34,7 @@ const gens_template_scheme: JSONSchemaType<GensPostTemplateQuery> = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetTemplatesResponseBody | PostTemplatesResponseBody>
+  res: NextApiResponse<PostTemplatesResponseBody>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
