@@ -1,4 +1,6 @@
 import { new_id } from "@app/lib/utils";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/withlogging";
 import {
   ChatMessageType,
   ChatSessionType,
@@ -12,7 +14,6 @@ import {
   ChatSession,
   front_sequelize,
 } from "../models";
-import logger from "@app/logger/logger";
 
 export async function getChatSessions(
   owner: WorkspaceType,
@@ -105,6 +106,16 @@ export async function upsertChatSession(
       chatSessionCreated: created,
     };
     logger.info(loggerArgs, "Chat Session upserted");
+
+    if (created) {
+      const tags = [
+        `workspace:${owner.sId}`,
+        `workspace_name:${owner.name}`,
+        `user_id:${user.id}`,
+        `chat_session_id:${chatSession.id}`,
+      ];
+      statsDClient.increment("chat_session.created", 1, tags);
+    }
 
     return {
       id: chatSession.id,
