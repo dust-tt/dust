@@ -12,7 +12,14 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  ReactEventHandler,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -1380,7 +1387,8 @@ export default function AppGens({
                       setSelecting(false);
                     }}
                     onSelect={(e) => {
-                      if (e.target.selectionStart !== e.target.selectionEnd) {
+                      let target = e.target as HTMLTextAreaElement;
+                      if (target.selectionStart !== target.selectionEnd) {
                         setSelecting(true);
                       } else {
                         setSelecting(false);
@@ -1444,12 +1452,15 @@ export default function AppGens({
                         onChange={(e) => setTopK(Number(e.target.value))}
                       />
                     </div>
-                    <div className="text-sm font-bold text-red-500"
+                    <div
+                      className="text-sm font-bold text-red-500"
                       onClick={() => {
                         const unpinned = retrieved.filter((r) => !r.pinned);
-                        unpinned.forEach((r) => onRemove(r.documentId))
+                        unpinned.forEach((r) => onRemove(r.documentId));
                       }}
-                    >Delete Unpinned</div>
+                    >
+                      Delete Unpinned
+                    </div>
                   </div>
                   <div className="flex flex-row items-center space-x-2 leading-8">
                     <div className="flex flex-initial text-gray-400">
