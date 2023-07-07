@@ -425,11 +425,8 @@ export async function* newChat(
     throw new Error("Could not authenticate against the workspace.");
   }
 
-  // create a Session
+  // Create a Session Id but do not store the session just now.
   const sId = newChatSessionId();
-  const session = await upsertChatSession(auth, sId, null);
-
-  yield { session } as ChatSessionCreateEvent;
 
   const assistantConfig = cloneBaseConfig(
     DustProdActionRegistry["chat-assistant-wfn"].config
@@ -606,17 +603,22 @@ export async function* newChat(
     }
   }
 
-  // Store messages in DB if we didn't get an error as we don't want to store interactions that led
-  // to an error.
-  if (messages[messages.length - 1].role !== "error") {
-    await Promise.all(
-      messages.map((m) => {
-        return (async () => {
-          await upsertChatMessage(session, m);
-        })();
-      })
-    );
+  // If we got an error we exit early and don't store the session (because we don't store
+  // interactions that led to an error).
+  if (messages[messages.length - 1].role === "error") {
+    return;
   }
+
+  const session = await upsertChatSession(auth, sId, null);
+  yield { session } as ChatSessionCreateEvent;
+
+  await Promise.all(
+    messages.map((m) => {
+      return (async () => {
+        await upsertChatMessage(session, m);
+      })();
+    })
+  );
 
   // Update session title.
   const configTitle = cloneBaseConfig(
@@ -641,9 +643,8 @@ export async function* newChat(
     },
   ]);
 
-  if (res.isErr()) {
-    // No error handling for title, we just ignore.
-  } else {
+  // No error handling for title, we just move on if it failed.
+  if (!res.isErr()) {
     const run = res.value;
 
     for (const t of run.traces) {
@@ -651,7 +652,6 @@ export async function* newChat(
         const title = (t[1][0][0].value as { title: string }).title;
         const session = await upsertChatSession(auth, sId, title);
         yield { session } as ChatSessionUpdateEvent;
-        // If there was an error we just ignore.
       }
     }
   }
