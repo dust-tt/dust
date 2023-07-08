@@ -164,7 +164,11 @@ export async function notionSyncWorkflow(
     } else {
       // look at pages that were not visited in this run, check with the notion API
       // if they were really deleted and delete them from the database if they were
-      await garbageCollectActivity(dataSourceConfig, runTimestamp);
+      await garbageCollectActivity(
+        dataSourceConfig,
+        runTimestamp,
+        new Date().getTime()
+      );
     }
 
     iterations += 1;

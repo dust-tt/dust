@@ -6,6 +6,10 @@ import {
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
+  GARBAGE_COLLECT_MAX_DURATION_MS,
+  isDuringGarbageCollectStartWindow,
+} from "@connectors/connectors/notion/lib/garbage_collect";
+import {
   getPagesEditedSince,
   getParsedPage,
   isPageAccessibleAndUnarchived,
@@ -196,6 +200,8 @@ export async function notionUpsertPageActivity(
       dataSourceConfig,
       pageId,
       runTimestamp,
+      parsedPage.parentType,
+      parsedPage.parentId,
       upsertTs,
       "body_too_large"
     );
@@ -225,6 +231,8 @@ export async function notionUpsertPageActivity(
     dataSourceConfig,
     pageId,
     runTimestamp,
+    parsedPage ? parsedPage.parentType : null,
+    parsedPage ? parsedPage.parentId : null,
     upsertTs
   );
 }
@@ -303,6 +311,11 @@ async function getNotionAccessToken(
 async function shouldGarbageCollect(
   dataSourceConfig: DataSourceConfig
 ): Promise<boolean> {
+  if (!isDuringGarbageCollectStartWindow()) {
+    // Never garbage collect if we are not in the start window
+    return false;
+  }
+
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -407,9 +420,11 @@ export async function syncGarbageCollectorPagesActivity(
 // - for each page, query notion API and check if the page still exists
 // - if the page does not exist, delete it from the database
 // - update the lastGarbageCollectionFinishTime
+// - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
 export async function garbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  runTimestamp: number
+  runTimestamp: number,
+  startTs: number
 ) {
   const localLogger = logger.child({
     workspaceId: dataSourceConfig.workspaceId,
@@ -437,10 +452,13 @@ export async function garbageCollectActivity(
   const pagesToDelete = await NotionPage.findAll({
     where: {
       connectorId: connector.id,
+      // only look at pages that have not been seen since the last garbage collection
       lastSeenTs: {
         [Op.lt]: new Date(runTimestamp),
       },
     },
+    // first handle pages that we have seen the longest time ago
+    order: [["lastSeenTs", "ASC"]],
   });
   localLogger.info(
     { pagesToDeleteCount: pagesToDelete.length },
@@ -449,12 +467,30 @@ export async function garbageCollectActivity(
 
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
-  for (const page of pagesToDelete) {
+  let deletedPagesCount = 0;
+  let skippedPagesCount = 0;
+  let stillAccessiblePagesCount = 0;
+
+  for (const [i, page] of pagesToDelete.entries()) {
+    const iterationLogger = localLogger.child({
+      pageId: page.notionPageId,
+      pagesToDeleteCount: pagesToDelete.length,
+      index: i,
+      deletedPagesCount,
+      skippedPagesCount,
+      stillAccessiblePagesCount,
+    });
+    if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
+      iterationLogger.warn("Garbage collection is taking too long, giving up.");
+      break;
+    }
+
     if (page.skipReason) {
-      localLogger.info(
-        { pageId: page.notionPageId, skipReason: page.skipReason },
+      iterationLogger.info(
+        { skipReason: page.skipReason },
         "Page is marked as skipped, not deleting."
       );
+      skippedPagesCount++;
       continue;
     }
     let pageIsAccessible: boolean;
@@ -462,7 +498,7 @@ export async function garbageCollectActivity(
       pageIsAccessible = await isPageAccessibleAndUnarchived(
         notionAccessToken,
         page.notionPageId,
-        localLogger
+        iterationLogger
       );
     } catch (e) {
       // Sometimes a request will consistently fail with a 500
@@ -474,14 +510,18 @@ export async function garbageCollectActivity(
         status: number;
       };
       if (
-        [
+        ([
           "internal_server_error",
           "notionhq_client_request_timeout",
           "service_unavailable",
-        ].includes(potentialNotionError.code) &&
+          "notionhq_client_response_error",
+        ].includes(potentialNotionError.code) ||
+          (typeof potentialNotionError.status === "number" &&
+            potentialNotionError.status >= 500 &&
+            potentialNotionError.status < 600)) &&
         Context.current().info.attempt >= 15
       ) {
-        localLogger.error(
+        iterationLogger.error(
           {
             error: potentialNotionError,
             attempt: Context.current().info.attempt,
@@ -494,15 +534,18 @@ export async function garbageCollectActivity(
       }
     }
     if (pageIsAccessible) {
-      localLogger.info(
-        { pageId: page.notionPageId },
-        "Page is still accessible, not deleting."
-      );
+      // mark the page as seen
+      await page.update({
+        lastSeenTs: new Date(runTimestamp),
+      });
+      iterationLogger.info("Page is still accessible, not deleting.");
+      stillAccessiblePagesCount++;
       continue;
     }
-    localLogger.info({ pageId: page.notionPageId }, "Deleting page.");
+    iterationLogger.info("Deleting page.");
     await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
     await page.destroy();
+    deletedPagesCount++;
   }
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),

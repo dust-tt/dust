@@ -89,7 +89,7 @@ async function handler(
     });
   }
 
-  const chatSession = await getChatSession(owner, req.query.cId as string);
+  const chatSession = await getChatSession(auth, req.query.cId as string);
 
   if (!chatSession) {
     return apiError(req, res, {

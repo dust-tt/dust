@@ -1,5 +1,8 @@
+import { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
+import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
+import logger from "@app/logger/logger";
 import * as activities from "@app/post_upsert_hooks/temporal/activities";
 import { getTemporalWorkerConnection } from "@app/post_upsert_hooks/temporal/lib";
 
@@ -11,7 +14,13 @@ export async function runPostUpsertHooksWorker() {
     taskQueue: "post-upsert-hooks-queue",
     connection,
     namespace,
-    // TODO: interceptors, temporal monitoring
+    interceptors: {
+      activityInbound: [
+        (ctx: Context) => {
+          return new ActivityInboundLogInterceptor(ctx, logger);
+        },
+      ],
+    },
   });
 
   await worker.run();
