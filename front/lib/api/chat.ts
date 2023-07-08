@@ -574,7 +574,10 @@ export async function* newChat(
                 role: "assistant",
               } as ChatMessageTriggerEvent;
             }
-            yield { message: m } as ChatMessageCreateEvent;
+            yield {
+              type: "chat_message_create",
+              message: m,
+            } as ChatMessageCreateEvent;
             messages.push({
               sId: new_id(),
               role: "assistant",
