@@ -32,10 +32,7 @@ async function main() {
   const workspace = await Workspace.findOne({
     where: { sId: LOCALHOST_WORKSPACE_ID },
   });
-  const owner = new Authenticator(
-    workspace,
-    "builder"
-  ).workspace() as WorkspaceType;
+  const auth = new Authenticator(workspace, null, "builder");
 
   /* Load the JSON test data from data/chat-eval-inputs.jsonl */
 
@@ -56,7 +53,7 @@ async function main() {
   );
   /* run the chat eval app on dataWithAnswers */
   const evalResult = (await runAction(
-    owner,
+    auth,
     "chat-message-e2e-eval",
     config,
     dataWithAnswers

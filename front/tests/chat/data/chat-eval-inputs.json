@@ -68,5 +68,32 @@
     "rules": ["states the sync is at 11am"],
     "time": "2023-07-04 09:00",
     "params": { "time_range": "week" }
+  },
+  {
+    "question": "What coffee machine do we have in the office?",
+    "rules": ["states the coffee machine is a Barista Express"],
+    "time": "2023-07-04 09:00",
+    "params": {}
+  },
+  {
+    "question": "What is our tech stack?",
+    "rules": [
+      "mentions we use Qdrant",
+      "mentions we use TypeScript",
+      "mentions we use React",
+      "mentions we use Rust",
+      "mentions we use Node.js",
+      "mentions we use PostgreSQL",
+      "mentions we use Tailwind",
+      "mentions we use Next.js"
+    ],
+    "time": "2023-07-04 09:00",
+    "params": { "time_range": "week" }
+  },
+  {
+    "question": "When was this week's sync?",
+    "rules": ["states the sync was on tuesday, or on the 4th of July"],
+    "time": "2023-07-08 19:00",
+    "params": { "time_range": "week" }
   }
 ]
