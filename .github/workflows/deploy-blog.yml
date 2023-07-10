@@ -3,6 +3,10 @@ name: Deploy Blog
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy_blog
+  cancel-in-progress: false
+
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
