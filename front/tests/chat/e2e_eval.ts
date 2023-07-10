@@ -11,11 +11,9 @@ import {
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
-import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
+import { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 import { newChat } from "@app/lib/api/chat";
 
 type ChatEvalInput = {
@@ -23,7 +21,7 @@ type ChatEvalInput = {
   rules: string[];
   answer: string;
 };
-async function main() {
+async function chatEval() {
   /* Auth */
   const workspacesId = process.env.LOCALHOST_WORKSPACE_ID as string;
   const auth = await Authenticator.internalBuilderForWorkspace(workspacesId);
@@ -39,22 +37,29 @@ async function main() {
     throw new Error(`Failed to get system API key: ${keyRes.error}`);
   }*/
     /* Call the chat lib */
-    const chatRes = await newChat(auth, {
-      userMessage: input.question,
-      dataSources: null,
-      filter: null,
-      timeZone: "Europe/Paris",
-    });
+    const chatRes = await newChat(
+      auth,
+      {
+        userMessage: input.question,
+        dataSources: null,
+        filter: null,
+        timeZone: "Europe/Paris",
+      },
+      false
+    );
+    let answer = undefined;
     for await (const event of chatRes) {
       if (
         event.type === "chat_message_create" &&
         event.message.role === "assistant"
       ) {
-        console.log(event.message.message);
-        return event.message.message;
+        answer = event.message.message;
+      } else if (event.type === "chat_session_create") {
+        console.log(event.session);
       }
     }
-    return "There was an error. Please check with the team";
+
+    return answer ? answer : "There was an error. Please check with the team";
   }
 
   /* Load the JSON test data from data/chat-eval-inputs.jsonl's first 2 elements*/
@@ -87,12 +92,30 @@ async function main() {
     throw new Error("No results found");
   }
 
-  /* Print the results */
-  for (const result of evalResult.value.results) {
-    console.log(result[0].value);
-  }
+  /* Format the results */
+  return evalResult.value.results.map((r, i) => {
+    return {
+      question: dataWithAnswers[i].question,
+      answer: dataWithAnswers[i].answer,
+      evalResult: (r[0].value as { result: object; rule: string }[]).map(
+        (v) => {
+          return {
+            ...v.result,
+            rule: v.rule,
+          };
+        }
+      ),
+    };
+  });
 }
 
+async function main() {
+  let chatEvalResults = await chatEval();
+  /* Print the results */
+  for (const result of chatEvalResults) {
+    console.log(result);
+  }
+}
 main().catch((err) => {
   console.log(err);
   process.exit(1);
