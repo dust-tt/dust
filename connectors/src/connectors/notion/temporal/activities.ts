@@ -35,7 +35,7 @@ import {
 
 const logger = mainLogger.child({ provider: "notion" });
 
-const GARBAGE_COLLECTION_INTERVAL_HOURS = 24;
+const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
 
 export async function notionGetPagesToSyncActivity(
   dataSourceInfo: DataSourceInfo,
