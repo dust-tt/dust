@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 import p5Types from "p5";
+import { ParsedUrlQuery } from "querystring";
 
 import { Button, GoogleSignInButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
@@ -150,6 +151,16 @@ export default function Home({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
+  function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
+    let callbackUrl = "/api/login";
+    if (routerQuery.wId) {
+      callbackUrl += `?wId=${routerQuery.wId}`;
+    } else if (routerQuery.inviteToken) {
+      callbackUrl += `?inviteToken=${routerQuery.inviteToken}`;
+    }
+    return callbackUrl;
+  }
+
   return (
     <>
       <Head>
@@ -228,9 +239,7 @@ export default function Home({
             <GoogleSignInButton
               onClick={() =>
                 signIn("google", {
-                  callbackUrl: router.query.wId
-                    ? `/api/login?wId=${router.query.wId}`
-                    : `/api/login`,
+                  callbackUrl: getCallbackUrl(router.query),
                 })
               }
             >
@@ -248,9 +257,7 @@ export default function Home({
                   className="cursor-pointer hover:font-bold"
                   onClick={() => {
                     void signIn("github", {
-                      callbackUrl: router.query.wId
-                        ? `/api/login?wId=${router.query.wId}`
-                        : `/api/login`,
+                      callbackUrl: getCallbackUrl(router.query),
                     });
                   }}
                 >
