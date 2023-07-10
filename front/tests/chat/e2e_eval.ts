@@ -18,6 +18,8 @@
  *
  */
 
+import { Storage } from "@google-cloud/storage";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -27,12 +29,12 @@ import { newChat } from "@app/lib/api/chat";
 import { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
-import { Storage } from "@google-cloud/storage";
 
 type ChatEvalInputType = {
   question: string;
   rules: string[];
   answer: string;
+  time?: string;
 };
 
 type EvalResultType = {
@@ -64,14 +66,20 @@ async function chatEval(
   }
 
   async function computeChatAnswer(input: ChatEvalInputType) {
+    /* Prepare time and date for chatting */
+    const date = input.time ? new Date(input.time) : new Date();
+    const timestamp = date.getTime();
+    const dateStr = date.toISOString().split("T")[0];
+
     /* Call the chat lib */
     const chatRes = await newChat(
       auth,
       {
         userMessage: input.question,
         dataSources: null,
-        filter: null,
+        filter: { timestamp: { lt: timestamp } },
         timeZone: "Europe/Paris",
+        context: { date_today: dateStr },
       },
       false // the chat session is not saved
     );
