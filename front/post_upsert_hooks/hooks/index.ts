@@ -13,7 +13,7 @@ export const POST_UPSERT_HOOK_TYPES = [
 ] as const;
 export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 
-type PostUpsertHookParams = {
+export type PostUpsertHookParams = {
   dataSourceName: string;
   workspaceId: string;
   documentId: string;
