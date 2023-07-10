@@ -3,6 +3,10 @@ name: Deploy Connectors
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy_connectors
+  cancel-in-progress: false
+
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 

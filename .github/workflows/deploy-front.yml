@@ -3,6 +3,10 @@ name: Deploy Front
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy_front
+  cancel-in-progress: false
+
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
