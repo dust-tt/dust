@@ -18,9 +18,6 @@
  *
  */
 
-import * as fs from "fs";
-import * as path from "path";
-
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -30,6 +27,7 @@ import { newChat } from "@app/lib/api/chat";
 import { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
+import { Storage } from "@google-cloud/storage";
 
 type ChatEvalInputType = {
   question: string;
@@ -53,6 +51,16 @@ async function chatEval(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Invalid workspace");
+  }
+
+  async function getChatEvalInput(): Promise<ChatEvalInputType[]> {
+    /* Load the JSON test data from our GCS bucket */
+    const storage = new Storage({ keyFilename: process.env.SERVICE_ACCOUNT });
+    const bucket = storage.bucket("dust-test-data");
+    const file = bucket.file("chat-eval-inputs.json");
+    const fileContents = await file.download();
+    const evalData = JSON.parse(fileContents.toString());
+    return evalData as ChatEvalInputType[];
   }
 
   async function computeChatAnswer(input: ChatEvalInputType) {
@@ -83,9 +91,7 @@ async function chatEval(
   }
 
   /* Load the JSON test data from data/chat-eval-inputs.jsonl */
-  let evalData = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "data/chat-eval-inputs.json"), "utf8")
-  );
+  let evalData = await getChatEvalInput();
   if (numberOfQuestions)
     evalData = evalData.slice(0, numberOfQuestions) as ChatEvalInputType[];
 
@@ -152,12 +158,12 @@ async function main() {
     return acc + (isSuccessfulQuestion(r.evalResult) ? 1 : 0);
   }, 0);
   console.log(
-    `FAIL: ${
+    `\nFAIL: ${
       chatEvalResults.length - totalSuccesses
-    } and PASS: ${totalSuccesses} out of ${chatEvalResults.length}`
+    } and PASS: ${totalSuccesses} out of ${chatEvalResults.length}\n`
   );
   /* Print the failures  (and the successes if verbose) */
-  if (!verbose) console.log("FAILURES:");
+  if (!verbose) console.log("FAILURES:\n");
   for (const result of chatEvalResults) {
     if (!isSuccessfulQuestion(result.evalResult) || verbose) {
       console.log("Question: " + result.question);
@@ -169,7 +175,7 @@ async function main() {
     }
   }
   console.log(
-    `FAIL: ${
+    `\nFAIL: ${
       chatEvalResults.length - totalSuccesses
     } and PASS: ${totalSuccesses} out of ${chatEvalResults.length}`
   );
