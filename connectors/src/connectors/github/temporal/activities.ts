@@ -94,7 +94,10 @@ export async function githubUpsertIssueActivity(
 
   localLogger.info("Upserting GitHub issue.");
   const issue = await getIssue(installationId, repoName, login, issueNumber);
-  let renderedIssue = `# ${issue.title}||\n${issue.body}||\n`;
+  let renderedIssue = `# ${issue.title}||\n`;
+  if (issue.body) {
+    renderedIssue += `${issue.body}||\n`;
+  }
   let resultPage = 1;
   for (;;) {
     const resultPageLogger = localLogger.child({
