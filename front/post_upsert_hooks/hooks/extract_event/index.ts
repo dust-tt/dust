@@ -37,6 +37,7 @@ async function processDocument(
   localLogger.info("[Extract event] Processing doc.");
   await processExtractEvents({
     workspaceId,
+    dataSourceName,
     documentId,
     documentText,
   });

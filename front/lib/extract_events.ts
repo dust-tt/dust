@@ -8,18 +8,20 @@ import {
   getRawExtractEventMarkersFromText,
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
-import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
+import { getDatasource } from "@app/post_upsert_hooks/hooks/document_tracker";
 
 /**
  * Gets the markers from the doc and calls _processExtractEvent for each of them
  */
 export async function processExtractEvents(data: {
   workspaceId: string;
+  dataSourceName: string;
   documentId: string;
   documentText: string;
 }) {
-  const { workspaceId, documentId, documentText } = data;
+  const { workspaceId, documentId, dataSourceName, documentText } = data;
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   if (!auth.workspace()) {
@@ -29,6 +31,17 @@ export async function processExtractEvents(data: {
     return;
   }
 
+  const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+  if (!dataSource) {
+    logger.error(
+      `[Extract event] Could not get datasource ${dataSourceName}. Skipping.`
+    );
+    return;
+  } else {
+    logger.info(`[Extract event] Processing datasource ${dataSourceName}.`);
+  }
+
   const rawMarkers = getRawExtractEventMarkersFromText(documentText);
   const markers = sanitizeRawExtractEventMarkers(rawMarkers);
 
@@ -36,7 +49,7 @@ export async function processExtractEvents(data: {
     Object.keys(markers).map((marker) => {
       return _processExtractEvent({
         auth: auth,
-        workspaceId: workspaceId,
+        dataSource: dataSource,
         sanitizedMarker: marker,
         markers: markers[marker],
         documentText: documentText,
@@ -51,7 +64,7 @@ export async function processExtractEvents(data: {
  */
 async function _processExtractEvent(data: {
   auth: Authenticator;
-  workspaceId: string;
+  dataSource: DataSource;
   sanitizedMarker: string;
   markers: string[];
   documentText: string;
@@ -59,11 +72,13 @@ async function _processExtractEvent(data: {
 }) {
   const {
     auth,
+    dataSource,
     sanitizedMarker,
     markers,
     documentId,
     documentText,
   } = data;
+
   const schema: EventSchema | null = await EventSchema.findOne({
     where: {
       workspaceId: auth.workspace()?.id,
@@ -99,6 +114,7 @@ async function _processExtractEvent(data: {
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
+      dataSourceId: dataSource.id,
     });
   });
 }
