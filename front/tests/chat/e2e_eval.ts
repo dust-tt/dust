@@ -4,7 +4,7 @@
  *
  *
  * By default, runs on all questions. Use `--n NUMBER_OF_QUESTIONS` to change that (e.g. smaller evals)
- *
+ * Use `--verbose` to print the successes as well as the failures
  * Usage: from front directory
  * `./admin/eval.sh [--verbose] [--n NUMBER_OF_QUESTIONS]`
  *
@@ -24,13 +24,22 @@ import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
 import { newChat } from "@app/lib/api/chat";
 
-type ChatEvalInput = {
+type ChatEvalInputType = {
   question: string;
   rules: string[];
   answer: string;
 };
 
-async function chatEval(numberOfQuestions: number | undefined = undefined) {
+type EvalResultType = {
+  rule: string;
+  rule_respected: string;
+  explanation?: string;
+};
+
+async function chatEval(
+  numberOfQuestions: number | undefined,
+  verbose = false
+) {
   /* Auth */
   const workspacesId = process.env.LOCALHOST_WORKSPACE_ID as string;
   const auth = await Authenticator.internalBuilderForWorkspace(workspacesId);
@@ -39,7 +48,7 @@ async function chatEval(numberOfQuestions: number | undefined = undefined) {
     throw new Error("Invalid workspace");
   }
 
-  async function computeChatAnswer(input: ChatEvalInput) {
+  async function computeChatAnswer(input: ChatEvalInputType) {
     /* Call the chat lib */
     const chatRes = await newChat(
       auth,
@@ -59,7 +68,7 @@ async function chatEval(numberOfQuestions: number | undefined = undefined) {
       ) {
         answer = event.message.message;
       } else if (event.type === "chat_session_create") {
-        console.log(event.session);
+        if (verbose) console.log(event.session);
       }
     }
 
@@ -71,12 +80,12 @@ async function chatEval(numberOfQuestions: number | undefined = undefined) {
     fs.readFileSync(path.join(__dirname, "data/chat-eval-inputs.json"), "utf8")
   );
   if (numberOfQuestions)
-    evalData = evalData.slice(0, numberOfQuestions) as ChatEvalInput[];
+    evalData = evalData.slice(0, numberOfQuestions) as ChatEvalInputType[];
 
   /* Compute Chat's answers for each input */
   const dataWithAnswers = await Promise.all(
-    evalData.map(async (input: ChatEvalInput) => {
-      console.log(`Computing answer for ${input.question}`);
+    evalData.map(async (input: ChatEvalInputType) => {
+      if (verbose) console.log(`Computing answer for ${input.question}`);
       return {
         question: input.question,
         rules: input.rules,
@@ -99,7 +108,6 @@ async function chatEval(numberOfQuestions: number | undefined = undefined) {
   if (!evalResult.value.results) {
     throw new Error("No results found");
   }
-
   /* Format the results */
   return evalResult.value.results.map((r, i) => {
     return {
@@ -110,7 +118,7 @@ async function chatEval(numberOfQuestions: number | undefined = undefined) {
           return {
             ...v.result,
             rule: v.rule,
-          };
+          } as EvalResultType;
         }
       ),
     };
@@ -121,12 +129,43 @@ async function main() {
   const numberOfQuestions = process.argv.includes("--n")
     ? parseInt(process.argv[process.argv.indexOf("--n") + 1])
     : undefined;
+  const verbose = process.argv.includes("--verbose");
+  let chatEvalResults = await chatEval(numberOfQuestions, verbose);
 
-  let chatEvalResults = await chatEval(numberOfQuestions);
-  /* Print the results */
+  /* count the number of successes */
+  const successfulQuestion = (r: EvalResultType[]) => {
+    return r.reduce((acc, r) => {
+      return acc && r.rule_respected === "YES";
+    }, true);
+  };
+
+  const successes = chatEvalResults.reduce((acc, r) => {
+    /** return 1 if for all elts of evalResult, rule_respected is 'YES'
+     * 0 otherwise */
+    return acc + (successfulQuestion(r.evalResult) ? 1 : 0);
+  }, 0);
+  console.log(
+    `FAIL: ${
+      chatEvalResults.length - successes
+    } and PASS: ${successes} out of ${chatEvalResults.length}`
+  );
+  /* Print the failures  (and the successes if verbose) */
+  if (!verbose) console.log("FAILURES:");
   for (const result of chatEvalResults) {
-    console.log(result);
+    if (!successfulQuestion(result.evalResult) || verbose) {
+      console.log("Question: " + result.question);
+      console.log("Answer: " + result.answer);
+      console.log(
+        result.evalResult.filter((r) => r.rule_respected !== "YES" || verbose)
+      );
+      console.log("\n----");
+    }
   }
+  console.log(
+    `FAIL: ${
+      chatEvalResults.length - successes
+    } and PASS: ${successes} out of ${chatEvalResults.length}`
+  );
 }
 main().catch((err) => {
   console.log(err);
