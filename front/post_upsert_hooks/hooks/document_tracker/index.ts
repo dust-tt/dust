@@ -23,7 +23,12 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
     getDebounceMs: async () => {
       return 1000;
     },
-    filter: async (dataSourceName, workspaceId, documentId, documentText) => {
+    filter: async ({
+      dataSourceName,
+      workspaceId,
+      documentId,
+      documentText,
+    }) => {
       const localLogger = logger.child({
         workspaceId,
         dataSourceName,
@@ -76,7 +81,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
 
       return false;
     },
-    fn: async (dataSourceName, workspaceId, documentId, documentText) => {
+    fn: async ({ dataSourceName, workspaceId, documentId, documentText }) => {
       logger.info(
         {
           workspaceId,
@@ -100,13 +105,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
 
 export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
   type: "document_tracker_suggest_changes",
-  getDebounceMs: async (
-    _dataSourceName,
-    _workspaceId,
-    _documentId,
-    _documentText,
-    dataSourceConnectorProvider
-  ) => {
+  getDebounceMs: async ({ dataSourceConnectorProvider }) => {
     if (!dataSourceConnectorProvider) {
       return 10000; // 10 seconds
     }
@@ -115,13 +114,12 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
     }
     return 3600000; // 1 hour
   },
-  filter: async (
+  filter: async ({
     dataSourceName,
     workspaceId,
     documentId,
-    _documentText,
-    dataSourceConnectorProvider
-  ) => {
+    dataSourceConnectorProvider,
+  }) => {
     const localLogger = logger.child({
       workspaceId,
       dataSourceName,
@@ -203,7 +201,7 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
     return false;
   },
 
-  fn: async (dataSourceName, workspaceId, documentId, documentText) => {
+  fn: async ({ dataSourceName, workspaceId, documentId, documentText }) => {
     logger.info(
       {
         workspaceId,

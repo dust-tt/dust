@@ -13,35 +13,32 @@ export const POST_UPSERT_HOOK_TYPES = [
 ] as const;
 export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 
-// async function that will run in a temporal workflow
+export type PostUpsertHookParams = {
+  dataSourceName: string;
+  workspaceId: string;
+  documentId: string;
+  documentText: string;
+  documentHash: string;
+  dataSourceConnectorProvider: ConnectorProvider | null;
+};
+
+// asyc function that will run in a temporal workflow
 // can be expensive to runs
 export type PostUpsertHookFunction = (
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string,
-  documentText: string,
-  dataSourceConnectorProvider: ConnectorProvider | null
+  params: PostUpsertHookParams
 ) => Promise<void>;
 
 // returns true if the post upsert hook should run for this document
 // returns false if the post upsert hook should not run for this document
 // needs to be relatively quick to run, will run in the same process as calling code
 export type PostUpsertHookFilter = (
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string,
-  documentText: string,
-  dataSourceConnectorProvider: ConnectorProvider | null
+  params: PostUpsertHookParams
 ) => Promise<boolean>;
 
 // How long should the hook sleep before running (debouncing)
 // ran in the same process as calling code (no retries, needs to be quick to run)
 export type PostUpsertHookDebounceMs = (
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string,
-  documentText: string,
-  dataSourceConnectorProvider: ConnectorProvider | null
+  params: PostUpsertHookParams
 ) => Promise<number>;
 
 export type PostUpsertHook = {
@@ -66,11 +63,7 @@ export const POST_UPSERT_HOOK_BY_TYPE: Record<
 }, {} as Record<PostUpsertHookType, PostUpsertHook>);
 
 export async function getPostUpsertHooksToRun(
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string,
-  documentText: string,
-  dataSourceConnectorProvider: ConnectorProvider | null
+  params: PostUpsertHookParams
 ): Promise<Array<{ type: PostUpsertHookType; debounceMs: number }>> {
   if (!process.env.POST_UPSERT_HOOKS_ENABLED) {
     return [];
@@ -78,23 +71,9 @@ export async function getPostUpsertHooksToRun(
   // TODO: parallel
   const hooksToRun: { type: PostUpsertHookType; debounceMs: number }[] = [];
   for (const hook of POST_UPSERT_HOOKS) {
-    if (
-      await hook.filter(
-        dataSourceName,
-        workspaceId,
-        documentId,
-        documentText,
-        dataSourceConnectorProvider
-      )
-    ) {
+    if (await hook.filter(params)) {
       const debounceMs = hook.getDebounceMs
-        ? await hook.getDebounceMs(
-            dataSourceName,
-            workspaceId,
-            documentId,
-            documentText,
-            dataSourceConnectorProvider
-          )
+        ? await hook.getDebounceMs(params)
         : DEFAULT_POST_UPSERT_HOOKS_DEBOUNCE_MS;
       hooksToRun.push({ type: hook.type, debounceMs });
     }
