@@ -59,6 +59,22 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "chat-message-e2e-eval": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "201e6de608",
+      appHash:
+        "f676a2de5b83bdbd02b55beaefddafb0bb16f53715d9d7ba3c219ec09b6b0588",
+    },
+    config: {
+      RULE_VALIDITY: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-0613",
+        function_call: "send_rule_validity",
+        use_cache: true,
+      },
+    },
+  },
   "chat-title": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

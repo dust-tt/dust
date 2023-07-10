@@ -420,7 +420,10 @@ export type ChatSessionUpdateEvent = {
  * @param userMessage string
  * @param dataSources list of data sources to use for retrieval
  * @param filter filter to use for retrieval (timestamp)
- * @param timeZone timezone to use for retrieval must be valid `Intl.DateTimeFormat`
+ * @param timeZone timezone to use for retrieval must be valid
+ * `Intl.DateTimeFormat`
+ * @param saveSession whether to save the chats or not. Default is yes, but when
+ * doing repeated testing such as in evals it can be useful to not save the session.
  */
 export async function* newChat(
   auth: Authenticator,
@@ -429,6 +432,7 @@ export async function* newChat(
     dataSources,
     filter,
     timeZone,
+    context,
   }: {
     userMessage: string;
     dataSources:
@@ -441,7 +445,16 @@ export async function* newChat(
       timestamp: { gt?: number; lt?: number };
     } | null;
     timeZone: string;
-  }
+    context?: {
+      user?: {
+        username: string;
+        full_name: string;
+      };
+      workspace?: string;
+      date_today?: string;
+    };
+  },
+  saveSession = true
 ): AsyncGenerator<
   | ChatSessionCreateEvent
   | ChatMessageTriggerEvent
@@ -454,21 +467,19 @@ export async function* newChat(
     throw new Error("Could not authenticate against the workspace.");
   }
 
-  // Create a Session Id but do not store the session just now.
-  const sId = newChatSessionId();
-
-  const assistantConfig = cloneBaseConfig(
-    DustProdActionRegistry["chat-assistant-wfn"].config
-  );
-
-  const assistantContext = {
+  const contextWithDefaults = {
     user: {
       username: auth.user()?.username,
       full_name: auth.user()?.name,
     },
     workspace: owner.name,
     date_today: new Date().toISOString().split("T")[0],
+    ...context,
   };
+
+  const assistantConfig = cloneBaseConfig(
+    DustProdActionRegistry["chat-assistant-wfn"].config
+  );
 
   const messages: ChatMessageType[] = [
     {
@@ -518,7 +529,12 @@ export async function* newChat(
       auth,
       "chat-assistant-wfn",
       assistantConfig,
-      [{ messages: filterMessagesForModel(messages), assistantContext }]
+      [
+        {
+          messages: filterMessagesForModel(messages),
+          assistantContext: contextWithDefaults,
+        },
+      ]
     );
 
     if (res.isErr()) {
@@ -574,7 +590,10 @@ export async function* newChat(
                 role: "assistant",
               } as ChatMessageTriggerEvent;
             }
-            yield { message: m } as ChatMessageCreateEvent;
+            yield {
+              type: "chat_message_create",
+              message: m,
+            } as ChatMessageCreateEvent;
             messages.push({
               sId: new_id(),
               role: "assistant",
@@ -671,6 +690,9 @@ export async function* newChat(
     return;
   }
 
+  // if saveSession is false we also exit early and don't store the new chat
+  if (!saveSession) return;
+  const sId = newChatSessionId();
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
