@@ -19,10 +19,10 @@ import {
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
+import { newChat } from "@app/lib/api/chat";
 import { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/lib/result";
 import { RunType } from "@app/types/run";
-import { newChat } from "@app/lib/api/chat";
 
 type ChatEvalInputType = {
   question: string;
@@ -130,7 +130,7 @@ async function main() {
     ? parseInt(process.argv[process.argv.indexOf("--n") + 1])
     : undefined;
   const verbose = process.argv.includes("--verbose");
-  let chatEvalResults = await chatEval(numberOfQuestions, verbose);
+  const chatEvalResults = await chatEval(numberOfQuestions, verbose);
 
   /* count the number of successes */
   const successfulQuestion = (r: EvalResultType[]) => {

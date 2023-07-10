@@ -445,7 +445,7 @@ export async function* newChat(
     } | null;
     timeZone: string;
   },
-  saveSession: boolean = true
+  saveSession = true
 ): AsyncGenerator<
   | ChatSessionCreateEvent
   | ChatMessageTriggerEvent
