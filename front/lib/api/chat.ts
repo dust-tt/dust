@@ -420,7 +420,10 @@ export type ChatSessionUpdateEvent = {
  * @param userMessage string
  * @param dataSources list of data sources to use for retrieval
  * @param filter filter to use for retrieval (timestamp)
- * @param timeZone timezone to use for retrieval must be valid `Intl.DateTimeFormat`
+ * @param timeZone timezone to use for retrieval must be valid
+ * `Intl.DateTimeFormat`
+ * @param saveSession whether to save the chats or not. Default is yes, but when
+ * doing repeated testing such as in evals it can be useful to not save the session.
  */
 export async function* newChat(
   auth: Authenticator,
@@ -441,7 +444,8 @@ export async function* newChat(
       timestamp: { gt?: number; lt?: number };
     } | null;
     timeZone: string;
-  }
+  },
+  saveSession: boolean = true
 ): AsyncGenerator<
   | ChatSessionCreateEvent
   | ChatMessageTriggerEvent
@@ -673,6 +677,9 @@ export async function* newChat(
   if (messages[messages.length - 1].role === "error") {
     return;
   }
+
+  // if saveSession is false we also exit early and don't store the new chat
+  if (!saveSession) return;
 
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
