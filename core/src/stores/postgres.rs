@@ -1193,6 +1193,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
+        latest_hash: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1214,23 +1215,64 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        // the `created` timestamp of the version specified by `latest_hash`
+        // (if `latest_hash` is `None`, then this is the latest version's `created` timestamp)
+        let latest_hash_created: i64 = match latest_hash {
+            Some(latest_hash) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT created FROM data_sources_documents \
+                        WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
+                    )
+                    .await?;
+                let r = c
+                    .query(&stmt, &[&data_source_row_id, &document_id, &latest_hash])
+                    .await?;
+                match r.len() {
+                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+                    1 => r[0].get(0),
+                    _ => unreachable!(),
+                }
+            }
+
+            // get the latest version's created timestamp
+            None => {
+                let stmt = c
+                    .prepare(
+                        "SELECT created FROM data_sources_documents \
+                        WHERE data_source = $1 AND document_id = $2 AND status = 'latest' LIMIT 1",
+                    )
+                    .await?;
+                let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+                match r.len() {
+                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+                    1 => r[0].get(0),
+                    _ => unreachable!(),
+                }
+            }
+        };
+
         let rows = match limit_offset {
             None => {
                 let stmt = c
                     .prepare(
                         "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 \
+                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
                         ORDER BY created DESC",
                     )
                     .await?;
-                c.query(&stmt, &[&data_source_row_id, &document_id]).await?
+                c.query(
+                    &stmt,
+                    &[&data_source_row_id, &document_id, &latest_hash_created],
+                )
+                .await?
             }
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
                         "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 \
-                        ORDER BY created DESC LIMIT $3 OFFSET $4",
+                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
+                        ORDER BY created DESC LIMIT $4 OFFSET $5",
                     )
                     .await?;
                 c.query(
@@ -1238,6 +1280,7 @@ impl Store for PostgresStore {
                     &[
                         &data_source_row_id,
                         &document_id,
+                        &latest_hash_created,
                         &(limit as i64),
                         &(offset as i64),
                     ],
