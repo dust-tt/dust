@@ -193,6 +193,22 @@ export const DustProdActionRegistry: {
       },
     },
   },
+  "extract-events": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "edf70ecf98",
+      appHash:
+        "c7ba630f14bd8f54a95e84b887bdb8a888fb911e4cf945ea017e3d877e332c16",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-4-0613",
+        use_cache: false,
+        function_call: "extract_events",
+      },
+    },
+  },
 };
 
 export function cloneBaseConfig(config: { [model: string]: any }) {

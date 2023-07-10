@@ -4,14 +4,16 @@ import {
   documentTrackerSuggestChangesPostUpsertHook,
   documentTrackerUpdateTrackedDocumentsPostUpsertHook,
 } from "@app/post_upsert_hooks/hooks/document_tracker";
+import { extractEventPostUpsertHook } from "@app/post_upsert_hooks/hooks/extract_event";
 
 export const POST_UPSERT_HOOK_TYPES = [
   "document_tracker_update_tracked_documents",
   "document_tracker_suggest_changes",
+  "extract_event",
 ] as const;
 export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 
-// asyc function that will run in a temporal workflow
+// async function that will run in a temporal workflow
 // can be expensive to runs
 export type PostUpsertHookFunction = (
   dataSourceName: string,
@@ -52,6 +54,7 @@ export type PostUpsertHook = {
 export const POST_UPSERT_HOOKS = [
   documentTrackerUpdateTrackedDocumentsPostUpsertHook,
   documentTrackerSuggestChangesPostUpsertHook,
+  extractEventPostUpsertHook,
 ];
 
 export const POST_UPSERT_HOOK_BY_TYPE: Record<

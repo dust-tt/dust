@@ -366,7 +366,7 @@ The Dust team`,
   },
 };
 
-async function getDatasource(
+export async function getDatasource(
   dataSourceName: string,
   workspaceId: string
 ): Promise<DataSource> {
