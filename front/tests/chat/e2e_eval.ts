@@ -2,12 +2,19 @@
  * Run an eval of our chat app with a test set of questions See:
  * https://www.notion.so/dust-tt/Design-Doc-Chat-Eval-0b849d4c66564f1e9c0c31d537c96f78
  *
+ * Use `--verbose` to print the successes as well as the failures Usage: from
+ * front directory `./admin/eval.sh [--verbose] [--n NUMBER_OF_QUESTIONS]`
  *
- * By default, runs on all questions. Use `--n NUMBER_OF_QUESTIONS` to change that (e.g. smaller evals)
- * Use `--verbose` to print the successes as well as the failures
- * Usage: from front directory
- * `./admin/eval.sh [--verbose] [--n NUMBER_OF_QUESTIONS]`
+ * By default, runs on all questions. Use `--n NUMBER_OF_QUESTIONS` to change
+ * that (e.g. smaller evals). This is to allow fast testing of the eval code
  *
+ * As the eval code may need to change over time and has been written with the
+ * intention of being reused for other kinds of chat evals, the ability to not
+ * run it on all questions is useful, especially since the questions test set is
+ * likely to become sizeable
+ *
+ * The chat sessions created by the eval are not saved in the database, to avoid
+ * flooding the database with test data that can be considered noisy.
  *
  */
 
@@ -32,7 +39,7 @@ type ChatEvalInputType = {
 
 type EvalResultType = {
   rule: string;
-  rule_respected: string;
+  rule_respected: "YES" | "NO" | "UNCLEAR";
   explanation?: string;
 };
 
@@ -41,8 +48,8 @@ async function chatEval(
   verbose = false
 ) {
   /* Auth */
-  const workspacesId = process.env.LOCALHOST_WORKSPACE_ID as string;
-  const auth = await Authenticator.internalBuilderForWorkspace(workspacesId);
+  const workspaceId = process.env.LOCALHOST_WORKSPACE_ID as string;
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Invalid workspace");
@@ -58,7 +65,7 @@ async function chatEval(
         filter: null,
         timeZone: "Europe/Paris",
       },
-      false
+      false // the chat session is not saved
     );
     let answer = undefined;
     for await (const event of chatRes) {
@@ -133,26 +140,26 @@ async function main() {
   const chatEvalResults = await chatEval(numberOfQuestions, verbose);
 
   /* count the number of successes */
-  const successfulQuestion = (r: EvalResultType[]) => {
+  const isSuccessfulQuestion = (r: EvalResultType[]) => {
     return r.reduce((acc, r) => {
       return acc && r.rule_respected === "YES";
     }, true);
   };
 
-  const successes = chatEvalResults.reduce((acc, r) => {
+  const totalSuccesses = chatEvalResults.reduce((acc, r) => {
     /** return 1 if for all elts of evalResult, rule_respected is 'YES'
      * 0 otherwise */
-    return acc + (successfulQuestion(r.evalResult) ? 1 : 0);
+    return acc + (isSuccessfulQuestion(r.evalResult) ? 1 : 0);
   }, 0);
   console.log(
     `FAIL: ${
-      chatEvalResults.length - successes
-    } and PASS: ${successes} out of ${chatEvalResults.length}`
+      chatEvalResults.length - totalSuccesses
+    } and PASS: ${totalSuccesses} out of ${chatEvalResults.length}`
   );
   /* Print the failures  (and the successes if verbose) */
   if (!verbose) console.log("FAILURES:");
   for (const result of chatEvalResults) {
-    if (!successfulQuestion(result.evalResult) || verbose) {
+    if (!isSuccessfulQuestion(result.evalResult) || verbose) {
       console.log("Question: " + result.question);
       console.log("Answer: " + result.answer);
       console.log(
@@ -163,8 +170,8 @@ async function main() {
   }
   console.log(
     `FAIL: ${
-      chatEvalResults.length - successes
-    } and PASS: ${successes} out of ${chatEvalResults.length}`
+      chatEvalResults.length - totalSuccesses
+    } and PASS: ${totalSuccesses} out of ${chatEvalResults.length}`
   );
 }
 main().catch((err) => {
