@@ -613,7 +613,7 @@ export async function reportInitialSyncProgressActivity(
   await reportInitialSyncProgress(parseInt(connectorId), progress);
 }
 
-async function getUserName(
+export async function getUserName(
   slackUserId: string,
   connectorId: string,
   slackClient: WebClient

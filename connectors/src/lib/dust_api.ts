@@ -1,26 +1,12 @@
 import { createParser } from "eventsource-parser";
-import fetch from "node-fetch";
 
-import { Err, Ok, Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 
-const { DUST_API = "https://dust.tt" } = process.env;
+type DataSourceVisibility = "public" | "private";
 
-export type DataSourceVisibility = "public" | "private";
-
-export type RoleType = "admin" | "builder" | "user" | "none";
-
-export type WorkspaceType = {
-  id: number;
-  uId: string;
-  sId: string;
-  name: string;
-  allowedDomain: string | null;
-  role: RoleType;
-};
-
-export type DataSourceType = {
+type DataSourceType = {
   name: string;
   description?: string;
   visibility: DataSourceVisibility;
@@ -31,23 +17,14 @@ export type DataSourceType = {
   userUpsertable: boolean;
 };
 
-export type DustAPIErrorResponse = {
+const { DUST_API = "https://dust.tt" } = process.env;
+
+type DustAPIErrorResponse = {
   type: string;
   message: string;
 };
-export type DustAPIResponse<T> = Result<T, DustAPIErrorResponse>;
 
-export type DustAppType = {
-  workspaceId: string;
-  appId: string;
-  appHash: string;
-};
-
-export type DustAppConfigType = {
-  [key: string]: any;
-};
-
-export type DustAppRunErrorEvent = {
+type DustAppRunErrorEvent = {
   type: "error";
   content: {
     code: string;
@@ -55,95 +32,79 @@ export type DustAppRunErrorEvent = {
   };
 };
 
-export type DustAppRunRunStatusEvent = {
-  type: "run_status";
-  content: {
-    status: "running" | "succeeded" | "errored";
-    run_id: string;
-  };
-};
-
-export type DustAppRunBlockStatusEvent = {
-  type: "block_status";
-  content: {
-    block_type: string;
-    name: string;
-    status: "running" | "succeeded" | "errored";
-    success_count: number;
-    error_count: number;
-  };
-};
-
-export type DustAppRunBlockExecutionEvent = {
-  type: "block_execution";
-  content: {
-    block_type: string;
-    block_name: string;
-    execution: {
-      value: any | null;
-      error: string | null;
-      meta: any | null;
-    }[][];
-  };
-};
-
-export type DustAppRunFinalEvent = {
-  type: "final";
-};
-
-export type DustAppRunTokensEvent = {
-  type: "tokens";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    tokens: {
-      text: string;
-      tokens?: string[];
-      logprobs?: number[];
-    };
-  };
-};
-
-export type DustAppRunFunctionCallEvent = {
-  type: "function_call";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    function_call: {
-      name: string;
-    };
-  };
-};
-
-export type DustAppRunFunctionCallArgumentsTokensEvent = {
-  type: "function_call_arguments_tokens";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    tokens: {
-      text: string;
-    };
-  };
-};
-
-export type DustAPICredentials = {
+type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
+};
+
+type ChatRetrievedDocumentType = {
+  dataSourceId: string;
+  sourceUrl: string;
+  documentId: string;
+  timestamp: string;
+  tags: string[];
+  score: number;
+  chunks: {
+    text: string;
+    offset: number;
+    score: number;
+  }[];
+};
+
+type MessageFeedbackStatus = "positive" | "negative" | null;
+
+type MessageRole = "user" | "retrieval" | "assistant" | "error";
+type ChatMessageType = {
+  sId: string;
+  role: MessageRole;
+  message?: string; // for `user`, `assistant` and `error` messages
+  retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
+  query?: string; // for `retrieval` messages (not persisted)
+  feedback?: MessageFeedbackStatus;
+};
+
+type ChatSessionType = {
+  id: number;
+  userId: number;
+  created: number;
+  sId: string;
+  title?: string;
+  messages?: ChatMessageType[];
+};
+
+// Event sent when the session is initially created.
+type ChatSessionCreateEvent = {
+  type: "chat_session_create";
+  session: ChatSessionType;
+};
+
+// Event sent when we know what will be the type of the next message. It is sent initially when the
+// user message is created for consistency and then each time we know we're going for a retrieval or
+// an assistant response.
+type ChatMessageTriggerEvent = {
+  type: "chat_message_trigger";
+  role: MessageRole;
+  // We might want to add some data here in the future e.g including
+  // information about the query being used in the case of retrieval.
+};
+
+// Event sent once the message is fully constructed.
+type ChatMessageCreateEvent = {
+  type: "chat_message_create";
+  message: ChatMessageType;
+};
+
+// Event sent when receiving streamed response from the model.
+type ChatMessageTokensEvent = {
+  type: "chat_message_tokens";
+  messageId: string;
+  text: string;
+};
+
+// Event sent when the session is updated (eg title is set).
+export type ChatSessionUpdateEvent = {
+  type: "chat_session_update";
+  session: ChatSessionType;
 };
 
 /**
@@ -152,47 +113,22 @@ export type DustAPICredentials = {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-async function processStreamedRunResponse(res: Response): Promise<
-  DustAPIResponse<{
-    eventStream: AsyncGenerator<
-      | DustAppRunErrorEvent
-      | DustAppRunRunStatusEvent
-      | DustAppRunBlockStatusEvent
-      | DustAppRunBlockExecutionEvent
-      | DustAppRunTokensEvent
-      | DustAppRunFunctionCallEvent
-      | DustAppRunFunctionCallArgumentsTokensEvent
-      | DustAppRunFinalEvent,
-      void,
-      unknown
-    >;
-    dustRunId: Promise<string>;
-  }>
-> {
+export async function processStreamedChatResponse(res: Response) {
   if (!res.ok || !res.body) {
     return new Err({
       type: "dust_api_error",
-      message: `Error running streamed app: status_code=${res.status}`,
+      message: `Error running streamed app: status_code=${
+        res.status
+      }  - message=${await res.text()}`,
     });
   }
 
-  let hasRunId = false;
-  let rejectDustRunIdPromise: (err: Error) => void;
-  let resolveDustRunIdPromise: (runId: string) => void;
-  const dustRunIdPromise = new Promise<string>((resolve, reject) => {
-    rejectDustRunIdPromise = reject;
-    resolveDustRunIdPromise = resolve;
-  });
-
   let pendingEvents: (
-    | DustAppRunErrorEvent
-    | DustAppRunRunStatusEvent
-    | DustAppRunBlockStatusEvent
-    | DustAppRunBlockExecutionEvent
-    | DustAppRunTokensEvent
-    | DustAppRunFunctionCallEvent
-    | DustAppRunFunctionCallArgumentsTokensEvent
-    | DustAppRunFinalEvent
+    | ChatMessageTriggerEvent
+    | ChatSessionCreateEvent
+    | ChatMessageCreateEvent
+    | ChatMessageTokensEvent
+    | ChatSessionUpdateEvent
   )[] = [];
 
   const parser = createParser((event) => {
@@ -202,67 +138,26 @@ async function processStreamedRunResponse(res: Response): Promise<
           const data = JSON.parse(event.data);
 
           switch (data.type) {
-            case "error": {
-              pendingEvents.push({
-                type: "error",
-                content: {
-                  code: data.content.code,
-                  message: data.content.message,
-                },
-              } as DustAppRunErrorEvent);
+            case "chat_session_create": {
+              pendingEvents.push(data as ChatSessionCreateEvent);
               break;
             }
-            case "run_status": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
+            case "chat_message_trigger": {
+              pendingEvents.push(data as ChatMessageTriggerEvent);
               break;
             }
-            case "block_status": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
+            case "chat_message_create": {
+              pendingEvents.push(data as ChatMessageCreateEvent);
               break;
             }
-            case "block_execution": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
+            case "chat_message_tokens": {
+              pendingEvents.push(data as ChatMessageTokensEvent);
               break;
             }
-            case "tokens": {
-              pendingEvents.push({
-                type: "tokens",
-                content: data.content,
-              } as DustAppRunTokensEvent);
+            case "chat_session_update": {
+              pendingEvents.push(data as ChatSessionUpdateEvent);
               break;
             }
-            case "function_call": {
-              pendingEvents.push({
-                type: "function_call",
-                content: data.content,
-              } as DustAppRunFunctionCallEvent);
-              break;
-            }
-            case "function_call_arguments_tokens": {
-              pendingEvents.push({
-                type: "function_call_arguments_tokens",
-                content: data.content,
-              } as DustAppRunFunctionCallArgumentsTokensEvent);
-              break;
-            }
-            case "final": {
-              pendingEvents.push({
-                type: "final",
-              } as DustAppRunFinalEvent);
-            }
-          }
-          if (data.content?.run_id && !hasRunId) {
-            hasRunId = true;
-            resolveDustRunIdPromise(data.content.run_id);
           }
         } catch (err) {
           logger.error({ error: err }, "Failed parsing chunk from Dust API");
@@ -286,13 +181,6 @@ async function processStreamedRunResponse(res: Response): Promise<
         }
         pendingEvents = [];
       }
-      if (!hasRunId) {
-        // once the stream is entirely consumed, if we haven't received a run id, reject the promise
-        setImmediate(() => {
-          logger.error("No run id received.");
-          rejectDustRunIdPromise(new Error("No run id received"));
-        });
-      }
     } catch (e) {
       yield {
         type: "error",
@@ -312,7 +200,7 @@ async function processStreamedRunResponse(res: Response): Promise<
     }
   };
 
-  return new Ok({ eventStream: streamEvents(), dustRunId: dustRunIdPromise });
+  return new Ok({ eventStream: streamEvents() });
 }
 
 export class DustAPI {
@@ -330,92 +218,12 @@ export class DustAPI {
   }
 
   /**
-   * This functions talks directly to the Dust production API to create a streamed run.
-   *
-   * @param app DustAppType the app to run streamed
-   * @param config DustAppConfigType the app config
-   * @param inputs any[] the app inputs
-   */
-  async runAppStreamed(
-    app: DustAppType,
-    config: DustAppConfigType,
-    inputs: any[]
-  ): Promise<
-    DustAPIResponse<{
-      eventStream: AsyncGenerator<
-        | DustAppRunErrorEvent
-        | DustAppRunRunStatusEvent
-        | DustAppRunBlockStatusEvent
-        | DustAppRunBlockExecutionEvent
-        | DustAppRunTokensEvent
-        | DustAppRunFunctionCallEvent
-        | DustAppRunFunctionCallArgumentsTokensEvent
-        | DustAppRunFinalEvent,
-        void,
-        unknown
-      >;
-      dustRunId: Promise<string>;
-    }>
-  > {
-    const res = await fetch(
-      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-        },
-        body: JSON.stringify({
-          specification_hash: app.appHash,
-          config: config,
-          stream: true,
-          blocking: false,
-          inputs: inputs,
-        }),
-      }
-    );
-
-    return processStreamedRunResponse(res);
-  }
-
-  async runApp<T>(
-    app: DustAppType,
-    config: DustAppConfigType,
-    inputs: any[]
-  ): Promise<T> {
-    const body = {
-      specification_hash: app.appHash,
-      config: config,
-      stream: false,
-      blocking: true,
-      inputs: inputs,
-    };
-    const res = await fetch(
-      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const jsone = (await res.json()) as T;
-
-    return jsone;
-  }
-
-  /**
    * This actions talks to the Dust production API to retrieve the list of data sources of the
    * specified workspace id.
    *
    * @param workspaceId string the workspace id to fetch data sources for
    */
-  async getDataSources(
-    workspaceId: string
-  ): Promise<DustAPIResponse<DataSourceType[]>> {
+  async getDataSources(workspaceId: string) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${workspaceId}/data_sources`,
       {
@@ -428,56 +236,27 @@ export class DustAPI {
 
     const json = await res.json();
     if (json.error) {
-      return new Err(json.error);
+      return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.data_sources);
+    return new Ok(json.data_sources as DataSourceType[]);
   }
-}
 
-/**
- * This function is intended to be used by the client directly. It proxies through the local
- * `front` instance to execute an action while injecting the system API key of the owner. This is
- * required as we can't push the system API key to the client to talk direclty to Dust production.
- *
- * See /front/pages/api/w/[wId]/use/actions/[action]/index.ts
- *
- * @param owner WorkspaceType the owner workspace running the action
- * @param action string the action name
- * @param config DustAppConfigType the action config
- * @param inputs any[] the action inputs
- */
-export async function runActionStreamed(
-  owner: WorkspaceType,
-  action: string,
-  config: DustAppConfigType,
-  inputs: any[]
-): Promise<
-  DustAPIResponse<{
-    eventStream: AsyncGenerator<
-      | DustAppRunErrorEvent
-      | DustAppRunRunStatusEvent
-      | DustAppRunBlockStatusEvent
-      | DustAppRunBlockExecutionEvent
-      | DustAppRunTokensEvent
-      | DustAppRunFunctionCallEvent
-      | DustAppRunFunctionCallArgumentsTokensEvent
-      | DustAppRunFinalEvent,
-      void,
-      unknown
-    >;
-    dustRunId: Promise<string>;
-  }>
-> {
-  const res = await fetch(`/api/w/${owner.sId}/use/actions/${action}`, {
-    method: "POST",
-    headers: {
+  async newChatStreamed(userMessage: string, timezone: string) {
+    const url = `${DUST_API}/api/v1/w/${this.workspaceId()}/chats`;
+    const headers = {
       "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      config: config,
-      inputs: inputs,
-    }),
-  });
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
 
-  return processStreamedRunResponse(res);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        user_message: userMessage,
+        timezone: timezone,
+      }),
+    });
+
+    return processStreamedChatResponse(res);
+  }
 }

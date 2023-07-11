@@ -1,131 +1,121 @@
-import { DustAPI, DustAppType } from "@connectors/lib/dust_api";
-import { Connector } from "@connectors/lib/models";
-import { Err, Ok } from "@connectors/lib/result";
+import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
+import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import { Err, Ok, Result } from "@connectors/lib/result";
 
-export async function ask(message: string, connectorId: number) {
-  console.log("calling ask with message", message);
-  console.log("1");
-  const connector = await Connector.findByPk(connectorId);
-  console.log("2");
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  console.log("3");
-  connector.workspaceId = "0ec9852c2f";
-  const dustAPIClient = new DustAPI({
-    apiKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
+import {
+  getAccessToken,
+  getSlackClient,
+  getUserName,
+  whoAmI,
+} from "./temporal/activities";
+
+export async function botAnswerMessage(
+  message: string,
+  slackTeamId: string,
+  slackChannel: string,
+  slackUserId: string,
+  slackMessageTs: string
+): Promise<Result<ChatSessionUpdateEvent, Error>> {
+  const { DUST_API = "https://dust.tt" } = process.env;
+  const slackConfigurations = await SlackConfiguration.findAll({
+    where: {
+      slackTeamId: slackTeamId,
+    },
   });
-  console.log("4");
-  const dataSourcesRes = await dustAPIClient.getDataSources(
-    connector.workspaceId
-  );
-  console.log("5");
-  if (dataSourcesRes.isErr()) {
-    return new Err(dataSourcesRes.error);
+
+  if (slackConfigurations.length === 0) {
+    return new Err(
+      new Error(
+        `Failed to find slack configuration for Slack team id: ${slackTeamId}`
+      )
+    );
   }
-  console.log("6");
-  const dataSources = dataSourcesRes.value;
+  const slackConfig = slackConfigurations[0];
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find slack configuration for Slack team id: ${slackTeamId}`
+      )
+    );
+  }
+  const connector = await Connector.findByPk(slackConfig.connectorId);
+  if (!connector) {
+    return new Err(new Error("Failed to find connector"));
+  }
+  const accessToken = await getAccessToken(connector.connectionId);
+  const slackClient = getSlackClient(accessToken);
+  const slackUserInfo = await slackClient.users.info({
+    user: slackUserId,
+  });
+  if (!slackUserInfo.ok || !slackUserInfo.user) {
+    throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
+  }
+  const slackUser = slackUserInfo.user;
 
-  // console.log("found data sources", dataSources);
+  const c = new DustAPI({
+    workspaceId: connector.workspaceId,
+    apiKey: connector.workspaceAPIKey,
+  });
+  const mainMessage = await slackClient.chat.postMessage({
+    channel: slackChannel,
+    text: "_I am thinking..._",
+    thread_ts: slackMessageTs,
+    mrkdwn: true,
+  });
 
-  const retrievalApp: DustAppType = {
-    workspaceId: "78bda07b39",
-    appId: "0d7ab66fd2",
-    appHash: "63d4bea647370f23fa396dc59347cfbd92354bced26783c9a99812a8b1b14371",
-  };
-  const retrievalAppConfig = {
-    DATASOURCE: {
-      data_sources: dataSources.map((ds) => {
-        return { workspace_id: connector.workspaceId, data_source_id: ds.name };
-      }),
-      top_k: 8,
-      filter: { tags: null, timestamp: null },
-      use_cache: false,
-    },
-  };
-  const retrievalInput = {
-    messages: [
-      {
-        role: "user",
-        runAssistant: false,
-        runRetrieval: true,
-        message: message,
-      },
-    ],
-    userContext: {
-      timeZone: "Europe/Paris",
-      localeString: "en-US",
-    },
-  };
-  const retrivalRes = await dustAPIClient.runApp(
-    retrievalApp,
-    retrievalAppConfig,
-    [retrievalInput]
+  const matches = message.match(/<@[A-Z-0-9]+>/g);
+  if (matches) {
+    const mySlackUser = await whoAmI(accessToken);
+    for (const m of matches) {
+      const userId = m.replace(/<|@|>/g, "");
+      if (userId === mySlackUser) {
+        message = message.replace(m, "");
+      } else {
+        const userName = await getUserName(
+          userId,
+          connector.id.toString(),
+          slackClient
+        );
+        message = message.replace(m, `@${userName}`);
+      }
+    }
+  }
+  const chatRes = await c.newChatStreamed(
+    message,
+    slackUser.tz ? slackUser.tz : "Europe/Paris"
   );
-  const retrievals = retrivalRes.run.results[0][0].value.retrievals;
-  // console.log("retrivals are **********", retrievals);
+  if (chatRes.isErr()) {
+    return new Err(new Error(chatRes.error.message));
+  }
+  const chat = chatRes.value;
+  let fullAnswer = "";
+  let lastSentDate = new Date();
+  for await (const event of chat.eventStream) {
+    console.log(event);
+    if (event.type === "chat_message_tokens") {
+      fullAnswer += event.text;
+      if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
+        continue;
+      }
+      lastSentDate = new Date();
+      await slackClient.chat.update({
+        channel: slackChannel,
+        text: fullAnswer,
+        ts: mainMessage.ts as string,
+        thread_ts: slackMessageTs,
+      });
+    } else if (event.type === "chat_session_update") {
+      const finalAnswer = `${fullAnswer}\n\n <${DUST_API}/w/${connector.workspaceId}/u/chat/${event.session.sId}|Continue the conversation on Dust.tt>`;
+      await slackClient.chat.update({
+        channel: slackChannel,
+        text: finalAnswer,
+        ts: mainMessage.ts as string,
+        thread_ts: slackMessageTs,
+      });
 
-  const chatApp: DustAppType = {
-    workspaceId: "78bda07b39",
-    appId: "0052be4be7",
-    appHash: "2e9a8dbea83076c23d235f1dce273570542c4f11e9a0e7decefa9c26c78654e9",
-  };
-  const chatAppConfig = {
-    MODEL: {
-      provider_id: "openai",
-      model_id: "gpt-4-0613",
-      function_call: "auto",
-      use_cache: true,
-    },
-  };
-  const chatInput = {
-    messages: [
-      {
-        role: "user",
-        runRetrieval: true,
-        runAssistant: true,
-        message: message,
-      },
-      {
-        role: "retrieval",
-        retrievals: retrievals,
-      },
-    ],
-    context: {
-      user: {
-        username: "spolu",
-        full_name: "Stanislas Polu",
-      },
-      workspace: "dust",
-      date_today: "2023-06-02",
-    },
-  };
-  const chatRes = await dustAPIClient.runApp(chatApp, chatAppConfig, [
-    chatInput,
-  ]);
-  // console.log("chatRes", JSON.stringify(chatRes, null, 2));
-  const meta = retrievalsToText(retrievals);
-  // console.log("~~~~~~~~~~~~~~~~ meta", meta);
-  const answer = `${chatRes.run.results[0][0].value.message}`;
+      return new Ok(event);
+    }
+  }
 
-  return new Ok({ text: answer, retrival: meta });
-
-  // console.log("retrived", retrivalRes.run.results[0][0].value.retrievals);
-}
-
-function retrievalsToText(
-  retrievals: {
-    sourceUrl: string;
-    tags: string[];
-  }[]
-) {
-  return retrievals
-    .map((r) => {
-      return `:link: ${r.sourceUrl} (${r.tags
-        .filter((t) => t.startsWith("title"))
-        .map((t) => t.split(":")[1])
-        .join(", ")})`;
-    })
-    .join("\n");
+  return new Err(new Error("Failed to get the final answer from Dust"));
 }

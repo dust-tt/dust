@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 
-import { ask } from "@connectors/connectors/slack/bot";
+import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import {
   getAccessToken,
-  getSlackClient,
   whoAmI,
 } from "@connectors/connectors/slack/temporal/activities";
 import {
@@ -83,81 +82,51 @@ const _webhookSlackAPIHandler = async (
 
     switch (req.body.event?.type) {
       case "app_mention": {
-        res.status(200).send();
-        const message = req.body.event.text;
-        if (slackConfigurations[0]) {
-          const connector = await Connector.findByPk(
-            slackConfigurations[0].connectorId
-          );
-          if (!connector) {
-            return apiError(req, res, {
-              api_error: {
-                type: "connector_not_found",
-                message: `Connector ${slackConfigurations[0].connectorId} not found`,
-              },
-              status_code: 404,
-            });
-          }
-          if (!req.body.event.channel) {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: "Missing channel in request body for message event",
-              },
-              status_code: 400,
-            });
-          }
-
-          if (req.body.event.message?.bot_id || req.body.event.bot_id) {
-            // ignore messages from bots
-            logger.info("Ignoring message from bot");
-            return res.status(200).send();
-          }
-          const accessToken = await getAccessToken(connector.connectionId);
-
-          const slackClient = getSlackClient(accessToken);
-          await slackClient.chat.postEphemeral({
-            channel: req.body.event.channel,
-            text: "I working on it...",
-            user: req.body.event.user as string,
+        const slackMessage = req.body.event.text;
+        const slackTeamId = req.body.team_id;
+        const slackChannel = req.body.event.channel;
+        const slackUserId = req.body.event.user;
+        const slackMessageTs = req.body.event.ts;
+        if (
+          !slackMessage ||
+          !slackTeamId ||
+          !slackChannel ||
+          !slackUserId ||
+          !slackMessageTs
+        ) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: "Missing required fields in request body",
+            },
+            status_code: 400,
           });
-          console.log("sent ephemeral message!!!!!!!!!!!!!!");
-          const answer = await ask(
-            message,
-            slackConfigurations[0]?.connectorId
-          );
-          if (answer.isErr()) {
-            logger.error(
-              {
-                error: answer.error,
-                message,
-                connectorId: slackConfigurations[0]?.connectorId,
-              },
-              "Error while asking"
-            );
-            await slackClient.chat.postEphemeral({
-              channel: req.body.event.channel,
-              text: `I'm sorry, I'm having trouble answering your question. Please try again later.`,
-              user: req.body.event.user as string,
-            });
-            return;
-          }
-
-          await slackClient.chat.postMessage({
-            channel: req.body.event.channel,
-            text: answer.value.text,
-            thread_ts: req.body.event.ts,
-          });
-          await slackClient.chat.postMessage({
-            channel: req.body.event.channel,
-            text: answer.value.retrival,
-            thread_ts: req.body.event.ts,
-          });
-
-          return;
         }
 
-        return res.status(200).send();
+        // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
+        res.status(200).send();
+
+        const botRes = await botAnswerMessage(
+          slackMessage,
+          slackTeamId,
+          slackChannel,
+          slackUserId,
+          slackMessageTs
+        );
+        if (botRes.isErr()) {
+          logger.error(
+            {
+              error: botRes.error,
+              slackMessage,
+              slackTeamId,
+              slackChannel,
+              slackUserId,
+              slackMessageTs,
+            },
+            "Failed to answer to Slack message"
+          );
+        }
+        break;
       }
       /**
        * `message` handler.
