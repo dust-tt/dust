@@ -46,6 +46,7 @@
     "react-beforeunload": "^2.5.3",
     "react-dom": "^18.2.0",
     "react-icons": "^4.9.0",
+    "react-markdown": "^8.0.7",
     "react-p5": "^1.3.35",
     "react-textarea-autosize": "^8.4.0",
     "sequelize": "^6.31.0",

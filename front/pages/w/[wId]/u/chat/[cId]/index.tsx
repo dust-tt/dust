@@ -10,6 +10,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
+import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/AppLayout";
@@ -394,31 +395,33 @@ export function RetrievalsView({
   ) : null;
 }
 
-function formatMessageWithLinks(message: string): JSX.Element {
-  /* Format message by replacing markdown links with <Link/> elements*/
-  const linkRegex = /\[([^\]]*?)\]\((.*?)\)/g;
-  const matches = message.matchAll(linkRegex);
-  let lastIndex = 0;
-  const elements = [];
-  for (const match of matches) {
-    const [fullMatch, text, url] = match;
-    elements.push(message.slice(lastIndex, match.index));
-    elements.push(
-      <Link href={url} key={fullMatch} target="_blank">
-        <span className="text-blue-600 hover:underline">{text}</span>
-      </Link>
+function toMarkdown(message: ChatMessageType): JSX.Element {
+  // Avoid rendering the markdown all the time: only for assistant messages, and not while streaming
+  if (message.role === "assistant" && message.message) {
+    return (
+      <ReactMarkdown
+        className={classNames(
+          "[&_ol]:list-decimal [&_ol]:pl-4" /* ol */,
+          "[&_p]:mb-2" /* p */,
+          "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+        )}
+        components={{
+          a({ href, children }) {
+            return (
+              <Link href={href ? href : ""} target="_blank">
+                <span className="text-blue-600 hover:underline">
+                  {children}
+                </span>
+              </Link>
+            );
+          },
+        }}
+      >
+        {message.message || ""}
+      </ReactMarkdown>
     );
-    lastIndex =
-      match.index !== undefined ? match.index + fullMatch.length : lastIndex;
   }
-  elements.push(message.slice(lastIndex));
-  return (
-    <span>
-      {elements.map((e, i) => {
-        return <span key={i}>{e}</span>;
-      })}
-    </span>
-  );
+  return <span>{message.message}</span>;
 }
 
 export function MessageView({
@@ -470,11 +473,11 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word ml-2  flex flex-1 flex-col pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
-            {formatMessageWithLinks(message.message || "")}
+            {toMarkdown(message)}
           </div>
           {feedback && (
             <MessageFeedback
@@ -881,7 +884,10 @@ export default function AppChat({
     for await (const event of eventStream) {
       if (event.type === "tokens") {
         const message = assistantMessage.message + event.content.tokens.text;
-        setResponse({ ...assistantMessage, message: message });
+        setResponse({
+          ...assistantMessage,
+          message: message,
+        });
         assistantMessage.message = message;
       }
       if (event.type === "error") throw new Error(event.content.message);
