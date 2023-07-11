@@ -17,71 +17,21 @@ export async function getPreviousDocumentVersion({
   created: number;
 } | null> {
   const dataSource = await getDatasource(dataSourceName, workspaceId);
-
-  const limit = 20;
-  let offset = 0;
-  let totalPages: number | null = null;
-
-  // Core API returns versions in reverse chronological order
-  async function fetchNextDocumentVersionsPage() {
-    if (totalPages !== null && offset >= totalPages) {
-      return [];
-    }
-    const res = await CoreAPI.getDataSourceDocumentVersions(
-      dataSource.dustAPIProjectId,
-      dataSource.name,
-      documentId,
-      limit,
-      offset
-    );
-
-    if (res.isErr()) {
-      throw res.error;
-    }
-
-    offset += limit;
-    totalPages = totalPages || res.value.total;
-    return res.value.versions;
+  const versions = await CoreAPI.getDataSourceDocumentVersions(
+    dataSource.dustAPIProjectId,
+    dataSource.name,
+    documentId,
+    2,
+    0,
+    documentHash
+  );
+  if (versions.isErr()) {
+    throw versions.error;
   }
-
-  for (;;) {
-    const versions = await fetchNextDocumentVersionsPage();
-
-    if (versions.length === 0) {
-      break;
-    }
-
-    if (!documentHash) {
-      // return the penultimate version (if any)
-      if (versions.length > 1) {
-        return versions[1];
-      }
-      return null;
-    }
-
-    const indexOfHash = versions.findIndex((v) => v.hash === documentHash);
-
-    if (indexOfHash !== -1) {
-      // the reference hashis in this page
-      // we need the version before the hash (i.e the array element right after the hash)
-
-      if (versions.length > indexOfHash + 1) {
-        // the previous version is in the same page
-        return versions[indexOfHash + 1];
-      }
-
-      // the previous version, if any, is in the next page
-      const nextVersions = await fetchNextDocumentVersionsPage();
-      if (nextVersions.length > 0) {
-        return nextVersions[0];
-      }
-
-      // there are no more versions
-      return null;
-    }
+  if (versions.value.versions.length < 2) {
+    return null;
   }
-
-  return null;
+  return versions.value.versions[1];
 }
 
 export async function getDiffBetweenDocumentVersions({
