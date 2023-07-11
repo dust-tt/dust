@@ -508,16 +508,26 @@ export const CoreAPI = {
     dataSourceName: string,
     documentId: string,
     limit = 10,
-    offset = 0
+    offset = 0,
+    latest_hash?: string | null
   ): Promise<
     CoreAPIResponse<{
       document_versions: { hash: string; created: number }[];
     }>
   > {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    if (latest_hash) {
+      params.append("latest_hash", latest_hash);
+    }
+
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId
-      )}/versions?limit=${limit}&offset=${offset}`,
+      )}/versions?${params.toString()}`,
       {
         method: "GET",
       }

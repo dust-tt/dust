@@ -1263,6 +1263,8 @@ async fn data_sources_documents_update_tags(
 struct DataSourcesDocumentsVersionsListQuery {
     offset: usize,
     limit: usize,
+    // hash of the latest version to retrieve
+    latest_hash: Option<String>,
 }
 
 async fn data_sources_documents_versions_list(
@@ -1278,6 +1280,7 @@ async fn data_sources_documents_versions_list(
             &data_source_id,
             &document_id,
             Some((query.limit, query.offset)),
+            &query.latest_hash,
         )
         .await
     {

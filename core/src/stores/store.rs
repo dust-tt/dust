@@ -113,6 +113,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
+        latest_hash: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)>;
     async fn list_data_source_documents(
         &self,
@@ -403,7 +404,7 @@ pub const POSTGRES_TABLES: [&'static str; 11] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 13] = [
+pub const SQL_INDEXES: [&'static str; 16] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -433,4 +434,13 @@ pub const SQL_INDEXES: [&'static str; 13] = [
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_data_source_status_timestamp
        ON data_sources_documents (data_source, status, timestamp);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_data_sources_documents_data_source_document_id_hash
+       ON data_sources_documents (data_source, document_id, hash);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_data_sources_documents_data_source_document_id_status
+       ON data_sources_documents (data_source, document_id, status);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_data_sources_documents_data_source_document_id_created
+       ON data_sources_documents (data_source, document_id, created DESC);",
 ];

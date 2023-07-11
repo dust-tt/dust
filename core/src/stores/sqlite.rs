@@ -1203,6 +1203,7 @@ impl Store for SQLiteStore {
         _data_source_id: &str,
         _document_id: &str,
         _limit_offset: Option<(usize, usize)>,
+        _latest_hash_created: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         // not implemented for SQLite
         Err(anyhow!(
