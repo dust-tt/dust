@@ -11,44 +11,6 @@ export async function runPostUpsertHookActivity(
   dataSourceName: string,
   workspaceId: string,
   documentId: string,
-  dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: PostUpsertHookType
-) {
-  const localLogger = logger.child({
-    workspaceId,
-    dataSourceName,
-    documentId,
-    dataSourceConnectorProvider,
-    hookType,
-  });
-
-  const hook = POST_UPSERT_HOOK_BY_TYPE[hookType];
-  if (!hook) {
-    localLogger.error("Unknown post upsert hook type");
-    throw new Error(`Unknown post upsert hook type ${hookType}`);
-  }
-
-  localLogger.info("Running post upsert hook function.");
-  const documentText = await getDocText(
-    dataSourceName,
-    workspaceId,
-    documentId
-  );
-  await hook.fn({
-    dataSourceName,
-    workspaceId,
-    documentId,
-    documentText,
-    documentHash: "No Hash",
-    dataSourceConnectorProvider,
-  });
-  localLogger.info("Ran post upsert hook function.");
-}
-
-export async function runPostUpsertHookActivityV2(
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: PostUpsertHookType
