@@ -248,7 +248,7 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
 
     const diffText = documentDiff
       .filter(({ type }) => type !== "equal")
-      .map(({ value, type }) => `**${type}**:\n${value}||`)
+      .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
       .join("\n");
 
     const actionResult = await callDocTrackerAction(workspaceId, diffText);
