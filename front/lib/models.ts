@@ -1028,6 +1028,7 @@ export class EventSchema extends Model<
   declare marker: string;
   declare description?: string;
   declare status: "active" | "disabled";
+  declare debug?: boolean;
   declare properties: {
     name: string;
     type: number[] | Date[] | string[];
@@ -1065,6 +1066,11 @@ EventSchema.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "active",
+    },
+    debug: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
     properties: {
       type: DataTypes.JSONB,
