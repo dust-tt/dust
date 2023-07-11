@@ -484,10 +484,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      await CoreAPI.deleteDataSource(
-        dataSource.dustAPIProjectId,
-        dataSource.name
-      );
+      await CoreAPI.deleteDataSource({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+      });
 
       await dataSource.destroy();
 

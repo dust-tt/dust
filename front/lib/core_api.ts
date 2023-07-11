@@ -80,7 +80,9 @@ export type CoreAPIRun = {
   traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
 };
 
-type CoreAPICreateRunPayload = {
+type CoreAPICreateRunParams = {
+  projectId: string;
+  runAsWorkspaceId: string;
   runType: RunRunType;
   specification?: string | null;
   specificationHash?: string | null;
@@ -98,21 +100,6 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-type CoreAPICreateDataSourcePayload = {
-  dataSourceId: string;
-  config: CoreAPIDataSourceConfig;
-  credentials: CredentialsType;
-};
-
-type CoreAPIUpsertDocumentPayload = {
-  documentId: string;
-  timestamp?: number | null;
-  tags: string[];
-  sourceUrl?: string | null;
-  text: string;
-  credentials: CredentialsType;
-};
-
 export const CoreAPI = {
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await fetch(`${CORE_API}/projects`, {
@@ -121,9 +108,11 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDatasets(
-    projectId: string
-  ): Promise<CoreAPIResponse<GetDatasetsResponse>> {
+  async getDatasets({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<GetDatasetsResponse>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
       method: "GET",
       headers: {
@@ -134,11 +123,15 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDataset(
-    projectId: string,
-    datasetName: string,
-    datasetHash: string
-  ): Promise<CoreAPIResponse<GetDatasetResponse>> {
+  async getDataset({
+    projectId,
+    datasetName,
+    datasetHash,
+  }: {
+    projectId: string;
+    datasetName: string;
+    datasetHash: string;
+  }): Promise<CoreAPIResponse<GetDatasetResponse>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/datasets/${datasetName}/${datasetHash}`,
       {
@@ -152,11 +145,15 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async createDataset(
-    projectId: string,
-    datasetId: string,
-    data: any[]
-  ): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
+  async createDataset({
+    projectId,
+    datasetId,
+    data,
+  }: {
+    projectId: string;
+    datasetId: string;
+    data: any[];
+  }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
       method: "POST",
       headers: {
@@ -171,9 +168,11 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async cloneProject(
-    projectId: string
-  ): Promise<CoreAPIResponse<{ project: Project }>> {
+  async cloneProject({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/clone`, {
       method: "POST",
     });
@@ -181,11 +180,17 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async createRun(
-    projectId: string,
-    runAsWorkspaceId: string,
-    payload: CoreAPICreateRunPayload
-  ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+  async createRun({
+    projectId,
+    runAsWorkspaceId,
+    runType,
+    specification,
+    specificationHash,
+    datasetId,
+    inputs,
+    config,
+    credentials,
+  }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/runs`, {
       method: "POST",
       headers: {
@@ -193,24 +198,30 @@ export const CoreAPI = {
         "X-Dust-Workspace-Id": runAsWorkspaceId,
       },
       body: JSON.stringify({
-        run_type: payload.runType,
-        specification: payload.specification,
-        specification_hash: payload.specificationHash,
-        dataset_id: payload.datasetId,
-        inputs: payload.inputs,
-        config: payload.config,
-        credentials: payload.credentials,
+        run_type: runType,
+        specification: specification,
+        specification_hash: specificationHash,
+        dataset_id: datasetId,
+        inputs: inputs,
+        config: config,
+        credentials: credentials,
       }),
     });
 
     return _resultFromResponse(response);
   },
 
-  async createRunStream(
-    projectId: string,
-    runAsWorkspaceId: string,
-    payload: CoreAPICreateRunPayload
-  ): Promise<
+  async createRunStream({
+    projectId,
+    runAsWorkspaceId,
+    runType,
+    specification,
+    specificationHash,
+    datasetId,
+    inputs,
+    config,
+    credentials,
+  }: CoreAPICreateRunParams): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
       dustRunId: Promise<string>;
@@ -225,13 +236,13 @@ export const CoreAPI = {
           "X-Dust-Workspace-Id": runAsWorkspaceId,
         },
         body: JSON.stringify({
-          run_type: payload.runType,
-          specification: payload.specification,
-          specification_hash: payload.specificationHash,
-          dataset_id: payload.datasetId,
-          inputs: payload.inputs,
-          config: payload.config,
-          credentials: payload.credentials,
+          run_type: runType,
+          specification: specification,
+          specification_hash: specificationHash,
+          dataset_id: datasetId,
+          inputs: inputs,
+          config: config,
+          credentials: credentials,
         }),
       }
     );
@@ -298,10 +309,13 @@ export const CoreAPI = {
     return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
   },
 
-  async getRunsBatch(
-    projectId: string,
-    dustRunIds: string[]
-  ): Promise<CoreAPIResponse<{ runs: { [key: string]: CoreAPIRun } }>> {
+  async getRunsBatch({
+    projectId,
+    dustRunIds,
+  }: {
+    projectId: string;
+    dustRunIds: string[];
+  }): Promise<CoreAPIResponse<{ runs: { [key: string]: CoreAPIRun } }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/batch`,
       {
@@ -318,10 +332,13 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getRun(
-    projectId: string,
-    runId: string
-  ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+  async getRun({
+    projectId,
+    runId,
+  }: {
+    projectId: string;
+    runId: string;
+  }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/${runId}`,
       {
@@ -332,10 +349,13 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getRunStatus(
-    projectId: string,
-    runId: string
-  ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+  async getRunStatus({
+    projectId,
+    runId,
+  }: {
+    projectId: string;
+    runId: string;
+  }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/${runId}/status`,
       {
@@ -346,10 +366,13 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getSpecification(
-    projectId: string,
-    specificationHash: string
-  ): Promise<
+  async getSpecification({
+    projectId,
+    specificationHash,
+  }: {
+    projectId: string;
+    specificationHash: string;
+  }): Promise<
     CoreAPIResponse<{ specification: { created: number; data: string } }>
   > {
     const response = await fetch(
@@ -362,14 +385,19 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getRunBlock(
-    projectId: string,
-    runId: string,
-    runType: BlockType,
-    blockName: string
-  ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+  async getRunBlock({
+    projectId,
+    runId,
+    blockType,
+    blockName,
+  }: {
+    projectId: string;
+    runId: string;
+    blockType: BlockType;
+    blockName: string;
+  }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${runType}/${blockName}`,
+      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${blockType}/${blockName}`,
       {
         method: "GET",
       }
@@ -378,10 +406,17 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async createDataSource(
-    projectId: string,
-    payload: CoreAPICreateDataSourcePayload
-  ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+  async createDataSource({
+    projectId,
+    dataSourceId,
+    config,
+    credentials,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    config: CoreAPIDataSourceConfig;
+    credentials: CredentialsType;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources`,
       {
@@ -390,9 +425,9 @@ export const CoreAPI = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          data_source_id: payload.dataSourceId,
-          config: payload.config,
-          credentials: payload.credentials,
+          data_source_id: dataSourceId,
+          config: config,
+          credentials: credentials,
         }),
       }
     );
@@ -400,10 +435,13 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async deleteDataSource(
-    projectId: string,
-    dataSourceName: string
-  ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+  async deleteDataSource({
+    projectId,
+    dataSourceName,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}`,
       {
@@ -456,12 +494,17 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDataSourceDocuments(
-    projectId: string,
-    dataSourceName: string,
-    limit: number,
-    offset: number
-  ): Promise<
+  async getDataSourceDocuments({
+    projectId,
+    dataSourceName,
+    limit,
+    offset,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    limit: number;
+    offset: number;
+  }): Promise<
     CoreAPIResponse<{
       offset: number;
       limit: number;
@@ -479,12 +522,17 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDataSourceDocument(
-    projectId: string,
-    dataSourceName: string,
-    documentId: string,
-    versionHash?: string | null
-  ): Promise<
+  async getDataSourceDocument({
+    projectId,
+    dataSourceName,
+    documentId,
+    versionHash,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+    versionHash?: string | null;
+  }): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
       data_source: CoreAPIDataSource;
@@ -503,14 +551,21 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDataSourceDocumentVersions(
-    projectId: string,
-    dataSourceName: string,
-    documentId: string,
+  async getDataSourceDocumentVersions({
+    projectId,
+    dataSourceName,
+    documentId,
+    latest_hash,
     limit = 10,
     offset = 0,
-    latest_hash?: string | null
-  ): Promise<
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+    limit: number;
+    offset: number;
+    latest_hash?: string | null;
+  }): Promise<
     CoreAPIResponse<{
       document_versions: { hash: string; created: number }[];
     }>
@@ -536,11 +591,25 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async upsertDataSourceDocument(
-    projectId: string,
-    dataSourceName: string,
-    payload: CoreAPIUpsertDocumentPayload
-  ): Promise<
+  async upsertDataSourceDocument({
+    projectId,
+    dataSourceName,
+    documentId,
+    timestamp,
+    tags,
+    sourceUrl,
+    text,
+    credentials,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+    timestamp?: number | null;
+    tags: string[];
+    sourceUrl?: string | null;
+    text: string;
+    credentials: CredentialsType;
+  }): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
       data_source: CoreAPIDataSource;
@@ -554,12 +623,12 @@ export const CoreAPI = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          document_id: payload.documentId,
-          timestamp: payload.timestamp,
-          text: payload.text,
-          tags: payload.tags,
-          source_url: payload.sourceUrl,
-          credentials: payload.credentials,
+          document_id: documentId,
+          timestamp: timestamp,
+          text: text,
+          tags: tags,
+          source_url: sourceUrl,
+          credentials: credentials,
         }),
       }
     );
@@ -567,22 +636,26 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async updateDataSourceDocumentTags(
-    projectId: string,
-    dataSourceName: string,
-    payload: {
-      documentId: string;
-      add_tags?: string[];
-      remove_tags?: string[];
-    }
-  ): Promise<
+  async updateDataSourceDocumentTags({
+    projectId,
+    dataSourceName,
+    documentId,
+    addTags,
+    removeTags,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+    addTags?: string[];
+    removeTags?: string[];
+  }): Promise<
     CoreAPIResponse<{
       data_source: CoreAPIDataSource;
     }>
   > {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        payload.documentId
+        documentId
       )}/tags`,
       {
         method: "PATCH",
@@ -590,8 +663,8 @@ export const CoreAPI = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          add_tags: payload.add_tags,
-          remove_tags: payload.remove_tags,
+          add_tags: addTags,
+          remove_tags: removeTags,
         }),
       }
     );
@@ -599,11 +672,15 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async deleteDataSourceDocument(
-    projectId: string,
-    dataSourceName: string,
-    documentId: string
-  ): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+  async deleteDataSourceDocument({
+    projectId,
+    dataSourceName,
+    documentId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
         documentId

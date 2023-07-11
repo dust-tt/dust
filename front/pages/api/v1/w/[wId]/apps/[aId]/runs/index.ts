@@ -168,17 +168,15 @@ async function handler(
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
-        const runRes = await CoreAPI.createRunStream(
-          app.dustAPIProjectId,
-          keyWorkspaceId,
-          {
-            runType: "deploy",
-            specificationHash: specificationHash,
-            config: { blocks: config },
-            inputs,
-            credentials,
-          }
-        );
+        const runRes = await CoreAPI.createRunStream({
+          projectId: app.dustAPIProjectId,
+          runAsWorkspaceId: keyWorkspaceId,
+          runType: "deploy",
+          specificationHash: specificationHash,
+          config: { blocks: config },
+          inputs,
+          credentials,
+        });
 
         if (runRes.isErr()) {
           return apiError(req, res, {
@@ -235,17 +233,15 @@ async function handler(
         return;
       }
 
-      const runRes = await CoreAPI.createRun(
-        app.dustAPIProjectId,
-        keyWorkspaceId,
-        {
-          runType: "deploy",
-          specificationHash: specificationHash,
-          config: { blocks: config },
-          inputs,
-          credentials,
-        }
-      );
+      const runRes = await CoreAPI.createRun({
+        projectId: app.dustAPIProjectId,
+        runAsWorkspaceId: keyWorkspaceId,
+        runType: "deploy",
+        specificationHash: specificationHash,
+        config: { blocks: config },
+        inputs,
+        credentials,
+      });
 
       if (runRes.isErr()) {
         return apiError(req, res, {
@@ -275,10 +271,10 @@ async function handler(
         try {
           await poll({
             fn: async () => {
-              const run = await CoreAPI.getRunStatus(
-                app.dustAPIProjectId,
-                runId
-              );
+              const run = await CoreAPI.getRunStatus({
+                projectId: app.dustAPIProjectId,
+                runId,
+              });
               if (run.isErr()) {
                 return { status: "error" };
               }
@@ -307,7 +303,10 @@ async function handler(
         }
 
         // Finally refresh the run object.
-        const runRes = await CoreAPI.getRun(app.dustAPIProjectId, runId);
+        const runRes = await CoreAPI.getRun({
+          projectId: app.dustAPIProjectId,
+          runId,
+        });
         if (runRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

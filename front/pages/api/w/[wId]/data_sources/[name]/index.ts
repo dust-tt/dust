@@ -159,10 +159,10 @@ async function handler(
         });
       }
 
-      const dustDataSource = await CoreAPI.deleteDataSource(
-        dataSource.dustAPIProjectId,
-        dataSource.name
-      );
+      const dustDataSource = await CoreAPI.deleteDataSource({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+      });
 
       if (dustDataSource.isErr()) {
         return apiError(req, res, {

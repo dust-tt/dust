@@ -43,7 +43,9 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const datasets = await CoreAPI.getDatasets(app.dustAPIProjectId);
+  const datasets = await CoreAPI.getDatasets({
+    projectId: app.dustAPIProjectId,
+  });
   if (datasets.isErr()) {
     return {
       notFound: true,

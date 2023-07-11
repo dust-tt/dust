@@ -69,11 +69,11 @@ async function getDocText(
   if (!dataSource) {
     throw new Error(`Could not find data source ${dataSourceName}`);
   }
-  const docText = await CoreAPI.getDataSourceDocument(
-    dataSource?.dustAPIProjectId,
-    dataSourceName,
-    documentId
-  );
+  const docText = await CoreAPI.getDataSourceDocument({
+    projectId: dataSource?.dustAPIProjectId,
+    dataSourceName: dataSourceName,
+    documentId,
+  });
   if (docText.isErr()) {
     throw new Error(`Could not get document text for ${documentId}`);
   }

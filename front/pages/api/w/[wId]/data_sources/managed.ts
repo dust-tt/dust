@@ -162,20 +162,18 @@ async function handler(
       // Dust managed credentials: managed data source.
       const credentials = dustManagedCredentials();
 
-      const dustDataSource = await CoreAPI.createDataSource(
-        dustProject.value.project.project_id.toString(),
-        {
-          dataSourceId: dataSourceName,
-          config: {
-            provider_id: dataSourceProviderId,
-            model_id: dataSourceModelId,
-            splitter_id: "base_v0",
-            max_chunk_size: dataSourceMaxChunkSize,
-            use_cache: false,
-          },
-          credentials,
-        }
-      );
+      const dustDataSource = await CoreAPI.createDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        dataSourceId: dataSourceName,
+        config: {
+          provider_id: dataSourceProviderId,
+          model_id: dataSourceModelId,
+          splitter_id: "base_v0",
+          max_chunk_size: dataSourceMaxChunkSize,
+          use_cache: false,
+        },
+        credentials,
+      });
 
       if (dustDataSource.isErr()) {
         return apiError(req, res, {
@@ -212,10 +210,10 @@ async function handler(
           "Failed to create the connector"
         );
         await dataSource.destroy();
-        const deleteRes = await CoreAPI.deleteDataSource(
-          dustProject.value.project.project_id.toString(),
-          dustDataSource.value.data_source.data_source_id
-        );
+        const deleteRes = await CoreAPI.deleteDataSource({
+          projectId: dustProject.value.project.project_id.toString(),
+          dataSourceName: dustDataSource.value.data_source.data_source_id,
+        });
         if (deleteRes.isErr()) {
           logger.error(
             {
