@@ -396,7 +396,7 @@ export function RetrievalsView({
 }
 
 function toMarkdown(message: ChatMessageType): JSX.Element {
-  // Avoid rendering the markdown all the time: only for assistant messages, and not while streaming
+  // Avoid rendering the markdown all the time: only for assistant messages
   if (message.role === "assistant" && message.message) {
     return (
       <ReactMarkdown
