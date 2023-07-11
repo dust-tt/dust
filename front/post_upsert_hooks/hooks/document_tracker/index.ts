@@ -55,7 +55,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
       const dataSource = await getDatasource(dataSourceName, workspaceId);
 
       if (
-        documentText.includes("DUST_TRACK(") &&
+        documentText && documentText.includes("DUST_TRACK(") &&
         TRACKABLE_CONNECTOR_TYPES.includes(
           dataSource.connectorProvider as ConnectorProvider
         )

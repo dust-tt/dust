@@ -6,6 +6,7 @@ import {
 import mainLogger from "@app/logger/logger";
 import {
   PostUpsertHook,
+  PostUpsertHookFilterParams,
   PostUpsertHookParams,
 } from "@app/post_upsert_hooks/hooks";
 
@@ -19,7 +20,7 @@ export const extractEventPostUpsertHook: PostUpsertHook = {
   fn: processDocument,
 };
 
-async function shouldProcessDocument(params: PostUpsertHookParams) {
+async function shouldProcessDocument(params: PostUpsertHookFilterParams) {
   return await shouldProcessExtractEvents(params);
 }
 

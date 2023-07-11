@@ -13,18 +13,24 @@ export const POST_UPSERT_HOOK_TYPES = [
 ] as const;
 export type PostUpsertHookType = (typeof POST_UPSERT_HOOK_TYPES)[number];
 
-export type PostUpsertHookParams = {
+type PostUpsertHookBaseParams = {
   dataSourceName: string;
   workspaceId: string;
   documentId: string;
   documentSourceUrl?: string; // @todo Daph remove optional when all jobs without it have been processed
   documentText: string;
   documentHash: string;
-  dataSourceConnectorProvider: ConnectorProvider | null;
+};
+
+export type PostUpsertHookOnDeleteParams = PostUpsertHookBaseParams;
+export type PostUpsertHookFilterParams = PostUpsertHookBaseParams & {
+  documentText?: string | null;
+  documentHash?: string | null;
 };
 
 // asyc function that will run in a temporal workflow
 // can be expensive to runs
+// will be retried infinitely
 export type PostUpsertHookFunction = (
   params: PostUpsertHookParams
 ) => Promise<void>;
@@ -32,21 +38,32 @@ export type PostUpsertHookFunction = (
 // returns true if the post upsert hook should run for this document
 // returns false if the post upsert hook should not run for this document
 // needs to be relatively quick to run, will run in the same process as calling code
+// not retried
 export type PostUpsertHookFilter = (
-  params: PostUpsertHookParams
+  params: PostUpsertHookFilterParams
 ) => Promise<boolean>;
 
 // How long should the hook sleep before running (debouncing)
 // ran in the same process as calling code (no retries, needs to be quick to run)
+// returns the number of milliseconds to sleep before running the hook
+// not retried
 export type PostUpsertHookDebounceMs = (
-  params: PostUpsertHookParams
+  params: PostUpsertHookFilterParams
 ) => Promise<number>;
+
+// ran in a temporal workflow
+// can be expensive to run
+// will be retried infinitely
+export type PostUpsertHookOnDelete = (
+  params: PostUpsertHookOnDeleteParams
+) => Promise<void>;
 
 export type PostUpsertHook = {
   fn: PostUpsertHookFunction;
   filter: PostUpsertHookFilter;
   type: PostUpsertHookType;
   getDebounceMs?: PostUpsertHookDebounceMs;
+  onDelete?: PostUpsertHookOnDelete;
 };
 
 export const POST_UPSERT_HOOKS = [
@@ -64,7 +81,7 @@ export const POST_UPSERT_HOOK_BY_TYPE: Record<
 }, {} as Record<PostUpsertHookType, PostUpsertHook>);
 
 export async function getPostUpsertHooksToRun(
-  params: PostUpsertHookParams
+  params: PostUpsertHookFilterParams
 ): Promise<Array<{ type: PostUpsertHookType; debounceMs: number }>> {
   if (!process.env.POST_UPSERT_HOOKS_ENABLED) {
     return [];

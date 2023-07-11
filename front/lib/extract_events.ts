@@ -15,7 +15,10 @@ import {
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
-import { PostUpsertHookParams } from "@app/post_upsert_hooks/hooks";
+import {
+  PostUpsertHookFilterParams,
+  PostUpsertHookParams,
+} from "@app/post_upsert_hooks/hooks";
 import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 export async function shouldProcessExtractEvents({
@@ -23,9 +26,9 @@ export async function shouldProcessExtractEvents({
   workspaceId,
   documentId,
   documentText,
-}: PostUpsertHookParams) {
+}: PostUpsertHookFilterParams) {
   const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
-  const hasMarker = hasExtractEventMarker(documentText);
+  const hasMarker = !!documentText && hasExtractEventMarker(documentText);
   if (!hasMarker) {
     localLogger.info("[Extract event] Doc contains no marker.");
     return false;

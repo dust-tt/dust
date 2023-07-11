@@ -6,7 +6,9 @@ import type * as activities from "@app/post_upsert_hooks/temporal/activities";
 
 import { newUpsertSignal } from "./signals";
 
-const { runPostUpsertHookActivity } = proxyActivities<typeof activities>({
+const { runPostUpsertHookActivity, runOnDeleteActivity } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "60 minute",
 });
 
@@ -42,4 +44,20 @@ export async function runPostUpsertHooksWorkflow(
       hookType
     );
   }
+}
+
+export async function runOnDeleteWorkflow(
+  dataSourceName: string,
+  workspaceId: string,
+  documentId: string,
+  dataSourceConnectorProvider: ConnectorProvider | null,
+  hookType: PostUpsertHookType
+) {
+  await runOnDeleteActivity(
+    dataSourceName,
+    workspaceId,
+    documentId,
+    dataSourceConnectorProvider,
+    hookType
+  );
 }
