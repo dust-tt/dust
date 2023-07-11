@@ -3,7 +3,7 @@ import { literal } from "sequelize";
 import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
 import {
   Connector,
-  SlackChatBotMessages,
+  SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
@@ -89,7 +89,7 @@ async function botAnswerMessage(
 ): Promise<Result<ChatSessionUpdateEvent, Error>> {
   const { DUST_API = "https://dust.tt" } = process.env;
 
-  const slackChatBotMessage = await SlackChatBotMessages.create({
+  const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
     message: message,
     slackUserId: slackUserId,
@@ -155,7 +155,6 @@ async function botAnswerMessage(
   let fullAnswer = "";
   let lastSentDate = new Date();
   for await (const event of chat.eventStream) {
-    console.log(event);
     if (event.type === "chat_message_tokens") {
       fullAnswer += event.text;
       if (lastSentDate.getTime() + 1000 > new Date().getTime()) {

@@ -217,9 +217,9 @@ SlackMessages.init(
 
 Connector.hasOne(SlackMessages);
 
-export class SlackChatBotMessages extends Model<
-  InferAttributes<SlackChatBotMessages>,
-  InferCreationAttributes<SlackChatBotMessages>
+export class SlackChatBotMessage extends Model<
+  InferAttributes<SlackChatBotMessage>,
+  InferCreationAttributes<SlackChatBotMessage>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -235,7 +235,7 @@ export class SlackChatBotMessages extends Model<
   declare completedAt: Date | null;
 }
 
-SlackChatBotMessages.init(
+SlackChatBotMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -289,13 +289,10 @@ SlackChatBotMessages.init(
   {
     sequelize: sequelize_conn,
     modelName: "slack_chat_bot_messages",
-    indexes: [
-      { fields: ["connectorId", "channelId", "messageTs"], unique: true },
-    ],
   }
 );
 
-Connector.hasOne(SlackChatBotMessages);
+Connector.hasOne(SlackChatBotMessage);
 
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,
