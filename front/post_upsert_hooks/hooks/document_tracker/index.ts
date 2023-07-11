@@ -9,6 +9,7 @@ import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 import { callDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
+import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
@@ -363,29 +364,3 @@ The Dust team`,
     }
   },
 };
-
-export async function getDatasource(
-  dataSourceName: string,
-  workspaceId: string
-): Promise<DataSource> {
-  const workspace = await Workspace.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
-  if (!workspace) {
-    throw new Error(`Could not find workspace with sId ${workspaceId}`);
-  }
-  const dataSource = await DataSource.findOne({
-    where: {
-      name: dataSourceName,
-      workspaceId: workspace.id,
-    },
-  });
-  if (!dataSource) {
-    throw new Error(
-      `Could not find data source with name ${dataSourceName} and workspaceId ${workspaceId}`
-    );
-  }
-  return dataSource;
-}

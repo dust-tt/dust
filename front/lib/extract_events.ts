@@ -10,7 +10,7 @@ import {
 } from "@app/lib/extract_event_markers";
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { getDatasource } from "@app/post_upsert_hooks/hooks/document_tracker";
+import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 /**
  * Gets the markers from the doc and calls _processExtractEvent for each of them
