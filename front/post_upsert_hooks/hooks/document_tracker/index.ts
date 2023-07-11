@@ -55,7 +55,8 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
       const dataSource = await getDatasource(dataSourceName, workspaceId);
 
       if (
-        documentText && documentText.includes("DUST_TRACK(") &&
+        documentText &&
+        documentText.includes("DUST_TRACK(") &&
         TRACKABLE_CONNECTOR_TYPES.includes(
           dataSource.connectorProvider as ConnectorProvider
         )
@@ -104,6 +105,25 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
         logger.info("Updating tracked documents.");
         await updateTrackedDocuments(dataSource.id, documentId, documentText);
       }
+    },
+    onDelete: async ({ dataSourceName, workspaceId, documentId }) => {
+      logger.info(
+        {
+          workspaceId,
+          dataSourceName,
+          documentId,
+        },
+        "Running document_tracker_update_tracked_documents onDelete."
+      );
+
+      const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+      await TrackedDocument.destroy({
+        where: {
+          dataSourceId: dataSource.id,
+          documentId,
+        },
+      });
     },
   };
 

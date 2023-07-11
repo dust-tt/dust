@@ -359,6 +359,7 @@ async function handler(
         },
       });
 
+      // TODO: parallel.
       for (const { type: hookType } of await getPostUpsertHooksToRun({
         dataSourceName: dataSource.name,
         workspaceId: owner.sId,
