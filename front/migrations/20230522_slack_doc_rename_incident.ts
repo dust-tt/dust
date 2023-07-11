@@ -23,10 +23,10 @@ async function main() {
           throw new Error("No connectorId found");
         }
 
-        const dds = await CoreAPI.deleteDataSource(
-          ds.dustAPIProjectId,
-          ds.name
-        );
+        const dds = await CoreAPI.deleteDataSource({
+          projectId: ds.dustAPIProjectId,
+          dataSourceName: ds.name,
+        });
 
         if (dds.isErr()) {
           throw new Error("Failed to delete the Data Source from Core");
@@ -50,20 +50,18 @@ async function main() {
         // Dust managed credentials: managed data source.
         const credentials = dustManagedCredentials();
 
-        const dustDataSource = await CoreAPI.createDataSource(
-          dustProject.value.project.project_id.toString(),
-          {
-            dataSourceId: dataSourceName,
-            config: {
-              provider_id: dataSourceProviderId,
-              model_id: dataSourceModelId,
-              splitter_id: "base_v0",
-              max_chunk_size: dataSourceMaxChunkSize,
-              use_cache: false,
-            },
-            credentials,
-          }
-        );
+        const dustDataSource = await CoreAPI.createDataSource({
+          projectId: dustProject.value.project.project_id.toString(),
+          dataSourceId: dataSourceName,
+          config: {
+            provider_id: dataSourceProviderId,
+            model_id: dataSourceModelId,
+            splitter_id: "base_v0",
+            max_chunk_size: dataSourceMaxChunkSize,
+            use_cache: false,
+          },
+          credentials,
+        });
 
         if (dustDataSource.isErr()) {
           throw new Error("Failed to create Core DataSource");

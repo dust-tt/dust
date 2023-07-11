@@ -388,16 +388,16 @@ export const CoreAPI = {
   async getRunBlock({
     projectId,
     runId,
-    runType,
+    blockType,
     blockName,
   }: {
     projectId: string;
     runId: string;
-    runType: BlockType;
+    blockType: BlockType;
     blockName: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${runType}/${blockName}`,
+      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${blockType}/${blockName}`,
       {
         method: "GET",
       }

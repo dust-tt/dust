@@ -90,7 +90,9 @@ async function handler(
         return;
       }
 
-      const project = await CoreAPI.cloneProject(app.dustAPIProjectId);
+      const project = await CoreAPI.cloneProject({
+        projectId: app.dustAPIProjectId,
+      });
       if (project.isErr()) {
         return apiError(req, res, {
           status_code: 404,

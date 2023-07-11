@@ -137,11 +137,11 @@ async function handler(
           }, {});
       });
 
-      const dataset = await CoreAPI.createDataset(
-        app.dustAPIProjectId,
-        req.body.name,
-        data
-      );
+      const dataset = await CoreAPI.createDataset({
+        projectId: app.dustAPIProjectId,
+        datasetId: req.body.name,
+        data,
+      });
       if (dataset.isErr()) {
         return apiError(req, res, {
           status_code: 500,

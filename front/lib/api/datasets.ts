@@ -81,7 +81,9 @@ export async function getDatasetHash(
 
   // Translate latest if needed.
   if (hash == "latest") {
-    const apiDatasets = await CoreAPI.getDatasets(app.dustAPIProjectId);
+    const apiDatasets = await CoreAPI.getDatasets({
+      projectId: app.dustAPIProjectId,
+    });
 
     if (apiDatasets.isErr()) {
       return null;
@@ -96,11 +98,11 @@ export async function getDatasetHash(
     hash = apiDatasets.value.datasets[dataset.name][0].hash;
   }
 
-  const apiDataset = await CoreAPI.getDataset(
-    app.dustAPIProjectId,
-    dataset.name,
-    hash
-  );
+  const apiDataset = await CoreAPI.getDataset({
+    projectId: app.dustAPIProjectId,
+    datasetName: dataset.name,
+    datasetHash: hash,
+  });
 
   if (apiDataset.isErr()) {
     return null;

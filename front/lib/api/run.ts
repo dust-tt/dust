@@ -22,7 +22,10 @@ export async function getRun(
   config: RunConfig;
   run: RunType;
 } | null> {
-  const r = await CoreAPI.getRunStatus(app.dustAPIProjectId, runId as string);
+  const r = await CoreAPI.getRunStatus({
+    projectId: app.dustAPIProjectId,
+    runId: runId as string,
+  });
   if (r.isErr()) {
     return null;
   }
@@ -32,10 +35,10 @@ export async function getRun(
   // Retrieve specification and parse it.
   const specHash = run.app_hash;
 
-  const s = await CoreAPI.getSpecification(
-    app.dustAPIProjectId,
-    specHash as string
-  );
+  const s = await CoreAPI.getSpecification({
+    projectId: app.dustAPIProjectId,
+    specificationHash: specHash as string,
+  });
 
   if (s.isErr()) {
     return null;

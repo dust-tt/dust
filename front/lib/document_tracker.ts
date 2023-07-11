@@ -148,22 +148,18 @@ export async function updateTrackedDocuments(
   }));
 
   if (hasExistingTrackedDocs && !hasRemainingTrackedDocs) {
-    await CoreAPI.updateDataSourceDocumentTags(
-      dataSource.dustAPIProjectId,
-      dataSource.name,
-      {
-        documentId,
-        remove_tags: ["__DUST_TRACKED"],
-      }
-    );
+    await CoreAPI.updateDataSourceDocumentTags({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceName: dataSource.name,
+      removeTags: ["__DUST_TRACKED"],
+      documentId,
+    });
   } else if (!hasExistingTrackedDocs && hasRemainingTrackedDocs) {
-    await CoreAPI.updateDataSourceDocumentTags(
-      dataSource.dustAPIProjectId,
-      dataSource.name,
-      {
-        documentId,
-        add_tags: ["__DUST_TRACKED"],
-      }
-    );
+    await CoreAPI.updateDataSourceDocumentTags({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceName: dataSource.name,
+      addTags: ["__DUST_TRACKED"],
+      documentId,
+    });
   }
 }

@@ -73,7 +73,10 @@ async function handler(
       // TODO(spolu): This is borderline security-wise as it allows to recover a full run from the
       // runId assuming the app is public. We should use getRun and also enforce in getRun that we
       // retrieve only our own runs. Basically this assumes the `runId` as a secret.
-      const runRes = await CoreAPI.getRun(app.dustAPIProjectId, runId);
+      const runRes = await CoreAPI.getRun({
+        projectId: app.dustAPIProjectId,
+        runId,
+      });
       if (runRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,

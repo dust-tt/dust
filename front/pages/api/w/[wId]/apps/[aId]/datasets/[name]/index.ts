@@ -116,11 +116,11 @@ async function handler(
       });
 
       // Register dataset with the Dust internal API.
-      const d = await CoreAPI.createDataset(
-        app.dustAPIProjectId,
-        req.body.name,
-        data
-      );
+      const d = await CoreAPI.createDataset({
+        projectId: app.dustAPIProjectId,
+        datasetId: req.body.name,
+        data,
+      });
       if (d.isErr()) {
         return apiError(req, res, {
           status_code: 500,

@@ -316,11 +316,11 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
       const matchedDocUrl = actionResult.matched_doc_url;
       const suggestedChanges = actionResult.suggested_changes;
 
-      const incomingDocument = await CoreAPI.getDataSourceDocument(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        documentId
-      );
+      const incomingDocument = await CoreAPI.getDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId,
+      });
 
       if (incomingDocument.isErr()) {
         throw new Error(

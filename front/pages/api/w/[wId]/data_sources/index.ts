@@ -123,20 +123,18 @@ async function handler(
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 
-      const dustDataSource = await CoreAPI.createDataSource(
-        dustProject.value.project.project_id.toString(),
-        {
-          dataSourceId: req.body.name as string,
-          config: {
-            provider_id: dataSourceProviderId,
-            model_id: dataSourceModelId,
-            splitter_id: "base_v0",
-            max_chunk_size: dataSourceMaxChunkSize,
-            use_cache: false,
-          },
-          credentials,
-        }
-      );
+      const dustDataSource = await CoreAPI.createDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        dataSourceId: req.body.name as string,
+        config: {
+          provider_id: dataSourceProviderId,
+          model_id: dataSourceModelId,
+          splitter_id: "base_v0",
+          max_chunk_size: dataSourceMaxChunkSize,
+          use_cache: false,
+        },
+        credentials,
+      });
 
       if (dustDataSource.isErr()) {
         return apiError(req, res, {

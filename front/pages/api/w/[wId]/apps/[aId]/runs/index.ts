@@ -95,17 +95,15 @@ async function handler(
             });
           }
 
-          const streamRes = await CoreAPI.createRunStream(
-            app.dustAPIProjectId,
-            owner.sId,
-            {
-              runType: "execute",
-              specificationHash: req.body.specificationHash,
-              inputs: req.body.inputs,
-              config: { blocks: JSON.parse(req.body.config) },
-              credentials: credentialsFromProviders(providers),
-            }
-          );
+          const streamRes = await CoreAPI.createRunStream({
+            projectId: app.dustAPIProjectId,
+            runAsWorkspaceId: owner.sId,
+            runType: "execute",
+            specificationHash: req.body.specificationHash,
+            inputs: req.body.inputs,
+            config: { blocks: JSON.parse(req.body.config) },
+            credentials: credentialsFromProviders(providers),
+          });
 
           if (streamRes.isErr()) {
             return apiError(req, res, {
@@ -180,7 +178,9 @@ async function handler(
             });
           }
 
-          const datasets = await CoreAPI.getDatasets(app.dustAPIProjectId);
+          const datasets = await CoreAPI.getDatasets({
+            projectId: app.dustAPIProjectId,
+          });
           if (datasets.isErr()) {
             return apiError(req, res, {
               status_code: 500,
@@ -205,20 +205,18 @@ async function handler(
             ? inputConfigEntry.dataset
             : null;
 
-          const dustRun = await CoreAPI.createRun(
-            app.dustAPIProjectId,
-            owner.sId,
-            {
-              runType: "local",
-              specification: dumpSpecification(
-                JSON.parse(req.body.specification),
-                latestDatasets
-              ),
-              datasetId: inputDataset,
-              config: { blocks: config },
-              credentials: credentialsFromProviders(providers),
-            }
-          );
+          const dustRun = await CoreAPI.createRun({
+            projectId: app.dustAPIProjectId,
+            runAsWorkspaceId: owner.sId,
+            runType: "local",
+            specification: dumpSpecification(
+              JSON.parse(req.body.specification),
+              latestDatasets
+            ),
+            datasetId: inputDataset,
+            config: { blocks: config },
+            credentials: credentialsFromProviders(providers),
+          });
 
           if (dustRun.isErr()) {
             return apiError(req, res, {
@@ -333,10 +331,10 @@ async function handler(
       });
       const userDustRunIds = userRuns.map((r) => r.dustRunId);
 
-      const dustRuns = await CoreAPI.getRunsBatch(
-        app.dustAPIProjectId,
-        userDustRunIds
-      );
+      const dustRuns = await CoreAPI.getRunsBatch({
+        projectId: app.dustAPIProjectId,
+        dustRunIds: userDustRunIds,
+      });
 
       if (dustRuns.isErr()) {
         return apiError(req, res, {

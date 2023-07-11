@@ -44,10 +44,10 @@ async function handler(
         return;
       }
 
-      const run = await CoreAPI.getRunStatus(
-        app.dustAPIProjectId,
-        runId as string
-      );
+      const run = await CoreAPI.getRunStatus({
+        projectId: app.dustAPIProjectId,
+        runId: runId as string,
+      });
       if (run.isErr()) {
         return apiError(req, res, {
           status_code: 500,

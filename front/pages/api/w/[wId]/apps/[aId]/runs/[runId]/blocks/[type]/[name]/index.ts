@@ -50,12 +50,12 @@ async function handler(
         return;
       }
 
-      const run = await CoreAPI.getRunBlock(
-        app.dustAPIProjectId,
-        runId as string,
-        req.query.type as BlockType,
-        req.query.name as string
-      );
+      const run = await CoreAPI.getRunBlock({
+        projectId: app.dustAPIProjectId,
+        runId: runId as string,
+        blockType: req.query.type as BlockType,
+        blockName: req.query.name as string,
+      });
 
       if (run.isErr()) {
         return apiError(req, res, {

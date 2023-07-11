@@ -125,12 +125,12 @@ async function handler(
       }
 
       // Enforce plan limits.
-      const documents = await CoreAPI.getDataSourceDocuments(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        1,
-        0
-      );
+      const documents = await CoreAPI.getDataSourceDocuments({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        limit: 1,
+        offset: 0,
+      });
       if (documents.isErr()) {
         return apiError(req, res, {
           status_code: 400,
@@ -177,17 +177,15 @@ async function handler(
       const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
-      const data = await CoreAPI.upsertDataSourceDocument(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        {
-          documentId: req.query.documentId as string,
-          tags,
-          sourceUrl,
-          credentials,
-          text: req.body.text,
-        }
-      );
+      const data = await CoreAPI.upsertDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId: req.query.documentId as string,
+        tags,
+        sourceUrl,
+        credentials,
+        text: req.body.text,
+      });
       if (data.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -205,11 +203,11 @@ async function handler(
       return;
 
     case "GET":
-      const document = await CoreAPI.getDataSourceDocument(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        req.query.documentId as string
-      );
+      const document = await CoreAPI.getDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId: req.query.documentId as string,
+      });
 
       if (document.isErr()) {
         return apiError(req, res, {
@@ -250,11 +248,11 @@ async function handler(
         });
       }
 
-      const deleteRes = await CoreAPI.deleteDataSourceDocument(
-        dataSource.dustAPIProjectId,
-        dataSource.name,
-        req.query.documentId as string
-      );
+      const deleteRes = await CoreAPI.deleteDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId: req.query.documentId as string,
+      });
 
       if (deleteRes.isErr()) {
         return apiError(req, res, {
