@@ -17,21 +17,21 @@ export async function getPreviousDocumentVersion({
   created: number;
 } | null> {
   const dataSource = await getDatasource(dataSourceName, workspaceId);
-  const versions = await CoreAPI.getDataSourceDocumentVersions(
-    dataSource.dustAPIProjectId,
-    dataSource.name,
-    documentId,
-    2,
-    0,
-    documentHash
-  );
+  const versions = await CoreAPI.getDataSourceDocumentVersions({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceName: dataSource.name,
+    documentId: documentId,
+    limit: 1,
+    offset: 1,
+    latest_hash: documentHash,
+  });
   if (versions.isErr()) {
     throw versions.error;
   }
-  if (versions.value.versions.length < 2) {
+  if (versions.value.versions.length === 0) {
     return null;
   }
-  return versions.value.versions[1];
+  return versions.value.versions[0];
 }
 
 export async function getDiffBetweenDocumentVersions({
@@ -52,12 +52,12 @@ export async function getDiffBetweenDocumentVersions({
   const dataSource = await getDatasource(dataSourceName, workspaceId);
 
   async function getDocumentText(hash?: string | null): Promise<string> {
-    const res = await CoreAPI.getDataSourceDocument(
-      dataSource.dustAPIProjectId,
-      dataSource.name,
-      documentId,
-      hash
-    );
+    const res = await CoreAPI.getDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceName: dataSource.name,
+      documentId: documentId,
+      versionHash: hash,
+    });
     if (res.isErr()) {
       throw res.error;
     }
