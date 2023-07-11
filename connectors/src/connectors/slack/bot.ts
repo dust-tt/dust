@@ -71,7 +71,7 @@ export async function botAnswerMessageWithErrorHandling(
     const slackClient = getSlackClient(accessToken);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: `Failed getting your answer. We have been notified of this error and we'll get it fixed as soon as possible.`,
+      text: `An error occured. Our team has been notified and will work on it as soon as possible.`,
       thread_ts: slackMessageTs,
     });
   }
