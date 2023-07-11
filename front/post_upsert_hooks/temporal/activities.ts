@@ -46,8 +46,6 @@ export async function runPostUpsertHookActivity(
   localLogger.info("Ran post upsert hook function.");
 }
 
-export const runPostUpsertHookActivityV2 = runPostUpsertHookActivity;
-
 async function getDocText(
   dataSourceName: string,
   workspaceId: string,
