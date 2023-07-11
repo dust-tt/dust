@@ -9,7 +9,10 @@ import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 import { callDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
-import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
+import {
+  getDatasource,
+  getDocumentDiff,
+} from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
@@ -202,7 +205,7 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
     return false;
   },
 
-  fn: async ({ dataSourceName, workspaceId, documentId, documentText }) => {
+  fn: async ({ dataSourceName, workspaceId, documentId, documentHash }) => {
     logger.info(
       {
         workspaceId,
@@ -236,7 +239,19 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
       return;
     }
 
-    const actionResult = await callDocTrackerAction(workspaceId, documentText);
+    const documentDiff = await getDocumentDiff({
+      dataSourceName: dataSource.name,
+      workspaceId,
+      documentId,
+      hash: documentHash,
+    });
+
+    const diffText = documentDiff
+      .filter(({ type }) => type !== "equal")
+      .map(({ value, type }) => `**${type}**:\n${value}||`)
+      .join("\n");
+
+    const actionResult = await callDocTrackerAction(workspaceId, diffText);
 
     if (actionResult.match) {
       const workspace = await Workspace.findOne({
