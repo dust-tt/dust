@@ -401,7 +401,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
     return (
       <ReactMarkdown
         className={classNames(
-          "[&_ol]:list-decimal [&_ol]:pl-4" /* ol */,
+          "[&_li]:mb-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:pl-4" /* ol */,
           "[&_p]:mb-2" /* p */,
           "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
         )}
