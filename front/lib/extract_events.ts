@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -6,11 +8,45 @@ import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
 import {
   getRawExtractEventMarkersFromText,
+  hasExtractEventMarker,
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
+import { PostUpsertHookParams } from "@app/post_upsert_hooks/hooks";
 import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
+
+export async function shouldProcessExtractEvents({
+  dataSourceName,
+  workspaceId,
+  documentId,
+  documentText,
+}: PostUpsertHookParams) {
+  const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
+  const hasMarker = hasExtractEventMarker(documentText);
+  if (!hasMarker) {
+    localLogger.info("[Extract event] Doc contains no marker.");
+    return false;
+  }
+
+  const rawMarkers = getRawExtractEventMarkersFromText(documentText);
+  const markers = sanitizeRawExtractEventMarkers(rawMarkers);
+
+  const activeSchema: EventSchema | null = await EventSchema.findOne({
+    where: {
+      marker: {
+        [Op.in]: Object.keys(markers),
+      },
+      status: "active",
+    },
+  });
+  localLogger.info(
+    `[Extract event] Doc contains marker for active schemas: ${
+      activeSchema ? `yes (${activeSchema.marker})` : "no"
+    }`
+  );
+  return !!activeSchema;
+}
 
 /**
  * Gets the markers from the doc and calls _processExtractEvent for each of them
