@@ -1,6 +1,13 @@
+import { literal } from "sequelize";
+
 import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
-import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import {
+  Connector,
+  SlackChatBotMessages,
+  SlackConfiguration,
+} from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
+import logger from "@connectors/logger/logger";
 
 import {
   getAccessToken,
@@ -9,14 +16,13 @@ import {
   whoAmI,
 } from "./temporal/activities";
 
-export async function botAnswerMessage(
+export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string
 ): Promise<Result<ChatSessionUpdateEvent, Error>> {
-  const { DUST_API = "https://dust.tt" } = process.env;
   const slackConfigurations = await SlackConfiguration.findAll({
     where: {
       slackTeamId: slackTeamId,
@@ -42,16 +48,74 @@ export async function botAnswerMessage(
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
+  const res = await botAnswerMessage(
+    message,
+    slackTeamId,
+    slackChannel,
+    slackUserId,
+    slackMessageTs,
+    connector
+  );
+  if (res.isErr()) {
+    logger.error(
+      {
+        error: res.error,
+        slackTeamId: slackTeamId,
+        slackChannel: slackChannel,
+        slackUserId: slackUserId,
+        slackMessageTs: slackMessageTs,
+      },
+      "Failed answering to Slack Chat Bot message"
+    );
+    const accessToken = await getAccessToken(connector.connectionId);
+    const slackClient = getSlackClient(accessToken);
+    await slackClient.chat.postMessage({
+      channel: slackChannel,
+      text: `Failed getting your answer. We have been notified of this error and we'll get it fixed as soon as possible.`,
+      thread_ts: slackMessageTs,
+    });
+  }
+
+  return res;
+}
+
+async function botAnswerMessage(
+  message: string,
+  slackTeamId: string,
+  slackChannel: string,
+  slackUserId: string,
+  slackMessageTs: string,
+  connector: Connector
+): Promise<Result<ChatSessionUpdateEvent, Error>> {
+  const { DUST_API = "https://dust.tt" } = process.env;
+
+  const slackChatBotMessage = await SlackChatBotMessages.create({
+    connectorId: connector.id,
+    message: message,
+    slackUserId: slackUserId,
+    slackEmail: "",
+    slackUserName: "",
+    channelId: slackChannel,
+    messageTs: slackMessageTs,
+  });
+
   const accessToken = await getAccessToken(connector.connectionId);
   const slackClient = getSlackClient(accessToken);
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
+
   if (!slackUserInfo.ok || !slackUserInfo.user) {
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
   }
   const slackUser = slackUserInfo.user;
-
+  if (slackUser.profile?.email) {
+    slackChatBotMessage.slackEmail = slackUser.profile.email;
+  }
+  if (slackUser.profile?.display_name) {
+    slackChatBotMessage.slackUserName = slackUser.profile.display_name;
+  }
+  await slackChatBotMessage.save();
   const c = new DustAPI({
     workspaceId: connector.workspaceId,
     apiKey: connector.workspaceAPIKey,
@@ -113,6 +177,10 @@ export async function botAnswerMessage(
         thread_ts: slackMessageTs,
       });
 
+      await slackChatBotMessage.update({
+        chatSessionSid: event.session.sId,
+        completedAt: literal("now()"),
+      });
       return new Ok(event);
     }
   }

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import {
   getAccessToken,
   whoAmI,
@@ -106,7 +106,7 @@ const _webhookSlackAPIHandler = async (
         // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
         res.status(200).send();
 
-        const botRes = await botAnswerMessage(
+        const botRes = await botAnswerMessageWithErrorHandling(
           slackMessage,
           slackTeamId,
           slackChannel,

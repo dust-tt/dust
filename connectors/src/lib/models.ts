@@ -217,6 +217,86 @@ SlackMessages.init(
 
 Connector.hasOne(SlackMessages);
 
+export class SlackChatBotMessages extends Model<
+  InferAttributes<SlackChatBotMessages>,
+  InferCreationAttributes<SlackChatBotMessages>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare channelId: string;
+  declare message: string;
+  declare slackUserId: string;
+  declare slackEmail: string;
+  declare slackUserName: string;
+  declare messageTs: string | null;
+  declare chatSessionSid: string | null;
+  declare completedAt: Date | null;
+}
+
+SlackChatBotMessages.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+
+      allowNull: false,
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    messageTs: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    chatSessionSid: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackUserId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackEmail: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackUserName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    completedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "slack_chat_bot_messages",
+    indexes: [
+      { fields: ["connectorId", "channelId", "messageTs"], unique: true },
+    ],
+  }
+);
+
+Connector.hasOne(SlackChatBotMessages);
+
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,
   InferCreationAttributes<NotionConnectorState>
