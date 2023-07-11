@@ -160,6 +160,7 @@ async function handler(
 
           await _createAndLogMembership({
             workspaceId: w.id,
+            workspaceName: w.name,
             userId: user.id,
             role: "admin",
             invitationFlow: "personal",
@@ -186,6 +187,7 @@ async function handler(
         if (!m) {
           m = await _createAndLogMembership({
             workspaceId: workspaceInvite.id,
+            workspaceName: workspaceInvite.name,
             userId: user.id,
             role: "user",
             invitationFlow: "domain",
@@ -217,9 +219,27 @@ async function handler(
           },
         });
 
+        targetWorkspace = await Workspace.findOne({
+          where: {
+            id: membershipInvite.workspaceId,
+          },
+        });
+
+        if (!targetWorkspace) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The invite token is invalid, please ask your admin to resend an invitation.",
+            },
+          });
+        }
+
         if (!m) {
           m = await _createAndLogMembership({
-            workspaceId: membershipInvite.workspaceId,
+            workspaceId: targetWorkspace.id,
+            workspaceName: targetWorkspace.name,
             userId: user.id,
             role: "user",
             invitationFlow: "email",
@@ -239,12 +259,6 @@ async function handler(
             },
           });
         }
-
-        targetWorkspace = await Workspace.findOne({
-          where: {
-            id: membershipInvite.workspaceId,
-          },
-        });
       }
 
       const u = await getUserFromSession(session);
@@ -287,6 +301,7 @@ async function handler(
 async function _createAndLogMembership(data: {
   userId: number;
   workspaceId: number;
+  workspaceName: string;
   role: "admin" | "user";
   invitationFlow: "domain" | "email" | "personal";
 }) {
@@ -298,6 +313,7 @@ async function _createAndLogMembership(data: {
 
   const tags = [
     `workspace_id:${data.workspaceId}`,
+    `workspace_name:${data.workspaceName}`,
     `user_id:${data.userId}`,
     `role:${data.role}`,
     `invitation_flow:${data.invitationFlow}`,
