@@ -63,6 +63,7 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
+kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
 
 echo "-----------------------------------"
 echo "Applying managed certificates"
@@ -74,7 +75,7 @@ kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/blog-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/docs-managed-cert.yaml"
-kubectl apply -f "${dirname "$0"}/managed-certs/metabase-managed-cert.yaml"
+kubectl apply -f "$(dirname "$0")/managed-certs/metabase-managed-cert.yaml"
 
 
 echo "-----------------------------------"
