@@ -1,5 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react";
 import {
+  BookmarkIcon as BookmarkIconSolid,
   PlusCircleIcon,
   PlusIcon,
   TrashIcon,
@@ -469,12 +470,11 @@ export function DocumentView({
               setPinned(!pinned);
             }}
           >
-            <BookmarkIcon
-              className={classNames(
-                "h-4 w-4",
-                pinned ? "text-gray-500" : "text-slate-300"
-              )}
-            />
+            {pinned ? (
+              <BookmarkIconSolid className="h-4 w-4 text-violet-500" />
+            ) : (
+              <BookmarkIcon className="h-4 w-4" />
+            )}
           </button>
           <button
             className="mx-1 text-base font-bold"
@@ -540,14 +540,26 @@ export function ResultsView({
           className={classNames(
             "flex flex-initial flex-row items-center space-x-2",
             "rounded py-1",
-            "mt-2 text-xs font-bold text-gray-700"
+            "mb-4 mt-2 justify-between text-xs font-bold text-gray-700"
           )}
         >
           {retrieved && retrieved.length > 0 && (
-            <p className="mb-4 text-lg">
-              Retrieved {retrieved.length} item
-              {retrieved.length == 1 ? "" : "s"}
-            </p>
+            <>
+              <p className="text-lg">
+                Retrieved {retrieved.length} item
+                {retrieved.length == 1 ? "" : "s"}
+              </p>
+
+              <div
+                className="text-sm font-bold"
+                onClick={() => {
+                  const unPinned = retrieved.filter((r) => !r.pinned);
+                  unPinned.forEach((r) => onRemove(r.documentId));
+                }}
+              >
+                Clear
+              </div>
+            </>
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
@@ -1041,6 +1053,8 @@ export default function AppGens({
 
   const template = useRef<GensTemplateType | null>(null);
 
+  const [selecting, setSelecting] = useState<boolean>(false);
+
   const getContext = () => {
     return {
       user: {
@@ -1375,6 +1389,15 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
+                      setSelecting(false);
+                    }}
+                    onSelect={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      if (target.selectionStart !== target.selectionEnd) {
+                        setSelecting(true);
+                      } else {
+                        setSelecting(false);
+                      }
                     }}
                   />
                 </div>
@@ -1388,7 +1411,11 @@ export default function AppGens({
                       }}
                     >
                       <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading ? "Loading..." : "Search"}
+                      {retrievalLoading
+                        ? "Loading..."
+                        : selecting
+                        ? "Search selection"
+                        : "Search"}
                     </ActionButton>
                   </div>
                   <div className="flex flex-initial">
