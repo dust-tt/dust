@@ -75,6 +75,7 @@ export async function createSlackConnector(
         {
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
+          botEnabled: false,
         },
         { transaction: t }
       );
