@@ -541,10 +541,6 @@ export async function* newChat(
 
     for await (const event of eventStream) {
       if (event.type === "tokens") {
-        yield {
-          type: "chat_message_tokens",
-          text: event.content.tokens.text,
-        } as ChatMessageTokensEvent;
         if (!assistantMessageTriggered) {
           assistantMessageTriggered = true;
           yield {
@@ -552,6 +548,10 @@ export async function* newChat(
             role: "assistant",
           } as ChatMessageTriggerEvent;
         }
+        yield {
+          type: "chat_message_tokens",
+          text: event.content.tokens.text,
+        } as ChatMessageTokensEvent;
       }
 
       if (event.type === "error") {
