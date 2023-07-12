@@ -123,6 +123,7 @@ export class SlackConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
+  declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -147,12 +148,22 @@ SlackConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    botEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["slackTeamId"] },
       { fields: ["connectorId"], unique: true },
+      {
+        fields: ["slackTeamId", "botEnabled"],
+        where: { botEnabled: true },
+        unique: true,
+      },
     ],
     modelName: "slack_configurations",
   }
@@ -266,7 +277,7 @@ SlackChatBotMessage.init(
       allowNull: true,
     },
     message: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     slackUserId: {

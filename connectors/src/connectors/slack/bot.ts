@@ -3,6 +3,7 @@ import { literal } from "sequelize";
 import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
 import {
   Connector,
+  ModelId,
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models";
@@ -23,24 +24,16 @@ export async function botAnswerMessageWithErrorHandling(
   slackUserId: string,
   slackMessageTs: string
 ): Promise<Result<ChatSessionUpdateEvent, Error>> {
-  const slackConfigurations = await SlackConfiguration.findAll({
+  const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
+      botEnabled: true,
     },
   });
-
-  if (slackConfigurations.length === 0) {
-    return new Err(
-      new Error(
-        `Failed to find slack configuration for Slack team id: ${slackTeamId}`
-      )
-    );
-  }
-  const slackConfig = slackConfigurations[0];
   if (!slackConfig) {
     return new Err(
       new Error(
-        `Failed to find slack configuration for Slack team id: ${slackTeamId}`
+        `Failed to find a Slack configuration for which the bot is enabled. Slack team id: ${slackTeamId}.`
       )
     );
   }
@@ -127,6 +120,10 @@ async function botAnswerMessage(
     mrkdwn: true,
   });
 
+  // Slack sends the message with user ids when someone is mentionned (bot or user).
+  // Here we remove the bot id from the message and we replace user ids by their display names.
+  // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc <@U91J1JEQZ1A>) ?
+  // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
     const mySlackUser = await whoAmI(accessToken);
@@ -155,7 +152,11 @@ async function botAnswerMessage(
   let fullAnswer = "";
   let lastSentDate = new Date();
   for await (const event of chat.eventStream) {
-    if (event.type === "chat_message_tokens") {
+    if (event.type === "chat_message_create") {
+      if (event.message.role === "error") {
+        return new Err(new Error(event.message.message));
+      }
+    } else if (event.type === "chat_message_tokens") {
       fullAnswer += event.text;
       if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
         continue;
@@ -185,4 +186,25 @@ async function botAnswerMessage(
   }
 
   return new Err(new Error("Failed to get the final answer from Dust"));
+}
+
+export async function enableSlackBot(
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  const slackConfig = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+  slackConfig.botEnabled = true;
+  await slackConfig.save();
+
+  return new Ok(void 0);
 }
