@@ -7,6 +7,7 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
+import { enableSlackBot } from "@connectors/connectors/slack/bot";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 
@@ -247,6 +248,27 @@ const google = async (command: string) => {
   }
 };
 
+const slack = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "enable-bot": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: args.wId,
+          type: "slack",
+        },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+      await throwOnError(enableSlackBot(connector.id));
+      break;
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -273,6 +295,9 @@ const main = async () => {
       return;
     case "google":
       await google(command);
+      return;
+    case "slack":
+      await slack(command, argv);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);
