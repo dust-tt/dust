@@ -123,6 +123,7 @@ export class SlackConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
+  declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -147,12 +148,22 @@ SlackConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    botEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["slackTeamId"] },
       { fields: ["connectorId"], unique: true },
+      {
+        fields: ["slackTeamId", "botEnabled"],
+        where: { botEnabled: true },
+        unique: true,
+      },
     ],
     modelName: "slack_configurations",
   }
@@ -216,6 +227,83 @@ SlackMessages.init(
 );
 
 Connector.hasOne(SlackMessages);
+
+export class SlackChatBotMessage extends Model<
+  InferAttributes<SlackChatBotMessage>,
+  InferCreationAttributes<SlackChatBotMessage>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare channelId: string;
+  declare message: string;
+  declare slackUserId: string;
+  declare slackEmail: string;
+  declare slackUserName: string;
+  declare messageTs: string | null;
+  declare chatSessionSid: string | null;
+  declare completedAt: Date | null;
+}
+
+SlackChatBotMessage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+
+      allowNull: false,
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    messageTs: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    chatSessionSid: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    slackUserId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackEmail: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackUserName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    completedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "slack_chat_bot_messages",
+  }
+);
+
+Connector.hasOne(SlackChatBotMessage);
 
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,

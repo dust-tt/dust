@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import {
   getAccessToken,
   whoAmI,
@@ -21,11 +22,17 @@ type SlackWebhookReqBody = {
   challenge?: string;
   team_id?: string;
   event?: {
+    bot_id?: string;
     channel?: string;
     user?: string;
     ts?: string; // slack message id
     thread_ts?: string; // slack thread id
     type?: string; // event type (eg: message)
+    channel_type?: string; // channel type (eg: channel, im, mpim)
+    text: string; // content of the message
+    message?: {
+      bot_id?: string;
+    };
   };
 };
 
@@ -74,6 +81,53 @@ const _webhookSlackAPIHandler = async (
     }
 
     switch (req.body.event?.type) {
+      case "app_mention": {
+        const slackMessage = req.body.event.text;
+        const slackTeamId = req.body.team_id;
+        const slackChannel = req.body.event.channel;
+        const slackUserId = req.body.event.user;
+        const slackMessageTs = req.body.event.ts;
+        if (
+          !slackMessage ||
+          !slackTeamId ||
+          !slackChannel ||
+          !slackUserId ||
+          !slackMessageTs
+        ) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: "Missing required fields in request body",
+            },
+            status_code: 400,
+          });
+        }
+
+        // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
+        res.status(200).send();
+
+        const botRes = await botAnswerMessageWithErrorHandling(
+          slackMessage,
+          slackTeamId,
+          slackChannel,
+          slackUserId,
+          slackMessageTs
+        );
+        if (botRes.isErr()) {
+          logger.error(
+            {
+              error: botRes.error,
+              slackMessage,
+              slackTeamId,
+              slackChannel,
+              slackUserId,
+              slackMessageTs,
+            },
+            "Failed to answer to Slack message"
+          );
+        }
+        break;
+      }
       /**
        * `message` handler.
        */

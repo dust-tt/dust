@@ -13,6 +13,7 @@ import {
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
+import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
@@ -454,6 +455,9 @@ export async function syncThread(
     next_cursor = replies.response_metadata?.next_cursor;
   } while (next_cursor);
 
+  const botUserId = await whoAmIMemoized(slackAccessToken);
+  allMessages = allMessages.filter((m) => m.user !== botUserId);
+
   const text = await formatMessagesForUpsert(
     channelId,
     allMessages,
@@ -587,6 +591,8 @@ export async function whoAmI(slackAccessToken: string) {
   return authRes.user_id;
 }
 
+const whoAmIMemoized = memoize(whoAmI);
+
 export async function getAccessToken(
   nangoConnectionId: string
 ): Promise<string> {
@@ -613,7 +619,7 @@ export async function reportInitialSyncProgressActivity(
   await reportInitialSyncProgress(parseInt(connectorId), progress);
 }
 
-async function getUserName(
+export async function getUserName(
   slackUserId: string,
   connectorId: string,
   slackClient: WebClient
