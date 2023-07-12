@@ -257,6 +257,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await Connector.findOne({
         where: {
           workspaceId: args.wId,
+          type: "slack",
         },
       });
       if (!connector) {
