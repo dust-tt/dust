@@ -6,7 +6,13 @@ import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { planForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource, Membership, User, Workspace } from "@app/lib/models";
+import {
+  DataSource,
+  EventSchema,
+  Membership,
+  User,
+  Workspace,
+} from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
@@ -546,6 +552,93 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "create": {
+      if (!args.marker) {
+        throw new Error("Missing --marker argument");
+      }
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.uId) {
+        throw new Error("Missing --uId argument");
+      }
+      if (!args.properties) {
+        throw new Error("Missing --properties argument");
+      }
+      const schema = await EventSchema.create({
+        marker: args.marker,
+        workspaceId: args.wId,
+        userId: args.uId,
+        properties: JSON.parse(args.properties),
+        status: "active",
+        debug: true,
+      });
+      args.eventSchemaId = schema.id;
+      await eventSchema("show", args);
+      return;
+    }
+    case "delete": {
+      if (!args.eventSchemaId) {
+        throw new Error("Missing --eventSchemaId argument");
+      }
+      const nbRowsDestroyed = await EventSchema.destroy({
+        where: {
+          id: args.eventSchemaId,
+        },
+      });
+      console.log(
+        nbRowsDestroyed ? "Event Schema deleted" : "Event Schema not found"
+      );
+      return;
+    }
+    case "show": {
+      if (!args.eventSchemaId) {
+        throw new Error("Missing --eventSchemaId argument");
+      }
+      const schema = await EventSchema.findOne({
+        where: {
+          id: args.eventSchemaId,
+        },
+      });
+      if (!schema) {
+        throw new Error(`EventSchema not found: id='${args.eventSchemaId}'`);
+      }
+      console.log(`Event Schema #${schema.id}:`);
+      console.log(`  marker: ${schema.marker}`);
+      console.log(`  description: ${schema.description}`);
+      console.log(`  status: ${schema.status}`);
+      console.log(`  debug: ${schema.debug}`);
+      console.log(`  workspaceId: ${schema.workspaceId}`);
+      console.log(`  userId: ${schema.userId}`);
+      console.log(
+        `  properties: ${JSON.stringify(schema.properties, null, 4)}`
+      );
+      console.log("\n\n");
+      return;
+    }
+    case "list": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      const schemas = await EventSchema.findAll({
+        where: {
+          workspaceId: args.wId,
+        },
+        order: [["createdAt", "ASC"]],
+      });
+      await Promise.all(
+        schemas.map(async (s: EventSchema) => {
+          args.eventSchemaId = s.id;
+          return await eventSchema("show", args);
+        })
+      );
+      return;
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -569,9 +662,12 @@ const main = async () => {
     case "data-source":
       await dataSource(command, argv);
       return;
+    case "event-schema":
+      await eventSchema(command, argv);
+      return;
     default:
       console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`"
+        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`"
       );
       return;
   }
