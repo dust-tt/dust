@@ -546,7 +546,7 @@ export function ResultsView({
           {retrieved && retrieved.length > 0 && (
             <>
               <p className="text-lg">
-                Retrieved {retrieved.length} item
+                Retrieved {retrieved.length} document
                 {retrieved.length == 1 ? "" : "s"}
               </p>
 
@@ -1016,6 +1016,14 @@ export function TemplatesView({
           >
             <PlusIcon className="h-4 w-4" />
           </button>
+          <div className="ml-auto flex-1 text-right">
+            <p className="ml-auto">
+              Current template:{" "}
+              {selectedTemplate == -1
+                ? "None"
+                : templates[selectedTemplate].name}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -1227,11 +1235,18 @@ export default function AppGens({
       setGenCursorPosition(cursorPosition);
     });
 
+    const endExecution = () => {
+      setGenLoading(false);
+      genInterruptRef.current = false;
+      genTextAreaRef.current?.focus();
+      setGenContent((c) => c + "\n");
+    };
+
     for await (const event of eventStream) {
       // console.log("EVENT", event, genInterruptRef.current);
       if (genInterruptRef.current) {
         void eventStream.return();
-        genInterruptRef.current = false;
+        endExecution();
         break;
       }
 
@@ -1241,8 +1256,7 @@ export default function AppGens({
       }
       if (event.type === "error") {
         console.log("ERROR error event", event);
-        setGenLoading(false);
-        genInterruptRef.current = false;
+        endExecution();
         return;
       }
       if (event.type === "block_execution") {
@@ -1250,8 +1264,7 @@ export default function AppGens({
         if (event.content.block_name === "MODEL") {
           if (e.error) {
             console.log("ERROR block_execution event", e.error);
-            setGenLoading(false);
-            genInterruptRef.current = false;
+            endExecution();
             return;
           }
         }
@@ -1260,6 +1273,7 @@ export default function AppGens({
 
     setGenLoading(false);
     genInterruptRef.current = false;
+    endExecution();
   };
 
   const handleSwitchDataSourceSelection = (name: string) => {
@@ -1362,9 +1376,34 @@ export default function AppGens({
           <MainTab currentTab="Gens" owner={owner} />
         </div>
         <div className="">
-          <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
+          <div className="mx-auto max-w-4xl divide-y px-6">
             <div className="flex flex-col">
-              <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+              <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                <p className="mt-8 font-bold">Welcome to Gens!</p>
+                <p className="mt-6">
+                  Gens is an early exploration of a more iterative way to
+                  interact with your data and with Assistant. Like writing a
+                  document, you can input text, and then search for documents
+                  based on said text, and have a model generate and add to parts
+                  of your doc.
+                </p>
+                <p className="mt-6">
+                  Gens supercharges your experience by allowng you to fine tune
+                  and extend your use of the models more than Chat — for
+                  retrieval, you can pin documents you've retrieved and remove
+                  ones you don't like, for generation, you can define nifty
+                  templates that instruct the model's outputs. Finally, the
+                  document format allows you to iterate on your text.
+                </p>
+
+                <p className="mt-6">
+                  Example workflows are exploring your company info to combine
+                  ideas and generate something new, writing a document combining
+                  different info into sections, or structuring lots of
+                  information with templates.
+                </p>
+              </div>
+              <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
                 <TemplatesView
                   onTemplateSelect={(t) => (template.current = t)}
                   workspaceId={owner.sId}
@@ -1414,21 +1453,23 @@ export default function AppGens({
                       {retrievalLoading
                         ? "Loading..."
                         : selecting
-                        ? "Search selection"
-                        : "Search"}
+                        ? "Retrieve based on selection"
+                        : "Retrieve"}
                     </ActionButton>
                   </div>
-                  <div className="flex flex-initial">
-                    <ActionButton
-                      disabled={genLoading}
-                      onClick={() => {
-                        void handleGenerate();
-                      }}
-                    >
-                      <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {genLoading ? "Loading..." : "Generate"}
-                    </ActionButton>
-                  </div>
+                  {!genLoading && (
+                    <div className="flex flex-initial">
+                      <ActionButton
+                        disabled={genLoading}
+                        onClick={() => {
+                          void handleGenerate();
+                        }}
+                      >
+                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
+                        Generate
+                      </ActionButton>
+                    </div>
+                  )}
                   <div
                     className={classNames(
                       "flex flex-initial",
@@ -1446,18 +1487,6 @@ export default function AppGens({
                   </div>
                 </div>
                 <div className="items-center space-y-1 text-xs font-normal">
-                  <div className="flex flex-row items-center space-x-2 leading-8">
-                    <div className="flex flex-initial text-gray-400">TopK:</div>
-                    <div className="flex flex-initial">
-                      <input
-                        type="number"
-                        className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
-                        value={top_k}
-                        placeholder="Top K"
-                        onChange={(e) => setTopK(Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
                   <div className="flex flex-row items-center space-x-2 leading-8">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
