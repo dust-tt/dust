@@ -158,7 +158,7 @@ export default function AppRun({
                 {run.app_hash ? (
                   <div className="flex items-center text-xs italic text-gray-400">
                     <span>
-                      App Spec Hash:{" "}
+                      Specification Hash:{" "}
                       <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
                         {run.app_hash}
                       </span>
