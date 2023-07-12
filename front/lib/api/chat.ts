@@ -8,7 +8,7 @@ import {
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
-import { UserType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 import { cloneBaseConfig, DustProdActionRegistry } from "../actions/registry";
 import { runAction, runActionStreamed } from "../actions/server";
@@ -510,21 +510,12 @@ export async function* newChat(
     } as ChatMessageCreateEvent;
   }
 
-  // Master loop that will run until the last message is an "assistant" response. It will call the
-  // assistant and push to the `messages` array. The assistant either push an "assistant" message
-  // with a response or a "retrieval" message that will contain a query, if that's the case we run
-  // the retrieval and add the retrieved documents to that last message and loop back here.
-  //
-  // At any point if an error occured an "error" message is pushed to the `messages` array and we
-  // will exit from this loop.
-  //
-  // So the invariant is the following: if an error occured the last message is an error message and
-  // there is only one of them in messages.
-  //
-  // We also limit this main loop to 4 iterations.
-  let iteration = 0;
-  while (messages[messages.length - 1].role !== "assistant" && iteration < 4) {
-    iteration += 1;
+  async function* runChatAssistant(
+    retrievalMode: "auto" | "none"
+  ): AsyncGenerator<
+    ChatMessageTokensEvent | ChatMessageCreateEvent | ChatMessageTriggerEvent
+  > {
+    assistantConfig.MODEL.function_call = retrievalMode;
     const res = await runActionStreamed(
       auth,
       "chat-assistant-wfn",
@@ -615,83 +606,94 @@ export async function* newChat(
         }
       }
     }
+  }
 
-    if (messages[messages.length - 1].role === "retrieval") {
-      const m = messages[messages.length - 1];
-      const configRetrieval = cloneBaseConfig(
-        DustProdActionRegistry["chat-retrieval"].config
+  async function* runChatRetrieval(): AsyncGenerator<
+    ChatMessageCreateEvent | ChatMessageTriggerEvent
+  > {
+    const m = messages[messages.length - 1];
+    const configRetrieval = cloneBaseConfig(
+      DustProdActionRegistry["chat-retrieval"].config
+    );
+
+    if (dataSources) {
+      configRetrieval.DATASOURCE.data_sources = dataSources;
+    } else {
+      const prodCredentials = await prodAPICredentialsForOwner(
+        owner as WorkspaceType
       );
+      const api = new DustAPI(prodCredentials);
 
-      if (dataSources) {
-        configRetrieval.DATASOURCE.data_sources = dataSources;
-      } else {
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
-        const api = new DustAPI(prodCredentials);
-
-        const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-        if (dsRes.isErr()) {
-          yield* handleError(dsRes.error.message);
-          return;
-        }
-
-        const ds = dsRes.value;
-
-        configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
-          return {
-            workspace_id: prodCredentials.workspaceId,
-            data_source_id: d.name,
-          };
-        });
-      }
-
-      if (filter) {
-        configRetrieval.DATASOURCE.filter = filter;
-      }
-
-      const res = await runAction(auth, "chat-retrieval", configRetrieval, [
-        {
-          messages: [{ role: "query", message: m.query }],
-          userContext: {
-            timeZone,
-          },
-        },
-      ]);
-
-      if (res.isErr()) {
-        yield* handleError(
-          `Chat retrieval error: [${res.error.type}] ${res.error.message}`
-        );
+      const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+      if (dsRes.isErr()) {
+        yield* handleError(dsRes.error.message);
         return;
       }
 
-      const run = res.value;
+      const ds = dsRes.value;
 
-      for (const t of run.traces) {
-        if (t[1][0][0].error) {
-          yield* handleError(t[1][0][0].error);
-          return;
-        }
-        if (t[0][1] === "OUTPUT") {
-          messages[messages.length - 1].retrievals = (
-            t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
-          ).retrievals;
-          yield {
-            type: "chat_message_create",
-            message: messages[messages.length - 1],
-          } as ChatMessageCreateEvent;
-        }
+      configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
+        return {
+          workspace_id: prodCredentials.workspaceId,
+          data_source_id: d.name,
+        };
+      });
+    }
+
+    if (filter) {
+      configRetrieval.DATASOURCE.filter = filter;
+    }
+
+    const res = await runAction(auth, "chat-retrieval", configRetrieval, [
+      {
+        messages: [{ role: "query", message: m.query }],
+        userContext: {
+          timeZone,
+        },
+      },
+    ]);
+
+    if (res.isErr()) {
+      yield* handleError(
+        `Chat retrieval error: [${res.error.type}] ${res.error.message}`
+      );
+      return;
+    }
+
+    const run = res.value;
+
+    for (const t of run.traces) {
+      if (t[1][0][0].error) {
+        yield* handleError(t[1][0][0].error);
+        return;
+      }
+      if (t[0][1] === "OUTPUT") {
+        messages[messages.length - 1].retrievals = (
+          t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
+        ).retrievals;
+        yield {
+          type: "chat_message_create",
+          message: messages[messages.length - 1],
+        } as ChatMessageCreateEvent;
       }
     }
   }
 
-  // If we got an error we exit early and don't store the session (because we don't store
-  // interactions that led to an error).
-  if (messages[messages.length - 1].role === "error") {
+  /** Run the assistant; if it decides for a retrieval, retrieve, and run the
+   * assistant again with retrievalMode to none, forcing him to answer */
+  yield* runChatAssistant("auto");
+  if (messages[messages.length - 1].role === "retrieval") {
+    yield* runChatRetrieval();
+    yield* runChatAssistant("none");
+  }
+
+  /* We exit early without saving the session:
+   * - if saveSession is false;
+   * - If we got an error (because we don't store interactions that led to an error).*/
+  if (messages[messages.length - 1].role === "error" || !saveSession) {
     return;
   }
 
-  // if saveSession is false we also exit early and don't store the new chat
-  if (!saveSession) return;
   const sId = newChatSessionId();
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
