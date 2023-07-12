@@ -48,6 +48,7 @@ import {
   GensTemplateVisibilityType,
 } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
+import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
 
 type DataSource = {
   name: string;
@@ -1054,6 +1055,10 @@ export default function AppGens({
 
   const [selecting, setSelecting] = useState<boolean>(false);
 
+  const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
+
+  const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
+
   const getContext = () => {
     return {
       user: {
@@ -1366,42 +1371,79 @@ export default function AppGens({
         <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Gens" owner={owner} />
         </div>
-        <div className="">
-          <div className="mx-auto max-w-4xl divide-y px-6">
-            <div className="flex flex-col">
-              <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                <p className="mt-8 font-bold">Welcome to Gens!</p>
-                <p className="mt-6">
-                  Gens is an early exploration of a more iterative way to
-                  interact with your data and with Assistant. Like writing a
-                  document, you can input text, and then search for documents
-                  based on said text, and have a model generate and add to parts
-                  of your doc.
-                </p>
-                <p className="mt-6">
-                  Gens supercharges your experience by allowng you to fine tune
-                  and extend your use of the models more than Chat — for
-                  retrieval, you can pin documents you've retrieved and remove
-                  ones you don't like, for generation, you can define nifty
-                  templates that instruct the model's outputs. Finally, the
-                  document format allows you to iterate on your text.
-                </p>
+        <Transition.Root show={explainExpanded} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-10"
+            onClose={() => setExplainExpanded(false)}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 overflow-hidden bg-gray-800 bg-opacity-75 transition-opacity" />
+            </Transition.Child>
 
-                <p className="mt-6">
-                  Example workflows are exploring your company info to combine
-                  ideas and generate something new, writing a document combining
-                  different info into sections, or structuring lots of
-                  information with templates.
-                </p>
+            <div className="fixed inset-0 z-10 overflow-y-auto">
+              <div className="flex min-h-full items-end items-center justify-center p-4">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  leave="ease-in duration-200"
+                  leaveTo="opacity-0"
+                >
+                  <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
+                    <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                      <p className="font-bold">Welcome to Gens!</p>
+                      <p className="mt-6">
+                        Gens is an early exploration of a more iterative way to
+                        interact with your data and with Assistant. Like writing
+                        a document, you can input text, and then search for
+                        documents based on said text, and have a model generate
+                        and add to parts of your doc.
+                      </p>
+                      <p className="mt-6">
+                        Gens supercharges your experience by allowng you to fine
+                        tune and extend your use of the models more than Chat —
+                        for retrieval, you can pin documents you've retrieved
+                        and remove ones you don't like, for generation, you can
+                        define nifty templates that instruct the model's
+                        outputs. Finally, the document format allows you to
+                        iterate on your text.
+                      </p>
+
+                      <p className="mt-6">
+                        Example workflows are exploring your company info to
+                        combine ideas and generate something new, writing a
+                        document combining different info into sections, or
+                        structuring lots of information with templates.
+                      </p>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
               </div>
+            </div>
+          </Dialog>
+        </Transition.Root>
+        <div className="">
+          <div className="to mx-auto max-w-4xl divide-y px-6">
+            <div className="flex flex-col">
               <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+                <ActionButton onClick={() => setExplainExpanded(true)}>
+                  How does Gens work?
+                </ActionButton>
                 <TemplatesView
                   onTemplateSelect={(t) => (template.current = t)}
                   workspaceId={owner.sId}
                   savedTemplates={templates}
                   isBuilder={isBuilder}
                 />
-                <div className="w-70 flex font-normal">
+                <div className="w-70 relative font-normal">
                   <TextareaAutosize
                     minRows={8}
                     ref={genTextAreaRef}
@@ -1430,6 +1472,15 @@ export default function AppGens({
                       }
                     }}
                   />
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(genContent);
+                    }}
+                    className="absolute right-0 top-0 mr-2 mt-2"
+                  >
+                    <ClipboardDocumentIcon className="h-6 w-6 cursor-pointer hover:text-gray-500" />
+                  </button>
                 </div>
                 <div className="mb-4 flex flex-row flex-wrap justify-between text-xs">
                   <div className="flex items-center space-x-2">
