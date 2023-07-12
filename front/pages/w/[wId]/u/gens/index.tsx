@@ -471,7 +471,7 @@ export function DocumentView({
             }}
           >
             {pinned ? (
-              <BookmarkIconSolid className="h-4 w-4" />
+              <BookmarkIconSolid className="h-4 w-4 text-violet-500" />
             ) : (
               <BookmarkIcon className="h-4 w-4" />
             )}
