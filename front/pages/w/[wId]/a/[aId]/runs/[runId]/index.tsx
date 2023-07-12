@@ -143,16 +143,31 @@ export default function AppRun({
         <div className="mx-auto mt-4 w-full max-w-5xl">
           <div className="mx-2 sm:mx-4 lg:mx-8">
             <div className="mb-4 mt-6 flex flex-row items-center justify-between space-x-2 text-sm">
-              <div className="flex items-center">
-                <span>
-                  Viewing run:{" "}
-                  <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
-                    {run.run_id}
+              <div className="flex flex-col items-start">
+                <div className="flex items-center">
+                  <span>
+                    Viewing run:{" "}
+                    <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
+                      {run.run_id}
+                    </span>
+                    <span className="font-mono ml-1 text-gray-600 sm:hidden">
+                      {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
+                    </span>
                   </span>
-                  <span className="font-mono ml-1 text-gray-600 sm:hidden">
-                    {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
-                  </span>
-                </span>
+                </div>
+                {run.app_hash ? (
+                  <div className="flex items-center text-xs italic text-gray-400">
+                    <span>
+                      App Spec Hash:{" "}
+                      <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
+                        {run.app_hash}
+                      </span>
+                      <span className="font-mono ml-1 text-gray-400 sm:hidden">
+                        {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
+                      </span>
+                    </span>
+                  </div>
+                ) : null}
               </div>
               <p className="flex items-center text-xs text-gray-400">
                 {savedRunId !== run.run_id ? (
