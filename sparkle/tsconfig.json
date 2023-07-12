@@ -6,26 +6,25 @@
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+    "outDir": "./dist",
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react",
     "incremental": true,
     "downlevelIteration": true,
     "paths": {
-      "@sparkle/*": ["./*"]
+      "@sparkle/*": ["./src/*"]
     }
   },
   "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.jsx",
-    "**/*.js",
-    "./.eslintrc.js"
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".eslintrc.js",
+    "tailwind.config.js",
+    "rollup.config.mjs"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

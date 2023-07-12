@@ -6,6 +6,7 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
   ],
   plugins: ["simple-import-sort"],
+  ignorePatterns: ["rollup.config.js", "eslint.js"],
   rules: {
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/no-explicit-any": 0,
