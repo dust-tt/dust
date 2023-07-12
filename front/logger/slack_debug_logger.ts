@@ -3,16 +3,18 @@ import { WebClient } from "@slack/web-api";
 import logger from "@app/logger/logger";
 
 export const EXPLORATIONS_LOGGER_CHANNEL_ID = "C05G9QH1A06"; // #explorations-logger
-const { SLACK_LOGGER_ACCESS_TOKEN = "" } = process.env;
+const { SLACK_DEBUG_LOGGER_SECRET = "" } = process.env;
 let SLACK_CLIENT: WebClient | undefined;
 
 export function getSlackClient() {
   if (SLACK_CLIENT) {
     return SLACK_CLIENT;
   }
-  const slackAccessToken = SLACK_LOGGER_ACCESS_TOKEN;
+  const slackAccessToken = SLACK_DEBUG_LOGGER_SECRET;
   if (!slackAccessToken) {
-    logger.error("SLACK_LOGGER_ACCESS_TOKEN is not defined");
+    logger.error(
+      "SLACK_DEBUG_LOGGER_SECRET is not defined, cannot log on slack."
+    );
   }
 
   const slackClient = new WebClient(slackAccessToken);
