@@ -74,6 +74,7 @@ kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/blog-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/docs-managed-cert.yaml"
+kubectl apply -f "${dirname "$0"}/managed-certs/metabase-managed-cert.yaml"
 
 
 echo "-----------------------------------"
@@ -94,6 +95,7 @@ apply_deployment connectors-worker-deployment
 apply_deployment connectors-edge-deployment
 apply_deployment blog-deployment
 apply_deployment docs-deployment
+apply_deployment metabase-deployment
 
 
 echo "-----------------------------------"
@@ -107,6 +109,7 @@ kubectl apply -f "$(dirname "$0")/services/connectors-worker-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/blog-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/docs-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 
 
 echo "-----------------------------------"

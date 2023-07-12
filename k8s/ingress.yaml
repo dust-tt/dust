@@ -75,3 +75,14 @@ spec:
                 name: docs-service
                 port:
                   number: 80
+
+    - host: metabase.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: metabase-service
+                port:
+                  number: 80
