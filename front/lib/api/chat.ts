@@ -511,7 +511,7 @@ export async function* newChat(
   }
 
   async function* runChatAssistant(
-    retrievalMode: string
+    retrievalMode: "auto" | "none"
   ): AsyncGenerator<
     ChatMessageTokensEvent | ChatMessageCreateEvent | ChatMessageTriggerEvent
   > {
