@@ -723,7 +723,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
       );
       // retry in two hours in case of failure
       await wh.update({
-        renewAt: literal('NOW() + INTERVAL "2 hour"'),
+        renewAt: literal("NOW() + INTERVAL '2 hour'"),
       });
     }
   }
