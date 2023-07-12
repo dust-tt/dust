@@ -138,20 +138,37 @@ async function _processExtractEvent(data: {
     },
   ];
 
+  const existingExtractedEvents = await ExtractedEvent.findAll({
+    where: {
+      eventSchemaId: schema.id,
+      documentId: documentId,
+      dataSourceId: dataSource.id,
+    },
+  });
+
   const results = await _runExtractEventApp(auth, inputsForApp);
   results.map(async (result: string) => {
-    // @todo be smarter
-    // check that this event is not already in the database
-    // check the properties match what's expected (json is typed on model)
-    // handle errors
     const properties = JSON.parse(result);
+
+    // @todo be smarter about duplicates
+    const isDuplicate = isEventAlreadyExtracted(
+      existingExtractedEvents,
+      properties
+    );
+    if (isDuplicate) {
+      logger.info(
+        { properties, marker: schema.marker, documentSourceUrl, documentId },
+        "[Extract Event] Event is a duplicate, not saving again."
+      );
+      return;
+    }
+
     const event = await ExtractedEvent.create({
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
       dataSourceId: dataSource.id,
     });
-
     // Temp: we log on slack events that are extracted from the Dust workspace
     if (schema.debug === true) {
       await _logDebugEventOnSlack({ event, schema, documentSourceUrl });
@@ -192,6 +209,23 @@ async function _runExtractEventApp(
 
   const successResponse = response as ExtractEventAppResponseResults;
   return successResponse.value.results[0][0].value;
+}
+
+function isEventAlreadyExtracted(
+  existingEventsToCheck: ExtractedEvent[],
+  newProperties: any
+): boolean {
+  if (!existingEventsToCheck.length) {
+    return false;
+  }
+  return existingEventsToCheck.some((e: ExtractedEvent) => {
+    for (const key in e.properties) {
+      if (e.properties[key] !== newProperties[key]) {
+        return false;
+      }
+    }
+    return true;
+  });
 }
 
 /**

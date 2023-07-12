@@ -1,4 +1,3 @@
-import { hasExtractEventMarker } from "@app/lib/extract_event_markers";
 import {
   processExtractEvents,
   shouldProcessExtractEvents,
