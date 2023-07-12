@@ -13,6 +13,7 @@ import {
 } from "@app/lib/extract_event_markers";
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
+import { logOnSlack } from "@app/logger/slack_debug_logger";
 import { PostUpsertHookParams } from "@app/post_upsert_hooks/hooks";
 import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
@@ -141,17 +142,21 @@ async function _processExtractEvent(data: {
     // check the properties match what's expected (json is typed on model)
     // handle errors
     const properties = JSON.parse(result);
-
-    logger.info(
-      { properties, marker: schema.marker },
-      "[Extract Event] Saving event."
-    );
-    await ExtractedEvent.create({
+    const event = await ExtractedEvent.create({
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
       dataSourceId: dataSource.id,
     });
+
+    // Temp: we log on slack events that are extracted from the Dust workspace
+    if (schema.debug === true) {
+      await _logDebugEventOnSlack(event, schema);
+    }
+    logger.info(
+      { properties, marker: schema.marker },
+      "[Extract Event] Event saved and logged."
+    );
   });
 }
 
@@ -184,4 +189,45 @@ async function _runExtractEventApp(
 
   const successResponse = response as ExtractEventAppResponseResults;
   return successResponse.value.results[0][0].value;
+}
+
+/**
+ * Logs the event on Dust's Slack if the schema is in debug mode
+ * Temporary, until we have a better way to extract events from the table.
+ * @param event
+ * @param schema
+ */
+export async function _logDebugEventOnSlack(
+  event: ExtractedEvent,
+  schema: EventSchema
+): Promise<void> {
+  if (event.eventSchemaId !== schema.id) {
+    logger.error(
+      { event, schema },
+      "[Extract Event] Event schema does not match event."
+    );
+    return;
+  }
+  if (schema.debug !== true) {
+    return;
+  }
+
+  const formattedBlocks = [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `New event extracted for marker [[${schema.marker}]]`,
+        emoji: true,
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: "```" + JSON.stringify(event.properties, null, 2) + "```",
+      },
+    },
+  ];
+  await logOnSlack({ blocks: formattedBlocks });
 }
