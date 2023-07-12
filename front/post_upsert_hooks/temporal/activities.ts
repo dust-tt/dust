@@ -1,5 +1,5 @@
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import {
@@ -30,27 +30,32 @@ export async function runPostUpsertHookActivity(
   }
 
   localLogger.info("Running post upsert hook function.");
-  const documentText = await getDocText(
+
+  const dataSourceDocument = await getDataSourceDocument(
     dataSourceName,
     workspaceId,
     documentId
   );
+  const documentText = dataSourceDocument.document.text || "";
+  const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
+
   await hook.fn({
     dataSourceName,
     workspaceId,
     documentId,
     documentText,
+    documentSourceUrl,
     documentHash,
     dataSourceConnectorProvider,
   });
   localLogger.info("Ran post upsert hook function.");
 }
 
-async function getDocText(
+async function getDataSourceDocument(
   dataSourceName: string,
   workspaceId: string,
   documentId: string
-): Promise<string> {
+): Promise<{ document: CoreAPIDocument; data_source: CoreAPIDataSource }> {
   const workspace = await Workspace.findOne({
     where: {
       sId: workspaceId,
@@ -77,5 +82,5 @@ async function getDocText(
   if (docText.isErr()) {
     throw new Error(`Could not get document text for ${documentId}`);
   }
-  return docText.value.document.text || "";
+  return docText.value;
 }

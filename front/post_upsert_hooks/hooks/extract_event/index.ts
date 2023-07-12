@@ -23,18 +23,12 @@ async function shouldProcessDocument(params: PostUpsertHookParams) {
   return await shouldProcessExtractEvents(params);
 }
 
-async function processDocument({
-  dataSourceName,
-  workspaceId,
-  documentId,
-  documentText,
-}: PostUpsertHookParams) {
-  const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
-  localLogger.info("[Extract event] Processing doc.");
-  await processExtractEvents({
-    workspaceId,
-    dataSourceName,
-    documentId,
-    documentText,
+async function processDocument(params: PostUpsertHookParams) {
+  const localLogger = logger.child({
+    workspaceId: params.workspaceId,
+    dataSourceName: params.dataSourceName,
+    documentId: params.documentId,
   });
+  localLogger.info("[Extract event] Processing doc.");
+  await processExtractEvents(params);
 }

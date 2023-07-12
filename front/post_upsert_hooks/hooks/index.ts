@@ -17,6 +17,7 @@ export type PostUpsertHookParams = {
   dataSourceName: string;
   workspaceId: string;
   documentId: string;
+  documentSourceUrl?: string; // @todo Daph remove optional when all jobs without it have been processed
   documentText: string;
   documentHash: string;
   dataSourceConnectorProvider: ConnectorProvider | null;

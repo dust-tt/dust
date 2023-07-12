@@ -52,13 +52,13 @@ export async function shouldProcessExtractEvents({
 /**
  * Gets the markers from the doc and calls _processExtractEvent for each of them
  */
-export async function processExtractEvents(data: {
-  workspaceId: string;
-  dataSourceName: string;
-  documentId: string;
-  documentText: string;
-}) {
-  const { workspaceId, documentId, dataSourceName, documentText } = data;
+export async function processExtractEvents({
+  workspaceId,
+  dataSourceName,
+  documentId,
+  documentSourceUrl,
+  documentText,
+}: PostUpsertHookParams) {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   if (!auth.workspace()) {
@@ -91,6 +91,7 @@ export async function processExtractEvents(data: {
         markers: markers[marker],
         documentText: documentText,
         documentId: documentId,
+        documentSourceUrl: documentSourceUrl,
       });
     })
   );
@@ -106,6 +107,7 @@ async function _processExtractEvent(data: {
   markers: string[];
   documentText: string;
   documentId: string;
+  documentSourceUrl?: string;
 }) {
   const {
     auth,
@@ -113,6 +115,7 @@ async function _processExtractEvent(data: {
     sanitizedMarker,
     markers,
     documentId,
+    documentSourceUrl,
     documentText,
   } = data;
 
@@ -151,10 +154,10 @@ async function _processExtractEvent(data: {
 
     // Temp: we log on slack events that are extracted from the Dust workspace
     if (schema.debug === true) {
-      await _logDebugEventOnSlack(event, schema);
+      await _logDebugEventOnSlack({ event, schema, documentSourceUrl });
     }
     logger.info(
-      { properties, marker: schema.marker },
+      { properties, marker: schema.marker, documentSourceUrl, documentId },
       "[Extract Event] Event saved and logged."
     );
   });
@@ -196,11 +199,17 @@ async function _runExtractEventApp(
  * Temporary, until we have a better way to extract events from the table.
  * @param event
  * @param schema
+ * @param documentSourceUrl
  */
-export async function _logDebugEventOnSlack(
-  event: ExtractedEvent,
-  schema: EventSchema
-): Promise<void> {
+export async function _logDebugEventOnSlack({
+  event,
+  schema,
+  documentSourceUrl,
+}: {
+  event: ExtractedEvent;
+  schema: EventSchema;
+  documentSourceUrl?: string;
+}): Promise<void> {
   if (event.eventSchemaId !== schema.id) {
     logger.error(
       { event, schema },
@@ -228,6 +237,23 @@ export async function _logDebugEventOnSlack(
         text: "```" + JSON.stringify(event.properties, null, 2) + "```",
       },
     },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: "Wanna check the source document?",
+      },
+      accessory: {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "Open document",
+          emoji: true,
+        },
+        url: documentSourceUrl || "", // @todo daph remove fallback not needed after all jobs are processed.
+      },
+    },
   ];
+
   await logOnSlack({ blocks: formattedBlocks });
 }
