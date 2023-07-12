@@ -3,13 +3,7 @@ import pino, { LoggerOptions } from "pino";
 const NODE_ENV = process.env.NODE_ENV;
 const defaultPinoOptions: LoggerOptions = {
   serializers: {
-    err: pino.stdSerializers.err,
-    error: (error) => {
-      if (error instanceof Error) {
-        return pino.stdSerializers.err(error);
-      }
-      return error;
-    },
+    error: pino.stdSerializers.err,
   },
   formatters: {
     level(level) {
