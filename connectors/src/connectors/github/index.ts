@@ -1,6 +1,9 @@
 import { Transaction } from "sequelize";
 
-import { validateInstallationId } from "@connectors/connectors/github/lib/github_api";
+import {
+  getReposPage,
+  validateInstallationId,
+} from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import {
   Connector,
@@ -10,7 +13,9 @@ import {
 } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorType } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ConnectorResource } from "@connectors/types/resources";
 
 type GithubInstallationId = string;
 
@@ -188,4 +193,43 @@ export async function cleanupGithubConnector(
     );
     return new Err(err as Error);
   }
+}
+
+export async function retrieveGithubConnectorPermissions(
+  connector: ConnectorType
+): Promise<Result<ConnectorResource[], Error>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connector.id,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId: connector.id }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const githubInstallationId = c.connectionId;
+
+  let resources: ConnectorResource[] = [];
+  let pageNumber = 0;
+  for (;;) {
+    const page = await getReposPage(githubInstallationId, pageNumber);
+    pageNumber += 1;
+    if (page.length === 0) {
+      break;
+    }
+
+    resources = resources.concat(
+      page.map((repo) => ({
+        provider: connector.type,
+        internalId: repo.id.toString(),
+        parentInternalId: null,
+        title: repo.name,
+        sourceUrl: repo.url,
+        permission: "read",
+      }))
+    );
+  }
+
+  return new Ok(resources);
 }

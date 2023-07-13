@@ -5,6 +5,7 @@ import {
   createGithubConnector,
   fullResyncGithubConnector,
   resumeGithubConnector,
+  retrieveGithubConnectorPermissions,
   stopGithubConnector,
 } from "@connectors/connectors/github";
 import {
@@ -24,10 +25,11 @@ import {
   createSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Ok, Result } from "@connectors/lib/result";
+import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorProvider } from "@connectors/types/connector";
+import { ConnectorProvider, ConnectorType } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ConnectorResource } from "@connectors/types/resources";
 
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
@@ -51,17 +53,13 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorStopper
 > = {
   slack: async (connectorId: string) => {
-    logger.info(
-      `Stopping Slack connector is a no-op. ConnectorId: ${connectorId}`
-    );
+    logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
     return new Ok(connectorId);
   },
   github: stopGithubConnector,
   notion: stopNotionConnector,
   google_drive: async (connectorId: string) => {
-    logger.info(
-      `Stopping Google Drive connector is a no-op. ConnectorId: ${connectorId}`
-    );
+    logger.info({ connectorId }, `Stopping Google Drive connector is a no-op.`);
     return new Ok(connectorId);
   },
 };
@@ -90,9 +88,7 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorResumer
 > = {
   slack: async (connectorId: string) => {
-    logger.info(
-      `Resuming Slack connector is a no-op. ConnectorId: ${connectorId}`
-    );
+    logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
     return new Ok(connectorId);
   },
   notion: resumeNotionConnector,
@@ -114,3 +110,41 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
   };
+
+type ConnectorPermissionRetriever = (
+  connector: ConnectorType
+) => Promise<Result<ConnectorResource[], Error>>;
+
+export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorPermissionRetriever
+> = {
+  slack: async (connector: ConnectorType) => {
+    logger.info(
+      { connectorId: connector.id },
+      `Slack connector permissions is not implemented.`
+    );
+    return new Err(
+      new Error("Slack connector permissions retrieval is not implemented.")
+    );
+  },
+  github: retrieveGithubConnectorPermissions,
+  notion: async (connector: ConnectorType) => {
+    logger.info(
+      { connectorId: connector.id },
+      `Slack connector permissions is not implemented.`
+    );
+    return new Err(
+      new Error("Slack connector permissions retrieval is not implemented.")
+    );
+  },
+  google_drive: async (connector: ConnectorType) => {
+    logger.info(
+      { connectorId: connector.id },
+      `Slack connector permissions is not implemented.`
+    );
+    return new Err(
+      new Error("Slack connector permissions retrieval is not implemented.")
+    );
+  },
+};
