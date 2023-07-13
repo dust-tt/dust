@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { DustProdActionRegistry } from "@app/lib/actions/registry";
+import { isDustRegistryActionName } from "@app/lib/actions/registry";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppConfigType } from "@app/lib/dust_api";
@@ -71,7 +71,7 @@ async function handler(
         });
       }
 
-      if (!DustProdActionRegistry[req.query.action]) {
+      if (!isDustRegistryActionName(req.query.action)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
