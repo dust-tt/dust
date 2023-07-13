@@ -252,7 +252,7 @@ export function DocumentView({
         </div>
         <div className="flex flex-initial">
           <a
-            href={document.sourceUrl}
+            href={document.sourceUrl || ""}
             target={"_blank"}
             className="block w-32 truncate text-gray-600 sm:w-fit"
           >
