@@ -1,11 +1,9 @@
-import { DustProdActionRegistry } from "@app/lib/actions/registry";
-import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import {
-  DustAPI,
-  DustAPIErrorResponse,
-  DustAppConfigType,
-  DustAppType,
-} from "@app/lib/dust_api";
+  DustProdActionRegistry,
+  DustRegistryActionName,
+} from "@app/lib/actions/registry";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { DustAPI, DustAppConfigType, DustAppType } from "@app/lib/dust_api";
 import { Err, Ok } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -47,7 +45,7 @@ const logActionError = (
  */
 export async function runActionStreamed(
   auth: Authenticator,
-  actionName: string,
+  actionName: DustRegistryActionName,
   config: DustAppConfigType,
   inputs: Array<unknown>
 ) {
@@ -56,13 +54,6 @@ export async function runActionStreamed(
     return new Err({
       type: "workspace_not_found",
       message: "The workspace you're trying to access was not found.",
-    });
-  }
-
-  if (!DustProdActionRegistry[actionName]) {
-    return new Err({
-      type: "action_unknown_error",
-      message: `Unknown action: ${actionName}`,
     });
   }
 
@@ -128,7 +119,7 @@ export async function runActionStreamed(
  */
 export async function runAction(
   auth: Authenticator,
-  actionName: string,
+  actionName: DustRegistryActionName,
   config: DustAppConfigType,
   inputs: Array<unknown>
 ) {
@@ -138,13 +129,6 @@ export async function runAction(
       type: "workspace_not_found",
       message: "The workspace you're trying to access was not found.",
     });
-  }
-
-  if (!DustProdActionRegistry[actionName]) {
-    return new Err({
-      type: "action_unknown_error",
-      message: `Unknown action: ${actionName}`,
-    } as DustAPIErrorResponse);
   }
 
   const action = DustProdActionRegistry[actionName];

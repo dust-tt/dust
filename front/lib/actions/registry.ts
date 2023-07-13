@@ -7,9 +7,11 @@ export type Action = {
   config: { [key: string]: unknown };
 };
 
-export const DustProdActionRegistry: {
-  [key: string]: Action;
-} = {
+const createActionRegistry = <K extends string, R extends Record<K, Action>>(
+  registry: R
+) => registry;
+
+export const DustProdActionRegistry = createActionRegistry({
   "chat-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -225,7 +227,15 @@ export const DustProdActionRegistry: {
       },
     },
   },
-};
+});
+
+export type DustRegistryActionName = keyof typeof DustProdActionRegistry;
+
+export function isDustRegistryActionName(
+  name: string
+): name is DustRegistryActionName {
+  return !!DustProdActionRegistry[name as DustRegistryActionName];
+}
 
 export function cloneBaseConfig(config: { [model: string]: any }) {
   return JSON.parse(JSON.stringify(config));
