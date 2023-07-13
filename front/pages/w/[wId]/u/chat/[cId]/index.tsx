@@ -50,6 +50,7 @@ import {
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import remarkGfm from "remark-gfm";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -401,10 +402,11 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
     return (
       <ReactMarkdown
         className={classNames(
-          "[&_li]:mb-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:pl-4" /* ol */,
+          "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
           "[&_p]:mb-2" /* p */,
           "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
         )}
+        remarkPlugins={[remarkGfm]}
         components={{
           a({ href, children }) {
             return (
@@ -473,7 +475,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word ml-2  flex flex-1 flex-col pt-1",
+              "break-word ml-2  flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
