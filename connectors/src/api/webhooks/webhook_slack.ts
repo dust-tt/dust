@@ -43,13 +43,11 @@ type SlackWebhookResBody =
   | APIErrorWithStatusCode;
 
 async function handleChatBot(req: Request, res: Response) {
-  const {
-    slackMessage,
-    slackTeamId,
-    slackChannel,
-    slackUserId,
-    slackMessageTs,
-  } = req.body;
+  const slackMessage = req.body.event.text;
+  const slackTeamId = req.body.team_id;
+  const slackChannel = req.body.event.channel;
+  const slackUserId = req.body.event.user;
+  const slackMessageTs = req.body.event.ts;
   if (
     !slackMessage ||
     !slackTeamId ||
