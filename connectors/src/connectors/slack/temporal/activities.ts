@@ -591,7 +591,7 @@ export async function whoAmI(slackAccessToken: string) {
   return authRes.user_id;
 }
 
-const whoAmIMemoized = memoize(whoAmI);
+export const whoAmIMemoized = memoize(whoAmI);
 
 export async function getAccessToken(
   nangoConnectionId: string
