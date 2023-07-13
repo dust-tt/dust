@@ -934,15 +934,18 @@ impl DataSource {
                                 return Ok(d);
                             }
 
+                            let mut hasher = blake3::Hasher::new();
+                            hasher.update(d.document_id.as_bytes());
                             let filter = qdrant::Filter {
                                 must: vec![
                                     qdrant::FieldCondition {
                                         key: "document_id_hash".to_string(),
                                         r#match: Some(qdrant::Match {
                                             match_value: Some(
-                                                qdrant::r#match::MatchValue::Keyword(
-                                                    d.hash.clone(),
-                                                ),
+                                                qdrant::r#match::MatchValue::Keyword(format!(
+                                                    "{}",
+                                                    hasher.finalize().to_hex()
+                                                )),
                                             ),
                                         }),
                                         ..Default::default()
