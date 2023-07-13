@@ -1100,6 +1100,7 @@ export class ExtractedEvent extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare marker: string;
   declare properties: any;
 
   declare eventSchemaId: ForeignKey<EventSchema["id"]>;
@@ -1122,6 +1123,11 @@ ExtractedEvent.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    marker: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
     },
     properties: {
       type: DataTypes.JSONB,

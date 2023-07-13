@@ -7,6 +7,7 @@ import {
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
 import {
+  getExtractEventMarkersToProcess,
   getRawExtractEventMarkersFromText,
   hasExtractEventMarker,
   sanitizeRawExtractEventMarkers,
@@ -60,7 +61,6 @@ export async function processExtractEvents({
   documentText,
 }: PostUpsertHookParams) {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
-
   if (!auth.workspace()) {
     logger.error(
       `Could not get internal auth for workspace ${workspaceId} to process extract events.`
@@ -69,17 +69,19 @@ export async function processExtractEvents({
   }
 
   const dataSource = await getDatasource(dataSourceName, workspaceId);
-
   if (!dataSource) {
     logger.error(
       `[Extract event] Could not get datasource ${dataSourceName}. Skipping.`
     );
     return;
-  } else {
-    logger.info(`[Extract event] Processing datasource ${dataSourceName}.`);
   }
 
-  const rawMarkers = getRawExtractEventMarkersFromText(documentText);
+  // Getting the markers from the doc and keeping only those not already in the DB
+  const rawMarkers = await getExtractEventMarkersToProcess({
+    documentId,
+    dataSourceId: dataSource.id,
+    documentText,
+  });
   const markers = sanitizeRawExtractEventMarkers(rawMarkers);
 
   await Promise.all(
@@ -140,16 +142,21 @@ async function _processExtractEvent(data: {
 
   const results = await _runExtractEventApp(auth, inputsForApp);
   results.map(async (result: string) => {
-    // @todo be smarter
-    // check that this event is not already in the database
-    // check the properties match what's expected (json is typed on model)
-    // handle errors
     const properties = JSON.parse(result);
+    if (!properties.marker) {
+      logger.error(
+        { properties, marker: schema.marker, documentSourceUrl, documentId },
+        "Extract event app did not return a marker. Skipping."
+      );
+      return;
+    }
+
     const event = await ExtractedEvent.create({
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
       dataSourceId: dataSource.id,
+      marker: properties.marker,
     });
 
     // Temp: we log on slack events that are extracted from the Dust workspace
