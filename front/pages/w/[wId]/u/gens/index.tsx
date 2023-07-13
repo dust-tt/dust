@@ -8,8 +8,8 @@ import {
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
-  ClipboardDocumentIcon,
   ClipboardDocumentCheckIcon,
+  ClipboardDocumentIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
@@ -1443,9 +1443,9 @@ export default function AppGens({
                     savedTemplates={templates}
                     isBuilder={isBuilder}
                   />
-                  <ActionButton onClick={() => setExplainExpanded(true)}>
+                  <Button onClick={() => setExplainExpanded(true)}>
                     How does Gens work?
-                  </ActionButton>
+                  </Button>
                 </div>
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
