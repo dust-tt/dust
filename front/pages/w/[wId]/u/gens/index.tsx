@@ -8,10 +8,10 @@ import {
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
+  ClipboardDocumentIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
-  ClipboardDocumentIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -1054,7 +1054,7 @@ export default function AppGens({
 
   const [selecting, setSelecting] = useState<boolean>(false);
 
-  const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
+  //const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
 
   const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
 
@@ -1473,8 +1473,8 @@ export default function AppGens({
                   />
 
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(genContent);
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(genContent);
                     }}
                     className="absolute right-0 top-0 mr-2 mt-2"
                   >
@@ -1550,11 +1550,6 @@ export default function AppGens({
                         onTimeRangeUpdate={setTimeRange}
                       />
                     </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(genContent);
-                      }}
-                    ></button>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="flex flex-initial">
