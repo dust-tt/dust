@@ -12,6 +12,7 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
+import remarkGfm from "remark-gfm";
 
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
@@ -50,7 +51,6 @@ import {
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import remarkGfm from "remark-gfm";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
