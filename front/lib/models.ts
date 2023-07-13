@@ -831,7 +831,7 @@ export class ChatRetrievedDocument extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare dataSourceId: string;
-  declare sourceUrl: string;
+  declare sourceUrl: string | null;
   declare documentId: string;
   declare timestamp: string;
   declare tags: string[];
@@ -864,7 +864,7 @@ ChatRetrievedDocument.init(
     },
     sourceUrl: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     documentId: {
       type: DataTypes.STRING,

@@ -1,6 +1,6 @@
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
   documentId: string;
   timestamp: string;
   tags: string[];
