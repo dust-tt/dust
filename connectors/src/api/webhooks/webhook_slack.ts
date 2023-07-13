@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import {
   getAccessToken,
-  whoAmIMemoized,
+  getBotUserIdMemoized,
 } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackBotJoinedWorkflow,
@@ -24,14 +24,13 @@ type SlackWebhookReqBody = {
   event?: {
     bot_id?: string;
     channel?: string;
-    subtype: "message_changed";
+    subtype?: "message_changed";
     user?: string;
     ts?: string; // slack message id
     thread_ts?: string; // slack thread id
     type?: string; // event type (eg: message)
     channel_type?: "channel" | "im" | "mpim";
     text: string; // content of the message
-    bot_profile: unknown;
     message?: {
       bot_id?: string;
     };
@@ -44,11 +43,13 @@ type SlackWebhookResBody =
   | APIErrorWithStatusCode;
 
 async function handleChatBot(req: Request, res: Response) {
-  const slackMessage = req.body.event.text;
-  const slackTeamId = req.body.team_id;
-  const slackChannel = req.body.event.channel;
-  const slackUserId = req.body.event.user;
-  const slackMessageTs = req.body.event.ts;
+  const {
+    slackMessage,
+    slackTeamId,
+    slackChannel,
+    slackUserId,
+    slackMessageTs,
+  } = req.body;
   if (
     !slackMessage ||
     !slackTeamId ||
@@ -179,7 +180,7 @@ const _webhookSlackAPIHandler = async (
             });
           }
           const slackAccessToken = await getAccessToken(connector.connectionId);
-          const myUserId = await whoAmIMemoized(slackAccessToken);
+          const myUserId = await getBotUserIdMemoized(slackAccessToken);
           if (req.body.event?.user === myUserId) {
             // Message sent from the bot itself.
             return res.status(200).send();
@@ -299,7 +300,7 @@ const _webhookSlackAPIHandler = async (
               const slackAccessToken = await getAccessToken(
                 connector.connectionId
               );
-              const myUserId = await whoAmIMemoized(slackAccessToken);
+              const myUserId = await getBotUserIdMemoized(slackAccessToken);
               if (myUserId !== user) {
                 return new Ok("");
               }

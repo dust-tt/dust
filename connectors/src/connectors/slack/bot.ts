@@ -12,9 +12,9 @@ import logger from "@connectors/logger/logger";
 
 import {
   getAccessToken,
+  getBotUserIdMemoized,
   getSlackClient,
   getUserName,
-  whoAmI,
 } from "./temporal/activities";
 
 export async function botAnswerMessageWithErrorHandling(
@@ -126,7 +126,7 @@ async function botAnswerMessage(
   // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
-    const mySlackUser = await whoAmI(accessToken);
+    const mySlackUser = await getBotUserIdMemoized(accessToken);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
