@@ -936,16 +936,16 @@ impl DataSource {
 
                             let mut hasher = blake3::Hasher::new();
                             hasher.update(d.document_id.as_bytes());
+                            let document_id_hash = format!("{}", hasher.finalize().to_hex());
                             let filter = qdrant::Filter {
                                 must: vec![
                                     qdrant::FieldCondition {
                                         key: "document_id_hash".to_string(),
                                         r#match: Some(qdrant::Match {
                                             match_value: Some(
-                                                qdrant::r#match::MatchValue::Keyword(format!(
-                                                    "{}",
-                                                    hasher.finalize().to_hex()
-                                                )),
+                                                qdrant::r#match::MatchValue::Keyword(
+                                                    document_id_hash,
+                                                ),
                                             ),
                                         }),
                                         ..Default::default()
