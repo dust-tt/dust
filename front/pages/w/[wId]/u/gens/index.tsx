@@ -9,6 +9,7 @@ import {
 import {
   BookmarkIcon,
   ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
@@ -1058,6 +1059,8 @@ export default function AppGens({
 
   const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
 
+  const [copying, setCopying] = useState<boolean>(false);
+
   const getContext = () => {
     return {
       user: {
@@ -1433,15 +1436,17 @@ export default function AppGens({
           <div className="to mx-auto max-w-4xl divide-y px-6">
             <div className="flex flex-col">
               <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
-                <ActionButton onClick={() => setExplainExpanded(true)}>
-                  How does Gens work?
-                </ActionButton>
-                <TemplatesView
-                  onTemplateSelect={(t) => (template.current = t)}
-                  workspaceId={owner.sId}
-                  savedTemplates={templates}
-                  isBuilder={isBuilder}
-                />
+                <div className="flex flex-row items-center justify-between">
+                  <TemplatesView
+                    onTemplateSelect={(t) => (template.current = t)}
+                    workspaceId={owner.sId}
+                    savedTemplates={templates}
+                    isBuilder={isBuilder}
+                  />
+                  <ActionButton onClick={() => setExplainExpanded(true)}>
+                    How does Gens work?
+                  </ActionButton>
+                </div>
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
                     minRows={8}
@@ -1474,131 +1479,146 @@ export default function AppGens({
 
                   <button
                     onClick={async () => {
+                      setCopying(true);
                       await navigator.clipboard.writeText(genContent);
+                      setTimeout(() => {
+                        setCopying(false);
+                      }, 500);
                     }}
                     className="absolute right-0 top-0 mr-2 mt-2"
                   >
-                    <ClipboardDocumentIcon className="h-6 w-6 cursor-pointer hover:text-gray-500" />
+                    {copying ? (
+                      <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                    ) : (
+                      <ClipboardDocumentIcon className="h-5 w-5 cursor-pointer hover:text-gray-500" />
+                    )}
                   </button>
                 </div>
-                <div className="mb-4 flex flex-row flex-wrap justify-between text-xs">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex flex-row items-center space-x-2 leading-8">
-                      <div className="flex flex-initial text-gray-400">
-                        Data Sources:
-                      </div>
-                      <div className="ml-1 flex flex-row">
-                        {dataSources.map((ds) => {
-                          return (
-                            <div
-                              key={ds.name}
-                              className="group ml-1 flex flex-initial"
-                            >
+                <div className="flex-rows flex space-x-2">
+                  <div className="flex flex-1">
+                    <div className="items-center space-y-1 text-xs font-normal">
+                      <div className="flex flex-row items-center space-x-2 leading-8">
+                        <div className="flex flex-initial text-gray-400">
+                          Data Sources:
+                        </div>
+                        <div className="ml-1 flex flex-row">
+                          {dataSources.map((ds) => {
+                            return (
                               <div
-                                className={classNames(
-                                  "z-10 flex h-4 w-4 flex-initial cursor-pointer",
-                                  ds.provider !== "none" ? "mr-1" : "",
-                                  ds.selected ? "opacity-100" : "opacity-25"
-                                )}
-                                onClick={() => {
-                                  handleSwitchDataSourceSelection(ds.name);
-                                }}
+                                key={ds.name}
+                                className="group ml-1 flex flex-initial"
                               >
-                                {ds.provider !== "none" ? (
-                                  <img
-                                    src={PROVIDER_LOGO_PATH[ds.provider]}
-                                  ></img>
-                                ) : (
-                                  <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                                )}
-                              </div>
-                              <div className="absolute z-0 hidden rounded leading-3 group-hover:block">
-                                <div className="relative bottom-8 border bg-white px-1 py-1 ">
-                                  <span className="text-gray-600">
-                                    <span className="font-semibold">
-                                      {ds.name}
+                                <div
+                                  className={classNames(
+                                    "z-10 flex h-4 w-4 flex-initial cursor-pointer",
+                                    ds.provider !== "none" ? "mr-1" : "",
+                                    ds.selected ? "opacity-100" : "opacity-25"
+                                  )}
+                                  onClick={() => {
+                                    handleSwitchDataSourceSelection(ds.name);
+                                  }}
+                                >
+                                  {ds.provider !== "none" ? (
+                                    <img
+                                      src={PROVIDER_LOGO_PATH[ds.provider]}
+                                    ></img>
+                                  ) : (
+                                    <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                                  )}
+                                </div>
+                                <div className="absolute z-0 hidden rounded leading-3 group-hover:block">
+                                  <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                                    <span className="text-gray-600">
+                                      <span className="font-semibold">
+                                        {ds.name}
+                                      </span>
+                                      {ds.description
+                                        ? ` ${ds.description}`
+                                        : null}
                                     </span>
-                                    {ds.description
-                                      ? ` ${ds.description}`
-                                      : null}
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex flex-row items-center space-x-2 leading-8">
+                        <div className="flex flex-initial text-gray-400">
+                          Time range:
+                        </div>
+                        <div className="flex flex-initial cursor-pointer text-gray-400">
+                          {inferTimeRangeLoading ? (
+                            <div className="mt-0.5">
+                              <Spinner />
                             </div>
-                          );
-                        })}
+                          ) : (
+                            <SparklesIcon
+                              className="h-4 w-4 text-yellow-400"
+                              onClick={handleInferTimeRange}
+                            />
+                          )}
+                        </div>
+                        <GensTimeRangePicker
+                          timeRange={timeRange}
+                          onTimeRangeUpdate={setTimeRange}
+                        />
                       </div>
-                    </div>
-                    <div className="flex flex-row items-center space-x-2 leading-8">
-                      <div className="flex flex-initial text-gray-400">
-                        Time range:
-                      </div>
-                      <div className="flex flex-initial cursor-pointer text-gray-400">
-                        {inferTimeRangeLoading ? (
-                          <div className="mt-0.5">
-                            <Spinner />
-                          </div>
-                        ) : (
-                          <SparklesIcon
-                            className="h-4 w-4 text-yellow-400"
-                            onClick={handleInferTimeRange}
+                      <div className="flex flex-row items-center space-x-2 leading-8">
+                        <div className="flex flex-initial text-gray-400">
+                          TopK:
+                        </div>
+                        <div className="flex flex-initial">
+                          <input
+                            type="number"
+                            className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                            value={top_k}
+                            placeholder="Top K"
+                            onChange={(e) => setTopK(Number(e.target.value))}
                           />
-                        )}
+                        </div>
                       </div>
-                      <GensTimeRangePicker
-                        timeRange={timeRange}
-                        onTimeRangeUpdate={setTimeRange}
-                      />
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex flex-initial">
+                  <div className="flex flex-initial items-start">
+                    <ActionButton
+                      disabled={retrievalLoading}
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                        e.preventDefault();
+                        void handleSearch();
+                      }}
+                    >
+                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
+                      {retrievalLoading
+                        ? "Loading..."
+                        : selecting
+                        ? "Retrieve based on selection"
+                        : "Retrieve"}
+                    </ActionButton>
+                  </div>
+                  <div className="flex flex-initial items-start">
+                    {!genLoading && (
                       <ActionButton
-                        disabled={retrievalLoading}
-                        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                          e.preventDefault();
-                          void handleSearch();
+                        disabled={genLoading}
+                        onClick={() => {
+                          void handleGenerate();
                         }}
                       >
-                        <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        {retrievalLoading
-                          ? "Loading..."
-                          : selecting
-                          ? "Retrieve based on selection"
-                          : "Retrieve"}
+                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
+                        Generate {retrieved.length ? "based on retrieved" : ""}
                       </ActionButton>
-                    </div>
-
-                    <div className="flex-rows flex space-x-2">
-                      {!genLoading && (
-                        <div className="flex flex-initial">
-                          <ActionButton
-                            disabled={genLoading}
-                            onClick={() => {
-                              void handleGenerate();
-                            }}
-                          >
-                            <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
-                            Generate{" "}
-                            {retrieved.length ? "based on retrieved" : ""}
-                          </ActionButton>
-                        </div>
-                      )}
-                      <div
-                        className={classNames(
-                          "flex flex-initial",
-                          genLoading ? "block" : "hidden"
-                        )}
+                    )}
+                    <div
+                      className={classNames(genLoading ? "block" : "hidden")}
+                    >
+                      <HighlightButton
+                        disabled={!genLoading || genInterruptRef.current}
+                        onClick={() => {
+                          genInterruptRef.current = true;
+                        }}
                       >
-                        <HighlightButton
-                          disabled={!genLoading || genInterruptRef.current}
-                          onClick={() => {
-                            genInterruptRef.current = true;
-                          }}
-                        >
-                          Interrupt
-                        </HighlightButton>
-                      </div>
+                        Interrupt
+                      </HighlightButton>
                     </div>
                   </div>
                 </div>
