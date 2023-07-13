@@ -90,7 +90,7 @@ async function handler(
         });
       }
 
-      template = await getTemplate(owner, user, req.query.tId as string);
+      template = await getTemplate(auth, user, req.query.tId as string);
       if (template) {
         if (template.userId !== user.id && !isBuilder) {
           return apiError(req, res, {
@@ -103,7 +103,7 @@ async function handler(
           });
         }
 
-        result = await updateTemplate(pRes.value, owner);
+        result = await updateTemplate(auth, pRes.value);
         if (!result) {
           return apiError(req, res, {
             status_code: 404,

@@ -93,7 +93,7 @@ export async function upsertChatSession(
 ): Promise<ChatSessionType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected auth without workspace in upsertChatSession.");
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   // User can be null if we are calling from API.

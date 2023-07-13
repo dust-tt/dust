@@ -100,7 +100,7 @@ export const getServerSideProps: GetServerSideProps<{
     user;
   }
 
-  const templates = await getGensTemplates(owner, user);
+  const templates = await getGensTemplates(auth, user);
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
