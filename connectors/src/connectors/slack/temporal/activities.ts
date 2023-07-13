@@ -455,7 +455,7 @@ export async function syncThread(
     next_cursor = replies.response_metadata?.next_cursor;
   } while (next_cursor);
 
-  const botUserId = await whoAmIMemoized(slackAccessToken);
+  const botUserId = await getBotUserIdMemoized(slackAccessToken);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
   const text = await formatMessagesForUpsert(
@@ -578,7 +578,7 @@ export async function fetchUsers(
   } while (cursor);
 }
 
-export async function whoAmI(slackAccessToken: string) {
+export async function getBotUserId(slackAccessToken: string) {
   const client = getSlackClient(slackAccessToken);
   const authRes = await client.auth.test({});
   if (authRes.error) {
@@ -591,7 +591,7 @@ export async function whoAmI(slackAccessToken: string) {
   return authRes.user_id;
 }
 
-const whoAmIMemoized = memoize(whoAmI);
+export const getBotUserIdMemoized = memoize(getBotUserId);
 
 export async function getAccessToken(
   nangoConnectionId: string
