@@ -1555,9 +1555,7 @@ export default function AppGens({
                       onClick={() => {
                         navigator.clipboard.writeText(genContent);
                       }}
-                    >
-                      <ClipboardDocumentIcon className="mx-3 h-6 w-6 cursor-pointer hover:text-gray-500" />
-                    </button>
+                    ></button>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="flex flex-initial">
