@@ -48,7 +48,6 @@ import {
   GensTemplateVisibilityType,
 } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import Action from "@app/pages/api/w/[wId]/use/actions/[action]";
 
 type DataSource = {
   name: string;
@@ -102,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<{
     user;
   }
 
-  const templates = await getGensTemplates(owner, user);
+  const templates = await getGensTemplates(auth, user);
 
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
