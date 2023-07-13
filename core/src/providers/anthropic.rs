@@ -391,7 +391,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        8000
+        100000
     }
 
     async fn generate(
@@ -593,10 +593,10 @@ impl Embedder for AnthropicEmbedder {
     }
 
     fn context_size(&self) -> usize {
-        8000
+        0
     }
     fn embedding_size(&self) -> usize {
-        8000
+        0
     }
 
     async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
