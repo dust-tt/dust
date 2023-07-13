@@ -8,6 +8,8 @@ import {
 } from "@heroicons/react/20/solid";
 import {
   BookmarkIcon,
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentIcon,
   DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
@@ -546,7 +548,7 @@ export function ResultsView({
           {retrieved && retrieved.length > 0 && (
             <>
               <p className="text-lg">
-                Retrieved {retrieved.length} item
+                Retrieved {retrieved.length} document
                 {retrieved.length == 1 ? "" : "s"}
               </p>
 
@@ -1053,6 +1055,12 @@ export default function AppGens({
 
   const [selecting, setSelecting] = useState<boolean>(false);
 
+  //const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
+
+  const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
+
+  const [copying, setCopying] = useState<boolean>(false);
+
   const getContext = () => {
     return {
       user: {
@@ -1225,11 +1233,18 @@ export default function AppGens({
       setGenCursorPosition(cursorPosition);
     });
 
+    const endExecution = () => {
+      setGenLoading(false);
+      genInterruptRef.current = false;
+      genTextAreaRef.current?.focus();
+      setGenContent((c) => c + "\n");
+    };
+
     for await (const event of eventStream) {
       // console.log("EVENT", event, genInterruptRef.current);
       if (genInterruptRef.current) {
         void eventStream.return();
-        genInterruptRef.current = false;
+        endExecution();
         break;
       }
 
@@ -1239,8 +1254,7 @@ export default function AppGens({
       }
       if (event.type === "error") {
         console.log("ERROR error event", event);
-        setGenLoading(false);
-        genInterruptRef.current = false;
+        endExecution();
         return;
       }
       if (event.type === "block_execution") {
@@ -1248,8 +1262,7 @@ export default function AppGens({
         if (event.content.block_name === "MODEL") {
           if (e.error) {
             console.log("ERROR block_execution event", e.error);
-            setGenLoading(false);
-            genInterruptRef.current = false;
+            endExecution();
             return;
           }
         }
@@ -1258,6 +1271,7 @@ export default function AppGens({
 
     setGenLoading(false);
     genInterruptRef.current = false;
+    endExecution();
   };
 
   const handleSwitchDataSourceSelection = (name: string) => {
@@ -1359,17 +1373,81 @@ export default function AppGens({
         <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Gens" owner={owner} />
         </div>
+        <Transition.Root show={explainExpanded} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-10"
+            onClose={() => setExplainExpanded(false)}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 overflow-hidden bg-gray-800 bg-opacity-75 transition-opacity" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 z-10 overflow-y-auto">
+              <div className="flex min-h-full items-end items-center justify-center p-4">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  leave="ease-in duration-200"
+                  leaveTo="opacity-0"
+                >
+                  <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
+                    <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                      <p className="font-bold">Welcome to Gens!</p>
+                      <p className="mt-6">
+                        Gens is an early exploration of a more iterative way to
+                        interact with your data and with Assistant. Like writing
+                        a document, you can input text, and then search for
+                        documents based on said text, and have a model generate
+                        and add to parts of your doc.
+                      </p>
+                      <p className="mt-6">
+                        Gens supercharges your experience by allowng you to fine
+                        tune and extend your use of the models more than Chat —
+                        for retrieval, you can pin documents you've retrieved
+                        and remove ones you don't like, for generation, you can
+                        define nifty templates that instruct the model's
+                        outputs. Finally, the document format allows you to
+                        iterate on your text.
+                      </p>
+
+                      <p className="mt-6">
+                        Example workflows are exploring your company info to
+                        combine ideas and generate something new, writing a
+                        document combining different info into sections, or
+                        structuring lots of information with templates.
+                      </p>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition.Root>
         <div className="">
-          <div className="mx-auto mt-8 max-w-4xl divide-y px-6">
+          <div className="to mx-auto max-w-4xl divide-y px-6">
             <div className="flex flex-col">
-              <div className="flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
-                <TemplatesView
-                  onTemplateSelect={(t) => (template.current = t)}
-                  workspaceId={owner.sId}
-                  savedTemplates={templates}
-                  isBuilder={isBuilder}
-                />
-                <div className="w-70 flex font-normal">
+              <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-row items-center justify-between">
+                  <TemplatesView
+                    onTemplateSelect={(t) => (template.current = t)}
+                    workspaceId={owner.sId}
+                    savedTemplates={templates}
+                    isBuilder={isBuilder}
+                  />
+                  <Button onClick={() => setExplainExpanded(true)}>
+                    How does Gens work?
+                  </Button>
+                </div>
+                <div className="w-70 relative font-normal">
                   <TextareaAutosize
                     minRows={8}
                     ref={genTextAreaRef}
@@ -1398,6 +1476,23 @@ export default function AppGens({
                       }
                     }}
                   />
+
+                  <button
+                    onClick={async () => {
+                      setCopying(true);
+                      await navigator.clipboard.writeText(genContent);
+                      setTimeout(() => {
+                        setCopying(false);
+                      }, 500);
+                    }}
+                    className="absolute right-0 top-0 mr-2 mt-2"
+                  >
+                    {copying ? (
+                      <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                    ) : (
+                      <ClipboardDocumentIcon className="h-5 w-5 cursor-pointer hover:text-gray-500" />
+                    )}
+                  </button>
                 </div>
                 <div className="flex-rows flex space-x-2">
                   <div className="flex flex-1">
@@ -1485,7 +1580,7 @@ export default function AppGens({
                       </div>
                     </div>
                   </div>
-                  <div className={classNames("flex flex-initial items-start")}>
+                  <div className="flex flex-initial items-start">
                     <ActionButton
                       disabled={retrievalLoading}
                       onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
@@ -1497,42 +1592,38 @@ export default function AppGens({
                       {retrievalLoading
                         ? "Loading..."
                         : selecting
-                        ? "Search selection"
-                        : "Search"}
+                        ? "Retrieve based on selection"
+                        : "Retrieve"}
                     </ActionButton>
                   </div>
-                  <div
-                    className={classNames(
-                      "flex flex-initial items-start",
-                      !genLoading ? "block" : "hidden"
+                  <div className="flex flex-initial items-start">
+                    {!genLoading && (
+                      <ActionButton
+                        disabled={genLoading}
+                        onClick={() => {
+                          void handleGenerate();
+                        }}
+                      >
+                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
+                        Generate {retrieved.length ? "based on retrieved" : ""}
+                      </ActionButton>
                     )}
-                  >
-                    <ActionButton
-                      disabled={genLoading}
-                      onClick={() => {
-                        void handleGenerate();
-                      }}
+                    <div
+                      className={classNames(genLoading ? "block" : "hidden")}
                     >
-                      <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {genLoading ? "Loading..." : "Generate"}
-                    </ActionButton>
-                  </div>
-                  <div
-                    className={classNames(
-                      "flex flex-initial items-start",
-                      genLoading ? "block" : "hidden"
-                    )}
-                  >
-                    <HighlightButton
-                      disabled={!genLoading || genInterruptRef.current}
-                      onClick={() => {
-                        genInterruptRef.current = true;
-                      }}
-                    >
-                      Interrupt
-                    </HighlightButton>
+                      <HighlightButton
+                        disabled={!genLoading || genInterruptRef.current}
+                        onClick={() => {
+                          genInterruptRef.current = true;
+                        }}
+                      >
+                        Interrupt
+                      </HighlightButton>
+                    </div>
                   </div>
                 </div>
+
+                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
 
               <ResultsView
