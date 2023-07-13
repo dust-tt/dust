@@ -140,16 +140,37 @@ async function _processExtractEvent(data: {
 
   const results = await _runExtractEventApp(auth, inputsForApp);
   results.map(async (result: string) => {
-    // @todo be smarter
-    // check that this event is not already in the database
-    // check the properties match what's expected (json is typed on model)
-    // handle errors
     const properties = JSON.parse(result);
+    if (!properties.marker) {
+      logger.error(
+        { properties, marker: schema.marker, documentSourceUrl, documentId },
+        "Extract event app did not return a marker. Skipping."
+      );
+      return;
+    }
+
+    // Not extracting a new event with the same marker on the same document
+    const existingEvent = await ExtractedEvent.findOne({
+      where: {
+        documentId: documentId,
+        dataSourceId: dataSource.id,
+        marker: properties.marker,
+      },
+    });
+    if (existingEvent) {
+      logger.info(
+        { properties, marker: schema.marker, documentSourceUrl, documentId },
+        "[Extract Event] Event already extracted, not saving again."
+      );
+      return;
+    }
+
     const event = await ExtractedEvent.create({
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
       dataSourceId: dataSource.id,
+      marker: properties.marker,
     });
 
     // Temp: we log on slack events that are extracted from the Dust workspace
