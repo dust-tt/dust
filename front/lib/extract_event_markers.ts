@@ -1,3 +1,7 @@
+import { Op } from "sequelize";
+
+import { ExtractedEvent } from "@app/lib/models";
+
 const EXTRACT_EVENT_PATTERN = /\[\[(.*?)\]\]/; // Ex: [[event]]
 type ExtractedMarkersType = { [key: string]: string[] };
 
@@ -44,4 +48,42 @@ export function sanitizeRawExtractEventMarkers(
     markers[key].push(m);
   });
   return markers;
+}
+
+/**
+ * Get the markers from the doc and returns only the ones that are not already in the DB
+ * @param documentId
+ * @param dataSourceId
+ * @param documentText
+ */
+export async function getExtractEventMarkersToProcess({
+  documentId,
+  dataSourceId,
+  documentText,
+}: {
+  documentId: string;
+  dataSourceId: number;
+  documentText: string;
+}): Promise<string[]> {
+  // Gets all markers from the doc content
+  const rawMarkers = getRawExtractEventMarkersFromText(documentText);
+
+  // Gets all markers already in the DB for this document
+  const existingExtractedEvents = await ExtractedEvent.findAll({
+    where: {
+      documentId: documentId,
+      dataSourceId: dataSourceId,
+      marker: {
+        [Op.in]: rawMarkers,
+      },
+    },
+  });
+  const existingExtractedEventMarkers = existingExtractedEvents.map(
+    (existingExtractedEvents) => existingExtractedEvents.marker
+  );
+
+  // Gets the diff to keep only new markers to process
+  return rawMarkers.filter(
+    (rawMarker) => !existingExtractedEventMarkers.includes(rawMarker)
+  );
 }

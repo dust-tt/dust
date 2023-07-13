@@ -7,6 +7,7 @@ import {
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
 import {
+  getExtractEventMarkersToProcess,
   getRawExtractEventMarkersFromText,
   hasExtractEventMarker,
   sanitizeRawExtractEventMarkers,
@@ -60,7 +61,6 @@ export async function processExtractEvents({
   documentText,
 }: PostUpsertHookParams) {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
-
   if (!auth.workspace()) {
     logger.error(
       `Could not get internal auth for workspace ${workspaceId} to process extract events.`
@@ -69,17 +69,19 @@ export async function processExtractEvents({
   }
 
   const dataSource = await getDatasource(dataSourceName, workspaceId);
-
   if (!dataSource) {
     logger.error(
       `[Extract event] Could not get datasource ${dataSourceName}. Skipping.`
     );
     return;
-  } else {
-    logger.info(`[Extract event] Processing datasource ${dataSourceName}.`);
   }
 
-  const rawMarkers = getRawExtractEventMarkersFromText(documentText);
+  // Getting the markers from the doc and keeping only those not already in the DB
+  const rawMarkers = await getExtractEventMarkersToProcess({
+    documentId,
+    dataSourceId: dataSource.id,
+    documentText,
+  });
   const markers = sanitizeRawExtractEventMarkers(rawMarkers);
 
   await Promise.all(
@@ -145,22 +147,6 @@ async function _processExtractEvent(data: {
       logger.error(
         { properties, marker: schema.marker, documentSourceUrl, documentId },
         "Extract event app did not return a marker. Skipping."
-      );
-      return;
-    }
-
-    // Not extracting a new event with the same marker on the same document
-    const existingEvent = await ExtractedEvent.findOne({
-      where: {
-        documentId: documentId,
-        dataSourceId: dataSource.id,
-        marker: properties.marker,
-      },
-    });
-    if (existingEvent) {
-      logger.info(
-        { properties, marker: schema.marker, documentSourceUrl, documentId },
-        "[Extract Event] Event already extracted, not saving again."
       );
       return;
     }
