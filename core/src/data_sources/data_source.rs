@@ -937,11 +937,11 @@ impl DataSource {
                             let filter = qdrant::Filter {
                                 must: vec![
                                     qdrant::FieldCondition {
-                                        key: "document_id".to_string(),
+                                        key: "document_id_hash".to_string(),
                                         r#match: Some(qdrant::Match {
                                             match_value: Some(
                                                 qdrant::r#match::MatchValue::Keyword(
-                                                    d.document_id.clone(),
+                                                    d.hash.clone(),
                                                 ),
                                             ),
                                         }),
