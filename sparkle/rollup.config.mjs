@@ -2,10 +2,12 @@ import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
+import autoprefixer from "autoprefixer";
 import fs from "fs";
 import path from "path";
 import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
+import tailwindcss from "tailwindcss";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +36,11 @@ const config = {
     resolve(),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json", outputToFilesystem: true }),
-    postcss(),
+    postcss({
+      plugins: [tailwindcss(), autoprefixer()],
+      inject: true,
+      extract: false,
+    }),
     json(),
   ],
 };

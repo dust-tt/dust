@@ -5,6 +5,7 @@
     "build": "rollup -c"
   },
   "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
   "module": "dist/esm/index.js",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.2",
@@ -16,6 +17,7 @@
     "@types/react": "^18.0.28",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
+    "autoprefixer": "^10.4.14",
     "eslint": "^8.37.0",
     "eslint-config-next": "^13.2.4",
     "eslint-config-prettier": "^8.8.0",

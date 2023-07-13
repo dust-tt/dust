@@ -17,7 +17,8 @@
     "downlevelIteration": true,
     "paths": {
       "@sparkle/*": ["./src/*"]
-    }
+    },
+    "declaration": true
   },
   "include": [
     "src/**/*.ts",

@@ -1,3 +1,4 @@
-import { Button } from "./components/button";
+import "./styles/global.css";
 
+import { Button } from "./components/button";
 export { Button };

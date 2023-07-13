@@ -14,7 +14,8 @@
   "dependencies": {
     "mdx": "^0.2.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "sparkle": "file:../sparkle"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.0.26",
