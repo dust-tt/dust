@@ -3,12 +3,18 @@ import { Op } from "sequelize";
 import { GensTemplateType } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
 
+import { Authenticator } from "../auth";
 import { GensTemplate } from "../models";
 
 export async function getGensTemplates(
-  owner: WorkspaceType,
+  auth: Authenticator,
   user: UserType
 ): Promise<GensTemplateType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+
   const templates = await GensTemplate.findAll({
     where: {
       workspaceId: owner.id,
@@ -37,10 +43,15 @@ export async function getGensTemplates(
 }
 
 export async function getTemplate(
-  owner: WorkspaceType,
+  auth: Authenticator,
   user: UserType,
   sId: string
 ): Promise<GensTemplateType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+
   const template = await GensTemplate.findOne({
     where: {
       workspaceId: owner.id,
@@ -69,9 +80,14 @@ export async function getTemplate(
 }
 
 export async function updateTemplate(
-  template: GensTemplateType,
-  owner: WorkspaceType
+  auth: Authenticator,
+  template: GensTemplateType
 ) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
   if (template.visibility == "workspace" || template.visibility == "user") {
     return await GensTemplate.update(
       {
