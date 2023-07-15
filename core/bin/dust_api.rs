@@ -1021,6 +1021,65 @@ async fn runs_retrieve_status(
     }
 }
 
+
+/// Delete a run.
+
+async fn runs_delete(
+    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state.store.load_run(&project, &run_id, Some(None)).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to retrieve run: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(run) => match run {
+            None => (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: String::from("run_not_found"),
+                        message: format!("No run found for id `{}`", run_id),
+                    }),
+                    response: None,
+                }),
+            ),
+            Some(run) => match run.delete(state.store.clone()).await {
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(APIResponse {
+                        error: Some(APIError {
+                            code: String::from("internal_server_error"),
+                            message: format!("Failed to delete run: {}", e),
+                        }),
+                        response: None,
+                    }),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "run": {
+                                "created": run.created(),
+                                "run_id": run.run_id(),
+                                "config": run.config(),
+                            }
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 /// Register a new data source.
 
 #[derive(serde::Deserialize)]
@@ -1715,6 +1774,7 @@ async fn main() -> Result<()> {
             "/projects/:project_id/runs/:run_id/status",
             get(runs_retrieve_status),
         )
+        .route("/projects/:project_id/runs/:run_id", post(runs_delete))
         // DataSources
         .route(
             "/projects/:project_id/data_sources",

@@ -79,6 +79,8 @@ pub trait Store {
         block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>>;
 
+    async fn delete_run(&self, run_id: &str) -> Result<()>;
+
     // DataSources
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;
     async fn load_data_source(

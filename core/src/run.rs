@@ -255,6 +255,19 @@ impl Run {
     pub fn set_block_status(&mut self, status: BlockStatus) {
         self.status.set_block_status(status);
     }
+
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        let store = store.clone();
+
+        store.delete_run(&self.run_id).await?;
+
+        utils::done(&format!(
+            "Deleted run: run_id={}",
+            self.run_id,
+        ));
+
+        Ok(())
+    }
 }
 
 pub async fn cmd_inspect(run_id: &str, block_type: BlockType, block_name: &str) -> Result<()> {

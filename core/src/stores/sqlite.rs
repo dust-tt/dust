@@ -920,6 +920,51 @@ impl Store for SQLiteStore {
         .await?
     }
 
+    async fn delete_run(&self, run_id: &str) -> Result<()> {
+        let run_id = run_id.to_string();
+
+        let pool = self.pool.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut c = pool.get()?;
+            let row_id: Option<i64> = match c.query_row(
+                "SELECT id FROM runs WHERE run_id = ?",
+                params![run_id],
+                |row| Ok(row.get(0).unwrap()),
+            ) {
+                Err(e) => match e {
+                    rusqlite::Error::QueryReturnedNoRows => None,
+                    _ => Err(e)?,
+                },
+                Ok(row_id) => Some(row_id),
+            };
+
+            let run_row_id = match row_id {
+                Some(r) => r,
+                None => Err(anyhow!("Unknown Run: {}", run_id))?,
+            };
+
+            let tx = c.transaction()?;
+            {
+                let mut stmt = tx.prepare_cached("SELECT block_execution FROM runs_joins WHERE run = ?")?;
+                let block_execution_ids: Vec<i64> = stmt.query_map(params![run_row_id], |row| row.get(0))?.collect::<rusqlite::Result<_>>()?;
+
+                let mut stmt = tx.prepare_cached("DELETE FROM runs_joins WHERE run = ?")?;
+                stmt.execute(params![run_row_id])?;
+
+                for block_exec_id in &block_execution_ids {
+                    let mut stmt = tx.prepare_cached("DELETE FROM block_executions WHERE id = ?")?;
+                    stmt.execute(params![block_exec_id])?;
+                }
+
+                let mut stmt = tx.prepare_cached("DELETE FROM runs WHERE id = ?")?;
+                stmt.execute(params![run_row_id])?;
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
         let project_id = project.project_id();
         let data_source_created = ds.created();
@@ -1900,6 +1945,17 @@ _fun = (env) => {
         assert!(r.traces[0].1.len() == 2);
         assert!(r.traces[0].1[0].len() == 1);
         assert!(r.traces[0].1[0][0].value.as_ref().unwrap()["res"] == "11");
+
+        store.delete_run(r.run_id()).await?;
+
+        let r = store
+            .load_run(
+                &project,
+                r.run_id(),
+                Some(None),
+            )
+            .await?;
+        assert!(r.is_none());
 
         Ok(())
     }

@@ -955,6 +955,48 @@ impl Store for PostgresStore {
         )))
     }
 
+    async fn delete_run(&self, run_id: &str) -> Result<()> {
+        let run_id = run_id.to_string();
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM runs WHERE run_id = $1 LIMIT 1",
+                &[&run_id],
+            )
+            .await?;
+
+        let run_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Run: {}", run_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        {
+            let stmt = tx.prepare("SELECT block_execution FROM runs_joins WHERE run = $1").await?;
+            let block_execution_ids = tx.query(&stmt, &[&run_row_id]).await?.iter().map(|r| r.get(0)).collect::<Vec<i64>>();
+
+            let stmt = tx.prepare("DELETE FROM runs_joins WHERE run = $1").await?;
+            let _ = tx.query(&stmt, &[&run_row_id]).await?;
+
+            for block_exec_id in &block_execution_ids {
+                let stmt = tx.prepare("DELETE FROM block_executions WHERE id = $1").await?;
+                let _ = tx.query(&stmt, &[&block_exec_id]).await?;
+            }
+
+            let stmt = tx.prepare("DELETE FROM runs WHERE id = $1").await?;
+            let _ = tx.query(&stmt, &[&run_row_id]).await?;
+        }
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
         let project_id = project.project_id();
         let data_source_created = ds.created();
