@@ -211,7 +211,7 @@ export async function retrieveGithubConnectorPermissions(
   const githubInstallationId = c.connectionId;
 
   let resources: ConnectorResource[] = [];
-  let pageNumber = 0;
+  let pageNumber = 1; // 1-indexed
   for (;;) {
     const page = await getReposPage(githubInstallationId, pageNumber);
     pageNumber += 1;
