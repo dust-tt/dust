@@ -25,9 +25,10 @@ import {
   createSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorProvider, ConnectorType } from "@connectors/types/connector";
+import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { ConnectorResource } from "@connectors/types/resources";
 
@@ -112,16 +113,16 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   };
 
 type ConnectorPermissionRetriever = (
-  connector: ConnectorType
+  connectorId: ModelId
 ) => Promise<Result<ConnectorResource[], Error>>;
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorPermissionRetriever
 > = {
-  slack: async (connector: ConnectorType) => {
+  slack: async (connectorId: ModelId) => {
     logger.info(
-      { connectorId: connector.id },
+      { connectorId },
       `Slack connector permissions is not implemented.`
     );
     return new Err(
@@ -129,18 +130,18 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
     );
   },
   github: retrieveGithubConnectorPermissions,
-  notion: async (connector: ConnectorType) => {
+  notion: async (connectorId: ModelId) => {
     logger.info(
-      { connectorId: connector.id },
+      { connectorId },
       `Slack connector permissions is not implemented.`
     );
     return new Err(
       new Error("Slack connector permissions retrieval is not implemented.")
     );
   },
-  google_drive: async (connector: ConnectorType) => {
+  google_drive: async (connectorId: ModelId) => {
     logger.info(
-      { connectorId: connector.id },
+      { connectorId },
       `Slack connector permissions is not implemented.`
     );
     return new Err(

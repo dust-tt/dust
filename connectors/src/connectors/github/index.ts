@@ -9,11 +9,11 @@ import {
   Connector,
   GithubConnectorState,
   GithubIssue,
+  ModelId,
   sequelize_conn,
 } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorType } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { ConnectorResource } from "@connectors/types/resources";
 
@@ -196,15 +196,15 @@ export async function cleanupGithubConnector(
 }
 
 export async function retrieveGithubConnectorPermissions(
-  connector: ConnectorType
+  connectorId: ModelId
 ): Promise<Result<ConnectorResource[], Error>> {
   const c = await Connector.findOne({
     where: {
-      id: connector.id,
+      id: connectorId,
     },
   });
   if (!c) {
-    logger.error({ connectorId: connector.id }, "Connector not found");
+    logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
   }
 
@@ -221,7 +221,7 @@ export async function retrieveGithubConnectorPermissions(
 
     resources = resources.concat(
       page.map((repo) => ({
-        provider: connector.type,
+        provider: c.type,
         internalId: repo.id.toString(),
         parentInternalId: null,
         title: repo.name,

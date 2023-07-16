@@ -38,16 +38,7 @@ const _getConnectorPermissions = async (
   const connectorPermissionRetriever =
     RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE[connector.type];
 
-  const pRes = await connectorPermissionRetriever({
-    id: connector.id,
-    type: connector.type,
-    lastSyncStatus: connector.lastSyncStatus,
-    lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
-    lastSyncFinishTime: connector.lastSyncFinishTime?.getTime(),
-    lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
-    firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
-    firstSyncProgress: connector.firstSyncProgress,
-  });
+  const pRes = await connectorPermissionRetriever(connector.id);
 
   if (pRes.isErr()) {
     return apiError(req, res, {
