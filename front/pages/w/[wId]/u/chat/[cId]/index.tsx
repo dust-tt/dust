@@ -625,9 +625,10 @@ export default function AppChat({
   }, [chatSession]);
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
-  // for testing, dust users have "auto" as default; others have "all"
+  // for testing, engs & dust users  have "auto" as default; others have "all"
   const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
-    owner.sId === process.env.DUST_DEVELOPMENT_WORKSPACE_ID
+    owner.sId === process.env.DUST_DEVELOPMENT_WORKSPACE_ID ||
+      process.env.NODE_ENV === "development"
       ? timeRanges[4]
       : timeRanges[3]
   );
