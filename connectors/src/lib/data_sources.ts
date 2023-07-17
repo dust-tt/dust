@@ -63,7 +63,12 @@ async function _upsertToDatasource(
   tags?: string[],
   loggerArgs: Record<string, string | number> = {}
 ) {
-  const localLogger = logger.child({ ...loggerArgs, documentId });
+  const localLogger = logger.child({
+    ...loggerArgs,
+    documentId,
+    documentUrl,
+    documentLength: documentText.length,
+  });
   const statsDTags = [
     `data_source_name:${dataSourceConfig.dataSourceName}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
