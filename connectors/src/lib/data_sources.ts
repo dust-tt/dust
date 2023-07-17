@@ -63,7 +63,21 @@ async function _upsertToDatasource(
   tags?: string[],
   loggerArgs: Record<string, string | number> = {}
 ) {
-  const localLogger = logger.child({ ...loggerArgs, documentId });
+  const localLogger = logger.child({
+    ...loggerArgs,
+    documentId,
+    documentUrl,
+    documentLength: documentText.length,
+  });
+  const statsDTags = [
+    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `workspace_id:${dataSourceConfig.workspaceId}`,
+  ];
+
+  localLogger.info("Attempting to upload document to Dust.");
+  statsDClient.increment("data_source_upserts_attempt.count", 1, statsDTags);
+
+  const now = new Date();
 
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
@@ -87,28 +101,37 @@ async function _upsertToDatasource(
       dustRequestConfig
     );
   } catch (e) {
+    const elapsed = new Date().getTime() - now.getTime();
     if (axios.isAxiosError(e) && e.config.data) {
       e.config.data = "[REDACTED]";
     }
-    statsDClient.increment("data_source_upserts_error.count", 1, [
-      `data_source_name:${dataSourceConfig.dataSourceName}`,
-      `workspace_id:${dataSourceConfig.workspaceId}`,
-    ]);
+    statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
+    statsDClient.histogram(
+      "data_source_upserts_error.duration",
+      elapsed,
+      statsDTags
+    );
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }
 
+  const elapsed = new Date().getTime() - now.getTime();
+
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    statsDClient.increment("data_source_upserts_success.count", 1, [
-      `data_source_name:${dataSourceConfig.dataSourceName}`,
-      `workspace_id:${dataSourceConfig.workspaceId}`,
-    ]);
+    statsDClient.increment("data_source_upserts_success.count", 1, statsDTags);
+    statsDClient.histogram(
+      "data_source_upserts_success.duration",
+      elapsed,
+      statsDTags
+    );
     localLogger.info("Successfully uploaded document to Dust.");
   } else {
-    statsDClient.increment("data_source_upserts_error.count", 1, [
-      `data_source_name:${dataSourceConfig.dataSourceName}`,
-      `workspace_id:${dataSourceConfig.workspaceId}`,
-    ]);
+    statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
+    statsDClient.histogram(
+      "data_source_upserts_error.duration",
+      elapsed,
+      statsDTags
+    );
     localLogger.error(
       {
         status: dustRequestResult.status,
