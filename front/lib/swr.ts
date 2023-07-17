@@ -12,6 +12,7 @@ import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
+import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
 import { AppType } from "@app/types/app";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
@@ -218,5 +219,20 @@ export function useUserMetadata(key: string) {
     metadata: data ? data.metadata : null,
     isMetadataLoading: !error && !data,
     isMetadataError: error,
+  };
+}
+
+export function useEventSchemas(owner: WorkspaceType) {
+  const eventSchemaFetcher: Fetcher<GetEventSchemasResponseBody> = fetcher;
+
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/use/extract`,
+    eventSchemaFetcher
+  );
+
+  return {
+    schemas: data ? data.schemas : [],
+    isSchemasLoading: !error && !data,
+    isSchemasError: error,
   };
 }
