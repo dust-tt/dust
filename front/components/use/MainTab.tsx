@@ -1,10 +1,15 @@
 import { Menu } from "@headlessui/react";
-import { ChatBubbleLeftIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpTrayIcon,
+  ChatBubbleLeftIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 
 import { classNames } from "@app/lib/utils";
 import { WorkspaceType } from "@app/types/user";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export default function MainTab({
   currentTab,
@@ -13,7 +18,7 @@ export default function MainTab({
   currentTab: string;
   owner: WorkspaceType;
 }) {
-  const tabs: { name: string; href: string; icon: JSX.Element }[] = [
+  const publicTabs: { name: string; href: string; icon: JSX.Element }[] = [
     {
       name: "Chat",
       href: `/w/${owner.sId}/u/chat`,
@@ -25,7 +30,31 @@ export default function MainTab({
       ),
     },
   ];
+  const developmentTabs: { name: string; href: string; icon: JSX.Element }[] = [
+    {
+      name: "Gens",
+      href: `/w/${owner.sId}/u/gens`,
+      icon: (
+        <PencilSquareIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
+    {
+      name: "Extract data",
+      href: `/w/${owner.sId}/u/extract`,
+      icon: (
+        <ArrowUpTrayIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
+  ];
 
+  const displayDevTabs = isDevelopmentOrDustWorkspace(owner);
+  const tabs = displayDevTabs ? publicTabs.concat(developmentTabs) : publicTabs;
   const currTab = tabs.find((tab) => tab.name == currentTab);
 
   return (
