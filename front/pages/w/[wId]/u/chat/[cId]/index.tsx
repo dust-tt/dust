@@ -380,7 +380,7 @@ export function RetrievalsView({
           )}
           {!message.retrievals && (
             <div className="loading-dots">
-              Computed query: {message.query}. Retrieving docs
+              Computed query: {message.params?.query}. Retrieving docs
             </div>
           )}
         </div>
@@ -779,7 +779,10 @@ export default function AppChat({
     }
   };
 
-  const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
+  const runChatRetrieval = async (
+    m: ChatMessageType[],
+    { query, minTimestamp }: { query: string; minTimestamp?: number }
+  ) => {
     const config = cloneBaseConfig(
       DustProdActionRegistry["chat-retrieval"].config
     );
@@ -791,11 +794,24 @@ export default function AppChat({
           data_source_id: ds.name,
         };
       });
-    if (selectedTimeRange.id !== "all") {
+    if (selectedTimeRange.id === "auto" && minTimestamp) {
+      // add margin of max(1 day, 25% of the time range)
+      const margin = Math.max(
+        24 * 60 * 60 * 1000,
+        (Date.now() - minTimestamp) * 0.25
+      );
+      config.DATASOURCE.filter = {
+        timestamp: { gt: minTimestamp > 0 ? minTimestamp - margin : 0 },
+      };
+    } else if (
+      selectedTimeRange.id !== "all" &&
+      selectedTimeRange.id !== "auto"
+    ) {
       config.DATASOURCE.filter = {
         timestamp: { gt: Date.now() - selectedTimeRange.ms },
       };
     }
+
     const res = await runActionStreamed(owner, "chat-retrieval", config, [
       {
         messages: [{ role: "query", message: query }],
@@ -974,7 +990,9 @@ export default function AppChat({
       if (input.startsWith("/retrieve")) {
         await updateMessages(m, {
           role: "retrieval",
-          query: processedInput,
+          params: {
+            query: processedInput,
+          },
         } as ChatMessageType);
         const retrievalResult = await runChatRetrieval(m, processedInput);
         m.pop();
@@ -984,7 +1002,7 @@ export default function AppChat({
         await updateMessages(m, result);
         // has the model decided to run the retrieval function?
         if (result?.role === "retrieval") {
-          const query = result.query as string;
+          const query = result.params?.query as string;
           const retrievalResult = await runChatRetrieval(m, query);
           // replace the retrieval message with the result of the retrieval
           // as a consequence, the query is not stored in the database

@@ -570,7 +570,7 @@ export async function* newChat(
           const m = e.value as {
             role: MessageRole;
             message?: string;
-            query?: string;
+            params?: { query: string; minTimestamp: number };
           };
 
           if (m.role === "assistant") {
@@ -592,7 +592,7 @@ export async function* newChat(
             });
           }
 
-          if (m.role === "retrieval" && m.query) {
+          if (m.role === "retrieval" && m.params?.query) {
             yield {
               type: "chat_message_trigger",
               role: "retrieval",
@@ -600,7 +600,7 @@ export async function* newChat(
             messages.push({
               sId: new_id(),
               role: "retrieval",
-              query: m.query,
+              params: m.params,
             });
           }
         }
@@ -646,7 +646,7 @@ export async function* newChat(
 
     const res = await runAction(auth, "chat-retrieval", configRetrieval, [
       {
-        messages: [{ role: "query", message: m.query }],
+        messages: [{ role: "query", message: m.params?.query }],
         userContext: {
           timeZone,
         },
