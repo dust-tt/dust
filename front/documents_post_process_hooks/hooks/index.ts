@@ -1,10 +1,10 @@
-import { ConnectorProvider } from "@app/lib/connectors_api";
-import { DEFAULT_POST_UPSERT_HOOKS_DEBOUNCE_MS } from "@app/post_upsert_hooks/hooks/consts";
+import { DEFAULT_POST_UPSERT_HOOKS_DEBOUNCE_MS } from "@app/documents_post_process_hooks/hooks/consts";
 import {
   documentTrackerSuggestChangesPostUpsertHook,
   documentTrackerUpdateTrackedDocumentsPostUpsertHook,
-} from "@app/post_upsert_hooks/hooks/document_tracker";
-import { extractEventPostUpsertHook } from "@app/post_upsert_hooks/hooks/extract_event";
+} from "@app/documents_post_process_hooks/hooks/document_tracker";
+import { extractEventPostUpsertHook } from "@app/documents_post_process_hooks/hooks/extract_event";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 
 export const POST_UPSERT_HOOK_TYPES = [
   "document_tracker_update_tracked_documents",

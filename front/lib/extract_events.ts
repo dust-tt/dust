@@ -1,5 +1,7 @@
 import { Op } from "sequelize";
 
+import { PostUpsertHookParams } from "@app/documents_post_process_hooks/hooks";
+import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -15,8 +17,6 @@ import {
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
-import { PostUpsertHookParams } from "@app/post_upsert_hooks/hooks";
-import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 export async function shouldProcessExtractEvents({
   dataSourceName,

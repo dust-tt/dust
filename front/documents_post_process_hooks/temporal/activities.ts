@@ -1,11 +1,11 @@
+import {
+  POST_UPSERT_HOOK_BY_TYPE,
+  PostUpsertHookType,
+} from "@app/documents_post_process_hooks/hooks";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import {
-  POST_UPSERT_HOOK_BY_TYPE,
-  PostUpsertHookType,
-} from "@app/post_upsert_hooks/hooks";
 
 export async function runPostUpsertHookActivity(
   dataSourceName: string,

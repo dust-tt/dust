@@ -1,18 +1,18 @@
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 
+import { PostUpsertHook } from "@app/documents_post_process_hooks/hooks";
+import { callLegacyDocTrackerAction } from "@app/documents_post_process_hooks/hooks/document_tracker/actions/doc_tracker_legacy";
+import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
+import {
+  getDatasource,
+  getDocumentDiff,
+} from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
-import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
-import { callLegacyDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions/doc_tracker_legacy";
-import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
-import {
-  getDatasource,
-  getDocumentDiff,
-} from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;

@@ -1,7 +1,7 @@
+import { getTemporalClient } from "@app/documents_post_process_hooks/temporal/lib";
+import { newUpsertSignal } from "@app/documents_post_process_hooks/temporal/signals";
+import { runPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/workflows";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { getTemporalClient } from "@app/post_upsert_hooks/temporal/lib";
-import { newUpsertSignal } from "@app/post_upsert_hooks/temporal/signals";
-import { runPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/workflows";
 
 import { PostUpsertHookType } from "../hooks";
 

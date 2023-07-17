@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getPostUpsertHooksToRun } from "@app/documents_post_process_hooks/hooks";
+import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
@@ -11,8 +13,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { getPostUpsertHooksToRun } from "@app/post_upsert_hooks/hooks";
-import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";

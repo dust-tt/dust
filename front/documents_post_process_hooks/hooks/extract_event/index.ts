@@ -1,13 +1,13 @@
+import {
+  PostUpsertHook,
+  PostUpsertHookParams,
+} from "@app/documents_post_process_hooks/hooks";
 import { hasExtractEventMarker } from "@app/lib/extract_event_markers";
 import {
   processExtractEvents,
   shouldProcessExtractEvents,
 } from "@app/lib/extract_events";
 import mainLogger from "@app/logger/logger";
-import {
-  PostUpsertHook,
-  PostUpsertHookParams,
-} from "@app/post_upsert_hooks/hooks";
 
 const logger = mainLogger.child({
   postUpsertHook: "extract_event",

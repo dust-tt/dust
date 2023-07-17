@@ -1,11 +1,11 @@
 import * as t from "io-ts";
 
+import { getTrackableDataSources } from "@app/documents_post_process_hooks/hooks/document_tracker/lib";
 import { callAction } from "@app/lib/actions/helpers";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { getTrackableDataSources } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 
 // this is the current Doc Tracker pipeline, implemented as a single dust action
 // we are going to move away from this pipeline, new code should not use it
