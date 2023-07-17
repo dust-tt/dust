@@ -211,6 +211,30 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "doc-tracker-retrieval": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "4180309c80",
+      appHash:
+        "8adcc9ae33a63cc735c9a23a97d7bffe658c6ef2400fc997e61e8817f611a1f8",
+    },
+    config: {
+      SEMANTIC_SEARCH: {
+        data_sources: [],
+        top_k: 8,
+        filter: {
+          tags: {
+            in: ["__DUST_TRACKED"],
+            not: null,
+          },
+          timestamp: null,
+        },
+        use_cache: false,
+        full_text: false,
+        target_document_tokens: 2000,
+      },
+    },
+  },
   "extract-events": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
