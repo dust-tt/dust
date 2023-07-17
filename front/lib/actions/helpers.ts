@@ -12,7 +12,7 @@ import {
   DustAPIErrorResponse,
   DustAppConfigType,
 } from "@app/lib/dust_api";
-import { Ok, Result } from "@app/lib/result";
+import { Err, Ok, Result } from "@app/lib/result";
 
 interface CallActionParams<V extends t.Mixed> {
   workspaceId: string;
@@ -64,7 +64,7 @@ export async function callAction<V extends t.Mixed>({
   >;
 
   if (response.isErr()) {
-    throw response.error;
+    return response;
   }
 
   // create a schema validator using the provided schema + the base response schema
@@ -86,15 +86,19 @@ export async function callAction<V extends t.Mixed>({
 
   if (isActionResponseBase(response.value)) {
     // the response is of the right shape, but it's not a success response
-    throw new Error(
-      `Doc Tracker action failed response: ${JSON.stringify(
+    return new Err({
+      type: "action_failed",
+      message: `Doc Tracker action failed response: ${JSON.stringify(
         response.value.status
-      )}`
-    );
+      )}`,
+    });
   }
 
   // the response is not of a known shape, so we can't assume anything about it
-  throw new Error(
-    `Unexpected Doc Tracker action response: ${JSON.stringify(response.value)}`
-  );
+  return new Err({
+    type: "unexpected_action_response",
+    message: `Unexpected Doc Tracker action response: ${JSON.stringify(
+      response.value
+    )}`,
+  });
 }
