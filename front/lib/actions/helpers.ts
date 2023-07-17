@@ -2,21 +2,21 @@ import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
 import { Action, cloneBaseConfig } from "@app/lib/actions/registry";
+import {
+  ActionResponseBaseSchema,
+  isActionResponseBase,
+} from "@app/lib/actions/types";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import {
   DustAPI,
   DustAPIErrorResponse,
   DustAppConfigType,
 } from "@app/lib/dust_api";
-import { Result } from "@app/lib/result";
-import {
-  ActionResponseBaseSchema,
-  isActionResponseBase,
-} from "@app/post_upsert_hooks/hooks/document_tracker/actions/types";
+import { Ok, Result } from "@app/lib/result";
 
 interface CallActionParams<V extends t.Mixed> {
   workspaceId: string;
-  input: unknown;
+  input: { [key: string]: unknown };
   action: Action;
   config: DustAppConfigType;
   // needs to be an io-ts schema of the value returned by the action
@@ -24,13 +24,26 @@ interface CallActionParams<V extends t.Mixed> {
   responseValueSchema: V;
 }
 
+/**
+ * This function is **not** intended to be used by the client directly.
+ *
+ * It is used server-side to call an action on the production API, when streaming is not required.
+ * It has the advantage of providing an interface that validates the response of the action using io-ts.
+ *
+ * @param workspaceId string the workspace id (sId)
+ * @param input { [key: string]: unknown } the action input (a single input)
+ * @param config DustAppConfigType the action config
+ * @param responseValueSchema V extends t.Mixed the io-ts schema of the action response value
+ */
 export async function callAction<V extends t.Mixed>({
   workspaceId,
   input,
   action,
   config,
   responseValueSchema,
-}: CallActionParams<V>): Promise<t.TypeOf<typeof responseValueSchema>> {
+}: CallActionParams<V>): Promise<
+  Result<t.TypeOf<typeof responseValueSchema>, DustAPIErrorResponse>
+> {
   const app = cloneBaseConfig(action.app);
 
   const owner = (
@@ -68,7 +81,7 @@ export async function callAction<V extends t.Mixed>({
   if (responseChecker(response.value)) {
     // the response is a valid success response for the action
     // return the "value" field of the first result
-    return response.value.results[0][0].value;
+    return new Ok(response.value.results[0][0].value);
   }
 
   if (isActionResponseBase(response.value)) {

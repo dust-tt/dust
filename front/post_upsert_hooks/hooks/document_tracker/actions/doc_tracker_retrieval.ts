@@ -1,10 +1,10 @@
 import * as t from "io-ts";
 
+import { callAction } from "@app/lib/actions/helpers";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { callAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions/lib";
 import { getTrackableDataSources } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 
 // Part of the new doc tracker pipeline, performs the retrieval (semantic search) step
@@ -21,13 +21,19 @@ export async function callDocTrackerRetrievalAction(
     workspaceId
   );
 
-  return callAction({
+  const res = await callAction({
     workspaceId,
     input: { input_text: inputText },
     action,
     config,
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
   });
+
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  return res.value;
 }
 
 const DocTrackerRetrievalActionValueSchema = t.array(

@@ -1,10 +1,10 @@
 import * as t from "io-ts";
 
+import { callAction } from "@app/lib/actions/helpers";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { callAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions/lib";
 import { getTrackableDataSources } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 
 // this is the current Doc Tracker pipeline, implemented as a single dust action
@@ -24,13 +24,19 @@ export async function callLegacyDocTrackerAction(
     workspaceId
   );
 
-  return callAction({
+  const res = await callAction({
     workspaceId,
     input: { incoming_document: incomingDoc },
     action,
     config,
     responseValueSchema: DocTrackerLegacyActionValuesSchema,
   });
+
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  return res.value;
 }
 
 const DocTrackerLegacyActionValuesSchema = t.union([
