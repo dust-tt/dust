@@ -30,6 +30,7 @@ type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
 export interface ParsedPage {
   id: string;
   url: string;
+  title?: string;
   properties: ParsedProperty[];
   blocks: ParsedBlock[];
   rendered: string;
@@ -393,9 +394,12 @@ export async function getParsedPage(
       break;
   }
 
+  const titleProperty = properties.find((p) => p.type === "title")?.text;
+
   return {
     id: page.id,
     url: page.url,
+    title: titleProperty || undefined,
     properties,
     blocks: parsedBlocks,
     rendered: renderedPage,
