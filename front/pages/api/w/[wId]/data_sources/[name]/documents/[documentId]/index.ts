@@ -124,37 +124,41 @@ async function handler(
         sourceUrl = standardizedSourceUrl;
       }
 
-      // Enforce plan limits.
-      const documents = await CoreAPI.getDataSourceDocuments({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        limit: 1,
-        offset: 0,
-      });
-      if (documents.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "data_source_error",
-            message: "There was an error retrieving the Data Source.",
-            data_source_error: documents.error,
-          },
-        });
-      }
-
       // Enforce plan limits: DataSource documents count.
-      if (
-        owner.plan.limits.dataSources.documents.count != -1 &&
-        documents.value.total >= owner.plan.limits.dataSources.documents.count
-      ) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "data_source_quota_error",
-            message:
-              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
-          },
+      // We only load the number of documents if the limit is not -1 (unlimited).
+      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
+      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
+      if (owner.plan.limits.dataSources.documents.count != -1) {
+        const documents = await CoreAPI.getDataSourceDocuments({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceName: dataSource.name,
+          limit: 1,
+          offset: 0,
         });
+        if (documents.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "data_source_error",
+              message: "There was an error retrieving the Data Source.",
+              data_source_error: documents.error,
+            },
+          });
+        }
+
+        if (
+          owner.plan.limits.dataSources.documents.count != -1 &&
+          documents.value.total >= owner.plan.limits.dataSources.documents.count
+        ) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_quota_error",
+              message:
+                "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
+            },
+          });
+        }
       }
 
       // Enforce plan limits: DataSource document size.
