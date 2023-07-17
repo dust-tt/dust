@@ -10,7 +10,6 @@ import Link from "next/link";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 import { WorkspaceType } from "@app/types/user";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export default function MainTab({
   currentTab,
