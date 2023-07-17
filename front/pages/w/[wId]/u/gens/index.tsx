@@ -1584,11 +1584,7 @@ export default function AppGens({
                       }}
                     >
                       <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading
-                        ? "Loading..."
-                        : selecting
-                        ? "Retrieve based on selection"
-                        : "Retrieve"}
+                      {retrievalLoading ? "Loading..." : "Retrieve"}
                     </ActionButton>
                   </div>
 
