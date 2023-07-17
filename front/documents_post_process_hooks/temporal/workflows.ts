@@ -6,9 +6,10 @@ import type { ConnectorProvider } from "@app/lib/connectors_api";
 
 import { newUpsertSignal } from "./signals";
 
-const { runPostUpsertHookActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "60 minute",
-});
+const { runPostUpsertHookActivity, runPostDeleteHookActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "60 minute",
+  });
 
 export async function runPostUpsertHooksWorkflow(
   dataSourceName: string,
@@ -42,4 +43,20 @@ export async function runPostUpsertHooksWorkflow(
       hookType
     );
   }
+}
+
+export async function runPostDeleteHoosWorkflow(
+  dataSourceName: string,
+  workspaceId: string,
+  documentId: string,
+  dataSourceConnectorProvider: ConnectorProvider | null,
+  hookType: DocumentsPostProcessHookType
+) {
+  await runPostDeleteHookActivity(
+    dataSourceName,
+    workspaceId,
+    documentId,
+    dataSourceConnectorProvider,
+    hookType
+  );
 }

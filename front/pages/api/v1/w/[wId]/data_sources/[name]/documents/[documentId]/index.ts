@@ -1,7 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getDocumentsPostUpsertHooksToRun } from "@app/documents_post_process_hooks/hooks";
-import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
+import {
+  getDocumentsPostDeleteHooksToRun,
+  getDocumentsPostUpsertHooksToRun,
+} from "@app/documents_post_process_hooks/hooks";
+import {
+  launchRunPostDeleteHooksWorkflow,
+  launchRunPostUpsertHooksWorkflow,
+} from "@app/documents_post_process_hooks/temporal/client";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
@@ -355,6 +361,25 @@ async function handler(
           document_id: req.query.documentId as string,
         },
       });
+
+      const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
+        dataSourceName: dataSource.name,
+        workspaceId: owner.sId,
+        documentId: req.query.documentId as string,
+        dataSourceConnectorProvider: dataSource.connectorProvider || null,
+      });
+
+      // TODO: parallel.
+      for (const { type: hookType } of postDeleteHooksToRun) {
+        await launchRunPostDeleteHooksWorkflow(
+          dataSource.name,
+          owner.sId,
+          req.query.documentId as string,
+          dataSource.connectorProvider || null,
+          hookType
+        );
+      }
+
       return;
 
     default:

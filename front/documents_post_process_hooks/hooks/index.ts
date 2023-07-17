@@ -34,14 +34,13 @@ export type DocumentsPostProcessHookOnDeleteParams = {
   dataSourceConnectorProvider: ConnectorProvider | null;
 };
 
-type _DocumentsPostProcessHookParams =
+export type DocumentsPostProcessHookFilterParams =
   | ({ verb: "upsert" } & DocumentsPostProcessHookOnUpsertParams)
   | ({ verb: "delete" } & DocumentsPostProcessHookOnDeleteParams);
 
-export type DocumentsPostProcessHookFilterParams =
-  _DocumentsPostProcessHookParams;
-export type DocumentsPostProcessHookDebounceMsParams =
-  _DocumentsPostProcessHookParams;
+export type DocumentsPostProcessHookDebounceMsParams = {
+  verb: "upsert";
+} & DocumentsPostProcessHookOnUpsertParams;
 
 // asyc function that will run in a temporal workflow
 // can be expensive to run
@@ -122,7 +121,7 @@ export async function getDocumentsPostUpsertHooksToRun(
 
 export async function getDocumentsPostDeleteHooksToRun(
   params: DocumentsPostProcessHookOnDeleteParams
-): Promise<Array<{ type: DocumentsPostProcessHookType; debounceMs: number }>> {
+): Promise<Array<{ type: DocumentsPostProcessHookType }>> {
   if (!process.env.DOCUMENTS_POST_PROCESS_HOOKS_ENABLED) {
     return [];
   }
@@ -130,7 +129,6 @@ export async function getDocumentsPostDeleteHooksToRun(
   // TODO: parallel
   const hooksToRun: {
     type: DocumentsPostProcessHookType;
-    debounceMs: number;
   }[] = [];
 
   const paramsWithVerb = { ...params, verb: "delete" as const };
@@ -139,10 +137,7 @@ export async function getDocumentsPostDeleteHooksToRun(
     if (!hook.onDelete) continue;
 
     if (await hook.filter(paramsWithVerb)) {
-      const debounceMs = hook.getDebounceMs
-        ? await hook.getDebounceMs(paramsWithVerb)
-        : DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS;
-      hooksToRun.push({ type: hook.type, debounceMs });
+      hooksToRun.push({ type: hook.type });
     }
   }
 

@@ -25,11 +25,11 @@ export async function runPostUpsertHookActivity(
 
   const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
   if (!hook) {
-    localLogger.error("Unknown post upsert hook type");
-    throw new Error(`Unknown post upsert hook type ${hookType}`);
+    localLogger.error("Unknown documents post process hook type");
+    throw new Error(`Unknown documents post process hook type ${hookType}`);
   }
 
-  localLogger.info("Running post upsert hook function.");
+  localLogger.info("Running documents post process hook onUpsert function.");
 
   const dataSourceDocument = await getDataSourceDocument(
     dataSourceName,
@@ -40,7 +40,7 @@ export async function runPostUpsertHookActivity(
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
   if (!hook.onUpsert) {
-    localLogger.warn("No onUpsert function for post upsert hook");
+    localLogger.warn("No onUpsert function for documents post process hook");
     return;
   }
 
@@ -53,7 +53,44 @@ export async function runPostUpsertHookActivity(
     documentHash,
     dataSourceConnectorProvider,
   });
-  localLogger.info("Ran post upsert hook function.");
+  localLogger.info("Ran documents post process hook onUpsert function.");
+}
+
+export async function runPostDeleteHookActivity(
+  dataSourceName: string,
+  workspaceId: string,
+  documentId: string,
+  dataSourceConnectorProvider: ConnectorProvider | null,
+  hookType: DocumentsPostProcessHookType
+) {
+  const localLogger = logger.child({
+    workspaceId,
+    dataSourceName,
+    documentId,
+    dataSourceConnectorProvider,
+    hookType,
+  });
+
+  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
+  if (!hook) {
+    localLogger.error("Unknown documents post process hook type");
+    throw new Error(`Unknown documents post process hook type ${hookType}`);
+  }
+
+  localLogger.info("Running documents post process hook onDelete function.");
+
+  if (!hook.onDelete) {
+    localLogger.warn("No onDelete function for documents post process hook");
+    return;
+  }
+
+  await hook.onDelete({
+    dataSourceName,
+    workspaceId,
+    documentId,
+    dataSourceConnectorProvider,
+  });
+  localLogger.info("Ran documents post process hook ondelete function.");
 }
 
 async function getDataSourceDocument(
