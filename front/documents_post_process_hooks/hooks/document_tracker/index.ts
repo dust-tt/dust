@@ -1,7 +1,7 @@
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 
-import { PostUpsertHook } from "@app/documents_post_process_hooks/hooks";
+import { DocumentsPostProcessHook } from "@app/documents_post_process_hooks/hooks";
 import { callLegacyDocTrackerAction } from "@app/documents_post_process_hooks/hooks/document_tracker/actions/doc_tracker_legacy";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import {
@@ -18,10 +18,10 @@ const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
 
 const logger = mainLogger.child({
-  postUpsertHook: "document_tracker",
+  postProcessHook: "document_tracker",
 });
 
-export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook =
+export const documentTrackerUpdateTrackedDocumentsPostProcessHook: DocumentsPostProcessHook =
   {
     type: "document_tracker_update_tracked_documents",
     getDebounceMs: async () => {
@@ -39,7 +39,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
         documentId,
       });
       localLogger.info(
-        "Checking if document_tracker_update_tracked_documents post upsert hook should run."
+        "Checking if document_tracker_update_tracked_documents post process hook should run."
       );
 
       const whitelistedWorkspaceIds =
@@ -47,7 +47,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
 
       if (!whitelistedWorkspaceIds.includes(workspaceId)) {
         localLogger.info(
-          "Workspace not whitelisted, document_tracker_update_tracked_documents post upsert hook should not run."
+          "Workspace not whitelisted, document_tracker_update_tracked_documents post process hook should not run."
         );
         return false;
       }
@@ -61,7 +61,7 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
         )
       ) {
         localLogger.info(
-          "Document includes DUST_TRACK tags, document_tracker_update_tracked_documents post upsert hook should run."
+          "Document includes DUST_TRACK tags, document_tracker_update_tracked_documents post process hook should run."
         );
         return true;
       }
@@ -78,14 +78,19 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
         // garbage collect the TrackedDocuments if all the DUST_TRACK tags are removed.
 
         localLogger.info(
-          "Document is tracked, document_tracker_update_tracked_documents post upsert hook should run."
+          "Document is tracked, document_tracker_update_tracked_documents post process hook should run."
         );
         return true;
       }
 
       return false;
     },
-    fn: async ({ dataSourceName, workspaceId, documentId, documentText }) => {
+    onUpsert: async ({
+      dataSourceName,
+      workspaceId,
+      documentId,
+      documentText,
+    }) => {
       logger.info(
         {
           workspaceId,
@@ -107,278 +112,284 @@ export const documentTrackerUpdateTrackedDocumentsPostUpsertHook: PostUpsertHook
     },
   };
 
-export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
-  type: "document_tracker_suggest_changes",
-  getDebounceMs: async ({ dataSourceConnectorProvider }) => {
-    if (!dataSourceConnectorProvider) {
-      return 10000; // 10 seconds
-    }
-    if (dataSourceConnectorProvider === "notion") {
-      return 600000; // 10 minutes
-    }
-    return 3600000; // 1 hour
-  },
-  filter: async ({
-    dataSourceName,
-    workspaceId,
-    documentId,
-    dataSourceConnectorProvider,
-  }) => {
-    const localLogger = logger.child({
-      workspaceId,
-      dataSourceName,
-      documentId,
-    });
-    localLogger.info(
-      "Checking if document_tracker_suggest_changes post upsert hook should run."
-    );
-
-    const whitelistedWorkspaceIds =
-      RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
-
-    if (!whitelistedWorkspaceIds.includes(workspaceId)) {
-      localLogger.info(
-        "Workspace not whitelisted, document_tracker_suggest_changes post upsert hook should not run."
-      );
-      return false;
-    }
-
-    if (dataSourceConnectorProvider === "slack") {
-      // kind of a hack, but we don't want to run this hook for slack non-thread docs
-      if (!documentId.includes("-thread-")) {
-        localLogger.info(
-          "Slack Document is not a thread, document_tracker_suggest_changes post upsert hook should not run."
-        );
-        return false;
+export const documentTrackerSuggestChangesPostProcessHook: DocumentsPostProcessHook =
+  {
+    type: "document_tracker_suggest_changes",
+    getDebounceMs: async ({ dataSourceConnectorProvider }) => {
+      if (!dataSourceConnectorProvider) {
+        return 10000; // 10 seconds
       }
-    }
-
-    const dataSource = await getDatasource(dataSourceName, workspaceId);
-
-    const docIsTracked = !!(await TrackedDocument.count({
-      where: {
-        dataSourceId: dataSource.id,
-        documentId,
-      },
-    }));
-
-    if (docIsTracked) {
-      // Never run document_tracker_suggest_changes for tracked documents.
-      // Documents are either sources or targets, not both.
-      // TODO: let's revisit this decision later.
-      // TODO: should we also skip docs that have DUST_TRACK tags?
-      localLogger.info(
-        "Document is tracked, document_tracker_suggest_changes post upsert hook should not run."
-      );
-      return false;
-    }
-
-    const workspaceDataSourceIds = (
-      await DataSource.findAll({
-        where: { workspaceId: dataSource.workspaceId },
-        attributes: ["id"],
-      })
-    ).map((ds) => ds.id);
-
-    const hasTrackedDocuments = !!(await TrackedDocument.count({
-      where: {
-        dataSourceId: {
-          [Op.in]: workspaceDataSourceIds,
-        },
-        documentId: {
-          [Op.not]: documentId,
-        },
-      },
-    }));
-
-    if (hasTrackedDocuments) {
-      localLogger.info(
-        "Workspace has tracked documents, document_tracker_suggest_changes post upsert hook should run."
-      );
-      return true;
-    }
-
-    localLogger.info(
-      "Workspace has no tracked documents, document_tracker_suggest_changes post upsert hook should not run."
-    );
-
-    return false;
-  },
-
-  fn: async ({ dataSourceName, workspaceId, documentId, documentHash }) => {
-    logger.info(
-      {
+      if (dataSourceConnectorProvider === "notion") {
+        return 600000; // 10 minutes
+      }
+      return 3600000; // 1 hour
+    },
+    filter: async ({
+      dataSourceName,
+      workspaceId,
+      documentId,
+      dataSourceConnectorProvider,
+    }) => {
+      const localLogger = logger.child({
         workspaceId,
         dataSourceName,
         documentId,
-      },
-      "Running document_tracker_suggest_changes post upsert hook."
-    );
+      });
+      localLogger.info(
+        "Checking if document_tracker_suggest_changes post process hook should run."
+      );
 
-    const dataSource = await getDatasource(dataSourceName, workspaceId);
+      const whitelistedWorkspaceIds =
+        RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
 
-    const isDocTracked = !!(await TrackedDocument.count({
-      where: {
-        dataSourceId: dataSource.id,
-        documentId,
-      },
-    }));
+      if (!whitelistedWorkspaceIds.includes(workspaceId)) {
+        localLogger.info(
+          "Workspace not whitelisted, document_tracker_suggest_changes post process hook should not run."
+        );
+        return false;
+      }
 
-    // TODO: see how we want to support this. Obviously the action in the current form will
-    // just match the document that was just upserted if it's tracked.
-    // We check this in the filter, but there could be a race condition.
-    if (isDocTracked) {
+      if (dataSourceConnectorProvider === "slack") {
+        // kind of a hack, but we don't want to run this hook for slack non-thread docs
+        if (!documentId.includes("-thread-")) {
+          localLogger.info(
+            "Slack Document is not a thread, document_tracker_suggest_changes post process hook should not run."
+          );
+          return false;
+        }
+      }
+
+      const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+      const docIsTracked = !!(await TrackedDocument.count({
+        where: {
+          dataSourceId: dataSource.id,
+          documentId,
+        },
+      }));
+
+      if (docIsTracked) {
+        // Never run document_tracker_suggest_changes for tracked documents.
+        // Documents are either sources or targets, not both.
+        // TODO: let's revisit this decision later.
+        // TODO: should we also skip docs that have DUST_TRACK tags?
+        localLogger.info(
+          "Document is tracked, document_tracker_suggest_changes post process hook should not run."
+        );
+        return false;
+      }
+
+      const workspaceDataSourceIds = (
+        await DataSource.findAll({
+          where: { workspaceId: dataSource.workspaceId },
+          attributes: ["id"],
+        })
+      ).map((ds) => ds.id);
+
+      const hasTrackedDocuments = !!(await TrackedDocument.count({
+        where: {
+          dataSourceId: {
+            [Op.in]: workspaceDataSourceIds,
+          },
+          documentId: {
+            [Op.not]: documentId,
+          },
+        },
+      }));
+
+      if (hasTrackedDocuments) {
+        localLogger.info(
+          "Workspace has tracked documents, document_tracker_suggest_changes post process hook should run."
+        );
+        return true;
+      }
+
+      localLogger.info(
+        "Workspace has no tracked documents, document_tracker_suggest_changes post process hook should not run."
+      );
+
+      return false;
+    },
+
+    onUpsert: async ({
+      dataSourceName,
+      workspaceId,
+      documentId,
+      documentHash,
+    }) => {
       logger.info(
         {
           workspaceId,
           dataSourceName,
           documentId,
         },
-        "Document is tracked: not searching for matches."
+        "Running document_tracker_suggest_changes post upsert hook."
       );
-      return;
-    }
 
-    const documentDiff = await getDocumentDiff({
-      dataSourceName: dataSource.name,
-      workspaceId,
-      documentId,
-      hash: documentHash,
-    });
+      const dataSource = await getDatasource(dataSourceName, workspaceId);
 
-    const diffText = documentDiff
-      .filter(({ type }) => type !== "equal")
-      .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
-      .join("\n");
-
-    const actionResult = await callLegacyDocTrackerAction(
-      workspaceId,
-      diffText
-    );
-
-    if (actionResult.match) {
-      const workspace = await Workspace.findOne({
-        where: { sId: workspaceId },
-      });
-
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${workspaceId}`);
-      }
-
-      const matchedDsName = actionResult.matched_data_source_id;
-      const matchedDs = await DataSource.findOne({
+      const isDocTracked = !!(await TrackedDocument.count({
         where: {
-          name: matchedDsName,
-          workspaceId: workspace.id,
+          dataSourceId: dataSource.id,
+          documentId,
         },
-      });
+      }));
 
-      if (!matchedDs) {
-        throw new Error(
-          `Could not find data source with name ${matchedDsName} and workspaceId ${workspaceId}`
-        );
-      }
-
-      const matchedDocId = actionResult.matched_doc_id;
-
-      // again, checking for race condition here and skipping if the
-      // matched doc is the doc that was just upserted.
-      if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
+      // TODO: see how we want to support this. Obviously the action in the current form will
+      // just match the document that was just upserted if it's tracked.
+      // We check this in the filter, but there could be a race condition.
+      if (isDocTracked) {
         logger.info(
           {
             workspaceId,
             dataSourceName,
             documentId,
-            matchedDsName,
-            matchedDocId,
           },
-          "Matched document is the document that was just upserted."
+          "Document is tracked: not searching for matches."
         );
         return;
       }
 
-      const trackedDocuments = await TrackedDocument.findAll({
-        where: {
-          documentId: matchedDocId,
-          dataSourceId: matchedDs.id,
-        },
-      });
-
-      if (!trackedDocuments.length) {
-        logger.warn(
-          {
-            workspaceId,
-            dataSourceName,
-            documentId,
-            matchedDsName,
-            matchedDocId,
-          },
-          "Could not find tracked documents for matched document."
-        );
-        return;
-      }
-
-      const users = await User.findAll({
-        where: {
-          id: {
-            [Op.in]: trackedDocuments.map((td) => td.userId),
-          },
-        },
-      });
-      const emails = users.map((u) => u.email);
-
-      if (!SENDGRID_API_KEY) {
-        throw new Error("Missing SENDGRID_API_KEY env variable");
-      }
-      sgMail.setApiKey(SENDGRID_API_KEY);
-
-      const matchedDocUrl = actionResult.matched_doc_url;
-      const suggestedChanges = actionResult.suggested_changes;
-
-      const incomingDocument = await CoreAPI.getDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
+      const documentDiff = await getDocumentDiff({
         dataSourceName: dataSource.name,
+        workspaceId,
         documentId,
+        hash: documentHash,
       });
 
-      if (incomingDocument.isErr()) {
-        throw new Error(
-          `Could not get document ${documentId} from data source ${dataSource.name}`
-        );
-      }
+      const diffText = documentDiff
+        .filter(({ type }) => type !== "equal")
+        .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
+        .join("\n");
 
-      const incomingDocumentUrl = incomingDocument.value.document.source_url;
+      const actionResult = await callLegacyDocTrackerAction(
+        workspaceId,
+        diffText
+      );
 
-      const sendEmail = async (email: string) => {
-        logger.info(
-          {
-            workspaceId,
-            dataSourceName,
-            documentId,
-            matchedDsName,
-            matchedDocId,
-            email,
+      if (actionResult.match) {
+        const workspace = await Workspace.findOne({
+          where: { sId: workspaceId },
+        });
+
+        if (!workspace) {
+          throw new Error(`Workspace not found: ${workspaceId}`);
+        }
+
+        const matchedDsName = actionResult.matched_data_source_id;
+        const matchedDs = await DataSource.findOne({
+          where: {
+            name: matchedDsName,
+            workspaceId: workspace.id,
           },
-          "Sending email to user."
-        );
+        });
 
-        const msg = {
-          to: email,
-          from: "team@dust.tt",
-          subject: "DUST: Document update suggestion",
-          text: `Hello!
+        if (!matchedDs) {
+          throw new Error(
+            `Could not find data source with name ${matchedDsName} and workspaceId ${workspaceId}`
+          );
+        }
+
+        const matchedDocId = actionResult.matched_doc_id;
+
+        // again, checking for race condition here and skipping if the
+        // matched doc is the doc that was just upserted.
+        if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
+          logger.info(
+            {
+              workspaceId,
+              dataSourceName,
+              documentId,
+              matchedDsName,
+              matchedDocId,
+            },
+            "Matched document is the document that was just upserted."
+          );
+          return;
+        }
+
+        const trackedDocuments = await TrackedDocument.findAll({
+          where: {
+            documentId: matchedDocId,
+            dataSourceId: matchedDs.id,
+          },
+        });
+
+        if (!trackedDocuments.length) {
+          logger.warn(
+            {
+              workspaceId,
+              dataSourceName,
+              documentId,
+              matchedDsName,
+              matchedDocId,
+            },
+            "Could not find tracked documents for matched document."
+          );
+          return;
+        }
+
+        const users = await User.findAll({
+          where: {
+            id: {
+              [Op.in]: trackedDocuments.map((td) => td.userId),
+            },
+          },
+        });
+        const emails = users.map((u) => u.email);
+
+        if (!SENDGRID_API_KEY) {
+          throw new Error("Missing SENDGRID_API_KEY env variable");
+        }
+        sgMail.setApiKey(SENDGRID_API_KEY);
+
+        const matchedDocUrl = actionResult.matched_doc_url;
+        const suggestedChanges = actionResult.suggested_changes;
+
+        const incomingDocument = await CoreAPI.getDataSourceDocument({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceName: dataSource.name,
+          documentId,
+        });
+
+        if (incomingDocument.isErr()) {
+          throw new Error(
+            `Could not get document ${documentId} from data source ${dataSource.name}`
+          );
+        }
+
+        const incomingDocumentUrl = incomingDocument.value.document.source_url;
+
+        const sendEmail = async (email: string) => {
+          logger.info(
+            {
+              workspaceId,
+              dataSourceName,
+              documentId,
+              matchedDsName,
+              matchedDocId,
+              email,
+            },
+            "Sending email to user."
+          );
+
+          const msg = {
+            to: email,
+            from: "team@dust.tt",
+            subject: "DUST: Document update suggestion",
+            text: `Hello!
 
 We have a suggestion for you to update the document ${matchedDocUrl}, based on the new document ${incomingDocumentUrl}:
 
 ${suggestedChanges}
 
 The Dust team`,
+          };
+
+          await sgMail.send(msg);
         };
 
-        await sgMail.send(msg);
-      };
-
-      await Promise.all(emails.map(sendEmail));
-    }
-  },
-};
+        await Promise.all(emails.map(sendEmail));
+      }
+    },
+  };

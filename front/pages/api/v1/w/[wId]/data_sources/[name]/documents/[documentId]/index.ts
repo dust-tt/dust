@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getPostUpsertHooksToRun } from "@app/documents_post_process_hooks/hooks";
+import { getDocumentsPostProcessHooksToRun } from "@app/documents_post_process_hooks/hooks";
 import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import {
   credentialsFromProviders,
@@ -288,7 +288,7 @@ async function handler(
         data_source: dataSource,
       });
 
-      const postUpsertHooksToRun = await getPostUpsertHooksToRun({
+      const postUpsertHooksToRun = await getDocumentsPostProcessHooksToRun({
         dataSourceName: dataSource.name,
         workspaceId: owner.sId,
         documentId: req.query.documentId as string,

@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { PostUpsertHookParams } from "@app/documents_post_process_hooks/hooks";
+import { DocumentsPostProcessHookParams } from "@app/documents_post_process_hooks/hooks";
 import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import {
   cloneBaseConfig,
@@ -23,7 +23,7 @@ export async function shouldProcessExtractEvents({
   workspaceId,
   documentId,
   documentText,
-}: PostUpsertHookParams) {
+}: DocumentsPostProcessHookParams) {
   const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
   const hasMarker = hasExtractEventMarker(documentText);
   if (!hasMarker) {
@@ -59,7 +59,7 @@ export async function processExtractEvents({
   documentId,
   documentSourceUrl,
   documentText,
-}: PostUpsertHookParams) {
+}: DocumentsPostProcessHookParams) {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   if (!auth.workspace()) {
     logger.error(

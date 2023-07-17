@@ -1,9 +1,8 @@
+import { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
 import { getTemporalClient } from "@app/documents_post_process_hooks/temporal/lib";
 import { newUpsertSignal } from "@app/documents_post_process_hooks/temporal/signals";
 import { runPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/workflows";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-
-import { PostUpsertHookType } from "../hooks";
 
 export async function launchRunPostUpsertHooksWorkflow(
   dataSourceName: string,
@@ -11,7 +10,7 @@ export async function launchRunPostUpsertHooksWorkflow(
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: PostUpsertHookType,
+  hookType: DocumentsPostProcessHookType,
   debounceMs: number
 ) {
   const client = await getTemporalClient();

@@ -1,6 +1,6 @@
 import {
-  POST_UPSERT_HOOK_BY_TYPE,
-  PostUpsertHookType,
+  DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE,
+  DocumentsPostProcessHookType,
 } from "@app/documents_post_process_hooks/hooks";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
@@ -13,7 +13,7 @@ export async function runPostUpsertHookActivity(
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: PostUpsertHookType
+  hookType: DocumentsPostProcessHookType
 ) {
   const localLogger = logger.child({
     workspaceId,
@@ -23,7 +23,7 @@ export async function runPostUpsertHookActivity(
     hookType,
   });
 
-  const hook = POST_UPSERT_HOOK_BY_TYPE[hookType];
+  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
   if (!hook) {
     localLogger.error("Unknown post upsert hook type");
     throw new Error(`Unknown post upsert hook type ${hookType}`);
@@ -39,7 +39,7 @@ export async function runPostUpsertHookActivity(
   const documentText = dataSourceDocument.document.text || "";
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
-  await hook.fn({
+  await hook.onUpsert({
     dataSourceName,
     workspaceId,
     documentId,

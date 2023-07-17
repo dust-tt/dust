@@ -1,6 +1,6 @@
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
-import type { PostUpsertHookType } from "@app/documents_post_process_hooks/hooks";
+import type { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
 import type * as activities from "@app/documents_post_process_hooks/temporal/activities";
 import type { ConnectorProvider } from "@app/lib/connectors_api";
 
@@ -16,7 +16,7 @@ export async function runPostUpsertHooksWorkflow(
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: PostUpsertHookType,
+  hookType: DocumentsPostProcessHookType,
   debounceMs: number
 ) {
   let signaled = false;
