@@ -1467,8 +1467,8 @@ export default function AppGens({
                 How does Gens work?
               </Button>
             </div>
-            <div className="m-auto flex w-4/5 flex-row space-x-6">
-              <div className="flex w-2/3 flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+            <div className="m-auto flex w-4/5 flex-row flex-wrap space-x-6 sm:flex-nowrap">
+              <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
                     minRows={minRows}
@@ -1517,7 +1517,7 @@ export default function AppGens({
                 </div>
                 <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
-              <div className="w-1/3">
+              <div className="w-full sm:w-1/3">
                 <div className="mb-8">
                   <h2 className="text-lg font-bold">Generation</h2>
                   <p>
