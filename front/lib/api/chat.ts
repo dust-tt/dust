@@ -523,7 +523,7 @@ export async function* newChat(
       [
         {
           messages: filterMessagesForModel(messages),
-          assistantContext: contextWithDefaults,
+          context: contextWithDefaults,
         },
       ]
     );
