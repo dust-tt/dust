@@ -18,6 +18,7 @@ import {
   createNotionConnector,
   fullResyncNotionConnector,
   resumeNotionConnector,
+  retrieveNotionConnectorPermissions,
   stopNotionConnector,
 } from "@connectors/connectors/notion";
 import {
@@ -123,15 +124,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
 > = {
   slack: retrieveSlackConnectorPermissions,
   github: retrieveGithubConnectorPermissions,
-  notion: async (connectorId: ModelId) => {
-    logger.info(
-      { connectorId },
-      `Slack connector permissions is not implemented.`
-    );
-    return new Err(
-      new Error("Slack connector permissions retrieval is not implemented.")
-    );
-  },
+  notion: retrieveNotionConnectorPermissions,
   google_drive: async (connectorId: ModelId) => {
     logger.info(
       { connectorId },

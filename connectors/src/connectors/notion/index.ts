@@ -1,6 +1,9 @@
 import { Transaction } from "sequelize";
 
-import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
+import {
+  getPageTitleAndUrl,
+  validateAccessToken,
+} from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
@@ -8,6 +11,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   Connector,
+  ModelId,
   NotionConnectorState,
   NotionPage,
   sequelize_conn,
@@ -17,6 +21,9 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import { ConnectorResource } from "@connectors/types/resources";
+
+import { getNotionAccessToken } from "./temporal/activities";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -216,4 +223,61 @@ export async function cleanupNotionConnector(
   });
 
   return new Ok(undefined);
+}
+
+export async function retrieveNotionConnectorPermissions(
+  connectorId: ModelId
+): Promise<Result<ConnectorResource[], Error>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const notionAccessToken = await getNotionAccessToken(c.connectionId);
+
+  const pages = await NotionPage.findAll({
+    where: {
+      connectorId: connectorId,
+      parentType: "workspace",
+    },
+  });
+
+  const resources: ConnectorResource[] = await Promise.all(
+    pages.map((p) => {
+      return (async () => {
+        const titleUrl = await getPageTitleAndUrl(
+          notionAccessToken,
+          p.notionPageId
+        );
+        if (!titleUrl) {
+          logger.error(
+            {
+              connectorId,
+              workspaceId: c.workspaceId,
+              dataSourceName: c.dataSourceName,
+              notionPageId: p.notionPageId,
+            },
+            "Error retrieving page title and URL."
+          );
+          throw new Error("Could not retrieve page title and URL");
+        }
+
+        return {
+          provider: c.type,
+          internalId: p.notionPageId,
+          parentInternalId: null,
+          title: titleUrl.title,
+          sourceUrl: titleUrl.url,
+          permission: "read",
+        };
+      })();
+    })
+  );
+
+  return new Ok(resources);
 }
