@@ -7,7 +7,7 @@ import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
-import { callLegacyDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions";
+import { callLegacyDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions/doc_tracker_legacy";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
 import {
   getDatasource,
