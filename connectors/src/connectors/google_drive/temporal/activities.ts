@@ -18,7 +18,6 @@ import { OAuth2Client } from "googleapis-common";
 import memoize from "lodash.memoize";
 import { literal, Op } from "sequelize";
 
-import { convertGoogleDocumentToJson } from "@connectors/connectors/google_drive/parser";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   Connector,
@@ -162,7 +161,6 @@ export async function syncFiles(
     fields:
       "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
     pageToken: nextPageToken,
-    q: "mimeType='application/vnd.google-apps.document'",
   });
   if (res.status !== 200) {
     throw new Error(
@@ -175,12 +173,13 @@ export async function syncFiles(
   const filesToSync = res.data.files
     .filter((file) => file.id && file.createdTime)
     .map((file): GoogleDriveFileType => {
-      if (!file.id || !file.createdTime || !file.name) {
+      if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
         throw new Error("Invalid file. File is: " + JSON.stringify(file));
       }
       return {
         id: file.id as string,
         name: file.name,
+        mimeType: file.mimeType,
         webViewLink: file.webViewLink ? file.webViewLink : undefined,
         createdAtMs: new Date(file.createdTime).getTime(),
         updatedAtMs: file.modifiedTime
@@ -224,31 +223,59 @@ async function syncOneFile(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveFileType
 ) {
-  const docs = google.docs({ version: "v1", auth: oauth2client });
-  const res = await docs.documents.get({
-    documentId: file.id,
-  });
-  if (res.status !== 200) {
-    throw new Error(
-      `Error getting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
-    );
+  const mimeTypesToExport: { [key: string]: string } = {
+    "application/vnd.google-apps.document": "text/plain",
+    "application/vnd.google-apps.spreadsheet": "text/csv",
+    "application/vnd.google-apps.presentation": "text/plain",
+  };
+  const mimeTypesToDownload = ["text/plain", "text/csv"];
+
+  let documentContent: string | undefined = undefined;
+  if (mimeTypesToExport[file.mimeType]) {
+    const drive = await getDriveClient(oauth2client);
+    const res = await drive.files.export({
+      fileId: file.id,
+      mimeType: mimeTypesToExport[file.mimeType],
+    });
+    if (res.status !== 200) {
+      throw new Error(
+        `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+      );
+    }
+    if (typeof res.data === "string") {
+      documentContent = res.data;
+    }
+  } else if (mimeTypesToDownload.includes(file.mimeType)) {
+    const drive = await getDriveClient(oauth2client);
+    const res = await drive.files.get({
+      fileId: file.id,
+      alt: "media",
+    });
+    if (res.status !== 200) {
+      throw new Error(
+        `Error downloading Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+      );
+    }
+    if (typeof res.data === "string") {
+      documentContent = res.data;
+    }
+  } else {
+    // We do not support this file type
+    return;
   }
-  if (!res.data.title) {
-    throw new Error("No title found");
+  //Adding the title of the file to the beginning of the document
+  documentContent = `$title:${file.name}\n\n${documentContent}`;
+
+  if (documentContent === undefined) {
+    throw new Error("documentContent is undefined");
   }
-  if (!res.data.body) {
-    throw new Error("No body found");
-  }
-  const tags = [`title:${res.data.title}`];
+  const tags = [`title:${file.name}`];
   if (file.updatedAtMs) {
     tags.push(`lastEditedAt:${file.updatedAtMs}`);
   }
   if (file.lastEditor) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
-
-  const jsonDoc = convertGoogleDocumentToJson(res.data);
-  const textDoc = googleDocJSON2Text(jsonDoc, res.data.title);
 
   const documentId = `gdrive-${file.id}`;
   await GoogleDriveFiles.upsert({
@@ -260,101 +287,11 @@ async function syncOneFile(
   await upsertToDatasource(
     dataSourceConfig,
     documentId,
-    textDoc,
+    documentContent,
     file.webViewLink,
     file.createdAtMs,
     tags
   );
-}
-
-// Example payload returned by the Google Docs parser util.
-//  {
-//       "h1": "What we’re trying to do"
-//     },
-//     {
-//       "h2": "Key goals"
-//     },
-//     {
-//       "p": ""
-//     },
-//     {
-//       "p": "**For Dust**"
-//     },
-//     {
-//       "ul": [
-//         "Update positioning: from developer platform to Smart Team OS",
-//         "Tease / showcase uses cases for the core apps and platform"
-//       ]
-//     },
-//   }
-
-function googleDocJSON2Text(
-  jsonDoc: ReturnType<typeof convertGoogleDocumentToJson>,
-  title: string
-): string {
-  const arrayDoc: string[] = [];
-  for (const element of jsonDoc.content) {
-    if (typeof element === "object") {
-      const keys = Object.keys(element);
-      keys.forEach((key) => {
-        switch (key) {
-          case "p":
-            arrayDoc.push(element[key]);
-            break;
-          case "h1":
-            arrayDoc.push(`# ${element[key]}`);
-            break;
-          case "h2":
-            arrayDoc.push(`## ${element[key]}`);
-            break;
-          case "h3":
-            arrayDoc.push(`### ${element[key]}`);
-            break;
-          case "h4":
-            arrayDoc.push(`#### ${element[key]}`);
-            break;
-          case "h5":
-            arrayDoc.push(`##### ${element[key]}`);
-            break;
-
-          case "blockquote":
-            arrayDoc.push(`> ${element[key]}`);
-            break;
-          case "ul":
-            arrayDoc.push(...element[key].map((item: string) => `- ${item}`));
-            break;
-          case "ol":
-            arrayDoc.push(
-              ...element[key].map(
-                (item: string, i: number) => `- ${i + 1} ${item}`
-              )
-            );
-            break;
-          case "table": {
-            let tableStr = element[key]?.headers
-              .map((header: string) => {
-                return ` ${header} `;
-              })
-              .join("|");
-            tableStr = `|${tableStr}|\n`;
-            tableStr += element[key]?.rows
-              .map((row: string[]) => {
-                return `|${row.join("|")}|`;
-              })
-              .join("\n");
-            arrayDoc.push(tableStr);
-
-            break;
-          }
-        }
-      });
-    }
-  }
-
-  const body = arrayDoc.join("\n");
-  const result = `$title: ${title}\n\n${body}`;
-
-  return result;
 }
 
 async function getParents(
@@ -502,6 +439,7 @@ export async function incrementalSync(
         const driveFile: GoogleDriveFileType = {
           id: change.file.id,
           name: change.file.name,
+          mimeType: change.file.mimeType,
           createdAtMs: new Date(change.file.createdTime).getTime(),
           updatedAtMs: change.file.modifiedTime
             ? new Date(change.file.modifiedTime).getTime()
