@@ -365,6 +365,8 @@ export class NotionPage extends Model<
 
   declare parentType?: string | null;
   declare parentId?: string | null;
+  declare title?: string | null;
+  declare notionUrl?: string | null;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -410,6 +412,14 @@ NotionPage.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    notionUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
@@ -417,6 +427,8 @@ NotionPage.init(
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
+      { fields: ["parentId"] },
+      { fields: ["parentType"] },
     ],
     modelName: "notion_pages",
   }

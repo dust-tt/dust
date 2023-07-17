@@ -7,6 +7,8 @@ export async function upsertNotionPageInConnectorsDb(
   lastSeenTs: number,
   parentType?: string | null,
   parentId?: string | null,
+  title?: string | null,
+  notionUrl?: string | null,
   lastUpsertedTs?: number,
   skipReason?: string
 ): Promise<NotionPage> {
@@ -31,10 +33,13 @@ export async function upsertNotionPageInConnectorsDb(
     lastSeenTs: Date;
     parentType?: string;
     parentId?: string;
+    title?: string;
+    notionUrl?: string;
     lastUpsertedTs?: Date;
     skipReason?: string;
   } = {
     lastSeenTs: new Date(lastSeenTs),
+    skipReason,
   };
   if (lastUpsertedTs) {
     updateParams.lastUpsertedTs = new Date(lastUpsertedTs);
@@ -47,6 +52,12 @@ export async function upsertNotionPageInConnectorsDb(
   }
   if (parentId) {
     updateParams.parentId = parentId;
+  }
+  if (title) {
+    updateParams.title = title;
+  }
+  if (notionUrl) {
+    updateParams.notionUrl = notionUrl;
   }
 
   if (page) {
