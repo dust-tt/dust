@@ -2,11 +2,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AppLayout from "@app/components/AppLayout";
 import MainTab from "@app/components/use/MainTab";
-import {
-  Authenticator,
-  getSession,
-  getUserFromSession,
-} from "@app/lib/auth";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
