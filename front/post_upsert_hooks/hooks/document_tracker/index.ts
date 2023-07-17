@@ -7,8 +7,8 @@ import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 import { PostUpsertHook } from "@app/post_upsert_hooks/hooks";
+import { callLegacyDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/actions/doc_tracker_legacy";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/post_upsert_hooks/hooks/document_tracker/consts";
-import { callDocTrackerAction } from "@app/post_upsert_hooks/hooks/document_tracker/lib";
 import {
   getDatasource,
   getDocumentDiff,
@@ -251,7 +251,10 @@ export const documentTrackerSuggestChangesPostUpsertHook: PostUpsertHook = {
       .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
       .join("\n");
 
-    const actionResult = await callDocTrackerAction(workspaceId, diffText);
+    const actionResult = await callLegacyDocTrackerAction(
+      workspaceId,
+      diffText
+    );
 
     if (actionResult.match) {
       const workspace = await Workspace.findOne({
