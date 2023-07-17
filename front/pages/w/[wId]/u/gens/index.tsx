@@ -535,8 +535,20 @@ export function ResultsView({
   onPin: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }) {
+  const maxDocs = useMemo(() => {
+    let space = 7168;
+    let i = 0;
+    retrieved.forEach((r) => {
+      if (r.tokenCount <= space) {
+        space -= r.tokenCount;
+        i += 1;
+      }
+    });
+    return i;
+  }, [retrieved]);
+
   return (
-    <div className="mt-5 w-full ">
+    <div className="mt-5 w-full">
       <div>
         <div
           className={classNames(
@@ -566,19 +578,24 @@ export function ResultsView({
           {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="mt-2 flex flex-col space-y-2">
-          {retrieved.map((r) => {
+          {retrieved.map((r, i) => {
             return (
-              <DocumentView
-                document={r}
+              <div
                 key={r.documentId}
-                query={query}
-                owner={owner}
-                template={template}
-                onScoreReady={onScoreReady}
-                onExtractUpdate={onExtractUpdate}
-                onPin={onPin}
-                onRemove={onRemove}
-              />
+                className={maxDocs < i ? "opacity-50" : ""}
+              >
+                <DocumentView
+                  document={r}
+                  key={r.documentId}
+                  query={query}
+                  owner={owner}
+                  template={template}
+                  onScoreReady={onScoreReady}
+                  onExtractUpdate={onExtractUpdate}
+                  onPin={onPin}
+                  onRemove={onRemove}
+                />
+              </div>
             );
           })}
         </div>
@@ -1050,6 +1067,7 @@ export default function AppGens({
   const [dataSources, setDataSources] =
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const template = useRef<GensTemplateType | null>(null);
 
@@ -1060,6 +1078,12 @@ export default function AppGens({
   const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
 
   const [copying, setCopying] = useState<boolean>(false);
+
+  const [minRows, setMinRows] = useState<number>(8);
+
+  useEffect(() => {
+    setMinRows(window.innerHeight / 40);
+  }, []);
 
   const getContext = () => {
     return {
@@ -1331,7 +1355,7 @@ export default function AppGens({
       textarea.selectionEnd
     );
     if (text == "") {
-      text = genContent;
+      text = searchQuery;
     }
     console.log(text);
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
@@ -1433,9 +1457,9 @@ export default function AppGens({
           </Dialog>
         </Transition.Root>
         <div className="">
-          <div className="to mx-auto max-w-4xl divide-y px-6">
-            <div className="flex flex-col">
-              <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
+          <div className="to mx-auto divide-y px-6">
+            <div className="m-auto flex w-4/5 flex-row space-x-6">
+              <div className="mt-6 flex w-2/3 flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-row items-center justify-between">
                   <TemplatesView
                     onTemplateSelect={(t) => (template.current = t)}
@@ -1449,7 +1473,7 @@ export default function AppGens({
                 </div>
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
-                    minRows={8}
+                    minRows={minRows}
                     ref={genTextAreaRef}
                     className={classNames(
                       "font-mono block w-full resize-none rounded-md bg-slate-100 px-2 py-1 text-[13px] font-normal",
@@ -1581,22 +1605,6 @@ export default function AppGens({
                     </div>
                   </div>
                   <div className="flex flex-initial items-start">
-                    <ActionButton
-                      disabled={retrievalLoading}
-                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                        e.preventDefault();
-                        void handleSearch();
-                      }}
-                    >
-                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading
-                        ? "Loading..."
-                        : selecting
-                        ? "Retrieve based on selection"
-                        : "Retrieve"}
-                    </ActionButton>
-                  </div>
-                  <div className="flex flex-initial items-start">
                     {!genLoading && (
                       <ActionButton
                         disabled={genLoading}
@@ -1625,17 +1633,45 @@ export default function AppGens({
 
                 <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
-
-              <ResultsView
-                retrieved={retrieved}
-                query={genContent}
-                owner={owner}
-                onExtractUpdate={onExtractUpdate}
-                onScoreReady={onScoreReady}
-                template={template.current}
-                onPin={onPin}
-                onRemove={onRemove}
-              />
+              <div className="mt-24 w-1/3">
+                <h2 className="text-lg font-bold">Retrieval</h2>
+                <p>
+                  Retrieve documents and ideas that can help you with your Gen.
+                </p>
+                <div className="mt-2 flex flex-initial items-start items-center space-x-4">
+                  <input
+                    type="text"
+                    className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                    value={searchQuery}
+                    placeholder="Search"
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <ActionButton
+                    disabled={retrievalLoading}
+                    onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                      e.preventDefault();
+                      void handleSearch();
+                    }}
+                  >
+                    <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
+                    {retrievalLoading
+                      ? "Loading..."
+                      : selecting
+                      ? "Retrieve based on selection"
+                      : "Retrieve"}
+                  </ActionButton>
+                </div>
+                <ResultsView
+                  retrieved={retrieved}
+                  query={genContent}
+                  owner={owner}
+                  onExtractUpdate={onExtractUpdate}
+                  onScoreReady={onScoreReady}
+                  template={template.current}
+                  onPin={onPin}
+                  onRemove={onRemove}
+                />
+              </div>
             </div>
           </div>
         </div>
