@@ -404,14 +404,12 @@ export function RetrievalsView({
       </div>
       {expanded && message.retrievals && (
         <>
-          <div className="ml-4 mt-2 flex flex-col space-y-1">
-            {message.retrievals.map(
-              (r: ChatRetrievedDocumentType, i: number) => {
-                return <DocumentView document={r} key={i} />;
-              }
-            )}
-          </div>
-          {message.params?.minTimestamp && (
+          {message.params?.query && (
+            <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
+              Computed query: {message.params?.query}
+            </div>
+          )}
+          {message.params?.minTimestamp ? (
             <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
               Documents retrieved from{" "}
               {(() => {
@@ -426,12 +424,16 @@ export function RetrievalsView({
               })()}{" "}
               to today
             </div>
+          ) : (
+            ""
           )}
-          {message.params?.query && (
-            <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
-              Computed query: {message.params?.query}
-            </div>
-          )}
+          <div className="ml-4 mt-2 flex flex-col space-y-1">
+            {message.retrievals.map(
+              (r: ChatRetrievedDocumentType, i: number) => {
+                return <DocumentView document={r} key={i} />;
+              }
+            )}
+          </div>
         </>
       )}
     </div>
