@@ -1,7 +1,10 @@
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 
-import { DocumentsPostProcessHookParams } from "@app/documents_post_process_hooks/hooks";
+import {
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/documents_post_process_hooks/hooks";
 import { callLegacyDocTrackerAction } from "@app/documents_post_process_hooks/hooks/document_tracker/suggest_changes/actions/doc_tracker_legacy";
 import {
   getDatasource,
@@ -23,7 +26,15 @@ export async function shouldDocumentTrackerSuggestChangesRun({
   workspaceId,
   documentId,
   dataSourceConnectorProvider,
-}: DocumentsPostProcessHookParams): Promise<boolean> {
+  verb,
+}: DocumentsPostProcessHookFilterParams): Promise<boolean> {
+  if (verb !== "upsert") {
+    logger.info(
+      "document_tracker_suggest_changes post process hook should only run for upsert."
+    );
+    return false;
+  }
+
   const localLogger = logger.child({
     workspaceId,
     dataSourceName,
@@ -110,7 +121,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   workspaceId,
   documentId,
   documentHash,
-}: DocumentsPostProcessHookParams): Promise<void> {
+}: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
   logger.info(
     {
       workspaceId,

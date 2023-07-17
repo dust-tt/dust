@@ -1,5 +1,6 @@
 import { DocumentsPostProcessHook } from "@app/documents_post_process_hooks/hooks";
 import {
+  documentTrackerUpdateTrackedDocumentsOnDelete,
   documentTrackerUpdateTrackedDocumentsOnUpsert,
   shouldDocumentTrackerUpdateTrackedDocumentsRun,
 } from "@app/documents_post_process_hooks/hooks/document_tracker/update_tracked_documents/lib";
@@ -12,4 +13,5 @@ export const documentTrackerUpdateTrackedDocumentsPostProcessHook: DocumentsPost
     getDebounceMs: async () => 1000,
     filter: shouldDocumentTrackerUpdateTrackedDocumentsRun,
     onUpsert: documentTrackerUpdateTrackedDocumentsOnUpsert,
+    onDelete: documentTrackerUpdateTrackedDocumentsOnDelete,
   };

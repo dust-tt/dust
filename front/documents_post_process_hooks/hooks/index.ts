@@ -15,7 +15,9 @@ export const DOCUMENTS_POST_PROCESS_HOOK_TYPES = [
 export type DocumentsPostProcessHookType =
   (typeof DOCUMENTS_POST_PROCESS_HOOK_TYPES)[number];
 
-export type DocumentsPostProcessHookParams = {
+export type DocumentsPostProcessHookVerb = "upsert" | "delete";
+
+export type DocumentsPostProcessHookOnUpsertParams = {
   dataSourceName: string;
   workspaceId: string;
   documentId: string;
@@ -25,27 +27,52 @@ export type DocumentsPostProcessHookParams = {
   dataSourceConnectorProvider: ConnectorProvider | null;
 };
 
+export type DocumentsPostProcessHookOnDeleteParams = {
+  dataSourceName: string;
+  workspaceId: string;
+  documentId: string;
+  dataSourceConnectorProvider: ConnectorProvider | null;
+};
+
+type _DocumentsPostProcessHookParams =
+  | ({ verb: "upsert" } & DocumentsPostProcessHookOnUpsertParams)
+  | ({ verb: "delete" } & DocumentsPostProcessHookOnDeleteParams);
+
+export type DocumentsPostProcessHookFilterParams =
+  _DocumentsPostProcessHookParams;
+export type DocumentsPostProcessHookDebounceMsParams =
+  _DocumentsPostProcessHookParams;
+
 // asyc function that will run in a temporal workflow
-// can be expensive to runs
-export type DocumentsPostProcessHookFunction = (
-  params: DocumentsPostProcessHookParams
+// can be expensive to run
+// will be retried if it fails (indefinitely)
+export type DocumentsPostProcessHookOnUpsert = (
+  params: DocumentsPostProcessHookOnUpsertParams
+) => Promise<void>;
+
+// asyc function that will run in a temporal workflow
+// can be expensive to run
+// will be retried if it fails (indefinitely)
+export type DocumentsPostProcessHookOnDelete = (
+  params: DocumentsPostProcessHookOnDeleteParams
 ) => Promise<void>;
 
 // returns true if the post process hook should run for this document
 // returns false if the post process hook should not run for this document
 // needs to be relatively quick to run, will run in the same process as calling code
 export type DocumentsPostProcessHookFilter = (
-  params: DocumentsPostProcessHookParams
+  params: DocumentsPostProcessHookFilterParams
 ) => Promise<boolean>;
 
 // How long should the hook sleep before running (debouncing)
 // ran in the same process as calling code (no retries, needs to be quick to run)
 export type DocumentsPostProcessHookDebounceMs = (
-  params: DocumentsPostProcessHookParams
+  params: DocumentsPostProcessHookDebounceMsParams
 ) => Promise<number>;
 
 export type DocumentsPostProcessHook = {
-  onUpsert: DocumentsPostProcessHookFunction;
+  onUpsert?: DocumentsPostProcessHookOnUpsert;
+  onDelete?: DocumentsPostProcessHookOnDelete;
   filter: DocumentsPostProcessHookFilter;
   type: DocumentsPostProcessHookType;
   getDebounceMs?: DocumentsPostProcessHookDebounceMs;
@@ -65,8 +92,8 @@ export const DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE: Record<
   return acc;
 }, {} as Record<DocumentsPostProcessHookType, DocumentsPostProcessHook>);
 
-export async function getDocumentsPostProcessHooksToRun(
-  params: DocumentsPostProcessHookParams
+export async function getDocumentsPostUpsertHooksToRun(
+  params: DocumentsPostProcessHookOnUpsertParams
 ): Promise<Array<{ type: DocumentsPostProcessHookType; debounceMs: number }>> {
   if (!process.env.DOCUMENTS_POST_PROCESS_HOOKS_ENABLED) {
     return [];
@@ -76,10 +103,44 @@ export async function getDocumentsPostProcessHooksToRun(
     type: DocumentsPostProcessHookType;
     debounceMs: number;
   }[] = [];
+
+  const paramsWithVerb = { ...params, verb: "upsert" as const };
+
   for (const hook of DOCUMENTS_POST_PROCESS_HOOKS) {
-    if (await hook.filter(params)) {
+    if (!hook.onUpsert) continue;
+
+    if (await hook.filter(paramsWithVerb)) {
       const debounceMs = hook.getDebounceMs
-        ? await hook.getDebounceMs(params)
+        ? await hook.getDebounceMs(paramsWithVerb)
+        : DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS;
+      hooksToRun.push({ type: hook.type, debounceMs });
+    }
+  }
+
+  return hooksToRun;
+}
+
+export async function getDocumentsPostDeleteHooksToRun(
+  params: DocumentsPostProcessHookOnDeleteParams
+): Promise<Array<{ type: DocumentsPostProcessHookType; debounceMs: number }>> {
+  if (!process.env.DOCUMENTS_POST_PROCESS_HOOKS_ENABLED) {
+    return [];
+  }
+
+  // TODO: parallel
+  const hooksToRun: {
+    type: DocumentsPostProcessHookType;
+    debounceMs: number;
+  }[] = [];
+
+  const paramsWithVerb = { ...params, verb: "delete" as const };
+
+  for (const hook of DOCUMENTS_POST_PROCESS_HOOKS) {
+    if (!hook.onDelete) continue;
+
+    if (await hook.filter(paramsWithVerb)) {
+      const debounceMs = hook.getDebounceMs
+        ? await hook.getDebounceMs(paramsWithVerb)
         : DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS;
       hooksToRun.push({ type: hook.type, debounceMs });
     }

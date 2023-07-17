@@ -39,6 +39,11 @@ export async function runPostUpsertHookActivity(
   const documentText = dataSourceDocument.document.text || "";
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
+  if (!hook.onUpsert) {
+    localLogger.warn("No onUpsert function for post upsert hook");
+    return;
+  }
+
   await hook.onUpsert({
     dataSourceName,
     workspaceId,

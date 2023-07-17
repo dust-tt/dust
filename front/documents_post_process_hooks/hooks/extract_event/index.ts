@@ -1,8 +1,8 @@
 import {
   DocumentsPostProcessHook,
-  DocumentsPostProcessHookParams,
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
 } from "@app/documents_post_process_hooks/hooks";
-import { hasExtractEventMarker } from "@app/lib/extract_event_markers";
 import {
   processExtractEvents,
   shouldProcessExtractEvents,
@@ -19,11 +19,13 @@ export const extractEventPostProcessHook: DocumentsPostProcessHook = {
   onUpsert: processDocument,
 };
 
-async function shouldProcessDocument(params: DocumentsPostProcessHookParams) {
+async function shouldProcessDocument(
+  params: DocumentsPostProcessHookFilterParams
+) {
   return await shouldProcessExtractEvents(params);
 }
 
-async function processDocument(params: DocumentsPostProcessHookParams) {
+async function processDocument(params: DocumentsPostProcessHookOnUpsertParams) {
   const localLogger = logger.child({
     workspaceId: params.workspaceId,
     dataSourceName: params.dataSourceName,

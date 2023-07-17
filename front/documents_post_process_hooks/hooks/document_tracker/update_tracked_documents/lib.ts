@@ -1,4 +1,8 @@
-import { DocumentsPostProcessHookParams } from "@app/documents_post_process_hooks/hooks";
+import {
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnDeleteParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/documents_post_process_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
@@ -12,16 +16,13 @@ const logger = mainLogger.child({
   postProcessHook: "document_tracker_update_tracked_documents",
 });
 
-export async function shouldDocumentTrackerUpdateTrackedDocumentsRun({
-  dataSourceName,
-  workspaceId,
-  documentId,
-  documentText,
-}: DocumentsPostProcessHookParams): Promise<boolean> {
+export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
+  params: DocumentsPostProcessHookFilterParams
+): Promise<boolean> {
   const localLogger = logger.child({
-    workspaceId,
-    dataSourceName,
-    documentId,
+    workspaceId: params.workspaceId,
+    dataSourceName: params.dataSourceName,
+    documentId: params.documentId,
   });
   localLogger.info(
     "Checking if document_tracker_update_tracked_documents post process hook should run."
@@ -30,17 +31,21 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun({
   const whitelistedWorkspaceIds =
     RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
 
-  if (!whitelistedWorkspaceIds.includes(workspaceId)) {
+  if (!whitelistedWorkspaceIds.includes(params.workspaceId)) {
     localLogger.info(
       "Workspace not whitelisted, document_tracker_update_tracked_documents post process hook should not run."
     );
     return false;
   }
 
-  const dataSource = await getDatasource(dataSourceName, workspaceId);
+  const dataSource = await getDatasource(
+    params.dataSourceName,
+    params.workspaceId
+  );
 
   if (
-    documentText.includes("DUST_TRACK(") &&
+    params.verb === "upsert" &&
+    params.documentText.includes("DUST_TRACK(") &&
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
     )
@@ -54,7 +59,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun({
   const docIsTracked = !!(await TrackedDocument.count({
     where: {
       dataSourceId: dataSource.id,
-      documentId,
+      documentId: params.documentId,
     },
   }));
 
@@ -76,7 +81,7 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
   workspaceId,
   documentId,
   documentText,
-}: DocumentsPostProcessHookParams): Promise<void> {
+}: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
   logger.info(
     {
       workspaceId,
@@ -95,4 +100,28 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
     logger.info("Updating tracked documents.");
     await updateTrackedDocuments(dataSource.id, documentId, documentText);
   }
+}
+
+export async function documentTrackerUpdateTrackedDocumentsOnDelete({
+  dataSourceName,
+  workspaceId,
+  documentId,
+}: DocumentsPostProcessHookOnDeleteParams): Promise<void> {
+  logger.info(
+    {
+      workspaceId,
+      dataSourceName,
+      documentId,
+    },
+    "Running document_tracker_update_tracked_documents onDelete."
+  );
+
+  const dataSource = await getDatasource(dataSourceName, workspaceId);
+
+  await TrackedDocument.destroy({
+    where: {
+      dataSourceId: dataSource.id,
+      documentId,
+    },
+  });
 }
