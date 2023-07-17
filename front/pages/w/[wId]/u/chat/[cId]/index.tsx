@@ -19,7 +19,7 @@ import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
-  defaultTimeRange,
+  timeRanges,
 } from "@app/components/use/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
@@ -625,8 +625,12 @@ export default function AppChat({
   }, [chatSession]);
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<ChatTimeRange>(defaultTimeRange);
+  // for testing, dust users have "auto" as default; others have "all"
+  const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
+    owner.sId === process.env.DUST_DEVELOPMENT_WORKSPACE_ID
+      ? timeRanges[4]
+      : timeRanges[3]
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
