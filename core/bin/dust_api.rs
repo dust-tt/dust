@@ -22,13 +22,21 @@ use dust::{
 use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
+use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
+use qdrant_client::{
+    prelude::{Payload, QdrantClient, QdrantClientConfig},
+    qdrant,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
-use tower_http::trace::{self, TraceLayer};
+use tower_http::{
+    add_extension::AddExtensionLayer,
+    trace::{self, TraceLayer},
+};
 use tracing::Level;
 
 #[derive(Serialize)]
@@ -1360,6 +1368,7 @@ async fn data_sources_documents_upsert(
                     .upsert(
                         payload.credentials,
                         state.store.clone(),
+                        state.qdrant_client.clone(),
                         &payload.document_id,
                         payload.timestamp,
                         &payload.tags,
@@ -1673,9 +1682,10 @@ async fn main() -> Result<()> {
         }
     };
 
-    let qdrant_client = Arc::new(QdrantClient::new(/* your QdrantClient initialization here */));
+    let qdrant_config = QdrantClientConfig::from_url("http://127.0.0.1:6334");
+    let qdrant_client = Arc::new(QdrantClient::new(Some(qdrant_config)).unwrap());
 
-    let state = Arc::new(APIState::new(store));
+    let state = Arc::new(APIState::new(store, qdrant_client));
 
     let app = Router::new()
         // Index
@@ -1764,8 +1774,7 @@ async fn main() -> Result<()> {
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(extract::Extension(state.clone()))
-        .layer(AddExtensionLayer::new(qdrant_client));
+        .layer(extract::Extension(state.clone()));
 
     // Start the APIState run loop.
     let state = state.clone();
