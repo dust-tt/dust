@@ -23,6 +23,7 @@ import {
 import {
   cleanupSlackConnector,
   createSlackConnector,
+  retrieveSlackConnectorPermissions,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
@@ -120,15 +121,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorPermissionRetriever
 > = {
-  slack: async (connectorId: ModelId) => {
-    logger.info(
-      { connectorId },
-      `Slack connector permissions is not implemented.`
-    );
-    return new Err(
-      new Error("Slack connector permissions retrieval is not implemented.")
-    );
-  },
+  slack: retrieveSlackConnectorPermissions,
   github: retrieveGithubConnectorPermissions,
   notion: async (connectorId: ModelId) => {
     logger.info(

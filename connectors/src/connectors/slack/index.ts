@@ -4,6 +4,7 @@ import { Transaction } from "sequelize";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
   Connector,
+  ModelId,
   sequelize_conn,
   SlackConfiguration,
   SlackMessages,
@@ -16,8 +17,13 @@ import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import { ConnectorResource } from "@connectors/types/resources";
 
-import { getAccessToken, getSlackClient } from "./temporal/activities";
+import {
+  getAccessToken,
+  getChannels,
+  getSlackClient,
+} from "./temporal/activities";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;
@@ -191,4 +197,36 @@ export async function cleanupSlackConnector(
   });
 
   return new Ok(undefined);
+}
+
+export async function retrieveSlackConnectorPermissions(
+  connectorId: ModelId
+): Promise<Result<ConnectorResource[], Error>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const accessToken = await getAccessToken(c.connectionId);
+  const channels = await getChannels(accessToken);
+
+  const resources: ConnectorResource[] = channels
+    .filter((ch) => !!ch.id && !!ch.name)
+    .map((ch) => {
+      return {
+        provider: "slack",
+        internalId: ch.id || "",
+        parentInternalId: null,
+        title: `#${ch.name || ""}`,
+        sourceUrl: `https://app.slack.com/client/${ch.context_team_id}/${ch.id}`,
+        permission: "read",
+      };
+    });
+
+  return new Ok(resources);
 }
