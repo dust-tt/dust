@@ -53,16 +53,18 @@ struct RunManager {
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
+    qdrant_client: Arc<QdrantClient>,
 }
 
 impl APIState {
-    fn new(store: Box<dyn store::Store + Sync + Send>) -> Self {
+    fn new(store: Box<dyn store::Store + Sync + Send>, qdrant_client: Arc<QdrantClient>) -> Self {
         APIState {
             store,
             run_manager: Arc::new(Mutex::new(RunManager {
                 pending_apps: vec![],
                 pending_runs: vec![],
             })),
+            qdrant_client,
         }
     }
 
@@ -1671,6 +1673,8 @@ async fn main() -> Result<()> {
         }
     };
 
+    let qdrant_client = Arc::new(QdrantClient::new(/* your QdrantClient initialization here */));
+
     let state = Arc::new(APIState::new(store));
 
     let app = Router::new()
@@ -1760,7 +1764,8 @@ async fn main() -> Result<()> {
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(extract::Extension(state.clone()));
+        .layer(extract::Extension(state.clone()))
+        .layer(AddExtensionLayer::new(qdrant_client));
 
     // Start the APIState run loop.
     let state = state.clone();
