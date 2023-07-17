@@ -61,7 +61,8 @@ function preProcessTimestampForNotion(ts: number) {
 export async function notionSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   nangoConnectionId: string,
-  startFromTs?: number
+  startFromTs?: number,
+  forceResync = false
 ) {
   let iterations = 0;
 
@@ -95,11 +96,13 @@ export async function notionSyncWorkflow(
         dataSourceConfig,
         notionAccessToken,
         // if we're doing a garbage collection run, we want to fetch all pages
+        // otherwise, we only want to fetch pages that were updated since the last sync
         !isGargageCollectionRun ? lastSyncedPeriodTs : null,
         cursor,
-        // if not in a garbage collection run, we don't  want to sync pages
-        // that are already up to date
-        !isGargageCollectionRun,
+        // we only want to fetch pages that were updated since the last sync
+        // unless it's a garbage collection run or a force resync
+        !isGargageCollectionRun && !forceResync,
+        // logger args:
         {
           pageIndex,
           runType: isGargageCollectionRun
@@ -174,7 +177,11 @@ export async function notionSyncWorkflow(
     iterations += 1;
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   } while (
+    // We run the loop for MAX_ITERATIONS_PER_WORKFLOW iterations to avoid hitting the workflow log size limit
+    // and "continue as new" to start a new workflow
+    // If it's the initial sync, a force resync, or a garbage collection run, we only do one iteration
     !isInitialSync &&
+    !forceResync &&
     !isGargageCollectionRun &&
     iterations < MAX_ITERATIONS_PER_WORKFLOW
   );
