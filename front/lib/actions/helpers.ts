@@ -30,6 +30,9 @@ interface CallActionParams<V extends t.Mixed> {
  * It is used server-side to call an action on the production API, when streaming is not required.
  * It has the advantage of providing an interface that validates the response of the action using io-ts.
  *
+ * note: this assumes a single input
+ * note: this assumes the output is in `results`, i.e the output of the last block
+ *
  * @param workspaceId string the workspace id (sId)
  * @param input { [key: string]: unknown } the action input (a single input)
  * @param config DustAppConfigType the action config
@@ -97,8 +100,6 @@ export async function callAction<V extends t.Mixed>({
   // the response is not of a known shape, so we can't assume anything about it
   return new Err({
     type: "unexpected_action_response",
-    message: `Unexpected Doc Tracker action response: ${JSON.stringify(
-      response.value
-    )}`,
+    message: "Unexpected Doc Tracker action response.",
   });
 }
