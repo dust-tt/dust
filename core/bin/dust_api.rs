@@ -1651,25 +1651,30 @@ async fn data_sources_delete(
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_target(false)
-        .compact()
-        .init();
+fn main() {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
-    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
-        Ok(db_uri) => {
-            let store = postgres::PostgresStore::new(&db_uri).await?;
-            store.init().await?;
-            Box::new(store)
-        }
-        Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
-    };
+    let _ = rt.block_on(async {
+        tracing_subscriber::fmt()
+            .with_target(false)
+            .compact()
+            .init();
 
-    let state = Arc::new(APIState::new(store));
+        let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
+            Ok(db_uri) => {
+                let store = postgres::PostgresStore::new(&db_uri).await?;
+                store.init().await?;
+                Box::new(store)
+            }
+            Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
+        };
 
-    let app = Router::new()
+        let state = Arc::new(APIState::new(store));
+
+        let app = Router::new()
         // Index
         .route("/", get(index))
         // Projects
@@ -1758,30 +1763,31 @@ async fn main() -> Result<()> {
         )
         .layer(extract::Extension(state.clone()));
 
-    // Start the APIState run loop.
-    let state = state.clone();
-    tokio::task::spawn(async move { state.run_loop().await });
+        // Start the APIState run loop.
+        let state = state.clone();
+        tokio::task::spawn(async move { state.run_loop().await });
 
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let srv = axum::Server::bind(&"[::]:3001".parse().unwrap())
-        .serve(app.into_make_service())
-        .with_graceful_shutdown(async {
-            rx.await.ok();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let srv = axum::Server::bind(&"[::]:3001".parse().unwrap())
+            .serve(app.into_make_service())
+            .with_graceful_shutdown(async {
+                rx.await.ok();
+            });
+
+        tokio::spawn(async move {
+            if let Err(e) = srv.await {
+                eprintln!("server error: {}", e);
+            }
         });
 
-    tokio::spawn(async move {
-        if let Err(e) = srv.await {
-            eprintln!("server error: {}", e);
-        }
+        // Wait for `ctrl+c` and stop the server
+        tokio::signal::ctrl_c().await.unwrap();
+        println!("Ctrl+C received, stopping server...");
+        let _ = tx.send(());
+
+        // Wait for another `ctrl+c` and exit
+        tokio::signal::ctrl_c().await.unwrap();
+
+        Ok::<(), anyhow::Error>(())
     });
-
-    // Wait for `ctrl+c` and stop the server
-    tokio::signal::ctrl_c().await.unwrap();
-    println!("Ctrl+C received, stopping server...");
-    let _ = tx.send(());
-
-    // Wait for another `ctrl+c` and exit
-    tokio::signal::ctrl_c().await.unwrap();
-
-    Ok(())
 }
