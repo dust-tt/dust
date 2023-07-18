@@ -13,7 +13,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
 use qdrant_client::{
-    prelude::{Payload, QdrantClient, QdrantClientConfig},
+    prelude::{Payload, QdrantClient},
     qdrant,
 };
 use serde::{Deserialize, Serialize};
@@ -240,23 +240,11 @@ impl DataSource {
         format!("ds_{}", self.internal_id)
     }
 
-    async fn qdrant_client(&self) -> Result<QdrantClient> {
-        match std::env::var("QDRANT_URL") {
-            Ok(url) => {
-                let mut config = QdrantClientConfig::from_url(&url);
-                match std::env::var("QDRANT_API_KEY") {
-                    Ok(api_key) => {
-                        config.set_api_key(&api_key);
-                        QdrantClient::new(Some(config))
-                    }
-                    Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
-                }
-            }
-            Err(_) => Err(anyhow!("QDRANT_URL is not set"))?,
-        }
-    }
-
-    pub async fn setup(&self, credentials: Credentials) -> Result<()> {
+    pub async fn setup(
+        &self,
+        credentials: Credentials,
+        qdrant_client: Arc<QdrantClient>,
+    ) -> Result<()> {
         let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
         embedder.initialize(credentials).await?;
 
@@ -283,7 +271,6 @@ impl DataSource {
         ));
 
         // Qdrant create collection.
-        let qdrant_client = self.qdrant_client().await?;
         qdrant_client
             .create_collection(&qdrant::CreateCollection {
                 collection_name: self.qdrant_collection(),
@@ -352,11 +339,11 @@ impl DataSource {
     pub async fn update_tags(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: String,
         add_tags: Vec<String>,
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
-        let qdrant_client = self.qdrant_client().await?;
         let new_tags = store
             .update_data_source_document_tags(
                 &self.project,
@@ -397,6 +384,7 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
@@ -588,7 +576,6 @@ impl DataSource {
         document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
         // Clean-up previous document chunks (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -687,6 +674,7 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         query: &str,
         top_k: usize,
         filter: Option<SearchFilter>,
@@ -791,7 +779,6 @@ impl DataSource {
             None => None,
         };
 
-        let qdrant_client = self.qdrant_client().await?;
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
@@ -913,7 +900,6 @@ impl DataSource {
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
-        let l_qdrant_client = Arc::new(qdrant_client);
         let mut documents = match target_document_tokens {
             Some(target) => {
                 futures::stream::iter(documents)
@@ -925,7 +911,7 @@ impl DataSource {
                             .collect::<Vec<Chunk>>();
                         let collection = self.qdrant_collection();
                         let chunk_size = self.config.max_chunk_size;
-                        let qdrant_client = l_qdrant_client.clone();
+                        let qdrant_client = qdrant_client.clone();
                         let mut token_count = chunks.len() * chunk_size;
                         d.token_count = Some(token_count);
                         tokio::spawn(async move {
@@ -1176,6 +1162,7 @@ impl DataSource {
     pub async fn delete_document(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: &str,
     ) -> Result<()> {
         let store = store.clone();
@@ -1185,7 +1172,6 @@ impl DataSource {
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
         // Clean-up document chunks (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -1216,11 +1202,14 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    pub async fn delete(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
+    ) -> Result<()> {
         let store = store.clone();
 
         // Delete collection (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         qdrant_client
             .delete_collection(self.qdrant_collection())
             .await?;

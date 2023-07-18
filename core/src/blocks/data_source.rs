@@ -195,6 +195,7 @@ impl DataSource {
             .search(
                 env.credentials.clone(),
                 env.store.clone(),
+                env.qdrant_client.clone(),
                 &q,
                 top_k,
                 filter,
