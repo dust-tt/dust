@@ -630,6 +630,9 @@ impl DataSource {
 
         const MAX_QDRANT_VECTOR_PER_UPSERT: usize = 128;
 
+        let start = utils::now();
+        let points_len = points.len();
+
         if points.len() > 0 {
             // Chunk the points in groups of MAX_QDRANT_VECTOR_PER_UPSERT to avoid big upserts.
             let mut chunked_points = vec![];
@@ -645,19 +648,28 @@ impl DataSource {
                 chunked_points.push(chunk);
             }
 
+            let now = utils::now();
+            let chunk_len = chunk.len();
+
             for chunk in chunked_points {
                 let _ = qdrant_client
                     .upsert_points(self.qdrant_collection(), chunk, None)
                     .await?;
             }
+
+            utils::done(&format!(
+                "Success upserting chunk in qdrant: points_count={} duration={}ms",
+                chunk_len,
+                utils::now() - now
+            ));
             // let _ = qdrant_client
             //     .upsert_points(self.qdrant_collection(), points, None)
             //     .await?;
         }
 
         utils::done(&format!(
-            "Inserted vectors in Qdrant: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Inserted vectors in Qdrant: data_source_id={} document_id={} points_count={} duration={}ms",
+            self.data_source_id, document_id, points_len, utils::now() - start
         ));
 
         // Upsert document (SQL)
