@@ -7,7 +7,6 @@ pub struct DustParser;
 
 pub mod stores {
     pub mod postgres;
-    pub mod sqlite;
     pub mod store;
 }
 pub mod app;
@@ -16,7 +15,6 @@ pub mod data_sources {
     pub mod data_source;
     pub mod splitter;
 }
-pub mod init;
 pub mod project;
 pub mod run;
 pub mod utils;

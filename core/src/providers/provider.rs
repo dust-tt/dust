@@ -141,11 +141,3 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
     }
 }
-
-pub async fn cmd_setup(t: ProviderID) -> Result<()> {
-    provider(t).setup()
-}
-
-pub async fn cmd_test(t: ProviderID) -> Result<()> {
-    provider(t).test().await
-}
