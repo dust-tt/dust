@@ -1071,8 +1071,6 @@ export default function AppGens({
 
   const template = useRef<GensTemplateType | null>(null);
 
-  const [selecting, setSelecting] = useState<boolean>(false);
-
   //const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
 
   const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
@@ -1487,15 +1485,6 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
-                      setSelecting(false);
-                    }}
-                    onSelect={(e) => {
-                      const target = e.target as HTMLTextAreaElement;
-                      if (target.selectionStart !== target.selectionEnd) {
-                        setSelecting(true);
-                      } else {
-                        setSelecting(false);
-                      }
                     }}
                   />
                   <button
