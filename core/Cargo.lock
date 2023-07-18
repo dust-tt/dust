@@ -898,7 +898,6 @@ dependencies = [
  "hyper-tls",
  "itertools",
  "lazy_static",
- "once_cell",
  "parking_lot",
  "pest",
  "pest_derive",
