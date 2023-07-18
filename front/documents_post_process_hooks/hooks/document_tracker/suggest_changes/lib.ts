@@ -17,6 +17,8 @@ import mainLogger from "@app/logger/logger";
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
 
+const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
+
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
@@ -157,6 +159,24 @@ export async function documentTrackerSuggestChangesOnUpsert({
     documentId,
     hash: documentHash,
   });
+
+  const positiveDiff = documentDiff
+    .filter(({ type }) => type === "insert")
+    .join("");
+  if (positiveDiff.length < MINIMUM_POSITIVE_DIFF_LENGTH) {
+    logger.info(
+      {
+        workspaceId,
+        dataSourceName,
+        documentId,
+        positiveDiffLength: positiveDiff.length,
+      },
+      "Positive diff is too short, not searching for matches."
+    );
+
+    return;
+  }
+
   const diffText = documentDiff
     .filter(({ type }) => type !== "equal")
     .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
