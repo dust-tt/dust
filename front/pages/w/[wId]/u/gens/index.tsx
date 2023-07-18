@@ -1523,7 +1523,7 @@ export default function AppGens({
                   <p>
                     Generate text using "templates" that instruct how the
                     generation should be created, and for what type of workflow.
-                    For example, generating structure data, writing in a certain
+                    For example, generating structured data, writing in a certain
                     style, making critiques, etc...
                   </p>
 
