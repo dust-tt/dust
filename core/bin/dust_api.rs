@@ -22,21 +22,14 @@ use dust::{
 use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
-use qdrant_client::{
-    prelude::{Payload, QdrantClient, QdrantClientConfig},
-    qdrant,
-};
+use qdrant_client::prelude::{QdrantClient, QdrantClientConfig};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
-use tower_http::{
-    add_extension::AddExtensionLayer,
-    trace::{self, TraceLayer},
-};
+use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
 #[derive(Serialize)]
@@ -1662,6 +1655,22 @@ async fn data_sources_delete(
     }
 }
 
+async fn qdrant_client() -> Result<QdrantClient> {
+    match std::env::var("QDRANT_URL") {
+        Ok(url) => {
+            let mut config = QdrantClientConfig::from_url(&url);
+            match std::env::var("QDRANT_API_KEY") {
+                Ok(api_key) => {
+                    config.set_api_key(&api_key);
+                    QdrantClient::new(Some(config))
+                }
+                Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
+            }
+        }
+        Err(_) => Err(anyhow!("QDRANT_URL is not set"))?,
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -1682,8 +1691,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    let qdrant_config = QdrantClientConfig::from_url("http://127.0.0.1:6334");
-    let qdrant_client = Arc::new(QdrantClient::new(Some(qdrant_config)).unwrap());
+    let qdrant_client = Arc::new(qdrant_client().await?);
 
     let state = Arc::new(APIState::new(store, qdrant_client));
 
