@@ -11,7 +11,6 @@ use cloud_storage::Object;
 use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
-
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
 use qdrant_client::{
     prelude::{Payload, QdrantClient, QdrantClientConfig},
@@ -240,6 +239,7 @@ impl DataSource {
     fn qdrant_collection(&self) -> String {
         format!("ds_{}", self.internal_id)
     }
+
     async fn qdrant_client(&self) -> Result<QdrantClient> {
         match std::env::var("QDRANT_URL") {
             Ok(url) => {
@@ -255,6 +255,7 @@ impl DataSource {
             Err(_) => Err(anyhow!("QDRANT_URL is not set"))?,
         }
     }
+
     pub async fn setup(&self, credentials: Credentials) -> Result<()> {
         let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
         embedder.initialize(credentials).await?;
@@ -395,7 +396,6 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
@@ -587,7 +587,7 @@ impl DataSource {
         document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
         // Clean-up previous document chunks (vector search db).
-
+        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -1261,16 +1261,11 @@ pub async fn cmd_upsert(
 
     let contents = async_fs::read(text_path).await?;
     let text = std::str::from_utf8(&contents)?;
-    let qdrant_config = QdrantClientConfig::from_url("http://127.0.0.1:6334");
-    let qc = QdrantClient::new(Some(qdrant_config));
-    let aaa = qc.unwrap();
-    let qdrant_client = Arc::new(aaa);
 
     let d = ds
         .upsert(
             Credentials::new(),
             Box::new(store.clone()),
-            qdrant_client,
             document_id,
             timestamp,
             tags,

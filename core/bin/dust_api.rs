@@ -22,21 +22,13 @@ use dust::{
 use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
-use qdrant_client::{
-    prelude::{Payload, QdrantClient, QdrantClientConfig},
-    qdrant,
-};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
-use tower_http::{
-    add_extension::AddExtensionLayer,
-    trace::{self, TraceLayer},
-};
+use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
 #[derive(Serialize)]
@@ -61,18 +53,16 @@ struct RunManager {
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
-    qdrant_client: Arc<QdrantClient>,
 }
 
 impl APIState {
-    fn new(store: Box<dyn store::Store + Sync + Send>, qdrant_client: Arc<QdrantClient>) -> Self {
+    fn new(store: Box<dyn store::Store + Sync + Send>) -> Self {
         APIState {
             store,
             run_manager: Arc::new(Mutex::new(RunManager {
                 pending_apps: vec![],
                 pending_runs: vec![],
             })),
-            qdrant_client,
         }
     }
 
@@ -1368,7 +1358,6 @@ async fn data_sources_documents_upsert(
                     .upsert(
                         payload.credentials,
                         state.store.clone(),
-                        state.qdrant_client.clone(),
                         &payload.document_id,
                         payload.timestamp,
                         &payload.tags,
@@ -1682,10 +1671,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    let qdrant_config = QdrantClientConfig::from_url("http://127.0.0.1:6334");
-    let qdrant_client = Arc::new(QdrantClient::new(Some(qdrant_config)).unwrap());
-
-    let state = Arc::new(APIState::new(store, qdrant_client));
+    let state = Arc::new(APIState::new(store));
 
     let app = Router::new()
         // Index
