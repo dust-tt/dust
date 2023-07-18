@@ -5,6 +5,7 @@ use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, RunTy
 use crate::stores::store::Store;
 use crate::utils;
 use crate::{DustParser, Rule};
+use ::qdrant_client::prelude::QdrantClient;
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -300,6 +301,7 @@ impl App {
         &mut self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<()> {
         assert!(self.run.is_some());
@@ -341,6 +343,7 @@ impl App {
             map: None,
             project: project.clone(),
             store: store.clone(),
+            qdrant_client: qdrant_client,
             credentials: credentials.clone(),
         }]];
 

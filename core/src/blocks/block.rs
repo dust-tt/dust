@@ -11,6 +11,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use pest::iterators::Pair;
+use qdrant_client::prelude::QdrantClient;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -18,6 +19,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
+use std::sync::Arc;
 use tera::{Context, Tera};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -42,6 +44,8 @@ pub struct Env {
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
+    #[serde(skip_serializing)]
+    pub qdrant_client: Arc<QdrantClient>,
     #[serde(skip_serializing)]
     pub project: Project,
     #[serde(skip_serializing)]
