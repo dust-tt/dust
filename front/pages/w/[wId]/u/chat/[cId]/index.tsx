@@ -51,6 +51,7 @@ import { timeAgoFrom } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
+  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
@@ -498,26 +499,42 @@ export function MessageView({
   );
 }
 
-const handleTrashClick = (
-  event: React.MouseEvent<SVGSVGElement, MouseEvent>,
-  conversationTitle: string | undefined
-) => {
-  event.stopPropagation();
-  const confirmed = window.confirm(
-    `After deletion, the conversation "${conversationTitle}" cannot be recovered. Delete the conversation?`
-  );
-  if (confirmed) {
-    console.log("toto");
-  }
-  return false;
-};
-
 function ChatHistory({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
 
   const [limit] = useState(10);
 
-  const { sessions } = useChatSessions(owner, limit, 0);
+  const { sessions, mutateChatSessions } = useChatSessions(owner, limit, 0);
+
+  const handleTrashClick = async (
+    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+    chatSession: ChatSessionType
+  ) => {
+    event.stopPropagation();
+    const confirmed = window.confirm(
+      `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
+    );
+    if (confirmed) {
+      // call the delete API
+      const res = await fetch(
+        `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cId: chatSession.sId }),
+        }
+      );
+      if (res.ok) {
+        void mutateChatSessions();
+      } else {
+        const data = await res.json();
+        window.alert(`Error deleting chat: ${data.error.message}`);
+      }
+    }
+    return false;
+  };
 
   return (
     <div className="flex w-full flex-col">
@@ -541,7 +558,7 @@ function ChatHistory({ owner }: { owner: WorkspaceType }) {
                     <div className="min-w-16 flex flex-initial">
                       <TrashIcon
                         className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
-                        onClick={(e) => handleTrashClick(e, s.title)}
+                        onClick={(e) => handleTrashClick(e, s)}
                       ></TrashIcon>
                       <span className="ml-2 text-xs italic text-gray-400">
                         {timeAgoFrom(s.created)} ago

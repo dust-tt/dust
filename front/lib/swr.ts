@@ -194,7 +194,7 @@ export function useChatSessions(
   offset: number
 ) {
   const runsFetcher: Fetcher<GetChatSessionsResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${owner.sId}/use/chats?limit=${limit}&offset=${offset}`,
     runsFetcher
   );
@@ -203,6 +203,7 @@ export function useChatSessions(
     sessions: data ? data.sessions : [],
     isChatSessionsLoading: !error && !data,
     isChatSessionsError: error,
+    mutateChatSessions: mutate,
   };
 }
 

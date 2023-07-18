@@ -221,7 +221,7 @@ export async function deleteChatSession(
   if (!owner) {
     return false;
   }
-  let nbRowsDestroyed = await ChatSession.destroy({
+  const nbRowsDestroyed = await ChatSession.destroy({
     where: {
       workspaceId: owner.id,
       sId,
