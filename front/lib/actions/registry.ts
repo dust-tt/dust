@@ -230,7 +230,7 @@ export const DustProdActionRegistry = createActionRegistry({
           timestamp: null,
         },
         use_cache: false,
-        full_text: false,
+        full_text: true,
         target_document_tokens: 2000,
       },
     },
