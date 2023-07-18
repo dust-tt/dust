@@ -1506,7 +1506,7 @@ export default function AppGens({
                 </div>
                 <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
-              <div className="w-full sm:w-1/3">
+              <div className="w-full text-sm sm:w-1/3">
                 <div className="mb-8">
                   <h2 className="text-lg font-bold">Generation</h2>
                   <p>
@@ -1524,13 +1524,10 @@ export default function AppGens({
                           void handleGenerate();
                         }}
                       >
-                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
                         Generate with template
                       </ActionButton>
                     ) : (
-                      <div
-                        className={classNames(genLoading ? "block" : "hidden")}
-                      >
+                      <div>
                         <HighlightButton
                           disabled={!genLoading || genInterruptRef.current}
                           onClick={() => {
