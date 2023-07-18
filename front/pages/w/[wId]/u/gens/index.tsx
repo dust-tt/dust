@@ -535,8 +535,20 @@ export function ResultsView({
   onPin: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }) {
+  const maxDocs = useMemo(() => {
+    let space = 7168;
+    let i = 0;
+    retrieved.forEach((r) => {
+      if (r.tokenCount <= space) {
+        space -= r.tokenCount;
+        i += 1;
+      }
+    });
+    return i;
+  }, [retrieved]);
+
   return (
-    <div className="mt-5 w-full ">
+    <div className="mt-5 w-full">
       <div>
         <div
           className={classNames(
@@ -566,19 +578,24 @@ export function ResultsView({
           {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="mt-2 flex flex-col space-y-2">
-          {retrieved.map((r) => {
+          {retrieved.map((r, i) => {
             return (
-              <DocumentView
-                document={r}
+              <div
                 key={r.documentId}
-                query={query}
-                owner={owner}
-                template={template}
-                onScoreReady={onScoreReady}
-                onExtractUpdate={onExtractUpdate}
-                onPin={onPin}
-                onRemove={onRemove}
-              />
+                className={maxDocs < i ? "opacity-50" : ""}
+              >
+                <DocumentView
+                  document={r}
+                  key={r.documentId}
+                  query={query}
+                  owner={owner}
+                  template={template}
+                  onScoreReady={onScoreReady}
+                  onExtractUpdate={onExtractUpdate}
+                  onPin={onPin}
+                  onRemove={onRemove}
+                />
+              </div>
             );
           })}
         </div>
@@ -1050,16 +1067,21 @@ export default function AppGens({
   const [dataSources, setDataSources] =
     useState<DataSource[]>(workspaceDataSources);
   const [top_k, setTopK] = useState<number>(16);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const template = useRef<GensTemplateType | null>(null);
-
-  const [selecting, setSelecting] = useState<boolean>(false);
 
   //const [settingsExpand, setSettingsExpand] = useState<boolean>(false);
 
   const [explainExpanded, setExplainExpanded] = useState<boolean>(false);
 
   const [copying, setCopying] = useState<boolean>(false);
+
+  const [minRows, setMinRows] = useState<number>(8);
+
+  useEffect(() => {
+    setMinRows(window.innerHeight / 40);
+  }, []);
 
   const getContext = () => {
     return {
@@ -1321,19 +1343,23 @@ export default function AppGens({
         timestamp: { gt: Date.now() - msForTimeRange(timeRange) },
       };
     }
-    const textarea = genTextAreaRef.current;
-    if (!textarea) {
-      console.log("Textarea not found");
-      return;
+    let text;
+    if (searchQuery === "") {
+      const textarea = genTextAreaRef.current;
+      if (!textarea) {
+        console.log("Textarea not found");
+        return;
+      }
+      let text = textarea.value.substring(
+        textarea.selectionStart,
+        textarea.selectionEnd
+      );
+      if (text == "") {
+        text = genContent;
+      }
+    } else {
+      text = searchQuery;
     }
-    let text = textarea.value.substring(
-      textarea.selectionStart,
-      textarea.selectionEnd
-    );
-    if (text == "") {
-      text = genContent;
-    }
-    console.log(text);
     const res = await runActionStreamed(owner, "gens-retrieval", config, [
       { text: text, userContext },
     ]);
@@ -1433,23 +1459,17 @@ export default function AppGens({
           </Dialog>
         </Transition.Root>
         <div className="">
-          <div className="to mx-auto max-w-4xl divide-y px-6">
-            <div className="flex flex-col">
-              <div className="mt-6 flex flex-col space-y-3 text-sm font-medium leading-8 text-gray-700">
-                <div className="flex flex-row items-center justify-between">
-                  <TemplatesView
-                    onTemplateSelect={(t) => (template.current = t)}
-                    workspaceId={owner.sId}
-                    savedTemplates={templates}
-                    isBuilder={isBuilder}
-                  />
-                  <Button onClick={() => setExplainExpanded(true)}>
-                    How does Gens work?
-                  </Button>
-                </div>
+          <div className="to mx-auto px-6">
+            <div className="m-auto my-3 w-4/5">
+              <Button onClick={() => setExplainExpanded(true)}>
+                How does Gens work?
+              </Button>
+            </div>
+            <div className="m-auto flex w-4/5 flex-row flex-wrap space-x-6 sm:flex-nowrap">
+              <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
-                    minRows={8}
+                    minRows={minRows}
                     ref={genTextAreaRef}
                     className={classNames(
                       "font-mono block w-full resize-none rounded-md bg-slate-100 px-2 py-1 text-[13px] font-normal",
@@ -1465,18 +1485,8 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
-                      setSelecting(false);
-                    }}
-                    onSelect={(e) => {
-                      const target = e.target as HTMLTextAreaElement;
-                      if (target.selectionStart !== target.selectionEnd) {
-                        setSelecting(true);
-                      } else {
-                        setSelecting(false);
-                      }
                     }}
                   />
-
                   <button
                     onClick={async () => {
                       setCopying(true);
@@ -1494,8 +1504,80 @@ export default function AppGens({
                     )}
                   </button>
                 </div>
-                <div className="flex-rows flex space-x-2">
-                  <div className="flex flex-1">
+                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
+              </div>
+              <div className="w-full sm:w-1/3">
+                <div className="mb-8">
+                  <h2 className="text-lg font-bold">Generation</h2>
+                  <p>
+                    Generate text using "templates" that instruct how the
+                    generation should be created, and for what type of workflow.
+                    For example, generating structured data, writing in a
+                    certain style, making critiques, etc...
+                  </p>
+
+                  <div className="my-2 flex flex-row items-start space-x-3">
+                    {!genLoading ? (
+                      <ActionButton
+                        disabled={genLoading}
+                        onClick={() => {
+                          void handleGenerate();
+                        }}
+                      >
+                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
+                        Generate with template
+                      </ActionButton>
+                    ) : (
+                      <div
+                        className={classNames(genLoading ? "block" : "hidden")}
+                      >
+                        <HighlightButton
+                          disabled={!genLoading || genInterruptRef.current}
+                          onClick={() => {
+                            genInterruptRef.current = true;
+                          }}
+                        >
+                          Interrupt
+                        </HighlightButton>
+                      </div>
+                    )}
+                    <TemplatesView
+                      onTemplateSelect={(t) => (template.current = t)}
+                      workspaceId={owner.sId}
+                      savedTemplates={templates}
+                      isBuilder={isBuilder}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Retrieval</h2>
+                  <p>
+                    Retrieve documents that will be most useful to help in your
+                    generations, where you can pin and remove results based on
+                    their relevance.
+                  </p>
+
+                  <div className="mt-2 flex flex-initial items-start items-center space-x-4">
+                    <input
+                      type="text"
+                      className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                      value={searchQuery}
+                      placeholder="Search"
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <ActionButton
+                      disabled={retrievalLoading}
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                        e.preventDefault();
+                        void handleSearch();
+                      }}
+                    >
+                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
+                      {retrievalLoading ? "Loading..." : "Retrieve"}
+                    </ActionButton>
+                  </div>
+
+                  <div className="mt-3 flex flex-1">
                     <div className="items-center space-y-1 text-xs font-normal">
                       <div className="flex flex-row items-center space-x-2 leading-8">
                         <div className="flex flex-initial text-gray-400">
@@ -1580,62 +1662,18 @@ export default function AppGens({
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-initial items-start">
-                    <ActionButton
-                      disabled={retrievalLoading}
-                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                        e.preventDefault();
-                        void handleSearch();
-                      }}
-                    >
-                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading
-                        ? "Loading..."
-                        : selecting
-                        ? "Retrieve based on selection"
-                        : "Retrieve"}
-                    </ActionButton>
-                  </div>
-                  <div className="flex flex-initial items-start">
-                    {!genLoading && (
-                      <ActionButton
-                        disabled={genLoading}
-                        onClick={() => {
-                          void handleGenerate();
-                        }}
-                      >
-                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        Generate {retrieved.length ? "based on retrieved" : ""}
-                      </ActionButton>
-                    )}
-                    <div
-                      className={classNames(genLoading ? "block" : "hidden")}
-                    >
-                      <HighlightButton
-                        disabled={!genLoading || genInterruptRef.current}
-                        onClick={() => {
-                          genInterruptRef.current = true;
-                        }}
-                      >
-                        Interrupt
-                      </HighlightButton>
-                    </div>
-                  </div>
                 </div>
-
-                <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
+                <ResultsView
+                  retrieved={retrieved}
+                  query={genContent}
+                  owner={owner}
+                  onExtractUpdate={onExtractUpdate}
+                  onScoreReady={onScoreReady}
+                  template={template.current}
+                  onPin={onPin}
+                  onRemove={onRemove}
+                />
               </div>
-
-              <ResultsView
-                retrieved={retrieved}
-                query={genContent}
-                owner={owner}
-                onExtractUpdate={onExtractUpdate}
-                onScoreReady={onScoreReady}
-                template={template.current}
-                onPin={onPin}
-                onRemove={onRemove}
-              />
             </div>
           </div>
         </div>
