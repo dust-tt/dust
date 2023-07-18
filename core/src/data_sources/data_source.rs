@@ -298,10 +298,11 @@ impl DataSource {
                 }),
                 hnsw_config: Some(qdrant::HnswConfigDiff {
                     m: Some(16),
+                    max_indexing_threads: Some(1),
                     ..Default::default()
                 }),
                 optimizers_config: Some(qdrant::OptimizersConfigDiff {
-                    memmap_threshold: Some(1024),
+                    memmap_threshold: Some(8192),
                     ..Default::default()
                 }),
                 // We keep the entire payload on disk and index on document_id and tags.
@@ -641,9 +642,28 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         if points.len() > 0 {
-            let _ = qdrant_client
-                .upsert_points(self.qdrant_collection(), points, None)
-                .await?;
+            // chunk the points in groups of 128
+            let mut chunked_points = vec![];
+            let mut chunk = vec![];
+            for point in points {
+                chunk.push(point);
+                if chunk.len() == 128 {
+                    chunked_points.push(chunk);
+                    chunk = vec![];
+                }
+            }
+            if (chunk.len() > 0) {
+                chunked_points.push(chunk);
+            }
+
+            for chunk in chunked_points {
+                let _ = qdrant_client
+                    .upsert_points(self.qdrant_collection(), chunk, None)
+                    .await?;
+            }
+            // let _ = qdrant_client
+            //     .upsert_points(self.qdrant_collection(), points, None)
+            //     .await?;
         }
 
         utils::done(&format!(
