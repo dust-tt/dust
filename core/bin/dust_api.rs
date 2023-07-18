@@ -15,8 +15,8 @@ use dust::{
     blocks::block::BlockType,
     data_sources::data_source::{self, SearchFilter},
     dataset, project, run,
+    stores::postgres,
     stores::store,
-    stores::{postgres, sqlite},
     utils,
 };
 use futures::stream::Stream;
@@ -1664,11 +1664,7 @@ async fn main() -> Result<()> {
             store.init().await?;
             Box::new(store)
         }
-        Err(_) => {
-            let store = sqlite::SQLiteStore::new("api_store.sqlite")?;
-            store.init().await?;
-            Box::new(store)
-        }
+        Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
     };
 
     let state = Arc::new(APIState::new(store));

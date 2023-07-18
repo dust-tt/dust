@@ -1,10 +1,8 @@
 use crate::blocks::block::BlockType;
-use crate::project::Project;
-use crate::stores::{sqlite::SQLiteStore, store::Store};
 use crate::utils;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string_pretty, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -255,97 +253,4 @@ impl Run {
     pub fn set_block_status(&mut self, status: BlockStatus) {
         self.status.set_block_status(status);
     }
-}
-
-pub async fn cmd_inspect(run_id: &str, block_type: BlockType, block_name: &str) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let mut run_id = run_id.to_string();
-
-    if run_id == "latest" {
-        run_id = match store.latest_run_id(&project, RunType::Local).await? {
-            Some(run_id) => run_id,
-            None => Err(anyhow!("No run found, the app was never executed"))?,
-        };
-        utils::info(&format!("Latest run is `{}`", run_id));
-    }
-
-    let run = match store
-        .load_run(
-            &project,
-            &run_id,
-            Some(Some((block_type, block_name.to_string()))),
-        )
-        .await?
-    {
-        Some(r) => r,
-        None => Err(anyhow!("Run with id {} not found", run_id))?,
-    };
-
-    let mut found = false;
-    run.traces.iter().for_each(|((t, n), input_executions)| {
-        if n == block_name && *t == block_type {
-            input_executions
-                .iter()
-                .enumerate()
-                .for_each(|(input_idx, map_executions)| {
-                    map_executions
-                        .iter()
-                        .enumerate()
-                        .for_each(|(map_idx, execution)| {
-                            found = true;
-                            utils::info(&format!(
-                                "Execution: input_idx={}/{} map_idx={}/{}",
-                                input_idx,
-                                input_executions.len(),
-                                map_idx,
-                                map_executions.len()
-                            ));
-                            match execution.value.as_ref() {
-                                Some(v) => println!("{}", to_string_pretty(v).unwrap()),
-                                None => {}
-                            }
-                            match execution.error.as_ref() {
-                                Some(e) => utils::error(&format!("Error: {}", e)),
-                                None => {}
-                            }
-                        });
-                });
-        }
-    });
-
-    if !found {
-        Err(anyhow!(
-            "Block `{} {}` not found in run `{}`",
-            block_type.to_string(),
-            block_name,
-            run_id
-        ))?;
-    }
-
-    Ok(())
-}
-
-pub async fn cmd_list() -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let r = store.list_runs(&project, RunType::Local, None).await?;
-
-    utils::info(&format!("{} runs", r.1));
-    r.0.iter().for_each(|run| {
-        utils::info(&format!(
-            "Run: {} app_hash={} created={}",
-            run.run_id(),
-            run.app_hash(),
-            utils::utc_date_from(run.created()),
-        ));
-    });
-
-    Ok(())
 }
