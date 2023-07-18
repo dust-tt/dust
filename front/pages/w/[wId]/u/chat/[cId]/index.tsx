@@ -292,7 +292,7 @@ export function DocumentView({
   );
 }
 
-const timestampFromTimeSettings = function (
+const getTimestampFromTimeSettings = function (
   selectedTimeRange: ChatTimeRange,
   minTimestamp?: number
 ) {
@@ -1027,12 +1027,12 @@ export default function AppChat({
           role: "retrieval",
           params: {
             query: processedInput,
-            minTimestamp: timestampFromTimeSettings(selectedTimeRange),
+            minTimestamp: getTimestampFromTimeSettings(selectedTimeRange),
           },
         } as ChatMessageType);
         const retrievalResult = await runChatRetrieval(m, {
           query: processedInput,
-          minTimestamp: timestampFromTimeSettings(selectedTimeRange),
+          minTimestamp: getTimestampFromTimeSettings(selectedTimeRange),
         });
         m.pop();
         await updateMessages(m, retrievalResult);
@@ -1043,7 +1043,7 @@ export default function AppChat({
         if (result?.role === "retrieval") {
           const params = {
             ...result.params,
-            minTimestamp: timestampFromTimeSettings(
+            minTimestamp: getTimestampFromTimeSettings(
               selectedTimeRange,
               result.params?.minTimestamp
             ),
