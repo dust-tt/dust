@@ -9,6 +9,7 @@ import {
 } from "sequelize";
 
 import { MessageFeedbackStatus } from "@app/types/chat";
+import { EventSchemaStatus } from "@app/types/extract";
 
 import { ConnectorProvider } from "./connectors_api";
 
@@ -1027,7 +1028,7 @@ export class EventSchema extends Model<
 
   declare marker: string;
   declare description?: string;
-  declare status: "active" | "disabled";
+  declare status: EventSchemaStatus;
   declare debug?: boolean;
   declare properties: {
     name: string;
