@@ -648,20 +648,21 @@ impl DataSource {
                 chunked_points.push(chunk);
             }
 
-            let now = utils::now();
-            let chunk_len = chunk.len();
-
             for chunk in chunked_points {
+                let now = utils::now();
+                let chunk_len = chunk.len();
+
                 let _ = qdrant_client
                     .upsert_points(self.qdrant_collection(), chunk, None)
                     .await?;
+
+                utils::done(&format!(
+                    "Success upserting chunk in qdrant: points_count={} duration={}ms",
+                    chunk_len,
+                    utils::now() - now
+                ));
             }
 
-            utils::done(&format!(
-                "Success upserting chunk in qdrant: points_count={} duration={}ms",
-                chunk_len,
-                utils::now() - now
-            ));
             // let _ = qdrant_client
             //     .upsert_points(self.qdrant_collection(), points, None)
             //     .await?;
