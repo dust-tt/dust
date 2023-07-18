@@ -1512,8 +1512,6 @@ export default function AppGens({
                   <p>
                     Generate text using "templates" that instruct how the
                     generation should be created, and for what type of workflow.
-                    For example, generating structured data, writing in a
-                    certain style, making critiques, etc...
                   </p>
 
                   <div className="my-2 flex flex-row items-start space-x-3">
