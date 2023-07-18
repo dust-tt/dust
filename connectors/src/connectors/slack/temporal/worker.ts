@@ -16,6 +16,7 @@ export async function runSlackWorker() {
     taskQueue: QUEUE_NAME,
     connection,
     namespace,
+    maxConcurrentActivityTaskExecutions: 3,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
