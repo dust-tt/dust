@@ -1,6 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  getDocumentsPostDeleteHooksToRun,
+  getDocumentsPostUpsertHooksToRun,
+} from "@app/documents_post_process_hooks/hooks";
+import {
+  launchRunPostDeleteHooksWorkflow,
+  launchRunPostUpsertHooksWorkflow,
+} from "@app/documents_post_process_hooks/temporal/client";
+import {
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/lib/api/credentials";
@@ -11,8 +19,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { getPostUpsertHooksToRun } from "@app/post_upsert_hooks/hooks";
-import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";
@@ -288,7 +294,7 @@ async function handler(
         data_source: dataSource,
       });
 
-      const postUpsertHooksToRun = await getPostUpsertHooksToRun({
+      const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
         dataSourceName: dataSource.name,
         workspaceId: owner.sId,
         documentId: req.query.documentId as string,
@@ -355,6 +361,25 @@ async function handler(
           document_id: req.query.documentId as string,
         },
       });
+
+      const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
+        dataSourceName: dataSource.name,
+        workspaceId: owner.sId,
+        documentId: req.query.documentId as string,
+        dataSourceConnectorProvider: dataSource.connectorProvider || null,
+      });
+
+      // TODO: parallel.
+      for (const { type: hookType } of postDeleteHooksToRun) {
+        await launchRunPostDeleteHooksWorkflow(
+          dataSource.name,
+          owner.sId,
+          req.query.documentId as string,
+          dataSource.connectorProvider || null,
+          hookType
+        );
+      }
+
       return;
 
     default:

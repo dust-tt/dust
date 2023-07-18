@@ -1,6 +1,11 @@
 import { Op } from "sequelize";
 
 import {
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/documents_post_process_hooks/hooks";
+import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
+import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
@@ -15,15 +20,17 @@ import {
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
-import { PostUpsertHookParams } from "@app/post_upsert_hooks/hooks";
-import { getDatasource } from "@app/post_upsert_hooks/hooks/lib/data_source_helpers";
 
-export async function shouldProcessExtractEvents({
-  dataSourceName,
-  workspaceId,
-  documentId,
-  documentText,
-}: PostUpsertHookParams) {
+export async function shouldProcessExtractEvents(
+  params: DocumentsPostProcessHookFilterParams
+) {
+  if (params.verb !== "upsert") {
+    logger.info("extract_events post process hook should only run for upsert.");
+    return false;
+  }
+
+  const { workspaceId, dataSourceName, documentId, documentText } = params;
+
   const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
   const hasMarker = hasExtractEventMarker(documentText);
   if (!hasMarker) {
@@ -59,7 +66,7 @@ export async function processExtractEvents({
   documentId,
   documentSourceUrl,
   documentText,
-}: PostUpsertHookParams) {
+}: DocumentsPostProcessHookOnUpsertParams) {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   if (!auth.workspace()) {
     logger.error(
