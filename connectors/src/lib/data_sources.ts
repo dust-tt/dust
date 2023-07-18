@@ -1,8 +1,11 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { QueryTypes } from "sequelize";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+
+import { sequelize_conn } from "./models";
 
 const { FRONT_API } = process.env;
 if (!FRONT_API) {
@@ -26,15 +29,38 @@ export async function upsertToDatasource(
   const errors = [];
   for (let i = 0; i < retries; i++) {
     try {
-      return await _upsertToDatasource(
-        dataSourceConfig,
-        documentId,
-        documentText,
-        documentUrl,
-        timestampMs,
-        tags,
-        loggerArgs
-      );
+      await sequelize_conn.transaction(async (t) => {
+        const lockKey = `uptods-${dataSourceConfig.workspaceId}`;
+        const lockKeyInt = generateLockKey(lockKey);
+        const now = new Date().getTime();
+        await sequelize_conn.query(
+          `SELECT pg_advisory_xact_lock(${lockKeyInt})`,
+          {
+            type: QueryTypes.SELECT,
+            transaction: t,
+          }
+        );
+        const elapsed = new Date().getTime() - now;
+        logger.info(
+          {
+            elapsed,
+            lockKey,
+            lockKeyInt,
+            documentId,
+            workspaceId: dataSourceConfig.workspaceId,
+          },
+          "pg_advisory_xact_lock"
+        );
+        return await _upsertToDatasource(
+          dataSourceConfig,
+          documentId,
+          documentText,
+          documentUrl,
+          timestampMs,
+          tags,
+          loggerArgs
+        );
+      });
     } catch (e) {
       const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
       logger.warn(
@@ -176,4 +202,13 @@ export async function deleteFromDataSource(
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
+}
+
+// Function that converts a string to a number to be used in a pg_advisory_lock
+function generateLockKey(name: string): number {
+  let key = 0;
+  for (let i = 0; i < name.length; i++) {
+    key += name.charCodeAt(i);
+  }
+  return key;
 }
