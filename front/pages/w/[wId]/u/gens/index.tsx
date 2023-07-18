@@ -618,6 +618,13 @@ export function TemplatesView({
   const [templates, setTemplates] = useState<GensTemplateType[]>(
     [
       {
+        name: "Neutral",
+        color: "bg-green-500",
+        instructions: [""],
+        sId: "0000",
+        visibility: "default" as GensTemplateVisibilityType,
+      },
+      {
         name: "Fact Gatherer",
         color: "bg-red-500",
         instructions: [
@@ -1515,17 +1522,17 @@ export default function AppGens({
                   </p>
 
                   <div className="my-2 flex flex-row items-start space-x-3">
-                    {!genLoading ? (
-                      <ActionButton
-                        disabled={genLoading}
-                        onClick={() => {
-                          void handleGenerate();
-                        }}
-                      >
-                        Generate with template
-                      </ActionButton>
-                    ) : (
-                      <div>
+                    <div className="flex-shrink-0 flex-grow-0">
+                      {!genLoading ? (
+                        <ActionButton
+                          disabled={genLoading}
+                          onClick={() => {
+                            void handleGenerate();
+                          }}
+                        >
+                          Generate with template
+                        </ActionButton>
+                      ) : (
                         <HighlightButton
                           disabled={!genLoading || genInterruptRef.current}
                           onClick={() => {
@@ -1534,8 +1541,8 @@ export default function AppGens({
                         >
                           Interrupt
                         </HighlightButton>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     <TemplatesView
                       onTemplateSelect={(t) => (template.current = t)}
                       workspaceId={owner.sId}
@@ -1567,7 +1574,6 @@ export default function AppGens({
                         void handleSearch();
                       }}
                     >
-                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
                       {retrievalLoading ? "Loading..." : "Retrieve"}
                     </ActionButton>
                   </div>
