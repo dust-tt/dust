@@ -235,6 +235,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "doc-tracker-suggest-changes": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "76b40f14fb",
+      appHash:
+        "09bbb3c7b8618897ea59b036f773a77f3201e11df8839f31bd0823c9869dff9f",
+    },
+    config: {
+      SUGGEST_CHANGES: {
+        provider_id: "openai",
+        model_id: "gpt-4-0613",
+        use_cache: false,
+        function_call: "suggest_changes",
+      },
+    },
+  },
   "extract-events": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
