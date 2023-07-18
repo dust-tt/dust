@@ -1,7 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
-
 import {
+  deleteChatSession,
   getChatSessionWithMessages,
   upsertChatSession,
 } from "@app/lib/api/chat";
@@ -131,6 +131,32 @@ async function handler(
         session,
       });
       return;
+    }
+
+    case "DELETE": {
+      if (!(typeof req.query.cId === "string")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid query parameters, `cId` (string) is required.",
+          },
+        });
+      }
+
+      if (await deleteChatSession(auth, req.query.cId)) {
+        res.status(200).json({
+          session,
+        });
+        return;
+      }
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "chat_session_not_found",
+          message: "The chat session was not found.",
+        },
+      });
     }
 
     default:

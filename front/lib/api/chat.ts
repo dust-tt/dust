@@ -213,6 +213,23 @@ export async function getChatSessionWithMessages(
   };
 }
 
+export async function deleteChatSession(
+  auth: Authenticator,
+  sId: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return false;
+  }
+  let nbRowsDestroyed = await ChatSession.destroy({
+    where: {
+      workspaceId: owner.id,
+      sId,
+    },
+  });
+  return nbRowsDestroyed === 1;
+}
+
 export function userIsChatSessionOwner(
   user: UserType,
   chatSession: ChatSessionType
