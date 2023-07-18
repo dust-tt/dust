@@ -1,4 +1,8 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  TrashIcon,
+} from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
@@ -494,6 +498,20 @@ export function MessageView({
   );
 }
 
+const handleTrashClick = (
+  event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+  conversationTitle: string | undefined
+) => {
+  event.stopPropagation();
+  const confirmed = window.confirm(
+    `After deletion, the conversation "${conversationTitle}" cannot be recovered. Delete the conversation?`
+  );
+  if (confirmed) {
+    console.log("toto");
+  }
+  return false;
+};
+
 function ChatHistory({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
 
@@ -513,7 +531,7 @@ function ChatHistory({ owner }: { owner: WorkspaceType }) {
               return (
                 <div
                   key={i}
-                  className="flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
+                  className="group flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
                   onClick={() => {
                     void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
                   }}
@@ -521,6 +539,10 @@ function ChatHistory({ owner }: { owner: WorkspaceType }) {
                   <div className="flex flex-row items-center">
                     <div className="flex flex-1">{s.title}</div>
                     <div className="min-w-16 flex flex-initial">
+                      <TrashIcon
+                        className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
+                        onClick={(e) => handleTrashClick(e, s.title)}
+                      ></TrashIcon>
                       <span className="ml-2 text-xs italic text-gray-400">
                         {timeAgoFrom(s.created)} ago
                       </span>
