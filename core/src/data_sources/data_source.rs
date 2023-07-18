@@ -641,18 +641,20 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
 
+        const MAX_QDRANT_VECTOR_PER_UPSERT: usize = 128;
+
         if points.len() > 0 {
-            // chunk the points in groups of 128
+            // Chunk the points in groups of MAX_QDRANT_VECTOR_PER_UPSERT to avoid big upserts.
             let mut chunked_points = vec![];
             let mut chunk = vec![];
             for point in points {
                 chunk.push(point);
-                if chunk.len() == 128 {
+                if chunk.len() == MAX_QDRANT_VECTOR_PER_UPSERT {
                     chunked_points.push(chunk);
                     chunk = vec![];
                 }
             }
-            if (chunk.len() > 0) {
+            if chunk.len() > 0 {
                 chunked_points.push(chunk);
             }
 
