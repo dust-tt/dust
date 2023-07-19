@@ -1,8 +1,10 @@
 import {
   executeChild,
+  ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
+  startChild,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
@@ -19,6 +21,8 @@ const {
   garbageCollector,
   renewWebhooks,
   populateSyncTokens,
+  garbageCollectorFinished,
+  getLastGCTime,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -119,7 +123,16 @@ export async function googleDriveIncrementalSync(
       } while (changeCount && changeCount > 0);
     }
   }
+
   await syncSucceeded(connectorId);
+  const lastGCTime = await getLastGCTime(connectorId);
+  if (lastGCTime + 60 * 60 * 24 * 1000 < new Date().getTime()) {
+    await startChild(googleDriveGarbageCollectorWorkflow.name, {
+      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
+      args: [connectorId, nangoConnectionId, dataSourceConfig],
+      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
+    });
+  }
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
@@ -147,6 +160,8 @@ export async function googleDriveGarbageCollectorWorkflow(
   do {
     processed = await garbageCollector(connectorId, gcTs);
   } while (processed > 0);
+
+  await garbageCollectorFinished(connectorId);
 }
 
 export function googleDriveGarbageCollectorWorkflowId(connectorId: ModelId) {

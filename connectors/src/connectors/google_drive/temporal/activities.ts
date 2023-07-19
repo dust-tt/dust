@@ -226,7 +226,6 @@ async function syncOneFile(
 ) {
   const mimeTypesToExport: { [key: string]: string } = {
     "application/vnd.google-apps.document": "text/plain",
-    "application/vnd.google-apps.spreadsheet": "text/csv",
     "application/vnd.google-apps.presentation": "text/plain",
   };
   const mimeTypesToDownload = ["text/plain", "text/csv"];
@@ -274,6 +273,9 @@ async function syncOneFile(
   if (file.updatedAtMs) {
     tags.push(`lastEditedAt:${file.updatedAtMs}`);
   }
+  if (file.createdAtMs) {
+    tags.push(`createdAt:${file.createdAtMs}`);
+  }
   if (file.lastEditor) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
@@ -291,7 +293,7 @@ async function syncOneFile(
       documentId,
       documentContent,
       file.webViewLink,
-      file.createdAtMs,
+      file.updatedAtMs,
       tags
     );
   } else {
@@ -322,6 +324,10 @@ async function getParents(
     throw new Error(
       `Error getting object. objetId:${objectId} status_code: ${res.status}. status_text: ${res.statusText}`
     );
+  }
+  if (res.data.trashed) {
+    // When a file is trashed, we don't want to consider its other parent folder.
+    return [];
   }
   if (res.data.parents && res.data.parents.length > 0) {
     return res.data.parents;
@@ -559,7 +565,6 @@ export async function garbageCollector(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const authCredentials = await getAuthObject(connector.connectionId);
   const files = await GoogleDriveFiles.findAll({
     where: {
@@ -582,8 +587,7 @@ export async function garbageCollector(
           );
 
           if (isInFolder === false) {
-            await deleteFromDataSource(dataSourceConfig, file.dustFileId);
-            await file.destroy();
+            await deleteOneFile(connectorId, file.driveFileId);
           } else {
             await file.update({
               garbageCollectedAt: new Date(),
@@ -593,8 +597,7 @@ export async function garbageCollector(
           if (e instanceof GaxiosError) {
             if (e.response?.status === 404) {
               // File not found, we can delete it.
-              await deleteFromDataSource(dataSourceConfig, file.dustFileId);
-              await file.destroy();
+              await deleteOneFile(connectorId, file.driveFileId);
             }
           }
         }
@@ -707,4 +710,49 @@ export async function populateSyncTokens(connectorId: ModelId) {
       syncToken: lastSyncToken,
     });
   }
+}
+
+export async function garbageCollectorFinished(connectorId: ModelId) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  connector.lastGCTime = new Date();
+  await connector.save();
+}
+
+export async function getLastGCTime(connectorId: ModelId): Promise<number> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  return connector.lastGCTime?.getTime() || 0;
+}
+
+async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
+  const googleDriveFile = await GoogleDriveFiles.findOne({
+    where: {
+      connectorId: connectorId,
+      driveFileId: driveFileId,
+    },
+  });
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  // Only clean up files that we were syncing.
+  if (googleDriveFile) {
+    logger.info(
+      {
+        driveFileId,
+        connectorId,
+      },
+      `Deleting Google Drive file.`
+    );
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    await googleDriveFile.destroy();
+  }
+  return;
 }
