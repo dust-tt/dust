@@ -4,6 +4,7 @@ import PQueue from "p-queue";
 
 import {
   deleteFromDataSource,
+  MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -284,14 +285,26 @@ async function syncOneFile(
     driveFileId: file.id,
   });
 
-  await upsertToDatasource(
-    dataSourceConfig,
-    documentId,
-    documentContent,
-    file.webViewLink,
-    file.createdAtMs,
-    tags
-  );
+  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+    await upsertToDatasource(
+      dataSourceConfig,
+      documentId,
+      documentContent,
+      file.webViewLink,
+      file.createdAtMs,
+      tags
+    );
+  } else {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        documentLen: documentContent.length,
+        title: file.name,
+      },
+      `Document too big to be upserted. Skipping`
+    );
+  }
 }
 
 async function getParents(

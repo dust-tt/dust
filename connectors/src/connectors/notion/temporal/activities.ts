@@ -17,6 +17,7 @@ import {
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import {
   deleteFromDataSource,
+  MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import {
@@ -194,7 +195,7 @@ export async function notionUpsertPageActivity(
 
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
 
-  if (parsedPage && parsedPage.rendered.length > 1000000) {
+  if (parsedPage && parsedPage.rendered.length > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info("Skipping page with too large body");
     await upsertNotionPageInConnectorsDb(
       dataSourceConfig,
