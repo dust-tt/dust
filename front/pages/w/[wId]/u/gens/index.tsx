@@ -184,7 +184,7 @@ export class FunctionSingleArgStreamer {
         this._handler(tokens);
       }
     } catch (e) {
-      console.log(e);
+      // Ignore and continue.
     }
   }
 }
@@ -1090,8 +1090,6 @@ export default function AppGens({
 
   const [minRows, setMinRows] = useState<number>(8);
 
-  console.log(templates);
-
   useEffect(() => {
     setMinRows(window.innerHeight / 40);
   }, []);
@@ -1259,7 +1257,6 @@ export default function AppGens({
     const { eventStream } = res.value;
 
     const p = new FunctionSingleArgStreamer("content", (tokens) => {
-      console.log("handler is being called");
       content = `${content.slice(0, cursorPosition)}${tokens}${content.slice(
         cursorPosition
       )}`;
