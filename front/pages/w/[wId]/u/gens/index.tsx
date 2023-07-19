@@ -560,7 +560,7 @@ export function ResultsView({
           {retrieved && retrieved.length > 0 && (
             <>
               <p className="text-lg">
-                Retrieved {retrieved.length} document
+                Found {retrieved.length} document
                 {retrieved.length == 1 ? "" : "s"}
               </p>
 
@@ -1469,12 +1469,12 @@ export default function AppGens({
         </Transition.Root>
         <div className="">
           <div className="to mx-auto px-6">
-            <div className="m-auto my-3 w-4/5">
+            <div className="m-auto my-3 w-5/6">
               <Button onClick={() => setExplainExpanded(true)}>
                 How does Gens work?
               </Button>
             </div>
-            <div className="m-auto flex w-4/5 flex-row flex-wrap space-x-6 sm:flex-nowrap">
+            <div className="m-auto flex w-5/6 flex-row flex-wrap space-x-6 sm:flex-nowrap">
               <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
