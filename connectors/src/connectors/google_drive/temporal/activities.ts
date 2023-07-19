@@ -574,19 +574,29 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        if (
-          (await objectIsInFolder(
+        try {
+          const isInFolder = await objectIsInFolder(
             authCredentials,
             file.driveFileId,
             selectedFolders
-          )) === false
-        ) {
-          await deleteFromDataSource(dataSourceConfig, file.dustFileId);
-          await file.destroy();
-        } else {
-          await file.update({
-            garbageCollectedAt: new Date(),
-          });
+          );
+
+          if (isInFolder === false) {
+            await deleteFromDataSource(dataSourceConfig, file.dustFileId);
+            await file.destroy();
+          } else {
+            await file.update({
+              garbageCollectedAt: new Date(),
+            });
+          }
+        } catch (e) {
+          if (e instanceof GaxiosError) {
+            if (e.response?.status === 404) {
+              // File not found, we can delete it.
+              await deleteFromDataSource(dataSourceConfig, file.dustFileId);
+              await file.destroy();
+            }
+          }
         }
       });
     })
