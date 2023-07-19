@@ -413,7 +413,7 @@ export function DocumentView({
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-row items-center text-xs">
+      <div className="flex flex-row flex-wrap items-center text-xs">
         <div
           className={classNames(
             "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 pb-0.5 pt-1",
