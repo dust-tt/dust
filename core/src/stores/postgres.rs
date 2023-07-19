@@ -388,7 +388,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs 
+                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs
                 WHERE project = $1 AND run_id = any($2)",
             )
             .await?;
@@ -737,12 +737,15 @@ impl Store for PostgresStore {
         run_id: &str,
         block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>> {
+        utils::info(&format!("RETRIEVE LOAD_RUN_ENTRY {}", utils::now()));
         let project_id = project.project_id();
         let run_id = run_id.to_string();
         let block = block.clone();
 
         let pool = self.pool.clone();
+        utils::info(&format!("RETRIEVE LOAD_RUN_POOL_CLONE {}", utils::now()));
         let c = pool.get().await?;
+        utils::info(&format!("RETRIEVE LOAD_RUN_POOL_AWAIT {}", utils::now()));
 
         // Check that the run_id exists
         let r = c
@@ -752,6 +755,7 @@ impl Store for PostgresStore {
                 &[&project_id, &run_id],
             )
             .await?;
+        utils::info(&format!("RETRIEVE LOAD_RUN_QUERY_RUNS {}", utils::now()));
 
         let d: Option<(i64, i64, String, String, String, String)> = match r.len() {
             0 => None,
@@ -832,6 +836,10 @@ impl Store for PostgresStore {
                     None => (),
                     Some((block_type, block_name)) => {
                         // Retrieve data points through datasets_joins for one block
+                        utils::info(&format!(
+                            "RETRIEVE LOAD_RUN_PRE_PREPARE_BLOCK {}",
+                            utils::now()
+                        ));
                         let stmt = c
                             .prepare(
                                 "SELECT \
@@ -843,9 +851,11 @@ impl Store for PostgresStore {
                             WHERE runs_joins.run = $1 AND block_type = $2 AND block_name = $3",
                             )
                             .await?;
+                        utils::info(&format!("RETRIEVE LOAD_RUN_PREPARE_BLOCK {}", utils::now()));
                         let rows = c
                             .query(&stmt, &[&row_id, &block_type.to_string(), &block_name])
                             .await?;
+                        utils::info(&format!("RETRIEVE LOAD_RUN_QUERY_BLOCK {}", utils::now()));
                         rows.iter()
                             .map(|row| {
                                 let block_idx: i64 = row.get(0);
@@ -875,6 +885,10 @@ impl Store for PostgresStore {
                 }
             }
         }
+        utils::info(&format!(
+            "RETRIEVE LOAD_RUN_PRE_POSTPROCESS {}",
+            utils::now()
+        ));
 
         let mut input_counts: Vec<usize> = vec![0; block_count as usize];
         data.iter().for_each(|(block_idx, _, _, input_idx, _, _)| {
@@ -943,6 +957,10 @@ impl Store for PostgresStore {
                 )
             })
             .collect::<Vec<_>>();
+        utils::info(&format!(
+            "RETRIEVE LOAD_RUN_POSTPROCESS_DONE {}",
+            utils::now()
+        ));
 
         Ok(Some(Run::new_from_store(
             &run_id,
