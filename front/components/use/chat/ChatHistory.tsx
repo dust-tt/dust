@@ -6,20 +6,29 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { timeAgoFrom } from "@app/lib/utils";
 
-function PaginationLink({ newer } : { newer: boolean }) {
-    const text = newer ? "< newer" : "older >";
-    return (
-        <div className="hover:text-violet-800 hover:cursor-pointer">{text}</div>
-    )
-}
-
 export function ChatHistory({ owner }: { owner: WorkspaceType }) {
     const router = useRouter();
   
     const [limit] = useState(10);
-  
-    const { sessions, mutateChatSessions } = useChatSessions(owner, limit, 0);
-  
+    const [offset, setOffset] = useState(0);    
+    const { sessions, mutateChatSessions } = useChatSessions(owner, limit, offset);
+
+    const handlePagination = async (newer: boolean) => {
+        if (newer) {
+            setOffset(offset - limit);
+        } else {
+            setOffset(offset + limit);
+        }
+    };
+
+    function PaginationLink({ newer } : { newer: boolean }) {
+        const text = newer ? "< newer" : "older >";
+        const disabled = newer ? offset === 0 : sessions.length < limit;
+        return (
+            <div className={disabled ? "text-gray-400 hover:cursor-default": "hover:text-violet-800 cursor-pointer"} onClick={() => disabled || handlePagination(newer)}>{text}</div>
+        )
+    }
+      
     const handleTrashClick = async (
       event: React.MouseEvent<SVGSVGElement, MouseEvent>,
       chatSession: ChatSessionType
