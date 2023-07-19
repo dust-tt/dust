@@ -155,7 +155,7 @@ export async function syncFiles(
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
     corpora: "allDrives",
-    pageSize: 1000,
+    pageSize: 100,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
