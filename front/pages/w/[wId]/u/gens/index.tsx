@@ -1513,7 +1513,7 @@ export default function AppGens({
                 </div>
                 <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
-              <div className="sticky top-0 w-full text-sm sm:w-1/3">
+              <div className="w-full text-sm sm:w-1/3">
                 <div className="sticky top-0">
                   <div className="mb-8">
                     <h2 className="text-lg font-bold">Generation</h2>
@@ -1667,17 +1667,17 @@ export default function AppGens({
                       </div>
                     </div>
                   </div>
+                  <ResultsView
+                    retrieved={retrieved}
+                    query={genContent}
+                    owner={owner}
+                    onExtractUpdate={onExtractUpdate}
+                    onScoreReady={onScoreReady}
+                    template={template.current}
+                    onPin={onPin}
+                    onRemove={onRemove}
+                  />
                 </div>
-                <ResultsView
-                  retrieved={retrieved}
-                  query={genContent}
-                  owner={owner}
-                  onExtractUpdate={onExtractUpdate}
-                  onScoreReady={onScoreReady}
-                  template={template.current}
-                  onPin={onPin}
-                  onRemove={onRemove}
-                />
               </div>
             </div>
           </div>
