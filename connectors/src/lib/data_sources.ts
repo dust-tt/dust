@@ -113,6 +113,11 @@ async function _upsertToDatasource(
       elapsed,
       statsDTags
     );
+    statsDClient.distribution(
+      "data_source_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }
@@ -126,11 +131,21 @@ async function _upsertToDatasource(
       elapsed,
       statsDTags
     );
+    statsDClient.distribution(
+      "data_source_upserts_success.duration.distribution",
+      elapsed,
+      statsDTags
+    );
     localLogger.info("Successfully uploaded document to Dust.");
   } else {
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
     statsDClient.histogram(
       "data_source_upserts_error.duration",
+      elapsed,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_upserts_error.duration.distribution",
       elapsed,
       statsDTags
     );
