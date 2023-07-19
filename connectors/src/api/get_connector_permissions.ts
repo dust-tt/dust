@@ -43,7 +43,10 @@ const _getConnectorPermissions = async (
   const connectorPermissionRetriever =
     RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE[connector.type];
 
-  const pRes = await connectorPermissionRetriever(connector.id, parentInternalId);
+  const pRes = await connectorPermissionRetriever(
+    connector.id,
+    parentInternalId
+  );
 
   if (pRes.isErr()) {
     return apiError(req, res, {
