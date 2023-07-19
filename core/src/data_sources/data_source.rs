@@ -936,7 +936,7 @@ impl DataSource {
         // to wrap it in an Arc so that it can be cloned.
         let mut documents = match target_document_tokens {
             Some(target) => {
-                futures::stream::iter(documents)
+                stream::iter(documents)
                     .map(|mut d| {
                         let mut chunks = chunks
                             .iter()
