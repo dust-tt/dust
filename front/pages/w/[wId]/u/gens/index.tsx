@@ -49,7 +49,6 @@ import {
   GensTemplateVisibilityType,
 } from "@app/types/gens";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { PassThrough } from "stream";
 
 type DataSource = {
   name: string;
@@ -183,7 +182,7 @@ export class FunctionSingleArgStreamer {
       obj = JSON.parse(str);
     } catch (e) {
       // trying to modify token to get it to work
-      let processedToken = token.replace(/\n/g, "\\n");
+      const processedToken = token.replace(/\n/g, "\\n");
       currentTextSoFar = this._textSoFar + processedToken;
       str = this._apply_processing(currentTextSoFar);
     }
