@@ -539,17 +539,11 @@ impl DataSource {
         // Embed chunks with max concurrency of 24.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
-                let data_source_id = self.data_source_id.clone();
-                let document_id = document_id.to_string();
                 let provider_id = self.config.provider_id.clone();
                 let model_id = self.config.model_id.clone();
                 let credentials = credentials.clone();
                 let extras = self.config.extras.clone();
                 tokio::spawn(async move {
-                    utils::info(&format!(
-                        "Embedding chunk: data_source_id={} document_id={}",
-                        data_source_id, document_id,
-                    ));
                     let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
                     let v = r.execute(credentials).await?;
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
