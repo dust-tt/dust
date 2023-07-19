@@ -233,6 +233,8 @@ export async function notionUpsertPageActivity(
     runTimestamp,
     parsedPage ? parsedPage.parentType : null,
     parsedPage ? parsedPage.parentId : null,
+    parsedPage ? parsedPage.title : null,
+    parsedPage ? parsedPage.url : null,
     upsertTs
   );
 }

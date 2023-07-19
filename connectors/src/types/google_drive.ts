@@ -4,6 +4,7 @@ export type GoogleDriveFileType = {
   createdAtMs: number;
   updatedAtMs?: number;
   webViewLink?: string;
+  mimeType: string;
   lastEditor?: {
     displayName: string;
   };

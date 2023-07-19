@@ -17,7 +17,8 @@ const logger = mainLogger.child({ provider: "notion" });
 
 export async function launchNotionSyncWorkflow(
   connectorId: string,
-  startFromTs: number | null = null
+  startFromTs: number | null = null,
+  forceResync = false
 ) {
   const client = await getTemporalClient();
   const connector = await Connector.findByPk(connectorId);
@@ -41,7 +42,12 @@ export async function launchNotionSyncWorkflow(
   }
 
   await client.workflow.start(notionSyncWorkflow, {
-    args: [dataSourceConfig, nangoConnectionId, startFromTs || undefined],
+    args: [
+      dataSourceConfig,
+      nangoConnectionId,
+      startFromTs || undefined,
+      forceResync,
+    ],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
   });

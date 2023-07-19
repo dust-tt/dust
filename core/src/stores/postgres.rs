@@ -388,7 +388,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs 
+                "SELECT run_id, created, app_hash, config_json, status_json, run_type FROM runs
                 WHERE project = $1 AND run_id = any($2)",
             )
             .await?;

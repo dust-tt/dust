@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "dust"
-path = "bin/dust.rs"
-
-[[bin]]
 name = "dust-api"
 path = "bin/dust_api.rs"
 

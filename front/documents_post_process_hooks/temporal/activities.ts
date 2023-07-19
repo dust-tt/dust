@@ -1,11 +1,11 @@
+import {
+  DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE,
+  DocumentsPostProcessHookType,
+} from "@app/documents_post_process_hooks/hooks";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import {
-  POST_UPSERT_HOOK_BY_TYPE,
-  PostUpsertHookType,
-} from "@app/post_upsert_hooks/hooks";
 
 export async function runPostUpsertHookActivity(
   dataSourceName: string,
@@ -13,7 +13,7 @@ export async function runPostUpsertHookActivity(
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: PostUpsertHookType
+  hookType: DocumentsPostProcessHookType
 ) {
   const localLogger = logger.child({
     workspaceId,
@@ -23,13 +23,13 @@ export async function runPostUpsertHookActivity(
     hookType,
   });
 
-  const hook = POST_UPSERT_HOOK_BY_TYPE[hookType];
+  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
   if (!hook) {
-    localLogger.error("Unknown post upsert hook type");
-    throw new Error(`Unknown post upsert hook type ${hookType}`);
+    localLogger.error("Unknown documents post process hook type");
+    throw new Error(`Unknown documents post process hook type ${hookType}`);
   }
 
-  localLogger.info("Running post upsert hook function.");
+  localLogger.info("Running documents post process hook onUpsert function.");
 
   const dataSourceDocument = await getDataSourceDocument(
     dataSourceName,
@@ -39,7 +39,12 @@ export async function runPostUpsertHookActivity(
   const documentText = dataSourceDocument.document.text || "";
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
-  await hook.fn({
+  if (!hook.onUpsert) {
+    localLogger.warn("No onUpsert function for documents post process hook");
+    return;
+  }
+
+  await hook.onUpsert({
     dataSourceName,
     workspaceId,
     documentId,
@@ -48,7 +53,44 @@ export async function runPostUpsertHookActivity(
     documentHash,
     dataSourceConnectorProvider,
   });
-  localLogger.info("Ran post upsert hook function.");
+  localLogger.info("Ran documents post process hook onUpsert function.");
+}
+
+export async function runPostDeleteHookActivity(
+  dataSourceName: string,
+  workspaceId: string,
+  documentId: string,
+  dataSourceConnectorProvider: ConnectorProvider | null,
+  hookType: DocumentsPostProcessHookType
+) {
+  const localLogger = logger.child({
+    workspaceId,
+    dataSourceName,
+    documentId,
+    dataSourceConnectorProvider,
+    hookType,
+  });
+
+  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
+  if (!hook) {
+    localLogger.error("Unknown documents post process hook type");
+    throw new Error(`Unknown documents post process hook type ${hookType}`);
+  }
+
+  localLogger.info("Running documents post process hook onDelete function.");
+
+  if (!hook.onDelete) {
+    localLogger.warn("No onDelete function for documents post process hook");
+    return;
+  }
+
+  await hook.onDelete({
+    dataSourceName,
+    workspaceId,
+    documentId,
+    dataSourceConnectorProvider,
+  });
+  localLogger.info("Ran documents post process hook ondelete function.");
 }
 
 async function getDataSourceDocument(

@@ -150,11 +150,6 @@ export async function fullResyncNotionConnector(
     logger.error({ connectorId }, "Notion connector not found.");
     return new Err(new Error("Connector not found"));
   }
-  if (fromTs) {
-    return new Err(
-      new Error("Notion connector does not support partial resync")
-    );
-  }
 
   try {
     await stopNotionConnector(connector.id.toString());
@@ -173,7 +168,11 @@ export async function fullResyncNotionConnector(
   }
 
   try {
-    await launchNotionSyncWorkflow(connector.id.toString(), null);
+    await launchNotionSyncWorkflow(
+      connector.id.toString(),
+      fromTs,
+      true //forceResync
+    );
   } catch (e) {
     logger.error(
       {

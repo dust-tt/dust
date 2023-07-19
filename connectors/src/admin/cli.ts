@@ -269,6 +269,30 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const batch = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "full-resync": {
+      if (!args.provider) {
+        throw new Error("Missing --provider argument");
+      }
+      const connectors = await Connector.findAll({
+        where: {
+          type: args.provider,
+        },
+      });
+      for (const connector of connectors) {
+        await throwOnError(
+          SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id.toString(), null)
+        );
+        console.log(
+          `Triggered sync for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName}`
+        );
+      }
+      return;
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -289,6 +313,9 @@ const main = async () => {
   switch (objectType) {
     case "connectors":
       await connectors(command, argv);
+      return;
+    case "batch":
+      await batch(command, argv);
       return;
     case "notion":
       await notion(command, argv);

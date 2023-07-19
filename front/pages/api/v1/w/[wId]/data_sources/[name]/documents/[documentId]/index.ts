@@ -1,6 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  getDocumentsPostDeleteHooksToRun,
+  getDocumentsPostUpsertHooksToRun,
+} from "@app/documents_post_process_hooks/hooks";
+import {
+  launchRunPostDeleteHooksWorkflow,
+  launchRunPostUpsertHooksWorkflow,
+} from "@app/documents_post_process_hooks/temporal/client";
+import {
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/lib/api/credentials";
@@ -11,8 +19,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { getPostUpsertHooksToRun } from "@app/post_upsert_hooks/hooks";
-import { launchRunPostUpsertHooksWorkflow } from "@app/post_upsert_hooks/temporal/client";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { CredentialsType } from "@app/types/provider";
@@ -193,38 +199,42 @@ async function handler(
         sourceUrl = standardizedSourceUrl;
       }
 
-      // Enforce plan limits.
-      const documents = await CoreAPI.getDataSourceDocuments({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        limit: 1,
-        offset: 0,
-      });
-
-      if (documents.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "data_source_error",
-            message: "There was an error retrieving the Data Source.",
-            data_source_error: documents.error,
-          },
-        });
-      }
-
       // Enforce plan limits: DataSource documents count.
-      if (
-        owner.plan.limits.dataSources.documents.count != -1 &&
-        documents.value.total >= owner.plan.limits.dataSources.documents.count
-      ) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "data_source_quota_error",
-            message:
-              "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
-          },
+      // We only load the number of documents if the limit is not -1 (unlimited).
+      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
+      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
+      if (owner.plan.limits.dataSources.documents.count != -1) {
+        const documents = await CoreAPI.getDataSourceDocuments({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceName: dataSource.name,
+          limit: 1,
+          offset: 0,
         });
+
+        if (documents.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "data_source_error",
+              message: "There was an error retrieving the Data Source.",
+              data_source_error: documents.error,
+            },
+          });
+        }
+
+        if (
+          owner.plan.limits.dataSources.documents.count != -1 &&
+          documents.value.total >= owner.plan.limits.dataSources.documents.count
+        ) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_quota_error",
+              message:
+                "Data sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit.",
+            },
+          });
+        }
       }
 
       // Enforce plan limits: DataSource document size.
@@ -284,7 +294,7 @@ async function handler(
         data_source: dataSource,
       });
 
-      const postUpsertHooksToRun = await getPostUpsertHooksToRun({
+      const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
         dataSourceName: dataSource.name,
         workspaceId: owner.sId,
         documentId: req.query.documentId as string,
@@ -351,6 +361,25 @@ async function handler(
           document_id: req.query.documentId as string,
         },
       });
+
+      const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
+        dataSourceName: dataSource.name,
+        workspaceId: owner.sId,
+        documentId: req.query.documentId as string,
+        dataSourceConnectorProvider: dataSource.connectorProvider || null,
+      });
+
+      // TODO: parallel.
+      for (const { type: hookType } of postDeleteHooksToRun) {
+        await launchRunPostDeleteHooksWorkflow(
+          dataSource.name,
+          owner.sId,
+          req.query.documentId as string,
+          dataSource.connectorProvider || null,
+          hookType
+        );
+      }
+
       return;
 
     default:

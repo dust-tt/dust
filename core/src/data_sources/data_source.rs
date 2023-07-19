@@ -4,7 +4,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
-use crate::stores::{sqlite::SQLiteStore, store::Store};
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
@@ -13,7 +13,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
 use qdrant_client::{
-    prelude::{Payload, QdrantClient, QdrantClientConfig},
+    prelude::{Payload, QdrantClient},
     qdrant,
 };
 use serde::{Deserialize, Serialize};
@@ -240,23 +240,11 @@ impl DataSource {
         format!("ds_{}", self.internal_id)
     }
 
-    async fn qdrant_client(&self) -> Result<QdrantClient> {
-        match std::env::var("QDRANT_URL") {
-            Ok(url) => {
-                let mut config = QdrantClientConfig::from_url(&url);
-                match std::env::var("QDRANT_API_KEY") {
-                    Ok(api_key) => {
-                        config.set_api_key(&api_key);
-                        QdrantClient::new(Some(config))
-                    }
-                    Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
-                }
-            }
-            Err(_) => Err(anyhow!("QDRANT_URL is not set"))?,
-        }
-    }
-
-    pub async fn setup(&self, credentials: Credentials) -> Result<()> {
+    pub async fn setup(
+        &self,
+        credentials: Credentials,
+        qdrant_client: Arc<QdrantClient>,
+    ) -> Result<()> {
         let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
         embedder.initialize(credentials).await?;
 
@@ -283,7 +271,6 @@ impl DataSource {
         ));
 
         // Qdrant create collection.
-        let qdrant_client = self.qdrant_client().await?;
         qdrant_client
             .create_collection(&qdrant::CreateCollection {
                 collection_name: self.qdrant_collection(),
@@ -298,10 +285,11 @@ impl DataSource {
                 }),
                 hnsw_config: Some(qdrant::HnswConfigDiff {
                     m: Some(16),
+                    max_indexing_threads: Some(1),
                     ..Default::default()
                 }),
                 optimizers_config: Some(qdrant::OptimizersConfigDiff {
-                    memmap_threshold: Some(1024),
+                    memmap_threshold: Some(8192),
                     ..Default::default()
                 }),
                 // We keep the entire payload on disk and index on document_id and tags.
@@ -351,11 +339,11 @@ impl DataSource {
     pub async fn update_tags(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: String,
         add_tags: Vec<String>,
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
-        let qdrant_client = self.qdrant_client().await?;
         let new_tags = store
             .update_data_source_document_tags(
                 &self.project,
@@ -396,6 +384,7 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
@@ -527,6 +516,7 @@ impl DataSource {
             self.data_source_id, document_id,
         ));
 
+        let now = utils::now();
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -537,15 +527,29 @@ impl DataSource {
                 text,
             )
             .await?;
+        utils::done(&format!(
+            "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            splits.len(),
+            utils::now() - now
+        ));
 
+        let now = utils::now();
         // Embed chunks with max concurrency of 24.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
+                let data_source_id = self.data_source_id.clone();
+                let document_id = document_id.to_string();
                 let provider_id = self.config.provider_id.clone();
                 let model_id = self.config.model_id.clone();
                 let credentials = credentials.clone();
                 let extras = self.config.extras.clone();
                 tokio::spawn(async move {
+                    utils::info(&format!(
+                        "Embedding chunk: data_source_id={} document_id={}",
+                        data_source_id, document_id,
+                    ));
                     let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
                     let v = r.execute(credentials).await?;
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
@@ -560,10 +564,11 @@ impl DataSource {
             .await?;
 
         utils::done(&format!(
-            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={}",
+            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
             self.data_source_id,
             document_id,
             e.len(),
+            utils::now() - now
         ));
 
         document.chunks = e
@@ -586,8 +591,8 @@ impl DataSource {
         document.chunk_count = document.chunks.len();
         document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
+        let now = utils::now();
         // Clean-up previous document chunks (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -609,6 +614,12 @@ impl DataSource {
                 None,
             )
             .await?;
+        utils::done(&format!(
+            "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
+        ));
 
         // Insert new chunks (vector search db).
         let points = document
@@ -640,15 +651,49 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
 
+        const MAX_QDRANT_VECTOR_PER_UPSERT: usize = 128;
+
+        let start = utils::now();
+        let points_len = points.len();
+
         if points.len() > 0 {
-            let _ = qdrant_client
-                .upsert_points(self.qdrant_collection(), points, None)
-                .await?;
+            // Chunk the points in groups of MAX_QDRANT_VECTOR_PER_UPSERT to avoid big upserts.
+            let mut chunked_points = vec![];
+            let mut chunk = vec![];
+            for point in points {
+                chunk.push(point);
+                if chunk.len() == MAX_QDRANT_VECTOR_PER_UPSERT {
+                    chunked_points.push(chunk);
+                    chunk = vec![];
+                }
+            }
+            if chunk.len() > 0 {
+                chunked_points.push(chunk);
+            }
+
+            for chunk in chunked_points {
+                let now = utils::now();
+                let chunk_len = chunk.len();
+
+                let _ = qdrant_client
+                    .upsert_points(self.qdrant_collection(), chunk, None)
+                    .await?;
+
+                utils::done(&format!(
+                    "Success upserting chunk in qdrant: points_count={} duration={}ms",
+                    chunk_len,
+                    utils::now() - now
+                ));
+            }
+
+            // let _ = qdrant_client
+            //     .upsert_points(self.qdrant_collection(), points, None)
+            //     .await?;
         }
 
         utils::done(&format!(
-            "Inserted vectors in Qdrant: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Inserted vectors in Qdrant: data_source_id={} document_id={} points_count={} duration={}ms",
+            self.data_source_id, document_id, points_len, utils::now() - start
         ));
 
         // Upsert document (SQL)
@@ -665,6 +710,7 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         query: &str,
         top_k: usize,
         filter: Option<SearchFilter>,
@@ -769,7 +815,6 @@ impl DataSource {
             None => None,
         };
 
-        let qdrant_client = self.qdrant_client().await?;
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
@@ -891,7 +936,6 @@ impl DataSource {
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
-        let l_qdrant_client = Arc::new(qdrant_client);
         let mut documents = match target_document_tokens {
             Some(target) => {
                 futures::stream::iter(documents)
@@ -903,7 +947,7 @@ impl DataSource {
                             .collect::<Vec<Chunk>>();
                         let collection = self.qdrant_collection();
                         let chunk_size = self.config.max_chunk_size;
-                        let qdrant_client = l_qdrant_client.clone();
+                        let qdrant_client = qdrant_client.clone();
                         let mut token_count = chunks.len() * chunk_size;
                         d.token_count = Some(token_count);
                         tokio::spawn(async move {
@@ -1154,6 +1198,7 @@ impl DataSource {
     pub async fn delete_document(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
         document_id: &str,
     ) -> Result<()> {
         let store = store.clone();
@@ -1163,7 +1208,6 @@ impl DataSource {
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
         // Clean-up document chunks (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         let _ = qdrant_client
             .delete_points(
                 self.qdrant_collection(),
@@ -1194,11 +1238,14 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    pub async fn delete(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
+    ) -> Result<()> {
         let store = store.clone();
 
         // Delete collection (vector search db).
-        let qdrant_client = self.qdrant_client().await?;
         qdrant_client
             .delete_collection(self.qdrant_collection())
             .await?;
@@ -1220,206 +1267,6 @@ impl DataSource {
 
         Ok(())
     }
-}
-
-pub async fn cmd_register(data_source_id: &str, config: &DataSourceConfig) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let ds = DataSource::new(&project, data_source_id, config);
-
-    ds.setup(Credentials::new()).await?;
-    store.register_data_source(&project, &ds).await?;
-
-    utils::done(&format!("Registered data_source `{}`", ds.data_source_id(),));
-
-    Ok(())
-}
-
-pub async fn cmd_upsert(
-    data_source_id: &str,
-    document_id: &str,
-    timestamp: Option<u64>,
-    tags: &Vec<String>,
-    source_url: &Option<String>,
-    text_path: &str,
-) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let ds = match store.load_data_source(&project, data_source_id).await? {
-        Some(ds) => ds,
-        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
-    };
-
-    let text_path = &shellexpand::tilde(text_path).into_owned();
-    let text_path = std::path::Path::new(text_path);
-
-    let contents = async_fs::read(text_path).await?;
-    let text = std::str::from_utf8(&contents)?;
-
-    let d = ds
-        .upsert(
-            Credentials::new(),
-            Box::new(store.clone()),
-            document_id,
-            timestamp,
-            tags,
-            source_url,
-            text,
-            true, // preserve system tags
-        )
-        .await?;
-
-    utils::done(&format!(
-        "Upserted document: data_source={} document_id={} text_length={} chunk_count={} tags={}",
-        ds.data_source_id(),
-        document_id,
-        text.len(),
-        d.chunks.len(),
-        tags.join(","),
-    ));
-
-    Ok(())
-}
-
-pub async fn cmd_search(data_source_id: &str, query: &str, top_k: usize) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let ds = match store.load_data_source(&project, data_source_id).await? {
-        Some(ds) => ds,
-        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
-    };
-
-    let r = ds
-        .search(
-            Credentials::new(),
-            Box::new(store.clone()),
-            query,
-            top_k,
-            None,
-            false,
-            None,
-        )
-        .await?;
-
-    utils::info(&format!(
-        "{} documents, {} chunks total",
-        r.len(),
-        r.iter().map(|d| d.chunks.len()).sum::<usize>(),
-    ));
-    r.iter().for_each(|d| {
-        utils::info(&format!(
-            "- Document: document_id={} text_size={} chunk_count={}",
-            d.document_id, d.text_size, d.chunk_count,
-        ));
-        d.chunks.iter().for_each(|c| {
-            utils::info(&format!(
-                "  > Chunk: offset={} score={}",
-                c.offset,
-                c.score.unwrap_or(0.0),
-            ));
-            println!("```\n{}\n```", c.text);
-        });
-    });
-
-    Ok(())
-}
-
-pub async fn cmd_retrieve(data_source_id: &str, document_id: &str) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let ds = match store.load_data_source(&project, data_source_id).await? {
-        Some(ds) => ds,
-        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
-    };
-
-    let d = match ds
-        .retrieve(Box::new(store.clone()), document_id, true, &None)
-        .await?
-    {
-        Some(d) => d,
-        None => Err(anyhow!("Document not found: document_id={}", document_id))?,
-    };
-
-    utils::done(&format!(
-        "Retrieved document: data_source={} document_id={}",
-        ds.data_source_id(),
-        document_id,
-    ));
-
-    utils::info(&format!(
-        "- Document: document_id={} text_size={} chunk_count={}",
-        d.document_id, d.text_size, d.chunk_count,
-    ));
-
-    match d.text {
-        Some(text) => {
-            println!("```\n{}\n```", text);
-        }
-        None => (),
-    }
-
-    Ok(())
-}
-
-pub async fn cmd_delete(data_source_id: &str, document_id: &str) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let ds = match store.load_data_source(&project, data_source_id).await? {
-        Some(ds) => ds,
-        None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
-    };
-
-    ds.delete_document(Box::new(store.clone()), document_id)
-        .await?;
-
-    utils::done(&format!(
-        "Deleted document: data_source={} document_id={}",
-        ds.data_source_id(),
-        document_id,
-    ));
-
-    Ok(())
-}
-
-pub async fn cmd_list(data_source_id: &str) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let r = store
-        .list_data_source_documents(
-            &project,
-            data_source_id,
-            None,
-            true, // remove system tags
-        )
-        .await?;
-
-    utils::info(&format!("{} documents", r.0.len(),));
-    r.0.iter().for_each(|d| {
-        utils::info(&format!(
-            "- Document: document_id={} text_size={} chunk_count={}",
-            d.document_id, d.text_size, d.chunk_count,
-        ));
-    });
-
-    Ok(())
 }
 
 #[cfg(test)]

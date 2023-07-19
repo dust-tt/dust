@@ -1,9 +1,7 @@
 use crate::project::Project;
-use crate::stores::{sqlite::SQLiteStore, store::Store};
+use crate::stores::store::Store;
 use crate::utils;
 use anyhow::Result;
-use async_fs::File;
-use futures::prelude::*;
 use serde::Serialize;
 use serde_json::Value;
 use std::slice::Iter;
@@ -156,67 +154,4 @@ impl Dataset {
             .collect::<Vec<_>>()
             .into()
     }
-}
-
-pub async fn cmd_register(dataset_id: &str, jsonl_path: &str) -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let jsonl_path = &shellexpand::tilde(jsonl_path).into_owned();
-    let jsonl_path = std::path::Path::new(jsonl_path);
-
-    let file = File::open(jsonl_path).await?;
-    let reader = futures::io::BufReader::new(file);
-
-    let data: Vec<Value> = reader
-        .lines()
-        .map(|line| {
-            let line = line.unwrap();
-            let json: Value = serde_json::from_str(&line)?;
-            Ok(json)
-        })
-        .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>>>()?;
-
-    let d = Dataset::new_from_jsonl(dataset_id, data).await?;
-
-    let current_hash = store.latest_dataset_hash(&project, &d.dataset_id()).await?;
-    if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
-        store.register_dataset(&project, &d).await?;
-    }
-
-    utils::done(&format!(
-        "Registered dataset `{}` version ({}) with {} records (record keys: {:?})",
-        d.dataset_id(),
-        d.hash(),
-        d.len(),
-        d.keys(),
-    ));
-
-    Ok(())
-}
-
-pub async fn cmd_list() -> Result<()> {
-    let root_path = utils::init_check().await?;
-    let store = SQLiteStore::new(root_path.join("store.sqlite"))?;
-    store.init().await?;
-    let project = Project::new_from_id(1);
-
-    let d = store.list_datasets(&project).await?;
-
-    for (dataset_name, dataset_values) in d {
-        for (hash, created) in dataset_values {
-            utils::info(&format!(
-                "Dataset: {} hash={} created={}",
-                dataset_name,
-                hash,
-                utils::utc_date_from(created)
-            ));
-        }
-    }
-    Ok(())
 }

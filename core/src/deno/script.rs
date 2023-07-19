@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::rc::Rc;
-use std::{thread, time::Duration};
+use std::time::Duration;
 
 pub struct Script {
     runtime: JsRuntime,
@@ -98,10 +98,14 @@ impl Script {
         if let Some(timeout) = self.timeout {
             let handle = self.runtime.v8_isolate().thread_safe_handle();
 
-            thread::spawn(move || {
-                thread::sleep(timeout);
+            tokio::task::spawn(async move {
+                tokio::time::sleep(timeout).await;
                 handle.terminate_execution();
             });
+            // thread::spawn(move || {
+            //     thread::sleep(timeout);
+            //     handle.terminate_execution();
+            // });
         }
 
         // syncing ops is required cause they sometimes change while preparing the engine

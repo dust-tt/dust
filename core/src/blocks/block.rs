@@ -11,6 +11,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use pest::iterators::Pair;
+use qdrant_client::prelude::QdrantClient;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -18,6 +19,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
+use std::sync::Arc;
 use tera::{Context, Tera};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -42,6 +44,8 @@ pub struct Env {
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
+    #[serde(skip_serializing)]
+    pub qdrant_client: Arc<QdrantClient>,
     #[serde(skip_serializing)]
     pub project: Project,
     #[serde(skip_serializing)]
@@ -268,58 +272,4 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
         .collect::<Result<Vec<_>>>()?;
 
     Ok(result)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::blocks::block::InputState;
-    use crate::project::Project;
-    use crate::run::{Credentials, RunConfig};
-    use crate::stores::sqlite::SQLiteStore;
-    use std::collections::HashMap;
-
-    #[test]
-    fn find_variables_test() -> Result<()> {
-        assert_eq!(
-            find_variables("QUESTION: ${RETRIEVE.question}\nANSWER: ${DATA.answer}"),
-            vec![
-                ("RETRIEVE".to_string(), "question".to_string()),
-                ("DATA".to_string(), "answer".to_string()),
-            ]
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn replace_variables_in_string_test() -> Result<()> {
-        let env = Env {
-            config: RunConfig {
-                blocks: HashMap::new(),
-            },
-            state: serde_json::from_str(
-                r#"{"RETRIEVE":{"question":"What is your name?"},"DATA":{"answer":"John"}}"#,
-            )
-            .unwrap(),
-            input: InputState {
-                value: Some(serde_json::from_str(r#"{"question":"Who is it?"}"#).unwrap()),
-                index: 0,
-            },
-            map: None,
-            project: Project::new_from_id(1),
-            store: Box::new(SQLiteStore::new_in_memory()?),
-            credentials: Credentials::new(),
-        };
-        assert_eq!(
-            replace_variables_in_string(
-                r#"QUESTION: ${RETRIEVE.question} ANSWER: ${DATA.answer}"#,
-                "foo",
-                &env
-            )?,
-            r#"QUESTION: What is your name? ANSWER: John"#.to_string()
-        );
-
-        Ok(())
-    }
 }
