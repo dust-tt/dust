@@ -163,11 +163,10 @@ export class FunctionSingleArgStreamer {
   }
 
   feed(token: string): void {
-    // pseudo rule for parsing here:
+    // pseudo rule for parsing here because openAI makes mistakes
     if (!token.includes(`"`) && !token.includes("}") && !token.includes("{")) {
       token = token.replace(/\n/g, "\\n");
     }
-    console.log(token);
     this._textSoFar += token;
 
     let str = this._textSoFar + '"}';
