@@ -217,7 +217,7 @@ export async function notionUpsertPageActivity(
       documentId,
       parsedPage.rendered,
       parsedPage.url,
-      parsedPage.createdTime,
+      parsedPage.updatedTime,
       getTagsForPage(parsedPage),
       3,
       500,
