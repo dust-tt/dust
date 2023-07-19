@@ -516,6 +516,7 @@ impl DataSource {
             self.data_source_id, document_id,
         ));
 
+        let now = utils::now();
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -526,7 +527,15 @@ impl DataSource {
                 text,
             )
             .await?;
+        utils::done(&format!(
+            "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            splits.len(),
+            utils::now() - now
+        ));
 
+        let now = utils::now();
         // Embed chunks with max concurrency of 24.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
@@ -549,10 +558,11 @@ impl DataSource {
             .await?;
 
         utils::done(&format!(
-            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={}",
+            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
             self.data_source_id,
             document_id,
             e.len(),
+            utils::now() - now
         ));
 
         document.chunks = e
@@ -575,6 +585,7 @@ impl DataSource {
         document.chunk_count = document.chunks.len();
         document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
+        let now = utils::now();
         // Clean-up previous document chunks (vector search db).
         let _ = qdrant_client
             .delete_points(
@@ -597,6 +608,12 @@ impl DataSource {
                 None,
             )
             .await?;
+        utils::done(&format!(
+            "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
+        ));
 
         // Insert new chunks (vector search db).
         let points = document
