@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio_stream::{self as stream};
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -492,7 +493,7 @@ impl App {
             // We flatten the envs for concurrent and parrallel execution of the block which
             // requires us to keep track of the potential input and map indices of each Env,
             // depending on the state of ExecutionEnvs.
-            let e = futures::stream::iter(
+            let e = stream::iter(
                 envs.iter()
                     .cloned()
                     .enumerate()

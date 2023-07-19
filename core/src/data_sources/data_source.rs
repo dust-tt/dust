@@ -887,7 +887,7 @@ impl DataSource {
         };
 
         // Retrieve the documents from the store.
-        let documents = futures::stream::iter(document_ids)
+        let documents = stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
                 let document_id = document_id.clone();
