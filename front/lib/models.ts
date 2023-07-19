@@ -821,7 +821,7 @@ ChatMessage.init(
   }
 );
 
-ChatSession.hasMany(ChatMessage, { onDelete: "CASCADE" });
+ChatSession.hasMany(ChatMessage);
 
 export class ChatRetrievedDocument extends Model<
   InferAttributes<ChatRetrievedDocument>,
@@ -891,9 +891,7 @@ ChatRetrievedDocument.init(
   }
 );
 
-ChatMessage.hasMany(ChatRetrievedDocument, {
-  onDelete: "CASCADE",
-});
+ChatMessage.hasMany(ChatRetrievedDocument);
 
 export class GensTemplate extends Model<
   InferAttributes<GensTemplate>,

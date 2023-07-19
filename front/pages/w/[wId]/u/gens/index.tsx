@@ -163,6 +163,11 @@ export class FunctionSingleArgStreamer {
   }
 
   feed(token: string): void {
+    // pseudo rule for parsing here:
+    if (!token.includes(`"`) && !token.includes("}") && !token.includes("{")) {
+      token = token.replace(/\n/g, "\\n");
+    }
+    console.log(token);
     this._textSoFar += token;
 
     let str = this._textSoFar + '"}';
@@ -170,7 +175,6 @@ export class FunctionSingleArgStreamer {
       // If _textSoFar ends with a quote, we just add the } to the end.
       str = this._textSoFar + "}";
     }
-
     try {
       const obj = JSON.parse(str);
       if (obj[this._arg]) {
@@ -180,7 +184,7 @@ export class FunctionSingleArgStreamer {
         this._handler(tokens);
       }
     } catch (e) {
-      // Ignore and continue.
+      console.log(e);
     }
   }
 }
@@ -947,8 +951,6 @@ export function TemplatesView({
                               } else {
                                 new_template.sId =
                                   templates[editingTemplate].sId;
-                                new_template.color =
-                                  templates[editingTemplate].color;
                                 await fetch(
                                   `/api/w/${workspaceId}/use/gens/templates/${new_template.sId}`,
                                   {
@@ -1087,6 +1089,8 @@ export default function AppGens({
   const [copying, setCopying] = useState<boolean>(false);
 
   const [minRows, setMinRows] = useState<number>(8);
+
+  console.log(templates);
 
   useEffect(() => {
     setMinRows(window.innerHeight / 40);
@@ -1255,6 +1259,7 @@ export default function AppGens({
     const { eventStream } = res.value;
 
     const p = new FunctionSingleArgStreamer("content", (tokens) => {
+      console.log("handler is being called");
       content = `${content.slice(0, cursorPosition)}${tokens}${content.slice(
         cursorPosition
       )}`;
