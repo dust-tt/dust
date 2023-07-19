@@ -17,6 +17,8 @@ import {
   getUserName,
 } from "./temporal/activities";
 
+class SlackExternalUserError extends Error {}
+
 export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
@@ -60,11 +62,17 @@ export async function botAnswerMessageWithErrorHandling(
       },
       "Failed answering to Slack Chat Bot message"
     );
+    let errorMessage: string | undefined = undefined;
+    if (res.error instanceof SlackExternalUserError) {
+      errorMessage = res.error.message;
+    } else {
+      errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
+    }
     const accessToken = await getAccessToken(connector.connectionId);
     const slackClient = getSlackClient(accessToken);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: `An error occured. Our team has been notified and will work on it as soon as possible.`,
+      text: errorMessage,
       thread_ts: slackMessageTs,
     });
   }
@@ -100,6 +108,13 @@ async function botAnswerMessage(
 
   if (!slackUserInfo.ok || !slackUserInfo.user) {
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
+  }
+  if (slackUserInfo.user.profile?.team !== slackTeamId) {
+    return new Err(
+      new SlackExternalUserError(
+        "Hi there. Sorry, but I can only answer to members of the workspace where I am installed."
+      )
+    );
   }
   const slackUser = slackUserInfo.user;
   if (slackUser.profile?.email) {
