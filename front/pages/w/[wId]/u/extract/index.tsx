@@ -73,7 +73,7 @@ export default function AppExtractEvents({
               <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
                 <div className="overflow-hidden">
                   <table className="min-w-full text-left text-sm font-light">
-                    <thead className="border-b bg-white font-medium dark:border-neutral-500 dark:bg-neutral-600">
+                    <thead className="border-b bg-white font-medium">
                       <tr>
                         <th scope="col" className="px-3 py-4">
                           Marker
@@ -92,10 +92,7 @@ export default function AppExtractEvents({
                     <tbody>
                       {!isSchemasLoading &&
                         schemas?.map((schema) => (
-                          <tr
-                            key={schema.marker}
-                            className="border-b bg-white dark:border-neutral-500 dark:bg-neutral-600"
-                          >
+                          <tr key={schema.marker} className="border-b bg-white">
                             <td className="whitespace-nowrap px-3 py-4 font-medium">
                               {schema.marker}
                             </td>
