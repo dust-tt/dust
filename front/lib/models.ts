@@ -891,8 +891,7 @@ ChatRetrievedDocument.init(
   }
 );
 
-ChatMessage.hasMany(ChatRetrievedDocument, 
-{
+ChatMessage.hasMany(ChatRetrievedDocument, {
   onDelete: "CASCADE",
 });
 
