@@ -821,7 +821,7 @@ ChatMessage.init(
   }
 );
 
-ChatSession.hasMany(ChatMessage);
+ChatSession.hasMany(ChatMessage, { onDelete: "CASCADE" });
 
 export class ChatRetrievedDocument extends Model<
   InferAttributes<ChatRetrievedDocument>,
