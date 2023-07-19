@@ -10,6 +10,7 @@ use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
+use tokio::task;
 
 pub fn r50k_base() -> Result<CoreBPE> {
     let r50k_base = include_str!("r50k_base.tiktoken");
@@ -99,6 +100,16 @@ pub fn cl100k_base_singleton() -> Arc<Mutex<CoreBPE>> {
         static ref CL100K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(cl100k_base().unwrap()));
     }
     CL100K_BASE.clone()
+}
+
+pub async fn decode_async(bpe: Arc<Mutex<CoreBPE>>, tokens: Vec<usize>) -> Result<String> {
+    task::spawn_blocking(move || bpe.lock().decode(tokens)).await?
+}
+
+pub async fn encode_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<usize>> {
+    let text = text.to_string();
+    let r = task::spawn_blocking(move || bpe.lock().encode_with_special_tokens(&text)).await?;
+    Ok(r)
 }
 
 fn _byte_pair_merge(piece: &[u8], ranks: &HashMap<Vec<u8>, usize>) -> Vec<std::ops::Range<usize>> {
