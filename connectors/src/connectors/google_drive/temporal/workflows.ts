@@ -20,7 +20,7 @@ const {
   renewWebhooks,
   populateSyncTokens,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "20 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
