@@ -196,8 +196,17 @@ export async function cleanupGithubConnector(
 }
 
 export async function retrieveGithubConnectorPermissions(
-  connectorId: ModelId
+  connectorId: ModelId,
+  parentInternalId: string | null
 ): Promise<Result<ConnectorResource[], Error>> {
+  if (parentInternalId) {
+    return new Err(
+      new Error(
+        "Github connector does not support permission retrieval with `parentInternalId`"
+      )
+    );
+  }
+
   const c = await Connector.findOne({
     where: {
       id: connectorId,

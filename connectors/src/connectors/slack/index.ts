@@ -200,8 +200,17 @@ export async function cleanupSlackConnector(
 }
 
 export async function retrieveSlackConnectorPermissions(
-  connectorId: ModelId
+  connectorId: ModelId,
+  parentInternalId: string | null
 ): Promise<Result<ConnectorResource[], Error>> {
+  if (parentInternalId) {
+    return new Err(
+      new Error(
+        "Slack connector does not support permission retrieval with `parentInternalId`"
+      )
+    );
+  }
+
   const c = await Connector.findOne({
     where: {
       id: connectorId,

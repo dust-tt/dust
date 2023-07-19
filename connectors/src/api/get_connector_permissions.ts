@@ -24,6 +24,11 @@ const _getConnectorPermissions = async (
     });
   }
 
+  const parentInternalId =
+    !req.query.parentId || typeof req.query.parentId !== "string"
+      ? null
+      : req.query.parentId;
+
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
@@ -38,7 +43,7 @@ const _getConnectorPermissions = async (
   const connectorPermissionRetriever =
     RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE[connector.type];
 
-  const pRes = await connectorPermissionRetriever(connector.id);
+  const pRes = await connectorPermissionRetriever(connector.id, parentInternalId);
 
   if (pRes.isErr()) {
     return apiError(req, res, {
