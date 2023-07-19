@@ -560,7 +560,7 @@ export function ResultsView({
           {retrieved && retrieved.length > 0 && (
             <>
               <p className="text-lg">
-                Retrieved {retrieved.length} document
+                Found {retrieved.length} document
                 {retrieved.length == 1 ? "" : "s"}
               </p>
 
@@ -571,7 +571,7 @@ export function ResultsView({
                   unPinned.forEach((r) => onRemove(r.documentId));
                 }}
               >
-                Clear
+                Clear unpinned
               </div>
             </>
           )}
@@ -980,8 +980,23 @@ export function TemplatesView({
             </div>
           </Dialog>
         </Transition.Root>
-
-        <div className="mt-2 flex items-center justify-start">
+        <div className="mt-2 flex flex-row items-center">
+          <span className="text-xs text-gray-400">Template: </span>
+          <span
+            className={classNames(
+              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-violet-500"
+            )}
+            onClick={() => {
+              setFormExpanded(true);
+              handleSetEditingTemplate(hover >= 0 ? hover : selectedTemplate);
+            }}
+          >
+            <span className="font-semibold">
+              {templates[hover >= 0 ? hover : selectedTemplate].name}
+            </span>
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-start">
           {templates.map((t, i) => {
             return (
               // round circle div with given color
@@ -1027,19 +1042,6 @@ export function TemplatesView({
           >
             <PlusIcon className="h-4 w-4" />
           </button>
-          <span
-            className={classNames(
-              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-violet-500"
-            )}
-            onClick={() => {
-              setFormExpanded(true);
-              handleSetEditingTemplate(hover >= 0 ? hover : selectedTemplate);
-            }}
-          >
-            <span className="font-semibold">
-              {templates[hover >= 0 ? hover : selectedTemplate].name}
-            </span>
-          </span>
         </div>
       </div>
     </div>
@@ -1467,12 +1469,12 @@ export default function AppGens({
         </Transition.Root>
         <div className="">
           <div className="to mx-auto px-6">
-            <div className="m-auto my-3 w-4/5">
+            <div className="m-auto my-3 w-5/6">
               <Button onClick={() => setExplainExpanded(true)}>
                 How does Gens work?
               </Button>
             </div>
-            <div className="m-auto flex w-4/5 flex-row flex-wrap space-x-6 sm:flex-nowrap">
+            <div className="m-auto flex w-5/6 flex-row flex-wrap space-x-6 sm:flex-nowrap">
               <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
@@ -1502,7 +1504,7 @@ export default function AppGens({
                         setCopying(false);
                       }, 500);
                     }}
-                    className="absolute right-0 top-0 mr-2 mt-2"
+                    className="absolute bottom-0 right-0 mb-6 mr-2"
                   >
                     {copying ? (
                       <ClipboardDocumentCheckIcon className="h-5 w-5" />
@@ -1517,12 +1519,6 @@ export default function AppGens({
                 <div className="sticky top-0">
                   <div className="mb-8">
                     <h2 className="text-lg font-bold">Generation</h2>
-                    <p>
-                      Generate text using "templates" that instruct how the
-                      generation should be created, and for what type of
-                      workflow.
-                    </p>
-
                     <div className="my-2 flex flex-col items-start space-y-2">
                       <div className="flex-shrink-0 flex-grow-0">
                         {!genLoading ? (
@@ -1554,20 +1550,20 @@ export default function AppGens({
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Retrieval</h2>
-                    <p>
-                      Retrieve documents that will be most useful to help in
-                      your generations, where you can pin and remove results
-                      based on their relevance.
-                    </p>
+                    <h2 className="text-lg font-bold">Search</h2>
+                    <p>Find and pick documents to bring them into context.</p>
 
                     <div className="mt-2 flex flex-initial items-start items-center space-x-4">
                       <input
                         type="text"
                         className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
                         value={searchQuery}
-                        placeholder="Search"
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            void handleSearch();
+                          }
+                        }}
                       />
                       <ActionButton
                         disabled={retrievalLoading}
@@ -1577,7 +1573,7 @@ export default function AppGens({
                         }}
                       >
                         <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        {retrievalLoading ? "Loading..." : "Retrieve"}
+                        {retrievalLoading ? "Loading..." : "Search"}
                       </ActionButton>
                     </div>
 
