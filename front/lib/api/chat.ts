@@ -715,13 +715,9 @@ export async function* newChat(
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
-  await Promise.all(
-    messages.map((m) => {
-      return (async () => {
-        await upsertChatMessage(session, m);
-      })();
-    })
-  );
+  for (const m of messages) {
+    await upsertChatMessage(session, m);
+  }
 
   // Update session title.
   const configTitle = cloneBaseConfig(
