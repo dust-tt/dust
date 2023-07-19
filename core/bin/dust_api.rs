@@ -1693,8 +1693,9 @@ async fn qdrant_client() -> Result<QdrantClient> {
 }
 
 fn main() {
+    console_subscriber::init();
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(64)
+        .worker_threads(8)
         //.thread_name("dust-api-server")
         //.thread_stack_size(32 * 1024 * 1024)
         .enable_all()
@@ -1702,10 +1703,10 @@ fn main() {
         .unwrap();
 
     let _ = rt.block_on(async {
-        tracing_subscriber::fmt()
-            .with_target(false)
-            .compact()
-            .init();
+        // tracing_subscriber::fmt()
+        //     .with_target(false)
+        //     .compact()
+        //     .init();
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
