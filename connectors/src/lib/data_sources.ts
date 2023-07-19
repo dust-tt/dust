@@ -9,6 +9,8 @@ if (!FRONT_API) {
   throw new Error("FRONT_API not set");
 }
 
+export const MAX_DOCUMENT_TXT_LEN = 1000000;
+
 export async function upsertToDatasource(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
