@@ -39,6 +39,7 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
 import { client_side_new_id } from "@app/lib/utils";
@@ -51,7 +52,6 @@ import {
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -628,9 +628,7 @@ export default function AppChat({
   const [dataSources, setDataSources] = useState(workspaceDataSources);
   // for testing, engs & dust users  have "auto" as default; others have "all"
   const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
-    isDevelopmentOrDustWorkspace(owner)
-      ? timeRanges[4]
-      : timeRanges[3]
+    isDevelopmentOrDustWorkspace(owner) ? timeRanges[4] : timeRanges[3]
   );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
