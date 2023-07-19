@@ -950,7 +950,6 @@ async fn runs_retrieve_block(
     )>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    utils::info(&format!("RETRIEVE API_ENTRY {}", utils::now()));
     let project = project::Project::new_from_id(project_id);
     match state
         .store
@@ -978,18 +977,15 @@ async fn runs_retrieve_block(
                     response: None,
                 }),
             ),
-            Some(run) => {
-                utils::info(&format!("RETRIEVE API_RESPONSE {}", utils::now()));
-                (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "run": run,
-                        })),
-                    }),
-                )
-            }
+            Some(run) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "run": run,
+                    })),
+                }),
+            ),
         },
     }
 }
