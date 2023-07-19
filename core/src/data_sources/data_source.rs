@@ -484,6 +484,7 @@ impl DataSource {
         let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
         let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
+        let now = utils::now();
         let _ = try_join!(
             Object::create(
                 &bucket,
@@ -512,8 +513,10 @@ impl DataSource {
         )?;
 
         utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Created document blob: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
         ));
 
         let now = utils::now();
@@ -536,7 +539,7 @@ impl DataSource {
         ));
 
         let now = utils::now();
-        // Embed chunks with max concurrency of 24.
+        // Embed chunks with max concurrency of 16.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
                 let provider_id = self.config.provider_id.clone();
@@ -549,7 +552,7 @@ impl DataSource {
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
                 })
             })
-            .buffer_unordered(24)
+            .buffer_unordered(16)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
                 Ok(r) => r,
