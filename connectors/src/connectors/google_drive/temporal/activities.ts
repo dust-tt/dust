@@ -4,6 +4,7 @@ import PQueue from "p-queue";
 
 import {
   deleteFromDataSource,
+  MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -32,8 +33,8 @@ import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
 
-const FILES_SYNC_CONCURRENCY = 1;
-const FILES_GC_CONCURRENCY = 1;
+const FILES_SYNC_CONCURRENCY = 3;
+const FILES_GC_CONCURRENCY = 3;
 
 export const statsDClient = new StatsD();
 
@@ -155,7 +156,7 @@ export async function syncFiles(
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
     corpora: "allDrives",
-    pageSize: 1000,
+    pageSize: 100,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
@@ -284,14 +285,26 @@ async function syncOneFile(
     driveFileId: file.id,
   });
 
-  await upsertToDatasource(
-    dataSourceConfig,
-    documentId,
-    documentContent,
-    file.webViewLink,
-    file.createdAtMs,
-    tags
-  );
+  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+    await upsertToDatasource(
+      dataSourceConfig,
+      documentId,
+      documentContent,
+      file.webViewLink,
+      file.createdAtMs,
+      tags
+    );
+  } else {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        documentLen: documentContent.length,
+        title: file.name,
+      },
+      `Document too big to be upserted. Skipping`
+    );
+  }
 }
 
 async function getParents(
@@ -561,19 +574,29 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        if (
-          (await objectIsInFolder(
+        try {
+          const isInFolder = await objectIsInFolder(
             authCredentials,
             file.driveFileId,
             selectedFolders
-          )) === false
-        ) {
-          await deleteFromDataSource(dataSourceConfig, file.dustFileId);
-          await file.destroy();
-        } else {
-          await file.update({
-            garbageCollectedAt: new Date(),
-          });
+          );
+
+          if (isInFolder === false) {
+            await deleteFromDataSource(dataSourceConfig, file.dustFileId);
+            await file.destroy();
+          } else {
+            await file.update({
+              garbageCollectedAt: new Date(),
+            });
+          }
+        } catch (e) {
+          if (e instanceof GaxiosError) {
+            if (e.response?.status === 404) {
+              // File not found, we can delete it.
+              await deleteFromDataSource(dataSourceConfig, file.dustFileId);
+              await file.destroy();
+            }
+          }
         }
       });
     })

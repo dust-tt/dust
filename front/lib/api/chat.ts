@@ -213,6 +213,23 @@ export async function getChatSessionWithMessages(
   };
 }
 
+export async function deleteChatSession(
+  auth: Authenticator,
+  sId: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return false;
+  }
+  const nbRowsDestroyed = await ChatSession.destroy({
+    where: {
+      workspaceId: owner.id,
+      sId,
+    },
+  });
+  return nbRowsDestroyed === 1;
+}
+
 export function userIsChatSessionOwner(
   user: UserType,
   chatSession: ChatSessionType
@@ -698,13 +715,9 @@ export async function* newChat(
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
-  await Promise.all(
-    messages.map((m) => {
-      return (async () => {
-        await upsertChatMessage(session, m);
-      })();
-    })
-  );
+  for (const m of messages) {
+    await upsertChatMessage(session, m);
+  }
 
   // Update session title.
   const configTitle = cloneBaseConfig(

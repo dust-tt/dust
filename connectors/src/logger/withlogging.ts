@@ -57,6 +57,7 @@ export const withLogging = (handler: any) => {
 
     statsDClient.increment("requests.count", 1, tags);
     statsDClient.histogram("requests.duration", elapsed, tags);
+    statsDClient.distribution("requests.duration.distribution", elapsed, tags);
 
     logger.info(
       {

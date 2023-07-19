@@ -484,6 +484,7 @@ impl DataSource {
         let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
         let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
+        let now = utils::now();
         let _ = try_join!(
             Object::create(
                 &bucket,
@@ -512,10 +513,13 @@ impl DataSource {
         )?;
 
         utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Created document blob: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
         ));
 
+        let now = utils::now();
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -526,8 +530,16 @@ impl DataSource {
                 text,
             )
             .await?;
+        utils::done(&format!(
+            "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            splits.len(),
+            utils::now() - now
+        ));
 
-        // Embed chunks with max concurrency of 24.
+        let now = utils::now();
+        // Embed chunks with max concurrency of 16.
         let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
                 let provider_id = self.config.provider_id.clone();
@@ -540,7 +552,7 @@ impl DataSource {
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
                 })
             })
-            .buffer_unordered(24)
+            .buffer_unordered(16)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
                 Ok(r) => r,
@@ -549,10 +561,11 @@ impl DataSource {
             .await?;
 
         utils::done(&format!(
-            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={}",
+            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
             self.data_source_id,
             document_id,
             e.len(),
+            utils::now() - now
         ));
 
         document.chunks = e
@@ -575,6 +588,7 @@ impl DataSource {
         document.chunk_count = document.chunks.len();
         document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
 
+        let now = utils::now();
         // Clean-up previous document chunks (vector search db).
         let _ = qdrant_client
             .delete_points(
@@ -597,6 +611,12 @@ impl DataSource {
                 None,
             )
             .await?;
+        utils::done(&format!(
+            "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
+        ));
 
         // Insert new chunks (vector search db).
         let points = document
@@ -630,6 +650,9 @@ impl DataSource {
 
         const MAX_QDRANT_VECTOR_PER_UPSERT: usize = 128;
 
+        let start = utils::now();
+        let points_len = points.len();
+
         if points.len() > 0 {
             // Chunk the points in groups of MAX_QDRANT_VECTOR_PER_UPSERT to avoid big upserts.
             let mut chunked_points = vec![];
@@ -646,18 +669,28 @@ impl DataSource {
             }
 
             for chunk in chunked_points {
+                let now = utils::now();
+                let chunk_len = chunk.len();
+
                 let _ = qdrant_client
                     .upsert_points(self.qdrant_collection(), chunk, None)
                     .await?;
+
+                utils::done(&format!(
+                    "Success upserting chunk in qdrant: points_count={} duration={}ms",
+                    chunk_len,
+                    utils::now() - now
+                ));
             }
+
             // let _ = qdrant_client
             //     .upsert_points(self.qdrant_collection(), points, None)
             //     .await?;
         }
 
         utils::done(&format!(
-            "Inserted vectors in Qdrant: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Inserted vectors in Qdrant: data_source_id={} document_id={} points_count={} duration={}ms",
+            self.data_source_id, document_id, points_len, utils::now() - start
         ));
 
         // Upsert document (SQL)

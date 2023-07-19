@@ -146,11 +146,11 @@ export default function DataSourceUpsert({
       return;
     }
     setUploading(true);
-    if (file.type == "application/pdf") {
+    if (file.type === "application/pdf") {
       const fileReader = new FileReader();
       fileReader.onloadend = handleFileLoadedPDF;
       fileReader.readAsArrayBuffer(file);
-    } else if (file.type == "text/plain") {
+    } else if (file.type === "text/plain" || file.type === "text/csv") {
       const fileData = new FileReader();
       fileData.onloadend = handleFileLoadedText;
       fileData.readAsText(file);
@@ -344,7 +344,7 @@ export default function DataSourceUpsert({
                         <input
                           className="hidden"
                           type="file"
-                          accept=".txt, .pdf, .md"
+                          accept=".txt, .pdf, .md, .csv"
                           ref={fileInputRef}
                           onChange={async (e) => {
                             if (e.target.files && e.target.files.length > 0) {
