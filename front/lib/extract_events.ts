@@ -135,15 +135,26 @@ async function _processExtractEvent(data: {
       status: "active",
     },
   });
+
   if (!schema) {
     return;
   }
+
+  const propertiesAsObject = {} as {
+    [key: string]: { type: string; description: string };
+  };
+  schema.properties.map((prop) => {
+    propertiesAsObject[prop.name] = {
+      type: prop.type,
+      description: prop.description,
+    };
+  });
 
   const inputsForApp = [
     {
       document_text: documentText,
       markers: markers,
-      schema_properties: schema.properties,
+      schema_properties: propertiesAsObject,
     },
   ];
 
