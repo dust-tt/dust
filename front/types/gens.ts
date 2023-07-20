@@ -19,7 +19,7 @@ export type GensTemplateVisibilityType = "default" | "workspace" | "user";
 
 export type GensTemplateType = {
   name: string;
-  instructions: string[];
+  instructions2: string;
   color: string;
   sId: string;
   visibility: GensTemplateVisibilityType;
