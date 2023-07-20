@@ -121,6 +121,10 @@ The Document model represents a [Data Source](/data-sources-overview) document.
       <Property name="source_url" type="string">
         The source URL for the document to upsert.
       </Property>
+      <Property name="suppress_document_output" type="boolean">
+        Whether or not to suppress the document output. If set to `true`, the response will not
+        include the document's text, chunk and vectors (defaults to `false`).
+      </Property>
     </Properties>
 
     ### Optional JSON body attributes

@@ -603,6 +603,7 @@ export const CoreAPI = {
     sourceUrl,
     text,
     credentials,
+    suppressDocumentOutput = false,
   }: {
     projectId: string;
     dataSourceName: string;
@@ -612,6 +613,7 @@ export const CoreAPI = {
     sourceUrl?: string | null;
     text: string;
     credentials: CredentialsType;
+    suppressDocumentOutput?: boolean;
   }): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
@@ -632,6 +634,7 @@ export const CoreAPI = {
           tags: tags,
           source_url: sourceUrl,
           credentials: credentials,
+          suppress_document_output: suppressDocumentOutput,
         }),
       }
     );

@@ -276,6 +276,7 @@ async function handler(
         sourceUrl,
         text: req.body.text,
         credentials,
+        suppressDocumentOutput: req.body.suppress_document_output === true,
       });
 
       if (upsertRes.isErr()) {
