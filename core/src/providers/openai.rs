@@ -1568,13 +1568,11 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
-        Ok(tokens)
+        encode_async(self.tokenizer(), text).await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        let str = { self.tokenizer().lock().decode(tokens)? };
-        Ok(str)
+        decode_async(self.tokenizer(), tokens).await
     }
 
     async fn embed(&self, text: &str, extras: Option<Value>) -> Result<EmbedderVector> {

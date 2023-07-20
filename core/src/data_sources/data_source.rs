@@ -683,10 +683,6 @@ impl DataSource {
                     utils::now() - now
                 ));
             }
-
-            // let _ = qdrant_client
-            //     .upsert_points(self.qdrant_collection(), points, None)
-            //     .await?;
         }
 
         utils::done(&format!(
