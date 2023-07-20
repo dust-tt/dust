@@ -930,8 +930,7 @@ GensTemplate.init(
       type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
     },
-    instructions2:
-    {
+    instructions2: {
       type: DataTypes.TEXT,
     },
     name: {
