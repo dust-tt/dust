@@ -73,9 +73,10 @@ export interface ParsedDatabase {
  * page of results will be returned.
  * @param loggerArgs arguments to pass to the logger
  * @param retry options for retrying the request
- * @returns a promise that resolves to an array of page IDs and the next cursor
+ * @returns a promise that resolves to an array of page IDs, an array of database IDs and the next
+ * cursor
  */
-export async function getPagesEditedSince(
+export async function getPagesAndDatabasesEditedSince(
   notionAccessToken: string,
   sinceTs: number | null,
   cursor: string | null,

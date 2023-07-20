@@ -12,7 +12,7 @@ import {
   isDuringGarbageCollectStartWindow,
 } from "@connectors/connectors/notion/lib/garbage_collect";
 import {
-  getPagesEditedSince,
+  getPagesAndDatabasesEditedSince,
   getParsedDatabase,
   getParsedPage,
   isAccessibleAndUnarchived,
@@ -84,7 +84,7 @@ export async function notionGetToSyncActivity(
 
   let res;
   try {
-    res = await getPagesEditedSince(
+    res = await getPagesAndDatabasesEditedSince(
       accessToken,
       lastSyncedAt,
       cursor,
