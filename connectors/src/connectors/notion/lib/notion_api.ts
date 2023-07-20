@@ -8,6 +8,7 @@ import {
 } from "@notionhq/client";
 import {
   BlockObjectResponse,
+  GetDatabaseResponse,
   GetPageResponse,
   PageObjectResponse,
   PartialBlockObjectResponse,
@@ -49,11 +50,20 @@ export type ParsedProperty = {
   type: PropertyTypes;
   text: string | null;
 };
+
 type ParsedBlock = {
   id: string;
   type: BlockObjectResponse["type"];
   text: string | null;
 };
+
+export interface ParsedDatabase {
+  id: string;
+  url: string;
+  title?: string;
+  parentType: "database" | "page" | "block" | "workspace";
+  parentId: string;
+}
 
 /**
  * @param notionAccessToken the access token to use to access the Notion API
@@ -77,12 +87,14 @@ export async function getPagesEditedSince(
   }
 ): Promise<{
   pages: { id: string; lastEditedTs: number }[];
+  dbs: { id: string; lastEditedTs: number }[];
   nextCursor: string | null;
 }> {
   const localLogger = logger.child(loggerArgs);
 
   const notionClient = new Client({ auth: notionAccessToken });
   const editedPages: Record<string, number> = {};
+  const editedDbs: Record<string, number> = {};
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
@@ -128,6 +140,7 @@ export async function getPagesEditedSince(
     if (pageOrDb.object === "page") {
       if (isFullPage(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+
         // skip pages that have a `lastEditedTime` in the future
         if (lastEditedTime > Date.now()) {
           localLogger.warn(
@@ -137,15 +150,22 @@ export async function getPagesEditedSince(
           continue;
         }
 
+        // We're past sinceTs, we're done, return the list of edited pages and dbs.
         if (sinceTs && lastEditedTime < sinceTs) {
           return {
             pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
               id,
               lastEditedTs,
             })),
+            dbs: Object.entries(editedDbs).map(([id, lastEditedTs]) => ({
+              id,
+              lastEditedTs,
+            })),
             nextCursor: null,
           };
         }
+
+        // We're still more recent than the sinceTs, add the page to the list of edited pages.
         editedPages[pageOrDb.id] = lastEditedTime;
       }
     } else if (pageOrDb.object === "database") {
@@ -158,6 +178,7 @@ export async function getPagesEditedSince(
       }
       if (isFullDatabase(pageOrDb)) {
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
+
         // skip databases that have a `lastEditedTime` in the future
         if (lastEditedTime > Date.now()) {
           localLogger.warn(
@@ -166,16 +187,32 @@ export async function getPagesEditedSince(
           );
           continue;
         }
+
+        // We're past sinceTs, we're done, return the list of edited pages and dbs.
         if (sinceTs && lastEditedTime < sinceTs) {
           return {
             pages: Object.entries(editedPages).map(([id, lastEditedTs]) => ({
               id,
               lastEditedTs,
             })),
+            dbs: Object.entries(editedDbs).map(([id, lastEditedTs]) => ({
+              id,
+              lastEditedTs,
+            })),
             nextCursor: null,
           };
         }
+
+        // We're still more recent than the sinceTs, add the db to the list of edited dbs and loop
+        // through its pages.
         try {
+          editedDbs[pageOrDb.id] = lastEditedTime;
+
+          // Note: we don't want to optimize this step due to Notion not always returning all the
+          // dbs (so if we miss it at initial sync and it gets touched we will miss all its old
+          // pages here again. It's a lot of additional work but it helps catching as much as we
+          // can from Notion). The caller of this function filters the edited page based on our
+          // knowledge of it in DB so this won't create extraneous upserts.
           for await (const child of iteratePaginatedAPIWithRetries(
             notionClient.databases.query,
             {
@@ -205,13 +242,26 @@ export async function getPagesEditedSince(
       id,
       lastEditedTs,
     })),
+    dbs: Object.entries(editedDbs).map(([id, lastEditedTs]) => ({
+      id,
+      lastEditedTs,
+    })),
     nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
   };
 }
 
-export async function isPageAccessibleAndUnarchived(
+const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
+  "object_not_found",
+  "unauthorized",
+  "restricted_resource",
+];
+
+const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
+
+export async function isAccessibleAndUnarchived(
   notionAccessToken: string,
-  pageId: string,
+  objectId: string,
+  objectType: "page" | "database",
   localLogger?: Logger
 ): Promise<boolean> {
   const notionClient = new Client({ auth: notionAccessToken });
@@ -222,19 +272,31 @@ export async function isPageAccessibleAndUnarchived(
     const tryLogger = (localLogger || logger).child({
       tries,
       maxTries,
-      pageId,
+      objectType,
+      objectId,
     });
 
     try {
       tryLogger.info("Checking if page is accessible and unarchived.");
-      const page = await notionClient.pages.retrieve({ page_id: pageId });
-      if (!isFullPage(page)) {
-        return false;
+      if (objectType === "page") {
+        const page = await notionClient.pages.retrieve({ page_id: objectId });
+        if (!isFullPage(page)) {
+          return false;
+        }
+        return !page.archived;
       }
-      return !page.archived;
+      if (objectType === "database") {
+        const db = await notionClient.databases.retrieve({
+          database_id: objectId,
+        });
+        if (!isFullDatabase(db)) {
+          return false;
+        }
+        return !db.archived;
+      }
     } catch (e) {
       if (APIResponseError.isAPIResponseError(e)) {
-        if (["rate_limited", "internal_server_error"].includes(e.code)) {
+        if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
           const waitTime = 500 * 2 ** tries;
           tryLogger.info(
             { waitTime },
@@ -247,11 +309,7 @@ export async function isPageAccessibleAndUnarchived(
           }
           continue;
         }
-        if (
-          ["object_not_found", "unauthorized", "restricted_resource"].includes(
-            e.code
-          )
-        ) {
+        if (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code)) {
           return false;
         }
       }
@@ -262,6 +320,79 @@ export async function isPageAccessibleAndUnarchived(
   }
 
   throw new Error("Unreachable.");
+}
+
+export async function getParsedDatabase(
+  notionAccessToken: string,
+  databaseId: string,
+  loggerArgs: Record<string, string | number> = {}
+): Promise<ParsedDatabase | null> {
+  const localLogger = logger.child({ ...loggerArgs, databaseId });
+
+  const notionClient = new Client({ auth: notionAccessToken });
+
+  let database: GetDatabaseResponse | null = null;
+
+  try {
+    localLogger.info("Fetching database from Notion API.");
+    database = await notionClient.databases.retrieve({
+      database_id: databaseId,
+    });
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      e.code === "object_not_found"
+    ) {
+      localLogger.info("Database not found.");
+      return null;
+    }
+    throw e;
+  }
+
+  if (!isFullDatabase(database)) {
+    localLogger.info("Database is not a full database.");
+    return null;
+  }
+
+  const pageLogger = localLogger.child({ databaseUrl: database.url });
+
+  pageLogger.info("Parsing database.");
+
+  const pageParent = database.parent;
+  let parentId: string;
+  let parentType: string;
+
+  switch (pageParent.type) {
+    case "page_id":
+      parentId = pageParent.page_id;
+      parentType = "page";
+      break;
+    case "block_id":
+      parentId = pageParent.block_id;
+      parentType = "block";
+      break;
+    case "workspace":
+      parentId = "workspace";
+      parentType = "workspace";
+      break;
+    default:
+      ((pageParent: never) => {
+        logger.warn({ pageParent }, "Unknown page parent type.");
+      })(pageParent);
+      parentId = "unknown";
+      parentType = "unknown";
+      break;
+  }
+
+  const title = database.title.map((t) => t.plain_text).join(" ");
+
+  return {
+    id: database.id,
+    url: database.url,
+    title,
+    parentId,
+    parentType: parentType as ParsedPage["parentType"],
+  };
 }
 
 export async function getParsedPage(
