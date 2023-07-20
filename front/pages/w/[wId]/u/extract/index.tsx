@@ -1,4 +1,7 @@
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import React from "react";
 
 import AppLayout from "@app/components/AppLayout";
@@ -45,7 +48,7 @@ export default function AppExtractEvents({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { schemas, isSchemasLoading } = useEventSchemas(owner);
-
+  const router = useRouter();
   return (
     <AppLayout
       user={user}
@@ -106,7 +109,9 @@ export default function AppExtractEvents({
                               <Button
                                 type="submit"
                                 onClick={() =>
-                                  alert("Not implemented yet, sorry 😬")
+                                  router.push(
+                                    `/w/${owner.sId}/u/extract/${schema.marker}`
+                                  )
                                 }
                               >
                                 <div>
@@ -120,6 +125,15 @@ export default function AppExtractEvents({
                         ))}
                     </tbody>
                   </table>
+
+                  <div className="my-10">
+                    <Link href={`/w/${owner.sId}/u/extract/new`}>
+                      <Button>
+                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                        Create Template
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

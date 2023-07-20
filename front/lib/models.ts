@@ -9,7 +9,7 @@ import {
 } from "sequelize";
 
 import { MessageFeedbackStatus } from "@app/types/chat";
-import { EventSchemaStatus } from "@app/types/extract";
+import { EventSchemaPropertyType, EventSchemaStatus } from "@app/types/extract";
 
 import { ConnectorProvider } from "./connectors_api";
 
@@ -1032,11 +1032,7 @@ export class EventSchema extends Model<
   declare description?: string;
   declare status: EventSchemaStatus;
   declare debug?: boolean;
-  declare properties: {
-    name: string;
-    type: number[] | Date[] | string[];
-    description: string;
-  }[];
+  declare properties: EventSchemaPropertyType[];
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }

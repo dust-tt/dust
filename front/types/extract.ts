@@ -4,9 +4,21 @@ export type EventSchemaType = {
   marker: string;
   description?: string;
   status: EventSchemaStatus;
-  properties: {
-    name: string;
-    type: number[] | Date[] | string[];
-    description: string;
-  }[];
+  properties: EventSchemaPropertyType[];
+};
+
+export const eventSchemaPropertyTypeOptions = [
+  "boolean",
+  "number",
+  "string",
+  "Date",
+  "number[]",
+  "string[]",
+  "Date[]",
+] as const;
+
+export type EventSchemaPropertyType = {
+  name: string;
+  type: (typeof eventSchemaPropertyTypeOptions)[number];
+  description: string;
 };
