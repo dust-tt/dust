@@ -216,6 +216,12 @@ async function _runExtractEventApp(
   }
 
   const successResponse = response as ExtractEventAppResponseResults;
+
+  logger.info(
+    { response: successResponse.value },
+    "[Extract Event] Extract event app ran successfully."
+  );
+
   return successResponse.value.results[0][0].value;
 }
 
