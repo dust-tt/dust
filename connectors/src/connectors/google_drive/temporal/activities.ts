@@ -224,6 +224,18 @@ async function syncOneFile(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveFileType
 ) {
+  if (file.name.endsWith(".csv")) {
+    logger.info(
+      {
+        file_id: file.id,
+        mimeType: file.mimeType,
+        title: file.name,
+      },
+      "Skipping CSV file"
+    );
+    return;
+  }
+
   const mimeTypesToExport: { [key: string]: string } = {
     "application/vnd.google-apps.document": "text/plain",
     "application/vnd.google-apps.presentation": "text/plain",
