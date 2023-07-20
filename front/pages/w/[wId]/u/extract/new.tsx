@@ -9,6 +9,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -28,6 +29,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -36,12 +38,14 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppExtractEventsCreate({
   user,
   owner,
+  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <ExtractEventSchemaForm
       user={user}
       owner={owner}
+      readOnly={readOnly}
       gaTrackingId={gaTrackingId}
     />
   );

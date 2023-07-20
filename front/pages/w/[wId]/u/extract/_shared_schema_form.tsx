@@ -24,11 +24,13 @@ export function ExtractEventSchemaForm({
   user,
   owner,
   schema,
+  readOnly = false,
   gaTrackingId,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
   schema?: EventSchemaType;
+  readOnly: boolean;
   gaTrackingId: string;
 }) {
   const { schemas } = useEventSchemas(owner);
@@ -156,6 +158,19 @@ export function ExtractEventSchemaForm({
         </div>
 
         <div className="mx-auto mb-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          {readOnly && (
+            <div
+              className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+              role="alert"
+            >
+              <p className="font-bold">Read-only view</p>
+              <p className="text-sm">
+                Only users with the role Builder or Admin in the workspace can
+                edit templates.
+              </p>
+            </div>
+          )}
+
           {/* Template main infos */}
           <div className="mb-24 divide-y divide-gray-200">
             <div>
@@ -183,6 +198,7 @@ export function ExtractEventSchemaForm({
                   setMarker(e.target.value);
                 }}
                 error={errorMarker}
+                disabled={readOnly}
                 className="sm:col-span-2"
               />
               <TextField
@@ -195,6 +211,7 @@ export function ExtractEventSchemaForm({
                   setDescription(e.target.value);
                 }}
                 error={errorDescription}
+                disabled={readOnly}
                 className="sm:col-span-4"
               />
             </div>
@@ -218,6 +235,7 @@ export function ExtractEventSchemaForm({
                 setProperties={setProperties}
                 error={errorProperties}
                 setError={setErrorProperties}
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -228,7 +246,7 @@ export function ExtractEventSchemaForm({
             <div className="col-span-6 flex justify-end sm:col-span-4">
               <Button
                 type="submit"
-                disabled={isProcessing}
+                disabled={isProcessing || readOnly}
                 onClick={async () => {
                   await onSubmit();
                 }}
@@ -251,7 +269,8 @@ function TextField({
   value,
   onChange,
   error,
-  className,
+  disabled,
+  className = "",
 }: {
   name: string;
   label: string;
@@ -259,10 +278,11 @@ function TextField({
   value?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string;
-  className?: string;
+  disabled?: boolean;
+  className: string;
 }) {
   return (
-    <div className={className}>
+    <div className={classNames(className, disabled ? "text-gray-400" : "")}>
       <div className="flex justify-between">
         <label
           htmlFor={name}
@@ -284,6 +304,7 @@ function TextField({
           )}
           value={value}
           onChange={onChange}
+          disabled={disabled}
         />
       </div>
       {description && (
@@ -299,11 +320,13 @@ function PropertiesFields({
   setProperties,
   error,
   setError,
+  readOnly,
 }: {
   properties: EventSchemaPropertyType[];
   setProperties: (properties: EventSchemaPropertyType[]) => void;
   error: string;
   setError: (message: string) => void;
+  readOnly?: boolean;
 }) {
   function handlePropertyChange(
     index: number,
@@ -347,6 +370,7 @@ function PropertiesFields({
                 setError("");
                 handlePropertyChange(index, "name", e.target.value);
               }}
+              disabled={readOnly}
               className="sm:col-span-2"
             />
             <div className="sm:col-span-2">
@@ -362,7 +386,10 @@ function PropertiesFields({
                 <select
                   name={`type-${index}`}
                   id={`type-${index}`}
-                  className="w-full rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
+                  className={classNames(
+                    "w-full rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500",
+                    readOnly ? "text-gray-400" : ""
+                  )}
                   onChange={(e) => {
                     setError("");
                     handlePropertyChange(index, "type", e.target.value);
@@ -373,6 +400,7 @@ function PropertiesFields({
                       key={option}
                       value={option}
                       selected={option === prop["type"]}
+                      disabled={readOnly && option !== prop["type"]}
                     >
                       {option}
                     </option>
@@ -388,11 +416,13 @@ function PropertiesFields({
                 setError("");
                 handlePropertyChange(index, "description", e.target.value);
               }}
+              disabled={readOnly}
               className="sm:col-span-7"
             />
             <div className="flex items-end  sm:col-span-1">
               <div className="rounded-md shadow-sm">
                 <Button
+                  disabled={readOnly}
                   onClick={() => {
                     removeProperty(index);
                   }}
@@ -408,7 +438,7 @@ function PropertiesFields({
         <p className="text-sm font-bold text-red-400 sm:col-span-6">{error}</p>
       )}
       <div className="sm:col-span-6">
-        <Button onClick={addProperty}>
+        <Button onClick={addProperty} disabled={readOnly}>
           <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
           Add property
         </Button>
