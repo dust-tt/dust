@@ -1436,29 +1436,42 @@ export default function AppGens({
                 >
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                      <p className="font-bold">Welcome to Gens!</p>
-                      <p className="mt-6">
+                      <p className="mt-4">
                         Gens is an early exploration of a more iterative way to
-                        interact with your data and with Assistant. Like writing
-                        a document, you can input text, and then search for
-                        documents based on said text, and have a model generate
-                        and add to parts of your doc.
+                        interact with your data and with Assistant, with
+                        powerful control on retrieval and generation. It allows
+                        you to:
                       </p>
+                      <ul className="list-disc space-y-2 py-2 pl-4">
+                        <li>
+                          Pick and remove the documents you want based on a deep
+                          search of your data, where you can pin documents you
+                          want to keep across searches
+                        </li>
+                        <li>
+                          Create reusable templates to instruct the model on the
+                          format and type of behavior you want it to help you
+                          with, where for generation the model has access to
+                          your text, the documents you've searched, and the
+                          template instructions
+                        </li>
+                        <li>
+                          Iteratively create a document through a back and forth
+                          with your data and the model and then export your
+                          document to wherever you want
+                        </li>
+                      </ul>
                       <p className="mt-6">
-                        Gens supercharges your experience by allowng you to fine
-                        tune and extend your use of the models more than Chat —
-                        for retrieval, you can pin documents you've retrieved
-                        and remove ones you don't like, for generation, you can
-                        define nifty templates that instruct the model's
-                        outputs. Finally, the document format allows you to
-                        iterate on your text.
-                      </p>
-
-                      <p className="mt-6">
-                        Example workflows are exploring your company info to
-                        combine ideas and generate something new, writing a
-                        document combining different info into sections, or
-                        structuring lots of information with templates.
+                        See{" "}
+                        <a
+                          href="https://www.loom.com/share/0a74052bef7a4a2cbe2d05b16c5e94cd?sid=6daef9c1-5ddf-4c36-9ae8-a267e25b49df"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-violet-600 hover:text-violet-700"
+                        >
+                          this video
+                        </a>{" "}
+                        for a demo and explanation of how to use Gens.
                       </p>
                     </div>
                   </Dialog.Panel>
