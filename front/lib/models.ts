@@ -905,6 +905,7 @@ export class GensTemplate extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]>;
   declare instructions: string[];
+  declare instructions2: string;
   declare name: string;
   declare visibility: "user" | "workspace";
   declare color: string;
@@ -931,6 +932,9 @@ GensTemplate.init(
     instructions: {
       type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
+    },
+    instructions2: {
+      type: DataTypes.TEXT,
     },
     name: {
       type: DataTypes.STRING,
