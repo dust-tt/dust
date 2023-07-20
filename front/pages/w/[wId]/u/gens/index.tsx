@@ -1437,41 +1437,36 @@ export default function AppGens({
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
                       <p className="mt-4">
-                        Gens is an early exploration of a more iterative way to
-                        interact with your data and with Assistant, with
-                        powerful control on retrieval and generation. It allows
-                        you to:
+                        Gens is an early exploration of writing with your
+                        models/data and powerful control on search and
+                        generation. It allows you to:
                       </p>
                       <ul className="list-disc space-y-2 py-2 pl-4">
                         <li>
-                          Pick and remove the documents you want based on a deep
-                          search of your data, where you can pin documents you
-                          want to keep across searches
+                          Search and select the documents you want based on a
+                          deep search of your data, where you can pin documents
+                          you want to keep across searches
                         </li>
                         <li>
-                          Create reusable templates to instruct the model on the
-                          format and type of behavior you want it to help you
-                          with, where for generation the model has access to
-                          your text, the documents you've searched, and the
-                          template instructions
+                          Create reusable templates to instruct the model and
+                          then generate, where the model has access to your
+                          text, the documents you've searched, and the template
                         </li>
                         <li>
-                          Iteratively create a document through a back and forth
-                          with your data and the model and then export your
-                          document to wherever you want
+                          Iteratively create a document in a back and forth with
+                          the model and the information
                         </li>
                       </ul>
-                      <p className="mt-6">
-                        See{" "}
+                      <p className="mt-2">
                         <a
                           href="https://www.loom.com/share/0a74052bef7a4a2cbe2d05b16c5e94cd?sid=6daef9c1-5ddf-4c36-9ae8-a267e25b49df"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-violet-600 hover:text-violet-700"
                         >
-                          this video
+                          Watch this video
                         </a>{" "}
-                        for a demo and explanation of how to use Gens.
+                        for a demo of Gens
                       </p>
                     </div>
                   </Dialog.Panel>
