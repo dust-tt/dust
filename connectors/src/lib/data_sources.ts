@@ -9,7 +9,9 @@ if (!FRONT_API) {
   throw new Error("FRONT_API not set");
 }
 
-export const MAX_DOCUMENT_TXT_LEN = 1000000;
+// We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
+// and large files are generally less useful anyway.
+export const MAX_DOCUMENT_TXT_LEN = 750000;
 
 export async function upsertToDatasource(
   dataSourceConfig: DataSourceConfig,
