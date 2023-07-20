@@ -154,14 +154,12 @@ export class FunctionSingleArgStreamer {
   _curParsedPos: number;
   _arg: string;
   _handler: (token: string) => void;
-  _in_string: boolean;
 
   constructor(arg: string, handler: (token: string) => void) {
     this._arg = arg;
     this._textSoFar = "";
     this._curParsedPos = 0;
     this._handler = handler;
-    this._in_string = false;
   }
 
   _apply_processing(text: string): string {
