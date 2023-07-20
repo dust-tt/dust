@@ -247,10 +247,31 @@ async function syncOneFile(
     }
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
-    const res = await drive.files.get({
-      fileId: file.id,
-      alt: "media",
-    });
+
+    let res;
+    try {
+      res = await drive.files.get({
+        fileId: file.id,
+        alt: "media",
+      });
+    } catch (e) {
+      const maybeErrorWithCode = e as { code: string };
+      if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
+        // This error happens when the file is too big to be downloaded.
+        // We skip this file.
+        logger.info(
+          {
+            file_id: file.id,
+            mimeType: file.mimeType,
+            title: file.name,
+          },
+          `File too big to be downloaded. Skipping`
+        );
+        return;
+      }
+      throw e;
+    }
+
     if (res.status !== 200) {
       throw new Error(
         `Error downloading Google document. status_code: ${res.status}. status_text: ${res.statusText}`
