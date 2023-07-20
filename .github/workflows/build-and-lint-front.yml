@@ -17,4 +17,4 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
       - working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run format:check
+        run: FRONT_DATABASE_URI="sqlite:foo.sqlite" XP1_DATABASE_URI="sqlite:bar.sqlite" npm ci && npm run build && npm run tsc && npm run lint && npm run format:check
