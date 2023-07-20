@@ -216,7 +216,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "4180309c80",
       appHash:
-        "8adcc9ae33a63cc735c9a23a97d7bffe658c6ef2400fc997e61e8817f611a1f8",
+        "48f73c1e4edb35f7d2422b07483700dab0140ded9fc5125248c17a5df6d1db18",
     },
     config: {
       SEMANTIC_SEARCH: {
@@ -230,7 +230,7 @@ export const DustProdActionRegistry = createActionRegistry({
           timestamp: null,
         },
         use_cache: false,
-        full_text: true,
+        full_text: false,
         target_document_tokens: 2000,
       },
     },
@@ -240,7 +240,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "76b40f14fb",
       appHash:
-        "09bbb3c7b8618897ea59b036f773a77f3201e11df8839f31bd0823c9869dff9f",
+        "3e59e6d02fe60e120c285851a850649378c803d36e7e6e9f4cab72d291e1a258",
     },
     config: {
       SUGGEST_CHANGES: {

@@ -46,6 +46,7 @@ const DocTrackerRetrievalActionValueSchema = t.array(
     source_url: t.string,
     hash: t.string,
     text_size: t.Integer,
+    text: t.union([t.string, t.null, t.undefined]),
     chunk_count: t.Integer,
     chunks: t.array(
       t.type({
