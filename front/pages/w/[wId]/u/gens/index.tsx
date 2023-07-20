@@ -174,21 +174,16 @@ export class FunctionSingleArgStreamer {
   }
 
   feed(token: string): void {
-    let currentTextSoFar = this._textSoFar + token;
-    let str = this._apply_processing(currentTextSoFar);
-    let obj;
+    this._textSoFar += token;
+
+    let str = this._textSoFar + '"}';
+    if (this._textSoFar.trimEnd().endsWith('"')) {
+      // If _textSoFar ends with a quote, we just add the } to the end.
+      str = this._textSoFar + "}";
+    }
 
     try {
-      obj = JSON.parse(str);
-    } catch (e) {
-      // trying to modify token to get it to work
-      const processedToken = token.replace(/\n/g, "\\n");
-      currentTextSoFar = this._textSoFar + processedToken;
-      str = this._apply_processing(currentTextSoFar);
-    }
-    try {
-      obj = JSON.parse(str);
-      this._textSoFar = currentTextSoFar;
+      const obj = JSON.parse(str);
       if (obj[this._arg]) {
         const tokens = obj[this._arg].slice(this._curParsedPos);
         this._curParsedPos = obj[this._arg].length;
@@ -196,7 +191,7 @@ export class FunctionSingleArgStreamer {
         this._handler(tokens);
       }
     } catch (e) {
-      this._textSoFar += token;
+      // Ignore and continue.
     }
   }
 }
