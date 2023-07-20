@@ -162,15 +162,6 @@ export class FunctionSingleArgStreamer {
     this._handler = handler;
   }
 
-  _apply_processing(text: string): string {
-    let str = text + '"}';
-    if (text.trimEnd().endsWith('"')) {
-      // If _textSoFar ends with a quote, we just add the } to the end.
-      str = text + "}";
-    }
-    return str;
-  }
-
   feed(token: string): void {
     this._textSoFar += token;
 
