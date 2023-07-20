@@ -947,8 +947,6 @@ export function TemplatesView({
                               } else {
                                 new_template.sId =
                                   templates[editingTemplate].sId;
-                                new_template.color =
-                                  templates[editingTemplate].color;
                                 await fetch(
                                   `/api/w/${workspaceId}/use/gens/templates/${new_template.sId}`,
                                   {
