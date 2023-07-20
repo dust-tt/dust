@@ -914,7 +914,6 @@ dependencies = [
  "tera",
  "tokio",
  "tokio-postgres",
- "tokio-stream",
  "tower-http 0.4.0",
  "tracing",
  "tracing-subscriber",

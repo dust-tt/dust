@@ -19,6 +19,7 @@ use dust::{
     stores::store,
     utils,
 };
+use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use qdrant_client::prelude::{QdrantClient, QdrantClientConfig};
@@ -28,7 +29,6 @@ use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
-use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 

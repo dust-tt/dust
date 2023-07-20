@@ -8,6 +8,7 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
+use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
@@ -19,8 +20,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::try_join;
-use tokio_stream::{self as stream};
 use uuid::Uuid;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at list
@@ -541,7 +540,7 @@ impl DataSource {
 
         let now = utils::now();
         // Embed chunks with max concurrency of 16.
-        let e = stream::iter(splits.into_iter().enumerate())
+        let e = futures::stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
                 let provider_id = self.config.provider_id.clone();
                 let model_id = self.config.model_id.clone();
@@ -883,7 +882,7 @@ impl DataSource {
         };
 
         // Retrieve the documents from the store.
-        let documents = stream::iter(document_ids)
+        let documents = futures::stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
                 let document_id = document_id.clone();
@@ -932,7 +931,7 @@ impl DataSource {
         // to wrap it in an Arc so that it can be cloned.
         let mut documents = match target_document_tokens {
             Some(target) => {
-                stream::iter(documents)
+                futures::stream::iter(documents)
                     .map(|mut d| {
                         let mut chunks = chunks
                             .iter()
