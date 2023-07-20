@@ -3,7 +3,7 @@ import React from "react";
 
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ExtractEventSchemaForm } from "@app/pages/w/[wId]/u/extract/_shared_schema_form";
+import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { EventSchemaType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 

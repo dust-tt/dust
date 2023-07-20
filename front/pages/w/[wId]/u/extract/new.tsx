@@ -2,7 +2,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ExtractEventSchemaForm } from "@app/pages/w/[wId]/u/extract/_shared_schema_form";
+import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
