@@ -15,7 +15,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  isBuilder: boolean;
+  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -35,7 +35,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      isBuilder: auth.isBuilder(),
+      readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -44,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppExtractEvents({
   user,
   owner,
-  isBuilder,
+  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { schemas, isSchemasLoading } = useEventSchemas(owner);
@@ -63,6 +63,19 @@ export default function AppExtractEvents({
         </div>
 
         <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          {readOnly && (
+            <div
+              className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+              role="alert"
+            >
+              <p className="font-bold">Read-only view</p>
+              <p className="text-sm">
+                Only users with the role Builder or Admin in the workspace can
+                edit templates.
+              </p>
+            </div>
+          )}
+
           <h3 className="text-base font-medium leading-6 text-gray-900">
             Extract events Templates
           </h3>
@@ -88,7 +101,7 @@ export default function AppExtractEvents({
                           Status
                         </th>
                         <th scope="col" className="px-3 py-4">
-                          {isBuilder ? "Manage" : "View"}
+                          {readOnly ? "Manage" : "View"}
                         </th>
                       </tr>
                     </thead>
@@ -115,9 +128,9 @@ export default function AppExtractEvents({
                                 }
                               >
                                 <div>
-                                  {isBuilder
-                                    ? "Manage template"
-                                    : "View template"}
+                                  {readOnly
+                                    ? "View template"
+                                    : "Manage template"}
                                 </div>
                               </Button>
                             </td>
@@ -128,7 +141,7 @@ export default function AppExtractEvents({
 
                   <div className="my-10">
                     <Link href={`/w/${owner.sId}/u/extract/new`}>
-                      <Button>
+                      <Button disabled={readOnly}>
                         <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
                         Create Template
                       </Button>
