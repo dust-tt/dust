@@ -96,9 +96,13 @@ export async function getChannel(
   const res = await client.conversations.info({ channel: channelId });
   // Despite the typing, in practice `conversations.info` can be undefined at times.
   if (!res) {
-    throw new Error(
-      "Received unexpected conversations.info replies from Slack API in getChannel (generally transient)"
-    );
+    const workflowError: WorkflowError = {
+      type: "transient_upstream_activity_error",
+      message:
+        "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
+      __is_dust_error: true,
+    };
+    throw workflowError;
   }
   if (res.error) {
     throw new Error(res.error);
@@ -242,9 +246,13 @@ export async function getMessagesForChannel(
   });
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
-    throw new Error(
-      "Received unexpected conversations.history replies from Slack API in getMessagesForChannel (generally transient)"
-    );
+    const workflowError: WorkflowError = {
+      type: "transient_upstream_activity_error",
+      message:
+        "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
+      __is_dust_error: true,
+    };
+    throw workflowError;
   }
   if (c.error) {
     throw new Error(
@@ -441,9 +449,13 @@ export async function syncThread(
       });
     // Despite the typing, in practice `replies` can be undefined at times.
     if (!replies) {
-      throw new Error(
-        "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
-      );
+      const workflowError: WorkflowError = {
+        type: "transient_upstream_activity_error",
+        message:
+          "Received unexpected undefined replies from Slack API in syncThread (generally transient)",
+        __is_dust_error: true,
+      };
+      throw workflowError;
     }
     if (replies.error) {
       throw new Error(replies.error);
@@ -680,8 +692,8 @@ export function getSlackClient(slackAccessToken: string): WebClient {
           const httpError = slackError as WebAPIHTTPError;
           if (httpError.statusCode === 503) {
             const workflowError: WorkflowError = {
-              type: "slack_is_down",
-              message: httpError.message,
+              type: "upstream_is_down_activity_error",
+              message: `Slack is done: ${httpError.message}`,
               __is_dust_error: true,
             };
             throw workflowError;
