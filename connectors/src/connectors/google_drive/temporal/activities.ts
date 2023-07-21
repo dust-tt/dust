@@ -228,7 +228,9 @@ async function syncOneFile(
     "application/vnd.google-apps.document": "text/plain",
     "application/vnd.google-apps.presentation": "text/plain",
   };
-  const mimeTypesToDownload = ["text/plain", "text/csv"];
+  // Deactivated CSV for now 20230721 (spolu)
+  // const mimeTypesToDownload = ["text/plain", "text/csv"];
+  const mimeTypesToDownload = ["text/plain"];
 
   let documentContent: string | undefined = undefined;
   if (mimeTypesToExport[file.mimeType]) {
