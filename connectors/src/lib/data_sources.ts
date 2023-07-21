@@ -72,6 +72,8 @@ async function _upsertToDatasource(
     documentId,
     documentUrl,
     documentLength: documentText.length,
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceName: dataSourceConfig.dataSourceName,
   });
   const statsDTags = [
     `data_source_name:${dataSourceConfig.dataSourceName}`,
