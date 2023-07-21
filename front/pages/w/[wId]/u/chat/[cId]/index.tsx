@@ -412,7 +412,7 @@ export function RetrievalsView({
           )}
           {message.params?.minTimestamp ? (
             <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
-              Documents retrieved from{" "}
+              Documents retrieved created or updated after{" "}
               {(() => {
                 const date = new Date(message.params?.minTimestamp || 0);
                 const options = {
@@ -422,8 +422,7 @@ export function RetrievalsView({
                 } as Intl.DateTimeFormatOptions;
                 const dateString = date.toLocaleDateString(undefined, options);
                 return dateString;
-              })()}{" "}
-              to today
+              })()}
             </div>
           ) : (
             ""
