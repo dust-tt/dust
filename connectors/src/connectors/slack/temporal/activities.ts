@@ -693,7 +693,7 @@ export function getSlackClient(slackAccessToken: string): WebClient {
           if (httpError.statusCode === 503) {
             const workflowError: WorkflowError = {
               type: "upstream_is_down_activity_error",
-              message: `Slack is done: ${httpError.message}`,
+              message: `Slack is down: ${httpError.message}`,
               __is_dust_error: true,
             };
             throw workflowError;
