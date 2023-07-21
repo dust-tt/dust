@@ -52,9 +52,27 @@ export default function MainTab({
       ),
     },
   ];
+  // labTabs is a subset of devTabs with experimental features that can be available to users
+  const labTabs: { name: string; href: string; icon: JSX.Element }[] = [
+    {
+      name: "Gens",
+      href: `/w/${owner.sId}/u/gens`,
+      icon: (
+        <PencilSquareIcon
+          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
+          aria-hidden="true"
+        />
+      ),
+    },
+  ];
 
   const displayDevTabs = isDevelopmentOrDustWorkspace(owner);
-  const tabs = displayDevTabs ? publicTabs.concat(developmentTabs) : publicTabs;
+  let tabs = publicTabs;
+  if (displayDevTabs) {
+    tabs = publicTabs.concat(developmentTabs);
+  } else if (!owner.disableLabs) {
+    tabs = publicTabs.concat(labTabs);
+  }
   const currTab = tabs.find((tab) => tab.name == currentTab);
 
   return (
