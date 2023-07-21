@@ -14,7 +14,7 @@ export type PostTemplatesResponseBody = {
 
 export type GensPostTemplateQuery = {
   name: string;
-  instructions2: string;
+  instructions: string;
   color: string;
   visibility: GensTemplateVisibilityType;
   sId: string;
@@ -24,12 +24,12 @@ const gens_template_scheme: JSONSchemaType<GensPostTemplateQuery> = {
   type: "object",
   properties: {
     name: { type: "string" },
-    instructions2: { type: "string" },
+    instructions: { type: "string" },
     visibility: { type: "string", enum: ["workspace", "user"] },
     color: { type: "string" },
     sId: { type: "string" },
   },
-  required: ["name", "instructions2", "visibility", "color"],
+  required: ["name", "instructions", "visibility", "color"],
 };
 
 async function handler(
@@ -116,7 +116,7 @@ async function handler(
       } else {
         result = await GensTemplate.create({
           name: pRes.value.name,
-          instructions2: pRes.value.instructions2,
+          instructions2: pRes.value.instructions,
           color: pRes.value.color,
           visibility: pRes.value.visibility as "workspace" | "user",
           workspaceId: owner.id,

@@ -33,7 +33,7 @@ export async function getGensTemplates(
   return templates.map((t) => {
     return {
       name: t.name,
-      instructions2: t.instructions2,
+      instructions: t.instructions2,
       sId: t.sId,
       color: t.color,
       userId: t.userId,
@@ -71,7 +71,7 @@ export async function getTemplate(
   }
   return {
     name: template.name,
-    instructions2: template.instructions2,
+    instructions: template.instructions2,
     sId: template.sId,
     color: template.color,
     visibility: template.visibility,
@@ -92,7 +92,7 @@ export async function updateTemplate(
     return await GensTemplate.update(
       {
         name: template.name,
-        instructions2: template.instructions2,
+        instructions2: template.instructions,
         color: template.color,
         visibility: template.visibility,
       },

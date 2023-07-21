@@ -14,6 +14,7 @@ async function main() {
   )[0] as GensTemplate[];
 
   for (const gensTemplate of gensTemplates) {
+    // @ts-ignore
     const instructions = gensTemplate?.instructions || [];
     const instructions2 = instructions.join("\n");
     console.log(

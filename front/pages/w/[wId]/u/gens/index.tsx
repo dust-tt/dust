@@ -331,7 +331,7 @@ export function DocumentView({
       {
         query: query,
         result: document,
-        instructions: template?.instructions2 || [],
+        instructions: template?.instructions || [],
       },
     ];
 
@@ -620,14 +620,14 @@ export function TemplatesView({
       {
         name: "Neutral",
         color: "bg-green-500",
-        instructions2: "",
+        instructions: "",
         sId: "0000",
         visibility: "default" as GensTemplateVisibilityType,
       },
       {
         name: "Fact Gatherer",
         color: "bg-red-500",
-        instructions2: [
+        instructions: [
           "Extract facts and important information in a list",
           "Present your answers in list format",
           "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
@@ -696,7 +696,7 @@ export function TemplatesView({
   const handleSetEditingTemplate = (t: number) => {
     setEditingTemplate(t);
     setEditingTemplateTitle(templates[t].name);
-    setEditingTemplateInstructions(templates[t].instructions2 || "");
+    setEditingTemplateInstructions(templates[t].instructions || "");
     setEditingTemplateVisibility(templates[t].visibility);
     setEditingTemplateColor(templates[t].color);
   };
@@ -872,7 +872,7 @@ export function TemplatesView({
                                 name: editingTemplateTitle,
                                 // set random color
                                 color: editingTemplateColor,
-                                instructions2: editingTemplateInstructions,
+                                instructions: editingTemplateInstructions,
                                 sId: client_side_new_id(),
                                 visibility: editingTemplateVisibility,
                               };
@@ -1185,7 +1185,7 @@ export default function AppGens({
         text_with_cursor: textWithCursor,
         extracts,
         context: getContext(),
-        instructions: template.current?.instructions2,
+        instructions: template.current?.instructions,
       },
     ];
 
