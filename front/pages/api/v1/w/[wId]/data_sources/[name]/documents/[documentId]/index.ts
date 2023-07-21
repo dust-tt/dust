@@ -40,7 +40,7 @@ export type DeleteDocumentResponseBody = {
   };
 };
 export type UpsertDocumentResponseBody = {
-  document: DocumentType;
+  document: DocumentType | null; // null if suppress_document_output is true
   data_source: DataSourceType;
 };
 
@@ -276,7 +276,6 @@ async function handler(
         sourceUrl,
         text: req.body.text,
         credentials,
-        suppressDocumentOutput: req.body.suppress_document_output === true,
       });
 
       if (upsertRes.isErr()) {
@@ -291,7 +290,9 @@ async function handler(
       }
 
       res.status(200).json({
-        document: upsertRes.value.document,
+        document: req.body.suppress_document_output
+          ? upsertRes.value.document
+          : null,
         data_source: dataSource,
       });
 
@@ -300,7 +301,7 @@ async function handler(
         workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         documentText: req.body.text,
-        documentHash: upsertRes.value.document.hash,
+        documentHash: upsertRes.value.document?.hash || "",
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
       });
 
@@ -310,7 +311,7 @@ async function handler(
           dataSource.name,
           owner.sId,
           req.query.documentId as string,
-          upsertRes.value.document.hash,
+          upsertRes.value.document?.hash || "",
           dataSource.connectorProvider || null,
           hookType,
           debounceMs
