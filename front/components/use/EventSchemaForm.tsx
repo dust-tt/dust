@@ -9,7 +9,7 @@ import { APIError } from "@app/lib/error";
 import { useEventSchemas } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import {
-  eventSchemaPropertyTypeOptions,
+  eventSchemaPropertyAllTypes,
   EventSchemaType,
 } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -224,8 +224,9 @@ export function ExtractEventSchemaForm({
                 Template properties
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Define the properties that you want to extract for this
-                template. The description field is key to ensure the LLM model
+                Define the properties to extract for this template. Picking a
+                list as Type allows to extract multiple values for this
+                property. The Description field is key to ensure the LLM model
                 is able to extract the right information from your documents.
               </p>
             </div>
@@ -395,7 +396,7 @@ function PropertiesFields({
                     handlePropertyChange(index, "type", e.target.value);
                   }}
                 >
-                  {eventSchemaPropertyTypeOptions.map((option) => (
+                  {eventSchemaPropertyAllTypes.map((option) => (
                     <option
                       key={option}
                       value={option}
