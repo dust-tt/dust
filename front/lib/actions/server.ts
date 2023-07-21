@@ -160,6 +160,7 @@ export async function runAction(
   ];
 
   statsDClient.increment("use_actions.count", 1, tags);
+  const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(prodCredentials);
@@ -183,6 +184,9 @@ export async function runAction(
       });
     });
   });
+
+  const elapsed = new Date().getTime() - now.getTime();
+  statsDClient.distribution("run_action.duration.distribution", elapsed, tags);
 
   return new Ok(res.value);
 }
