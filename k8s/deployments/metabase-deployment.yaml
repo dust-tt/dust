@@ -25,11 +25,18 @@ spec:
             - secretRef:
                 name: metabase-secret
 
+          env:
+            - name: MB_REDIRECT_ALL_REQUESTS_TO_HTTPS
+              value: "false"
+
+            - name: MB_SITE_URL
+              value: https://metabase.dust.tt
+
           resources:
             requests:
-              cpu: 200m
-              memory: 1Gi
+              cpu: 500m
+              memory: 2Gi
 
             limits:
-              cpu: 200m
-              memory: 1Gi
+              cpu: 500m
+              memory: 2Gi
