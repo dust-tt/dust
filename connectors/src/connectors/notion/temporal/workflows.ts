@@ -18,11 +18,12 @@ const { garbageCollectActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
 });
 
-const { notionUpsertPageActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "60 minute",
-});
+const { notionUpsertPageActivity, notionUpsertDatabaseActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "60 minute",
+  });
 
-const { notionGetPagesToSyncActivity, syncGarbageCollectorPagesActivity } =
+const { notionGetToSyncActivity, syncGarbageCollectorActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minute",
   });
@@ -92,69 +93,120 @@ export async function notionSyncWorkflow(
     const promises: Promise<void>[] = [];
 
     do {
-      const { pageIds, nextCursor } = await notionGetPagesToSyncActivity(
-        dataSourceConfig,
-        notionAccessToken,
-        // if we're doing a garbage collection run, we want to fetch all pages
-        // otherwise, we only want to fetch pages that were updated since the last sync
-        !isGargageCollectionRun ? lastSyncedPeriodTs : null,
-        cursor,
-        // we only want to fetch pages that were updated since the last sync
-        // unless it's a garbage collection run or a force resync
-        !isGargageCollectionRun && !forceResync,
-        // logger args:
-        {
-          pageIndex,
-          runType: isGargageCollectionRun
-            ? "garbageCollection"
-            : isInitialSync
-            ? "initialSync"
-            : "incrementalSync",
-        }
-      );
+      const { pageIds, databaseIds, nextCursor } =
+        await notionGetToSyncActivity(
+          dataSourceConfig,
+          notionAccessToken,
+          // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
+          // want to fetch pages that were updated since the last sync.
+          !isGargageCollectionRun ? lastSyncedPeriodTs : null,
+          cursor,
+          // We only want to fetch pages that were updated since the last sync unless it's a garbage
+          // collection run or a force resync.
+          !isGargageCollectionRun && !forceResync,
+          // Logger args:
+          {
+            pageIndex,
+            runType: isGargageCollectionRun
+              ? "garbageCollection"
+              : isInitialSync
+              ? "initialSync"
+              : "incrementalSync",
+          }
+        );
       cursor = nextCursor;
       pageIndex += 1;
 
       let pagesToSync: string[] = [];
+      let databasesToSync: string[] = [];
 
       if (isGargageCollectionRun) {
-        // mark pages as visited to avoid deleting them and return
-        // pages that are new
-        pagesToSync = await syncGarbageCollectorPagesActivity(
-          dataSourceConfig,
-          pageIds,
-          runTimestamp
-        );
+        // Mark pages and databases as visited to avoid deleting them and return pages and databases
+        // that are new.
+        const { newPageIds, newDatabaseIds } =
+          await syncGarbageCollectorActivity(
+            dataSourceConfig,
+            pageIds,
+            databaseIds,
+            runTimestamp
+          );
+        pagesToSync = newPageIds;
+        databasesToSync = newDatabaseIds;
       } else {
         pagesToSync = pageIds;
+        databasesToSync = databaseIds;
       }
 
-      if (!pagesToSync.length) {
+      if (!pagesToSync.length && !databasesToSync.length) {
         continue;
       }
 
-      for (
-        let i = 0;
-        i < pagesToSync.length;
-        i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-      ) {
-        const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-        const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-        const workflowId = `${getWorkflowId(
-          dataSourceConfig
-        )}-result-page-${pageIndex}-${batchIndex}${
-          isGargageCollectionRun ? "-gc" : ""
-        }`;
-        promises.push(
-          childWorkflowQueue.add(() =>
-            executeChild(notionSyncResultPageWorkflow.name, {
-              workflowId,
-              args: [dataSourceConfig, notionAccessToken, batch, runTimestamp],
-              parentClosePolicy:
-                ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-            })
-          )
-        );
+      if (pagesToSync.length) {
+        for (
+          let i = 0;
+          i < pagesToSync.length;
+          i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+        ) {
+          const batch = pagesToSync.slice(
+            i,
+            i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+          );
+          const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+          const workflowId = `${getWorkflowId(
+            dataSourceConfig
+          )}-result-page-${pageIndex}-pages-${batchIndex}${
+            isGargageCollectionRun ? "-gc" : ""
+          }`;
+          promises.push(
+            childWorkflowQueue.add(() =>
+              executeChild(notionSyncResultPageWorkflow.name, {
+                workflowId,
+                args: [
+                  dataSourceConfig,
+                  notionAccessToken,
+                  batch,
+                  runTimestamp,
+                ],
+                parentClosePolicy:
+                  ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+              })
+            )
+          );
+        }
+      }
+
+      if (databasesToSync.length) {
+        for (
+          let i = 0;
+          i < databasesToSync.length;
+          i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+        ) {
+          const batch = databasesToSync.slice(
+            i,
+            i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+          );
+          const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+          const workflowId = `${getWorkflowId(
+            dataSourceConfig
+          )}-result-page-${pageIndex}-databases-${batchIndex}${
+            isGargageCollectionRun ? "-gc" : ""
+          }`;
+          promises.push(
+            childWorkflowQueue.add(() =>
+              executeChild(notionSyncResultPageDatabaseWorkflow.name, {
+                workflowId,
+                args: [
+                  dataSourceConfig,
+                  notionAccessToken,
+                  batch,
+                  runTimestamp,
+                ],
+                parentClosePolicy:
+                  ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+              })
+            )
+          );
+        }
       }
     } while (cursor);
 
@@ -165,8 +217,8 @@ export async function notionSyncWorkflow(
       await saveSuccessSyncActivity(dataSourceConfig);
       lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
     } else {
-      // look at pages that were not visited in this run, check with the notion API
-      // if they were really deleted and delete them from the database if they were
+      // Look at pages and databases that were not visited in this run, check with the notion API if
+      // they were really deleted and delete them from the database if they were.
       await garbageCollectActivity(
         dataSourceConfig,
         runTimestamp,
@@ -177,9 +229,10 @@ export async function notionSyncWorkflow(
     iterations += 1;
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   } while (
-    // We run the loop for MAX_ITERATIONS_PER_WORKFLOW iterations to avoid hitting the workflow log size limit
-    // and "continue as new" to start a new workflow
-    // If it's the initial sync, a force resync, or a garbage collection run, we only do one iteration
+    // We run the loop for MAX_ITERATIONS_PER_WORKFLOW iterations to avoid hitting the workflow log
+    // size limit and "continue as new" to start a new workflow.
+    // If it's the initial sync, a force resync, or a garbage collection run, we only do one
+    // iteration.
     !isInitialSync &&
     !forceResync &&
     !isGargageCollectionRun &&
@@ -189,7 +242,7 @@ export async function notionSyncWorkflow(
   await continueAsNew<typeof notionSyncWorkflow>(
     dataSourceConfig,
     nangoConnectionId,
-    // cannot actually be undefined, but TS doesn't know that
+    // Cannot actually be undefined, but TS doesn't know that.
     lastSyncedPeriodTs ?? undefined
   );
 }
@@ -217,6 +270,40 @@ export async function notionSyncResultPageWorkflow(
         notionUpsertPageActivity(
           notionAccessToken,
           pageId,
+          dataSourceConfig,
+          runTimestamp,
+          loggerArgs
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+}
+
+export async function notionSyncResultPageDatabaseWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  databaseIds: string[],
+  runTimestamp: number
+) {
+  const upsertQueue = new PQueue({
+    concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+  });
+
+  const promises: Promise<void>[] = [];
+
+  for (const [databaseIndex, databaseId] of databaseIds.entries()) {
+    const loggerArgs = {
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
+      databaseIndex,
+    };
+    promises.push(
+      upsertQueue.add(() =>
+        notionUpsertDatabaseActivity(
+          notionAccessToken,
+          databaseId,
           dataSourceConfig,
           runTimestamp,
           loggerArgs

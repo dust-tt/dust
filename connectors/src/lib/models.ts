@@ -449,7 +449,14 @@ export class NotionDatabase extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare notionDatabaseId: string;
+  declare lastSeenTs: Date;
+
   declare skipReason?: string | null;
+
+  declare parentType?: string | null;
+  declare parentId?: string | null;
+  declare title?: string | null;
+  declare notionUrl?: string | null;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -475,7 +482,27 @@ NotionDatabase.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    lastSeenTs: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
     skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    notionUrl: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -484,7 +511,10 @@ NotionDatabase.init(
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
-      { fields: ["connectorId"] },
+      { fields: ["connectorId", "skipReason"] },
+      { fields: ["lastSeenTs"] },
+      { fields: ["parentId"] },
+      { fields: ["parentType"] },
     ],
     modelName: "notion_databases",
   }

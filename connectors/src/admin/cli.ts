@@ -235,6 +235,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         notionDatabaseId: databaseId,
         skipReason,
         connectorId,
+        lastSeenTs: new Date(),
       });
     }
   }
