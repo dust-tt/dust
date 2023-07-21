@@ -20,11 +20,27 @@ import {
   ChatSession,
   front_sequelize,
 } from "../models";
+import { Op } from "sequelize";
 
+/**
+ *
+ * @param auth
+ * @param params workspaceScope: defaults to false, which indicates to return
+ * chat sessions from this user *only*. If true, return sessions from every other user
+ * from the workspace (that is, *except* this user)
+ * @returns
+ */
 export async function getChatSessions(
   auth: Authenticator,
-  limit: number,
-  offset: number
+  {
+    limit,
+    offset,
+    workspaceScope,
+  }: {
+    limit: number;
+    offset: number;
+    workspaceScope?: boolean;
+  }
 ): Promise<ChatSessionType[]> {
   const owner = auth.workspace();
   if (!owner) {
@@ -34,12 +50,20 @@ export async function getChatSessions(
   if (!user) {
     return [];
   }
-
+  const where = workspaceScope
+    ? {
+        workspaceId: owner.id,
+        [Op.or]: [
+          { userId: { [Op.ne]: user.id } },
+          { userId: { [Op.is]: null } },
+        ],
+      }
+    : {
+        workspaceId: owner.id,
+        userId: user.id,
+      };
   const chatSessions = await ChatSession.findAll({
-    where: {
-      workspaceId: owner.id,
-      userId: user.id,
-    },
+    where,
     limit,
     offset,
     order: [["createdAt", "DESC"]],

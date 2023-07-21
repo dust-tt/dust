@@ -58,8 +58,12 @@ async function handler(
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
-
-      const sessions = await getChatSessions(auth, limit, offset);
+      const workspaceScope = req.query.workspaceScope === "true" ? true : false;
+      const sessions = await getChatSessions(auth, {
+        limit,
+        offset,
+        workspaceScope,
+      });
 
       res.status(200).json({
         sessions,

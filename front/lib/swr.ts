@@ -191,12 +191,23 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
 
 export function useChatSessions(
   owner: WorkspaceType,
-  limit: number,
-  offset: number
+  {
+    limit,
+    offset,
+    workspaceScope,
+  }: {
+    limit: number;
+    offset: number;
+    workspaceScope?: boolean;
+  }
 ) {
   const runsFetcher: Fetcher<GetChatSessionsResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
-    `/api/w/${owner.sId}/use/chats?limit=${limit}&offset=${offset}`,
+    `/api/w/${
+      owner.sId
+    }/use/chats?limit=${limit}&offset=${offset}&workspaceScope=${
+      workspaceScope ? true : false
+    }`,
     runsFetcher
   );
 

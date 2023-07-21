@@ -1,8 +1,4 @@
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  TrashIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
