@@ -24,6 +24,7 @@ export type WorkspaceType = {
   allowedDomain: string | null;
   role: RoleType;
   plan: PlanType;
+  disableLabs?: boolean;
 };
 
 export type UserType = {
