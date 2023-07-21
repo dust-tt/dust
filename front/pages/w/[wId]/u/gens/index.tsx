@@ -554,7 +554,7 @@ export function ResultsView({
           {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="mt-2 flex flex-col space-y-2">
-          {retrieved.map((r, i) => {
+          {retrieved.map((r) => {
             return (
               <div key={r.documentId} className={!r.pinned ? "opacity-50" : ""}>
                 <DocumentView
@@ -1186,7 +1186,7 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    let relevantDocs = retrieved.filter((d) => d.pinned);
+    const relevantDocs = retrieved.filter((d) => d.pinned);
     const potentialExtracts = relevantDocs
       .map((d) => {
         const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
