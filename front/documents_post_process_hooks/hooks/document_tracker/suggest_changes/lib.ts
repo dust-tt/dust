@@ -35,8 +35,8 @@ const logger = mainLogger.child({
 });
 
 export async function shouldDocumentTrackerSuggestChangesRun({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
   dataSourceConnectorProvider,
   verb,
@@ -46,6 +46,11 @@ export async function shouldDocumentTrackerSuggestChangesRun({
       "document_tracker_suggest_changes post process hook should only run for upsert."
     );
     return false;
+  }
+
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
   }
 
   const localLogger = logger.child({
@@ -130,12 +135,17 @@ export async function shouldDocumentTrackerSuggestChangesRun({
 }
 
 export async function documentTrackerSuggestChangesOnUpsert({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
   documentHash,
   documentSourceUrl,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
+  }
+
   const localLogger = logger.child({
     workspaceId,
     dataSourceName,

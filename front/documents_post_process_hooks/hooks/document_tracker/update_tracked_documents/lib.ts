@@ -19,8 +19,16 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
+  const workspaceId = params.auth.workspace()?.sId;
+  if (!workspaceId) {
+    logger.info(
+      "Workspace not found, document_tracker_update_tracked_documents post process hook should not run."
+    );
+    return false;
+  }
+
   const localLogger = logger.child({
-    workspaceId: params.workspaceId,
+    workspaceId,
     dataSourceName: params.dataSourceName,
     documentId: params.documentId,
   });
@@ -31,17 +39,14 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   const whitelistedWorkspaceIds =
     RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
 
-  if (!whitelistedWorkspaceIds.includes(params.workspaceId)) {
+  if (!whitelistedWorkspaceIds.includes(workspaceId)) {
     localLogger.info(
       "Workspace not whitelisted, document_tracker_update_tracked_documents post process hook should not run."
     );
     return false;
   }
 
-  const dataSource = await getDatasource(
-    params.dataSourceName,
-    params.workspaceId
-  );
+  const dataSource = await getDatasource(params.dataSourceName, workspaceId);
 
   if (
     params.verb === "upsert" &&
@@ -77,11 +82,15 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
 }
 
 export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
   documentText,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
+  }
   logger.info(
     {
       workspaceId,
@@ -103,10 +112,15 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
 }
 
 export async function documentTrackerUpdateTrackedDocumentsOnDelete({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
 }: DocumentsPostProcessHookOnDeleteParams): Promise<void> {
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
+  }
+
   logger.info(
     {
       workspaceId,
