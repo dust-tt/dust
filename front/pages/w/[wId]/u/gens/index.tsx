@@ -1362,24 +1362,20 @@ export default function AppGens({
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
                       <p className="mt-4">
-                        Gens is an early exploration of writing with your
-                        models/data and powerful control on search and
-                        generation. It allows you to:
+                        Gens is an early exploration giving you powerful control
+                        over document search and text generation. You can
+                        iteratively generate a document by:
                       </p>
                       <ul className="list-disc space-y-2 py-2 pl-4">
                         <li>
-                          Search and select the documents you want based on a
-                          deep search of your data, where you can pin documents
-                          you want to keep across searches
+                          Searching across workspace documents and selecting
+                          documents you want to keep in context for text
+                          generation.
                         </li>
                         <li>
-                          Create reusable templates to instruct the model and
-                          then generate, where the model has access to your
-                          text, the documents you've searched, and the template
-                        </li>
-                        <li>
-                          Iteratively create a document in a back and forth with
-                          the model and the information
+                          Generating text with context and templates. The model
+                          will use the template, text already present in the
+                          text field, and listed documents
                         </li>
                       </ul>
                       <p className="mt-2">
@@ -1402,11 +1398,6 @@ export default function AppGens({
         </Transition.Root>
         <div className="">
           <div className="to mx-auto px-6">
-            <div className="m-auto my-3 w-5/6">
-              <Button onClick={() => setExplainExpanded(true)}>
-                How does Gens work?
-              </Button>
-            </div>
             <div className="m-auto flex w-5/6 flex-row flex-wrap space-x-6 sm:flex-nowrap">
               <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
@@ -1460,7 +1451,7 @@ export default function AppGens({
               <div className="w-full text-sm sm:w-1/3">
                 <div className="sticky top-0">
                   <div className="mb-8">
-                    <h2 className="text-lg font-bold">Generation</h2>
+                    <h2 className="text-lg font-bold">Text Generation</h2>
                     <p className="text-gray-500">
                       Generate text based on text already present, documents in
                       context, and template selected.
@@ -1496,12 +1487,11 @@ export default function AppGens({
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Search</h2>
+                    <h2 className="text-lg font-bold">Document Search</h2>
                     <p className="text-gray-500">
                       Search across workspace documents. Select results you want
                       to bring into context.
                     </p>
-
                     <div className="mt-2 flex flex-initial items-start items-center space-x-4">
                       <input
                         type="text"
