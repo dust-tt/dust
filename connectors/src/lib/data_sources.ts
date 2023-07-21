@@ -92,7 +92,7 @@ async function _upsertToDatasource(
     source_url: documentUrl,
     timestamp,
     tags,
-    suppress_document_output: true,
+    suppressDocumentOutput: true,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
