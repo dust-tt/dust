@@ -8,6 +8,8 @@
   "types": "dist/cjs/index.d.ts",
   "module": "dist/esm/index.js",
   "devDependencies": {
+    "@babel/preset-react": "^7.22.5",
+    "@babel/preset-typescript": "^7.22.5",
     "@rollup/plugin-commonjs": "^25.0.2",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.1.0",
@@ -34,5 +36,11 @@
   },
   "peerDependencies": {
     "react": "^18.2.0"
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-react",
+      "@babel/preset-typescript"
+    ]
   }
 }
