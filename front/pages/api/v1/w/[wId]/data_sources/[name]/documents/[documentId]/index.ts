@@ -297,8 +297,8 @@ async function handler(
       });
 
       const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
+        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
-        workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         documentText: req.body.text,
         documentHash: upsertRes.value.document.hash,
@@ -365,8 +365,8 @@ async function handler(
       });
 
       const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
+        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
-        workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
       });

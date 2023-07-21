@@ -4,6 +4,7 @@ import {
   documentTrackerUpdateTrackedDocumentsPostProcessHook,
 } from "@app/documents_post_process_hooks/hooks/document_tracker";
 import { extractEventPostProcessHook } from "@app/documents_post_process_hooks/hooks/extract_event";
+import { Authenticator } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 
 export const DOCUMENTS_POST_PROCESS_HOOK_TYPES = [
@@ -18,8 +19,8 @@ export type DocumentsPostProcessHookType =
 export type DocumentsPostProcessHookVerb = "upsert" | "delete";
 
 export type DocumentsPostProcessHookOnUpsertParams = {
+  auth: Authenticator;
   dataSourceName: string;
-  workspaceId: string;
   documentId: string;
   documentSourceUrl?: string; // @todo Daph remove optional when all jobs without it have been processed
   documentText: string;
@@ -28,8 +29,8 @@ export type DocumentsPostProcessHookOnUpsertParams = {
 };
 
 export type DocumentsPostProcessHookOnDeleteParams = {
+  auth: Authenticator;
   dataSourceName: string;
-  workspaceId: string;
   documentId: string;
   dataSourceConnectorProvider: ConnectorProvider | null;
 };

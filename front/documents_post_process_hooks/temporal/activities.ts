@@ -2,6 +2,7 @@ import {
   DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE,
   DocumentsPostProcessHookType,
 } from "@app/documents_post_process_hooks/hooks";
+import { Authenticator } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
@@ -46,7 +47,7 @@ export async function runPostUpsertHookActivity(
 
   await hook.onUpsert({
     dataSourceName,
-    workspaceId,
+    auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
     documentId,
     documentText,
     documentSourceUrl,
@@ -86,7 +87,7 @@ export async function runPostDeleteHookActivity(
 
   await hook.onDelete({
     dataSourceName,
-    workspaceId,
+    auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
     documentId,
     dataSourceConnectorProvider,
   });

@@ -30,7 +30,14 @@ export async function shouldProcessExtractEvents(
     return false;
   }
 
-  const { workspaceId, dataSourceName, documentId, documentText } = params;
+  const { auth, dataSourceName, documentId, documentText } = params;
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    logger.error(
+      "Could not get workspace id to process extract events. Skipping."
+    );
+    return false;
+  }
 
   const localLogger = logger.child({ workspaceId, dataSourceName, documentId });
   const hasMarker = hasExtractEventMarker(documentText);
@@ -62,17 +69,15 @@ export async function shouldProcessExtractEvents(
  * Gets the markers from the doc and calls _processExtractEvent for each of them
  */
 export async function processExtractEvents({
-  workspaceId,
+  auth,
   dataSourceName,
   documentId,
   documentSourceUrl,
   documentText,
 }: DocumentsPostProcessHookOnUpsertParams) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
-  if (!auth.workspace()) {
-    logger.error(
-      `Could not get internal auth for workspace ${workspaceId} to process extract events.`
-    );
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    logger.error(`Could not get workspace to process extract events.`);
     return;
   }
 
