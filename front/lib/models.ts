@@ -182,7 +182,7 @@ Workspace.init(
     disableLabs: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    }
+    },
   },
   {
     modelName: "workspace",
