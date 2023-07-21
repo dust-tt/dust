@@ -20,7 +20,11 @@ export type ChatMessageType = {
   role: MessageRole;
   message?: string; // for `user`, `assistant` and `error` messages
   retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
-  query?: string; // for `retrieval` messages (not persisted)
+  params?: {
+    // for `retrieval` messages (not persisted)
+    query: string;
+    minTimestamp: number; // timestamp in ms, 0 if
+  };
   feedback?: MessageFeedbackStatus;
 };
 
