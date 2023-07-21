@@ -6,6 +6,7 @@ import {
   Clone,
   Dataset,
   DataSource,
+  DocumentTrackerChangeSuggestion,
   EventSchema,
   ExtractedEvent,
   GensTemplate,
@@ -42,6 +43,7 @@ async function main() {
   await GensTemplate.sync({ alter: true });
   await EventSchema.sync({ alter: true });
   await ExtractedEvent.sync({ alter: true });
+  await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

@@ -1161,6 +1161,60 @@ DataSource.hasMany(ExtractedEvent, {
   onDelete: "CASCADE",
 });
 
+export class DocumentTrackerChangeSuggestion extends Model<
+  InferAttributes<DocumentTrackerChangeSuggestion>,
+  InferCreationAttributes<DocumentTrackerChangeSuggestion>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare suggestion: string;
+  declare suggestionTitle?: string | null;
+  declare status: "pending" | "done" | "rejected";
+
+  declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
+  declare sourceDataSourceId: ForeignKey<DataSource["id"]>;
+  declare sourceDocumentId: string;
+}
+
+DocumentTrackerChangeSuggestion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: { type: DataTypes.DATE, allowNull: false },
+    updatedAt: { type: DataTypes.DATE, allowNull: false },
+    suggestion: { type: DataTypes.TEXT, allowNull: false },
+    suggestionTitle: { type: DataTypes.TEXT, allowNull: true },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    sourceDocumentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "document_tracker_change_suggestion",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["trackedDocumentId"] }],
+  }
+);
+
+TrackedDocument.hasMany(DocumentTrackerChangeSuggestion, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+DataSource.hasMany(DocumentTrackerChangeSuggestion, {
+  foreignKey: { allowNull: false, name: "sourceDataSourceId" },
+  onDelete: "CASCADE",
+});
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;
