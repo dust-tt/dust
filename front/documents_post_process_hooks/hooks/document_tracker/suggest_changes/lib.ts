@@ -266,7 +266,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     t.startsWith("title:")
   );
   const matchedDocTitle = maybeMatchedDocTitleTag
-    ? maybeMatchedDocTitleTag.split(":")[1]
+    ? maybeMatchedDocTitleTag.split("title:")[1]
     : null;
 
   localLogger.info(
