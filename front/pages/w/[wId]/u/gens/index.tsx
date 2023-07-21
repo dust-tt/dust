@@ -535,18 +535,6 @@ export function ResultsView({
   onPin: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }) {
-  const maxDocs = useMemo(() => {
-    let space = 7168;
-    let i = 0;
-    retrieved.forEach((r) => {
-      if (r.tokenCount <= space) {
-        space -= r.tokenCount;
-        i += 1;
-      }
-    });
-    return i;
-  }, [retrieved]);
-
   return (
     <div className="mt-5 w-full">
       <div>
@@ -558,32 +546,17 @@ export function ResultsView({
           )}
         >
           {retrieved && retrieved.length > 0 && (
-            <>
-              <p className="text-lg">
-                Found {retrieved.length} document
-                {retrieved.length == 1 ? "" : "s"}
-              </p>
-
-              <div
-                className="text-sm font-bold"
-                onClick={() => {
-                  const unPinned = retrieved.filter((r) => !r.pinned);
-                  unPinned.forEach((r) => onRemove(r.documentId));
-                }}
-              >
-                Clear unpinned
-              </div>
-            </>
+            <p className="text-lg">
+              Found {retrieved.length} document
+              {retrieved.length == 1 ? "" : "s"}
+            </p>
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="mt-2 flex flex-col space-y-2">
-          {retrieved.map((r, i) => {
+          {retrieved.map((r) => {
             return (
-              <div
-                key={r.documentId}
-                className={maxDocs < i ? "opacity-50" : ""}
-              >
+              <div key={r.documentId} className={!r.pinned ? "opacity-50" : ""}>
                 <DocumentView
                   document={r}
                   key={r.documentId}
@@ -1086,6 +1059,8 @@ export default function AppGens({
 
   const [minRows, setMinRows] = useState<number>(8);
 
+  const [selecting, setSelecting] = useState<boolean>(false);
+
   useEffect(() => {
     setMinRows(window.innerHeight / 40);
   }, []);
@@ -1114,6 +1089,7 @@ export default function AppGens({
       // TODO: should make this cleaner
       const index = retrieved.findIndex((d) => d.documentId == documentId);
       retrieved[index].llm_score = score;
+
       retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
@@ -1131,7 +1107,14 @@ export default function AppGens({
       const pinnedDoc = retrieved[index];
       pinnedDoc.pinned = !pinnedDoc.pinned;
       retrieved.splice(index, 1);
-      retrieved.unshift(pinnedDoc);
+      // insert at the position of the last pinned doc in retrieved, after that doc.
+      const lastPinnedIndex = retrieved.findLastIndex((d) => d.pinned);
+      if (lastPinnedIndex === -1) {
+        retrieved.splice(0, 0, pinnedDoc);
+      } else {
+        // insert after the last pinned doc
+        retrieved.splice(lastPinnedIndex + 1, 0, pinnedDoc);
+      }
       return retrieved;
     });
   };
@@ -1203,7 +1186,8 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const potentialExtracts = retrieved
+    const relevantDocs = retrieved.filter((d) => d.pinned);
+    const potentialExtracts = relevantDocs
       .map((d) => {
         const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
         const text = chunks.map((c) => c.text).join("");
@@ -1351,19 +1335,16 @@ export default function AppGens({
       };
     }
     let text;
-    if (searchQuery === "") {
+    if (!searchQuery) {
       const textarea = genTextAreaRef.current;
       if (!textarea) {
         console.log("Textarea not found");
         return;
       }
-      let text = textarea.value.substring(
+      text = textarea.value.substring(
         textarea.selectionStart,
         textarea.selectionEnd
       );
-      if (text == "") {
-        text = genContent;
-      }
     } else {
       text = searchQuery;
     }
@@ -1500,6 +1481,15 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
+                      setSelecting(false);
+                    }}
+                    onSelect={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      if (target.selectionStart !== target.selectionEnd) {
+                        setSelecting(true);
+                      } else {
+                        setSelecting(false);
+                      }
                     }}
                   />
                   <button
@@ -1525,6 +1515,10 @@ export default function AppGens({
                 <div className="sticky top-0">
                   <div className="mb-8">
                     <h2 className="text-lg font-bold">Generation</h2>
+                    <p className="text-gray-500">
+                      Generate text based on text already present, documents in
+                      context, and template selected.
+                    </p>
                     <div className="my-2 flex flex-col items-start space-y-2">
                       <div className="flex-shrink-0 flex-grow-0">
                         {!genLoading ? (
@@ -1557,7 +1551,10 @@ export default function AppGens({
                   </div>
                   <div>
                     <h2 className="text-lg font-bold">Search</h2>
-                    <p>Find and pick documents to bring them into context.</p>
+                    <p className="text-gray-500">
+                      Search across workspace documents. Select results you want
+                      to bring into context.
+                    </p>
 
                     <div className="mt-2 flex flex-initial items-start items-center space-x-4">
                       <input
@@ -1572,14 +1569,20 @@ export default function AppGens({
                         }}
                       />
                       <ActionButton
-                        disabled={retrievalLoading}
+                        disabled={
+                          retrievalLoading || !(selecting || searchQuery)
+                        }
                         onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                           e.preventDefault();
                           void handleSearch();
                         }}
                       >
                         <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        {retrievalLoading ? "Loading..." : "Search"}
+                        {retrievalLoading
+                          ? "Loading..."
+                          : selecting
+                          ? "Search selection"
+                          : "Search"}
                       </ActionButton>
                     </div>
 
@@ -1654,14 +1657,14 @@ export default function AppGens({
                         </div>
                         <div className="flex flex-row items-center space-x-2 leading-8">
                           <div className="flex flex-initial text-gray-400">
-                            TopK:
+                            Number of results:
                           </div>
                           <div className="flex flex-initial">
                             <input
                               type="number"
                               className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
                               value={top_k}
-                              placeholder="Top K"
+                              placeholder="Number of results"
                               onChange={(e) => setTopK(Number(e.target.value))}
                             />
                           </div>
