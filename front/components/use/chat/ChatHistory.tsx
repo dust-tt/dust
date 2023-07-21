@@ -35,13 +35,15 @@ export function ChatHistory({ owner }: { owner: WorkspaceType }) {
   function PaginationLink({ newer }: { newer: boolean }) {
     const text = newer ? "< newer" : "older >";
     const disabled = newer ? offset === 0 : sessions.length < limit;
+    const invisible = offset === 0 && sessions.length < limit;
     return (
       <div
-        className={
+        className={classNames(
           disabled
             ? "text-gray-400 hover:cursor-default"
-            : "cursor-pointer hover:text-violet-800"
-        }
+            : "cursor-pointer hover:text-violet-800",
+          invisible ? "invisible" : ""
+        )}
         onClick={() => disabled || handlePagination(newer)}
       >
         {text}
@@ -94,7 +96,10 @@ export function ChatHistory({ owner }: { owner: WorkspaceType }) {
               ? "font-bold"
               : "cursor-pointer hover:text-violet-800"
           )}
-          onClick={() => setWorkspaceScope(false)}
+          onClick={() => {
+            setWorkspaceScope(false);
+            setOffset(0);
+          }}
         >
           {!workspaceScope ? (
             <UserIconFull className="w4 h-4" />
@@ -115,7 +120,10 @@ export function ChatHistory({ owner }: { owner: WorkspaceType }) {
               ? "font-bold"
               : "cursor-pointer hover:text-violet-800"
           )}
-          onClick={() => setWorkspaceScope(true)}
+          onClick={() => {
+            setWorkspaceScope(true);
+            setOffset(0);
+          }}
         >
           {workspaceScope ? (
             <UserGroupIconFull className="w4 h-4" />
