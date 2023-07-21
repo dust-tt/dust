@@ -3,6 +3,7 @@ import {
   ArrowUpTrayIcon,
   ChatBubbleLeftIcon,
   PencilSquareIcon,
+  BeakerIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
@@ -58,10 +59,12 @@ export default function MainTab({
       name: "Gens",
       href: `/w/${owner.sId}/u/gens`,
       icon: (
-        <PencilSquareIcon
-          className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
+        <div className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+          <BeakerIcon
+            className="h-4 w-4 flex-shrink-0 text-green-700"
+            aria-hidden="true"
+          />
+        </div>
       ),
     },
   ];

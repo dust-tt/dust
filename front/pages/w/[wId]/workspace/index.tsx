@@ -319,8 +319,7 @@ export default function WorkspaceAdmin({
                         onChange={(e) => setDisableLabs(e.target.checked)}
                       />
                       <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                        Disable experimental features for your workspace, like
-                        Gens.
+                        Hide experimental features for the workspace 
                       </p>
                     </div>
                   </div>
