@@ -1750,7 +1750,7 @@ async fn qdrant_client() -> Result<QdrantClient> {
 
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(128)
+        .worker_threads(32)
         //.thread_name("dust-api-server")
         //.thread_stack_size(32 * 1024 * 1024)
         .enable_all()
