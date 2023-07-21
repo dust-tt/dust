@@ -511,7 +511,7 @@ NotionDatabase.init(
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
-      { fields: ["connectorId"] },
+      { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
       { fields: ["parentType"] },

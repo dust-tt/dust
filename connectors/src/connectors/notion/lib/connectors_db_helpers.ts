@@ -1,6 +1,7 @@
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { DataSourceInfo } from "@connectors/types/data_source_config";
 
+// Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionPageInConnectorsDb({
   dataSourceInfo,
   notionPageId,
@@ -49,7 +50,6 @@ export async function upsertNotionPageInConnectorsDb({
     skipReason?: string;
   } = {
     lastSeenTs: new Date(lastSeenTs),
-    skipReason,
   };
   if (lastUpsertedTs) {
     updateParams.lastUpsertedTs = new Date(lastUpsertedTs);
@@ -113,6 +113,7 @@ export async function getNotionPageFromConnectorsDb(
   return NotionPage.findOne({ where });
 }
 
+// Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionDatabaseInConnectorsDb({
   dataSourceInfo,
   notionDatabaseId,
@@ -158,7 +159,6 @@ export async function upsertNotionDatabaseInConnectorsDb({
     skipReason?: string;
   } = {
     lastSeenTs: new Date(lastSeenTs),
-    skipReason,
   };
   if (skipReason) {
     updateParams.skipReason = skipReason;
