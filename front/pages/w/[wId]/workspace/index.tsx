@@ -67,8 +67,14 @@ export default function WorkspaceAdmin({
   const { members, isMembersLoading } = useMembers(owner);
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
+  const [disableLabs, setDisableLabs] = useState(owner.disableLabs);
+
   const formValidation = () => {
-    if (workspaceName === owner.name && allowedDomain === owner.allowedDomain) {
+    if (
+      workspaceName === owner.name &&
+      allowedDomain === owner.allowedDomain &&
+      owner.disableLabs === disableLabs
+    ) {
       return false;
     }
     let valid = true;
@@ -101,7 +107,7 @@ export default function WorkspaceAdmin({
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [workspaceName, allowedDomain]);
+  }, [workspaceName, allowedDomain, disableLabs]);
 
   const handleUpdateWorkspace = async () => {
     setDisabled(true);
@@ -113,6 +119,7 @@ export default function WorkspaceAdmin({
       body: JSON.stringify({
         name: workspaceName,
         allowedDomain: allowedDomain,
+        disableLabs: disableLabs,
       }),
     });
     setDisabled(false);
@@ -289,6 +296,31 @@ export default function WorkspaceAdmin({
                           </div>
                         </div>
                       ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-10 space-y-4 divide-y divide-gray-200">
+                  <div>
+                    <h3 className="text-base font-medium leading-6 text-gray-900">
+                      Labs
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Manage experimental features
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <div className="mt-2 flex items-center">
+                      <input
+                        name="disableLabs"
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                        checked={disableLabs}
+                        onChange={(e) => setDisableLabs(e.target.checked)}
+                      />
+                      <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                        Hide experimental features for the workspace
+                      </p>
                     </div>
                   </div>
                 </div>

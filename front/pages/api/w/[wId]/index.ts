@@ -79,6 +79,7 @@ async function handler(
       await w.update({
         name: req.body.name,
         allowedDomain: req.body.allowedDomain,
+        disableLabs: req.body.disableLabs,
       });
 
       owner.name = req.body.name as string;

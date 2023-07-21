@@ -1,6 +1,7 @@
 import { Menu } from "@headlessui/react";
 import {
   ArrowUpTrayIcon,
+  BeakerIcon,
   ChatBubbleLeftIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
@@ -52,9 +53,29 @@ export default function MainTab({
       ),
     },
   ];
+  // labTabs is a subset of devTabs with experimental features that can be available to users
+  const labTabs: { name: string; href: string; icon: JSX.Element }[] = [
+    {
+      name: "Gens",
+      href: `/w/${owner.sId}/u/gens`,
+      icon: (
+        <div className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+          <BeakerIcon
+            className="h-4 w-4 flex-shrink-0 text-green-700"
+            aria-hidden="true"
+          />
+        </div>
+      ),
+    },
+  ];
 
   const displayDevTabs = isDevelopmentOrDustWorkspace(owner);
-  const tabs = displayDevTabs ? publicTabs.concat(developmentTabs) : publicTabs;
+  let tabs = publicTabs;
+  if (displayDevTabs) {
+    tabs = publicTabs.concat(developmentTabs);
+  } else if (!owner.disableLabs) {
+    tabs = publicTabs.concat(labTabs);
+  }
   const currTab = tabs.find((tab) => tab.name == currentTab);
 
   return (
