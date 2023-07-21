@@ -909,7 +909,6 @@ export class GensTemplate extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]>;
-  declare instructions: string[];
   declare instructions2: string;
   declare name: string;
   declare visibility: "user" | "workspace";
@@ -933,10 +932,6 @@ GensTemplate.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    instructions: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
-      allowNull: false,
     },
     instructions2: {
       type: DataTypes.TEXT,

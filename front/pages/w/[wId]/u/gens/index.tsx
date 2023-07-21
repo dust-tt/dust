@@ -593,7 +593,7 @@ export function TemplatesView({
       {
         name: "Neutral",
         color: "bg-green-500",
-        instructions: [""],
+        instructions: "",
         sId: "0000",
         visibility: "default" as GensTemplateVisibilityType,
       },
@@ -606,7 +606,7 @@ export function TemplatesView({
           "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
           "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
           "We just want to gather facts and answers related to the document text",
-        ],
+        ].join("\n"),
         sId: "0000",
         visibility: "default" as GensTemplateVisibilityType,
       },
@@ -616,7 +616,7 @@ export function TemplatesView({
   const [editingTemplate, setEditingTemplate] = useState<number>(-1);
   const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
   const [editingTemplateInstructions, setEditingTemplateInstructions] =
-    useState<string[]>([]);
+    useState<string>("");
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
     useState<GensTemplateVisibilityType>("user");
   const [editingTemplateColor, setEditingTemplateColor] =
@@ -652,21 +652,6 @@ export function TemplatesView({
     onTemplateSelect(templates[0]);
   }, []);
 
-  const handleInstructionChange = (index: number, value: string) => {
-    setEditingTemplateInstructions((prevInstructions) => {
-      const newInstructions = [...prevInstructions];
-      newInstructions[index] = value;
-      return newInstructions;
-    });
-  };
-
-  const handleInstructionDelete = (index: number) => {
-    setEditingTemplateInstructions((prevInstructions) => {
-      const newInstructions = [...prevInstructions];
-      newInstructions.splice(index, 1);
-      return newInstructions;
-    });
-  };
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {
       // remove template from thing
@@ -679,10 +664,12 @@ export function TemplatesView({
     });
   };
 
+  console.log("templates", templates);
+
   const handleSetEditingTemplate = (t: number) => {
     setEditingTemplate(t);
     setEditingTemplateTitle(templates[t].name);
-    setEditingTemplateInstructions(templates[t].instructions || [""]);
+    setEditingTemplateInstructions(templates[t].instructions || "");
     setEditingTemplateVisibility(templates[t].visibility);
     setEditingTemplateColor(templates[t].color);
   };
@@ -741,63 +728,22 @@ export function TemplatesView({
                         <label className="my-2 block text-sm font-medium text-gray-700">
                           Instructions
                         </label>
-                        {editingTemplateInstructions.map((instruction, i) => {
-                          return (
-                            <div
-                              key={i}
-                              className="group my-2 flex items-center "
-                            >
-                              <div className="flex flex-1">
-                                <TextareaAutosize
-                                  minRows={2}
-                                  className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
-                                  value={instruction}
-                                  placeholder={
-                                    "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
-                                  }
-                                  onChange={(e) =>
-                                    handleInstructionChange(i, e.target.value)
-                                  }
-                                  readOnly={!editable}
-                                />
-                              </div>
-
-                              {editable && (
-                                <>
-                                  <div
-                                    className={classNames(
-                                      "ml-2 w-4 flex-initial"
-                                    )}
-                                  >
-                                    <PlusCircleIcon
-                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
-                                      onClick={() => {
-                                        setEditingTemplateInstructions(
-                                          editingTemplateInstructions.concat([
-                                            "",
-                                          ])
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                  <div
-                                    className={classNames(
-                                      "w-4 flex-initial",
-                                      editingTemplateInstructions.length > 1
-                                        ? ""
-                                        : "invisible"
-                                    )}
-                                  >
-                                    <XCircleIcon
-                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                                      onClick={() => handleInstructionDelete(i)}
-                                    />
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
+                        <div className="group my-2 flex items-center ">
+                          <div className="flex flex-1">
+                            <TextareaAutosize
+                              minRows={2}
+                              className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                              value={editingTemplateInstructions}
+                              placeholder={
+                                "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
+                              }
+                              onChange={(e) =>
+                                setEditingTemplateInstructions(e.target.value)
+                              }
+                              readOnly={!editable}
+                            />
+                          </div>
+                        </div>
                         {editable && (
                           <div className="mt-2">
                             <label className="block text-sm font-medium text-gray-700">
@@ -934,7 +880,7 @@ export function TemplatesView({
                               }
                               setTemplates(curr_templates);
                               setFormExpanded(false);
-                              setEditingTemplateInstructions([]);
+                              setEditingTemplateInstructions("");
                               setEditingTemplateTitle("");
                               setEditingTemplateColor("bg-red-500");
                               setEditingTemplateVisibility("user");
@@ -1005,7 +951,7 @@ export function TemplatesView({
             onClick={() => {
               setEditingTemplate(-1);
               setEditingTemplateTitle("");
-              setEditingTemplateInstructions([""]);
+              setEditingTemplateInstructions("");
               setEditingTemplateVisibility("user");
               setEditingTemplateColor("bg-red-500");
               setFormExpanded(true);
