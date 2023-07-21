@@ -420,7 +420,7 @@ impl CohereEmbedder {
         Ok(format!("https://api.cohere.ai/embed",).parse::<Uri>()?)
     }
 
-    async fn embed(&self, text: &str, truncate: Truncate) -> Result<Embeddings> {
+    async fn embed(&self, text: Vec<&str>, truncate: Truncate) -> Result<Embeddings> {
         assert!(self.api_key.is_some());
 
         let https = HttpsConnector::new();
@@ -438,7 +438,7 @@ impl CohereEmbedder {
             .body(Body::from(
                 json!({
                     "model": self.id.clone(),
-                    "texts": vec![text],
+                    "texts": text,
                     "truncate": truncate,
                 })
                 .to_string(),
@@ -534,7 +534,7 @@ impl Embedder for CohereEmbedder {
         api_decode(self.api_key.as_ref().unwrap(), tokens).await
     }
 
-    async fn embed(&self, text: &str, _extras: Option<Value>) -> Result<EmbedderVector> {
+    async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         assert!(self.api_key.is_some());
 
         let e = self.embed(text, Truncate::NONE).await?;
@@ -542,12 +542,15 @@ impl Embedder for CohereEmbedder {
         assert!(e.embeddings.len() > 0);
         // println!("EMBEDDING: {:?}", e);
 
-        Ok(EmbedderVector {
-            created: utils::now(),
-            provider: ProviderID::Cohere.to_string(),
-            model: self.id.clone(),
-            vector: e.embeddings[0].clone(),
-        })
+        Ok(e.embeddings
+            .into_iter()
+            .map(|e| EmbedderVector {
+                created: utils::now(),
+                provider: ProviderID::Cohere.to_string(),
+                model: self.id.clone(),
+                vector: e,
+            })
+            .collect())
     }
 }
 

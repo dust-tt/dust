@@ -539,27 +539,57 @@ impl DataSource {
             utils::now() - now
         ));
 
+        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+        let chunked_splits = splits
+            .chunks(8)
+            .map(|chunk| chunk.to_vec())
+            .collect::<Vec<_>>();
+
+        // Ordered results with offset, stirng and vector
+        let mut e: Vec<(usize, String, EmbedderVector)> = vec![];
+
         let now = utils::now();
-        // Embed chunks with max concurrency of 2.
-        let e = stream::iter(splits.into_iter().enumerate())
-            .map(|(i, s)| {
-                let provider_id = self.config.provider_id.clone();
-                let model_id = self.config.model_id.clone();
-                let credentials = credentials.clone();
-                let extras = self.config.extras.clone();
-                tokio::spawn(async move {
-                    let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
-                    let v = r.execute(credentials).await?;
-                    Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
-                })
-            })
-            .buffer_unordered(2)
-            .map(|r| match r {
+        let mut offset: usize = 0;
+        // Embed batched chunks sequentially.
+        for chunk in chunked_splits {
+            let r = EmbedderRequest::new(
+                self.config.provider_id.clone(),
+                &self.config.model_id,
+                chunk.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+                self.config.extras.clone(),
+            );
+
+            let v = match r.execute(credentials.clone()).await {
+                Ok(v) => v,
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
-                Ok(r) => r,
-            })
-            .try_collect::<Vec<_>>()
-            .await?;
+            };
+
+            for (s, v) in chunk.into_iter().zip(v.into_iter()) {
+                e.push((offset, s, v));
+                offset += 1;
+            }
+        }
+
+        // Embed chunks with max concurrency of 2.
+        //let e = stream::iter(splits.into_iter().enumerate())
+        //    .map(|(i, s)| {
+        //        let provider_id = self.config.provider_id.clone();
+        //        let model_id = self.config.model_id.clone();
+        //        let credentials = credentials.clone();
+        //        let extras = self.config.extras.clone();
+        //        tokio::spawn(async move {
+        //            let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
+        //            let v = r.execute(credentials).await?;
+        //            Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
+        //        })
+        //    })
+        //    .buffer_unordered(2)
+        //    .map(|r| match r {
+        //        Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
+        //        Ok(r) => r,
+        //    })
+        //    .try_collect::<Vec<_>>()
+        //    .await?;
 
         utils::done(&format!(
             "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
@@ -719,10 +749,11 @@ impl DataSource {
         let r = EmbedderRequest::new(
             self.config.provider_id,
             &self.config.model_id,
-            query,
+            vec![query],
             self.config.extras.clone(),
         );
         let v = r.execute(credentials).await?;
+        assert!(v.len() == 1);
 
         // Construct the filters for the search query if specified.
         let f = match filter {
@@ -812,7 +843,7 @@ impl DataSource {
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
-                vector: v.vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
+                vector: v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
                 filter: f,
                 limit: top_k as u64,
                 with_payload: Some(true.into()),
