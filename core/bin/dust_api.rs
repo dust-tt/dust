@@ -14,7 +14,9 @@ use dust::{
     app,
     blocks::block::BlockType,
     data_sources::data_source::{self, SearchFilter},
-    dataset, project, run,
+    dataset, project,
+    providers::provider::{provider, ProviderID},
+    run,
     stores::postgres,
     stores::store,
     utils,
@@ -1694,6 +1696,42 @@ async fn data_sources_delete(
     }
 }
 
+// Misc
+
+#[derive(serde::Deserialize)]
+struct TokenizePayload {
+    text: String,
+    provider_id: ProviderID,
+    model_id: String,
+}
+
+async fn tokenize(
+    extract::Json(payload): extract::Json<TokenizePayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let embedder = provider(payload.provider_id).embedder(payload.model_id);
+    match embedder.encode(&payload.text).await {
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: String::from("internal_server_error"),
+                    message: format!("Failed to tokenize text: {}", e),
+                }),
+                response: None,
+            }),
+        ),
+        Ok(tokens) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tokens": tokens,
+                })),
+            }),
+        ),
+    }
+}
+
 async fn qdrant_client() -> Result<QdrantClient> {
     match std::env::var("QDRANT_URL") {
         Ok(url) => {
@@ -1817,6 +1855,9 @@ fn main() {
             "/projects/:project_id/data_sources/:data_source_id",
             delete(data_sources_delete),
         )
+        // Misc
+        .route("/tokenize", post(tokenize))
+
         // Extensions
         .layer(DefaultBodyLimit::disable())
         .layer(
