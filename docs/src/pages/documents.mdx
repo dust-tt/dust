@@ -121,6 +121,10 @@ The Document model represents a [Data Source](/data-sources-overview) document.
       <Property name="source_url" type="string">
         The source URL for the document to upsert.
       </Property>
+      <Property name="light_document_output" type="boolean">
+        If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors).
+        Defaults to `false`.
+      </Property>
     </Properties>
 
     ### Optional JSON body attributes

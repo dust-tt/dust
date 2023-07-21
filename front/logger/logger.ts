@@ -2,6 +2,9 @@ import pino, { LoggerOptions } from "pino";
 
 const NODE_ENV = process.env.NODE_ENV;
 const defaultPinoOptions: LoggerOptions = {
+  serializers: {
+    error: pino.stdSerializers.err,
+  },
   formatters: {
     level(level) {
       return { level };

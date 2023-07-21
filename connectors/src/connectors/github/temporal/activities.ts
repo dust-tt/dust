@@ -527,10 +527,9 @@ async function deleteDiscussion(
       connectorId: connector.id,
     },
   });
+
   if (!discussionInDb) {
-    throw new Error(
-      `Discussion not found in DB (discussionNumber: ${discussionNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
-    );
+    localLogger.warn("Discussion not found in DB");
   }
 
   const documentId = getDiscussionDocumentId(

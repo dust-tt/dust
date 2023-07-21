@@ -4,6 +4,7 @@ import PQueue from "p-queue";
 
 import {
   deleteFromDataSource,
+  MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -32,8 +33,8 @@ import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
 
-const FILES_SYNC_CONCURRENCY = 1;
-const FILES_GC_CONCURRENCY = 1;
+const FILES_SYNC_CONCURRENCY = 3;
+const FILES_GC_CONCURRENCY = 3;
 
 export const statsDClient = new StatsD();
 
@@ -155,7 +156,7 @@ export async function syncFiles(
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
     corpora: "allDrives",
-    pageSize: 1000,
+    pageSize: 100,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
@@ -225,10 +226,11 @@ async function syncOneFile(
 ) {
   const mimeTypesToExport: { [key: string]: string } = {
     "application/vnd.google-apps.document": "text/plain",
-    "application/vnd.google-apps.spreadsheet": "text/csv",
     "application/vnd.google-apps.presentation": "text/plain",
   };
-  const mimeTypesToDownload = ["text/plain", "text/csv"];
+  // Deactivated CSV for now 20230721 (spolu)
+  // const mimeTypesToDownload = ["text/plain", "text/csv"];
+  const mimeTypesToDownload = ["text/plain"];
 
   let documentContent: string | undefined = undefined;
   if (mimeTypesToExport[file.mimeType]) {
@@ -247,10 +249,31 @@ async function syncOneFile(
     }
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
-    const res = await drive.files.get({
-      fileId: file.id,
-      alt: "media",
-    });
+
+    let res;
+    try {
+      res = await drive.files.get({
+        fileId: file.id,
+        alt: "media",
+      });
+    } catch (e) {
+      const maybeErrorWithCode = e as { code: string };
+      if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
+        // This error happens when the file is too big to be downloaded.
+        // We skip this file.
+        logger.info(
+          {
+            file_id: file.id,
+            mimeType: file.mimeType,
+            title: file.name,
+          },
+          `File too big to be downloaded. Skipping`
+        );
+        return;
+      }
+      throw e;
+    }
+
     if (res.status !== 200) {
       throw new Error(
         `Error downloading Google document. status_code: ${res.status}. status_text: ${res.statusText}`
@@ -273,6 +296,9 @@ async function syncOneFile(
   if (file.updatedAtMs) {
     tags.push(`lastEditedAt:${file.updatedAtMs}`);
   }
+  if (file.createdAtMs) {
+    tags.push(`createdAt:${file.createdAtMs}`);
+  }
   if (file.lastEditor) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
@@ -284,14 +310,26 @@ async function syncOneFile(
     driveFileId: file.id,
   });
 
-  await upsertToDatasource(
-    dataSourceConfig,
-    documentId,
-    documentContent,
-    file.webViewLink,
-    file.createdAtMs,
-    tags
-  );
+  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+    await upsertToDatasource(
+      dataSourceConfig,
+      documentId,
+      documentContent,
+      file.webViewLink,
+      file.updatedAtMs,
+      tags
+    );
+  } else {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        documentLen: documentContent.length,
+        title: file.name,
+      },
+      `Document too big to be upserted. Skipping`
+    );
+  }
 }
 
 async function getParents(
@@ -309,6 +347,10 @@ async function getParents(
     throw new Error(
       `Error getting object. objetId:${objectId} status_code: ${res.status}. status_text: ${res.statusText}`
     );
+  }
+  if (res.data.trashed) {
+    // When a file is trashed, we don't want to consider its other parent folder.
+    return [];
   }
   if (res.data.parents && res.data.parents.length > 0) {
     return res.data.parents;
@@ -546,7 +588,6 @@ export async function garbageCollector(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const authCredentials = await getAuthObject(connector.connectionId);
   const files = await GoogleDriveFiles.findAll({
     where: {
@@ -561,19 +602,27 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        if (
-          (await objectIsInFolder(
+        try {
+          const isInFolder = await objectIsInFolder(
             authCredentials,
             file.driveFileId,
             selectedFolders
-          )) === false
-        ) {
-          await deleteFromDataSource(dataSourceConfig, file.dustFileId);
-          await file.destroy();
-        } else {
-          await file.update({
-            garbageCollectedAt: new Date(),
-          });
+          );
+
+          if (isInFolder === false) {
+            await deleteOneFile(connectorId, file.driveFileId);
+          } else {
+            await file.update({
+              garbageCollectedAt: new Date(),
+            });
+          }
+        } catch (e) {
+          if (e instanceof GaxiosError) {
+            if (e.response?.status === 404) {
+              // File not found, we can delete it.
+              await deleteOneFile(connectorId, file.driveFileId);
+            }
+          }
         }
       });
     })
@@ -684,4 +733,49 @@ export async function populateSyncTokens(connectorId: ModelId) {
       syncToken: lastSyncToken,
     });
   }
+}
+
+export async function garbageCollectorFinished(connectorId: ModelId) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  connector.lastGCTime = new Date();
+  await connector.save();
+}
+
+export async function getLastGCTime(connectorId: ModelId): Promise<number> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  return connector.lastGCTime?.getTime() || 0;
+}
+
+async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
+  const googleDriveFile = await GoogleDriveFiles.findOne({
+    where: {
+      connectorId: connectorId,
+      driveFileId: driveFileId,
+    },
+  });
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  // Only clean up files that we were syncing.
+  if (googleDriveFile) {
+    logger.info(
+      {
+        driveFileId,
+        connectorId,
+      },
+      `Deleting Google Drive file.`
+    );
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    await googleDriveFile.destroy();
+  }
+  return;
 }

@@ -8,7 +8,6 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
-use futures::try_join;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
@@ -20,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::try_join;
+use tokio_stream::{self as stream};
 use uuid::Uuid;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at list
@@ -484,6 +485,7 @@ impl DataSource {
         let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
         let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
+        let now = utils::now();
         let _ = try_join!(
             Object::create(
                 &bucket,
@@ -512,8 +514,10 @@ impl DataSource {
         )?;
 
         utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={}",
-            self.data_source_id, document_id,
+            "Created document blob: data_source_id={} document_id={} duration={}ms",
+            self.data_source_id,
+            document_id,
+            utils::now() - now
         ));
 
         let now = utils::now();
@@ -536,26 +540,20 @@ impl DataSource {
         ));
 
         let now = utils::now();
-        // Embed chunks with max concurrency of 24.
-        let e = futures::stream::iter(splits.into_iter().enumerate())
+        // Embed chunks with max concurrency of 2.
+        let e = stream::iter(splits.into_iter().enumerate())
             .map(|(i, s)| {
-                let data_source_id = self.data_source_id.clone();
-                let document_id = document_id.to_string();
                 let provider_id = self.config.provider_id.clone();
                 let model_id = self.config.model_id.clone();
                 let credentials = credentials.clone();
                 let extras = self.config.extras.clone();
                 tokio::spawn(async move {
-                    utils::info(&format!(
-                        "Embedding chunk: data_source_id={} document_id={}",
-                        data_source_id, document_id,
-                    ));
                     let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
                     let v = r.execute(credentials).await?;
                     Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
                 })
             })
-            .buffer_unordered(24)
+            .buffer_unordered(2)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
                 Ok(r) => r,
@@ -685,10 +683,6 @@ impl DataSource {
                     utils::now() - now
                 ));
             }
-
-            // let _ = qdrant_client
-            //     .upsert_points(self.qdrant_collection(), points, None)
-            //     .await?;
         }
 
         utils::done(&format!(
@@ -889,7 +883,7 @@ impl DataSource {
         };
 
         // Retrieve the documents from the store.
-        let documents = futures::stream::iter(document_ids)
+        let documents = stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
                 let document_id = document_id.clone();
@@ -938,7 +932,7 @@ impl DataSource {
         // to wrap it in an Arc so that it can be cloned.
         let mut documents = match target_document_tokens {
             Some(target) => {
-                futures::stream::iter(documents)
+                stream::iter(documents)
                     .map(|mut d| {
                         let mut chunks = chunks
                             .iter()

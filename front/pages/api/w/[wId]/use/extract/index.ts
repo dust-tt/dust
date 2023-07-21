@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getEventSchemas } from "@app/lib/api/extract";
+import { createEventSchema, getEventSchemas } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -9,10 +9,17 @@ import { EventSchemaType } from "@app/types/extract";
 export type GetEventSchemasResponseBody = {
   schemas: EventSchemaType[];
 };
+export type CreateEventSchemaResponseBody = {
+  schema: EventSchemaType;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetEventSchemasResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    | GetEventSchemasResponseBody
+    | CreateEventSchemaResponseBody
+    | ReturnedAPIErrorType
+  >
 ) {
   const session = await getSession(req, res);
   const user = await getUserFromSession(session);
@@ -62,12 +69,62 @@ async function handler(
       });
       return;
 
+    case "POST":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can create templates to extract.",
+          },
+        });
+      }
+
+      if (
+        !req.body ||
+        !(typeof req.body.marker == "string") ||
+        !(typeof req.body.description == "string") ||
+        !Array.isArray(req.body.properties)
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { marker: string, description: string, properties: any[] }.",
+          },
+        });
+      }
+
+      const newSchema = await createEventSchema(
+        auth,
+        req.body.marker,
+        req.body.description,
+        req.body.properties
+      );
+
+      if (!newSchema) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request could not be processed.",
+          },
+        });
+      }
+      res.status(200).json({
+        schema: newSchema,
+      });
+      return;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

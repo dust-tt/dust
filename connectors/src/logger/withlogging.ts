@@ -57,6 +57,7 @@ export const withLogging = (handler: any) => {
 
     statsDClient.increment("requests.count", 1, tags);
     statsDClient.histogram("requests.duration", elapsed, tags);
+    statsDClient.distribution("requests.duration.distribution", elapsed, tags);
 
     logger.info(
       {
@@ -74,14 +75,16 @@ export const withLogging = (handler: any) => {
 export function apiError(
   req: Request,
   res: Response,
-  error: APIErrorWithStatusCode
+  apiError: APIErrorWithStatusCode,
+  error?: Error
 ): void {
   logger.error(
     {
       method: req.method,
       url: req.url,
-      statusCode: error.status_code,
-      error,
+      statusCode: apiError.status_code,
+      apiError: apiError,
+      error: error,
     },
     "API Error"
   );
@@ -90,13 +93,13 @@ export function apiError(
     `method:${req.method}`,
     `url:${req.url}`,
     `status_code:${res.statusCode}`,
-    `error_type:${error.api_error.type}`,
+    `error_type:${apiError.api_error.type}`,
   ];
 
   statsDClient.increment("api_errors.count", 1, tags);
 
-  res.status(error.status_code).json({
-    error: error.api_error,
+  res.status(apiError.status_code).json({
+    error: apiError.api_error,
   });
   return;
 }

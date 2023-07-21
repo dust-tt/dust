@@ -11,6 +11,7 @@ export const timeRanges = [
   { name: "1 month", id: "month", ms: 2678400000 },
   { name: "1 year", id: "year", ms: 31622400000 },
   { name: "all time", id: "all", ms: 0 },
+  { name: "auto", id: "auto", ms: 0 },
 ];
 
 export type ChatTimeRange = {

@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-
 import { Button } from "sparkle";
 
-// More on how to set up stories at: https://storybook.js.org/docs/react/writing-stories/introduction
 const meta = {
   title: "Example/Button",
   component: Button,
@@ -11,19 +9,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// More on writing stories with args: https://storybook.js.org/docs/react/writing-stories/args
-export const Normal: Story = {
+export const Primary: Story = {
   args: {
-    type: "button",
-    children: "Button",
+    type: "primary",
+    size: "sm",
+    label: "Label",
     disabled: false,
   },
 };
 
-export const Disabled: Story = {
+export const Secondary: Story = {
   args: {
-    type: "button",
-    children: "Disabled",
-    disabled: true,
+    type: "secondary",
+    size: "sm",
+    label: "Label",
+    disabled: false,
   },
 };

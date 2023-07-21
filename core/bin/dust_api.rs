@@ -19,7 +19,6 @@ use dust::{
     stores::store,
     utils,
 };
-use futures::stream::Stream;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use qdrant_client::prelude::{QdrantClient, QdrantClientConfig};
@@ -29,6 +28,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
@@ -1333,6 +1333,7 @@ struct DataSourcesDocumentsUpsertPayload {
     source_url: Option<String>,
     text: String,
     credentials: run::Credentials,
+    light_document_output: Option<bool>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1341,6 +1342,10 @@ async fn data_sources_documents_upsert(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+    let light_document_output = match payload.light_document_output {
+        Some(v) => v,
+        None => false,
+    };
     match state
         .store
         .load_data_source(&project, &data_source_id)
@@ -1392,20 +1397,33 @@ async fn data_sources_documents_upsert(
                             response: None,
                         }),
                     ),
-                    Ok(d) => (
-                        StatusCode::OK,
-                        Json(APIResponse {
-                            error: None,
-                            response: Some(json!({
-                                "document": d,
-                                "data_source": {
-                                    "created": ds.created(),
-                                    "data_source_id": ds.data_source_id(),
-                                    "config": ds.config(),
-                                },
-                            })),
-                        }),
-                    ),
+                    Ok(d) => {
+                        let mut response_data = json!({
+                            "data_source": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "config": ds.config(),
+                            },
+                        });
+                        if light_document_output {
+                            response_data["document"] = json!({
+                                "hash": d.hash,
+                                "text_size": d.text_size,
+                                "chunk_count": d.chunk_count,
+                                "token_count": d.token_count,
+                                "created": d.created,
+                            });
+                        } else {
+                            response_data["document"] = json!(d);
+                        }
+                        (
+                            StatusCode::OK,
+                            Json(APIResponse {
+                                error: None,
+                                response: Some(response_data),
+                            }),
+                        )
+                    }
                 }
             }
         },
@@ -1694,7 +1712,7 @@ async fn qdrant_client() -> Result<QdrantClient> {
 
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(64)
+        .worker_threads(128)
         //.thread_name("dust-api-server")
         //.thread_stack_size(32 * 1024 * 1024)
         .enable_all()

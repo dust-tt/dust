@@ -1,4 +1,7 @@
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import React from "react";
 
 import AppLayout from "@app/components/AppLayout";
@@ -12,7 +15,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  isBuilder: boolean;
+  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -32,7 +35,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      isBuilder: auth.isBuilder(),
+      readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -41,11 +44,11 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppExtractEvents({
   user,
   owner,
-  isBuilder,
+  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { schemas, isSchemasLoading } = useEventSchemas(owner);
-
+  const router = useRouter();
   return (
     <AppLayout
       user={user}
@@ -60,6 +63,19 @@ export default function AppExtractEvents({
         </div>
 
         <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          {readOnly && (
+            <div
+              className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+              role="alert"
+            >
+              <p className="font-bold">Read-only view</p>
+              <p className="text-sm">
+                Only users with the role Builder or Admin in the workspace can
+                edit templates.
+              </p>
+            </div>
+          )}
+
           <h3 className="text-base font-medium leading-6 text-gray-900">
             Extract events Templates
           </h3>
@@ -73,7 +89,7 @@ export default function AppExtractEvents({
               <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
                 <div className="overflow-hidden">
                   <table className="min-w-full text-left text-sm font-light">
-                    <thead className="border-b bg-white font-medium dark:border-neutral-500 dark:bg-neutral-600">
+                    <thead className="border-b bg-white font-medium">
                       <tr>
                         <th scope="col" className="px-3 py-4">
                           Marker
@@ -85,17 +101,14 @@ export default function AppExtractEvents({
                           Status
                         </th>
                         <th scope="col" className="px-3 py-4">
-                          {isBuilder ? "Manage" : "View"}
+                          {readOnly ? "Manage" : "View"}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {!isSchemasLoading &&
                         schemas?.map((schema) => (
-                          <tr
-                            key={schema.marker}
-                            className="border-b bg-white dark:border-neutral-500 dark:bg-neutral-600"
-                          >
+                          <tr key={schema.marker} className="border-b bg-white">
                             <td className="whitespace-nowrap px-3 py-4 font-medium">
                               {schema.marker}
                             </td>
@@ -109,13 +122,15 @@ export default function AppExtractEvents({
                               <Button
                                 type="submit"
                                 onClick={() =>
-                                  alert("Not implemented yet, sorry 😬")
+                                  router.push(
+                                    `/w/${owner.sId}/u/extract/${schema.marker}`
+                                  )
                                 }
                               >
                                 <div>
-                                  {isBuilder
-                                    ? "Manage template"
-                                    : "View template"}
+                                  {readOnly
+                                    ? "View template"
+                                    : "Manage template"}
                                 </div>
                               </Button>
                             </td>
@@ -123,6 +138,15 @@ export default function AppExtractEvents({
                         ))}
                     </tbody>
                   </table>
+
+                  <div className="my-10">
+                    <Link href={`/w/${owner.sId}/u/extract/new`}>
+                      <Button disabled={readOnly}>
+                        <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                        Create Template
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

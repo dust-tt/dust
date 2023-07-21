@@ -1,6 +1,7 @@
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -22,7 +23,7 @@ import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
-  defaultTimeRange,
+  timeRanges,
 } from "@app/components/use/chat/ChatTimeRangePicker";
 import MainTab from "@app/components/use/MainTab";
 import {
@@ -42,12 +43,14 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
+  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
@@ -294,6 +297,25 @@ export function DocumentView({
   );
 }
 
+const getTimestampFromTimeSettings = function (
+  selectedTimeRange: ChatTimeRange,
+  minTimestamp?: number
+) {
+  if (selectedTimeRange.id === "auto" && minTimestamp) {
+    // add margin of max(1 day, 25% of the time range)
+    const margin = Math.floor(
+      Math.max(24 * 60 * 60 * 1000, (Date.now() - minTimestamp) * 0.25)
+    );
+    return minTimestamp > 0 ? minTimestamp - margin : 0;
+  } else if (
+    selectedTimeRange.id !== "all" &&
+    selectedTimeRange.id !== "auto"
+  ) {
+    return Date.now() - selectedTimeRange.ms;
+  }
+  return 0;
+};
+
 export function RetrievalsView({
   message,
   isLatest,
@@ -381,18 +403,42 @@ export function RetrievalsView({
             </>
           )}
           {!message.retrievals && (
-            <div className="loading-dots">
-              Computed query: {message.query}. Retrieving docs
-            </div>
+            <div className="loading-dots">Retrieving docs</div>
           )}
         </div>
       </div>
       {expanded && message.retrievals && (
-        <div className="ml-4 mt-2 flex flex-col space-y-1">
-          {message.retrievals.map((r: ChatRetrievedDocumentType, i: number) => {
-            return <DocumentView document={r} key={i} />;
-          })}
-        </div>
+        <>
+          {message.params?.query && (
+            <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
+              Computed query: {message.params?.query}
+            </div>
+          )}
+          {message.params?.minTimestamp ? (
+            <div className="mt-1 flex flex-initial text-xs font-normal italic text-gray-400">
+              Documents retrieved created or updated after{" "}
+              {(() => {
+                const date = new Date(message.params?.minTimestamp || 0);
+                const options = {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                } as Intl.DateTimeFormatOptions;
+                const dateString = date.toLocaleDateString(undefined, options);
+                return dateString;
+              })()}
+            </div>
+          ) : (
+            ""
+          )}
+          <div className="ml-4 mt-2 flex flex-col space-y-1">
+            {message.retrievals.map(
+              (r: ChatRetrievedDocumentType, i: number) => {
+                return <DocumentView document={r} key={i} />;
+              }
+            )}
+          </div>
+        </>
       )}
     </div>
   ) : null;
@@ -496,7 +542,6 @@ export function MessageView({
   );
 }
 
-
 const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/new",
@@ -542,8 +587,10 @@ export default function AppChat({
   }, [chatSession]);
 
   const [dataSources, setDataSources] = useState(workspaceDataSources);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<ChatTimeRange>(defaultTimeRange);
+  // for testing, engs & dust users  have "auto" as default; others have "all"
+  const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
+    isDevelopmentOrDustWorkspace(owner) ? timeRanges[4] : timeRanges[3]
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
@@ -740,7 +787,10 @@ export default function AppChat({
     }
   };
 
-  const runChatRetrieval = async (m: ChatMessageType[], query: string) => {
+  const runChatRetrieval = async (
+    m: ChatMessageType[],
+    { query, minTimestamp }: { query: string; minTimestamp: number }
+  ) => {
     const config = cloneBaseConfig(
       DustProdActionRegistry["chat-retrieval"].config
     );
@@ -752,11 +802,10 @@ export default function AppChat({
           data_source_id: ds.name,
         };
       });
-    if (selectedTimeRange.id !== "all") {
-      config.DATASOURCE.filter = {
-        timestamp: { gt: Date.now() - selectedTimeRange.ms },
-      };
-    }
+
+    config.DATASOURCE.filter = {
+      timestamp: { gt: minTimestamp },
+    };
     const res = await runActionStreamed(owner, "chat-retrieval", config, [
       {
         messages: [{ role: "query", message: query }],
@@ -935,9 +984,15 @@ export default function AppChat({
       if (input.startsWith("/retrieve")) {
         await updateMessages(m, {
           role: "retrieval",
-          query: processedInput,
+          params: {
+            query: processedInput,
+            minTimestamp: getTimestampFromTimeSettings(selectedTimeRange),
+          },
         } as ChatMessageType);
-        const retrievalResult = await runChatRetrieval(m, processedInput);
+        const retrievalResult = await runChatRetrieval(m, {
+          query: processedInput,
+          minTimestamp: getTimestampFromTimeSettings(selectedTimeRange),
+        });
         m.pop();
         await updateMessages(m, retrievalResult);
       } else {
@@ -945,12 +1000,18 @@ export default function AppChat({
         await updateMessages(m, result);
         // has the model decided to run the retrieval function?
         if (result?.role === "retrieval") {
-          const query = result.query as string;
-          const retrievalResult = await runChatRetrieval(m, query);
+          const params = {
+            ...result.params,
+            minTimestamp: getTimestampFromTimeSettings(
+              selectedTimeRange,
+              result.params?.minTimestamp
+            ),
+          } as { query: string; minTimestamp: number };
+          const retrievalResult = await runChatRetrieval(m, params);
           // replace the retrieval message with the result of the retrieval
           // as a consequence, the query is not stored in the database
           m.pop();
-          await updateMessages(m, retrievalResult);
+          await updateMessages(m, { ...retrievalResult, params });
           const secondResult = await runChatAssistant(m, "none");
           await updateMessages(m, secondResult);
         }

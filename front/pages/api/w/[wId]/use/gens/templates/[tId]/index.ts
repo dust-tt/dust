@@ -117,6 +117,7 @@ async function handler(
         result = await GensTemplate.create({
           name: pRes.value.name,
           instructions: pRes.value.instructions,
+          instructions2: pRes.value.instructions.join("\n"),
           color: pRes.value.color,
           visibility: pRes.value.visibility as "workspace" | "user",
           workspaceId: owner.id,

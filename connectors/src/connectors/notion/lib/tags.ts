@@ -10,5 +10,6 @@ export function getTagsForPage(page: ParsedPage): string[] {
     `author:${page.author}`,
     `lastEditor:${page.lastEditor}`,
     `lastEditedAt:${page.updatedTime}`,
+    `createdAt:${page.createdTime}`,
   ]);
 }

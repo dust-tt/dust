@@ -308,6 +308,17 @@ export async function upsertChatMessage(
       );
     }
 
+    // If the message is a retrieval, log the params (query, time range, etc.)
+    // as a temp measure until it is stored in the DB.
+    const loggerArgs = {
+      message: { ...m, retrievals: undefined },
+      userId: session.userId,
+      chatSessionId: session.id,
+      chatSessionSId: session.sId,
+      chatSessionCreated: created,
+    };
+    logger.info(loggerArgs, "Retrieval occurred");
+
     await Promise.all(
       m.retrievals?.map((r) => {
         return (async () => {
@@ -540,7 +551,7 @@ export async function* newChat(
       [
         {
           messages: filterMessagesForModel(messages),
-          assistantContext: contextWithDefaults,
+          context: contextWithDefaults,
         },
       ]
     );
@@ -587,7 +598,7 @@ export async function* newChat(
           const m = e.value as {
             role: MessageRole;
             message?: string;
-            query?: string;
+            params?: { query: string; minTimestamp: number };
           };
 
           if (m.role === "assistant") {
@@ -609,7 +620,7 @@ export async function* newChat(
             });
           }
 
-          if (m.role === "retrieval" && m.query) {
+          if (m.role === "retrieval" && m.params?.query) {
             yield {
               type: "chat_message_trigger",
               role: "retrieval",
@@ -617,7 +628,7 @@ export async function* newChat(
             messages.push({
               sId: new_id(),
               role: "retrieval",
-              query: m.query,
+              params: m.params,
             });
           }
         }
@@ -663,7 +674,7 @@ export async function* newChat(
 
     const res = await runAction(auth, "chat-retrieval", configRetrieval, [
       {
-        messages: [{ role: "query", message: m.query }],
+        messages: [{ role: "query", message: m.params?.query }],
         userContext: {
           timeZone,
         },
@@ -715,13 +726,9 @@ export async function* newChat(
   const session = await upsertChatSession(auth, sId, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
-  await Promise.all(
-    messages.map((m) => {
-      return (async () => {
-        await upsertChatMessage(session, m);
-      })();
-    })
-  );
+  for (const m of messages) {
+    await upsertChatMessage(session, m);
+  }
 
   // Update session title.
   const configTitle = cloneBaseConfig(

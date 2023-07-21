@@ -62,7 +62,15 @@ export const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
       items: chatRetrievedDocumentSchema,
       nullable: true,
     },
-    query: { type: "string", nullable: true },
+    params: {
+      type: "object",
+      nullable: true,
+      properties: {
+        query: { type: "string" },
+        minTimestamp: { type: "number" },
+      },
+      required: ["query", "minTimestamp"],
+    },
     feedback: { type: "string", nullable: true },
   },
   required: ["role"],

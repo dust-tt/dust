@@ -9,6 +9,10 @@ if (!FRONT_API) {
   throw new Error("FRONT_API not set");
 }
 
+// We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
+// and large files are generally less useful anyway.
+export const MAX_DOCUMENT_TXT_LEN = 750000;
+
 export async function upsertToDatasource(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
@@ -68,6 +72,8 @@ async function _upsertToDatasource(
     documentId,
     documentUrl,
     documentLength: documentText.length,
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceName: dataSourceConfig.dataSourceName,
   });
   const statsDTags = [
     `data_source_name:${dataSourceConfig.dataSourceName}`,
@@ -86,6 +92,7 @@ async function _upsertToDatasource(
     source_url: documentUrl,
     timestamp,
     tags,
+    light_document_output: true,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -111,6 +118,11 @@ async function _upsertToDatasource(
       elapsed,
       statsDTags
     );
+    statsDClient.distribution(
+      "data_source_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }
@@ -124,11 +136,21 @@ async function _upsertToDatasource(
       elapsed,
       statsDTags
     );
+    statsDClient.distribution(
+      "data_source_upserts_success.duration.distribution",
+      elapsed,
+      statsDTags
+    );
     localLogger.info("Successfully uploaded document to Dust.");
   } else {
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
     statsDClient.histogram(
       "data_source_upserts_error.duration",
+      elapsed,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_upserts_error.duration.distribution",
       elapsed,
       statsDTags
     );

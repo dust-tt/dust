@@ -413,7 +413,7 @@ export function DocumentView({
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-row items-center text-xs">
+      <div className="flex flex-row flex-wrap items-center text-xs">
         <div
           className={classNames(
             "flex flex-initial select-none rounded-md bg-gray-100 bg-gray-300 px-1 pb-0.5 pt-1",
@@ -560,7 +560,7 @@ export function ResultsView({
           {retrieved && retrieved.length > 0 && (
             <>
               <p className="text-lg">
-                Retrieved {retrieved.length} document
+                Found {retrieved.length} document
                 {retrieved.length == 1 ? "" : "s"}
               </p>
 
@@ -571,7 +571,7 @@ export function ResultsView({
                   unPinned.forEach((r) => onRemove(r.documentId));
                 }}
               >
-                Clear
+                Clear unpinned
               </div>
             </>
           )}
@@ -617,6 +617,13 @@ export function TemplatesView({
 }) {
   const [templates, setTemplates] = useState<GensTemplateType[]>(
     [
+      {
+        name: "Neutral",
+        color: "bg-green-500",
+        instructions: [""],
+        sId: "0000",
+        visibility: "default" as GensTemplateVisibilityType,
+      },
       {
         name: "Fact Gatherer",
         color: "bg-red-500",
@@ -940,8 +947,6 @@ export function TemplatesView({
                               } else {
                                 new_template.sId =
                                   templates[editingTemplate].sId;
-                                new_template.color =
-                                  templates[editingTemplate].color;
                                 await fetch(
                                   `/api/w/${workspaceId}/use/gens/templates/${new_template.sId}`,
                                   {
@@ -973,8 +978,23 @@ export function TemplatesView({
             </div>
           </Dialog>
         </Transition.Root>
-
-        <div className="mt-2 flex items-center justify-start">
+        <div className="mt-2 flex flex-row items-center">
+          <span className="text-xs text-gray-400">Template: </span>
+          <span
+            className={classNames(
+              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-violet-500"
+            )}
+            onClick={() => {
+              setFormExpanded(true);
+              handleSetEditingTemplate(hover >= 0 ? hover : selectedTemplate);
+            }}
+          >
+            <span className="font-semibold">
+              {templates[hover >= 0 ? hover : selectedTemplate].name}
+            </span>
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-start">
           {templates.map((t, i) => {
             return (
               // round circle div with given color
@@ -1020,19 +1040,6 @@ export function TemplatesView({
           >
             <PlusIcon className="h-4 w-4" />
           </button>
-          <span
-            className={classNames(
-              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-violet-500"
-            )}
-            onClick={() => {
-              setFormExpanded(true);
-              handleSetEditingTemplate(hover >= 0 ? hover : selectedTemplate);
-            }}
-          >
-            <span className="font-semibold">
-              {templates[hover >= 0 ? hover : selectedTemplate].name}
-            </span>
-          </span>
         </div>
       </div>
     </div>
@@ -1427,29 +1434,37 @@ export default function AppGens({
                 >
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                      <p className="font-bold">Welcome to Gens!</p>
-                      <p className="mt-6">
-                        Gens is an early exploration of a more iterative way to
-                        interact with your data and with Assistant. Like writing
-                        a document, you can input text, and then search for
-                        documents based on said text, and have a model generate
-                        and add to parts of your doc.
+                      <p className="mt-4">
+                        Gens is an early exploration of writing with your
+                        models/data and powerful control on search and
+                        generation. It allows you to:
                       </p>
-                      <p className="mt-6">
-                        Gens supercharges your experience by allowng you to fine
-                        tune and extend your use of the models more than Chat —
-                        for retrieval, you can pin documents you've retrieved
-                        and remove ones you don't like, for generation, you can
-                        define nifty templates that instruct the model's
-                        outputs. Finally, the document format allows you to
-                        iterate on your text.
-                      </p>
-
-                      <p className="mt-6">
-                        Example workflows are exploring your company info to
-                        combine ideas and generate something new, writing a
-                        document combining different info into sections, or
-                        structuring lots of information with templates.
+                      <ul className="list-disc space-y-2 py-2 pl-4">
+                        <li>
+                          Search and select the documents you want based on a
+                          deep search of your data, where you can pin documents
+                          you want to keep across searches
+                        </li>
+                        <li>
+                          Create reusable templates to instruct the model and
+                          then generate, where the model has access to your
+                          text, the documents you've searched, and the template
+                        </li>
+                        <li>
+                          Iteratively create a document in a back and forth with
+                          the model and the information
+                        </li>
+                      </ul>
+                      <p className="mt-2">
+                        <a
+                          href="https://www.loom.com/share/0a74052bef7a4a2cbe2d05b16c5e94cd?sid=6daef9c1-5ddf-4c36-9ae8-a267e25b49df"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-violet-600 hover:text-violet-700"
+                        >
+                          Watch this video
+                        </a>{" "}
+                        for a demo of Gens
                       </p>
                     </div>
                   </Dialog.Panel>
@@ -1460,19 +1475,19 @@ export default function AppGens({
         </Transition.Root>
         <div className="">
           <div className="to mx-auto px-6">
-            <div className="m-auto my-3 w-4/5">
+            <div className="m-auto my-3 w-5/6">
               <Button onClick={() => setExplainExpanded(true)}>
                 How does Gens work?
               </Button>
             </div>
-            <div className="m-auto flex w-4/5 flex-row flex-wrap space-x-6 sm:flex-nowrap">
+            <div className="m-auto flex w-5/6 flex-row flex-wrap space-x-6 sm:flex-nowrap">
               <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
                 <div className="w-70 relative font-normal">
                   <TextareaAutosize
                     minRows={minRows}
                     ref={genTextAreaRef}
                     className={classNames(
-                      "font-mono block w-full resize-none rounded-md bg-slate-100 px-2 py-1 text-[13px] font-normal",
+                      "font-mono mb-4 block w-full resize-none rounded-md bg-slate-100 px-2 py-1 text-[13px] font-normal",
                       readOnly
                         ? "border-gray-200 ring-0 focus:border-white focus:ring-0"
                         : "border-gray-200 focus:border-gray-300 focus:ring-0"
@@ -1495,7 +1510,7 @@ export default function AppGens({
                         setCopying(false);
                       }, 500);
                     }}
-                    className="absolute right-0 top-0 mr-2 mt-2"
+                    className="absolute bottom-0 right-0 mb-6 mr-2"
                   >
                     {copying ? (
                       <ClipboardDocumentCheckIcon className="h-5 w-5" />
@@ -1506,173 +1521,165 @@ export default function AppGens({
                 </div>
                 <div className="mb-4 mt-2 flex flex-row flex-wrap items-center text-xs font-normal"></div>
               </div>
-              <div className="w-full sm:w-1/3">
-                <div className="mb-8">
-                  <h2 className="text-lg font-bold">Generation</h2>
-                  <p>
-                    Generate text using "templates" that instruct how the
-                    generation should be created, and for what type of workflow.
-                    For example, generating structured data, writing in a
-                    certain style, making critiques, etc...
-                  </p>
+              <div className="w-full text-sm sm:w-1/3">
+                <div className="sticky top-0">
+                  <div className="mb-8">
+                    <h2 className="text-lg font-bold">Generation</h2>
+                    <div className="my-2 flex flex-col items-start space-y-2">
+                      <div className="flex-shrink-0 flex-grow-0">
+                        {!genLoading ? (
+                          <ActionButton
+                            disabled={genLoading}
+                            onClick={() => {
+                              void handleGenerate();
+                            }}
+                          >
+                            Generate with template
+                          </ActionButton>
+                        ) : (
+                          <HighlightButton
+                            disabled={!genLoading || genInterruptRef.current}
+                            onClick={() => {
+                              genInterruptRef.current = true;
+                            }}
+                          >
+                            Interrupt
+                          </HighlightButton>
+                        )}
+                      </div>
+                      <TemplatesView
+                        onTemplateSelect={(t) => (template.current = t)}
+                        workspaceId={owner.sId}
+                        savedTemplates={templates}
+                        isBuilder={isBuilder}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">Search</h2>
+                    <p>Find and pick documents to bring them into context.</p>
 
-                  <div className="my-2 flex flex-row items-start space-x-3">
-                    {!genLoading ? (
+                    <div className="mt-2 flex flex-initial items-start items-center space-x-4">
+                      <input
+                        type="text"
+                        className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            void handleSearch();
+                          }
+                        }}
+                      />
                       <ActionButton
-                        disabled={genLoading}
-                        onClick={() => {
-                          void handleGenerate();
+                        disabled={retrievalLoading}
+                        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                          e.preventDefault();
+                          void handleSearch();
                         }}
                       >
-                        <SparklesIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        Generate with template
+                        <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
+                        {retrievalLoading ? "Loading..." : "Search"}
                       </ActionButton>
-                    ) : (
-                      <div
-                        className={classNames(genLoading ? "block" : "hidden")}
-                      >
-                        <HighlightButton
-                          disabled={!genLoading || genInterruptRef.current}
-                          onClick={() => {
-                            genInterruptRef.current = true;
-                          }}
-                        >
-                          Interrupt
-                        </HighlightButton>
-                      </div>
-                    )}
-                    <TemplatesView
-                      onTemplateSelect={(t) => (template.current = t)}
-                      workspaceId={owner.sId}
-                      savedTemplates={templates}
-                      isBuilder={isBuilder}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Retrieval</h2>
-                  <p>
-                    Retrieve documents that will be most useful to help in your
-                    generations, where you can pin and remove results based on
-                    their relevance.
-                  </p>
+                    </div>
 
-                  <div className="mt-2 flex flex-initial items-start items-center space-x-4">
-                    <input
-                      type="text"
-                      className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
-                      value={searchQuery}
-                      placeholder="Search"
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <ActionButton
-                      disabled={retrievalLoading}
-                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                        e.preventDefault();
-                        void handleSearch();
-                      }}
-                    >
-                      <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                      {retrievalLoading ? "Loading..." : "Retrieve"}
-                    </ActionButton>
-                  </div>
-
-                  <div className="mt-3 flex flex-1">
-                    <div className="items-center space-y-1 text-xs font-normal">
-                      <div className="flex flex-row items-center space-x-2 leading-8">
-                        <div className="flex flex-initial text-gray-400">
-                          Data Sources:
-                        </div>
-                        <div className="ml-1 flex flex-row">
-                          {dataSources.map((ds) => {
-                            return (
-                              <div
-                                key={ds.name}
-                                className="group ml-1 flex flex-initial"
-                              >
+                    <div className="mt-3 flex flex-1">
+                      <div className="items-center space-y-1 text-xs font-normal">
+                        <div className="flex flex-row items-center space-x-2 leading-8">
+                          <div className="flex flex-initial text-gray-400">
+                            Data Sources:
+                          </div>
+                          <div className="ml-1 flex flex-row">
+                            {dataSources.map((ds) => {
+                              return (
                                 <div
-                                  className={classNames(
-                                    "z-10 flex h-4 w-4 flex-initial cursor-pointer",
-                                    ds.provider !== "none" ? "mr-1" : "",
-                                    ds.selected ? "opacity-100" : "opacity-25"
-                                  )}
-                                  onClick={() => {
-                                    handleSwitchDataSourceSelection(ds.name);
-                                  }}
+                                  key={ds.name}
+                                  className="group ml-1 flex flex-initial"
                                 >
-                                  {ds.provider !== "none" ? (
-                                    <img
-                                      src={PROVIDER_LOGO_PATH[ds.provider]}
-                                    ></img>
-                                  ) : (
-                                    <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
-                                  )}
-                                </div>
-                                <div className="absolute z-0 hidden rounded leading-3 group-hover:block">
-                                  <div className="relative bottom-8 border bg-white px-1 py-1 ">
-                                    <span className="text-gray-600">
-                                      <span className="font-semibold">
-                                        {ds.name}
+                                  <div
+                                    className={classNames(
+                                      "z-10 flex h-4 w-4 flex-initial cursor-pointer",
+                                      ds.provider !== "none" ? "mr-1" : "",
+                                      ds.selected ? "opacity-100" : "opacity-25"
+                                    )}
+                                    onClick={() => {
+                                      handleSwitchDataSourceSelection(ds.name);
+                                    }}
+                                  >
+                                    {ds.provider !== "none" ? (
+                                      <img
+                                        src={PROVIDER_LOGO_PATH[ds.provider]}
+                                      ></img>
+                                    ) : (
+                                      <DocumentDuplicateIcon className="-ml-0.5 h-4 w-4 text-slate-500" />
+                                    )}
+                                  </div>
+                                  <div className="absolute z-0 hidden rounded leading-3 group-hover:block">
+                                    <div className="relative bottom-8 border bg-white px-1 py-1 ">
+                                      <span className="text-gray-600">
+                                        <span className="font-semibold">
+                                          {ds.name}
+                                        </span>
+                                        {ds.description
+                                          ? ` ${ds.description}`
+                                          : null}
                                       </span>
-                                      {ds.description
-                                        ? ` ${ds.description}`
-                                        : null}
-                                    </span>
+                                    </div>
                                   </div>
                                 </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center space-x-2 leading-8">
+                          <div className="flex flex-initial text-gray-400">
+                            Time range:
+                          </div>
+                          <div className="flex flex-initial cursor-pointer text-gray-400">
+                            {inferTimeRangeLoading ? (
+                              <div className="mt-0.5">
+                                <Spinner />
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex flex-row items-center space-x-2 leading-8">
-                        <div className="flex flex-initial text-gray-400">
-                          Time range:
-                        </div>
-                        <div className="flex flex-initial cursor-pointer text-gray-400">
-                          {inferTimeRangeLoading ? (
-                            <div className="mt-0.5">
-                              <Spinner />
-                            </div>
-                          ) : (
-                            <SparklesIcon
-                              className="h-4 w-4 text-yellow-400"
-                              onClick={handleInferTimeRange}
-                            />
-                          )}
-                        </div>
-                        <GensTimeRangePicker
-                          timeRange={timeRange}
-                          onTimeRangeUpdate={setTimeRange}
-                        />
-                      </div>
-                      <div className="flex flex-row items-center space-x-2 leading-8">
-                        <div className="flex flex-initial text-gray-400">
-                          TopK:
-                        </div>
-                        <div className="flex flex-initial">
-                          <input
-                            type="number"
-                            className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
-                            value={top_k}
-                            placeholder="Top K"
-                            onChange={(e) => setTopK(Number(e.target.value))}
+                            ) : (
+                              <SparklesIcon
+                                className="h-4 w-4 text-yellow-400"
+                                onClick={handleInferTimeRange}
+                              />
+                            )}
+                          </div>
+                          <GensTimeRangePicker
+                            timeRange={timeRange}
+                            onTimeRangeUpdate={setTimeRange}
                           />
+                        </div>
+                        <div className="flex flex-row items-center space-x-2 leading-8">
+                          <div className="flex flex-initial text-gray-400">
+                            TopK:
+                          </div>
+                          <div className="flex flex-initial">
+                            <input
+                              type="number"
+                              className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                              value={top_k}
+                              placeholder="Top K"
+                              onChange={(e) => setTopK(Number(e.target.value))}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                  <ResultsView
+                    retrieved={retrieved}
+                    query={genContent}
+                    owner={owner}
+                    onExtractUpdate={onExtractUpdate}
+                    onScoreReady={onScoreReady}
+                    template={template.current}
+                    onPin={onPin}
+                    onRemove={onRemove}
+                  />
                 </div>
-                <ResultsView
-                  retrieved={retrieved}
-                  query={genContent}
-                  owner={owner}
-                  onExtractUpdate={onExtractUpdate}
-                  onScoreReady={onScoreReady}
-                  template={template.current}
-                  onPin={onPin}
-                  onRemove={onRemove}
-                />
               </div>
             </div>
           </div>

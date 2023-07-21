@@ -17,6 +17,7 @@ import {
   hasExtractEventMarker,
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
+import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
@@ -135,6 +136,7 @@ async function _processExtractEvent(data: {
       status: "active",
     },
   });
+
   if (!schema) {
     return;
   }
@@ -143,7 +145,7 @@ async function _processExtractEvent(data: {
     {
       document_text: documentText,
       markers: markers,
-      schema_properties: schema.properties,
+      schema_properties: formatPropertiesForModel(schema.properties),
     },
   ];
 
@@ -205,6 +207,12 @@ async function _runExtractEventApp(
   }
 
   const successResponse = response as ExtractEventAppResponseResults;
+
+  logger.info(
+    { response: successResponse.value },
+    "[Extract Event] Extract event app ran successfully."
+  );
+
   return successResponse.value.results[0][0].value;
 }
 

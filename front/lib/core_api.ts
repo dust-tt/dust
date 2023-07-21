@@ -69,6 +69,14 @@ export type CoreAPIDocument = {
   text?: string | null;
 };
 
+export type CoreAPILightDocument = {
+  hash: string;
+  text_size: number;
+  chunk_count: number;
+  token_count: number;
+  created: number;
+};
+
 export type CoreAPIRun = {
   run_id: string;
   created: number;
@@ -603,6 +611,7 @@ export const CoreAPI = {
     sourceUrl,
     text,
     credentials,
+    lightDocumentOutput = false,
   }: {
     projectId: string;
     dataSourceName: string;
@@ -612,9 +621,14 @@ export const CoreAPI = {
     sourceUrl?: string | null;
     text: string;
     credentials: CredentialsType;
+    lightDocumentOutput?: boolean;
   }): Promise<
     CoreAPIResponse<{
-      document: CoreAPIDocument;
+      document:
+        | CoreAPIDocument
+        // if lightDocumentOutput is true, we return this type
+        | CoreAPILightDocument;
+
       data_source: CoreAPIDataSource;
     }>
   > {
@@ -632,6 +646,7 @@ export const CoreAPI = {
           tags: tags,
           source_url: sourceUrl,
           credentials: credentials,
+          light_document_output: lightDocumentOutput,
         }),
       }
     );

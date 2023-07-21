@@ -88,6 +88,11 @@ export class ActivityInboundLogInterceptor
         this.logger.info({ durationMs: durationMs }, "Activity completed.");
         statsDClient.increment("activities_success.count", 1, tags);
         statsDClient.histogram("activities.duration", durationMs, tags);
+        statsDClient.distribution(
+          "activities.duration.distribution",
+          durationMs,
+          tags
+        );
       }
     }
   }
