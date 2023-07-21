@@ -1304,9 +1304,6 @@ export default function AppChat({
                 <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
                   <div className="mb-1 mt-2">
                     <div className="flex flex-row items-center">
-                      <div className="-ml-14 mr-2 hidden rounded-lg bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 md:block">
-                        alpha
-                      </div>
                       <div className="flex flex-1 flex-row items-end">
                         {commands.length > 0 && (
                           <div className="absolute mb-12 pr-7">
