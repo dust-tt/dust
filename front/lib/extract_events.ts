@@ -17,6 +17,7 @@ import {
   hasExtractEventMarker,
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
+import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
@@ -140,21 +141,11 @@ async function _processExtractEvent(data: {
     return;
   }
 
-  const propertiesAsObject = {} as {
-    [key: string]: { type: string; description: string };
-  };
-  schema.properties.map((prop) => {
-    propertiesAsObject[prop.name] = {
-      type: prop.type,
-      description: prop.description,
-    };
-  });
-
   const inputsForApp = [
     {
       document_text: documentText,
       markers: markers,
-      schema_properties: propertiesAsObject,
+      schema_properties: formatPropertiesForModel(schema.properties),
     },
   ];
 
