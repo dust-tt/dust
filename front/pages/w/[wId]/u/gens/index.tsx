@@ -535,18 +535,6 @@ export function ResultsView({
   onPin: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }) {
-  const maxDocs = useMemo(() => {
-    let space = 7168;
-    let i = 0;
-    retrieved.forEach((r) => {
-      if (r.tokenCount <= space) {
-        space -= r.tokenCount;
-        i += 1;
-      }
-    });
-    return i;
-  }, [retrieved]);
-
   return (
     <div className="mt-5 w-full">
       <div>
@@ -1101,6 +1089,7 @@ export default function AppGens({
       // TODO: should make this cleaner
       const index = retrieved.findIndex((d) => d.documentId == documentId);
       retrieved[index].llm_score = score;
+
       retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
@@ -1197,7 +1186,8 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const potentialExtracts = retrieved
+    let relevantDocs = retrieved.filter((d) => d.pinned);
+    const potentialExtracts = relevantDocs
       .map((d) => {
         const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
         const text = chunks.map((c) => c.text).join("");
