@@ -162,6 +162,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const positiveDiff = documentDiff
     .filter(({ type }) => type === "insert")
+    .map(({ value }) => value)
     .join("");
   if (positiveDiff.length < MINIMUM_POSITIVE_DIFF_LENGTH) {
     logger.info(
