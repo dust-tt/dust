@@ -77,6 +77,7 @@ export async function runActionStreamed(
   ];
 
   statsDClient.increment("use_actions.count", 1, tags);
+  const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(prodCredentials);
@@ -104,6 +105,14 @@ export async function runActionStreamed(
       }
       yield event;
     }
+
+    // By now we have finished streaming the action so we can log the run duration.
+    const elapsed = new Date().getTime() - now.getTime();
+    statsDClient.distribution(
+      "run_action.duration.distribution",
+      elapsed,
+      tags
+    );
   };
 
   return new Ok({ eventStream: streamEvents(), dustRunId });
