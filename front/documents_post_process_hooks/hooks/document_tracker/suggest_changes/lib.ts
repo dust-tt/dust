@@ -10,7 +10,13 @@ import {
   getDocumentDiff,
 } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
+import {
+  DataSource,
+  DocumentTrackerChangeSuggestion,
+  TrackedDocument,
+  User,
+  Workspace,
+} from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
@@ -263,6 +269,17 @@ export async function documentTrackerSuggestChangesOnUpsert({
     ? maybeMatchedDocTitleTag.split(":")[1]
     : null;
 
+  localLogger.info(
+    {
+      matchedDsName,
+      matchedDocId,
+      matchedDocUrl,
+      matchedDocTitle,
+      score,
+    },
+    "Match found."
+  );
+
   const matchedDs = await DataSource.findOne({
     where: {
       name: matchedDsName,
@@ -304,6 +321,25 @@ export async function documentTrackerSuggestChangesOnUpsert({
     );
     return;
   }
+
+  logger.info(
+    {
+      matchedDsName,
+      matchedDocId,
+    },
+    "Creating change suggestions in database."
+  );
+  await Promise.all(
+    trackedDocuments.map((td) =>
+      DocumentTrackerChangeSuggestion.create({
+        trackedDocumentId: td.id,
+        sourceDataSourceId: dataSource.id,
+        sourceDocumentId: documentId,
+        suggestion: suggestedChanges,
+        status: "pending",
+      })
+    )
+  );
 
   const users = await User.findAll({
     where: {
