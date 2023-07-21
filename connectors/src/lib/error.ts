@@ -26,10 +26,10 @@ export function errorFromAny(e: any): Error {
   };
 }
 
-export type SlackWorkflowErrorType = "slack_is_down";
 export type WorkflowErrorType =
   | "unhandled_internal_activity_error"
-  | SlackWorkflowErrorType;
+  | "transient_upstream_activity_error"
+  | "upstream_is_down_activity_error";
 
 export type WorkflowError = {
   type: WorkflowErrorType;
