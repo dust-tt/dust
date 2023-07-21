@@ -14,7 +14,7 @@ import {
 } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
@@ -40,7 +40,8 @@ export type DeleteDocumentResponseBody = {
   };
 };
 export type UpsertDocumentResponseBody = {
-  document: DocumentType | null; // null if suppress_document_output is true
+  // depending on `light_document_output` in the request body
+  document: DocumentType | CoreAPILightDocument;
   data_source: DataSourceType;
 };
 
@@ -276,6 +277,7 @@ async function handler(
         sourceUrl,
         text: req.body.text,
         credentials,
+        lightDocumentOutput: req.body.light_document_output === true,
       });
 
       if (upsertRes.isErr()) {
@@ -290,9 +292,7 @@ async function handler(
       }
 
       res.status(200).json({
-        document: req.body.suppress_document_output
-          ? upsertRes.value.document
-          : null,
+        document: upsertRes.value.document,
         data_source: dataSource,
       });
 
@@ -301,7 +301,7 @@ async function handler(
         workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         documentText: req.body.text,
-        documentHash: upsertRes.value.document?.hash || "",
+        documentHash: upsertRes.value.document.hash,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
       });
 
@@ -311,7 +311,7 @@ async function handler(
           dataSource.name,
           owner.sId,
           req.query.documentId as string,
-          upsertRes.value.document?.hash || "",
+          upsertRes.value.document.hash,
           dataSource.connectorProvider || null,
           hookType,
           debounceMs

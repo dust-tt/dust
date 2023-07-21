@@ -1333,7 +1333,7 @@ struct DataSourcesDocumentsUpsertPayload {
     source_url: Option<String>,
     text: String,
     credentials: run::Credentials,
-    suppress_document_output: Option<bool>,
+    light_document_output: Option<bool>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1342,7 +1342,7 @@ async fn data_sources_documents_upsert(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let suppress_document_output = match payload.suppress_document_output {
+    let light_document_output = match payload.light_document_output {
         Some(v) => v,
         None => false,
     };
@@ -1405,7 +1405,15 @@ async fn data_sources_documents_upsert(
                                 "config": ds.config(),
                             },
                         });
-                        if !suppress_document_output {
+                        if light_document_output {
+                            response_data["document"] = json!({
+                                "hash": d.hash,
+                                "text_size": d.text_size,
+                                "chunk_count": d.chunk_count,
+                                "token_count": d.token_count,
+                                "created": d.created,
+                            });
+                        } else {
                             response_data["document"] = json!(d);
                         }
                         (

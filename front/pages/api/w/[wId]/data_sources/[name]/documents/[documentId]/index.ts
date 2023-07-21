@@ -3,14 +3,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DocumentType } from "@app/types/document";
 
 export type GetDocumentResponseBody = {
-  document: DocumentType;
+  document: DocumentType | CoreAPILightDocument;
 };
 
 async function handler(
