@@ -291,6 +291,17 @@ export async function upsertChatMessage(
       );
     }
 
+    // If the message is a retrieval, log the params (query, time range, etc.)
+    // as a temp measure until it is stored in the DB.
+    const loggerArgs = {
+      message: { ...m, retrievals: undefined },
+      userId: session.userId,
+      chatSessionId: session.id,
+      chatSessionSId: session.sId,
+      chatSessionCreated: created,
+    };
+    logger.info(loggerArgs, "Retrieval occurred");
+
     await Promise.all(
       m.retrievals?.map((r) => {
         return (async () => {
