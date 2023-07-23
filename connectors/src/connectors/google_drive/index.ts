@@ -193,8 +193,17 @@ export async function cleanupGoogleDriveConnector(
 }
 
 export async function retrieveGoogleDriveConnectorPermissions(
-  connectorId: ModelId
+  connectorId: ModelId,
+  parentInternalId: string | null
 ): Promise<Result<ConnectorResource[], Error>> {
+  if (parentInternalId) {
+    return new Err(
+      new Error(
+        "GoogleDrive connector does not support permission retrieval with `parentInternalId`"
+      )
+    );
+  }
+
   const c = await Connector.findOne({
     where: {
       id: connectorId,
