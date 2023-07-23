@@ -30,7 +30,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -40,7 +40,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -51,7 +51,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -61,7 +61,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -90,7 +90,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can update a Data Source.",
+              "Only the users that are `builders` for the current workspace can update a data source.",
           },
         });
       }
@@ -150,7 +150,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can delete a Data Source.",
+              "Only the users that are `builders` for the current workspace can delete a data source.",
           },
         });
       }
@@ -175,7 +175,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to delete the Data Source.",
+            message: "Failed to delete the data source.",
             data_source_error: dustDataSource.error,
           },
         });

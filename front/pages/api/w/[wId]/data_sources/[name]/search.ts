@@ -138,7 +138,7 @@ export default async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "There was an error performing the Data Source search.",
+            message: "There was an error performing the data source search.",
             data_source_error: data.error,
           },
         });
