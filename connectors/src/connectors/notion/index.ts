@@ -22,6 +22,7 @@ import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import {
   ConnectorPermission,
   ConnectorResource,
+  ConnectorResourceType,
 } from "@connectors/types/resources";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
@@ -242,13 +243,13 @@ export async function retrieveNotionConnectorPermissions(
     NotionPage.findAll({
       where: {
         connectorId: connectorId,
-        parentType: parentInternalId || "workspace",
+        parentId: parentInternalId || "workspace",
       },
     }),
     NotionDatabase.findAll({
       where: {
         connectorId: connectorId,
-        parentType: parentInternalId || "workspace",
+        parentId: parentInternalId || "workspace",
       },
     }),
   ]);
@@ -258,6 +259,7 @@ export async function retrieveNotionConnectorPermissions(
       provider: c.type,
       internalId: p.notionPageId,
       parentInternalId: null,
+      type: "file" as ConnectorResourceType,
       title: p.title || "",
       sourceUrl: p.notionUrl || null,
       permission: "read" as ConnectorPermission,
@@ -267,6 +269,7 @@ export async function retrieveNotionConnectorPermissions(
         provider: c.type,
         internalId: db.notionDatabaseId,
         parentInternalId: null,
+        type: "database" as ConnectorResourceType,
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         permission: "read" as ConnectorPermission,

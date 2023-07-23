@@ -6,6 +6,8 @@ import { ConnectorProvider } from "./connector";
  */
 export type ConnectorPermission = "read" | null;
 
+export type ConnectorResourceType = "file" | "folder" | "database" | "channel";
+
 /**
  * A ConnectorResource represents a connector related resource. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)
@@ -14,7 +16,7 @@ export type ConnectorPermission = "read" | null;
  * - GoogleDrive: shared drive or sub-folders of shared drives.
  *
  * `internalId` and `parentInternalId` are internal opaque identifiers that should enable
- * reconstrcuting the tree structure of the resources.
+ * reconstructing the tree structure of the resources.
  */
 export type ConnectorResource = {
   provider: ConnectorProvider;
@@ -22,5 +24,6 @@ export type ConnectorResource = {
   parentInternalId: string | null;
   title: string;
   sourceUrl: string | null;
+  type: ConnectorResourceType;
   permission: ConnectorPermission;
 };

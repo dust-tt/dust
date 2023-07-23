@@ -233,6 +233,7 @@ export async function retrieveGithubConnectorPermissions(
         provider: c.type,
         internalId: repo.id.toString(),
         parentInternalId: null,
+        type: "folder",
         title: repo.name,
         sourceUrl: repo.url,
         permission: "read",

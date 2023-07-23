@@ -231,7 +231,8 @@ export async function retrieveSlackConnectorPermissions(
         provider: "slack",
         internalId: ch.id || "",
         parentInternalId: null,
-        title: `#${ch.name || ""}`,
+        type: "channel",
+        title: ch.name || "",
         sourceUrl: `https://app.slack.com/client/${ch.context_team_id}/${ch.id}`,
         permission: "read",
       };
