@@ -10,6 +10,7 @@ import {
   Connector,
   ModelId,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
   sequelize_conn,
 } from "@connectors/lib/models";
@@ -18,7 +19,10 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import { ConnectorResource } from "@connectors/types/resources";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -234,38 +238,40 @@ export async function retrieveNotionConnectorPermissions(
     return new Err(new Error("Connector not found"));
   }
 
-  let pages: NotionPage[] = [];
-
-  if (!parentInternalId) {
-    pages = await NotionPage.findAll({
+  const [pages, dbs] = await Promise.all([
+    NotionPage.findAll({
       where: {
         connectorId: connectorId,
-        parentType: "workspace",
+        parentType: parentInternalId || "workspace",
       },
-    });
-  } else {
-    pages = await NotionPage.findAll({
+    }),
+    NotionDatabase.findAll({
       where: {
         connectorId: connectorId,
-        parentId: parentInternalId,
+        parentType: parentInternalId || "workspace",
       },
-    });
-  }
+    }),
+  ]);
 
-  const resources: ConnectorResource[] = await Promise.all(
-    pages.map((p) => {
-      return (async () => {
-        return {
-          provider: c.type,
-          internalId: p.notionPageId,
-          parentInternalId: null,
-          title: p.title || "",
-          sourceUrl: p.notionUrl || null,
-          permission: "read",
-        };
-      })();
-    })
-  );
+  const resources: ConnectorResource[] = pages
+    .map((p) => ({
+      provider: c.type,
+      internalId: p.notionPageId,
+      parentInternalId: null,
+      title: p.title || "",
+      sourceUrl: p.notionUrl || null,
+      permission: "read" as ConnectorPermission,
+    }))
+    .concat(
+      dbs.map((db) => ({
+        provider: c.type,
+        internalId: db.notionDatabaseId,
+        parentInternalId: null,
+        title: db.title || "",
+        sourceUrl: db.notionUrl || null,
+        permission: "read" as ConnectorPermission,
+      }))
+    );
 
   return new Ok(resources);
 }
