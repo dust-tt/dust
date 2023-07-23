@@ -19,6 +19,8 @@ export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   logging: false,
 }); // TODO: type process.env
 
+export type ModelId = number;
+
 export class User extends Model<
   InferAttributes<User>,
   InferCreationAttributes<User>

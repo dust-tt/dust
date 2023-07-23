@@ -1,5 +1,7 @@
+import { ModelId } from "@app/lib/models";
+
 export type MembershipInvitationType = {
-  id: number;
+  id: ModelId;
   status: "pending" | "consumed" | "revoked";
   inviteEmail: string;
 };
