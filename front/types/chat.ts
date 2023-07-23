@@ -1,3 +1,5 @@
+import { ModelId } from "@app/lib/models";
+
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
   sourceUrl: string | null;
@@ -29,7 +31,7 @@ export type ChatMessageType = {
 };
 
 export type ChatSessionType = {
-  id: number;
+  id: ModelId;
   userId: number;
   created: number;
   sId: string;
