@@ -90,12 +90,12 @@ type GetFoldersRes =
   | GoogleDriveSelectedFolderType[]
   | ConnectorsAPIErrorResponse;
 
-// This endpoint returns the list of all folders in the user's Google Drive (only the shared drives for now).
-// The list is returned as a flat list of nodes with their parents and children property filled out.
-// The Google Drive API only allows you to list objects, and getting the full path of a file requires
-// to make an API call for each parent. That means that we rely on the fact that Google Drive
-// is going to ultimately send us all the folders at some point when listing them to have the full path of each folder
-// defined. Otherwise, the behavior is undefined.
+// This endpoint returns the list of all folders in the user's Google Drive (only the shared drives
+// for now).  The list is returned as a flat list of nodes with their parents and children property
+// filled out.  The Google Drive API only allows you to list objects, and getting the full path of a
+// file requires to make an API call for each parent. That means that we rely on the fact that
+// Google Drive is going to ultimately send us all the folders at some point when listing them to
+// have the full path of each folder defined. Otherwise, the behavior is undefined.
 const _googleDriveGetFoldersAPIHandler = async (
   req: Request<
     { connector_id: string; parentId?: string },

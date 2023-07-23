@@ -254,27 +254,43 @@ export async function retrieveNotionConnectorPermissions(
     }),
   ]);
 
-  const resources: ConnectorResource[] = pages
-    .map((p) => ({
-      provider: c.type,
-      internalId: p.notionPageId,
-      parentInternalId: null,
-      type: "file" as ConnectorResourceType,
-      title: p.title || "",
-      sourceUrl: p.notionUrl || null,
-      permission: "read" as ConnectorPermission,
-    }))
-    .concat(
-      dbs.map((db) => ({
-        provider: c.type,
-        internalId: db.notionDatabaseId,
-        parentInternalId: null,
-        type: "database" as ConnectorResourceType,
-        title: db.title || "",
-        sourceUrl: db.notionUrl || null,
-        permission: "read" as ConnectorPermission,
-      }))
-    );
+  const pageResources: ConnectorResource[] = await Promise.all(
+    pages.map((p) => {
+      return (async () => {
+        // Try to look for one NotionPage child to see if this page is expandable. Technically we
+        // should also look for NotionDatabase, but we don't support that to save one DB call here.
+        const child = await NotionPage.findOne({
+          where: {
+            connectorId: connectorId,
+            parentId: p.notionPageId,
+          },
+        });
+        const expandable = child ? true : false;
 
-  return new Ok(resources);
+        return {
+          provider: c.type,
+          internalId: p.notionPageId,
+          parentInternalId: null,
+          type: "file" as ConnectorResourceType,
+          title: p.title || "",
+          sourceUrl: p.notionUrl || null,
+          expandable,
+          permission: "read" as ConnectorPermission,
+        };
+      })();
+    })
+  );
+
+  const dbResources: ConnectorResource[] = dbs.map((db) => ({
+    provider: c.type,
+    internalId: db.notionDatabaseId,
+    parentInternalId: null,
+    type: "database" as ConnectorResourceType,
+    title: db.title || "",
+    sourceUrl: db.notionUrl || null,
+    expandable: true,
+    permission: "read" as ConnectorPermission,
+  }));
+
+  return new Ok(pageResources.concat(dbResources));
 }

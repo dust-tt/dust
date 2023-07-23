@@ -11,6 +11,7 @@ import {
 import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
+  retrieveGoogleDriveConnectorPermissions,
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import { Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -126,13 +127,5 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   slack: retrieveSlackConnectorPermissions,
   github: retrieveGithubConnectorPermissions,
   notion: retrieveNotionConnectorPermissions,
-  google_drive: async (connectorId: ModelId) => {
-    logger.info(
-      { connectorId },
-      `Slack connector permissions is not implemented.`
-    );
-    return new Err(
-      new Error("Slack connector permissions retrieval is not implemented.")
-    );
-  },
+  google_drive: retrieveGoogleDriveConnectorPermissions,
 };

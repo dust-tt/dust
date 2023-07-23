@@ -236,6 +236,7 @@ export async function retrieveGithubConnectorPermissions(
         type: "folder",
         title: repo.name,
         sourceUrl: repo.url,
+        expandable: false,
         permission: "read",
       }))
     );

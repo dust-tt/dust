@@ -234,6 +234,7 @@ export async function retrieveSlackConnectorPermissions(
         type: "channel",
         title: ch.name || "",
         sourceUrl: `https://app.slack.com/client/${ch.context_team_id}/${ch.id}`,
+        expandable: false,
         permission: "read",
       };
     });

@@ -22,8 +22,9 @@ export type ConnectorResource = {
   provider: ConnectorProvider;
   internalId: string;
   parentInternalId: string | null;
+  type: ConnectorResourceType;
   title: string;
   sourceUrl: string | null;
-  type: ConnectorResourceType;
+  expandable: boolean;
   permission: ConnectorPermission;
 };
