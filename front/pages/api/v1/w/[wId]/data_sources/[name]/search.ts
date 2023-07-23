@@ -65,7 +65,7 @@ export default async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -81,7 +81,7 @@ export default async function handler(
 
       let credentials: CredentialsType | null = null;
       if (keyRes.value.isSystem) {
-        // Dust managed credentials: system API key (managed Data Source).
+        // Dust managed credentials: system API key (managed data source).
         credentials = dustManagedCredentials();
       } else {
         const providers = await Provider.findAll({
@@ -132,7 +132,7 @@ export default async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "There was an error performing the Data Source search.",
+            message: "There was an error performing the data source search.",
             data_source_error: data.error,
           },
         });

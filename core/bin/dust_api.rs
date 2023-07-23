@@ -1057,7 +1057,7 @@ async fn data_sources_register(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to register Data Source: {}", e),
+                    message: format!("Failed to register data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1068,7 +1068,7 @@ async fn data_sources_register(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("internal_server_error"),
-                        message: format!("Failed to register Data Source: {}", e),
+                        message: format!("Failed to register data source: {}", e),
                     }),
                     response: None,
                 }),
@@ -1118,7 +1118,7 @@ async fn data_sources_search(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1129,7 +1129,7 @@ async fn data_sources_search(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1219,7 +1219,7 @@ async fn data_sources_documents_update_tags(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1230,7 +1230,7 @@ async fn data_sources_documents_update_tags(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1358,7 +1358,7 @@ async fn data_sources_documents_upsert(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1369,7 +1369,7 @@ async fn data_sources_documents_upsert(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1461,7 +1461,7 @@ async fn data_sources_documents_list(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to list Data Source: {}", e),
+                    message: format!("Failed to list data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1503,7 +1503,7 @@ async fn data_sources_documents_retrieve(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1514,7 +1514,7 @@ async fn data_sources_documents_retrieve(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1579,7 +1579,7 @@ async fn data_sources_documents_delete(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1590,7 +1590,7 @@ async fn data_sources_documents_delete(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1648,7 +1648,7 @@ async fn data_sources_delete(
             Json(APIResponse {
                 error: Some(APIError {
                     code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve Data Source: {}", e),
+                    message: format!("Failed to retrieve data source: {}", e),
                 }),
                 response: None,
             }),
@@ -1659,7 +1659,7 @@ async fn data_sources_delete(
                 Json(APIResponse {
                     error: Some(APIError {
                         code: String::from("data_source_not_found"),
-                        message: format!("No Data Source found for id `{}`", data_source_id),
+                        message: format!("No data source found for id `{}`", data_source_id),
                     }),
                     response: None,
                 }),
@@ -1673,7 +1673,7 @@ async fn data_sources_delete(
                     Json(APIResponse {
                         error: Some(APIError {
                             code: String::from("internal_server_error"),
-                            message: format!("Failed to delete Data Source: {}", e),
+                            message: format!("Failed to delete data source: {}", e),
                         }),
                         response: None,
                     }),

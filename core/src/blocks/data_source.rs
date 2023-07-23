@@ -75,7 +75,7 @@ impl DataSource {
         Ok(query)
     }
 
-    /// This helper searches one Data Source (multiple can be searched in parallel) and return the
+    /// This helper searches one data source (multiple can be searched in parallel) and return the
     /// documents retrieved from the search.
     async fn search_data_source(
         &self,
