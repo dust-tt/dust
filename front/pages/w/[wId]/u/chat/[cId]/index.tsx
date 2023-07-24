@@ -541,7 +541,7 @@ export function MessageView({
 const COMMANDS: { cmd: string; description: string }[] = [
   {
     cmd: "/new",
-    description: "Start a new conversation",
+    description: "Starts a new conversation",
   },
   {
     cmd: "/follow-up",
