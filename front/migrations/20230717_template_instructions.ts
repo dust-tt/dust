@@ -1,5 +1,6 @@
-import { GensTemplate } from "@app/lib/models";
 import { Sequelize } from "sequelize";
+
+import { GensTemplate } from "@app/lib/models";
 
 const { FRONT_DATABASE_URI, LIVE = true } = process.env;
 
@@ -14,7 +15,7 @@ async function main() {
   )[0] as GensTemplate[];
 
   for (const gensTemplate of gensTemplates) {
-    // @ts-ignore
+    // @ts-expect-error normal
     const instructions = gensTemplate?.instructions || [];
     const instructions2 = instructions.join("\n");
     console.log(

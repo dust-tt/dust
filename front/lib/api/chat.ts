@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -20,7 +22,6 @@ import {
   ChatSession,
   front_sequelize,
 } from "../models";
-import { Op } from "sequelize";
 
 /**
  *

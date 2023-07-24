@@ -17,15 +17,16 @@ import remarkGfm from "remark-gfm";
 import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
 import { Spinner } from "@app/components/Spinner";
+import { ChatHistory } from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
 } from "@app/components/use/chat/ChatTimeRangePicker";
-import MainTab from "@app/components/use/MainTab";
 import {
   FeedbackHandler,
   MessageFeedback,
 } from "@app/components/use/chat/MessageFeedback";
+import MainTab from "@app/components/use/MainTab";
 import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
@@ -46,12 +47,10 @@ import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
-  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { ChatHistory } from "@app/components/use/chat/ChatHistory";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -1,19 +1,18 @@
-import { useChatSessions } from "@app/lib/swr";
-import { ChatSessionType } from "@app/types/chat";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { Menu } from "@headlessui/react";
 import { TrashIcon } from "@heroicons/react/20/solid";
-import { UserIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/solid";
-
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
+
+import { useChatSessions } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { Menu } from "@headlessui/react";
-import Link from "next/link";
+import { ChatSessionType } from "@app/types/chat";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export function ChatHistory({
   owner,
