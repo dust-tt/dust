@@ -611,7 +611,7 @@ impl Embedder for AnthropicEmbedder {
         ))
     }
 
-    async fn embed(&self, _text: &str, _extras: Option<Value>) -> Result<EmbedderVector> {
+    async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         Err(anyhow!("Embeddings not available for provider `anthropic`"))
     }
 }

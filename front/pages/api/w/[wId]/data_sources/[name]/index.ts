@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
+import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -30,34 +30,38 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
 
-  const dataSource = await DataSource.findOne({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
-          },
-          name: req.query.name,
-        }
-      : {
-          workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
-          name: req.query.name,
-        },
-  });
+  if (!req.query.name || typeof req.query.name !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
 
+  const dataSource = await getDataSource(auth, req.query.name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+  const dataSourceModel = await DataSource.findByPk(dataSource.id);
+  if (!dataSourceModel) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -66,6 +70,7 @@ async function handler(
     case "GET":
       res.status(200).json({
         dataSource: {
+          id: dataSource.id,
           name: dataSource.name,
           description: dataSource.description,
           visibility: dataSource.visibility,
@@ -85,7 +90,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can update a Data Source.",
+              "Only the users that are `builders` for the current workspace can update a data source.",
           },
         });
       }
@@ -118,7 +123,7 @@ async function handler(
 
       const description = req.body.description ? req.body.description : null;
 
-      const ds = await dataSource.update({
+      const ds = await dataSourceModel.update({
         description,
         visibility: req.body.visibility,
         userUpsertable: req.body.userUpsertable,
@@ -126,6 +131,7 @@ async function handler(
 
       return res.status(200).json({
         dataSource: {
+          id: ds.id,
           name: ds.name,
           description: ds.description,
           visibility: ds.visibility,
@@ -144,7 +150,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can delete a Data Source.",
+              "Only the users that are `builders` for the current workspace can delete a data source.",
           },
         });
       }
@@ -169,13 +175,13 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to delete the Data Source.",
+            message: "Failed to delete the data source.",
             data_source_error: dustDataSource.error,
           },
         });
       }
 
-      await dataSource.destroy();
+      await dataSourceModel.destroy();
 
       res.status(204).end();
       return;

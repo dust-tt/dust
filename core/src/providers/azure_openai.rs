@@ -600,7 +600,7 @@ impl Embedder for AzureOpenAIEmbedder {
         Ok(str)
     }
 
-    async fn embed(&self, text: &str, extras: Option<Value>) -> Result<EmbedderVector> {
+    async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         let e = embed(
             self.uri()?,
             self.api_key.clone().unwrap(),
@@ -619,15 +619,18 @@ impl Embedder for AzureOpenAIEmbedder {
 
         assert!(e.data.len() > 0);
 
-        Ok(EmbedderVector {
-            created: utils::now(),
-            provider: ProviderID::OpenAI.to_string(),
-            model: match self.model_id {
-                Some(ref model_id) => model_id.clone(),
-                None => unimplemented!(),
-            },
-            vector: e.data[0].embedding.clone(),
-        })
+        Ok(e.data
+            .into_iter()
+            .map(|v| EmbedderVector {
+                created: utils::now(),
+                provider: ProviderID::OpenAI.to_string(),
+                model: match self.model_id {
+                    Some(ref model_id) => model_id.clone(),
+                    None => unimplemented!(),
+                },
+                vector: v.embedding,
+            })
+            .collect::<Vec<_>>())
     }
 }
 

@@ -535,18 +535,6 @@ export function ResultsView({
   onPin: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }) {
-  const maxDocs = useMemo(() => {
-    let space = 7168;
-    let i = 0;
-    retrieved.forEach((r) => {
-      if (r.tokenCount <= space) {
-        space -= r.tokenCount;
-        i += 1;
-      }
-    });
-    return i;
-  }, [retrieved]);
-
   return (
     <div className="mt-5 w-full">
       <div>
@@ -558,32 +546,17 @@ export function ResultsView({
           )}
         >
           {retrieved && retrieved.length > 0 && (
-            <>
-              <p className="text-lg">
-                Found {retrieved.length} document
-                {retrieved.length == 1 ? "" : "s"}
-              </p>
-
-              <div
-                className="text-sm font-bold"
-                onClick={() => {
-                  const unPinned = retrieved.filter((r) => !r.pinned);
-                  unPinned.forEach((r) => onRemove(r.documentId));
-                }}
-              >
-                Clear unpinned
-              </div>
-            </>
+            <p className="text-lg">
+              Found {retrieved.length} document
+              {retrieved.length == 1 ? "" : "s"}
+            </p>
           )}
           {!retrieved && <div className="">Loading...</div>}
         </div>
         <div className="mt-2 flex flex-col space-y-2">
-          {retrieved.map((r, i) => {
+          {retrieved.map((r) => {
             return (
-              <div
-                key={r.documentId}
-                className={maxDocs < i ? "opacity-50" : ""}
-              >
+              <div key={r.documentId} className={!r.pinned ? "opacity-50" : ""}>
                 <DocumentView
                   document={r}
                   key={r.documentId}
@@ -620,7 +593,7 @@ export function TemplatesView({
       {
         name: "Neutral",
         color: "bg-green-500",
-        instructions: [""],
+        instructions: "",
         sId: "0000",
         visibility: "default" as GensTemplateVisibilityType,
       },
@@ -633,7 +606,7 @@ export function TemplatesView({
           "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
           "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
           "We just want to gather facts and answers related to the document text",
-        ],
+        ].join("\n"),
         sId: "0000",
         visibility: "default" as GensTemplateVisibilityType,
       },
@@ -643,7 +616,7 @@ export function TemplatesView({
   const [editingTemplate, setEditingTemplate] = useState<number>(-1);
   const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
   const [editingTemplateInstructions, setEditingTemplateInstructions] =
-    useState<string[]>([]);
+    useState<string>("");
   const [editingTemplateVisibility, setEditingTemplateVisibility] =
     useState<GensTemplateVisibilityType>("user");
   const [editingTemplateColor, setEditingTemplateColor] =
@@ -679,21 +652,6 @@ export function TemplatesView({
     onTemplateSelect(templates[0]);
   }, []);
 
-  const handleInstructionChange = (index: number, value: string) => {
-    setEditingTemplateInstructions((prevInstructions) => {
-      const newInstructions = [...prevInstructions];
-      newInstructions[index] = value;
-      return newInstructions;
-    });
-  };
-
-  const handleInstructionDelete = (index: number) => {
-    setEditingTemplateInstructions((prevInstructions) => {
-      const newInstructions = [...prevInstructions];
-      newInstructions.splice(index, 1);
-      return newInstructions;
-    });
-  };
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {
       // remove template from thing
@@ -706,10 +664,12 @@ export function TemplatesView({
     });
   };
 
+  console.log("templates", templates);
+
   const handleSetEditingTemplate = (t: number) => {
     setEditingTemplate(t);
     setEditingTemplateTitle(templates[t].name);
-    setEditingTemplateInstructions(templates[t].instructions || [""]);
+    setEditingTemplateInstructions(templates[t].instructions || "");
     setEditingTemplateVisibility(templates[t].visibility);
     setEditingTemplateColor(templates[t].color);
   };
@@ -768,63 +728,22 @@ export function TemplatesView({
                         <label className="my-2 block text-sm font-medium text-gray-700">
                           Instructions
                         </label>
-                        {editingTemplateInstructions.map((instruction, i) => {
-                          return (
-                            <div
-                              key={i}
-                              className="group my-2 flex items-center "
-                            >
-                              <div className="flex flex-1">
-                                <TextareaAutosize
-                                  minRows={2}
-                                  className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
-                                  value={instruction}
-                                  placeholder={
-                                    "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
-                                  }
-                                  onChange={(e) =>
-                                    handleInstructionChange(i, e.target.value)
-                                  }
-                                  readOnly={!editable}
-                                />
-                              </div>
-
-                              {editable && (
-                                <>
-                                  <div
-                                    className={classNames(
-                                      "ml-2 w-4 flex-initial"
-                                    )}
-                                  >
-                                    <PlusCircleIcon
-                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
-                                      onClick={() => {
-                                        setEditingTemplateInstructions(
-                                          editingTemplateInstructions.concat([
-                                            "",
-                                          ])
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                  <div
-                                    className={classNames(
-                                      "w-4 flex-initial",
-                                      editingTemplateInstructions.length > 1
-                                        ? ""
-                                        : "invisible"
-                                    )}
-                                  >
-                                    <XCircleIcon
-                                      className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                                      onClick={() => handleInstructionDelete(i)}
-                                    />
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
+                        <div className="group my-2 flex items-center ">
+                          <div className="flex flex-1">
+                            <TextareaAutosize
+                              minRows={2}
+                              className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                              value={editingTemplateInstructions}
+                              placeholder={
+                                "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
+                              }
+                              onChange={(e) =>
+                                setEditingTemplateInstructions(e.target.value)
+                              }
+                              readOnly={!editable}
+                            />
+                          </div>
+                        </div>
                         {editable && (
                           <div className="mt-2">
                             <label className="block text-sm font-medium text-gray-700">
@@ -961,7 +880,7 @@ export function TemplatesView({
                               }
                               setTemplates(curr_templates);
                               setFormExpanded(false);
-                              setEditingTemplateInstructions([]);
+                              setEditingTemplateInstructions("");
                               setEditingTemplateTitle("");
                               setEditingTemplateColor("bg-red-500");
                               setEditingTemplateVisibility("user");
@@ -1032,7 +951,7 @@ export function TemplatesView({
             onClick={() => {
               setEditingTemplate(-1);
               setEditingTemplateTitle("");
-              setEditingTemplateInstructions([""]);
+              setEditingTemplateInstructions("");
               setEditingTemplateVisibility("user");
               setEditingTemplateColor("bg-red-500");
               setFormExpanded(true);
@@ -1086,6 +1005,8 @@ export default function AppGens({
 
   const [minRows, setMinRows] = useState<number>(8);
 
+  const [selecting, setSelecting] = useState<boolean>(false);
+
   useEffect(() => {
     setMinRows(window.innerHeight / 40);
   }, []);
@@ -1114,6 +1035,7 @@ export default function AppGens({
       // TODO: should make this cleaner
       const index = retrieved.findIndex((d) => d.documentId == documentId);
       retrieved[index].llm_score = score;
+
       retrieved[index].pinned = false;
       retrieved.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
@@ -1131,7 +1053,14 @@ export default function AppGens({
       const pinnedDoc = retrieved[index];
       pinnedDoc.pinned = !pinnedDoc.pinned;
       retrieved.splice(index, 1);
-      retrieved.unshift(pinnedDoc);
+      // insert at the position of the last pinned doc in retrieved, after that doc.
+      const lastPinnedIndex = retrieved.findLastIndex((d) => d.pinned);
+      if (lastPinnedIndex === -1) {
+        retrieved.splice(0, 0, pinnedDoc);
+      } else {
+        // insert after the last pinned doc
+        retrieved.splice(lastPinnedIndex + 1, 0, pinnedDoc);
+      }
       return retrieved;
     });
   };
@@ -1203,7 +1132,8 @@ export default function AppGens({
     // console.log(textWithCursor);
 
     // turn genDocumentExtracts into an array of extracts ordered by score
-    const potentialExtracts = retrieved
+    const relevantDocs = retrieved.filter((d) => d.pinned);
+    const potentialExtracts = relevantDocs
       .map((d) => {
         const chunks = d.chunks.sort((a, b) => a.offset - b.offset);
         const text = chunks.map((c) => c.text).join("");
@@ -1351,19 +1281,16 @@ export default function AppGens({
       };
     }
     let text;
-    if (searchQuery === "") {
+    if (!searchQuery) {
       const textarea = genTextAreaRef.current;
       if (!textarea) {
         console.log("Textarea not found");
         return;
       }
-      let text = textarea.value.substring(
+      text = textarea.value.substring(
         textarea.selectionStart,
         textarea.selectionEnd
       );
-      if (text == "") {
-        text = genContent;
-      }
     } else {
       text = searchQuery;
     }
@@ -1435,24 +1362,20 @@ export default function AppGens({
                   <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
                       <p className="mt-4">
-                        Gens is an early exploration of writing with your
-                        models/data and powerful control on search and
-                        generation. It allows you to:
+                        Gens is an early exploration giving you powerful control
+                        over document search and text generation. You can
+                        iteratively generate a document by:
                       </p>
                       <ul className="list-disc space-y-2 py-2 pl-4">
                         <li>
-                          Search and select the documents you want based on a
-                          deep search of your data, where you can pin documents
-                          you want to keep across searches
+                          Searching across workspace documents and selecting
+                          documents you want to keep in context for text
+                          generation.
                         </li>
                         <li>
-                          Create reusable templates to instruct the model and
-                          then generate, where the model has access to your
-                          text, the documents you've searched, and the template
-                        </li>
-                        <li>
-                          Iteratively create a document in a back and forth with
-                          the model and the information
+                          Generating text with context and templates. The model
+                          will use the template, text already present in the
+                          text field, and listed documents
                         </li>
                       </ul>
                       <p className="mt-2">
@@ -1500,6 +1423,15 @@ export default function AppGens({
                     }}
                     onBlur={(e) => {
                       setGenCursorPosition(e.target.selectionStart);
+                      setSelecting(false);
+                    }}
+                    onSelect={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      if (target.selectionStart !== target.selectionEnd) {
+                        setSelecting(true);
+                      } else {
+                        setSelecting(false);
+                      }
                     }}
                   />
                   <button
@@ -1524,7 +1456,11 @@ export default function AppGens({
               <div className="w-full text-sm sm:w-1/3">
                 <div className="sticky top-0">
                   <div className="mb-8">
-                    <h2 className="text-lg font-bold">Generation</h2>
+                    <h2 className="text-lg font-bold">Text Generation</h2>
+                    <p className="text-gray-500">
+                      Generate text based on text already present, documents in
+                      context, and template selected.
+                    </p>
                     <div className="my-2 flex flex-col items-start space-y-2">
                       <div className="flex-shrink-0 flex-grow-0">
                         {!genLoading ? (
@@ -1556,9 +1492,11 @@ export default function AppGens({
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Search</h2>
-                    <p>Find and pick documents to bring them into context.</p>
-
+                    <h2 className="text-lg font-bold">Document Search</h2>
+                    <p className="text-gray-500">
+                      Search across workspace documents. Select results you want
+                      to bring into context.
+                    </p>
                     <div className="mt-2 flex flex-initial items-start items-center space-x-4">
                       <input
                         type="text"
@@ -1572,14 +1510,20 @@ export default function AppGens({
                         }}
                       />
                       <ActionButton
-                        disabled={retrievalLoading}
+                        disabled={
+                          retrievalLoading || !(selecting || searchQuery)
+                        }
                         onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                           e.preventDefault();
                           void handleSearch();
                         }}
                       >
                         <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                        {retrievalLoading ? "Loading..." : "Search"}
+                        {retrievalLoading
+                          ? "Loading..."
+                          : selecting
+                          ? "Search selection"
+                          : "Search"}
                       </ActionButton>
                     </div>
 
@@ -1654,14 +1598,14 @@ export default function AppGens({
                         </div>
                         <div className="flex flex-row items-center space-x-2 leading-8">
                           <div className="flex flex-initial text-gray-400">
-                            TopK:
+                            Number of results:
                           </div>
                           <div className="flex flex-initial">
                             <input
                               type="number"
                               className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
                               value={top_k}
-                              placeholder="Top K"
+                              placeholder="Number of results"
                               onChange={(e) => setTopK(Number(e.target.value))}
                             />
                           </div>

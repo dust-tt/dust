@@ -486,7 +486,7 @@ async function deleteIssue(
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   localLogger.info(
     { documentId },
-    "Deleting GitHub issue from Dust Data Source."
+    "Deleting GitHub issue from Dust data source."
   );
   await deleteFromDataSource(dataSourceConfig, documentId);
 
@@ -538,7 +538,7 @@ async function deleteDiscussion(
   );
   localLogger.info(
     { documentId },
-    "Deleting GitHub discussion from Dust Data Source."
+    "Deleting GitHub discussion from Dust data source."
   );
   await deleteFromDataSource(dataSourceConfig, documentId);
 

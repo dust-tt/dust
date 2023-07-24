@@ -26,8 +26,13 @@ async function shouldProcessDocument(
 }
 
 async function processDocument(params: DocumentsPostProcessHookOnUpsertParams) {
+  const workspaceId = params.auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
+  }
+
   const localLogger = logger.child({
-    workspaceId: params.workspaceId,
+    workspaceId,
     dataSourceName: params.dataSourceName,
     documentId: params.documentId,
   });

@@ -69,7 +69,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -81,7 +81,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "The Data Source you requested was not found.",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -99,7 +99,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "There was an error retrieving the Data Source document.",
+            message: "There was an error retrieving the data source document.",
             data_source_error: docRes.error,
           },
         });
@@ -127,7 +127,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message: "You cannot upsert a document on a managed Data Source.",
+            message: "You cannot upsert a document on a managed data source.",
           },
         });
       }
@@ -217,7 +217,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "data_source_error",
-              message: "There was an error retrieving the Data Source.",
+              message: "There was an error retrieving the data source.",
               data_source_error: documents.error,
             },
           });
@@ -297,8 +297,8 @@ async function handler(
       });
 
       const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
+        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
-        workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         documentText: req.body.text,
         documentHash: upsertRes.value.document.hash,
@@ -336,7 +336,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message: "You cannot delete a document from a managed Data Source.",
+            message: "You cannot delete a document from a managed data source.",
           },
         });
       }
@@ -365,8 +365,8 @@ async function handler(
       });
 
       const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
+        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
-        workspaceId: owner.sId,
         documentId: req.query.documentId as string,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
       });

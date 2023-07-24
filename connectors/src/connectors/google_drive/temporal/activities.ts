@@ -36,6 +36,18 @@ import { registerWebhook } from "../lib";
 const FILES_SYNC_CONCURRENCY = 3;
 const FILES_GC_CONCURRENCY = 3;
 
+const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
+  "application/vnd.google-apps.document": "text/plain",
+  "application/vnd.google-apps.presentation": "text/plain",
+};
+// Deactivated CSV for now 20230721 (spolu)
+// const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "text/csv"];
+const MIME_TYPES_TO_DOWNLOAD = ["text/plain"];
+const MIME_TYPES_TO_SYNC = [
+  ...MIME_TYPES_TO_DOWNLOAD,
+  ...Object.keys(MIME_TYPES_TO_EXPORT),
+];
+
 export const statsDClient = new StatsD();
 
 type NangoGetConnectionRes = {
@@ -224,20 +236,12 @@ async function syncOneFile(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveFileType
 ) {
-  const mimeTypesToExport: { [key: string]: string } = {
-    "application/vnd.google-apps.document": "text/plain",
-    "application/vnd.google-apps.presentation": "text/plain",
-  };
-  // Deactivated CSV for now 20230721 (spolu)
-  // const mimeTypesToDownload = ["text/plain", "text/csv"];
-  const mimeTypesToDownload = ["text/plain"];
-
   let documentContent: string | undefined = undefined;
-  if (mimeTypesToExport[file.mimeType]) {
+  if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
     const res = await drive.files.export({
       fileId: file.id,
-      mimeType: mimeTypesToExport[file.mimeType],
+      mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
     });
     if (res.status !== 200) {
       throw new Error(
@@ -247,7 +251,7 @@ async function syncOneFile(
     if (typeof res.data === "string") {
       documentContent = res.data;
     }
-  } else if (mimeTypesToDownload.includes(file.mimeType)) {
+  } else if (MIME_TYPES_TO_DOWNLOAD.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
 
     let res;
@@ -457,10 +461,13 @@ export async function incrementalSync(
       );
       for (const change of changesRes.data.changes) {
         changeCount++;
-        if (change.changeType !== "file") {
+        if (change.changeType !== "file" || !change.file) {
           continue;
         }
-        if (change.file?.mimeType !== "application/vnd.google-apps.document") {
+        if (
+          !change.file.mimeType ||
+          !MIME_TYPES_TO_SYNC.includes(change.file.mimeType)
+        ) {
           continue;
         }
         if (!change.file.id) {

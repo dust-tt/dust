@@ -1,4 +1,5 @@
 import { RoleType } from "@app/lib/auth";
+import { ModelId } from "@app/lib/models";
 
 /**
  *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
@@ -17,17 +18,18 @@ export type PlanType = {
 };
 
 export type WorkspaceType = {
-  id: number;
+  id: ModelId;
   uId: string;
   sId: string;
   name: string;
   allowedDomain: string | null;
   role: RoleType;
   plan: PlanType;
+  disableLabs?: boolean;
 };
 
 export type UserType = {
-  id: number;
+  id: ModelId;
   provider: "github" | "google";
   providerId: string;
   username: string;

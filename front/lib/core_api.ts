@@ -710,6 +710,30 @@ export const CoreAPI = {
 
     return _resultFromResponse(response);
   },
+
+  async tokenize({
+    text,
+    modelId,
+    providerId,
+  }: {
+    text: string;
+    modelId: string;
+    providerId: string;
+  }): Promise<CoreAPIResponse<{ tokens: number[] }>> {
+    const response = await fetch(`${CORE_API}/tokenize`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: modelId,
+        provider_id: providerId,
+      }),
+    });
+
+    return _resultFromResponse(response);
+  },
 };
 
 async function _resultFromResponse<T>(

@@ -19,6 +19,8 @@ export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   logging: false,
 }); // TODO: type process.env
 
+export type ModelId = number;
+
 export class User extends Model<
   InferAttributes<User>,
   InferCreationAttributes<User>
@@ -139,6 +141,7 @@ export class Workspace extends Model<
   declare description?: string;
   declare allowedDomain?: string;
   declare plan?: string;
+  declare disableLabs?: boolean;
 }
 Workspace.init(
   {
@@ -177,6 +180,10 @@ Workspace.init(
     },
     plan: {
       type: DataTypes.STRING,
+    },
+    disableLabs: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
@@ -904,7 +911,6 @@ export class GensTemplate extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]>;
-  declare instructions: string[];
   declare instructions2: string;
   declare name: string;
   declare visibility: "user" | "workspace";
@@ -928,10 +934,6 @@ GensTemplate.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    instructions: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
-      allowNull: false,
     },
     instructions2: {
       type: DataTypes.TEXT,
@@ -1153,6 +1155,60 @@ EventSchema.hasMany(ExtractedEvent, {
 });
 DataSource.hasMany(ExtractedEvent, {
   foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+
+export class DocumentTrackerChangeSuggestion extends Model<
+  InferAttributes<DocumentTrackerChangeSuggestion>,
+  InferCreationAttributes<DocumentTrackerChangeSuggestion>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare suggestion: string;
+  declare suggestionTitle?: string | null;
+  declare status: "pending" | "done" | "rejected";
+
+  declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
+  declare sourceDataSourceId: ForeignKey<DataSource["id"]>;
+  declare sourceDocumentId: string;
+}
+
+DocumentTrackerChangeSuggestion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: { type: DataTypes.DATE, allowNull: false },
+    updatedAt: { type: DataTypes.DATE, allowNull: false },
+    suggestion: { type: DataTypes.TEXT, allowNull: false },
+    suggestionTitle: { type: DataTypes.TEXT, allowNull: true },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    sourceDocumentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "document_tracker_change_suggestion",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["trackedDocumentId"] }],
+  }
+);
+
+TrackedDocument.hasMany(DocumentTrackerChangeSuggestion, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+DataSource.hasMany(DocumentTrackerChangeSuggestion, {
+  foreignKey: { allowNull: false, name: "sourceDataSourceId" },
   onDelete: "CASCADE",
 });
 

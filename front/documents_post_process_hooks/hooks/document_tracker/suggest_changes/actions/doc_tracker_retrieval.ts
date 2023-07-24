@@ -12,7 +12,8 @@ import {
 // and returns an array of DocTrackerRetrievalActionValue as output
 export async function callDocTrackerRetrievalAction(
   workspaceId: string,
-  inputText: string
+  inputText: string,
+  targetDocumentTokens = 2000
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
@@ -20,6 +21,7 @@ export async function callDocTrackerRetrievalAction(
   config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(
     workspaceId
   );
+  config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
   const res = await callAction({
     workspaceId,
@@ -46,6 +48,7 @@ const DocTrackerRetrievalActionValueSchema = t.array(
     source_url: t.string,
     hash: t.string,
     text_size: t.Integer,
+    text: t.union([t.string, t.null, t.undefined]),
     chunk_count: t.Integer,
     chunks: t.array(
       t.type({

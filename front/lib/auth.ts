@@ -208,6 +208,7 @@ export class Authenticator {
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           plan: planForWorkspace(this._workspace),
+          disableLabs: this._workspace.disableLabs,
         }
       : null;
   }

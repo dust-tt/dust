@@ -5,27 +5,38 @@ import {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
 } from "@app/documents_post_process_hooks/hooks";
-import { callLegacyDocTrackerAction } from "@app/documents_post_process_hooks/hooks/document_tracker/suggest_changes/actions/doc_tracker_legacy";
 import {
   getDatasource,
   getDocumentDiff,
 } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
 import { CoreAPI } from "@app/lib/core_api";
-import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
+import {
+  DataSource,
+  DocumentTrackerChangeSuggestion,
+  TrackedDocument,
+  User,
+  Workspace,
+} from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
+
+import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
+import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
 
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
+const MAX_DIFF_TOKENS = 4000;
+const TOTAL_TARGET_TOKENS = 6000;
+const RETRIEVAL_MIN_SCORE = 0.75;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
 
 export async function shouldDocumentTrackerSuggestChangesRun({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
   dataSourceConnectorProvider,
   verb,
@@ -35,6 +46,11 @@ export async function shouldDocumentTrackerSuggestChangesRun({
       "document_tracker_suggest_changes post process hook should only run for upsert."
     );
     return false;
+  }
+
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
   }
 
   const localLogger = logger.child({
@@ -119,19 +135,35 @@ export async function shouldDocumentTrackerSuggestChangesRun({
 }
 
 export async function documentTrackerSuggestChangesOnUpsert({
+  auth,
   dataSourceName,
-  workspaceId,
   documentId,
   documentHash,
+  documentSourceUrl,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
-  logger.info(
-    {
-      workspaceId,
-      dataSourceName,
-      documentId,
-    },
+  const workspaceId = auth.workspace()?.sId;
+  if (!workspaceId) {
+    throw new Error("Workspace not found.");
+  }
+
+  const localLogger = logger.child({
+    workspaceId,
+    dataSourceName,
+    documentId,
+    documentHash,
+  });
+
+  localLogger.info(
     "Running document_tracker_suggest_changes post upsert hook."
   );
+
+  const workspace = await Workspace.findOne({
+    where: { sId: workspaceId },
+  });
+  if (!workspace) {
+    throw new Error(`Workspace not found: ${workspaceId}`);
+  }
+
   const dataSource = await getDatasource(dataSourceName, workspaceId);
   const isDocTracked = !!(await TrackedDocument.count({
     where: {
@@ -143,14 +175,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   // just match the document that was just upserted if it's tracked.
   // We check this in the filter, but there could be a race condition.
   if (isDocTracked) {
-    logger.info(
-      {
-        workspaceId,
-        dataSourceName,
-        documentId,
-      },
-      "Document is tracked: not searching for matches."
-    );
+    localLogger.info("Document is tracked: not searching for matches.");
     return;
   }
   const documentDiff = await getDocumentDiff({
@@ -162,13 +187,11 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const positiveDiff = documentDiff
     .filter(({ type }) => type === "insert")
+    .map(({ value }) => value)
     .join("");
   if (positiveDiff.length < MINIMUM_POSITIVE_DIFF_LENGTH) {
-    logger.info(
+    localLogger.info(
       {
-        workspaceId,
-        dataSourceName,
-        documentId,
         positiveDiffLength: positiveDiff.length,
       },
       "Positive diff is too short, not searching for matches."
@@ -181,26 +204,92 @@ export async function documentTrackerSuggestChangesOnUpsert({
     .filter(({ type }) => type !== "equal")
     .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
     .join("\n");
-  const actionResult = await callLegacyDocTrackerAction(workspaceId, diffText);
-  if (!actionResult.match) {
-    logger.info(
-      {
-        workspaceId,
-        dataSourceName,
-        documentId,
-      },
-      "No match found."
+
+  const tokensInDiff = await CoreAPI.tokenize({
+    text: diffText,
+    modelId: "text-embedding-ada-002",
+    providerId: "openai",
+  });
+  if (tokensInDiff.isErr()) {
+    throw tokensInDiff.error;
+  }
+
+  const tokensInDiffCount = tokensInDiff.value.tokens.length;
+  if (tokensInDiffCount > MAX_DIFF_TOKENS) {
+    localLogger.info(
+      { tokensInDiffCount, positiveDiffLength: positiveDiff.length },
+      "Diff is too long, not searching for matches."
     );
     return;
   }
 
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found: ${workspaceId}`);
+  const targetDocumentTokens = TOTAL_TARGET_TOKENS - tokensInDiffCount;
+
+  localLogger.info(
+    {
+      positiveDiffLength: positiveDiff.length,
+      tokensInDiffCount,
+    },
+    "Calling doc tracker retrieval action."
+  );
+  const retrievalResult = await callDocTrackerRetrievalAction(
+    workspaceId,
+    diffText,
+    targetDocumentTokens
+  );
+
+  if (!retrievalResult.length) {
+    localLogger.warn("No documents found.");
+    return;
   }
-  const matchedDsName = actionResult.matched_data_source_id;
+  // TODO: maybe not just look at top1, look at top 3 chunks and do on multiple docs if needed
+  const top1 = retrievalResult[0];
+  const score = top1.chunks[0].score;
+
+  if (score < RETRIEVAL_MIN_SCORE) {
+    localLogger.info(
+      { score },
+      "Score is too low, not calling doc tracker suggest changes action."
+    );
+    return;
+  }
+
+  localLogger.info({ score }, "Calling doc tracker suggest changes action.");
+
+  const suggestChangesResult = await callDocTrackerSuggestChangesAction(
+    workspaceId,
+    diffText,
+    top1.chunks.map((c) => c.text).join("\n-------\n")
+  );
+
+  if (!suggestChangesResult.match) {
+    localLogger.info({ score }, "No match found.");
+    return;
+  }
+
+  const suggestedChanges = suggestChangesResult.suggested_changes;
+  const matchedDsName = top1.data_source_id;
+  const matchedDocId = top1.document_id;
+  const matchedDocUrl = top1.source_url;
+  const matchedDocTags = top1.tags;
+  const maybeMatchedDocTitleTag = matchedDocTags.find((t) =>
+    t.startsWith("title:")
+  );
+  const matchedDocTitle = maybeMatchedDocTitleTag
+    ? maybeMatchedDocTitleTag.split("title:")[1]
+    : null;
+
+  localLogger.info(
+    {
+      matchedDsName,
+      matchedDocId,
+      matchedDocUrl,
+      matchedDocTitle,
+      score,
+    },
+    "Match found."
+  );
+
   const matchedDs = await DataSource.findOne({
     where: {
       name: matchedDsName,
@@ -212,15 +301,12 @@ export async function documentTrackerSuggestChangesOnUpsert({
       `Could not find data source with name ${matchedDsName} and workspaceId ${workspaceId}`
     );
   }
-  const matchedDocId = actionResult.matched_doc_id;
+
   // again, checking for race condition here and skipping if the
   // matched doc is the doc that was just upserted.
   if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
-    logger.info(
+    localLogger.info(
       {
-        workspaceId,
-        dataSourceName,
-        documentId,
         matchedDsName,
         matchedDocId,
       },
@@ -228,6 +314,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     );
     return;
   }
+
   const trackedDocuments = await TrackedDocument.findAll({
     where: {
       documentId: matchedDocId,
@@ -235,11 +322,8 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
   });
   if (!trackedDocuments.length) {
-    logger.warn(
+    localLogger.warn(
       {
-        workspaceId,
-        dataSourceName,
-        documentId,
         matchedDsName,
         matchedDocId,
       },
@@ -247,6 +331,26 @@ export async function documentTrackerSuggestChangesOnUpsert({
     );
     return;
   }
+
+  logger.info(
+    {
+      matchedDsName,
+      matchedDocId,
+    },
+    "Creating change suggestions in database."
+  );
+  await Promise.all(
+    trackedDocuments.map((td) =>
+      DocumentTrackerChangeSuggestion.create({
+        trackedDocumentId: td.id,
+        sourceDataSourceId: dataSource.id,
+        sourceDocumentId: documentId,
+        suggestion: suggestedChanges,
+        status: "pending",
+      })
+    )
+  );
+
   const users = await User.findAll({
     where: {
       id: {
@@ -259,8 +363,6 @@ export async function documentTrackerSuggestChangesOnUpsert({
     throw new Error("Missing SENDGRID_API_KEY env variable");
   }
   sgMail.setApiKey(SENDGRID_API_KEY);
-  const matchedDocUrl = actionResult.matched_doc_url;
-  const suggestedChanges = actionResult.suggested_changes;
   const incomingDocument = await CoreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
@@ -271,13 +373,16 @@ export async function documentTrackerSuggestChangesOnUpsert({
       `Could not get document ${documentId} from data source ${dataSource.name}`
     );
   }
-  const incomingDocumentUrl = incomingDocument.value.document.source_url;
+
+  const incomingDocumentTags = incomingDocument.value.document.tags;
+  const maybeIncomingDocumentTitleTag = incomingDocumentTags.find((t) =>
+    t.startsWith("title:")
+  );
+  const incomingDocumentTitle = maybeIncomingDocumentTitleTag;
+
   const sendEmail = async (email: string) => {
-    logger.info(
+    localLogger.info(
       {
-        workspaceId,
-        dataSourceName,
-        documentId,
         matchedDsName,
         matchedDocId,
         email,
@@ -287,10 +392,16 @@ export async function documentTrackerSuggestChangesOnUpsert({
     const msg = {
       to: email,
       from: "team@dust.tt",
-      subject: "DUST: Document update suggestion",
-      text: `Hello!
-  We have a suggestion for you to update the document ${matchedDocUrl}, based on the new document ${incomingDocumentUrl}:
-  ${suggestedChanges}
+      subject: `DUST: Document update suggestion for ${
+        matchedDocTitle || matchedDocUrl
+      }`,
+      html: `Hello!<br>
+  We have a suggestion for you to update the document <a href="${matchedDocUrl}">${
+        matchedDocTitle || matchedDocUrl
+      }</a>, based on the new document <a href="${documentSourceUrl}">${
+        incomingDocumentTitle || documentSourceUrl
+      }</a>:<br>
+  ${suggestedChanges}<br>
   The Dust team`,
     };
     await sgMail.send(msg);
