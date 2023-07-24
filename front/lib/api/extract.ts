@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { EventSchema } from "@app/lib/models";
-import { EventSchemaType } from "@app/types/extract";
+import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 
 export async function getEventSchemas(
   auth: Authenticator
@@ -20,6 +20,7 @@ export async function getEventSchemas(
 
   return schemas.map((schema): EventSchemaType => {
     return {
+      id: schema.id,
       marker: schema.marker,
       description: schema.description,
       status: schema.status,
@@ -49,6 +50,7 @@ export async function getEventSchema(
   }
 
   return {
+    id: schema.id,
     marker: schema.marker,
     description: schema.description,
     status: schema.status,
@@ -79,6 +81,7 @@ export async function createEventSchema(
   });
 
   return {
+    id: schema.id,
     marker: schema.marker,
     description: schema.description,
     status: schema.status,
@@ -116,9 +119,37 @@ export async function updateEventSchema(
   });
 
   return {
+    id: schema.id,
     marker: schema.marker,
     description: schema.description,
     status: schema.status,
     properties: schema.properties,
   };
+}
+
+export async function getExtractedEvents(
+  auth: Authenticator,
+  schemaId: number
+): Promise<ExtractedEventType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+
+  const events = await ExtractedEvent.findAll({
+    where: {
+      eventSchemaId: schemaId,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  return events.map((event): ExtractedEventType => {
+    return {
+      id: event.id,
+      marker: event.marker,
+      properties: event.properties,
+      dataSourceId: event.dataSourceId,
+      documentId: event.documentId,
+    };
+  });
 }

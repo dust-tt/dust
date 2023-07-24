@@ -153,11 +153,11 @@ export function ExtractEventSchemaForm({
       dataSource={undefined}
     >
       <div className="flex h-full flex-col">
-        <div className="mb-10">
+        <div className="mt-2 flex flex-initial">
           <MainTab currentTab="Extract data" owner={owner} />
         </div>
 
-        <div className="mx-auto mb-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           {readOnly && (
             <div
               className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
@@ -175,7 +175,7 @@ export function ExtractEventSchemaForm({
           <div className="mb-24 divide-y divide-gray-200">
             <div>
               <h3 className="text-base font-medium leading-6 text-gray-900">
-                Template information
+                Marker configuration
               </h3>
               <p className="mt-1 text-sm text-gray-500">
                 Define the marker and the description for your template. Once
@@ -221,7 +221,7 @@ export function ExtractEventSchemaForm({
           <div className="mb-6 divide-y divide-gray-200">
             <div>
               <h3 className="text-base font-medium leading-6 text-gray-900">
-                Template properties
+                Template configuration
               </h3>
               <p className="mt-1 text-sm text-gray-500">
                 Define the properties to extract for this template. Picking a
