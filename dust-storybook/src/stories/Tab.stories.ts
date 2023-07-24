@@ -31,7 +31,8 @@ export const TabNavigation: Story = {
         icon: Beaker,
       },
       {
-        name: "Billing",
+        label: "Billing",
+        hideLabel: true,
         href: "#",
         current: false,
         icon: Cog6Tooth,

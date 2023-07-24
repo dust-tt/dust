@@ -6,6 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 type TabProps = {
   tabs: Array<{
     label: string;
+    hideLabel?: boolean;
     href: string;
     current: boolean;
     icon?: ReactComponentLike;
@@ -85,7 +86,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
           onClick={(event) => onTabClick?.(tab.label, event)}
         >
           {tab.icon && <tab.icon className={finalIconClasses} />}
-          {tab.label}
+          {tab.hideLabel ?? tab.label}
         </a>
       );
     });
