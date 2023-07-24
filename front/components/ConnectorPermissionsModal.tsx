@@ -37,7 +37,7 @@ function PermissionTreeChildren({
     useConnectorPermissions(owner, dataSource, parentId);
 
   return (
-    <div>
+    <div className="ml-2">
       <>
         {isResourcesLoading ? (
           <Spinner />
