@@ -474,13 +474,13 @@ function ManagedDataSourceStatus({
   fetchConnectorError: boolean;
   connector: ConnectorType | null;
 }) {
-  const [syncrhonizedTimeAgo, setSyncrhonizedTimeAgo] = useState<string | null>(
+  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
   );
 
   useEffect(() => {
     if (connector?.lastSyncSuccessfulTime)
-      setSyncrhonizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
+      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
   }, []);
 
   if (fetchConnectorError) {
@@ -509,7 +509,7 @@ function ManagedDataSourceStatus({
           </p>
         </div>
         <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
-          {syncrhonizedTimeAgo && `${syncrhonizedTimeAgo} ago`}
+          {synchronizedTimeAgo && `${synchronizedTimeAgo} ago`}
         </p>
       </div>
     );
@@ -604,7 +604,6 @@ function ManagedDataSourceSettings({
           isOpen={showPermissionModal}
           setOpen={setShowPermissionModal}
           onEditPermission={() => {
-            console.log("Update Permnission");
             void handleUpdatePermissions();
           }}
         />

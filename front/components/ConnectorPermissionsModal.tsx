@@ -3,10 +3,10 @@ import {
   ChatBubbleLeftRightIcon,
   CircleStackIcon,
   Cog6ToothIcon,
-  DocumentTextIcon,
   FolderIcon,
 } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
+import { DocumentText } from "sparkle/src/icons/mini";
 
 import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
@@ -49,7 +49,7 @@ function PermissionTreeChildren({
                   <div className="ml-1 flex flex-row items-center py-1 text-base">
                     {r.type === "file" && (
                       <>
-                        <DocumentTextIcon className="h-6 w-6 text-slate-300" />
+                        <DocumentText className="h-6 w-6 text-slate-300" />
                         <span className="ml-2">{r.title}</span>
                       </>
                     )}
@@ -116,13 +116,13 @@ export default function ConnectorPermissionsModal({
   setOpen: (open: boolean) => void;
   onEditPermission: () => void;
 }) {
-  const [syncrhonizedTimeAgo, setSyncrhonizedTimeAgo] = useState<string | null>(
+  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
   );
 
   useEffect(() => {
     if (connector.lastSyncSuccessfulTime)
-      setSyncrhonizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
+      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
   }, []);
 
   return (
@@ -161,9 +161,9 @@ export default function ConnectorPermissionsModal({
                       >
                         {CONNECTOR_TYPE_TO_NAME[connector.type]} permissions
                       </Dialog.Title>
-                      {syncrhonizedTimeAgo && (
+                      {synchronizedTimeAgo && (
                         <span className="text-gray-500">
-                          Last sync ~{syncrhonizedTimeAgo} ago
+                          Last sync ~{synchronizedTimeAgo} ago
                         </span>
                       )}
                     </div>
