@@ -18,19 +18,22 @@ export const TabNavigation: Story = {
   args: {
     tabs: [
       {
-        name: "Assistant",
+        label: "Assistant",
         href: "#",
         current: false,
-        title: true,
         icon: ChatBubbleBottomCenterText,
       },
-      { name: "Lab", href: "#", current: false, title: true, icon: Beaker },
-      { name: "Team Members", href: "#", title: true, current: true },
+      { label: "Lab", href: "#", current: false, icon: Beaker },
+      {
+        label: "Team Members",
+        href: "#",
+        current: true,
+        icon: Beaker,
+      },
       {
         name: "Billing",
         href: "#",
         current: false,
-        title: false,
         icon: Cog6Tooth,
       },
     ],
