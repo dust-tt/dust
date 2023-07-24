@@ -20,18 +20,19 @@ export const TabNavigation: Story = {
       {
         label: "Assistant",
         href: "#",
-        current: false,
-        icon: ChatBubbleBottomCenterText,
-      },
-      { label: "Lab", href: "#", current: false, icon: Beaker },
-      {
-        label: "Team Members",
-        href: "#",
         current: true,
-        icon: Beaker,
+        icon: ChatBubbleBottomCenterText,
+        sizing: "expand",
       },
       {
-        label: "Billing",
+        label: "Lab",
+        href: "#",
+        current: false,
+        icon: Beaker,
+        sizing: "expand",
+      },
+      {
+        label: "Settings",
         hideLabel: true,
         href: "#",
         current: false,

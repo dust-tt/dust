@@ -9,6 +9,7 @@ type TabProps = {
     hideLabel?: boolean;
     href: string;
     current: boolean;
+    sizing?: "hug" | "expand";
     icon?: ReactComponentLike;
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
@@ -53,6 +54,11 @@ const iconClasses = {
   },
 };
 
+const tabSizingClasses = {
+  hug: "",
+  expand: "flex-1",
+};
+
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
   const renderTabs = () =>
     tabs.map((tab) => {
@@ -64,11 +70,13 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "group flex gap-x-2 text-sm font-medium px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap",
+        "group justify-center flex gap-x-2 text-sm font-medium px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap",
         tabStateClasses.base,
         tabStateClasses.hover,
+        tabSizingClasses[tab.sizing ?? "hug"],
         className
       );
+      console.log(tabSizingClasses[tab.sizing ?? "hug"]);
 
       const finalIconClasses = classNames(
         "h-5 w-5",
