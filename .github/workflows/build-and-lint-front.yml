@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - front/**
+      - sparkle/**
       - .github/workflows/build-and-lint-front.yml
 
 jobs:
