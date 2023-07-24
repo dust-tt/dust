@@ -46,7 +46,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // get query param parentId
       let parentId: string | undefined = undefined;
       if (req.query.parentId && typeof req.query.parentId === "string") {
         parentId = req.query.parentId;
