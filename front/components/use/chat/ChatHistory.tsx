@@ -45,7 +45,7 @@ export function ChatHistory({
     workspaceScope: !workspaceScope,
   });
 
-  function ChatSwitcher({}) {
+  function ChatSwitcher() {
     const tabs: {
       name: string;
       onClick: React.MouseEventHandler<HTMLAnchorElement>;
