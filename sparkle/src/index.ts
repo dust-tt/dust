@@ -13,5 +13,15 @@ import {
   Beaker as BeakerIcon,
   ChatBubbleBottomCenterText as ChatBubbleBottomCenterTextIcon,
   Cog6Tooth as Cog6ToothIcon,
+  DocumentText as DocumentTextIcon,
+  FolderOpen as FolderOpenIcon,
+  Square3Stack3D as Square3Stack3DIcon,
 } from "./icons/mini";
-export { BeakerIcon, ChatBubbleBottomCenterTextIcon, Cog6ToothIcon };
+export {
+  BeakerIcon,
+  ChatBubbleBottomCenterTextIcon,
+  Cog6ToothIcon,
+  DocumentTextIcon,
+  FolderOpenIcon,
+  Square3Stack3DIcon,
+};
