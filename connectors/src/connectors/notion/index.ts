@@ -270,7 +270,8 @@ export async function retrieveNotionConnectorPermissions(
         return {
           provider: c.type,
           internalId: p.notionPageId,
-          parentInternalId: null,
+          parentInternalId:
+            !p.parentId || p.parentId === "workspace" ? null : p.parentId,
           type: "file" as ConnectorResourceType,
           title: p.title || "",
           sourceUrl: p.notionUrl || null,
@@ -284,7 +285,8 @@ export async function retrieveNotionConnectorPermissions(
   const dbResources: ConnectorResource[] = dbs.map((db) => ({
     provider: c.type,
     internalId: db.notionDatabaseId,
-    parentInternalId: null,
+    parentInternalId:
+      !db.parentId || db.parentId === "workspace" ? null : db.parentId,
     type: "database" as ConnectorResourceType,
     title: db.title || "",
     sourceUrl: db.notionUrl || null,
