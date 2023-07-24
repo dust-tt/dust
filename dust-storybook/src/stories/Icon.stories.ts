@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Icon } from "sparkle";
-import { ChatBubbleBottomCenterText } from "sparkle/src/icons/mini";
+import { Icon } from "@dust-tt/sparkle";
+import { ChatBubbleBottomCenterTextIcon } from "@dust-tt/sparkle";
 
 const meta = {
   title: "Example/Icon",
@@ -12,7 +12,7 @@ type Story = StoryObj<typeof meta>;
 
 export const BasicIcon: Story = {
   args: {
-    IconComponent: ChatBubbleBottomCenterText,
+    IconComponent: ChatBubbleBottomCenterTextIcon,
     className: "w-6 h-6 text-action-500",
   },
 };

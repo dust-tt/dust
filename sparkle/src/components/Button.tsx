@@ -1,5 +1,6 @@
 import React, { MouseEvent } from "react";
-import { classNames } from "@sparkle/lib/utils";
+
+import { classNames } from "../lib/utils";
 
 type ButtonProps = {
   type?: "primary" | "secondary";
@@ -24,7 +25,8 @@ const typeClasses = {
     dark: {
       base: "dark:bg-action-500-dark dark:border-action-600-dark",
       hover: "dark:hover:bg-action-500-dark dark:hover:border-action-500-dark",
-      active: "dark:active:bg-action-600-dark dark:active:border-action-700-dark",
+      active:
+        "dark:active:bg-action-600-dark dark:active:border-action-700-dark",
     },
   },
   secondary: {
@@ -34,7 +36,8 @@ const typeClasses = {
     dark: {
       base: "dark:text-action-500-dark dark:border-structure-300-dark",
       hover: "dark:hover:bg-action-50-dark dark:hover:border-action-300-dark",
-      active: "dark:active:bg-action-100-dark dark:active:border-action-500-dark",
+      active:
+        "dark:active:bg-action-100-dark dark:active:border-action-500-dark",
     },
   },
 };
