@@ -6,12 +6,15 @@ import { UserIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import {
   UserIcon as UserIconFull,
   UserGroupIcon as UserGroupIconFull,
+  ChevronDownIcon,
 } from "@heroicons/react/24/solid";
 
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { userIsChatSessionOwner } from "@app/lib/api/chat";
+import { Menu } from "@headlessui/react";
+import Link from "next/link";
 
 export function ChatHistory({
   owner,
@@ -31,6 +34,111 @@ export function ChatHistory({
     workspaceScope,
   });
 
+  function ChatSwitcher({}) {
+    const tabs: {
+      name: string;
+      icon: JSX.Element;
+      onClick: React.MouseEventHandler<HTMLAnchorElement>;
+    }[] = [
+      {
+        name: "My Chats",
+        icon: <UserIconFull className="mr-2 h-4 w-4" />,
+        onClick: () => {
+          setWorkspaceScope(false);
+          setOffset(0);
+        },
+      },
+      {
+        name: "Team Chats",
+        icon: <UserGroupIconFull className="mr-2 h-4 w-4" />,
+        onClick: () => {
+          setWorkspaceScope(true);
+          setOffset(0);
+        },
+      },
+    ];
+    const currentTab = workspaceScope ? "Team Chats" : "My Chats";
+    const currTab = tabs.find((t) => t.name === currentTab);
+
+    return (
+      <div className="w-full">
+        <div className="flex-cols mb-2 flex border-b border-gray-200 sm:hidden">
+          <div className="flex flex-1">
+            <Menu as="div" className="relative w-full">
+              <div>
+                <Menu.Button className="flex w-full items-center whitespace-nowrap text-sm font-bold text-gray-700 focus:outline-none">
+                  <div className="flex flex-initial px-4 py-3">
+                    {currTab?.icon}
+                    {currTab?.name}
+                  </div>
+                  <div className="flex">
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  </div>
+                </Menu.Button>
+              </div>
+              <Menu.Items className="absolute left-0 z-10 mt-0 w-full origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                {tabs.map((tab) => (
+                  <Menu.Item key={tab.name}>
+                    {({ active }) => (
+                      <Link
+                        href="#"
+                        onClick={tab.onClick}
+                        key={tab.name}
+                        className={classNames(
+                          "flex whitespace-nowrap font-medium",
+                          active ? "bg-gray-50" : "",
+                          "block px-4 py-3 text-sm text-gray-500"
+                        )}
+                      >
+                        {tab.icon}
+                        {tab.name}
+                      </Link>
+                    )}
+                  </Menu.Item>
+                ))}
+              </Menu.Items>
+            </Menu>
+          </div>
+          <div className="flex flex-1"></div>
+          <div className="flex flex-initial items-center">
+            <PaginationLink newer={true} />
+            <PaginationLink newer={false} />
+          </div>
+        </div>
+
+        <div className="mb-2 hidden sm:block">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex" aria-label="Tabs">
+              {tabs.map((tab) => (
+                <div key={tab.name} className="flex flex-initial">
+                  <Link
+                    href="#"
+                    onClick={tab.onClick}
+                    key={tab.name}
+                    className={classNames(
+                      "flex flex items-center whitespace-nowrap border-b-2 px-4 py-3 text-sm",
+                      tab.name == currentTab
+                        ? "border-gray-500 font-bold text-gray-700"
+                        : "border-transparent font-medium text-gray-500 hover:border-gray-200 hover:text-gray-700"
+                    )}
+                  >
+                    {tab.icon}
+                    {tab.name}
+                  </Link>
+                </div>
+              ))}
+              <div className="flex flex-1"></div>
+              <div className="flex flex-initial items-center">
+                <PaginationLink newer={true} />
+                <PaginationLink newer={false} />
+              </div>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const handlePagination = async (newer: boolean) => {
     if (newer) {
       setOffset(offset - limit);
@@ -40,12 +148,13 @@ export function ChatHistory({
   };
 
   function PaginationLink({ newer }: { newer: boolean }) {
-    const text = newer ? "< newer" : "older >";
+    const text = newer ? "< " : " >";
     const disabled = newer ? offset === 0 : sessions.length < limit;
     const invisible = offset === 0 && sessions.length < limit;
     return (
       <div
         className={classNames(
+          "text-md mx-1",
           disabled
             ? "text-gray-400 hover:cursor-default"
             : "cursor-pointer hover:text-violet-800",
@@ -90,61 +199,7 @@ export function ChatHistory({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="flex flex-row items-center justify-between pt-4">
-        <PaginationLink newer={true} />
-        <div className="font-bold">Recent Chats</div>
-        <PaginationLink newer={false} />
-      </div>
-      <div className="flex flex-row items-center justify-center pb-4 pt-1 text-xs italic">
-        <div
-          className={classNames(
-            "group relative",
-            !workspaceScope
-              ? "font-bold"
-              : "cursor-pointer hover:text-violet-800"
-          )}
-          onClick={() => {
-            setWorkspaceScope(false);
-            setOffset(0);
-          }}
-        >
-          {!workspaceScope ? (
-            <UserIconFull className="w4 h-4" />
-          ) : (
-            <UserIcon className="h-4 w-4" />
-          )}
-          <div className="absolute hidden w-max rounded border bg-white px-1 py-1 group-hover:block">
-            <span className="font-normal text-gray-600">
-              <span className="font-semibold">User history</span>
-              &nbsp; Display your chat sessions
-            </span>
-          </div>
-        </div>
-        <div
-          className={classNames(
-            "group relative ml-2",
-            workspaceScope
-              ? "font-bold"
-              : "cursor-pointer hover:text-violet-800"
-          )}
-          onClick={() => {
-            setWorkspaceScope(true);
-            setOffset(0);
-          }}
-        >
-          {workspaceScope ? (
-            <UserGroupIconFull className="w4 h-4" />
-          ) : (
-            <UserGroupIcon className="h-4 w-4" />
-          )}
-          <div className="absolute hidden w-max rounded border bg-white px-1 py-1 group-hover:block">
-            <span className="font-normal text-gray-600">
-              <span className="font-semibold">Workspace history</span>
-              &nbsp; Display chat sessions from other users of this workspace
-            </span>
-          </div>
-        </div>
-      </div>
+      <ChatSwitcher />
       <div className="flex w-full flex-col space-y-2">
         {sessions.length === 0
           ? "No chat sessions to show there yet."
