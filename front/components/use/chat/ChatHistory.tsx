@@ -57,13 +57,13 @@ export function ChatHistory({
           setOffset(0);
         },
       },
-      {
-        name: "Team Conversations",
-        onClick: () => {
-          setWorkspaceScope(true);
-          setOffset(0);
-        },
-      },
+      // {
+      //   name: "Team Conversations",
+      //   onClick: () => {
+      //     setWorkspaceScope(true);
+      //     setOffset(0);
+      //   },
+      // },
     ];
     const currentTab = workspaceScope
       ? "Team Conversations"
