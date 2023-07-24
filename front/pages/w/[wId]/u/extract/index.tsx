@@ -191,7 +191,7 @@ export default function AppExtractEvents({
                                   type="submit"
                                   onClick={() =>
                                     router.push(
-                                      `/w/${owner.sId}/u/extract/${schema.marker}`
+                                      `/w/${owner.sId}/u/extract/${schema.marker}/edit`
                                     )
                                   }
                                 >
@@ -207,7 +207,7 @@ export default function AppExtractEvents({
                                   type="submit"
                                   onClick={() =>
                                     router.push(
-                                      `/w/${owner.sId}/u/extract/${schema.marker}/data`
+                                      `/w/${owner.sId}/u/extract/${schema.marker}`
                                     )
                                   }
                                 >
