@@ -24,6 +24,13 @@ const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   github: "GitHub",
 };
 
+const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
+  notion: "top-level Notion pages or databases",
+  google_drive: "Google Drive folders",
+  slack: "Slack channels",
+  github: "GitHub repositories",
+};
+
 function PermissionTreeChildren({
   owner,
   dataSource,
@@ -163,7 +170,7 @@ export default function ConnectorPermissionsModal({
                       </Dialog.Title>
                       {synchronizedTimeAgo && (
                         <span className="text-gray-500">
-                          Last sync ~{synchronizedTimeAgo} ago
+                          Last synchronized ~{synchronizedTimeAgo} ago
                         </span>
                       )}
                     </div>
@@ -186,8 +193,8 @@ export default function ConnectorPermissionsModal({
                 <div>
                   <div className="mt-16">
                     <div className="px-2 text-sm text-gray-500">
-                      Top-level resources accessible by this managed data
-                      source:
+                      Dust has access to the following{" "}
+                      {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
                     </div>
                   </div>
                 </div>
