@@ -92,7 +92,7 @@ export async function processExtractEvents({
   // Getting the markers from the doc and keeping only those not already in the DB
   const rawMarkers = await getExtractEventMarkersToProcess({
     documentId,
-    dataSourceId: dataSource.id,
+    dataSourceName: dataSourceName,
     documentText,
   });
   const markers = sanitizeRawExtractEventMarkers(rawMarkers);
@@ -101,7 +101,7 @@ export async function processExtractEvents({
     Object.keys(markers).map((marker) => {
       return _processExtractEvent({
         auth: auth,
-        dataSource: dataSource,
+        dataSourceName: dataSourceName,
         sanitizedMarker: marker,
         markers: markers[marker],
         documentText: documentText,
@@ -117,7 +117,7 @@ export async function processExtractEvents({
  */
 async function _processExtractEvent(data: {
   auth: Authenticator;
-  dataSource: DataSource;
+  dataSourceName: string;
   sanitizedMarker: string;
   markers: string[];
   documentText: string;
@@ -126,7 +126,7 @@ async function _processExtractEvent(data: {
 }) {
   const {
     auth,
-    dataSource,
+    dataSourceName,
     sanitizedMarker,
     markers,
     documentId,
@@ -169,7 +169,7 @@ async function _processExtractEvent(data: {
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
-      dataSourceId: dataSource.id,
+      dataSourceName: dataSourceName,
       marker: properties.marker,
     });
 
