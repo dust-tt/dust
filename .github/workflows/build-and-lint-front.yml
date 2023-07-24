@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - front/**
-      - sparkle/**
       - .github/workflows/build-and-lint-front.yml
 
 jobs:
@@ -17,12 +16,5 @@ jobs:
           node-version: 18.15.0
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
-      - name: Build sparkle
-        run: |
-          cd sparkle && npm install && npm run build
-      - name: Npm install front
-        run: |
-          cd front && npm install
-      - name: Run scripts
-        run: |
-          cd front && npm run tsc && npm run lint && npm run format:check
+      - working-directory: front
+        run: npm install && npm run tsc && npm run lint && npm run format:check

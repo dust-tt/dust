@@ -1,12 +1,12 @@
-import { Dialog, Transition } from "@headlessui/react";
-import { Fragment, useEffect, useState } from "react";
 import {
   ChatBubbleBottomCenterTextIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   Square3Stack3DIcon,
-} from "sparkle";
+} from "@dust-tt/sparkle";
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment, useEffect, useState } from "react";
 
 import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";

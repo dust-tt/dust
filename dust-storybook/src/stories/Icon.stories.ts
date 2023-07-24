@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Icon } from "sparkle";
-import { ChatBubbleBottomCenterTextIcon } from "sparkle";
+import { Icon } from "@dust-tt/sparkle";
+import { ChatBubbleBottomCenterTextIcon } from "@dust-tt/sparkle";
 
 const meta = {
   title: "Example/Icon",
