@@ -186,8 +186,8 @@ export default function ConnectorPermissionsModal({
                 <div>
                   <div className="mt-16">
                     <div className="px-2 text-sm text-gray-500">
-                      Below are listed the top-level resources this managed data
-                      source has access to:
+                      Top-level resources accessible by this managed data
+                      source:
                     </div>
                   </div>
                 </div>
