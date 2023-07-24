@@ -8,6 +8,7 @@ type TabProps = {
     name: string;
     href: string;
     current: boolean;
+    title: boolean;
     icon?: ReactComponentLike;
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
@@ -84,7 +85,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
           onClick={(event) => onTabClick?.(tab.name, event)}
         >
           {tab.icon && <tab.icon className={finalIconClasses} />}
-          {tab.name}
+          {tab.title && tab.name}
         </a>
       );
     });
