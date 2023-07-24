@@ -433,7 +433,6 @@ NotionPage.init(
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
-      { fields: ["parentType"] },
     ],
     modelName: "notion_pages",
   }
@@ -514,7 +513,6 @@ NotionDatabase.init(
       { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
-      { fields: ["parentType"] },
     ],
     modelName: "notion_databases",
   }

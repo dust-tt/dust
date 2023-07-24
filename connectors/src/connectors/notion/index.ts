@@ -8,7 +8,9 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   Connector,
+  ModelId,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
   sequelize_conn,
 } from "@connectors/lib/models";
@@ -17,6 +19,11 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+  ConnectorResourceType,
+} from "@connectors/types/resources";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -216,4 +223,76 @@ export async function cleanupNotionConnector(
   });
 
   return new Ok(undefined);
+}
+
+export async function retrieveNotionConnectorPermissions(
+  connectorId: ModelId,
+  parentInternalId: string | null
+): Promise<Result<ConnectorResource[], Error>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const [pages, dbs] = await Promise.all([
+    NotionPage.findAll({
+      where: {
+        connectorId: connectorId,
+        parentId: parentInternalId || "workspace",
+      },
+    }),
+    NotionDatabase.findAll({
+      where: {
+        connectorId: connectorId,
+        parentId: parentInternalId || "workspace",
+      },
+    }),
+  ]);
+
+  const pageResources: ConnectorResource[] = await Promise.all(
+    pages.map((p) => {
+      return (async () => {
+        // Try to look for one NotionPage child to see if this page is expandable. Technically we
+        // should also look for NotionDatabase, but we don't support that to save one DB call here.
+        const child = await NotionPage.findOne({
+          where: {
+            connectorId: connectorId,
+            parentId: p.notionPageId,
+          },
+        });
+        const expandable = child ? true : false;
+
+        return {
+          provider: c.type,
+          internalId: p.notionPageId,
+          parentInternalId:
+            !p.parentId || p.parentId === "workspace" ? null : p.parentId,
+          type: "file" as ConnectorResourceType,
+          title: p.title || "",
+          sourceUrl: p.notionUrl || null,
+          expandable,
+          permission: "read" as ConnectorPermission,
+        };
+      })();
+    })
+  );
+
+  const dbResources: ConnectorResource[] = dbs.map((db) => ({
+    provider: c.type,
+    internalId: db.notionDatabaseId,
+    parentInternalId:
+      !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+    type: "database" as ConnectorResourceType,
+    title: db.title || "",
+    sourceUrl: db.notionUrl || null,
+    expandable: true,
+    permission: "read" as ConnectorPermission,
+  }));
+
+  return new Ok(pageResources.concat(dbResources));
 }

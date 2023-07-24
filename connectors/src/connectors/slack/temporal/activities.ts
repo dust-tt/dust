@@ -51,8 +51,6 @@ const NETWORK_REQUEST_TIMEOUT_MS = 30000;
  * Tier 1: ~1 request per minute
  * Tier 2: ~20 request per minute (conversations.history)
  * Tier 3: ~50 request per minute (conversations.replies)
- *
-
  */
 
 export async function getChannels(

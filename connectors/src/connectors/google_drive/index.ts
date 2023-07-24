@@ -7,12 +7,18 @@ import {
   GoogleDriveFolders,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
+  ModelId,
   sequelize_conn,
 } from "@connectors/lib/models.js";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+  ConnectorResourceType,
+} from "@connectors/types/resources";
 
 import { registerWebhook } from "./lib";
 import { getDriveClient, getGoogleCredentials } from "./temporal/activities";
@@ -184,4 +190,58 @@ export async function cleanupGoogleDriveConnector(
   });
 
   return new Ok(undefined);
+}
+
+export async function retrieveGoogleDriveConnectorPermissions(
+  connectorId: ModelId,
+  parentInternalId: string | null
+): Promise<Result<ConnectorResource[], Error>> {
+  if (parentInternalId) {
+    return new Err(
+      new Error(
+        "GoogleDrive connector does not support permission retrieval with `parentInternalId`"
+      )
+    );
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const folders = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  const driveClient = await getDriveClient(c.connectionId);
+
+  const resources: ConnectorResource[] = await Promise.all(
+    folders.map((f) => {
+      return (async () => {
+        const folder = await driveClient.files.get({
+          fileId: f.folderId,
+          fields: "files(id, name, webViewLink)",
+        });
+        return {
+          provider: c.type,
+          internalId: f.folderId,
+          parentInternalId: null,
+          type: "folder" as ConnectorResourceType,
+          title: folder.data.name || "",
+          sourceUrl: folder.data.webViewLink || null,
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+        };
+      })();
+    })
+  );
+
+  return new Ok(resources);
 }

@@ -17,6 +17,8 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
+import { getConnectorPermissionsAPIHandler } from "./api/get_connector_permissions";
+
 export function startServer(port: number) {
   const app = express();
 
@@ -43,6 +45,10 @@ export function startServer(port: number) {
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
+  app.get(
+    "/connectors/:connector_id/permissions",
+    getConnectorPermissionsAPIHandler
+  );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
   app.post(

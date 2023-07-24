@@ -1,16 +1,24 @@
 import { Transaction } from "sequelize";
 
-import { validateInstallationId } from "@connectors/connectors/github/lib/github_api";
+import {
+  getReposPage,
+  validateInstallationId,
+} from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import {
   Connector,
   GithubConnectorState,
   GithubIssue,
+  ModelId,
   sequelize_conn,
 } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 type GithubInstallationId = string;
 
@@ -188,4 +196,54 @@ export async function cleanupGithubConnector(
     );
     return new Err(err as Error);
   }
+}
+
+export async function retrieveGithubConnectorPermissions(
+  connectorId: ModelId,
+  parentInternalId: string | null
+): Promise<Result<ConnectorResource[], Error>> {
+  if (parentInternalId) {
+    return new Err(
+      new Error(
+        "Github connector does not support permission retrieval with `parentInternalId`"
+      )
+    );
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const githubInstallationId = c.connectionId;
+
+  let resources: ConnectorResource[] = [];
+  let pageNumber = 1; // 1-indexed
+  for (;;) {
+    const page = await getReposPage(githubInstallationId, pageNumber);
+    pageNumber += 1;
+    if (page.length === 0) {
+      break;
+    }
+
+    resources = resources.concat(
+      page.map((repo) => ({
+        provider: c.type,
+        internalId: repo.id.toString(),
+        parentInternalId: null,
+        type: "folder",
+        title: repo.name,
+        sourceUrl: repo.url,
+        expandable: false,
+        permission: "read" as ConnectorPermission,
+      }))
+    );
+  }
+
+  return new Ok(resources);
 }
