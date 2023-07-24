@@ -251,5 +251,7 @@ async function _resultFromResponse<T>(
   }
   const jsonResponse = await response.json();
 
+  console.log(jsonResponse);
+
   return new Ok(jsonResponse);
 }

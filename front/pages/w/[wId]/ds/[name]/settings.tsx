@@ -2,12 +2,13 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import MainTab from "@app/components/data_source/MainTab";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -126,7 +127,7 @@ export default function DataSourceSettings({
   githubAppUrl,
   canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const managed = !!dataSource.connectorId;
+  const managed = !!dataSource.connectorId && !!connector;
 
   return (
     <AppLayout
@@ -144,7 +145,7 @@ export default function DataSourceSettings({
           <ManagedDataSourceSettings
             dataSource={dataSource}
             owner={owner}
-            connector={connector || null}
+            connector={connector}
             fetchConnectorError={fetchConnectorError || false}
             nangoConfig={nangoConfig}
             githubAppUrl={githubAppUrl}
@@ -473,6 +474,15 @@ function ManagedDataSourceStatus({
   fetchConnectorError: boolean;
   connector: ConnectorType | null;
 }) {
+  const [syncrhonizedTimeAgo, setSyncrhonizedTimeAgo] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (connector?.lastSyncSuccessfulTime)
+      setSyncrhonizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
+  }, []);
+
   if (fetchConnectorError) {
     return (
       <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
@@ -499,7 +509,7 @@ function ManagedDataSourceStatus({
           </p>
         </div>
         <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
-          {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
+          {syncrhonizedTimeAgo && `${syncrhonizedTimeAgo} ago`}
         </p>
       </div>
     );
@@ -517,7 +527,7 @@ function ManagedDataSourceSettings({
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  connector: ConnectorType | null;
+  connector: ConnectorType;
   fetchConnectorError: boolean;
   nangoConfig: {
     publicKey: string;
@@ -533,6 +543,7 @@ function ManagedDataSourceSettings({
     throw new Error(`No logo for data source ${dataSource.name}`);
   }
   const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   const dataSourceName = dataSource.connectorProvider
     ? dataSource.connectorProvider.charAt(0).toUpperCase() +
@@ -585,6 +596,19 @@ function ManagedDataSourceSettings({
           setOpen={setGoogleDrivePickerOpen}
         />
       )}
+      {connector && (
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={connector}
+          dataSource={dataSource}
+          isOpen={showPermissionModal}
+          setOpen={setShowPermissionModal}
+          onEditPermission={() => {
+            console.log("Update Permnission");
+            void handleUpdatePermissions();
+          }}
+        />
+      )}
 
       <div className="">
         <div className="mx-auto mt-8 max-w-4xl px-4">
@@ -613,8 +637,12 @@ function ManagedDataSourceSettings({
                     />
 
                     <div className="flex flex-row">
-                      <Button onClick={handleUpdatePermissions}>
-                        Update permissions
+                      <Button
+                        onClick={() => {
+                          setShowPermissionModal(true);
+                        }}
+                      >
+                        Show permissions
                       </Button>
                     </div>
                   </div>

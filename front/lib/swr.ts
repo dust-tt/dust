@@ -7,6 +7,7 @@ import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -14,6 +15,7 @@ import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
 import { AppType } from "@app/types/app";
+import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
@@ -235,5 +237,27 @@ export function useEventSchemas(owner: WorkspaceType) {
     schemas: data ? data.schemas : [],
     isSchemasLoading: !error && !data,
     isSchemasError: error,
+  };
+}
+
+export function useConnectorPermissions(
+  owner: WorkspaceType,
+  dataSource: DataSourceType,
+  parentId: string | null
+) {
+  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
+    fetcher;
+
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`;
+  if (parentId) {
+    url += `?parentId=${parentId}`;
+  }
+
+  const { data, error } = useSWR(url, permissionsFetcher);
+
+  return {
+    resources: data ? data.resources : [],
+    isResourcesLoading: !error && !data,
+    isResourcesError: error,
   };
 }
