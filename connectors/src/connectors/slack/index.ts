@@ -17,7 +17,10 @@ import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import { ConnectorResource } from "@connectors/types/resources";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 import {
   getAccessToken,
