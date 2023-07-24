@@ -303,6 +303,7 @@ async function handler(
         documentText: req.body.text,
         documentHash: upsertRes.value.document.hash,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
+        documentSourceUrl: sourceUrl || undefined,
       });
 
       // TODO: parallel.

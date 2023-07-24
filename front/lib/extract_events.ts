@@ -18,7 +18,7 @@ import {
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
-import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
 
@@ -106,7 +106,7 @@ export async function processExtractEvents({
         markers: markers[marker],
         documentText: documentText,
         documentId: documentId,
-        documentSourceUrl: documentSourceUrl,
+        documentSourceUrl: documentSourceUrl || null,
       });
     })
   );
@@ -122,7 +122,7 @@ async function _processExtractEvent(data: {
   markers: string[];
   documentText: string;
   documentId: string;
-  documentSourceUrl?: string;
+  documentSourceUrl: string | null;
 }) {
   const {
     auth,
@@ -170,6 +170,7 @@ async function _processExtractEvent(data: {
       properties: properties,
       eventSchemaId: schema.id,
       dataSourceName: dataSourceName,
+      documentSourceUrl: documentSourceUrl || null,
       marker: properties.marker,
     });
 
@@ -235,7 +236,7 @@ export async function _logDebugEventOnSlack({
 }: {
   event: ExtractedEvent;
   schema: EventSchema;
-  documentSourceUrl?: string;
+  documentSourceUrl: string | null;
 }): Promise<void> {
   if (event.eventSchemaId !== schema.id) {
     logger.error(
@@ -277,7 +278,7 @@ export async function _logDebugEventOnSlack({
           text: "Open document",
           emoji: true,
         },
-        url: documentSourceUrl || "", // @todo daph remove fallback not needed after all jobs are processed.
+        url: documentSourceUrl || "",
       },
     },
   ];

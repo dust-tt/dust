@@ -1112,6 +1112,7 @@ export class ExtractedEvent extends Model<
 
   declare dataSourceName: string;
   declare documentId: string;
+  declare documentSourceUrl: string | null;
 }
 ExtractedEvent.init(
   {
@@ -1147,11 +1148,18 @@ ExtractedEvent.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    documentSourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "extracted_event",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["eventSchemaId"] }],
+    indexes: [
+      { fields: ["eventSchemaId"] },
+      { fields: ["dataSourceName", "documentId"] },
+    ],
   }
 );
 EventSchema.hasMany(ExtractedEvent, {
