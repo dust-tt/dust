@@ -1,6 +1,6 @@
 {
-  "name": "sparkle",
-  "version": "1.0.0",
+  "name": "@dust-tt/sparkle",
+  "version": "0.1.0",
   "scripts": {
     "build": "rollup -c"
   },
@@ -35,6 +35,15 @@
   "peerDependencies": {
     "react": "^18.2.0"
   },
-  "dependencies": {
-  }
+  "description": "Sparkle is Dust's Design System",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dust/dust-tt.git"
+  },
+  "author": "Dust (Permutation Labs SAS)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dust/dust-tt/issues"
+  },
+  "homepage": "https://github.com/dust/dust-tt#readme"
 }
