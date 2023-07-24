@@ -39,6 +39,7 @@ export type ExtractedEventType = {
   properties: {
     [key: string]: string | string[];
   };
-  dataSourceId: ModelId;
+  dataSourceName: string;
   documentId: string;
+  documentSourceUrl: string | null;
 };
