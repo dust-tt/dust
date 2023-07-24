@@ -25,7 +25,7 @@ const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
 };
 
 const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
-  notion: "top-level Notion pages",
+  notion: "top-level Notion pages or databases",
   google_drive: "Google Drive folders",
   slack: "Slack channels",
   github: "GitHub repositories",
