@@ -18,13 +18,13 @@ import Link from "next/link";
 export function ChatHistory({
   owner,
   user,
+  limit,
 }: {
   owner: WorkspaceType;
   user: UserType | null;
+  limit: number;
 }) {
   const router = useRouter();
-
-  const [limit] = useState(10);
   const [workspaceScope, setWorkspaceScope] = useState<boolean>(false);
   const [offset, setOffset] = useState(0);
   const { sessions, mutateChatSessions } = useChatSessions(owner, {
@@ -49,12 +49,10 @@ export function ChatHistory({
   function ChatSwitcher({}) {
     const tabs: {
       name: string;
-      icon: JSX.Element;
       onClick: React.MouseEventHandler<HTMLAnchorElement>;
     }[] = [
       {
         name: "My Conversations",
-        icon: <UserIcon className="mr-2 hidden h-4 w-4" />,
         onClick: () => {
           setWorkspaceScope(false);
           setOffset(0);
@@ -62,7 +60,6 @@ export function ChatHistory({
       },
       {
         name: "Team Conversations",
-        icon: <UserGroupIcon className="mr-2 hidden h-4 w-4" />,
         onClick: () => {
           setWorkspaceScope(true);
           setOffset(0);
@@ -82,7 +79,6 @@ export function ChatHistory({
               <div>
                 <Menu.Button className="flex w-full items-center whitespace-nowrap text-sm font-bold text-gray-700 focus:outline-none">
                   <div className="flex flex-initial px-4 py-3">
-                    {currTab?.icon}
                     {currTab?.name}
                   </div>
                   <div className="flex">
@@ -104,7 +100,6 @@ export function ChatHistory({
                           "block px-4 py-3 text-sm text-gray-500"
                         )}
                       >
-                        {tab.icon}
                         {tab.name}
                       </Link>
                     )}
@@ -136,7 +131,6 @@ export function ChatHistory({
                         : "border-transparent font-medium text-gray-500 hover:border-gray-200 hover:text-gray-700"
                     )}
                   >
-                    {tab.icon}
                     {tab.name}
                   </Link>
                 </div>
