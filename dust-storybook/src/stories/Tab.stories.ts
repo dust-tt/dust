@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Tab } from "sparkle";
 import {
-  ChatBubbleBottomCenterText,
-  Beaker,
-  Cog6Tooth,
-} from "sparkle/src/icons/mini";
+  ChatBubbleBottomCenterTextIcon,
+  BeakerIcon,
+  Cog6ToothIcon,
+} from "sparkle";
 
 const meta = {
   title: "Example/Tab",
@@ -21,14 +21,20 @@ export const TabNavigation: Story = {
         label: "Assistant",
         href: "#",
         current: true,
-        icon: ChatBubbleBottomCenterText,
+        icon: ChatBubbleBottomCenterTextIcon,
         sizing: "expand",
       },
       {
         label: "Lab",
         href: "#",
         current: false,
-        icon: Beaker,
+        icon: BeakerIcon,
+        sizing: "expand",
+      },
+      {
+        label: "No Icon",
+        href: "#",
+        current: false,
         sizing: "expand",
       },
       {
@@ -36,7 +42,7 @@ export const TabNavigation: Story = {
         hideLabel: true,
         href: "#",
         current: false,
-        icon: Cog6Tooth,
+        icon: Cog6ToothIcon,
       },
     ],
     onTabClick: (tabName, event) => {
