@@ -33,6 +33,19 @@ export function ChatHistory({
     workspaceScope,
   });
 
+  /* Cache the next page, and the inital page of other tab, to avoid page jump &
+  lag */
+  useChatSessions(owner, {
+    limit,
+    offset: offset + limit,
+    workspaceScope,
+  });
+  useChatSessions(owner, {
+    limit,
+    offset,
+    workspaceScope: !workspaceScope,
+  });
+
   function ChatSwitcher({}) {
     const tabs: {
       name: string;
