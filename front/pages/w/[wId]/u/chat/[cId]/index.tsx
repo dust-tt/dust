@@ -1270,7 +1270,7 @@ export default function AppChat({
                           </div>
                         </div>
                         <div className="w-full py-4">
-                          <ChatHistory owner={owner} />
+                          <ChatHistory owner={owner} user={user} />
                         </div>
                       </div>
                     )}

@@ -155,7 +155,7 @@ async function handler(
         status_code: 404,
         api_error: {
           type: "chat_session_not_found",
-          message: "The chat session was not found.",
+          message: "The chat session is not yours or was not found.",
         },
       });
     }

@@ -1,6 +1,6 @@
 import { useChatSessions } from "@app/lib/swr";
 import { ChatSessionType } from "@app/types/chat";
-import { WorkspaceType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 import { TrashIcon } from "@heroicons/react/20/solid";
 import { UserIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import {
@@ -11,8 +11,15 @@ import {
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { userIsChatSessionOwner } from "@app/lib/api/chat";
 
-export function ChatHistory({ owner }: { owner: WorkspaceType }) {
+export function ChatHistory({
+  owner,
+  user,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+}) {
   const router = useRouter();
 
   const [limit] = useState(10);
@@ -153,10 +160,14 @@ export function ChatHistory({ owner }: { owner: WorkspaceType }) {
                   <div className="flex flex-row items-center">
                     <div className="flex flex-1">{s.title}</div>
                     <div className="min-w-16 flex flex-initial">
-                      <TrashIcon
-                        className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
-                        onClick={(e) => handleTrashClick(e, s)}
-                      ></TrashIcon>
+                      {user?.id === s.userId ? (
+                        <TrashIcon
+                          className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
+                          onClick={(e) => handleTrashClick(e, s)}
+                        ></TrashIcon>
+                      ) : (
+                        ""
+                      )}
                       <span className="ml-2 text-xs italic text-gray-400">
                         {timeAgoFrom(s.created)} ago
                       </span>

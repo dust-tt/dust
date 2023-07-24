@@ -249,6 +249,7 @@ export async function deleteChatSession(
     where: {
       workspaceId: owner.id,
       sId,
+      userId: auth.user()?.id,
     },
   });
   return nbRowsDestroyed === 1;
