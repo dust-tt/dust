@@ -47,6 +47,20 @@ export type ConnectorType = {
   firstSyncProgress?: string;
 };
 
+export type ConnectorPermission = "read" | null;
+export type ConnectorResourceType = "file" | "folder" | "database" | "channel";
+
+export type ConnectorResource = {
+  provider: ConnectorProvider;
+  internalId: string;
+  parentInternalId: string | null;
+  type: ConnectorResourceType;
+  title: string;
+  sourceUrl: string | null;
+  expandable: boolean;
+  permission: ConnectorPermission;
+};
+
 export type GoogleDriveFolderType = {
   id: string;
   name: string;
@@ -135,6 +149,25 @@ export const ConnectorsAPI = {
         headers: getDefaultHeaders(),
       }
     );
+
+    return _resultFromResponse(res);
+  },
+
+  async getConnectorPermissions({
+    connectorId,
+    parentId,
+  }: {
+    connectorId: string;
+    parentId?: string;
+  }): Promise<ConnectorsAPIResponse<{ resources: ConnectorResource[] }>> {
+    let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions`;
+    if (parentId) {
+      url += `?parentId=${parentId}`;
+    }
+    const res = await fetch(url, {
+      method: "GET",
+      headers: getDefaultHeaders(),
+    });
 
     return _resultFromResponse(res);
   },

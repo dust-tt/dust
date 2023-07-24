@@ -58,7 +58,7 @@ const tabSizingClasses = {
   hug: "",
   expand: "flex-1",
 };
-
+        
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
   const renderTabs = () =>
     tabs.map((tab) => {
@@ -76,8 +76,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         tabSizingClasses[tab.sizing ?? "hug"],
         className
       );
-      console.log(tabSizingClasses[tab.sizing ?? "hug"]);
-
+      
       const finalIconClasses = classNames(
         "h-5 w-5",
         iconStateClasses.base,

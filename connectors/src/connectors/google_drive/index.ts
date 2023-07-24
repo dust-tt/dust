@@ -227,15 +227,23 @@ export async function retrieveGoogleDriveConnectorPermissions(
       return (async () => {
         const folder = await driveClient.files.get({
           fileId: f.folderId,
-          fields: "files(id, name, webViewLink)",
+          supportsAllDrives: true,
+          fields: "id, name, webViewLink, driveId",
         });
+        const fd = folder.data;
+        if (fd.driveId === f.folderId) {
+          const d = await driveClient.drives.get({
+            driveId: f.folderId,
+          });
+          fd.name = d.data.name;
+        }
         return {
           provider: c.type,
           internalId: f.folderId,
           parentInternalId: null,
           type: "folder" as ConnectorResourceType,
-          title: folder.data.name || "",
-          sourceUrl: folder.data.webViewLink || null,
+          title: fd.name || "",
+          sourceUrl: fd.webViewLink || null,
           expandable: false,
           permission: "read" as ConnectorPermission,
         };
