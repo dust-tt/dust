@@ -5,10 +5,10 @@ import { classNames } from "@sparkle/lib/utils";
 
 type TabProps = {
   tabs: Array<{
-    name: string;
+    label: string;
+    hideLabel?: boolean;
     href: string;
     current: boolean;
-    title: boolean;
     icon?: ReactComponentLike;
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
@@ -17,15 +17,15 @@ type TabProps = {
 
 const tabClasses = {
   default: {
-    base: "text-element-800 border-transparent font-medium",
-    hover: "hover:text-action-500",
+    base: "text-element-800 border-transparent",
+    hover: "hover:text-action-600",
     dark: {
       base: "dark:text-element-800-dark",
-      hover: "dark:hover:text-action-500-dark",
+      hover: "dark:hover:text-action-600-dark",
     },
   },
   selected: {
-    base: "border-action-500 text-action-500 font-bold",
+    base: "border-action-500 text-action-600 cursor-default",
     hover: "",
     dark: {
       base: "dark:border-action-500-dark dark:text-action-500-dark",
@@ -33,20 +33,21 @@ const tabClasses = {
     },
   },
 };
+
 const iconClasses = {
   default: {
-    base: "fill-element-600",
-    hover: "group-hover:fill-action-400 group-hover:text-action-400",
+    base: "text-element-600",
+    hover: "group-hover:text-action-400 group-hover:text-action-400",
     dark: {
-      base: "dark:fill-element-600-dark",
-      hover: "dark:group-hover:fill-action-400-dark",
+      base: "dark:text-element-600-dark",
+      hover: "dark:group-hover:text-action-400-dark",
     },
   },
   selected: {
-    base: "fill-action-400",
+    base: "text-action-400",
     hover: "",
     dark: {
-      base: "dark:fill-action-400-dark",
+      base: "dark:text-action-400-dark",
       hover: "",
     },
   },
@@ -63,7 +64,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "flex gap-x-2 text-sm px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap",
+        "group flex gap-x-2 text-sm font-medium px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap",
         tabStateClasses.base,
         tabStateClasses.hover,
         className
@@ -78,14 +79,14 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
 
       return (
         <a
-          key={tab.name}
+          key={tab.label}
           href={tab.href}
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
-          onClick={(event) => onTabClick?.(tab.name, event)}
+          onClick={(event) => onTabClick?.(tab.label, event)}
         >
           {tab.icon && <tab.icon className={finalIconClasses} />}
-          {tab.title && tab.name}
+          {tab.hideLabel ?? tab.label}
         </a>
       );
     });
