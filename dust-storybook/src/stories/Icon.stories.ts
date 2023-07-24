@@ -13,6 +13,6 @@ type Story = StoryObj<typeof meta>;
 export const BasicIcon: Story = {
   args: {
     IconComponent: ChatBubbleBottomCenterText,
-    className: "w-6 h-6 fill-action-500",
+    className: "w-6 h-6 text-action-500",
   },
 };
