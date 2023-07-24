@@ -53,16 +53,16 @@ export function sanitizeRawExtractEventMarkers(
 /**
  * Get the markers from the doc and returns only the ones that are not already in the DB
  * @param documentId
- * @param dataSourceId
+ * @param dataSourceName
  * @param documentText
  */
 export async function getExtractEventMarkersToProcess({
   documentId,
-  dataSourceId,
+  dataSourceName,
   documentText,
 }: {
   documentId: string;
-  dataSourceId: number;
+  dataSourceName: string;
   documentText: string;
 }): Promise<string[]> {
   // Gets all markers from the doc content
@@ -72,7 +72,7 @@ export async function getExtractEventMarkersToProcess({
   const existingExtractedEvents = await ExtractedEvent.findAll({
     where: {
       documentId: documentId,
-      dataSourceId: dataSourceId,
+      dataSourceName: dataSourceName,
       marker: {
         [Op.in]: rawMarkers,
       },

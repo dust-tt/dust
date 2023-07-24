@@ -22,7 +22,7 @@ export type DocumentsPostProcessHookOnUpsertParams = {
   auth: Authenticator;
   dataSourceName: string;
   documentId: string;
-  documentSourceUrl?: string; // @todo Daph remove optional when all jobs without it have been processed
+  documentSourceUrl?: string;
   documentText: string;
   documentHash: string;
   dataSourceConnectorProvider: ConnectorProvider | null;

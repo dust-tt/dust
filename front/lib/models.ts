@@ -1109,8 +1109,10 @@ export class ExtractedEvent extends Model<
   declare properties: any;
 
   declare eventSchemaId: ForeignKey<EventSchema["id"]>;
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
+
+  declare dataSourceName: string;
   declare documentId: string;
+  declare documentSourceUrl: string | null;
 }
 ExtractedEvent.init(
   {
@@ -1138,24 +1140,31 @@ ExtractedEvent.init(
       type: DataTypes.JSONB,
       allowNull: false,
     },
+    dataSourceName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    documentSourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
     modelName: "extracted_event",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["eventSchemaId"] }, { fields: ["dataSourceId"] }],
+    indexes: [
+      { fields: ["eventSchemaId"] },
+      { fields: ["dataSourceName", "documentId"] },
+    ],
   }
 );
 EventSchema.hasMany(ExtractedEvent, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE", // @todo daph define if we really want to delete the extracted event when the schema is deleted
-});
-DataSource.hasMany(ExtractedEvent, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
 });
 
 export class DocumentTrackerChangeSuggestion extends Model<

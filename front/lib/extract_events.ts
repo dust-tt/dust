@@ -18,7 +18,7 @@ import {
   sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
-import { DataSource, EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
 
@@ -92,7 +92,7 @@ export async function processExtractEvents({
   // Getting the markers from the doc and keeping only those not already in the DB
   const rawMarkers = await getExtractEventMarkersToProcess({
     documentId,
-    dataSourceId: dataSource.id,
+    dataSourceName: dataSourceName,
     documentText,
   });
   const markers = sanitizeRawExtractEventMarkers(rawMarkers);
@@ -101,12 +101,12 @@ export async function processExtractEvents({
     Object.keys(markers).map((marker) => {
       return _processExtractEvent({
         auth: auth,
-        dataSource: dataSource,
+        dataSourceName: dataSourceName,
         sanitizedMarker: marker,
         markers: markers[marker],
         documentText: documentText,
         documentId: documentId,
-        documentSourceUrl: documentSourceUrl,
+        documentSourceUrl: documentSourceUrl || null,
       });
     })
   );
@@ -117,16 +117,16 @@ export async function processExtractEvents({
  */
 async function _processExtractEvent(data: {
   auth: Authenticator;
-  dataSource: DataSource;
+  dataSourceName: string;
   sanitizedMarker: string;
   markers: string[];
   documentText: string;
   documentId: string;
-  documentSourceUrl?: string;
+  documentSourceUrl: string | null;
 }) {
   const {
     auth,
-    dataSource,
+    dataSourceName,
     sanitizedMarker,
     markers,
     documentId,
@@ -169,7 +169,8 @@ async function _processExtractEvent(data: {
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,
-      dataSourceId: dataSource.id,
+      dataSourceName: dataSourceName,
+      documentSourceUrl: documentSourceUrl || null,
       marker: properties.marker,
     });
 
@@ -235,7 +236,7 @@ export async function _logDebugEventOnSlack({
 }: {
   event: ExtractedEvent;
   schema: EventSchema;
-  documentSourceUrl?: string;
+  documentSourceUrl: string | null;
 }): Promise<void> {
   if (event.eventSchemaId !== schema.id) {
     logger.error(
@@ -277,7 +278,7 @@ export async function _logDebugEventOnSlack({
           text: "Open document",
           emoji: true,
         },
-        url: documentSourceUrl || "", // @todo daph remove fallback not needed after all jobs are processed.
+        url: documentSourceUrl || "",
       },
     },
   ];
