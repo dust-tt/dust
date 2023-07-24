@@ -43,7 +43,7 @@ export default function MainTab({
       ),
     },
     {
-      name: "Extract data",
+      name: "Extract",
       href: `/w/${owner.sId}/u/extract`,
       icon: (
         <ArrowUpTrayIcon

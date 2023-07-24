@@ -1,6 +1,9 @@
+import { ModelId } from "@app/lib/models";
+
 export type EventSchemaStatus = "active" | "disabled";
 
 export type EventSchemaType = {
+  id: ModelId;
   marker: string;
   description?: string;
   status: EventSchemaStatus;
@@ -28,4 +31,14 @@ export type EventSchemaPropertiesTypeForModel = {
     description: string;
     items?: { type: (typeof eventSchemaPropertyAllTypes)[number] };
   };
+};
+
+export type ExtractedEventType = {
+  id: ModelId;
+  marker: string;
+  properties: {
+    [key: string]: string | string[];
+  };
+  dataSourceId: ModelId;
+  documentId: string;
 };
