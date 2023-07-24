@@ -9,6 +9,9 @@ export { Tab };
 import { Icon } from "./components/Icon";
 export { Icon };
 
+import { Logo } from "./logo";
+export { Logo };
+
 import {
   ArrowUpOnSquare as ArrowUpOnSquareIcon,
   Beaker as BeakerIcon,

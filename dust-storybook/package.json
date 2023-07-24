@@ -17,7 +17,7 @@
     "mdx": "^0.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@dust-tt/sparkle": "^0.1.1"
+    "@dust-tt/sparkle": "^0.1.2"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.0.26",
