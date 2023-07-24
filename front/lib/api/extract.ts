@@ -148,8 +148,9 @@ export async function getExtractedEvents(
       id: event.id,
       marker: event.marker,
       properties: event.properties,
-      dataSourceId: event.dataSourceId,
+      dataSourceName: event.dataSourceName,
       documentId: event.documentId,
+      documentSourceUrl: event.documentSourceUrl,
     };
   });
 }
