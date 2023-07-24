@@ -3,10 +3,10 @@ import {
   ChatBubbleLeftRightIcon,
   CircleStackIcon,
   Cog6ToothIcon,
+  DocumentTextIcon,
   FolderIcon,
 } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
-import { DocumentText } from "sparkle/src/icons/mini";
 
 import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
@@ -49,7 +49,7 @@ function PermissionTreeChildren({
                   <div className="ml-1 flex flex-row items-center py-1 text-base">
                     {r.type === "file" && (
                       <>
-                        <DocumentText className="h-6 w-6 text-slate-300" />
+                        <DocumentTextIcon className="h-6 w-6 text-slate-300" />
                         <span className="ml-2">{r.title}</span>
                       </>
                     )}
