@@ -6,5 +6,5 @@ export { Button };
 import { Tab } from "./components/tab";
 export { Tab };
 
-import Icon from "./components/icon";
+import { Icon } from "./components/icon";
 export { Icon };

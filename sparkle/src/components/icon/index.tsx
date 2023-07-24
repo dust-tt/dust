@@ -1,29 +1,11 @@
-// import React, { ComponentType } from "react";
+import React, { ComponentType } from "react";
+import { ReactComponentLike } from "prop-types";
 
-// type IconProps = {
-//   IconComponent?: ComponentType;
-//   className?: string;
-// };
-
-// const Icon: React.FC<IconProps> = ({ IconComponent, className }) => {
-//   return IconComponent ? <IconComponent className={className} /> : null;
-// };
-
-// export default Icon;
-
-import React, { ComponentType, PropsWithChildren } from "react";
-
-interface IconComponentProps {
+interface IconProps {
+  IconComponent?: ComponentType<{ className?: string }>;
   className?: string;
 }
 
-type IconProps = {
-  IconComponent?: ComponentType<IconComponentProps>;
-  className?: string;
-};
-
-const Icon: React.FC<IconProps> = ({ IconComponent, className }) => {
+export function Icon({ IconComponent, className = "" }: IconProps) {
   return IconComponent ? <IconComponent className={className} /> : null;
-};
-
-export default Icon;
+}
