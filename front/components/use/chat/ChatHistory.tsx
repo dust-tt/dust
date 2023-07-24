@@ -212,7 +212,7 @@ export function ChatHistory({
       <ChatSwitcher />
       <div className="flex w-full flex-col space-y-2">
         {sessions.length === 0
-          ? "No chat sessions to show there yet."
+          ? "No chat sessions to show here yet."
           : sessions.map((s, i) => {
               return (
                 <div
