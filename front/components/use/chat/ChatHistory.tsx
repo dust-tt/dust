@@ -4,15 +4,14 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import { TrashIcon } from "@heroicons/react/20/solid";
 import { UserIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import {
-  UserIcon as UserIconFull,
-  UserGroupIcon as UserGroupIconFull,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/solid";
 
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { userIsChatSessionOwner } from "@app/lib/api/chat";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 
@@ -41,23 +40,25 @@ export function ChatHistory({
       onClick: React.MouseEventHandler<HTMLAnchorElement>;
     }[] = [
       {
-        name: "My Chats",
-        icon: <UserIconFull className="mr-2 h-4 w-4" />,
+        name: "My Conversations",
+        icon: <UserIcon className="mr-2 hidden h-4 w-4" />,
         onClick: () => {
           setWorkspaceScope(false);
           setOffset(0);
         },
       },
       {
-        name: "Team Chats",
-        icon: <UserGroupIconFull className="mr-2 h-4 w-4" />,
+        name: "Team Conversations",
+        icon: <UserGroupIcon className="mr-2 hidden h-4 w-4" />,
         onClick: () => {
           setWorkspaceScope(true);
           setOffset(0);
         },
       },
     ];
-    const currentTab = workspaceScope ? "Team Chats" : "My Chats";
+    const currentTab = workspaceScope
+      ? "Team Conversations"
+      : "My Conversations";
     const currTab = tabs.find((t) => t.name === currentTab);
 
     return (
@@ -148,7 +149,6 @@ export function ChatHistory({
   };
 
   function PaginationLink({ newer }: { newer: boolean }) {
-    const text = newer ? "< " : " >";
     const disabled = newer ? offset === 0 : sessions.length < limit;
     const invisible = offset === 0 && sessions.length < limit;
     return (
@@ -162,7 +162,11 @@ export function ChatHistory({
         )}
         onClick={() => disabled || handlePagination(newer)}
       >
-        {text}
+        {newer ? (
+          <ChevronLeftIcon className="h-3 w-3" />
+        ) : (
+          <ChevronRightIcon className="h-3 w-3" />
+        )}
       </div>
     );
   }
