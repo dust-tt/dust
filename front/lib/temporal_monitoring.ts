@@ -45,9 +45,9 @@ export class ActivityInboundLogInterceptor
     const tags = [
       `activity_name:${this.context.info.activityType}`,
       `workflow_name:${this.context.info.workflowType}`,
-      `activity_id:${this.context.info.activityId}`,
-      `workflow_id:${this.context.info.workflowExecution.workflowId}`,
-      `workflow_run_id:${this.context.info.workflowExecution.runId}`,
+      // `activity_id:${this.context.info.activityId}`,
+      // `workflow_id:${this.context.info.workflowExecution.workflowId}`,
+      // `workflow_run_id:${this.context.info.workflowExecution.runId}`,
       `attempt:${this.context.info.attempt}`,
     ];
 
@@ -87,12 +87,11 @@ export class ActivityInboundLogInterceptor
       } else {
         this.logger.info({ durationMs: durationMs }, "Activity completed.");
         statsDClient.increment("activities_success.count", 1, tags);
-        statsDClient.histogram("activities.duration", durationMs, tags);
-        statsDClient.distribution(
-          "activities.duration.distribution",
-          durationMs,
-          tags
-        );
+        // statsDClient.distribution(
+        //   "activities.duration.distribution",
+        //   durationMs,
+        //   tags
+        // );
       }
     }
   }

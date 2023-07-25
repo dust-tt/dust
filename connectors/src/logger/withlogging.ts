@@ -30,7 +30,7 @@ export const withLogging = (handler: any) => {
 
       const tags = [
         `method:${req.method}`,
-        `url:${req.url}`,
+        // `url:${req.url}`,
         `status_code:500`,
         `error_type:unhandled_internal_server_error`,
       ];
@@ -56,7 +56,6 @@ export const withLogging = (handler: any) => {
     ];
 
     statsDClient.increment("requests.count", 1, tags);
-    statsDClient.histogram("requests.duration", elapsed, tags);
     statsDClient.distribution("requests.duration.distribution", elapsed, tags);
 
     logger.info(
@@ -91,7 +90,7 @@ export function apiError(
 
   const tags = [
     `method:${req.method}`,
-    `url:${req.url}`,
+    // `url:${req.url}`,
     `status_code:${res.statusCode}`,
     `error_type:${apiError.api_error.type}`,
   ];
