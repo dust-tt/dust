@@ -34,6 +34,7 @@ async function main() {
     const channelIdsToDelete = Object.keys(channelsInDb).filter(
       (id) => !channelIdsInSlackSet.has(id)
     );
+    console.log("Deleting channels", { channelIdsToDelete, connectorId: c.id });
     await SlackChannel.destroy({
       where: {
         connectorId: c.id,
@@ -50,6 +51,10 @@ async function main() {
         console.log("Channel has no name", channel);
         continue;
       }
+      console.log("Upserting channel", {
+        channelId: channel.id,
+        connectorId: c.id,
+      });
       const existingChannel = channelsInDb[channel.id];
       if (existingChannel) {
         await existingChannel.update({
