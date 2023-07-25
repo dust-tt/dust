@@ -1,3 +1,8 @@
+import {
+  CloudArrowDownStrokeIcon,
+  Cog6ToothStrokeIcon,
+  CommandLineStrokeIcon,
+} from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -9,8 +14,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { mutate } from "swr";
 
-import MainTab from "@app/components/admin/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
@@ -20,6 +23,7 @@ import CohereSetup from "@app/components/providers/CohereSetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { getApps } from "@app/lib/api/app";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -109,7 +113,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
+    <div className="space-y-4 divide-y divide-gray-200">
       <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
         <div className="">
           <h1 className="text-base font-medium text-gray-900">
@@ -289,7 +293,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       />
 
       <div className="">
-        <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
+        <div className="space-y-4 divide-y divide-gray-200">
           <div className="sm:flex sm:items-center">
             <div className="mt-8 sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">
@@ -368,7 +372,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           </ul>
         </div>
 
-        <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
+        <div className="space-y-4 divide-y divide-gray-200">
           <div className="sm:flex sm:items-center">
             <div className="mt-8 sm:flex-auto">
               <h1 className="text-base font-medium text-gray-900">
@@ -452,115 +456,132 @@ export default function Developers({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationLabel="Settings"
+      navigation={[
+        {
+          label: "Data Sources",
+          icon: CloudArrowDownStrokeIcon,
+          workspaceRelativePath: "/ds",
+        },
+        {
+          label: "Workspace Settings",
+          icon: Cog6ToothStrokeIcon,
+          workspaceRelativePath: "/workspace",
+        },
+        {
+          label: "Developers Tools",
+          icon: CommandLineStrokeIcon,
+          workspaceRelativePath: "/a",
+          current: true,
+        },
+      ]}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Developers" owner={owner} />
-        </div>
-        <div className="">
-          <div className="mx-auto mt-8 max-w-4xl divide-y divide-gray-200 px-6">
-            <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
-              <div className="">
-                <h1 className="text-base font-medium text-gray-900">Apps</h1>
+        <div className="space-y-4 divide-y divide-gray-200">
+          <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
+            <div>
+              <h1 className="text-base font-medium text-gray-900">Apps</h1>
 
-                <p className="text-sm text-gray-500">
-                  Your Large Language Model apps.
-                </p>
-              </div>
-              <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
-                {!readOnly && (
-                  <Link href={`/w/${owner.sId}/a/new`}>
-                    <Button>
-                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                      Create App
-                    </Button>
-                  </Link>
-                )}
-              </div>
+              <p className="text-sm text-gray-500">
+                Your Large Language Model apps.
+              </p>
             </div>
-            <div className="my-4">
-              <ul role="list" className="pt-4">
-                {apps.map((app) => (
-                  <li key={app.sId} className="px-2">
-                    <div className="py-4">
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href={`/w/${owner.sId}/a/${app.sId}`}
-                          className="block"
-                        >
-                          <p className="truncate text-base font-bold text-violet-600">
-                            {app.name}
-                          </p>
-                        </Link>
-                        <div className="ml-2 flex flex-shrink-0">
-                          <p
-                            className={classNames(
-                              "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                              app.visibility == "public"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            )}
-                          >
-                            {app.visibility}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 sm:flex sm:justify-between">
-                        <div className="sm:flex">
-                          <p className="flex items-center text-sm text-gray-700">
-                            {app.description}
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                          <p>{app.sId}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-                {apps.length == 0 ? (
-                  <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
-                    {readOnly ? (
-                      <>
-                        <p>
-                          Welcome to Dust 🔥 This user has not created any app
-                          yet 🙃
-                        </p>
-                        <p className="mt-2">Sign-in to create your own apps.</p>
-                      </>
-                    ) : (
-                      <>
-                        <p>Welcome to the Dust developer platform 🔥</p>
-                        <p className="mt-2">
-                          Setup your Providers (below) or create your first app
-                          to get started.
-                        </p>
-                        <p className="mt-6">
-                          You can also visit our developer documentation:
-                        </p>
-                        <p className="mt-2">
-                          <Link
-                            href="https://docs.dust.tt"
-                            target="_blank"
-                            className="mr-2"
-                          >
-                            <Button>
-                              <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                              View Documentation
-                            </Button>
-                          </Link>
-                        </p>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </ul>
+            <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
+              {!readOnly && (
+                <Link href={`/w/${owner.sId}/a/new`}>
+                  <Button>
+                    <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                    Create App
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
-
-          {!readOnly ? <Providers owner={owner} /> : null}
-          {!readOnly ? <APIKeys owner={owner} /> : null}
+          <div className="my-4">
+            <ul role="list" className="pt-4">
+              {apps.map((app) => (
+                <li key={app.sId} className="px-2">
+                  <div className="py-4">
+                    <div className="flex items-center justify-between">
+                      <Link
+                        href={`/w/${owner.sId}/a/${app.sId}`}
+                        className="block"
+                      >
+                        <p className="truncate text-base font-bold text-violet-600">
+                          {app.name}
+                        </p>
+                      </Link>
+                      <div className="ml-2 flex flex-shrink-0">
+                        <p
+                          className={classNames(
+                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                            app.visibility == "public"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          )}
+                        >
+                          {app.visibility}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 sm:flex sm:justify-between">
+                      <div className="sm:flex">
+                        <p className="flex items-center text-sm text-gray-700">
+                          {app.description}
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                        <p>{app.sId}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+              {apps.length == 0 ? (
+                <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
+                  {readOnly ? (
+                    <>
+                      <p>
+                        Welcome to Dust 🔥 This user has not created any app yet
+                        🙃
+                      </p>
+                      <p className="mt-2">Sign-in to create your own apps.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>Welcome to the Dust developer platform 🔥</p>
+                      <p className="mt-2">
+                        Setup your Providers (below) or create your first app to
+                        get started.
+                      </p>
+                      <p className="mt-6">
+                        You can also visit our developer documentation:
+                      </p>
+                      <p className="mt-2">
+                        <Link
+                          href="https://docs.dust.tt"
+                          target="_blank"
+                          className="mr-2"
+                        >
+                          <Button>
+                            <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                            View Documentation
+                          </Button>
+                        </Link>
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </ul>
+          </div>
         </div>
+        {!readOnly ? <Providers owner={owner} /> : null}
+        {!readOnly ? <APIKeys owner={owner} /> : null}
       </div>
     </AppLayout>
   );

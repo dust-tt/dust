@@ -1,9 +1,13 @@
+import {
+  Cog6ToothStrokeIcon,
+  DocumentTextStrokeIcon,
+  MagnifyingGlassStrokeIcon,
+} from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import AppLayout from "@app/components/AppLayout";
-import MainTab from "@app/components/data_source/MainTab";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -142,159 +146,169 @@ export default function DataSourceView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      dataSource={dataSource}
+      topNavigationLabel="Settings"
+      navigation={[
+        {
+          label: "Documents",
+          icon: DocumentTextStrokeIcon,
+          workspaceRelativePath: `/ds/${dataSource.name}`,
+        },
+        {
+          label: "Search",
+          icon: MagnifyingGlassStrokeIcon,
+          workspaceRelativePath: `/ds/${dataSource.name}/search`,
+          current: true,
+        },
+        {
+          label: "Data Source Settings",
+          icon: Cog6ToothStrokeIcon,
+          workspaceRelativePath: `/ds/${dataSource.name}/settings`,
+        },
+      ]}
     >
-      <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Search" owner={owner} dataSource={dataSource} />
+      <div className="mt-8 flex flex-col">
+        <div className="sm:col-span-6">
+          <div className="flex justify-between">
+            <label
+              htmlFor="appDescription"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Search Documents
+            </label>
+          </div>
+          <div className="mt-1 flex rounded-md shadow-sm">
+            <input
+              type="text"
+              autoComplete="off"
+              name="search_query"
+              id="search_query"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
+              onKeyDown={(e) => {
+                if (e.key == "Enter") {
+                  setSearchQuery(e.currentTarget.value);
+                }
+              }}
+              placeholder="Search query..."
+            />
+          </div>
         </div>
-
-        <div className="">
-          <div className="mx-auto mt-8 max-w-4xl px-4">
-            <div className="sm:col-span-6">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="appDescription"
-                  className="block text-sm font-medium text-gray-700"
+        <div className="mt-8 overflow-hidden">
+          <ul role="list" className="space-y-4">
+            {!isLoading &&
+              documents.map((d: DocumentType) => (
+                <li
+                  key={d.document_id}
+                  className="group rounded border border-gray-300 px-2 px-4"
                 >
-                  Search Documents
-                </label>
-              </div>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  autoComplete="off"
-                  name="search_query"
-                  id="search_query"
-                  className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
-                  onKeyDown={(e) => {
-                    if (e.key == "Enter") {
-                      setSearchQuery(e.currentTarget.value);
-                    }
-                  }}
-                  placeholder="Search query..."
-                />
-              </div>
-            </div>
-            <div className="mt-8 overflow-hidden">
-              <ul role="list" className="space-y-4">
-                {!isLoading &&
-                  documents.map((d: DocumentType) => (
-                    <li
-                      key={d.document_id}
-                      className="group rounded border border-gray-300 px-2 px-4"
-                    >
-                      <div className="mx-2 py-4">
-                        <div className="grid grid-cols-5 items-center justify-between">
-                          <div className="col-span-4">
-                            <div className="truncate text-base font-bold text-violet-600">
-                              <div className="flex">
-                                {documentPoviderIconPath ? (
-                                  <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
-                                    <img src={documentPoviderIconPath}></img>
-                                  </div>
-                                ) : null}
-                                <Link
-                                  href={`/w/${owner.sId}/ds/${
-                                    dataSource.name
-                                  }/upsert?documentId=${encodeURIComponent(
-                                    d.document_id
-                                  )}`}
-                                  className="block"
-                                >
-                                  {displayNameByDocId[d.document_id]}
-                                </Link>
+                  <div className="mx-2 py-4">
+                    <div className="grid grid-cols-5 items-center justify-between">
+                      <div className="col-span-4">
+                        <div className="truncate text-base font-bold text-violet-600">
+                          <div className="flex">
+                            {documentPoviderIconPath ? (
+                              <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
+                                <img src={documentPoviderIconPath}></img>
                               </div>
-                            </div>
-                          </div>
-                          <div className="col-span-1 text-right">
-                            <p className="text-align-right text-sm text-gray-500">
-                              {timeAgoFrom(d.timestamp)} ago
-                            </p>
+                            ) : null}
+                            <Link
+                              href={`/w/${owner.sId}/ds/${
+                                dataSource.name
+                              }/upsert?documentId=${encodeURIComponent(
+                                d.document_id
+                              )}`}
+                              className="block"
+                            >
+                              {displayNameByDocId[d.document_id]}
+                            </Link>
                           </div>
                         </div>
-                        <div className="mt-4 justify-between space-y-2">
-                          {d.chunks.map((chunk) => {
-                            const chunkId = `chunk-key-${d.document_id}-${chunk.hash}}`;
-                            return (
-                              <div key={chunkId}>
-                                <div
-                                  className={classNames(
-                                    "flex w-full flex-col rounded-sm "
-                                  )}
-                                >
-                                  <div className="flex flex-initial items-center justify-center overflow-hidden">
-                                    <div className="flex flex-1 flex-row pb-1">
-                                      <div className=" flex-initial text-xs">
-                                        <span className="rounded bg-yellow-100 px-1 py-0.5 text-gray-500">
-                                          Score:{" "}
-                                          {chunk.score
-                                            ? Math.round(chunk.score * 100)
-                                            : "-"}
-                                          %
-                                        </span>
-                                      </div>
-                                      <div
-                                        className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-slate-400"
-                                        onClick={() => {
-                                          expandedChunkId == chunkId
-                                            ? setExpandedChunkId(null)
-                                            : setExpandedChunkId(chunkId);
-                                        }}
-                                      >
-                                        <p
-                                          className={`break-words pl-1 text-xs italic text-gray-500 ${
-                                            expandedChunkId === chunkId
-                                              ? ""
-                                              : "line-clamp-2"
-                                          } `}
-                                        >
-                                          {chunk.text}
-                                        </p>
-                                      </div>
-                                    </div>
+                      </div>
+                      <div className="col-span-1 text-right">
+                        <p className="text-align-right text-sm text-gray-500">
+                          {timeAgoFrom(d.timestamp)} ago
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 justify-between space-y-2">
+                      {d.chunks.map((chunk) => {
+                        const chunkId = `chunk-key-${d.document_id}-${chunk.hash}}`;
+                        return (
+                          <div key={chunkId}>
+                            <div
+                              className={classNames(
+                                "flex w-full flex-col rounded-sm "
+                              )}
+                            >
+                              <div className="flex flex-initial items-center justify-center overflow-hidden">
+                                <div className="flex flex-1 flex-row pb-1">
+                                  <div className=" flex-initial text-xs">
+                                    <span className="rounded bg-yellow-100 px-1 py-0.5 text-gray-500">
+                                      Score:{" "}
+                                      {chunk.score
+                                        ? Math.round(chunk.score * 100)
+                                        : "-"}
+                                      %
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-slate-400"
+                                    onClick={() => {
+                                      expandedChunkId == chunkId
+                                        ? setExpandedChunkId(null)
+                                        : setExpandedChunkId(chunkId);
+                                    }}
+                                  >
+                                    <p
+                                      className={`break-words pl-1 text-xs italic text-gray-500 ${
+                                        expandedChunkId === chunkId
+                                          ? ""
+                                          : "line-clamp-2"
+                                      } `}
+                                    >
+                                      {chunk.text}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                <div className="mt-4 flex flex-col items-center justify-center text-sm text-gray-500">
-                  {(() => {
-                    if (error) {
-                      return (
-                        <p className="text-sm font-bold text-red-400">
-                          Something went wrong...
-                        </p>
-                      );
-                    }
-                    if (isLoading) {
-                      return <p>Searching...</p>;
-                    }
-                    if (
-                      !isLoading &&
-                      searchQuery.length == 0 &&
-                      documents.length === 0
-                    ) {
-                      return null;
-                    }
-                    if (
-                      !isLoading &&
-                      searchQuery.length > 0 &&
-                      documents.length === 0
-                    ) {
-                      return <p>No document found.</p>;
-                    }
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            <div className="mt-4 flex flex-col items-center justify-center text-sm text-gray-500">
+              {(() => {
+                if (error) {
+                  return (
+                    <p className="text-sm font-bold text-red-400">
+                      Something went wrong...
+                    </p>
+                  );
+                }
+                if (isLoading) {
+                  return <p>Searching...</p>;
+                }
+                if (
+                  !isLoading &&
+                  searchQuery.length == 0 &&
+                  documents.length === 0
+                ) {
+                  return null;
+                }
+                if (
+                  !isLoading &&
+                  searchQuery.length > 0 &&
+                  documents.length === 0
+                ) {
+                  return <p>No document found.</p>;
+                }
 
-                    return <></>;
-                  })()}
-                </div>
-              </ul>
+                return <></>;
+              })()}
             </div>
-          </div>
+          </ul>
         </div>
       </div>
     </AppLayout>

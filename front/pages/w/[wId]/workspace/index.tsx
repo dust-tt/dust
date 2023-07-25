@@ -1,12 +1,16 @@
+import {
+  CloudArrowDownStrokeIcon,
+  Cog6ToothStrokeIcon,
+  CommandLineStrokeIcon,
+} from "@dust-tt/sparkle";
 import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
 import { mutate } from "swr";
 
-import MainTab from "@app/components/admin/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -189,13 +193,33 @@ export default function WorkspaceAdmin({
   };
 
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationLabel="Settings"
+      navigation={[
+        {
+          label: "Data Sources",
+          icon: CloudArrowDownStrokeIcon,
+          workspaceRelativePath: "/ds",
+        },
+        {
+          label: "Workspace Settings",
+          icon: Cog6ToothStrokeIcon,
+          workspaceRelativePath: "/workspace",
+          current: true,
+        },
+        {
+          label: "Developers Tools",
+          icon: CommandLineStrokeIcon,
+          workspaceRelativePath: "/a",
+        },
+      ]}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Workspace" owner={owner} />
-        </div>
         <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-6">
+          <div className="">
             <div className="mt-8 space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
@@ -310,7 +334,7 @@ export default function WorkspaceAdmin({
                     </p>
                   </div>
                   <div className="mt-4">
-                    <div className="mt-2 flex items-center">
+                    <div className="mt-4 flex items-center">
                       <input
                         name="disableLabs"
                         type="checkbox"
