@@ -15,7 +15,7 @@ export const BasicItem: Story = {
     label: "Settings",
     size: "md",
     icon: Cog6Tooth,
-    disabled: true,
+    disabled: false,
     selected: false,
   },
 };

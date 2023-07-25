@@ -62,10 +62,12 @@ const chevronClasses = {
   selected: {
     base: "text-action-300",
     hover: "",
+    active: "",
     dark: {
       base: "dark:text-action-300-dark",
       hover: "",
     },
+    disabled: "",
   },
 };
 
@@ -83,9 +85,14 @@ const stateClasses = {
   },
   selected: {
     base: "text-action-500",
+    hover: "",
+    active: "",
     dark: {
       base: "dark:text-action-500-dark",
+      hover: "",
+      active: "",
     },
+    disabled: "",
   },
 };
 
