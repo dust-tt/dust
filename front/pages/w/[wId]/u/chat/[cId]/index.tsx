@@ -473,11 +473,13 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   return <span>{message.message}</span>;
 }
 
-function CopyToClipboardIcon({ message }: { message: ChatMessageType }) {
+function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
+  const [tooltip, setTooltip] = useState<boolean>(false);
   const handleClick = async () => {
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
+    setTooltip(false);
     void setTimeout(() => {
       setConfirmed(false);
     }, 1000);
@@ -490,11 +492,25 @@ function CopyToClipboardIcon({ message }: { message: ChatMessageType }) {
         confirmed ? "text-violet-800" : "hidden text-gray-400"
       )}
       onClick={handleClick}
+      onMouseEnter={() => void setTimeout(() => setTooltip(true), 1000)}
+      onMouseLeave={() => setTooltip(false)}
     >
       {confirmed ? (
         <ClipboardDocumentCheckIconFull className="h-4 w-4" />
       ) : (
         <ClipboardDocumentListIcon className="h-4 w-4" />
+      )}
+      {tooltip ? (
+        <div
+          className="absolute bottom-4 right-0 w-max rounded border bg-white px-1 py-1"
+          onMouseEnter={() => void setTimeout(() => setTooltip(false), 200)}
+        >
+          <span className="font-normal text-gray-600">
+            Copy message to clipboard
+          </span>
+        </div>
+      ) : (
+        ""
       )}
     </div>
   );
@@ -557,7 +573,7 @@ export function MessageView({
           >
             {toMarkdown(message)}
             {message.role === "assistant" && message.message ? (
-              <CopyToClipboardIcon message={message} />
+              <CopyToClipboardElement message={message} />
             ) : (
               ""
             )}
