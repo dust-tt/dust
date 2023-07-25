@@ -29,7 +29,7 @@ const { SENDGRID_API_KEY } = process.env;
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
 const MAX_DIFF_TOKENS = 4000;
 const TOTAL_TARGET_TOKENS = 6000;
-const RETRIEVAL_MIN_SCORE = 0.75;
+const RETRIEVAL_MIN_SCORE = 0.78;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
