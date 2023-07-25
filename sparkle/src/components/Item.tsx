@@ -5,6 +5,7 @@ import { ChevronRight } from "@sparkle/icons/mini";
 
 type ItemProps = {
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
+  size?: "sm" | "md";
   selected?: boolean;
   disabled?: boolean;
   label: string;
