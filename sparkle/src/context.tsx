@@ -5,7 +5,8 @@ export type SparkleContextLinkType = ComponentType<{
   href: string;
   className?: string;
   children: ReactNode;
-  arriaCurrent?:
+  ariaLabel?: string;
+  ariaCurrent?:
     | boolean
     | "time"
     | "false"
@@ -27,36 +28,44 @@ export const aLink: SparkleContextLinkType = ({
   key,
   href,
   className,
-  arriaCurrent,
+  ariaCurrent,
+  ariaLabel,
+  onClick,
   children,
 }) => (
-  <a key={key} href={href} className={className} aria-current={arriaCurrent}>
+  <a
+    key={key}
+    href={href}
+    className={className}
+    aria-current={ariaCurrent}
+    aria-label={ariaLabel}
+    onClick={onClick}
+  >
     {children}
   </a>
 );
 
-export const divLink: SparkleContextLinkType = ({
+export const noHrefLink: SparkleContextLinkType = ({
   key,
   className,
-  arriaCurrent,
+  ariaCurrent,
+  ariaLabel,
+  onClick,
   children,
 }) => (
-  <div key={key} className={className} aria-current={arriaCurrent}>
+  <a
+    key={key}
+    className={className}
+    aria-current={ariaCurrent}
+    arria-label={ariaLabel}
+    onClick={onClick}
+  >
     {children}
-  </div>
+  </a>
 );
 
 export const SparkleContext = React.createContext<SparkleContextType>({
   components: {
-    link: ({ key, href, className, arriaCurrent, children }) => (
-      <a
-        key={key}
-        href={href}
-        className={className}
-        aria-current={arriaCurrent}
-      >
-        {children}
-      </a>
-    ),
+    link: aLink,
   },
 });

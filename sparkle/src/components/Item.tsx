@@ -1,16 +1,24 @@
-import React, { MouseEvent, ComponentType } from "react";
-import { classNames } from "@sparkle/lib/utils";
-import { Icon } from "./Icon";
+import React, { ComponentType, MouseEvent } from "react";
+
+import {
+  noHrefLink,
+  SparkleContext,
+  SparkleContextLinkType,
+} from "@sparkle/context";
 import { ChevronRight } from "@sparkle/icons/mini";
+import { classNames } from "@sparkle/lib/utils";
+
+import { Icon } from "./Icon";
 
 type ItemProps = {
-  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   size?: "sm" | "md";
   selected?: boolean;
   disabled?: boolean;
   label: string;
   icon?: ComponentType;
   className?: string;
+  href?: string;
 };
 
 const baseClasses =
@@ -65,7 +73,10 @@ export function Item({
   label,
   icon,
   className = "",
+  href,
 }: ItemProps) {
+  const { components } = React.useContext(SparkleContext);
+
   const currentStateClasses = selected
     ? stateClasses.selected
     : stateClasses.default;
@@ -94,15 +105,18 @@ export function Item({
     currentIconClasses.dark.hover
   );
 
+  const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
+
   return (
-    <div
+    <Link
       className={itemClasses}
       onClick={selected || disabled ? undefined : onClick}
       aria-label={label}
+      href={href || "#"}
     >
       {icon && <Icon IconComponent={icon} className={finalIconClasses} />}
       <span className="grow">{label}</span>
       <Icon IconComponent={ChevronRight} className={finalIconClasses} />
-    </div>
+    </Link>
   );
 }

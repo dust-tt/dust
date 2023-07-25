@@ -1,5 +1,7 @@
-import React, { MouseEvent, ComponentType } from "react";
+import React, { ComponentType,MouseEvent } from "react";
+
 import { classNames } from "@sparkle/lib/utils";
+
 import { Icon } from "./Icon";
 
 type ButtonProps = {
