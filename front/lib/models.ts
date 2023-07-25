@@ -5,6 +5,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
   Sequelize,
 } from "sequelize";
 
@@ -1109,6 +1110,7 @@ export class ExtractedEvent extends Model<
   declare properties: any;
 
   declare eventSchemaId: ForeignKey<EventSchema["id"]>;
+  declare eventSchema: NonAttribute<EventSchema>;
 
   declare dataSourceName: string;
   declare documentId: string;
@@ -1166,6 +1168,7 @@ EventSchema.hasMany(ExtractedEvent, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE", // @todo daph define if we really want to delete the extracted event when the schema is deleted
 });
+ExtractedEvent.belongsTo(EventSchema, { as: "eventSchema" });
 
 export class DocumentTrackerChangeSuggestion extends Model<
   InferAttributes<DocumentTrackerChangeSuggestion>,

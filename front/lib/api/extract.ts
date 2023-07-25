@@ -154,3 +154,37 @@ export async function getExtractedEvents(
     };
   });
 }
+
+export async function deleteExtractedEvent(
+  auth: Authenticator,
+  id: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw "extracted_event_auth_error";
+  }
+
+  const event = await ExtractedEvent.findOne({
+    where: {
+      id: id,
+    },
+    include: [
+      {
+        model: EventSchema,
+        as: "eventSchema",
+      },
+    ],
+  });
+
+  if (!event) {
+    throw "extracted_event_not_found";
+  }
+
+  if (event.eventSchema.workspaceId !== owner.id) {
+    throw "extracted_event_auth_error";
+  }
+
+  await event.destroy();
+
+  return true;
+}

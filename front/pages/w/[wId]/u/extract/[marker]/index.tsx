@@ -1,11 +1,16 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
+import { useState } from "react";
+import { mutate } from "swr";
 
 import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import MainTab from "@app/components/use/MainTab";
-import { getEventSchema, getExtractedEvents } from "@app/lib/api/extract";
+import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { APIError } from "@app/lib/error";
+import { ModelId } from "@app/lib/models";
+import { useExtractedEvents } from "@app/lib/swr";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -14,7 +19,6 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   schema: EventSchemaType;
-  events: ExtractedEventType[];
   readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
@@ -38,19 +42,11 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const events = await getExtractedEvents(auth, schema.id);
-  if (!schema) {
-    return {
-      notFound: true,
-    };
-  }
-
   return {
     props: {
       user,
       owner,
       schema,
-      events,
       readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -61,9 +57,35 @@ export default function AppExtractEventsReadData({
   user,
   owner,
   schema,
-  events,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { events } = useExtractedEvents(owner, schema.id);
+
+  const handleDelete = async (eventId: ModelId) => {
+    if (window.confirm("Are you sure you want to delete?")) {
+      setIsProcessing(true);
+      const res = await fetch(
+        `/api/w/${owner.sId}/use/extract/event/${eventId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.ok) {
+        await mutate(`/api/w/${owner.sId}/use/extract/${schema.marker}`);
+      } else {
+        const err = (await res.json()) as { error: APIError };
+        window.alert(
+          `Failed to delete: ${err.error.message} (Contact team@dust.tt for assistance).`
+        );
+      }
+      setIsProcessing(false);
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   return (
     <AppLayout
       user={user}
@@ -95,43 +117,51 @@ export default function AppExtractEventsReadData({
                 <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
                   <div className="overflow-hidden">
                     <table className="min-w-full text-left text-sm font-light">
-                      <thead className="border font-medium">
+                      <thead className="items-center border font-medium">
                         <tr>
-                          <th scope="col" className="border px-12 py-4">
-                            Properties
+                          <th scope="col" className="border px-4 py-4">
+                            Extracted Data
                           </th>
-                          <th scope="col" className="border px-3 py-4">
-                            Source Document
-                          </th>
-                          <th scope="col" className="border px-3 py-4">
-                            Manage
+                          <th scope="col" className="border px-4 py-4">
+                            Manage this Data
                           </th>
                         </tr>
                       </thead>
                       <tbody>
                         {events.map((event) => (
                           <tr key={event.id} className="border">
-                            <td className="border px-3 py-4 text-sm text-gray-500">
+                            <td className="border px-4 py-4 text-sm text-gray-500">
                               <EventProperties event={event} />
                             </td>
-                            <td className="whitespace-nowrap border px-3 py-4 text-sm text-gray-500">
-                              {event.documentSourceUrl !== null ? (
+                            <td className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500">
+                              <div className="flex flex-col items-center gap-2">
+                                {event.documentSourceUrl !== null ? (
+                                  <Button
+                                    onClick={() => {
+                                      window.open(
+                                        event.documentSourceUrl || "",
+                                        "_blank"
+                                      );
+                                    }}
+                                    disabled={isProcessing}
+                                  >
+                                    Open source document
+                                  </Button>
+                                ) : (
+                                  <Button disabled={true}>
+                                    Source document not available
+                                  </Button>
+                                )}
+
                                 <Button
-                                  onClick={() => {
-                                    window.open(
-                                      event.documentSourceUrl || "",
-                                      "_blank"
-                                    );
+                                  onClick={async () => {
+                                    await handleDelete(event.id);
                                   }}
+                                  disabled={isProcessing}
                                 >
-                                  See doc
+                                  Delete data
                                 </Button>
-                              ) : (
-                                <p>Not available</p>
-                              )}
-                            </td>
-                            <td className="whitespace-nowrap border px-3 py-4 text-sm text-gray-500">
-                              [todo]
+                              </div>
                             </td>
                           </tr>
                         ))}
