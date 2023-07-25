@@ -21,14 +21,38 @@ type ItemProps = {
   href?: string;
 };
 
-const baseClasses =
-  "group inline-flex transition-color ease-out duration-400 box-border gap-x-2 py-3 text-sm font-semibold";
+const sizeClasses = {
+  sm: "py-2 text-sm font-medium",
+  md: "py-3 text-sm font-semibold",
+};
 
-const iconBaseClasses = "h-5 w-5 transition-color ease-out duration-400";
+const baseClasses =
+  "group inline-flex transition-colors ease-out duration-400 box-border gap-x-2 select-none";
+
+const iconBaseClasses = "h-5 w-5 transition-colors ease-out duration-400";
 
 const iconClasses = {
   default: {
-    base: "h-5 w-5 text-element-700",
+    base: "text-element-700",
+    hover: "group-hover:text-action-400",
+    dark: {
+      base: "dark:text-element-700-dark",
+      hover: "dark:group-hover:text-action-500-dark",
+    },
+  },
+  selected: {
+    base: "text-action-400",
+    hover: "",
+    dark: {
+      base: "dark:text-action-400-dark",
+      hover: "",
+    },
+  },
+};
+
+const chevronClasses = {
+  default: {
+    base: "text-element-600",
     hover: "group-hover:text-action-400",
     dark: {
       base: "dark:text-element-600-dark",
@@ -36,12 +60,14 @@ const iconClasses = {
     },
   },
   selected: {
-    base: "text-action-500",
+    base: "text-action-300",
     hover: "",
+    active: "",
     dark: {
-      base: "dark:text-action-500-dark",
+      base: "dark:text-action-300-dark",
       hover: "",
     },
+    disabled: "",
   },
 };
 
@@ -51,24 +77,29 @@ const stateClasses = {
     hover: "hover:text-action-500",
     active: "active:text-action-700",
     dark: {
-      base: "dark:bg-action-500-dark dark:border-action-600-dark",
-      hover: "dark:hover:bg-action-500-dark dark:hover:border-action-500-dark",
-      active:
-        "dark:active:bg-action-600-dark dark:active:border-action-700-dark",
+      base: "dark:text-element-900-dark",
+      hover: "dark:hover:text-action-400",
+      active: "dark:active:text-action-600",
     },
-    disabled: "cursor-not-allowed opacity-50 bg-gray-200",
+    disabled: "opacity-50",
   },
   selected: {
-    base: "bg-action-500 border-action-600 text-white cursor-default",
+    base: "text-action-500",
+    hover: "",
+    active: "",
     dark: {
-      base: "dark:bg-action-500-dark dark:border-action-600-dark",
+      base: "dark:text-action-500-dark",
+      hover: "",
+      active: "",
     },
+    disabled: "",
   },
 };
 
 export function Item({
   onClick,
   selected = false,
+  size = "sm",
   disabled = false,
   label,
   icon,
@@ -81,10 +112,19 @@ export function Item({
     ? stateClasses.selected
     : stateClasses.default;
 
+  const currentIconClasses = selected
+    ? iconClasses.selected
+    : iconClasses.default;
+
+  const currentChevronClasses = selected
+    ? chevronClasses.selected
+    : chevronClasses.default;
+
   const itemClasses = classNames(
     baseClasses,
-    currentStateClasses.base,
-    currentStateClasses.dark?.base,
+    sizeClasses[size],
+    disabled ? "cursor-default" : currentStateClasses.base,
+    disabled ? "cursor-default" : currentStateClasses.dark?.base,
     disabled ? currentStateClasses.disabled : "",
     !selected && !disabled ? currentStateClasses.hover : "",
     !selected && !disabled ? currentStateClasses.dark?.hover : "",
@@ -93,16 +133,20 @@ export function Item({
     className
   );
 
-  const currentIconClasses = selected
-    ? iconClasses.selected
-    : iconClasses.default;
-
   const finalIconClasses = classNames(
     iconBaseClasses,
     currentIconClasses.base,
-    currentIconClasses.hover,
+    !disabled ? currentIconClasses.hover : "", // Add condition here
     currentIconClasses.dark.base,
-    currentIconClasses.dark.hover
+    !disabled ? currentIconClasses.dark.hover : "" // Add condition here
+  );
+
+  const finalCevronClasses = classNames(
+    iconBaseClasses,
+    size === "sm" ? "text-transparent" : currentChevronClasses.base,
+    !disabled ? currentChevronClasses.hover : "", // Add condition here
+    currentChevronClasses.dark.base,
+    !disabled ? currentChevronClasses.dark.hover : "" // Add condition here
   );
 
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
@@ -116,7 +160,7 @@ export function Item({
     >
       {icon && <Icon IconComponent={icon} className={finalIconClasses} />}
       <span className="grow">{label}</span>
-      <Icon IconComponent={ChevronRight} className={finalIconClasses} />
+      <Icon IconComponent={ChevronRight} className={finalCevronClasses} />
     </Link>
   );
 }
