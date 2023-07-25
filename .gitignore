@@ -1,5 +1,8 @@
 /core/target
 *.sqlite
 .DS_Store
+.idea
 test.sh
+test.ts
 .env.local
+qdrant_storage
