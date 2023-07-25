@@ -85,6 +85,7 @@ export async function createSlackConnector(
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
           botEnabled: false,
+          defaultChannelPermission: "read_write",
         },
         { transaction: t }
       );

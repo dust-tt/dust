@@ -136,7 +136,7 @@ export async function syncChannel(
     slackChannelName: channelName,
     connectorId: parseInt(connectorId),
   });
-  if (!channel.isIndexed) {
+  if (!["read", "read_write"].includes(channel.permission)) {
     logger.info(
       {
         connectorId,

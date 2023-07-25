@@ -1,4 +1,8 @@
-import { sequelize_conn, SlackChannel } from "@connectors/lib/models";
+import {
+  sequelize_conn,
+  SlackChannel,
+  SlackConfiguration,
+} from "@connectors/lib/models";
 
 export type SlackChannelType = {
   id: number;
@@ -6,7 +10,7 @@ export type SlackChannelType = {
 
   name: string;
   slackId: string;
-  isIndexed: boolean;
+  permission: "none" | "read" | "write" | "read_write";
 };
 
 export async function upsertSlackChannelInConnectorsDb({
@@ -19,6 +23,18 @@ export async function upsertSlackChannelInConnectorsDb({
   connectorId: number;
 }): Promise<SlackChannelType> {
   const transaction = await sequelize_conn.transaction();
+  const slackConfig = await SlackConfiguration.findOne({
+    where: {
+      connectorId,
+    },
+    transaction,
+  });
+
+  if (!slackConfig) {
+    await transaction.rollback();
+    throw new Error("Slack configuration not found");
+  }
+
   let channel = await SlackChannel.findOne({
     where: {
       connectorId,
@@ -33,7 +49,7 @@ export async function upsertSlackChannelInConnectorsDb({
         connectorId,
         slackChannelId,
         slackChannelName,
-        isIndexed: true,
+        permission: slackConfig.defaultChannelPermission,
       },
       { transaction }
     );
@@ -48,12 +64,14 @@ export async function upsertSlackChannelInConnectorsDb({
     }
   }
 
+  await transaction.commit();
+
   return {
     id: channel.id,
     connectorId: channel.connectorId,
     name: channel.slackChannelName,
     slackId: channel.slackChannelId,
-    isIndexed: channel.isIndexed,
+    permission: channel.permission,
   };
 }
 
