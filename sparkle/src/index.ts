@@ -9,6 +9,9 @@ export { Button };
 import { Tab } from "./components/Tab";
 export { Tab };
 
+import { Item } from "./components/Item";
+export { Item };
+
 import { Icon } from "./components/Icon";
 export { Icon };
 
