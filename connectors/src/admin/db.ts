@@ -10,6 +10,7 @@ import {
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
+  SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
   SlackMessages,
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
   await Connector.sync({ alter: true });
   await SlackConfiguration.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
+  await SlackChannel.sync({ alter: true });
   await SlackChatBotMessage.sync({ alter: true });
   await NotionPage.sync({ alter: true });
   await NotionDatabase.sync({ alter: true });

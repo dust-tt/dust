@@ -233,6 +233,66 @@ SlackMessages.init(
 
 Connector.hasOne(SlackMessages);
 
+export class SlackChannel extends Model<
+  InferAttributes<SlackChannel>,
+  InferCreationAttributes<SlackChannel>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare slackChannelId: string;
+  declare slackChannelName: string;
+
+  declare isIndexed: boolean;
+}
+
+SlackChannel.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    slackChannelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackChannelName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    isIndexed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "slack_channels",
+    indexes: [
+      { fields: ["connectorId", "slackChannelId"], unique: true },
+      { fields: ["connectorId"] },
+    ],
+  }
+);
+
 export class SlackChatBotMessage extends Model<
   InferAttributes<SlackChatBotMessage>,
   InferCreationAttributes<SlackChatBotMessage>
