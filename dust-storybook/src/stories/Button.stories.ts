@@ -13,7 +13,7 @@ type Story = StoryObj<typeof meta>;
 export const Primary: Story = {
   args: {
     type: "primary",
-    size: "md",
+    size: "sm",
     label: "Settings",
     icon: Cog6Tooth,
     disabled: false,
@@ -23,9 +23,8 @@ export const Primary: Story = {
 export const Secondary: Story = {
   args: {
     type: "secondary",
-    size: "md",
+    size: "sm",
     label: "Settings",
-    icon: Cog6Tooth,
     disabled: false,
   },
 };
@@ -33,7 +32,7 @@ export const Secondary: Story = {
 export const Tertiary: Story = {
   args: {
     type: "tertiary",
-    size: "md",
+    size: "sm",
     label: "Settings",
     icon: Cog6Tooth,
     disabled: false,
