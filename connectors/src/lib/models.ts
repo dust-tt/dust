@@ -130,6 +130,7 @@ export class SlackConfiguration extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
+  declare defaultChannelPermission: "none" | "read" | "write" | "read_write";
 }
 
 SlackConfiguration.init(
@@ -157,6 +158,11 @@ SlackConfiguration.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    defaultChannelPermission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "read_write",
     },
   },
   {
@@ -232,6 +238,68 @@ SlackMessages.init(
 );
 
 Connector.hasOne(SlackMessages);
+
+export class SlackChannel extends Model<
+  InferAttributes<SlackChannel>,
+  InferCreationAttributes<SlackChannel>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare slackChannelId: string;
+  declare slackChannelName: string;
+
+  declare permission: "none" | "read" | "write" | "read_write";
+}
+
+SlackChannel.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    slackChannelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackChannelName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    permission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "read_write",
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "slack_channels",
+    indexes: [
+      { fields: ["connectorId", "slackChannelId"], unique: true },
+      { fields: ["connectorId"] },
+    ],
+  }
+);
+
+Connector.hasMany(SlackChannel);
 
 export class SlackChatBotMessage extends Model<
   InferAttributes<SlackChatBotMessage>,
