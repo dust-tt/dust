@@ -2,9 +2,9 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
+  ClipboardDocumentListIcon,
   ClockIcon,
   DocumentDuplicateIcon,
-  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -529,8 +529,8 @@ export function MessageView({
             {message.role === "assistant" ? (
               <div
                 className="absolute -top-1.5 right-0 mt-2 hidden text-gray-400 hover:text-violet-800 group-hover:block"
-                onClick={() => {
-                  navigator.clipboard.writeText(message.message || "");
+                onClick={async () => {
+                  await navigator.clipboard.writeText(message.message || "");
                   // make the tooltip relative to this element appear
                   const tooltip = document.getElementById(
                     `tooltip-${message.sId}`
