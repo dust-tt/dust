@@ -1,4 +1,5 @@
 import { WebClient } from "@slack/web-api";
+import PQueue from "p-queue";
 import { Transaction } from "sequelize";
 
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
@@ -18,7 +19,10 @@ import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import { ConnectorResource } from "@connectors/types/resources";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 import { getAccessToken, getSlackClient } from "./temporal/activities";
 
@@ -244,4 +248,76 @@ export async function retrieveSlackConnectorPermissions(
   }));
 
   return new Ok(resources);
+}
+
+export async function setSlackConnectorPermissions(
+  connectorId: ModelId,
+  permissions: Record<string, ConnectorPermission>
+): Promise<Result<void, Error>> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  const configuration = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!configuration) {
+    return new Err(
+      new Error(`Could not find configuration for connector id ${connectorId}`)
+    );
+  }
+
+  const channels = (
+    await SlackChannel.findAll({
+      where: {
+        connectorId: connectorId,
+        slackChannelId: Object.keys(permissions),
+      },
+    })
+  ).reduce(
+    (acc, c) => Object.assign(acc, { [c.slackChannelId]: c }),
+    {} as {
+      [key: string]: SlackChannel;
+    }
+  );
+
+  const q = new PQueue({ concurrency: 10 });
+  const promises: Promise<void>[] = [];
+
+  const tx = await sequelize_conn.transaction();
+
+  for (const [id, permission] of Object.entries(permissions)) {
+    const channel = channels[id];
+    if (!channel) {
+      logger.error(
+        { connectorId, channelId: id },
+        "Could not find channel in DB"
+      );
+      continue;
+    }
+
+    promises.push(
+      q.add(async () => {
+        await channel.update(
+          {
+            permission: permission,
+          },
+          { transaction: tx }
+        );
+      })
+    );
+  }
+
+  try {
+    await Promise.all(promises);
+    await tx.commit();
+  } catch (e) {
+    await tx.rollback();
+    return new Err(e as Error);
+  }
+
+  return new Ok(undefined);
 }

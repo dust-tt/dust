@@ -26,14 +26,18 @@ import {
   cleanupSlackConnector,
   createSlackConnector,
   retrieveSlackConnectorPermissions,
+  setSlackConnectorPermissions,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
-import { Ok, Result } from "@connectors/lib/result";
+import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorResource } from "@connectors/types/resources";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
@@ -128,4 +132,34 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   github: retrieveGithubConnectorPermissions,
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
+};
+
+type ConnectorPermissionSetter = (
+  connectorId: ModelId,
+  // internalId -> "read" | "write" | "read_write" | "none"
+  permissions: Record<string, ConnectorPermission>
+) => Promise<Result<void, Error>>;
+
+export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorPermissionSetter
+> = {
+  slack: setSlackConnectorPermissions,
+  notion: async () => {
+    return new Err(
+      new Error(`Setting Notion connector permissions is not implemented yet.`)
+    );
+  },
+  github: async () => {
+    return new Err(
+      new Error(`Setting Github connector permissions is not implemented yet.`)
+    );
+  },
+  google_drive: async () => {
+    return new Err(
+      new Error(
+        `Setting Google Drive connector permissions is not implemented yet.`
+      )
+    );
+  },
 };
