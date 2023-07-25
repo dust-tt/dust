@@ -130,6 +130,7 @@ export class SlackConfiguration extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
+  declare defaultChannelPermission: "none" | "read" | "write" | "read_write";
 }
 
 SlackConfiguration.init(
@@ -157,6 +158,11 @@ SlackConfiguration.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    defaultChannelPermission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "read_write",
     },
   },
   {
@@ -245,7 +251,7 @@ export class SlackChannel extends Model<
   declare slackChannelId: string;
   declare slackChannelName: string;
 
-  declare isIndexed: boolean;
+  declare permission: "none" | "read" | "write" | "read_write";
 }
 
 SlackChannel.init(
@@ -277,10 +283,10 @@ SlackChannel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    isIndexed: {
-      type: DataTypes.BOOLEAN,
+    permission: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: "read_write",
     },
   },
   {
@@ -292,6 +298,8 @@ SlackChannel.init(
     ],
   }
 );
+
+Connector.hasMany(SlackChannel);
 
 export class SlackChatBotMessage extends Model<
   InferAttributes<SlackChatBotMessage>,
