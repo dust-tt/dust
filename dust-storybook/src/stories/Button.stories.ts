@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Button } from "sparkle";
+import { Cog6Tooth } from "sparkle/src/icons/mini";
 
 const meta = {
   title: "Example/Button",
@@ -14,7 +15,7 @@ export const Primary: Story = {
     type: "primary",
     size: "md",
     label: "Settings",
-    // icon: Cog6ToothIcon,
+    icon: Cog6Tooth,
     disabled: false,
   },
 };
@@ -24,17 +25,17 @@ export const Secondary: Story = {
     type: "secondary",
     size: "md",
     label: "Settings",
-    // icon: Cog6ToothIcon,
+    icon: Cog6Tooth,
     disabled: false,
   },
 };
 
-// export const Tertiary: Story = {
-//   args: {
-//     // type: "tertiary",
-//     size: "md",
-//     label: "Settings",
-//     // icon: Cog6ToothIcon,
-//     disabled: false,
-//   },
-// };
+export const Tertiary: Story = {
+  args: {
+    type: "tertiary",
+    size: "md",
+    label: "Settings",
+    icon: Cog6Tooth,
+    disabled: false,
+  },
+};

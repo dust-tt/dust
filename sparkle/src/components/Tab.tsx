@@ -69,7 +69,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "group justify-center flex gap-x-2 text-sm font-medium px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap",
+        "group justify-center flex gap-x-2 text-sm font-medium px-4 py-3 border-b-2 transition-colors duration-200 whitespace-nowrap select-none	",
         tabStateClasses.base,
         tabStateClasses.hover,
         tabSizingClasses[tab.sizing ?? "hug"],
