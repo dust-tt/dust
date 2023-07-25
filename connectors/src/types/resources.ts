@@ -4,9 +4,16 @@ import { ConnectorProvider } from "./connector";
  * This type represents the permission associated with a ConnectorResource. For now the only
  * permission we handle is read. but we could have more complex permissions in the future.
  */
-export type ConnectorPermission = "read" | null;
+const CONNECTOR_PERMISSIONS = ["read"] as const;
+export type ConnectorPermission = (typeof CONNECTOR_PERMISSIONS)[number] | null;
 
-export type ConnectorResourceType = "file" | "folder" | "database" | "channel";
+const CONNECTOR_RESOURCE_TYPES = [
+  "file",
+  "folder",
+  "database",
+  "channel",
+] as const;
+export type ConnectorResourceType = (typeof CONNECTOR_RESOURCE_TYPES)[number];
 
 /**
  * A ConnectorResource represents a connector related resource. As an example:

@@ -272,11 +272,11 @@ export async function retrieveNotionConnectorPermissions(
           internalId: p.notionPageId,
           parentInternalId:
             !p.parentId || p.parentId === "workspace" ? null : p.parentId,
-          type: "file" as ConnectorResourceType,
+          type: "file",
           title: p.title || "",
           sourceUrl: p.notionUrl || null,
           expandable,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
         };
       })();
     })
@@ -287,11 +287,11 @@ export async function retrieveNotionConnectorPermissions(
     internalId: db.notionDatabaseId,
     parentInternalId:
       !db.parentId || db.parentId === "workspace" ? null : db.parentId,
-    type: "database" as ConnectorResourceType,
+    type: "database",
     title: db.title || "",
     sourceUrl: db.notionUrl || null,
     expandable: true,
-    permission: "read" as ConnectorPermission,
+    permission: "read",
   }));
 
   return new Ok(pageResources.concat(dbResources));

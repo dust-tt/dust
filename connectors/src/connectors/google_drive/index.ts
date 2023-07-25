@@ -241,11 +241,11 @@ export async function retrieveGoogleDriveConnectorPermissions(
           provider: c.type,
           internalId: f.folderId,
           parentInternalId: null,
-          type: "folder" as ConnectorResourceType,
+          type: "folder",
           title: fd.name || "",
           sourceUrl: fd.webViewLink || null,
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
         };
       })();
     })
