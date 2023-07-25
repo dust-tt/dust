@@ -183,6 +183,22 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async batchGetConnectors(connectorIds: string[]): Promise<
+    ConnectorsAPIResponse<{
+      connectors: ConnectorType[];
+    }>
+  > {
+    const res = await fetch(`${CONNECTORS_API}/connectors/batch`, {
+      method: "GET",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({
+        connector_ids: connectorIds,
+      }),
+    });
+
+    return _resultFromResponse(res);
+  },
+
   async setGoogleDriveFolders(
     connectorId: string,
     folders: string[]

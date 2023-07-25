@@ -8,6 +8,7 @@ import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
+import { GetManagedDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -270,5 +271,20 @@ export function useConnectorPermissions(
     resources: data ? data.resources : [],
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function useManagedDataSources(owner: WorkspaceType) {
+  const dataSourcesFetcher: Fetcher<GetManagedDataSourcesResponseBody> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/managed`;
+
+  const { data, error } = useSWR(url, dataSourcesFetcher);
+
+  return {
+    managedDataSources: data ? data : [],
+    isManagedDataSourcesLoading: !error && !data,
+    isManagedDataSourcesError: error,
   };
 }

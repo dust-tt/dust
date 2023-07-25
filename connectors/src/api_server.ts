@@ -3,7 +3,10 @@ import express from "express";
 
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
-import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import {
+  batchGetConnectorAPIHandler,
+  getConnectorAPIHandler,
+} from "@connectors/api/get_connector";
 import {
   googleDriveGetFoldersAPIHandler,
   googleDriveSetFoldersAPIHandler,
@@ -43,6 +46,7 @@ export function startServer(port: number) {
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
+  app.get("/connectors/batch", batchGetConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(

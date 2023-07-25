@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -20,9 +21,18 @@ export type PostManagedDataSourceResponseBody = {
   connector: ConnectorType;
 };
 
+export type GetManagedDataSourcesResponseBody = {
+  dataSource: DataSourceType;
+  connector: ConnectorType;
+}[];
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostManagedDataSourceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    | PostManagedDataSourceResponseBody
+    | GetManagedDataSourcesResponseBody
+    | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -251,6 +261,72 @@ async function handler(
         },
         connector: connectorsRes.value,
       });
+
+    case "GET":
+      const managedDatasources = await DataSource.findAll({
+        where: {
+          workspaceId: owner.id,
+          connectorId: {
+            [Op.ne]: null,
+          },
+        },
+      });
+      const connectorIds: string[] = [];
+      for (const ds of managedDatasources) {
+        if (ds.connectorId) {
+          connectorIds.push(ds.connectorId);
+        }
+      }
+      const connectorsResponse = await ConnectorsAPI.batchGetConnectors(
+        connectorIds
+      );
+      if (connectorsResponse.isErr()) {
+        logger.error(
+          {
+            error: connectorsResponse.error,
+          },
+          "Failed to batch get connectors"
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to batch get connectors.",
+            connectors_error: connectorsResponse.error,
+          },
+        });
+      }
+      const connectorById: {
+        [key: string]: ConnectorType;
+      } = {};
+      for (const c of connectorsResponse.value.connectors) {
+        connectorById[c.id] = c;
+      }
+
+      const dataSourcesWithConnector: {
+        dataSource: DataSourceType;
+        connector: ConnectorType;
+      }[] = [];
+
+      for (const ds of managedDatasources) {
+        if (ds.connectorId) {
+          dataSourcesWithConnector.push({
+            dataSource: {
+              id: ds.id,
+              name: ds.name,
+              description: ds.description,
+              visibility: ds.visibility,
+              config: ds.config,
+              dustAPIProjectId: ds.dustAPIProjectId,
+              connectorId: ds.connectorId,
+              connectorProvider: ds.connectorProvider,
+              userUpsertable: false,
+            },
+            connector: connectorById[ds.connectorId],
+          });
+        }
+      }
+      return res.status(200).json(dataSourcesWithConnector);
 
     default:
       return apiError(req, res, {

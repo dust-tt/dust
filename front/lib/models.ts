@@ -595,7 +595,7 @@ export class DataSource extends Model<
   declare visibility: "public" | "private";
   declare config?: string;
   declare dustAPIProjectId: string;
-  declare connectorId?: string;
+  declare connectorId?: string | null;
   declare connectorProvider?: ConnectorProvider;
   declare userUpsertable: CreationOptional<boolean>;
   declare workspaceId: ForeignKey<Workspace["id"]>;

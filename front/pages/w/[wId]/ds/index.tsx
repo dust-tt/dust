@@ -3,6 +3,7 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { mutate } from "swr";
 
 import MainTab from "@app/components/admin/MainTab";
 import AppLayout from "@app/components/AppLayout";
@@ -18,6 +19,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
+import { useManagedDataSources } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
@@ -255,13 +257,17 @@ export default function DataSourcesView({
   readOnly,
   isAdmin,
   dataSources,
-  integrations,
+  // integrations,
   canUseManagedDataSources,
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [localIntegrations, setLocalIntegrations] = useState(integrations);
+  const {
+    managedDataSources,
+    isManagedDataSourcesError,
+    isManagedDataSourcesLoading,
+  } = useManagedDataSources(owner);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
@@ -319,22 +325,7 @@ export default function DataSourcesView({
       );
 
       if (res.ok) {
-        const createdManagedDataSource: {
-          dataSource: DataSourceType;
-          connector: ConnectorType;
-        } = await res.json();
-        setLocalIntegrations((prev) =>
-          prev.map((ds) => {
-            return ds.connector === null && ds.connectorProvider == provider
-              ? {
-                  ...ds,
-                  connector: createdManagedDataSource.connector,
-                  setupWithSuffix: null,
-                  dataSourceName: createdManagedDataSource.dataSource.name,
-                }
-              : ds;
-          })
-        );
+        await mutate(`/api/w/${owner.sId}/data_sources/managed`);
         if (provider === "google_drive") {
           setGoogleDrivePickerOpen(true);
         }
@@ -351,12 +342,8 @@ export default function DataSourcesView({
     }
   };
 
-  useEffect(() => {
-    setLocalIntegrations(localIntegrations);
-  }, [localIntegrations]);
-
-  const googleDrive = localIntegrations.find((integration) => {
-    return integration.connectorProvider === "google_drive";
+  const googleDrive = managedDataSources.find(({ connector }) => {
+    return connector.type === "google_drive";
   });
 
   return (
@@ -495,23 +482,22 @@ export default function DataSourcesView({
 
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="mt-4">
-            {localIntegrations.map((ds) => {
+            {managedDataSources.map(({ dataSource, connector }) => {
               return (
                 <li
                   key={
-                    ds.dataSourceName ||
-                    `managed-to-connect-${ds.connectorProvider}`
+                    dataSource.name || `managed-to-connect-${connector.type}`
                   }
                   className="px-2 py-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      {ds.logoPath ? (
+                      {dataSource.logoPath ? (
                         <div className="mr-1 flex h-4 w-4 flex-initial">
-                          <img src={ds.logoPath}></img>
+                          <img src={dataSource.logoPath}></img>
                         </div>
                       ) : null}
-                      {ds.connector ? (
+                      {connector ? (
                         <Link
                           href={`/w/${owner.sId}/ds/${ds.dataSourceName}`}
                           className="block"

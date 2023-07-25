@@ -6,6 +6,11 @@ import { ConnectorType } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type GetConnectorRes = ConnectorType | ConnectorsAPIErrorResponse;
+type BatchGetConnectorRes =
+  | {
+      connectors: ConnectorType[];
+    }
+  | ConnectorsAPIErrorResponse;
 
 const _getConnector = async (
   req: Request<{ connector_id: string }, GetConnectorRes, undefined>,
@@ -43,4 +48,45 @@ const _getConnector = async (
   });
 };
 
+const _batchGetConnector = async (
+  req: Request<
+    {
+      // empty
+    },
+    BatchGetConnectorRes,
+    { connector_ids: string[] }
+  >,
+  res: Response<BatchGetConnectorRes>
+) => {
+  if (!req.body.connector_ids) {
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Missing required body parameters. Required: connector_ids",
+      },
+      status_code: 400,
+    });
+  }
+
+  const connectors = await Connector.findAll({
+    where: {
+      id: req.body.connector_ids,
+    },
+  });
+
+  return res.status(200).json({
+    connectors: connectors.map((c) => ({
+      id: c.id,
+      type: c.type,
+      lastSyncStatus: c.lastSyncStatus,
+      lastSyncStartTime: c.lastSyncStartTime?.getTime(),
+      lastSyncFinishTime: c.lastSyncFinishTime?.getTime(),
+      lastSyncSuccessfulTime: c.lastSyncSuccessfulTime?.getTime(),
+      firstSuccessfulSyncTime: c.firstSuccessfulSyncTime?.getTime(),
+      firstSyncProgress: c.firstSyncProgress,
+    })),
+  });
+};
+
 export const getConnectorAPIHandler = withLogging(_getConnector);
+export const batchGetConnectorAPIHandler = withLogging(_batchGetConnector);
