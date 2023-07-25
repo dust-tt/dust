@@ -25,6 +25,7 @@ export const Secondary: Story = {
     type: "secondary",
     size: "sm",
     label: "Settings",
+    icon: Cog6Tooth,
     disabled: false,
   },
 };

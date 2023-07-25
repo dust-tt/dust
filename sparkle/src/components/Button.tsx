@@ -66,11 +66,6 @@ const typeClasses = {
   },
 };
 
-const iconTypeClasses = {
-  primary: "text-white",
-  secondary: "text-action-500",
-};
-
 export function Button({
   type = "primary",
   size = "sm",
@@ -93,7 +88,7 @@ export function Button({
     className
   );
 
-  const iconClasses = classNames(iconSizeClasses[size], iconTypeClasses[type]);
+  const iconClasses = classNames(iconSizeClasses[size]);
   const finalContainerClasses = classNames(containerClasses[size]);
 
   return (
