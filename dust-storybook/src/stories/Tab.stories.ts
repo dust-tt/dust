@@ -19,28 +19,24 @@ export const TabNavigation: Story = {
     tabs: [
       {
         label: "Assistant",
-        href: "#",
         current: true,
         icon: ChatBubbleBottomCenterTextIcon,
         sizing: "expand",
       },
       {
         label: "Lab",
-        href: "#",
         current: false,
         icon: BeakerIcon,
         sizing: "expand",
       },
       {
         label: "No Icon",
-        href: "#",
         current: false,
         sizing: "expand",
       },
       {
         label: "Settings",
         hideLabel: true,
-        href: "#",
         current: false,
         icon: Cog6ToothIcon,
       },
