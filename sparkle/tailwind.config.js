@@ -51,7 +51,7 @@ module.exports = {
       },
     },
   },
-  darkMode: "media",
+  darkMode: "class",
   variants: {
     extend: {
       backgroundColor: ["dark"],
