@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { EventSchema, ExtractedEvent, ModelId } from "@app/lib/models";
+import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 
 export async function getEventSchemas(
@@ -25,7 +25,6 @@ export async function getEventSchemas(
       description: schema.description,
       status: schema.status,
       properties: schema.properties,
-      workspaceId: schema.workspaceId,
     };
   });
 }
@@ -56,7 +55,6 @@ export async function getEventSchema(
     description: schema.description,
     status: schema.status,
     properties: schema.properties,
-    workspaceId: schema.workspaceId,
   };
 }
 
@@ -88,7 +86,6 @@ export async function createEventSchema(
     description: schema.description,
     status: schema.status,
     properties: schema.properties,
-    workspaceId: schema.workspaceId,
   };
 }
 
@@ -127,19 +124,18 @@ export async function updateEventSchema(
     description: schema.description,
     status: schema.status,
     properties: schema.properties,
-    workspaceId: schema.workspaceId,
   };
 }
 
 export async function getExtractedEvent({
   auth,
   marker,
-  eventId,
+  eId,
 }: {
   auth: Authenticator;
   marker: string;
-  eventId: string;
-}) {
+  eId: string;
+}): Promise<ExtractedEventType | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
@@ -157,12 +153,23 @@ export async function getExtractedEvent({
 
   const event = await ExtractedEvent.findOne({
     where: {
-      id: eventId,
+      id: eId,
       eventSchemaId: schema.id,
     },
   });
 
-  return event;
+  if (!event) {
+    return null;
+  }
+
+  return {
+    id: event.id,
+    marker: event.marker,
+    properties: event.properties,
+    dataSourceName: event.dataSourceName,
+    documentId: event.documentId,
+    documentSourceUrl: event.documentSourceUrl,
+  };
 }
 
 export async function getExtractedEvents({
@@ -209,10 +216,10 @@ export async function getExtractedEvents({
 
 export async function deleteExtractedEvent({
   auth,
-  eventId,
+  eId,
 }: {
   auth: Authenticator;
-  eventId: string;
+  eId: string;
 }): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
@@ -221,7 +228,7 @@ export async function deleteExtractedEvent({
 
   const event = await ExtractedEvent.findOne({
     where: {
-      id: eventId,
+      id: eId,
     },
   });
   if (!event) {

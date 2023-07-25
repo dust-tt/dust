@@ -1,13 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  deleteExtractedEvent,
-  getExtractedEvent,
-  getExtractedEvents,
-} from "@app/lib/api/extract";
+import { deleteExtractedEvent, getExtractedEvent } from "@app/lib/api/extract";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { APIErrorType, ReturnedAPIErrorType } from "@app/lib/error";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ExtractedEventType } from "@app/types/extract";
 
@@ -69,21 +65,11 @@ async function handler(
       },
     });
   }
-  if (schema.workspaceId !== owner.id) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "extracted_event_auth_error",
-        message:
-          "Only users of the current workspace can retrieve extracted events.",
-      },
-    });
-  }
 
   const event = await getExtractedEvent({
     auth,
     marker: req.query.marker as string,
-    eventId: req.query.eId as string,
+    eId: req.query.eId as string,
   });
   if (!event) {
     return apiError(req, res, {
@@ -99,7 +85,7 @@ async function handler(
     case "DELETE":
       await deleteExtractedEvent({
         auth,
-        eventId: req.query.eId as string,
+        eId: req.query.eId as string,
       });
       res.status(200).end();
       return;

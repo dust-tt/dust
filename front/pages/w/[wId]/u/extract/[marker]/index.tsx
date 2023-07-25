@@ -66,13 +66,17 @@ export default function AppExtractEventsReadData({
     if (window.confirm("Are you sure you want to delete?")) {
       setIsProcessing(true);
       const res = await fetch(
-        `/api/w/${owner.sId}/use/extract/${schema.marker}/events/${eventId}`,
+        `/api/w/${owner.sId}/use/extract/${encodeURIComponent(
+          schema.marker
+        )}/events/${eventId}`,
         {
           method: "DELETE",
         }
       );
       if (res.ok) {
-        await mutate(`/api/w/${owner.sId}/use/extract/${schema.marker}`);
+        await mutate(
+          `/api/w/${owner.sId}/use/extract/${encodeURIComponent(schema.marker)}`
+        );
       } else {
         const err = (await res.json()) as { error: APIError };
         window.alert(
