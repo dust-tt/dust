@@ -1,5 +1,6 @@
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
+import showdown from "showdown";
 
 import {
   DocumentsPostProcessHookFilterParams,
@@ -425,6 +426,8 @@ async function sendSuggestionEmail({
   const matchedDocumentLink = `<a href="${matchedDocumentUrl}">${matchedDocumentName}</a>`;
   const incomingDocumentLink = `<a href="${incomingDocumentUrl}">${incomingDocumentName}</a>`;
 
+  const htmlSuggestion = new showdown.Converter().makeHtml(suggestedChanges);
+
   const msg = {
     to: recipientEmail,
     from: "team@dust.tt",
@@ -433,7 +436,7 @@ async function sendSuggestionEmail({
       "Hello!<br>" +
       `We have a suggestion for you to update the document ${matchedDocumentLink},` +
       `based on the new document ${incomingDocumentLink}:<br>` +
-      `${suggestedChanges}<br>` +
+      `${htmlSuggestion}<br>` +
       `The Dust team`,
   };
   await sgMail.send(msg);
