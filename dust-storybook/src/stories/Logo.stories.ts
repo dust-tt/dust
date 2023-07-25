@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Logo } from "@dust-tt/sparkle";
+import { Logo } from "sparkle";
 
 const meta = {
   title: "Example/Logo",

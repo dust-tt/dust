@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Button } from "@dust-tt/sparkle";
+import { Button } from "sparkle";
 
 const meta = {
   title: "Example/Button",
