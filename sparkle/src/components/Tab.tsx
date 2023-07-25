@@ -7,18 +7,17 @@ type TabProps = {
   tabs: Array<{
     label: string;
     hideLabel?: boolean;
-    href: string;
     current: boolean;
     sizing?: "hug" | "expand";
     icon?: ReactComponentLike;
   }>;
-  onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
+  onTabClick?: (tabName: string, event: MouseEvent<HTMLDivElement>) => void;
   className?: string;
 };
 
 const tabClasses = {
   default: {
-    base: "text-element-800 border-transparent",
+    base: "text-element-800 border-transparent cursor-pointer",
     hover: "hover:text-action-600",
     dark: {
       base: "dark:text-element-800-dark",
@@ -85,16 +84,15 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
 
       return (
-        <a
+        <div
           key={tab.label}
-          href={tab.href}
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
           onClick={(event) => onTabClick?.(tab.label, event)}
         >
           {tab.icon && <tab.icon className={finalIconClasses} />}
           {tab.hideLabel ?? tab.label}
-        </a>
+        </div>
       );
     });
 

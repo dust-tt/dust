@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Tab } from "@dust-tt/sparkle";
+import { Tab } from "sparkle";
 import {
   ChatBubbleBottomCenterTextIcon,
   BeakerIcon,
   Cog6ToothIcon,
-} from "@dust-tt/sparkle";
+} from "sparkle";
 
 const meta = {
   title: "Example/Tab",
