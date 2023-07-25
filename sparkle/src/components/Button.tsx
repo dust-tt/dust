@@ -81,7 +81,7 @@ export function Button({
   className = "",
 }: ButtonProps) {
   const buttonClasses = classNames(
-    "inline-flex items-center border transition-all ease-out duration-400 box-border rounded-full scale-95 hover:scale-100 hover:drop-shadow-md active:scale-95",
+    "inline-flex items-center border transition-all ease-out duration-400 box-border rounded-full scale-95 hover:scale-100 hover:drop-shadow-md active:scale-95 active:drop-shadow-none",
     sizeClasses[size],
     typeClasses[type]?.base,
     typeClasses[type]?.hover,
