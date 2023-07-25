@@ -6,7 +6,10 @@ import {
   ClockIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
-import { UserCircleIcon } from "@heroicons/react/24/solid";
+import {
+  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconFull,
+  UserCircleIcon,
+} from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -470,6 +473,33 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   return <span>{message.message}</span>;
 }
 
+function CopyToClipboardIcon({ message }: { message: ChatMessageType }) {
+  const [confirmed, setConfirmed] = useState<boolean>(false);
+  const handleClick = async () => {
+    await navigator.clipboard.writeText(message.message as string);
+    setConfirmed(true);
+    void setTimeout(() => {
+      setConfirmed(false);
+    }, 1000);
+  };
+
+  return (
+    <div
+      className={classNames(
+        "absolute -top-1.5 right-0 mt-2 hover:text-violet-800 group-hover:block",
+        confirmed ? "text-violet-800" : "hidden text-gray-400"
+      )}
+      onClick={handleClick}
+    >
+      {confirmed ? (
+        <ClipboardDocumentCheckIconFull className="h-4 w-4" />
+      ) : (
+        <ClipboardDocumentListIcon className="h-4 w-4" />
+      )}
+    </div>
+  );
+}
+
 export function MessageView({
   user,
   message,
@@ -526,33 +556,8 @@ export function MessageView({
             )}
           >
             {toMarkdown(message)}
-            {message.role === "assistant" ? (
-              <div
-                className="absolute -top-1.5 right-0 mt-2 hidden text-gray-400 hover:text-violet-800 group-hover:block"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(message.message || "");
-                  // make the tooltip relative to this element appear
-                  const tooltip = document.getElementById(
-                    `tooltip-${message.sId}`
-                  );
-                  tooltip?.classList.remove("hidden");
-                  setTimeout(() => {
-                    tooltip?.classList.add("hidden");
-                  }, 1500);
-                }}
-              >
-                <ClipboardDocumentListIcon className="h-4 w-4" />
-                <div
-                  id={`tooltip-${message.sId}`}
-                  className="absolute bottom-4 right-0 hidden w-max rounded border bg-white px-1 py-1"
-                >
-                  <span className="font-normal text-gray-600">
-                    <span className="font-semibold">
-                      Conversation copied to clipboard!
-                    </span>
-                  </span>
-                </div>
-              </div>
+            {message.role === "assistant" && message.message ? (
+              <CopyToClipboardIcon message={message} />
             ) : (
               ""
             )}
