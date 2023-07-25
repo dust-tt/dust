@@ -17,6 +17,10 @@ import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
+import {
+  deleteChannelFromConnectorsDb,
+  upsertSlackChannelInConnectorsDb,
+} from "@connectors/connectors/slack/lib/channels";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
@@ -127,6 +131,22 @@ export async function syncChannel(
   weeksSynced: Record<number, boolean>,
   messagesCursor?: string
 ): Promise<SyncChannelRes | undefined> {
+  const channel = await upsertSlackChannelInConnectorsDb({
+    slackChannelId: channelId,
+    slackChannelName: channelName,
+    connectorId: parseInt(connectorId),
+  });
+  if (!channel.isIndexed) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName,
+      },
+      "Channel is not indexed, skipping"
+    );
+    return;
+  }
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
   const messages = await getMessagesForChannel(
@@ -796,7 +816,16 @@ export async function deleteChannel(
     }
   } while (slackMessages.length === maxMessages);
   logger.info(
-    { nbDeleted, channelId },
+    { nbDeleted, channelId, connectorId },
     "Deleted documents from datasource while garbage collecting."
+  );
+
+  await deleteChannelFromConnectorsDb({
+    connectorId: parseInt(connectorId),
+    slackChannelId: channelId,
+  });
+  logger.info(
+    { nbDeleted, channelId, connectorId },
+    "Deleted channel from connectors db while garbage collecting."
   );
 }
