@@ -47,7 +47,7 @@ export type ConnectorType = {
   firstSyncProgress?: string;
 };
 
-export type ConnectorPermission = "read" | null;
+export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ConnectorResourceType = "file" | "folder" | "database" | "channel";
 
 export type ConnectorResource = {

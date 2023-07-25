@@ -4,7 +4,7 @@ import { ConnectorProvider } from "./connector";
  * This type represents the permission associated with a ConnectorResource. For now the only
  * permission we handle is read. but we could have more complex permissions in the future.
  */
-export type ConnectorPermission = "read" | null;
+export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 
 export type ConnectorResourceType = "file" | "folder" | "database" | "channel";
 

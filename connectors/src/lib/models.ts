@@ -12,6 +12,7 @@ import {
   type ConnectorProvider,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";
+import { ConnectorPermission } from "@connectors/types/resources";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 if (!CONNECTORS_DATABASE_URI) {
@@ -130,7 +131,7 @@ export class SlackConfiguration extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
-  declare defaultChannelPermission: "none" | "read" | "write" | "read_write";
+  declare defaultChannelPermission: ConnectorPermission;
 }
 
 SlackConfiguration.init(
@@ -251,7 +252,7 @@ export class SlackChannel extends Model<
   declare slackChannelId: string;
   declare slackChannelName: string;
 
-  declare permission: "none" | "read" | "write" | "read_write";
+  declare permission: ConnectorPermission;
 }
 
 SlackChannel.init(
