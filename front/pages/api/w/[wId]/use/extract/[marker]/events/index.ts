@@ -56,7 +56,6 @@ async function handler(
   }
 
   const schema = await getEventSchema(auth, req.query.marker as string);
-  console.log(schema);
   if (!schema) {
     return apiError(req, res, {
       status_code: 404,
