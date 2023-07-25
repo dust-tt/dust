@@ -14,7 +14,6 @@ import {
 } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { statsDClient } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
 
@@ -311,14 +310,14 @@ async function _createAndLogMembership(data: {
     workspaceId: data.workspaceId,
   });
 
-  const tags = [
-    `workspace_id:${data.workspaceId}`,
-    `workspace_name:${data.workspaceName}`,
-    `user_id:${data.userId}`,
-    `role:${data.role}`,
-    `invitation_flow:${data.invitationFlow}`,
-  ];
-  statsDClient.increment("workspace.membership_created", 1, tags);
+  // const tags = [
+  //   `workspace_id:${data.workspaceId}`,
+  //   `workspace_name:${data.workspaceName}`,
+  //   `user_id:${data.userId}`,
+  //   `role:${data.role}`,
+  //   `invitation_flow:${data.invitationFlow}`,
+  // ];
+  // statsDClient.increment("workspace.membership_created", 1, tags);
 
   return m;
 }

@@ -39,7 +39,7 @@ async function handler(
 
   const tags = [
     `method:${req.method}`,
-    `url:${req.url}`,
+    // `url:${req.url}`,
     `user:${req.query.user}`,
     `wId:${wId}`,
   ];

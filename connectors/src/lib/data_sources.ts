@@ -113,11 +113,6 @@ async function _upsertToDatasource(
       e.config.data = "[REDACTED]";
     }
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
-    statsDClient.histogram(
-      "data_source_upserts_error.duration",
-      elapsed,
-      statsDTags
-    );
     statsDClient.distribution(
       "data_source_upserts_error.duration.distribution",
       elapsed,
@@ -131,11 +126,6 @@ async function _upsertToDatasource(
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     statsDClient.increment("data_source_upserts_success.count", 1, statsDTags);
-    statsDClient.histogram(
-      "data_source_upserts_success.duration",
-      elapsed,
-      statsDTags
-    );
     statsDClient.distribution(
       "data_source_upserts_success.duration.distribution",
       elapsed,
@@ -144,11 +134,6 @@ async function _upsertToDatasource(
     localLogger.info("Successfully uploaded document to Dust.");
   } else {
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
-    statsDClient.histogram(
-      "data_source_upserts_error.duration",
-      elapsed,
-      statsDTags
-    );
     statsDClient.distribution(
       "data_source_upserts_error.duration.distribution",
       elapsed,
