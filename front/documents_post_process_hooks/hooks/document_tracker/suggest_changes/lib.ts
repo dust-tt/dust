@@ -434,7 +434,7 @@ async function sendSuggestionEmail({
     subject: `DUST: Document update suggestion for ${matchedDocumentName}`,
     html:
       "Hello!<br>" +
-      `We have a suggestion for you to update the document ${matchedDocumentLink},` +
+      `We have a suggestion for you to update the document ${matchedDocumentLink} ` +
       `based on the new document ${incomingDocumentLink}:<br>` +
       `${htmlSuggestion}<br>` +
       `The Dust team`,
