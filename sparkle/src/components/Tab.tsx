@@ -1,7 +1,11 @@
 import { ReactComponentLike } from "prop-types";
 import React, { MouseEvent } from "react";
 
-import { SparkleContext } from "@sparkle/context";
+import {
+  divLink,
+  SparkleContext,
+  SparkleContextLinkType,
+} from "@sparkle/context";
 import { classNames } from "@sparkle/lib/utils";
 
 type TabProps = {
@@ -62,10 +66,12 @@ const tabSizingClasses = {
 
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
   const { components } = React.useContext(SparkleContext);
-  const Link = components.link;
-
   const renderTabs = () =>
     tabs.map((tab) => {
+      // If we don't have an set the href to "" and use a div.
+      const href = tab.href || "";
+      const Link: SparkleContextLinkType = tab.href ? components.link : divLink;
+
       const tabStateClasses = tab.current
         ? tabClasses.selected
         : tabClasses.default;
@@ -98,7 +104,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
           onClick={(event) => onTabClick?.(tab.label, event)}
-          href={tab.href}
+          href={href}
         >
           <div
             className={
