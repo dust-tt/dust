@@ -20,8 +20,8 @@ const tabClasses = {
     base: "text-element-800 border-transparent cursor-pointer",
     hover: "hover:text-action-500",
     dark: {
-      base: "dark:text-element-800-dark",
-      hover: "dark:hover:text-action-500-dark",
+      base: "dark:text-element-700-dark",
+      hover: "dark:hover:text-action-600-dark",
     },
   },
   selected: {
@@ -40,7 +40,7 @@ const iconClasses = {
     hover: "group-hover:text-action-400",
     dark: {
       base: "dark:text-element-600-dark",
-      hover: "dark:group-hover:text-action-400-dark",
+      hover: "dark:group-hover:text-action-500-dark",
     },
   },
   selected: {
@@ -72,6 +72,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         "group justify-center flex text-sm font-semibold px-4 py-3 border-b-2 transition-colors duration-400 whitespace-nowrap select-none",
         tabStateClasses.base,
         tabStateClasses.hover,
+        tabStateClasses.dark.base,
+        tabStateClasses.dark.hover,
         tabSizingClasses[tab.sizing ?? "hug"],
         className
       );
@@ -80,6 +82,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         "h-5 w-5 transition-colors duration-400",
         iconStateClasses.base,
         iconStateClasses.hover,
+        iconStateClasses.dark.base,
+        iconStateClasses.dark.hover,
         className
       );
 
@@ -94,7 +98,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             className={
               tab.current
                 ? "flex gap-x-2"
-                : "duration-400 flex scale-100 transform gap-x-2 transition-transform ease-out group-hover:scale-105"
+                : "duration-400 flex scale-100 transform gap-x-2 transition-transform ease-out group-hover:scale-110"
             }
           >
             {tab.icon && <tab.icon className={finalIconClasses} />}

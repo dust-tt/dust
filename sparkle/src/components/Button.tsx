@@ -43,22 +43,22 @@ const typeClasses = {
     },
   },
   secondary: {
-    base: "text-action-500 border-structure-300 bg-white",
+    base: "text-action-500 border-structure-300 bg-structure-0",
     hover: "hover:bg-action-50 hover:border-action-300",
     active: "active:bg-action-100 active:border-action-500",
     dark: {
-      base: "dark:text-action-500-dark dark:border-structure-300-dark",
+      base: "dark:text-action-500-dark dark:border-structure-300-dark dark:bg-structure-50-dark",
       hover: "dark:hover:bg-action-50-dark dark:hover:border-action-300-dark",
       active:
         "dark:active:bg-action-100-dark dark:active:border-action-500-dark",
     },
   },
   tertiary: {
-    base: "text-element-700 border-structure-300 bg-white",
+    base: "text-element-700 border-structure-300 bg-structure-0",
     hover: "hover:text-element-800 hover:bg-action-50 hover:border-action-300",
     active: "active:bg-action-100 active:border-action-500",
     dark: {
-      base: "dark:text-action-500-dark dark:border-structure-300-dark",
+      base: "dark:text-element-700-dark dark:border-structure-300-dark dark:bg-structure-50-dark",
       hover: "dark:hover:bg-action-50-dark dark:hover:border-action-300-dark",
       active:
         "dark:active:bg-action-100-dark dark:active:border-action-500-dark",
