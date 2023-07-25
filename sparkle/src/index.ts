@@ -1,5 +1,8 @@
 import "./styles/global.css";
 
+import { SparkleContext } from "./context";
+export { SparkleContext };
+
 import { Button } from "./components/Button";
 export { Button };
 
