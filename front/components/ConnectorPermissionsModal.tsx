@@ -1,11 +1,11 @@
+import { Dialog, Transition } from "@headlessui/react";
 import {
-  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
+  CircleStackIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
-  FolderOpenIcon,
-  Square3Stack3DIcon,
-} from "@dust-tt/sparkle";
-import { Dialog, Transition } from "@headlessui/react";
+  FolderIcon,
+} from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
 
 import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
@@ -62,19 +62,19 @@ function PermissionTreeChildren({
                     )}
                     {r.type === "database" && (
                       <>
-                        <Square3Stack3DIcon className="h-6 w-6 text-slate-300" />
+                        <CircleStackIcon className="h-6 w-6 text-slate-300" />
                         <span className="ml-2">{r.title}</span>
                       </>
                     )}
                     {r.type === "folder" && (
                       <>
-                        <FolderOpenIcon className="h-6 w-6 text-slate-300" />
+                        <FolderIcon className="h-6 w-6 text-slate-300" />
                         <span className="ml-2">{r.title}</span>
                       </>
                     )}
                     {r.type === "channel" && (
                       <>
-                        <ChatBubbleBottomCenterTextIcon className="h-6 w-6 text-slate-300" />
+                        <ChatBubbleLeftRightIcon className="h-6 w-6 text-slate-300" />
                         <span className="ml-2">#{r.title}</span>
                       </>
                     )}
