@@ -3,6 +3,7 @@ import {
   SlackChannel,
   SlackConfiguration,
 } from "@connectors/lib/models";
+import { ConnectorPermission } from "@connectors/types/resources";
 
 export type SlackChannelType = {
   id: number;
@@ -10,7 +11,7 @@ export type SlackChannelType = {
 
   name: string;
   slackId: string;
-  permission: "none" | "read" | "write" | "read_write";
+  permission: ConnectorPermission;
 };
 
 export async function upsertSlackChannelInConnectorsDb({
