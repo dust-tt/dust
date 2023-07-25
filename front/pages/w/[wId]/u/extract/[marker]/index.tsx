@@ -60,16 +60,13 @@ export default function AppExtractEventsReadData({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { events, isEventsError, isEventsLoading } = useExtractedEvents(
-    owner,
-    schema.marker
-  );
+  const { events, isEventsLoading } = useExtractedEvents(owner, schema.marker);
 
   const handleDelete = async (eventId: ModelId) => {
     if (window.confirm("Are you sure you want to delete?")) {
       setIsProcessing(true);
       const res = await fetch(
-        `/api/w/${owner.sId}/use/extract/${schema.marker}/event/${eventId}`,
+        `/api/w/${owner.sId}/use/extract/${schema.marker}/events/${eventId}`,
         {
           method: "DELETE",
         }
