@@ -60,13 +60,16 @@ export default function AppExtractEventsReadData({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { events } = useExtractedEvents(owner, schema.id);
+  const { events, isEventsError, isEventsLoading } = useExtractedEvents(
+    owner,
+    schema.marker
+  );
 
   const handleDelete = async (eventId: ModelId) => {
     if (window.confirm("Are you sure you want to delete?")) {
       setIsProcessing(true);
       const res = await fetch(
-        `/api/w/${owner.sId}/use/extract/event/${eventId}`,
+        `/api/w/${owner.sId}/use/extract/${schema.marker}/event/${eventId}`,
         {
           method: "DELETE",
         }
@@ -128,43 +131,44 @@ export default function AppExtractEventsReadData({
                         </tr>
                       </thead>
                       <tbody>
-                        {events.map((event) => (
-                          <tr key={event.id} className="border">
-                            <td className="border px-4 py-4 text-sm text-gray-500">
-                              <EventProperties event={event} />
-                            </td>
-                            <td className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500">
-                              <div className="flex flex-col items-center gap-2">
-                                {event.documentSourceUrl !== null ? (
+                        {!isEventsLoading &&
+                          events.map((event) => (
+                            <tr key={event.id} className="border">
+                              <td className="border px-4 py-4 text-sm text-gray-500">
+                                <EventProperties event={event} />
+                              </td>
+                              <td className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500">
+                                <div className="flex flex-col items-center gap-2">
+                                  {event.documentSourceUrl !== null ? (
+                                    <Button
+                                      onClick={() => {
+                                        window.open(
+                                          event.documentSourceUrl || "",
+                                          "_blank"
+                                        );
+                                      }}
+                                      disabled={isProcessing}
+                                    >
+                                      Open source document
+                                    </Button>
+                                  ) : (
+                                    <Button disabled={true}>
+                                      Source document not available
+                                    </Button>
+                                  )}
+
                                   <Button
-                                    onClick={() => {
-                                      window.open(
-                                        event.documentSourceUrl || "",
-                                        "_blank"
-                                      );
+                                    onClick={async () => {
+                                      await handleDelete(event.id);
                                     }}
                                     disabled={isProcessing}
                                   >
-                                    Open source document
+                                    Delete data
                                   </Button>
-                                ) : (
-                                  <Button disabled={true}>
-                                    Source document not available
-                                  </Button>
-                                )}
-
-                                <Button
-                                  onClick={async () => {
-                                    await handleDelete(event.id);
-                                  }}
-                                  disabled={isProcessing}
-                                >
-                                  Delete data
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>

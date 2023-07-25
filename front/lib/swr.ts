@@ -14,13 +14,11 @@ import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
-import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/event/[id]";
+import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/[marker]/event/[eId]";
 import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
-
-import { EventSchema } from "./models";
 
 export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
@@ -276,12 +274,12 @@ export function useConnectorPermissions(
   };
 }
 
-export function useExtractedEvents(owner: WorkspaceType, schemaId: number) {
+export function useExtractedEvents(owner: WorkspaceType, marker: string) {
   const extractedEventFetcher: Fetcher<GetExtractedEventsResponseBody> =
     fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${owner.sId}/use/extract/event/${schemaId}`,
+    `/api/w/${owner.sId}/use/extract/${marker}/event`,
     extractedEventFetcher
   );
 

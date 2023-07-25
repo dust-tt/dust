@@ -8,6 +8,7 @@ export type EventSchemaType = {
   description?: string;
   status: EventSchemaStatus;
   properties: EventSchemaPropertyType[];
+  workspaceId: ModelId;
 };
 
 export const eventSchemaPrimitiveTypes = ["string", "number", "boolean"];
