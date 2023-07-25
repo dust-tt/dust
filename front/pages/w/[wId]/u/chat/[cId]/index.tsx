@@ -4,6 +4,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   DocumentDuplicateIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -485,7 +486,7 @@ export function MessageView({
   feedback?: { handler: FeedbackHandler; hover: boolean } | false;
 }) {
   return (
-    <div className="">
+    <div className="group">
       {message.role === "retrieval" ? (
         <div className="flex flex-row">
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
@@ -499,8 +500,10 @@ export function MessageView({
             )}
           >
             {message.role === "assistant" ? (
-              <div className="flex scale-50 pl-2">
-                <PulseLogo animated={loading}></PulseLogo>
+              <div className="flex flex-col items-center">
+                <div className="flex scale-50 pl-2">
+                  <PulseLogo animated={loading}></PulseLogo>
+                </div>
               </div>
             ) : (
               <div className="flex">
@@ -518,11 +521,41 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word ml-2  flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative  ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
             {toMarkdown(message)}
+            {message.role === "assistant" ? (
+              <div
+                className="absolute -top-1.5 right-0 mt-2 hidden text-gray-400 hover:text-violet-800 group-hover:block"
+                onClick={() => {
+                  navigator.clipboard.writeText(message.message || "");
+                  // make the tooltip relative to this element appear
+                  const tooltip = document.getElementById(
+                    `tooltip-${message.sId}`
+                  );
+                  tooltip?.classList.remove("hidden");
+                  setTimeout(() => {
+                    tooltip?.classList.add("hidden");
+                  }, 1500);
+                }}
+              >
+                <ClipboardDocumentListIcon className="h-4 w-4" />
+                <div
+                  id={`tooltip-${message.sId}`}
+                  className="absolute bottom-4 right-0 hidden w-max rounded border bg-white px-1 py-1"
+                >
+                  <span className="font-normal text-gray-600">
+                    <span className="font-semibold">
+                      Conversation copied to clipboard!
+                    </span>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              ""
+            )}
           </div>
           {feedback && (
             <MessageFeedback
