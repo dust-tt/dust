@@ -153,6 +153,12 @@ export async function documentTrackerSuggestChangesOnUpsert({
     documentHash,
   });
 
+  if (!documentSourceUrl) {
+    localLogger.error("Document source url is missing.");
+
+    return;
+  }
+
   localLogger.info(
     "Running document_tracker_suggest_changes post upsert hook."
   );
@@ -271,13 +277,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   const matchedDsName = top1.data_source_id;
   const matchedDocId = top1.document_id;
   const matchedDocUrl = top1.source_url;
-  const matchedDocTags = top1.tags;
-  const maybeMatchedDocTitleTag = matchedDocTags.find((t) =>
-    t.startsWith("title:")
-  );
-  const matchedDocTitle = maybeMatchedDocTitleTag
-    ? maybeMatchedDocTitleTag.split("title:")[1]
-    : null;
+  const matchedDocTitle = getDocumentTitle(top1.tags);
 
   localLogger.info(
     {
@@ -359,10 +359,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
   });
   const emails = users.map((u) => u.email);
-  if (!SENDGRID_API_KEY) {
-    throw new Error("Missing SENDGRID_API_KEY env variable");
-  }
-  sgMail.setApiKey(SENDGRID_API_KEY);
+
   const incomingDocument = await CoreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
@@ -374,37 +371,78 @@ export async function documentTrackerSuggestChangesOnUpsert({
     );
   }
 
-  const incomingDocumentTags = incomingDocument.value.document.tags;
-  const maybeIncomingDocumentTitleTag = incomingDocumentTags.find((t) =>
-    t.startsWith("title:")
+  const incomingDocumentTitle = getDocumentTitle(
+    incomingDocument.value.document.tags
   );
-  const incomingDocumentTitle = maybeIncomingDocumentTitleTag;
 
-  const sendEmail = async (email: string) => {
-    localLogger.info(
-      {
-        matchedDsName,
-        matchedDocId,
-        email,
-      },
-      "Sending email to user."
-    );
-    const msg = {
-      to: email,
-      from: "team@dust.tt",
-      subject: `DUST: Document update suggestion for ${
-        matchedDocTitle || matchedDocUrl
-      }`,
-      html: `Hello!<br>
-  We have a suggestion for you to update the document <a href="${matchedDocUrl}">${
-        matchedDocTitle || matchedDocUrl
-      }</a>, based on the new document <a href="${documentSourceUrl}">${
-        incomingDocumentTitle || documentSourceUrl
-      }</a>:<br>
-  ${suggestedChanges}<br>
-  The Dust team`,
-    };
-    await sgMail.send(msg);
+  await Promise.all(
+    emails.map((email) =>
+      sendSuggestionEmail({
+        recipientEmail: email,
+        matchedDocumentTitle: matchedDocTitle,
+        matchedDocumentUrl: matchedDocUrl,
+        incomingDocumentTitle: incomingDocumentTitle,
+        incomingDocumentUrl: documentSourceUrl,
+        suggestedChanges: suggestedChanges,
+      })
+    )
+  );
+}
+
+async function sendSuggestionEmail({
+  recipientEmail,
+  matchedDocumentTitle,
+  matchedDocumentUrl,
+  incomingDocumentTitle,
+  incomingDocumentUrl,
+  suggestedChanges,
+}: {
+  recipientEmail: string;
+  matchedDocumentTitle: string | null;
+  matchedDocumentUrl: string;
+  incomingDocumentTitle: string | null;
+  incomingDocumentUrl: string;
+  suggestedChanges: string;
+}) {
+  const localLogger = logger.child({
+    recipientEmail,
+    matchedDocumentTitle,
+    matchedDocumentUrl,
+    incomingDocumentTitle,
+    incomingDocumentUrl,
+  });
+
+  if (!SENDGRID_API_KEY) {
+    throw new Error("Missing SENDGRID_API_KEY env variable");
+  }
+  sgMail.setApiKey(SENDGRID_API_KEY);
+
+  localLogger.info("Sending email to user.");
+
+  const matchedDocumentName = matchedDocumentTitle || matchedDocumentUrl;
+  const incomingDocumentName = incomingDocumentTitle || incomingDocumentUrl;
+
+  const matchedDocumentLink = `<a href="${matchedDocumentUrl}">${matchedDocumentName}</a>`;
+  const incomingDocumentLink = `<a href="${incomingDocumentUrl}">${incomingDocumentName}</a>`;
+
+  const msg = {
+    to: recipientEmail,
+    from: "team@dust.tt",
+    subject: `DUST: Document update suggestion for ${matchedDocumentName}`,
+    html:
+      "Hello!<br>" +
+      `We have a suggestion for you to update the document ${matchedDocumentLink},` +
+      `based on the new document ${incomingDocumentLink}:<br>` +
+      `${suggestedChanges}<br>` +
+      `The Dust team`,
   };
-  await Promise.all(emails.map(sendEmail));
+  await sgMail.send(msg);
+}
+
+function getDocumentTitle(tags: string[]): string | null {
+  const maybeTitleTag = tags.find((t) => t.startsWith("title:"));
+  if (!maybeTitleTag) {
+    return null;
+  }
+  return maybeTitleTag.split("title:")[1];
 }
