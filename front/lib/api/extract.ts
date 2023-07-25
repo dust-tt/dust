@@ -127,18 +127,77 @@ export async function updateEventSchema(
   };
 }
 
-export async function getExtractedEvents(
-  auth: Authenticator,
-  schemaId: number
-): Promise<ExtractedEventType[]> {
+export async function getExtractedEvent({
+  auth,
+  marker,
+  eId,
+}: {
+  auth: Authenticator;
+  marker: string;
+  eId: string;
+}): Promise<ExtractedEventType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+  const schema = await EventSchema.findOne({
+    where: {
+      marker: marker,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!schema) {
+    return null;
+  }
+
+  const event = await ExtractedEvent.findOne({
+    where: {
+      id: eId,
+      eventSchemaId: schema.id,
+    },
+  });
+
+  if (!event) {
+    return null;
+  }
+
+  return {
+    id: event.id,
+    marker: event.marker,
+    properties: event.properties,
+    dataSourceName: event.dataSourceName,
+    documentId: event.documentId,
+    documentSourceUrl: event.documentSourceUrl,
+  };
+}
+
+export async function getExtractedEvents({
+  auth,
+  marker,
+}: {
+  auth: Authenticator;
+  marker: string;
+}): Promise<ExtractedEventType[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];
   }
 
+  const schema = await EventSchema.findOne({
+    where: {
+      marker: marker,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!schema) {
+    return [];
+  }
+
   const events = await ExtractedEvent.findAll({
     where: {
-      eventSchemaId: schemaId,
+      eventSchemaId: schema.id,
     },
     order: [["createdAt", "DESC"]],
   });
@@ -153,4 +212,29 @@ export async function getExtractedEvents(
       documentSourceUrl: event.documentSourceUrl,
     };
   });
+}
+
+export async function deleteExtractedEvent({
+  auth,
+  eId,
+}: {
+  auth: Authenticator;
+  eId: string;
+}): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return false;
+  }
+
+  const event = await ExtractedEvent.findOne({
+    where: {
+      id: eId,
+    },
+  });
+  if (!event) {
+    return false;
+  }
+
+  await event.destroy();
+  return true;
 }

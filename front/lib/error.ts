@@ -36,7 +36,9 @@ export type APIErrorType =
   | "chat_message_not_found"
   | "chat_session_auth_error"
   | "template_not_found"
-  | "chat_message_not_found";
+  | "chat_message_not_found"
+  | "event_schema_not_found"
+  | "extracted_event_not_found";
 
 export type APIError = {
   type: APIErrorType;

@@ -14,6 +14,7 @@ import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
+import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/[marker]/events/[eId]";
 import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
@@ -270,5 +271,21 @@ export function useConnectorPermissions(
     resources: data ? data.resources : [],
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function useExtractedEvents(owner: WorkspaceType, marker: string) {
+  const extractedEventFetcher: Fetcher<GetExtractedEventsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/use/extract/${marker}/events`,
+    extractedEventFetcher
+  );
+
+  return {
+    events: data ? data.events : [],
+    isEventsLoading: !error && !data,
+    isEventsError: error,
   };
 }
