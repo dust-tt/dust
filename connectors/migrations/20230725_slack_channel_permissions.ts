@@ -27,6 +27,19 @@ async function main() {
 
     const accessToken = await getAccessToken(c.connectionId);
     const channelsInSlack = await getChannels(accessToken);
+    const channelIdsInSlackSet = new Set(
+      channelsInSlack.map((c) => c.id).filter((id) => id)
+    );
+
+    const channelIdsToDelete = Object.keys(channelsInDb).filter(
+      (id) => !channelIdsInSlackSet.has(id)
+    );
+    await SlackChannel.destroy({
+      where: {
+        connectorId: c.id,
+        slackChannelId: channelIdsToDelete,
+      },
+    });
 
     for (const channel of channelsInSlack) {
       if (!channel.id) {
