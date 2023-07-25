@@ -2,6 +2,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 
 import AppLayout from "@app/components/AppLayout";
+import { Button } from "@app/components/Button";
 import MainTab from "@app/components/use/MainTab";
 import { getEventSchema, getExtractedEvents } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -61,7 +62,6 @@ export default function AppExtractEventsReadData({
   owner,
   schema,
   events,
-  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
@@ -97,9 +97,6 @@ export default function AppExtractEventsReadData({
                     <table className="min-w-full text-left text-sm font-light">
                       <thead className="border font-medium">
                         <tr>
-                          <th scope="col" className="border px-3 py-4">
-                            Marker
-                          </th>
                           <th scope="col" className="border px-12 py-4">
                             Properties
                           </th>
@@ -114,14 +111,24 @@ export default function AppExtractEventsReadData({
                       <tbody>
                         {events.map((event) => (
                           <tr key={event.id} className="border">
-                            <td className="whitespace-nowrap border px-3 py-4 text-sm font-medium text-gray-900">
-                              {event.marker}
-                            </td>
                             <td className="border px-3 py-4 text-sm text-gray-500">
                               <EventProperties event={event} />
                             </td>
                             <td className="whitespace-nowrap border px-3 py-4 text-sm text-gray-500">
-                              [todo]
+                              {event.documentSourceUrl !== null ? (
+                                <Button
+                                  onClick={() => {
+                                    window.open(
+                                      event.documentSourceUrl || "",
+                                      "_blank"
+                                    );
+                                  }}
+                                >
+                                  See doc
+                                </Button>
+                              ) : (
+                                <p>Not available</p>
+                              )}
                             </td>
                             <td className="whitespace-nowrap border px-3 py-4 text-sm text-gray-500">
                               [todo]
