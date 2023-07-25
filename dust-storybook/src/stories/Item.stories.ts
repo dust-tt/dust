@@ -13,9 +13,9 @@ type Story = StoryObj<typeof meta>;
 export const BasicItem: Story = {
   args: {
     label: "Settings",
-    size: "sm",
+    size: "md",
     icon: Cog6Tooth,
-    disabled: false,
+    disabled: true,
     selected: false,
   },
 };
