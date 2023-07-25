@@ -1,6 +1,7 @@
 import { ReactComponentLike } from "prop-types";
 import React, { MouseEvent } from "react";
 
+import { SparkleContext } from "@sparkle/context";
 import { classNames } from "@sparkle/lib/utils";
 
 type TabProps = {
@@ -10,8 +11,9 @@ type TabProps = {
     current: boolean;
     sizing?: "hug" | "expand";
     icon?: ReactComponentLike;
+    href?: string;
   }>;
-  onTabClick?: (tabName: string, event: MouseEvent<HTMLDivElement>) => void;
+  onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
 };
 
@@ -59,6 +61,9 @@ const tabSizingClasses = {
 };
 
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
+  const { components } = React.useContext(SparkleContext);
+  const Link = components.link;
+
   const renderTabs = () =>
     tabs.map((tab) => {
       const tabStateClasses = tab.current
@@ -88,11 +93,12 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
 
       return (
-        <div
+        <Link
           key={tab.label}
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
           onClick={(event) => onTabClick?.(tab.label, event)}
+          href={tab.href}
         >
           <div
             className={
@@ -104,7 +110,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             {tab.icon && <tab.icon className={finalIconClasses} />}
             {tab.hideLabel ?? tab.label}
           </div>
-        </div>
+        </Link>
       );
     });
 
