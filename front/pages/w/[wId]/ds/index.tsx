@@ -18,7 +18,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames, client_side_new_id, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -268,6 +268,19 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
+  function buildNangoConnectionName(
+    provider: ConnectorProvider,
+    suffix: string | null
+  ): string {
+    let connectionName = `${provider}-${owner.sId}`;
+    if (suffix) {
+      connectionName += `-${suffix}`;
+    }
+    const uId = client_side_new_id();
+    connectionName += `-${uId.slice(0, 10)}`;
+    return connectionName;
+  }
+
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -282,14 +295,11 @@ export default function DataSourcesView({
           google_drive: nangoConfig.googleDriveConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
+        const newConnectionName = buildNangoConnectionName(provider, suffix);
         const {
           connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } = suffix
-          ? await nango.auth(
-              nangoConnectorId,
-              `${provider}-${owner.sId}-${suffix}`
-            )
-          : await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoConnectorId, newConnectionName);
         connectionId = nangoConnectionId;
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
