@@ -495,6 +495,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
       onMouseLeave={() => {
+        // in case user left before tooltip appears, cancel timer
         timer && clearTimeout(timer);
         setTooltip(false);
       }}
