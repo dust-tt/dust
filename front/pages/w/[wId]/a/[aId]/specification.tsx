@@ -90,12 +90,12 @@ export default function Specification({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "specification")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "specification" }),
+      })}
     >
       <div className="font-mono whitespace-pre text-[13px] text-gray-700">
         {specification}

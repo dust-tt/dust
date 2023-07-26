@@ -194,7 +194,7 @@ export default function WorkspaceAdmin({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(owner, "workspace")}
+      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
       <div className="flex flex-col">
         <div className="flex flex-1">

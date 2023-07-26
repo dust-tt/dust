@@ -96,7 +96,7 @@ export default function AppExtractEventsReadData({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
-      subNavigation={subNavigationLab(owner, "extract")}
+      subNavigation={subNavigationLab({ owner, current: "extract" })}
     >
       <div className="flex h-full flex-col">
         <div className="container">

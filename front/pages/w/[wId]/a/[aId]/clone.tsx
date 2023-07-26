@@ -132,12 +132,12 @@ export default function CloneView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "settings")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "settings" }),
+      })}
     >
       <div className="flex flex-1">
         <div className="space-y-8 divide-y divide-gray-200">

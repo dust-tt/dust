@@ -303,12 +303,12 @@ export default function AppView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "specification")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "specification" }),
+      })}
     >
       <div className="flex flex-auto flex-col">
         <div className="mb-4 flex flex-auto flex-row items-center space-x-2">

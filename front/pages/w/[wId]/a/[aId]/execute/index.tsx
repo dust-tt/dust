@@ -563,12 +563,12 @@ export default function ExecuteView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "execute")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "execute" }),
+      })}
     >
       <div className="flex flex-col">
         <div className="mt-2 flex flex-col">

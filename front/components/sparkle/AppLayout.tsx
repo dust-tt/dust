@@ -103,7 +103,7 @@ function NavigationBar({
           </div>
         ) : null}
         <div>
-          <Tab tabs={topNavigation(owner, topNavigationCurrent)} />
+          <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
         </div>
         {subNavigation && (
           <div>

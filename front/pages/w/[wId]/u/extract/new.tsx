@@ -49,7 +49,7 @@ export default function AppExtractEventsCreate({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
-      subNavigation={subNavigationLab(owner, "extract")}
+      subNavigation={subNavigationLab({ owner, current: "extract" })}
     >
       <ExtractEventSchemaForm owner={owner} readOnly={readOnly} />
     </AppLayout>

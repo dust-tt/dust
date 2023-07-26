@@ -107,7 +107,7 @@ export default function NewApp({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(owner, "developers")}
+      subNavigation={subNavigationAdmin({ owner, current: "developers" })}
     >
       <div className="flex flex-col">
         <div className="mt-8 space-y-8 divide-y divide-gray-200">

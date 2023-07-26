@@ -94,12 +94,12 @@ export default function DatasetsView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "datasets")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "datasets" }),
+      })}
     >
       <div className="leadingflex flex-col">
         <div className="flex flex-1">

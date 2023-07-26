@@ -143,12 +143,12 @@ export default function AppRun({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "developers",
-        app.name,
-        subNavigationApp(owner, app, "runs")
-      )}
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "runs" }),
+      })}
     >
       <div className="flex flex-col">
         <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">

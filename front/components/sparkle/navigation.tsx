@@ -52,10 +52,13 @@ export type SparkleAppLayoutNavigation = {
   subMenu?: SparkleAppLayoutNavigation[];
 };
 
-export const topNavigation = (
-  owner: WorkspaceType,
-  current: TopNavigationId
-) => {
+export const topNavigation = ({
+  owner,
+  current,
+}: {
+  owner: WorkspaceType;
+  current: TopNavigationId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "assistant",
@@ -92,12 +95,17 @@ export const topNavigation = (
   return nav;
 };
 
-export const subNavigationAdmin = (
-  owner: WorkspaceType,
-  current: SubNavigationAdminId,
-  subMenuLabel?: string,
-  subMenu?: SparkleAppLayoutNavigation[]
-) => {
+export const subNavigationAdmin = ({
+  owner,
+  current,
+  subMenuLabel,
+  subMenu,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationAdminId;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "data_sources",
@@ -137,11 +145,15 @@ export const subNavigationAdmin = (
   return nav;
 };
 
-export const subNavigationDataSource = (
-  owner: WorkspaceType,
-  dataSource: DataSourceType,
-  current: SubNavigationDataSourceId
-) => {
+export const subNavigationDataSource = ({
+  owner,
+  dataSource,
+  current,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  current: SubNavigationDataSourceId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "documents",
@@ -182,11 +194,15 @@ export const subNavigationDataSource = (
   return nav;
 };
 
-export const subNavigationApp = (
-  owner: WorkspaceType,
-  app: AppType,
-  current: SubNavigationAppId
-) => {
+export const subNavigationApp = ({
+  owner,
+  app,
+  current,
+}: {
+  owner: WorkspaceType;
+  app: AppType;
+  current: SubNavigationAppId;
+}) => {
   let nav: SparkleAppLayoutNavigation[] = [
     {
       id: "specification",
@@ -237,10 +253,13 @@ export const subNavigationApp = (
   return nav;
 };
 
-export const subNavigationLab = (
-  owner: WorkspaceType,
-  current: SubNavigationLabId
-) => {
+export const subNavigationLab = ({
+  owner,
+  current,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationLabId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "gens",

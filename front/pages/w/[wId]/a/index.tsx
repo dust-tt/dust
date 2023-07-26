@@ -457,7 +457,7 @@ export default function Developers({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(owner, "developers")}
+      subNavigation={subNavigationAdmin({ owner, current: "developers" })}
     >
       <div className="flex flex-col">
         <div className="space-y-4 divide-y divide-gray-200">

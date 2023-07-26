@@ -138,12 +138,16 @@ export default function DataSourceSettings({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(
+      subNavigation={subNavigationAdmin({
         owner,
-        "data_sources",
-        dataSource.name,
-        subNavigationDataSource(owner, dataSource, "settings")
-      )}
+        current: "data_sources",
+        subMenuLabel: dataSource.name,
+        subMenu: subNavigationDataSource({
+          owner,
+          dataSource,
+          current: "settings",
+        }),
+      })}
     >
       <div className="flex flex-col">
         {!managed ? (
