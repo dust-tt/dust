@@ -12,6 +12,7 @@ import {
   PaperAirplaneStrokeIcon,
 } from "@dust-tt/sparkle";
 
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
@@ -61,15 +62,19 @@ export const topNavigation = (
       sizing: "expand",
       current: current === "assistant",
     },
-    {
+  ];
+
+  if (!owner.disableLabs) {
+    nav.push({
       id: "lab",
       label: "Lab",
       icon: BeakerIcon,
       href: `/w/${owner.sId}/u/gens`,
       sizing: "expand",
       current: current === "lab",
-    },
-  ];
+    });
+  }
+
   if (owner.role === "admin" || owner.role === "builder") {
     nav.push({
       id: "settings",
@@ -96,13 +101,6 @@ export const subNavigationAdmin = (
       href: `/w/${owner.sId}/ds`,
       current: current === "data_sources",
     },
-    {
-      id: "developers",
-      label: "Developers Tools",
-      icon: CommandLineStrokeIcon,
-      href: `/w/${owner.sId}/a`,
-      current: current === "developers",
-    },
   ];
 
   if (owner.role === "admin") {
@@ -112,6 +110,16 @@ export const subNavigationAdmin = (
       icon: Cog6ToothStrokeIcon,
       href: `/w/${owner.sId}/workspace`,
       current: current === "workspace",
+    });
+  }
+
+  if (owner.role === "admin" || owner.role === "builder") {
+    nav.push({
+      id: "developers",
+      label: "Developers Tools",
+      icon: CommandLineStrokeIcon,
+      href: `/w/${owner.sId}/a`,
+      current: current === "developers",
     });
   }
 
@@ -131,14 +139,21 @@ export const subNavigationDataSource = (
       href: `/w/${owner.sId}/ds/${dataSource.name}`,
       current: current === "documents",
     },
-    {
+  ];
+
+  if (
+    owner.role === "user" ||
+    owner.role === "builder" ||
+    owner.role === "admin"
+  ) {
+    nav.push({
       id: "search",
       label: "Search",
       icon: MagnifyingGlassStrokeIcon,
       href: `/w/${owner.sId}/ds/${dataSource.name}/search`,
       current: current === "search",
-    },
-  ];
+    });
+  }
 
   if (
     owner.role === "admin" ||
@@ -161,7 +176,7 @@ export const subNavigationApp = (
   app: AppType,
   current: SubNavigationAppId
 ) => {
-  const nav: SparkleAppLayoutNavigation[] = [
+  let nav: SparkleAppLayoutNavigation[] = [
     {
       id: "specification",
       label: "Specification",
@@ -176,28 +191,37 @@ export const subNavigationApp = (
       href: `/w/${owner.sId}/a/${app.sId}/datasets`,
       current: current === "datasets",
     },
-    {
-      id: "execute",
-      label: "Run",
-      icon: PaperAirplaneStrokeIcon,
-      href: `/w/${owner.sId}/a/${app.sId}/execute`,
-      current: current === "execute",
-    },
-    {
-      id: "runs",
-      label: "Logs",
-      icon: FolderOpenStrokeIcon,
-      href: `/w/${owner.sId}/a/${app.sId}/runs`,
-      current: current === "runs",
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Cog6ToothStrokeIcon,
-      href: `/w/${owner.sId}/a/${app.sId}/settings`,
-      current: current === "settings",
-    },
   ];
+
+  if (
+    owner.role === "user" ||
+    owner.role === "builder" ||
+    owner.role === "admin"
+  ) {
+    nav = nav.concat([
+      {
+        id: "execute",
+        label: "Run",
+        icon: PaperAirplaneStrokeIcon,
+        href: `/w/${owner.sId}/a/${app.sId}/execute`,
+        current: current === "execute",
+      },
+      {
+        id: "runs",
+        label: "Logs",
+        icon: FolderOpenStrokeIcon,
+        href: `/w/${owner.sId}/a/${app.sId}/runs`,
+        current: current === "runs",
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        icon: Cog6ToothStrokeIcon,
+        href: `/w/${owner.sId}/a/${app.sId}/settings`,
+        current: current === "settings",
+      },
+    ]);
+  }
 
   return nav;
 };
@@ -214,14 +238,17 @@ export const subNavigationLab = (
       href: `/w/${owner.sId}/u/gens`,
       current: current === "gens",
     },
-    {
+  ];
+
+  if (isDevelopmentOrDustWorkspace(owner)) {
+    nav.push({
       id: "extract",
       label: "Extract",
       icon: BeakerStrokeIcon,
       href: `/w/${owner.sId}/u/extract`,
       current: current === "extract",
-    },
-  ];
+    });
+  }
 
   return nav;
 };
