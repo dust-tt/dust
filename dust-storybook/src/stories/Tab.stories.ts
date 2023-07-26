@@ -6,8 +6,6 @@ import {
   Cog6ToothIcon,
 } from "sparkle";
 
-import "sparkle/dist/cjs/index.css";
-
 const meta = {
   title: "Atoms/Tab",
   component: Tab,
