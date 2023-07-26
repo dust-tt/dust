@@ -1,8 +1,3 @@
-import {
-  CloudArrowDownStrokeIcon,
-  Cog6ToothStrokeIcon,
-  CommandLineStrokeIcon,
-} from "@dust-tt/sparkle";
 import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -11,6 +6,7 @@ import { mutate } from "swr";
 
 import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -197,30 +193,13 @@ export default function WorkspaceAdmin({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Data Sources",
-          icon: CloudArrowDownStrokeIcon,
-          workspaceRelativePath: "/ds",
-        },
-        {
-          label: "Workspace Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: "/workspace",
-          current: true,
-        },
-        {
-          label: "Developers Tools",
-          icon: CommandLineStrokeIcon,
-          workspaceRelativePath: "/a",
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "workspace")}
     >
       <div className="flex flex-col">
         <div className="flex flex-1">
           <div className="">
-            <div className="mt-8 space-y-4 divide-y divide-gray-200">
+            <div className="space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace settings

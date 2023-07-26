@@ -1,8 +1,3 @@
-import {
-  CloudArrowDownStrokeIcon,
-  Cog6ToothStrokeIcon,
-  CommandLineStrokeIcon,
-} from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -24,6 +19,7 @@ import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -114,7 +110,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   return (
     <div className="space-y-4 divide-y divide-gray-200">
-      <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
+      <div className="flex flex-col justify-between md:flex-row md:items-center">
         <div className="">
           <h1 className="text-base font-medium text-gray-900">
             Secret API Keys
@@ -460,29 +456,12 @@ export default function Developers({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Data Sources",
-          icon: CloudArrowDownStrokeIcon,
-          workspaceRelativePath: "/ds",
-        },
-        {
-          label: "Workspace Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: "/workspace",
-        },
-        {
-          label: "Developers Tools",
-          icon: CommandLineStrokeIcon,
-          workspaceRelativePath: "/a",
-          current: true,
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "developers")}
     >
       <div className="flex flex-col">
         <div className="space-y-4 divide-y divide-gray-200">
-          <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
+          <div className="flex flex-col justify-between md:flex-row md:items-center">
             <div>
               <h1 className="text-base font-medium text-gray-900">Apps</h1>
 

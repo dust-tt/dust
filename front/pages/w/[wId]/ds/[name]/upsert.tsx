@@ -10,9 +10,9 @@ import * as PDFJS from "pdfjs-dist/build/pdf";
 import { useEffect, useRef, useState } from "react";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
-import AppLayout from "@app/components/AppLayout";
 import { ActionButton, Button } from "@app/components/Button";
-import MainTab from "@app/components/data_source/MainTab";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationDataSource } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
@@ -209,25 +209,18 @@ export default function DataSourceUpsert({
     <AppLayout
       user={user}
       owner={owner}
-      dataSource={dataSource}
       gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationDataSource(owner, dataSource, "documents")}
     >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab
-            currentTab="Documents"
-            owner={owner}
-            dataSource={dataSource}
-          />
-        </div>
-
-        <div className="mx-auto mt-2 max-w-4xl space-y-6 divide-y divide-gray-200 px-4">
+        <div className="space-y-6 divide-y divide-gray-200">
           <div>
             <div className="flex flex-1">
               <div className="w-full">
-                <div className="mt-4 space-y-6 divide-y divide-gray-200"></div>
+                <div className="space-y-6 divide-y divide-gray-200"></div>
 
-                <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
+                <div className="grid gap-x-4 gap-y-4 sm:grid-cols-5">
                   <div className="sm:col-span-5">
                     <label
                       htmlFor="documentId"

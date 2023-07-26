@@ -1,8 +1,3 @@
-import {
-  Cog6ToothStrokeIcon,
-  DocumentTextStrokeIcon,
-  MagnifyingGlassStrokeIcon,
-} from "@dust-tt/sparkle";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -11,6 +6,7 @@ import { useSWRConfig } from "swr";
 
 import { ActionButton, Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationDataSource } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -130,27 +126,10 @@ export default function DataSourceView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Documents",
-          icon: DocumentTextStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}`,
-          current: true,
-        },
-        {
-          label: "Search",
-          icon: MagnifyingGlassStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}/search`,
-        },
-        {
-          label: "Data Source Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}/settings`,
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationDataSource(owner, dataSource, "documents")}
     >
-      <div className="mt-8 flex flex-col">
+      <div className="flex flex-col">
         <div className="flex flex-row">
           <div className="flex flex-1">
             <div className="flex flex-col">

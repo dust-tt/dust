@@ -1,8 +1,3 @@
-import {
-  CloudArrowDownStrokeIcon,
-  Cog6ToothStrokeIcon,
-  CommandLineStrokeIcon,
-} from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -12,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@app/components/Button";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -368,29 +364,12 @@ export default function DataSourcesView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Data Sources",
-          icon: CloudArrowDownStrokeIcon,
-          workspaceRelativePath: "/ds",
-          current: true,
-        },
-        {
-          label: "Workspace Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: "/workspace",
-        },
-        {
-          label: "Developers Tools",
-          icon: CommandLineStrokeIcon,
-          workspaceRelativePath: "/a",
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "data_sources")}
     >
       <div className="flex flex-col">
         <div className="divide-y divide-gray-200">
-          <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
+          <div className="flex flex-col justify-between md:flex-row md:items-center">
             <div className="">
               <h1 className="text-base font-medium text-gray-900">
                 Data Sources

@@ -1,8 +1,3 @@
-import {
-  CloudArrowDownStrokeIcon,
-  Cog6ToothStrokeIcon,
-  CommandLineStrokeIcon,
-} from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -10,6 +5,7 @@ import React, { useEffect, useState } from "react";
 
 import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
@@ -110,25 +106,8 @@ export default function NewApp({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Data Sources",
-          icon: CloudArrowDownStrokeIcon,
-          workspaceRelativePath: "/ds",
-        },
-        {
-          label: "Workspace Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: "/workspace",
-        },
-        {
-          label: "Developers Tools",
-          icon: CommandLineStrokeIcon,
-          workspaceRelativePath: "/a",
-          current: true,
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "developers")}
     >
       <div className="flex flex-col">
         <div className="mt-8 space-y-8 divide-y divide-gray-200">

@@ -1,8 +1,3 @@
-import {
-  Cog6ToothStrokeIcon,
-  DocumentTextStrokeIcon,
-  MagnifyingGlassStrokeIcon,
-} from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -15,6 +10,7 @@ import { Button } from "@app/components/Button";
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationDataSource } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -138,25 +134,8 @@ export default function DataSourceSettings({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationLabel="Settings"
-      navigation={[
-        {
-          label: "Documents",
-          icon: DocumentTextStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}`,
-        },
-        {
-          label: "Search",
-          icon: MagnifyingGlassStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}/search`,
-        },
-        {
-          label: "Data Source Settings",
-          icon: Cog6ToothStrokeIcon,
-          workspaceRelativePath: `/ds/${dataSource.name}/settings`,
-          current: true,
-        },
-      ]}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationDataSource(owner, dataSource, "settings")}
     >
       <div className="flex flex-col">
         {!managed ? (
@@ -254,7 +233,7 @@ function StandardDataSourceSettings({
   };
 
   return (
-    <div className="mt-8 space-y-8 divide-y divide-gray-200">
+    <div className="space-y-8 divide-y divide-gray-200">
       <div className="space-y-8 divide-y divide-gray-200">
         <div>
           <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -619,7 +598,7 @@ function ManagedDataSourceSettings({
         />
       )}
 
-      <div className="mt-8 space-y-8">
+      <div className="space-y-8">
         <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
           <div className="sm:col-span-3">
             <div className="flex flex-row items-center">

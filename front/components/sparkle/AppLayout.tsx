@@ -1,16 +1,6 @@
-import {
-  BeakerIcon,
-  ChatBubbleBottomCenterTextIcon,
-  Cog6ToothIcon,
-  Item,
-  Logo,
-  SparkleContext,
-  Tab,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
 import { Fragment, MouseEvent, ReactNode, useState } from "react";
@@ -20,71 +10,25 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-export type SparkleAppLayoutNavigation = {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  workspaceRelativePath: string;
-  hideLabel?: boolean;
-  sizing?: "hug" | "expand";
-  current?: boolean;
-};
-
-export type TopNavigationLabel = "Assistant" | "Lab" | "Settings";
-
-const topNavigation: SparkleAppLayoutNavigation[] = [
-  {
-    label: "Assistant",
-    icon: ChatBubbleBottomCenterTextIcon,
-    workspaceRelativePath: "/u/chat",
-    sizing: "expand",
-  },
-  {
-    label: "Lab",
-    icon: BeakerIcon,
-    workspaceRelativePath: "/u/gens",
-    sizing: "expand",
-  },
-  {
-    label: "Settings",
-    hideLabel: true,
-    icon: Cog6ToothIcon,
-    workspaceRelativePath: "/ds",
-  },
-];
+import {
+  SparkleAppLayoutNavigation,
+  topNavigation,
+  TopNavigationId,
+} from "./navigation";
 
 function NavigationBar({
   user,
   owner,
-  navigation,
-  topNavigationLabel,
+  topNavigationCurrent,
+  subNavigation,
   children,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
-  navigation?: SparkleAppLayoutNavigation[] | null;
-  topNavigationLabel: TopNavigationLabel;
+  topNavigationCurrent: TopNavigationId;
+  subNavigation?: SparkleAppLayoutNavigation[] | null;
   children: React.ReactNode;
 }) {
-  const computedTopNavigation = topNavigation.map((nav) => {
-    const current = nav.label === topNavigationLabel;
-    return {
-      ...nav,
-      href: `/w/${owner.sId}${nav.workspaceRelativePath}`,
-      workspaceRelativePath: undefined,
-      current,
-    };
-  });
-
-  const computedNavigation =
-    navigation?.map((nav) => {
-      return {
-        ...nav,
-        href: `/w/${owner.sId}${nav.workspaceRelativePath}`,
-        workspaceRelativePath: undefined,
-        current: nav.current,
-      };
-    }) || null;
-
   return (
     <div className="flex grow flex-col border-r border-structure-200 bg-structure-50">
       <div className="mt-4 flex flex-col space-y-4">
@@ -138,11 +82,11 @@ function NavigationBar({
           </div>
         </div>
         <div>
-          <Tab tabs={computedTopNavigation} />
+          <Tab tabs={topNavigation(owner, topNavigationCurrent)} />
         </div>
-        {computedNavigation && (
+        {subNavigation && (
           <div>
-            {computedNavigation.map((nav) => {
+            {subNavigation.map((nav) => {
               return (
                 <div key={nav.label} className="flex grow">
                   <Item
@@ -170,15 +114,15 @@ function NavigationBar({
 export default function AppLayout({
   user,
   owner,
-  topNavigationLabel,
-  navigation,
+  topNavigationCurrent,
+  subNavigation,
   gaTrackingId,
   children,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
-  topNavigationLabel: TopNavigationLabel;
-  navigation?: SparkleAppLayoutNavigation[] | null;
+  topNavigationCurrent: TopNavigationId;
+  subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
   children: React.ReactNode;
 }) {
@@ -242,8 +186,8 @@ export default function AppLayout({
                   <NavigationBar
                     user={user}
                     owner={owner}
-                    navigation={navigation}
-                    topNavigationLabel={topNavigationLabel}
+                    subNavigation={subNavigation}
+                    topNavigationCurrent={topNavigationCurrent}
                   >
                     <></>
                   </NavigationBar>
@@ -258,8 +202,8 @@ export default function AppLayout({
           <NavigationBar
             user={user}
             owner={owner}
-            navigation={navigation}
-            topNavigationLabel={topNavigationLabel}
+            subNavigation={subNavigation}
+            topNavigationCurrent={topNavigationCurrent}
           >
             <></>
           </NavigationBar>
@@ -277,7 +221,7 @@ export default function AppLayout({
             </button>
           </div>
           <main className="pb-10 pt-4">
-            <div className="mx-auto max-w-4xl px-6">{children}</div>
+            <div className="mx-auto mt-8 max-w-4xl px-6">{children}</div>
           </main>
         </div>
       </div>
