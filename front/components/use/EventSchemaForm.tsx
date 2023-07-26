@@ -2,9 +2,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import MainTab from "@app/components/use/MainTab";
 import { APIError } from "@app/lib/error";
 import { useEventSchemas } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -12,7 +10,7 @@ import {
   eventSchemaPropertyAllTypes,
   EventSchemaType,
 } from "@app/types/extract";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { WorkspaceType } from "@app/types/user";
 
 type EventSchemaPropertyType = {
   name: string;
@@ -21,17 +19,13 @@ type EventSchemaPropertyType = {
 };
 
 export function ExtractEventSchemaForm({
-  user,
   owner,
   schema,
   readOnly = false,
-  gaTrackingId,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   schema?: EventSchemaType;
   readOnly: boolean;
-  gaTrackingId: string;
 }) {
   const { schemas } = useEventSchemas(owner);
 
@@ -145,121 +139,109 @@ export function ExtractEventSchemaForm({
   };
 
   return (
-    <AppLayout
-      user={user}
-      owner={owner}
-      gaTrackingId={gaTrackingId}
-      app={undefined}
-      dataSource={undefined}
-    >
-      <div className="flex h-full flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Extract data" owner={owner} />
+    <div className="flex h-full flex-col">
+      <div className="container">
+        {readOnly && (
+          <div
+            className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+            role="alert"
+          >
+            <p className="font-bold">Read-only view</p>
+            <p className="text-sm">
+              Only users with the role Builder or Admin in the workspace can
+              edit templates.
+            </p>
+          </div>
+        )}
+
+        {/* Template main infos */}
+        <div className="mb-24 divide-y divide-gray-200">
+          <div>
+            <h3 className="text-base font-medium leading-6 text-gray-900">
+              Marker configuration
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Define the marker and the description for your template. Once the
+              template is defined, you'll be able to extract data from your
+              documents.
+            </p>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
+            <TextField
+              name="marker"
+              label="Marker"
+              description={
+                marker
+                  ? `Current marker is [[${marker}]].`
+                  : "Marker for your template."
+              }
+              value={marker}
+              onChange={(e) => {
+                setErrorMarker("");
+                setMarker(e.target.value);
+              }}
+              error={errorMarker}
+              disabled={readOnly}
+              className="sm:col-span-2"
+            />
+            <TextField
+              name="description"
+              label="Description"
+              description="Explain what this template is about."
+              value={description}
+              onChange={(e) => {
+                setErrorDescription("");
+                setDescription(e.target.value);
+              }}
+              error={errorDescription}
+              disabled={readOnly}
+              className="sm:col-span-4"
+            />
+          </div>
         </div>
 
-        <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          {readOnly && (
-            <div
-              className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
-              role="alert"
+        {/* Template properties */}
+        <div className="mb-6 divide-y divide-gray-200">
+          <div>
+            <h3 className="text-base font-medium leading-6 text-gray-900">
+              Template configuration
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Define the properties to extract for this template. Picking a list
+              as Type allows to extract multiple values for this property. The
+              Description field is key to ensure the LLM model is able to
+              extract the right information from your documents.
+            </p>
+          </div>
+          <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
+            <PropertiesFields
+              properties={properties}
+              setProperties={setProperties}
+              error={errorProperties}
+              setError={setErrorProperties}
+              readOnly={readOnly}
+            />
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="my-10 sm:grid sm:grid-cols-6">
+          <div className="col-span-6 sm:col-span-2"></div>
+          <div className="col-span-6 flex justify-end sm:col-span-4">
+            <Button
+              type="submit"
+              disabled={isProcessing || readOnly}
+              onClick={async () => {
+                await onSubmit();
+              }}
             >
-              <p className="font-bold">Read-only view</p>
-              <p className="text-sm">
-                Only users with the role Builder or Admin in the workspace can
-                edit templates.
-              </p>
-            </div>
-          )}
-
-          {/* Template main infos */}
-          <div className="mb-24 divide-y divide-gray-200">
-            <div>
-              <h3 className="text-base font-medium leading-6 text-gray-900">
-                Marker configuration
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Define the marker and the description for your template. Once
-                the template is defined, you'll be able to extract data from
-                your documents.
-              </p>
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
-              <TextField
-                name="marker"
-                label="Marker"
-                description={
-                  marker
-                    ? `Current marker is [[${marker}]].`
-                    : "Marker for your template."
-                }
-                value={marker}
-                onChange={(e) => {
-                  setErrorMarker("");
-                  setMarker(e.target.value);
-                }}
-                error={errorMarker}
-                disabled={readOnly}
-                className="sm:col-span-2"
-              />
-              <TextField
-                name="description"
-                label="Description"
-                description="Explain what this template is about."
-                value={description}
-                onChange={(e) => {
-                  setErrorDescription("");
-                  setDescription(e.target.value);
-                }}
-                error={errorDescription}
-                disabled={readOnly}
-                className="sm:col-span-4"
-              />
-            </div>
-          </div>
-
-          {/* Template properties */}
-          <div className="mb-6 divide-y divide-gray-200">
-            <div>
-              <h3 className="text-base font-medium leading-6 text-gray-900">
-                Template configuration
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Define the properties to extract for this template. Picking a
-                list as Type allows to extract multiple values for this
-                property. The Description field is key to ensure the LLM model
-                is able to extract the right information from your documents.
-              </p>
-            </div>
-            <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
-              <PropertiesFields
-                properties={properties}
-                setProperties={setProperties}
-                error={errorProperties}
-                setError={setErrorProperties}
-                readOnly={readOnly}
-              />
-            </div>
-          </div>
-
-          {/* Submit */}
-          <div className="my-10 sm:grid sm:grid-cols-6">
-            <div className="col-span-6 sm:col-span-2"></div>
-            <div className="col-span-6 flex justify-end sm:col-span-4">
-              <Button
-                type="submit"
-                disabled={isProcessing || readOnly}
-                onClick={async () => {
-                  await onSubmit();
-                }}
-              >
-                {!schema && (isProcessing ? "Creating..." : "Create")}
-                {schema && (isProcessing ? "Updating..." : "Update")}
-              </Button>
-            </div>
+              {!schema && (isProcessing ? "Creating..." : "Create")}
+              {schema && (isProcessing ? "Updating..." : "Update")}
+            </Button>
           </div>
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }
 

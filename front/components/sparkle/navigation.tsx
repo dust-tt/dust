@@ -1,5 +1,6 @@
 import {
   BeakerIcon,
+  BeakerStrokeIcon,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowDownStrokeIcon,
   Cog6ToothIcon,
@@ -30,13 +31,15 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
+export type SubNavigationLabId = "gens" | "extract";
 
 export type SparkleAppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationAdminId
     | SubNavigationDataSourceId
-    | SubNavigationAppId;
+    | SubNavigationAppId
+    | SubNavigationLabId;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
@@ -193,6 +196,30 @@ export const subNavigationApp = (
       icon: Cog6ToothStrokeIcon,
       href: `/w/${owner.sId}/a/${app.sId}/settings`,
       current: current === "settings",
+    },
+  ];
+
+  return nav;
+};
+
+export const subNavigationLab = (
+  owner: WorkspaceType,
+  current: SubNavigationLabId
+) => {
+  const nav: SparkleAppLayoutNavigation[] = [
+    {
+      id: "gens",
+      label: "Gens",
+      icon: BeakerStrokeIcon,
+      href: `/w/${owner.sId}/u/gens`,
+      current: current === "gens",
+    },
+    {
+      id: "extract",
+      label: "Extract",
+      icon: BeakerStrokeIcon,
+      href: `/w/${owner.sId}/u/extract`,
+      current: current === "extract",
     },
   ];
 
