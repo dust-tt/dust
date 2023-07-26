@@ -478,6 +478,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [tooltip, setTooltip] = useState<boolean>(false);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const handleClick = async () => {
+    // cancel tooltip display if user clicks before tooltip appears
+    timer && clearTimeout(timer);
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
     setTooltip(false);
