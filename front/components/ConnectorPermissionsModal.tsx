@@ -1,6 +1,9 @@
-import { DocumentTextIcon } from "@dust-tt/sparkle";
-import { Button, Checkbox } from "@dust-tt/sparkle";
-// import { Button, HighlightButton } from "./Button";
+import {
+  Button,
+  Checkbox,
+  DocumentTextIcon,
+  XCircleStrokeIcon as XCircleIcon,
+} from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import {
   ChatBubbleLeftRightIcon,
@@ -69,10 +72,12 @@ function PermissionTreeChildren({
   dataSource,
   parentId,
   onPermissionUpdate,
+  canUpdatePermissions,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
+  canUpdatePermissions: boolean;
   onPermissionUpdate: ({
     internalId,
     permission,
@@ -103,46 +108,27 @@ function PermissionTreeChildren({
                   <div className="ml-1 flex flex-row items-center py-1 text-base">
                     <IconComponent className="h-6 w-6 text-slate-300" />
                     <span className="ml-2">{`${titlePrefix}${r.title}`}</span>
-                    {/* align the checkbox to the right */}
-                    <div className="flex-grow">
-                      <Checkbox
-                        className="ml-auto"
-                        checked={
-                          localStateByInternalId[r.internalId] ??
-                          ["read", "read_write"].includes(r.permission)
-                        }
-                        onChange={(checked) => {
-                          setLocalStateByInternalId((prev) => ({
-                            ...prev,
-                            [r.internalId]: checked,
-                          }));
-                          onPermissionUpdate({
-                            internalId: r.internalId,
-                            permission: checked ? "read_write" : "write",
-                          });
-                        }}
-                      />
-                    </div>
-                    {/* <Checkbox */}
-                    {/* <input
-                      type="checkbox"
-                      className="ml-auto"
-                      checked={
-                        localStateByInternalId[r.internalId] ??
-                        ["read", "read_write"].includes(r.permission)
-                      }
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const checked = e.target.checked;
-                        setLocalStateByInternalId((prev) => ({
-                          ...prev,
-                          [r.internalId]: checked,
-                        }));
-                        onPermissionUpdate({
-                          internalId: r.internalId,
-                          permission: checked ? "read_write" : "write",
-                        });
-                      }}
-                    /> */}
+                    {canUpdatePermissions ? (
+                      <div className="flex-grow">
+                        <Checkbox
+                          className="ml-auto"
+                          checked={
+                            localStateByInternalId[r.internalId] ??
+                            ["read", "read_write"].includes(r.permission)
+                          }
+                          onChange={(checked) => {
+                            setLocalStateByInternalId((prev) => ({
+                              ...prev,
+                              [r.internalId]: checked,
+                            }));
+                            onPermissionUpdate({
+                              internalId: r.internalId,
+                              permission: checked ? "read_write" : "write",
+                            });
+                          }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -159,9 +145,11 @@ function PermissionTree({
   owner,
   dataSource,
   onPermissionUpdate,
+  canUpdatePermissions,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
+  canUpdatePermissions: boolean;
   onPermissionUpdate: ({
     internalId,
     permission,
@@ -176,6 +164,7 @@ function PermissionTree({
         owner={owner}
         dataSource={dataSource}
         parentId={null}
+        canUpdatePermissions={canUpdatePermissions}
         onPermissionUpdate={onPermissionUpdate}
       />
     </div>
@@ -249,7 +238,7 @@ export default function ConnectorPermissionsModal({
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={setOpen}>
+      <Dialog as="div" className="relative z-10" onClose={closeModal}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -298,9 +287,6 @@ export default function ConnectorPermissionsModal({
                           size="xs"
                           icon={Cog6ToothIcon}
                         />
-                        {/* <Cog6ToothIcon className="mr-2 h-3 w-3" />
-                          Re-authorize
-                        </Button> */}
                       </div>
                     </div>
                     <div className="mt-3">
@@ -310,23 +296,19 @@ export default function ConnectorPermissionsModal({
                             onClick={closeModal}
                             label="Cancel"
                             type="secondary"
-                            size="sm"
+                            size="xs"
                           />
                           <Button
                             onClick={save}
                             label="Save"
                             type="primary"
-                            size="sm"
+                            size="xs"
                           />
                         </div>
                       ) : (
-                        <Button
-                          type="primary"
-                          size="xs"
-                          label="Settings"
-                          icon={Cog6ToothIcon}
-                          disabled={false}
-                        />
+                        <div onClick={closeModal} className="cursor-pointer">
+                          <XCircleIcon className="h-6 w-6 text-gray-500" />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -357,6 +339,9 @@ export default function ConnectorPermissionsModal({
                   <PermissionTree
                     owner={owner}
                     dataSource={dataSource}
+                    canUpdatePermissions={PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
+                      connector.type
+                    )}
                     onPermissionUpdate={({ internalId, permission }) => {
                       setUpdatedPermissionByInternalId((prev) => ({
                         ...prev,
