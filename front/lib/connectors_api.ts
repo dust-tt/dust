@@ -194,6 +194,30 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async setConnectorPermissions({
+    connectorId,
+    resources,
+  }: {
+    connectorId: string;
+    resources: { internalId: string; permission: ConnectorPermission }[];
+  }): Promise<ConnectorsAPIResponse<void>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/permissions`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          resources: resources.map(({ internalId, permission }) => ({
+            internal_id: internalId,
+            permission,
+          })),
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
