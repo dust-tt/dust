@@ -24,10 +24,10 @@ type TabProps = {
 const tabClasses = {
   default: {
     base: "s-text-element-800 s-border-transparent s-cursor-pointer",
-    hover: "s-hover:text-action-500",
+    hover: "hover:s-text-action-500",
     dark: {
       base: "dark:s-text-element-700-dark",
-      hover: "dark:s-hover:text-action-600-dark",
+      hover: "dark:hover:s-text-action-600-dark",
     },
   },
   selected: {
@@ -43,10 +43,10 @@ const tabClasses = {
 const iconClasses = {
   default: {
     base: "s-text-element-600",
-    hover: "s-group-hover:text-action-400",
+    hover: "group-hover:s-text-action-400",
     dark: {
       base: "dark:s-text-element-600-dark",
-      hover: "dark:s-group-hover:text-action-500-dark",
+      hover: "dark:group-hover:s-text-action-500-dark",
     },
   },
   selected: {
@@ -111,7 +111,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             className={
               tab.current
                 ? "s-flex s-gap-x-2"
-                : "s-duration-400 s-group-hover:-translate-y-0.5 s-flex s-translate-y-0 s-transform s-gap-x-2 s-transition-transform s-ease-out"
+                : "s-duration-400 s-flex s-translate-y-0 s-transform s-gap-x-2 s-transition-transform s-ease-out group-hover:-s-translate-y-0.5"
             }
           >
             {tab.icon && <tab.icon className={finalIconClasses} />}
