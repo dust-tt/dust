@@ -1331,7 +1331,7 @@ export default function AppGens({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
-      subNavigation={subNavigationLab(owner, "gens")}
+      subNavigation={subNavigationLab({ owner, current: "gens" })}
     >
       <div className="flex flex-col">
         <Transition.Root show={explainExpanded} as={Fragment}>

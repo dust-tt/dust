@@ -15,7 +15,10 @@ import { SSE } from "sse.js";
 import { Execution } from "@app/components/app/blocks/Output";
 import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
@@ -560,7 +563,12 @@ export default function ExecuteView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "execute")}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "execute" }),
+      })}
     >
       <div className="flex flex-col">
         <div className="mt-2 flex flex-col">

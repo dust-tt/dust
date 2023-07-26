@@ -10,7 +10,10 @@ import { Button } from "@app/components/Button";
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationDataSource } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationDataSource,
+} from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -135,7 +138,16 @@ export default function DataSourceSettings({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationDataSource(owner, dataSource, "settings")}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "data_sources",
+        subMenuLabel: dataSource.name,
+        subMenu: subNavigationDataSource({
+          owner,
+          dataSource,
+          current: "settings",
+        }),
+      })}
     >
       <div className="flex flex-col">
         {!managed ? (

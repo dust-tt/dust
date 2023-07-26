@@ -8,6 +8,7 @@ import {
   CommandLineStrokeIcon,
   DocumentTextStrokeIcon,
   FolderOpenStrokeIcon,
+  KeyStrokeIcon,
   MagnifyingGlassStrokeIcon,
   PaperAirplaneStrokeIcon,
 } from "@dust-tt/sparkle";
@@ -47,12 +48,17 @@ export type SparkleAppLayoutNavigation = {
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
   current: boolean;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
 };
 
-export const topNavigation = (
-  owner: WorkspaceType,
-  current: TopNavigationId
-) => {
+export const topNavigation = ({
+  owner,
+  current,
+}: {
+  owner: WorkspaceType;
+  current: TopNavigationId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "assistant",
@@ -89,10 +95,17 @@ export const topNavigation = (
   return nav;
 };
 
-export const subNavigationAdmin = (
-  owner: WorkspaceType,
-  current: SubNavigationAdminId
-) => {
+export const subNavigationAdmin = ({
+  owner,
+  current,
+  subMenuLabel,
+  subMenu,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationAdminId;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "data_sources",
@@ -100,6 +113,8 @@ export const subNavigationAdmin = (
       icon: CloudArrowDownStrokeIcon,
       href: `/w/${owner.sId}/ds`,
       current: current === "data_sources",
+      subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
+      subMenu: current === "data_sources" ? subMenu : undefined,
     },
   ];
 
@@ -107,9 +122,11 @@ export const subNavigationAdmin = (
     nav.push({
       id: "workspace",
       label: "Workspace Settings",
-      icon: Cog6ToothStrokeIcon,
+      icon: KeyStrokeIcon,
       href: `/w/${owner.sId}/workspace`,
       current: current === "workspace",
+      subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+      subMenu: current === "workspace" ? subMenu : undefined,
     });
   }
 
@@ -120,17 +137,23 @@ export const subNavigationAdmin = (
       icon: CommandLineStrokeIcon,
       href: `/w/${owner.sId}/a`,
       current: current === "developers",
+      subMenuLabel: current === "developers" ? subMenuLabel : undefined,
+      subMenu: current === "developers" ? subMenu : undefined,
     });
   }
 
   return nav;
 };
 
-export const subNavigationDataSource = (
-  owner: WorkspaceType,
-  dataSource: DataSourceType,
-  current: SubNavigationDataSourceId
-) => {
+export const subNavigationDataSource = ({
+  owner,
+  dataSource,
+  current,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  current: SubNavigationDataSourceId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "documents",
@@ -171,11 +194,15 @@ export const subNavigationDataSource = (
   return nav;
 };
 
-export const subNavigationApp = (
-  owner: WorkspaceType,
-  app: AppType,
-  current: SubNavigationAppId
-) => {
+export const subNavigationApp = ({
+  owner,
+  app,
+  current,
+}: {
+  owner: WorkspaceType;
+  app: AppType;
+  current: SubNavigationAppId;
+}) => {
   let nav: SparkleAppLayoutNavigation[] = [
     {
       id: "specification",
@@ -226,10 +253,13 @@ export const subNavigationApp = (
   return nav;
 };
 
-export const subNavigationLab = (
-  owner: WorkspaceType,
-  current: SubNavigationLabId
-) => {
+export const subNavigationLab = ({
+  owner,
+  current,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationLabId;
+}) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "gens",

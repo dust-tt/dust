@@ -365,7 +365,7 @@ export default function DataSourcesView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(owner, "data_sources")}
+      subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
     >
       <div className="flex flex-col">
         <div className="divide-y divide-gray-200">

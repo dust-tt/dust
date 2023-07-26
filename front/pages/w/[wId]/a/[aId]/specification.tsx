@@ -1,7 +1,10 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
@@ -87,7 +90,12 @@ export default function Specification({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "specification")}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "specification" }),
+      })}
     >
       <div className="font-mono whitespace-pre text-[13px] text-gray-700">
         {specification}

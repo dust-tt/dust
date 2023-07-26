@@ -134,7 +134,7 @@ export default function DataSourceNew({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin(owner, "data_sources")}
+      subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
     >
       <div className="flex flex-col">
         <div className="flex flex-1">

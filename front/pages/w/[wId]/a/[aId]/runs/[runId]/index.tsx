@@ -8,7 +8,10 @@ import { useState } from "react";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -140,7 +143,12 @@ export default function AppRun({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "runs")}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "runs" }),
+      })}
     >
       <div className="flex flex-col">
         <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">

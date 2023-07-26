@@ -6,7 +6,10 @@ import { useSWRConfig } from "swr";
 
 import { ActionButton, Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationDataSource } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationDataSource,
+} from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -127,7 +130,16 @@ export default function DataSourceView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationDataSource(owner, dataSource, "documents")}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "data_sources",
+        subMenuLabel: dataSource.name,
+        subMenu: subNavigationDataSource({
+          owner,
+          dataSource,
+          current: "documents",
+        }),
+      })}
     >
       <div className="flex flex-col">
         <div className="flex flex-row">
