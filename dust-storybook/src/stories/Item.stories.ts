@@ -3,7 +3,7 @@ import { Item } from "sparkle";
 import { Cog6Tooth } from "sparkle/src/icons/mini";
 
 const meta = {
-  title: "Example/Item",
+  title: "Atoms/Item",
   component: Item,
 } satisfies Meta<typeof Item>;
 

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Logo } from "sparkle";
 
 const meta = {
-  title: "Example/Logo",
+  title: "Assets/Logo",
   component: Logo,
 } satisfies Meta<typeof Logo>;
 
