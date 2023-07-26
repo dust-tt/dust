@@ -28,7 +28,6 @@ export const getServerSideProps: GetServerSideProps<{
   const user = await getUserFromSession(session);
 
   if (user && user.workspaces.length > 0) {
-    // TODO(spolu): persist latest workspace in session?
     let url = `/w/${user.workspaces[0].sId}`;
 
     const m = await getUserMetadata(user, "sticky_path");

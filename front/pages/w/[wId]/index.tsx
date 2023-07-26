@@ -33,11 +33,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   void setUserMetadata(user, {
     key: "sticky_path",
-    value: `/w/${context.query.wId}/ds`,
+    value: `/w/${context.query.wId}/u`,
   });
+
   return {
     redirect: {
-      destination: `/w/${context.query.wId}/ds`,
+      destination: `/w/${context.query.wId}/u`,
       permanent: false,
     },
   };
