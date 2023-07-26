@@ -124,7 +124,7 @@ function NavigationBar({
                     </div>
                   )}
                   {nav.subMenu && (
-                    <div className="flex flex-col mb-2">
+                    <div className="mb-2 flex flex-col">
                       {nav.subMenu.map((nav) => {
                         return (
                           <div key={nav.label} className="flex grow">
