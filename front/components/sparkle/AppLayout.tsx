@@ -150,9 +150,21 @@ function NavigationBar({
           <a href=""></a>
         </div>
       </div>
-      <div>{children}</div>
+      <div className="mt-1">{children}</div>
     </div>
   );
+}
+
+export function AppLayoutMain({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="h-full pb-10 pt-4">
+      <div className="mx-auto mt-8 h-full max-w-4xl px-6">{children}</div>
+    </main>
+  );
+}
+
+export function AppLayoutNav({ children }: { children: React.ReactNode }) {
+  return <div>{children}</div>;
 }
 
 export default function AppLayout({
@@ -161,6 +173,7 @@ export default function AppLayout({
   topNavigationCurrent,
   subNavigation,
   gaTrackingId,
+  navChildren,
   children,
 }: {
   user: UserType | null;
@@ -168,6 +181,7 @@ export default function AppLayout({
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
+  navChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -233,7 +247,7 @@ export default function AppLayout({
                     subNavigation={subNavigation}
                     topNavigationCurrent={topNavigationCurrent}
                   >
-                    <></>
+                    {navChildren && <div>{navChildren}</div>}
                   </NavigationBar>
                 </Dialog.Panel>
               </Transition.Child>
@@ -249,7 +263,7 @@ export default function AppLayout({
             subNavigation={subNavigation}
             topNavigationCurrent={topNavigationCurrent}
           >
-            <></>
+            {navChildren && <div>{navChildren}</div>}
           </NavigationBar>
         </div>
 

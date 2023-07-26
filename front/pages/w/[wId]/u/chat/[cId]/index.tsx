@@ -1,3 +1,4 @@
+import { Button, ChatBubbleBottomCenterPlusIcon } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -613,6 +614,25 @@ const COMMANDS: { cmd: string; description: string }[] = [
   },
 ];
 
+function ChatMenu({
+  onNewConversation,
+}: {
+  user: UserType | null;
+  owner: WorkspaceType;
+  onNewConversation: () => void;
+}) {
+  return (
+    <div className="flex flex-row px-2">
+      <div className="flex grow"></div>
+      <Button
+        label="New Conversation"
+        icon={ChatBubbleBottomCenterPlusIcon}
+        onClick={onNewConversation}
+      />
+    </div>
+  );
+}
+
 export default function AppChat({
   user,
   owner,
@@ -1123,23 +1143,29 @@ export default function AppChat({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
+      navChildren={
+        <ChatMenu owner={owner} user={user} onNewConversation={handleNew} />
+      }
     >
       <div className="flex h-full flex-col">
         {dataSources.length === 0 && (
           <div className="divide-y divide-gray-200">
             <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>💬 Welcome to Chat!</p>
-              <p className="mt-8 italic text-violet-700">
-                <span className="font-bold">Chat</span> is a conversational
-                agent with access on your team's knowledge base.
+              <p>💬 Welcome</p>
+              <p className="mt-8 italic">
+                <span className="font-bold">Dust</span> is a conversational
+                agent with access on your team's knowledge.
               </p>
               {owner.role === "admin" ? (
                 <p className="mt-8">
                   You need to set up at least one{" "}
-                  <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
+                  <Link
+                    className="font-bold text-action-500"
+                    href={`/w/${owner.sId}/ds`}
+                  >
                     Data Source
                   </Link>{" "}
-                  to activate Chat on your workspace.
+                  to activate it on your workspace.
                 </p>
               ) : (
                 <p className="mt-8">
@@ -1265,65 +1291,15 @@ export default function AppChat({
                     </div>
                   ) : (
                     <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-                      <p>💬 Welcome to Chat!</p>
+                      <p>💬 Welcome</p>
                       <p className="mt-8">
-                        👩🏼‍🔬 This is an early exploration of a conversational
-                        assistant with context on your team's Slack & Notion.
-                        For each interaction, semantically relevant chunks of
-                        documents are retrieved and presented to Chat to help it
-                        answer your queries.
+                        <span className="font-bold">Dust</span> is a
+                        conversational assistant with context on your team's
+                        knowledge. For each interaction, relevant pieces of
+                        documents are retrieved from you entire team's knowledge
+                        and presented to the Assistant to help it answer your
+                        queries.
                       </p>
-                      <p className="mt-4">
-                        📈 You should expect better performance on general,
-                        qualitative, and thematic questions. Precise or
-                        quantitative questions won't work as well.
-                      </p>
-                      <p className="mt-4">
-                        🔗 You can presume the last few answers are in context
-                        for your dialogue with Chat: don't hesitate to ask
-                        follow-up questions. Only the latest documents retrieved
-                        are visible to Chat. Context is limited so don't be
-                        surprised if Chat moves on after a while.
-                      </p>
-                      <p className="mt-4">
-                        🧞‍♂️ Please share feedback with us on what's working well
-                        and what else you would like Chat to do via Slack or
-                        email:{" "}
-                        <a href="mailto:team@dust.tt" className="font-bold">
-                          team@dust.tt
-                        </a>
-                      </p>
-                      <div className="mt-8 w-full">
-                        ⚙️ Available commands:
-                        <div className="pt-2">
-                          {COMMANDS.map((c, i) => {
-                            return (
-                              <div
-                                key={i}
-                                className={classNames("flex px-2 py-1")}
-                              >
-                                <div className="flex w-24 flex-row">
-                                  <div className="flex flex-initial flex-col">
-                                    <div
-                                      className={classNames(
-                                        "flex flex-initial",
-                                        "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                      )}
-                                    >
-                                      {c.cmd}
-                                    </div>
-                                    <div className="flex flex-1"></div>
-                                  </div>
-                                  <div className="flex flex-1"></div>
-                                </div>
-                                <div className="ml-2 w-64 sm:w-max">
-                                  {c.description}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
                       <div className="w-full py-8">
                         <ChatHistory
                           owner={owner}
