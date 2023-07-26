@@ -49,7 +49,15 @@ const config = {
     commonjs(),
     typescript(tsPluginOptions),
     postcss({
-      plugins: [tailwindcss(), autoprefixer()],
+      plugins: [
+        tailwindcss({
+          config: path.resolve(__dirname, "tailwind.config.js"),
+          corePlugins: {
+            preflight: !!process.env.INCLUDE_TW_BASE,
+          },
+        }),
+        autoprefixer(),
+      ],
       inject: true,
       extract: false,
     }),
