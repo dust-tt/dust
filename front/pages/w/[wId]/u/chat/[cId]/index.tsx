@@ -2,10 +2,14 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
   CheckCircleIcon,
+  ClipboardDocumentListIcon,
   ClockIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
-import { UserCircleIcon } from "@heroicons/react/24/solid";
+import {
+  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconFull,
+  UserCircleIcon,
+} from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -469,6 +473,54 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   return <span>{message.message}</span>;
 }
 
+function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
+  const [confirmed, setConfirmed] = useState<boolean>(false);
+  const [tooltip, setTooltip] = useState<boolean>(false);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const handleClick = async () => {
+    await navigator.clipboard.writeText(message.message as string);
+    setConfirmed(true);
+    setTooltip(false);
+    void setTimeout(() => {
+      setConfirmed(false);
+    }, 1000);
+  };
+
+  return (
+    <div
+      className={classNames(
+        "absolute -top-1.5 right-0 mt-2 hover:text-violet-800 group-hover:block",
+        confirmed ? "text-violet-800" : "hidden text-gray-400"
+      )}
+      onClick={handleClick}
+      onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
+      onMouseLeave={() => {
+        // in case user left before tooltip appears, cancel timer
+        timer && clearTimeout(timer);
+        setTooltip(false);
+      }}
+    >
+      {confirmed ? (
+        <ClipboardDocumentCheckIconFull className="h-4 w-4" />
+      ) : (
+        <ClipboardDocumentListIcon className="h-4 w-4" />
+      )}
+      {tooltip ? (
+        <div
+          className="absolute bottom-4 right-0 w-max rounded border bg-white px-1 py-1"
+          onMouseEnter={() => void setTimeout(() => setTooltip(false), 200)}
+        >
+          <span className="font-normal text-gray-600">
+            Copy message to clipboard
+          </span>
+        </div>
+      ) : (
+        ""
+      )}
+    </div>
+  );
+}
+
 export function MessageView({
   user,
   message,
@@ -485,7 +537,7 @@ export function MessageView({
   feedback?: { handler: FeedbackHandler; hover: boolean } | false;
 }) {
   return (
-    <div className="">
+    <div className="group">
       {message.role === "retrieval" ? (
         <div className="flex flex-row">
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
@@ -499,8 +551,10 @@ export function MessageView({
             )}
           >
             {message.role === "assistant" ? (
-              <div className="flex scale-50 pl-2">
-                <PulseLogo animated={loading}></PulseLogo>
+              <div className="flex flex-col items-center">
+                <div className="flex scale-50 pl-2">
+                  <PulseLogo animated={loading}></PulseLogo>
+                </div>
               </div>
             ) : (
               <div className="flex">
@@ -518,11 +572,16 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word ml-2  flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative  ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
             {toMarkdown(message)}
+            {message.role === "assistant" && message.message ? (
+              <CopyToClipboardElement message={message} />
+            ) : (
+              ""
+            )}
           </div>
           {feedback && (
             <MessageFeedback
