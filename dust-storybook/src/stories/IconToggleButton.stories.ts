@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { IconToggleButton, Cog6ToothIcon } from "sparkle";
 
-import "sparkle/dist/cjs/index.css";
-
 const meta = {
   title: "Atoms/IconToggleButton",
   component: IconToggleButton,
