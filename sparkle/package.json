@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.1.18",
+  "version": "0.1.21",
   "scripts": {
     "build": "rollup -c"
   },
