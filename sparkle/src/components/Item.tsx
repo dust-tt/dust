@@ -22,29 +22,30 @@ type ItemProps = {
 };
 
 const sizeClasses = {
-  sm: "py-2 text-sm font-medium",
-  md: "py-3 text-sm font-semibold",
+  sm: "s-py-2 s-text-sm s-font-medium",
+  md: "s-py-3 s-text-sm s-font-semibold",
 };
 
 const baseClasses =
-  "group inline-flex transition-colors ease-out duration-400 box-border gap-x-2 select-none";
+  "s-group s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none";
 
-const iconBaseClasses = "h-5 w-5 transition-colors ease-out duration-400";
+const iconBaseClasses =
+  "s-h-5 s-w-5 s-transition-colors s-ease-out s-duration-400";
 
 const iconClasses = {
   default: {
-    base: "text-element-700",
-    hover: "group-hover:text-action-400",
+    base: "s-text-element-700",
+    hover: "group-hover:s-text-action-400",
     dark: {
-      base: "dark:text-element-700-dark",
-      hover: "dark:group-hover:text-action-500-dark",
+      base: "dark:s-text-element-700-dark",
+      hover: "dark:group-hover:s-text-action-500-dark",
     },
   },
   selected: {
-    base: "text-action-400",
+    base: "s-text-action-400",
     hover: "",
     dark: {
-      base: "dark:text-action-400-dark",
+      base: "dark:s-text-action-400-dark",
       hover: "",
     },
   },
@@ -52,19 +53,19 @@ const iconClasses = {
 
 const chevronClasses = {
   default: {
-    base: "text-element-600",
-    hover: "group-hover:text-action-400",
+    base: "s-text-element-600",
+    hover: "group-hover:s-text-action-400",
     dark: {
-      base: "dark:text-element-600-dark",
-      hover: "dark:group-hover:text-action-500-dark",
+      base: "dark:s-text-element-600-dark",
+      hover: "dark:group-hover:s-text-action-500-dark",
     },
   },
   selected: {
-    base: "text-action-300",
+    base: "s-text-action-300",
     hover: "",
     active: "",
     dark: {
-      base: "dark:text-action-300-dark",
+      base: "dark:s-text-action-300-dark",
       hover: "",
     },
     disabled: "",
@@ -73,22 +74,22 @@ const chevronClasses = {
 
 const stateClasses = {
   default: {
-    base: "text-element-900 cursor-pointer",
-    hover: "hover:text-action-500",
-    active: "active:text-action-700",
+    base: "s-text-element-900 s-cursor-pointer",
+    hover: "hover:s-text-action-500",
+    active: "active:s-text-action-700",
     dark: {
-      base: "dark:text-element-900-dark",
-      hover: "dark:hover:text-action-400",
-      active: "dark:active:text-action-600",
+      base: "dark:s-text-element-900-dark",
+      hover: "dark:hover:s-text-action-400",
+      active: "dark:active:s-text-action-600",
     },
-    disabled: "opacity-50",
+    disabled: "s-opacity-50",
   },
   selected: {
-    base: "text-action-500",
+    base: "s-text-action-500",
     hover: "",
     active: "",
     dark: {
-      base: "dark:text-action-500-dark",
+      base: "dark:s-text-action-500-dark",
       hover: "",
       active: "",
     },
@@ -123,8 +124,8 @@ export function Item({
   const itemClasses = classNames(
     baseClasses,
     sizeClasses[size],
-    disabled ? "cursor-default" : currentStateClasses.base,
-    disabled ? "cursor-default" : currentStateClasses.dark?.base,
+    disabled ? "s-cursor-default" : currentStateClasses.base,
+    disabled ? "s-cursor-default" : currentStateClasses.dark?.base,
     disabled ? currentStateClasses.disabled : "",
     !selected && !disabled ? currentStateClasses.hover : "",
     !selected && !disabled ? currentStateClasses.dark?.hover : "",
@@ -143,7 +144,7 @@ export function Item({
 
   const finalCevronClasses = classNames(
     iconBaseClasses,
-    size === "sm" ? "text-transparent" : currentChevronClasses.base,
+    size === "sm" ? "s-text-transparent" : currentChevronClasses.base,
     !disabled ? currentChevronClasses.hover : "", // Add condition here
     currentChevronClasses.dark.base,
     !disabled ? currentChevronClasses.dark.hover : "" // Add condition here
@@ -159,7 +160,7 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon IconComponent={icon} className={finalIconClasses} />}
-      <span className="grow">{label}</span>
+      <span className="s-grow">{label}</span>
       <Icon IconComponent={ChevronRight} className={finalCevronClasses} />
     </Link>
   );
