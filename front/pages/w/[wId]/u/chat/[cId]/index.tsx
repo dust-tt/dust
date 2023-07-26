@@ -22,7 +22,10 @@ import remarkGfm from "remark-gfm";
 import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Spinner } from "@app/components/Spinner";
-import { ChatHistory } from "@app/components/use/chat/ChatHistory";
+import {
+  AppLayoutMenuChatHistory,
+  ChatHistory,
+} from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
@@ -615,20 +618,28 @@ const COMMANDS: { cmd: string; description: string }[] = [
 ];
 
 function ChatMenu({
+  owner,
+  user,
   onNewConversation,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
+  user: UserType | null;
   onNewConversation: () => void;
 }) {
   return (
-    <div className="flex flex-row px-2">
-      <div className="flex grow"></div>
-      <Button
-        label="New Conversation"
-        icon={ChatBubbleBottomCenterPlusIcon}
-        onClick={onNewConversation}
-      />
+    <div className="flex grow flex-col">
+      <div className="flex flex-row px-2">
+        <div className="flex grow"></div>
+        <Button
+          label="New Conversation"
+          icon={ChatBubbleBottomCenterPlusIcon}
+          onClick={onNewConversation}
+          className="flex flex-initial"
+        />
+      </div>
+      <div className="mt-8 flex grow h-0 min-h-full overflow-y-auto">
+        <AppLayoutMenuChatHistory owner={owner} user={user} />
+      </div>
     </div>
   );
 }
