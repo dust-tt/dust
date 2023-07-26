@@ -119,7 +119,7 @@ function NavigationBar({
                     href={nav.href}
                   ></Item>
                   {nav.subMenuLabel && (
-                    <div className="grow py-2 pl-14 pr-4 text-sm text-xs font-semibold uppercase text-slate-400">
+                    <div className="grow pt-2 pb-3 pl-14 pr-4 text-sm text-xs uppercase text-slate-400">
                       {nav.subMenuLabel}
                     </div>
                   )}
