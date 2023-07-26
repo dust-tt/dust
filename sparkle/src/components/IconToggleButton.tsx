@@ -1,53 +1,45 @@
-import React, { ComponentType, MouseEvent } from "react";
+import React, { ComponentType, MouseEvent, useState } from "react";
 import { classNames } from "@sparkle/lib/utils";
 import { Tooltip } from "./Tooltip";
-
 import { Icon } from "./Icon";
 
-type IconButtonProps = {
-  type?: "primary" | "secondary" | "tertiary";
+type IconToggleButtonProps = {
+  type?: "secondary" | "tertiary";
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   tooltip?: string;
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
+  selected?: boolean;
 };
 
 const baseClasses =
   "transition-all ease-out duration-300 cursor-pointer hover:scale-110";
 
 const iconClasses = {
-  primary: {
-    base: "text-action-500",
-    hover: "hover:text-action-400",
-    active: "active:text-action-600",
-    disabled: "text-element-500",
-    dark: {
-      base: "dark:text-action-500-dark",
-      hover: "dark:hover:text-action-500-dark",
-      active: "dark:active:text-action-600-dark",
-      disabled: "dark:text-element-500-dark",
-    },
-  },
   secondary: {
-    base: "text-element-900",
+    idle: "text-element-900",
+    selected: "text-action-500",
     hover: "hover:text-action-400",
     active: "active:text-action-600",
     disabled: "text-element-500",
     dark: {
-      base: "dark:text-element-900-dark",
+      idle: "dark:text-element-900-dark",
+      selected: "dark:text-action-500-dark",
       hover: "dark:hover:text-action-500-dark",
       active: "dark:active:text-action-600-dark",
       disabled: "dark:text-element-500-dark",
     },
   },
   tertiary: {
-    base: "text-element-600",
+    idle: "text-element-600",
+    selected: "text-action-500",
     hover: "hover:text-action-400",
     active: "active:text-action-600",
     disabled: "text-element-500",
     dark: {
-      base: "dark:text-element-600-dark",
+      idle: "dark:text-element-600-dark",
+      selected: "dark:text-action-500-dark",
       hover: "dark:hover:text-action-500-dark",
       active: "dark:active:text-action-600-dark",
       disabled: "dark:text-element-500-dark",
@@ -55,32 +47,47 @@ const iconClasses = {
   },
 };
 
-export function IconButton({
+export function IconToggleButton({
   type = "tertiary",
   onClick,
   disabled = false,
   tooltip,
   icon,
   className = "",
-}: IconButtonProps) {
-  // Choose the correct group of classes based on 'type'
-  const iconGroup = iconClasses[type];
+  selected: isSelected = false,
+}: IconToggleButtonProps) {
+  const [selected, setSelected] = useState(isSelected);
 
+  const iconGroup = iconClasses[type];
   const finalIconClasses = classNames(
     className,
     baseClasses,
-    iconGroup.base,
-    disabled ? iconGroup.disabled : iconGroup.hover,
+    disabled
+      ? iconGroup.disabled
+      : selected
+      ? iconGroup.selected
+      : iconGroup.idle,
+    disabled ? "" : selected ? "" : iconGroup.hover,
     disabled ? "" : iconGroup.active,
-    iconGroup.dark.base,
-    disabled ? iconGroup.dark.disabled : iconGroup.dark.hover,
+    iconGroup.dark.idle,
+    disabled
+      ? iconGroup.dark.disabled
+      : selected
+      ? iconGroup.dark.selected
+      : "",
+    disabled ? "" : selected ? "" : iconGroup.dark.hover,
     disabled ? "" : iconGroup.dark.active
   );
 
-  const IconButtonContent = (
+  const IconButtonToggleContent = (
     <button
       className={finalIconClasses}
-      onClick={disabled ? undefined : onClick}
+      onClick={(e) => {
+        if (!disabled) {
+          setSelected(!selected); // Toggle selected state
+          onClick?.(e); // Run passed onClick event
+        }
+      }}
       disabled={disabled}
     >
       {icon && <Icon IconComponent={icon} className="h-5 w-5" />}
@@ -88,8 +95,8 @@ export function IconButton({
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip}>{IconButtonContent}</Tooltip>
+    <Tooltip label={tooltip}>{IconButtonToggleContent}</Tooltip>
   ) : (
-    IconButtonContent
+    IconButtonToggleContent
   );
 }

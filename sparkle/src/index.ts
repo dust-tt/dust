@@ -21,6 +21,9 @@ export { Icon };
 import { IconButton } from "./components/IconButton";
 export { IconButton };
 
+import { IconToggleButton } from "./components/IconToggleButton";
+export { IconToggleButton };
+
 import { Logo } from "./logo";
 export { Logo };
 
