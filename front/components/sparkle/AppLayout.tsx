@@ -130,7 +130,7 @@ export default function AppLayout({
 
   return (
     <>
-      <div className="light">
+      <div className="light h-full">
         <Transition.Root show={sidebarOpen} as={Fragment}>
           <Dialog
             as="div"
@@ -209,7 +209,7 @@ export default function AppLayout({
           </NavigationBar>
         </div>
 
-        <div className="mt-0 flex-1 lg:pl-80">
+        <div className="mt-0 h-full flex-1 lg:pl-80">
           <div className="absolute left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
             <button
               type="button"
@@ -220,8 +220,8 @@ export default function AppLayout({
               <Bars3Icon className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <main className="pb-10 pt-4">
-            <div className="mx-auto mt-8 max-w-4xl px-6">{children}</div>
+          <main className="h-full pb-10 pt-4">
+            <div className="mx-auto mt-8 h-full max-w-4xl px-6">{children}</div>
           </main>
         </div>
       </div>
