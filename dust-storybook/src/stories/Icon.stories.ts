@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Icon, ChatBubbleBottomCenterTextIcon } from "sparkle";
 
 const meta = {
-  title: "Example/Icon",
+  title: "Atoms/Icon",
   component: Icon,
 } satisfies Meta<typeof Icon>;
 

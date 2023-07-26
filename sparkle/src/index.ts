@@ -12,6 +12,9 @@ export { Tab };
 import { Item } from "./components/Item";
 export { Item };
 
+import { PageHeader } from "./components/PageHeader";
+export { PageHeader };
+
 import { Icon } from "./components/Icon";
 export { Icon };
 

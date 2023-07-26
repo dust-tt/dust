@@ -7,7 +7,7 @@ import {
 } from "sparkle";
 
 const meta = {
-  title: "Example/Tab",
+  title: "Atoms/Tab",
   component: Tab,
 } satisfies Meta<typeof Tab>;
 
