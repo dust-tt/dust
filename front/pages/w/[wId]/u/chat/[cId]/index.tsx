@@ -1188,7 +1188,7 @@ export default function AppChat({
                           )}
                         </span>
                       </div>
-                      <div className="text-sm">
+                      <div className="mt-8 text-sm">
                         {messages.map((m, i) => {
                           return m.role === "error" ? (
                             <div key={i}>
@@ -1264,7 +1264,7 @@ export default function AppChat({
                       </div>
                     </div>
                   ) : (
-                    <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                    <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
                       <p>💬 Welcome to Chat!</p>
                       <p className="mt-8">
                         👩🏼‍🔬 This is an early exploration of a conversational
@@ -1324,7 +1324,7 @@ export default function AppChat({
                           })}
                         </div>
                       </div>
-                      <div className="w-full py-4">
+                      <div className="w-full py-8">
                         <ChatHistory
                           owner={owner}
                           user={user}

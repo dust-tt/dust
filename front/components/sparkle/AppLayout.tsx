@@ -119,7 +119,7 @@ function NavigationBar({
                     href={nav.href}
                   ></Item>
                   {nav.subMenuLabel && (
-                    <div className="grow py-2 pl-14 pr-4 text-sm text-xs font-semibold uppercase text-slate-400">
+                    <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
                       {nav.subMenuLabel}
                     </div>
                   )}
@@ -242,7 +242,7 @@ export default function AppLayout({
         </Transition.Root>
 
         {/* Static sidebar for desktop */}
-        <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-80 lg:flex-col">
+        <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
           <NavigationBar
             user={user}
             owner={owner}

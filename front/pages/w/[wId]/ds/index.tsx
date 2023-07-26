@@ -118,7 +118,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   void setUserMetadata(user, {
     key: "sticky_path",
-    value: `/w/${context.query.wId}/ds`,
+    value: `/w/${context.query.wId}/u/chat`,
   });
 
   const readOnly = !auth.isBuilder();
