@@ -47,6 +47,8 @@ export type SparkleAppLayoutNavigation = {
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
   current: boolean;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
 };
 
 export const topNavigation = (
@@ -91,7 +93,9 @@ export const topNavigation = (
 
 export const subNavigationAdmin = (
   owner: WorkspaceType,
-  current: SubNavigationAdminId
+  current: SubNavigationAdminId,
+  subMenuLabel?: string,
+  subMenu?: SparkleAppLayoutNavigation[]
 ) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
@@ -100,6 +104,8 @@ export const subNavigationAdmin = (
       icon: CloudArrowDownStrokeIcon,
       href: `/w/${owner.sId}/ds`,
       current: current === "data_sources",
+      subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
+      subMenu: current === "data_sources" ? subMenu : undefined,
     },
   ];
 
@@ -110,6 +116,8 @@ export const subNavigationAdmin = (
       icon: Cog6ToothStrokeIcon,
       href: `/w/${owner.sId}/workspace`,
       current: current === "workspace",
+      subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+      subMenu: current === "workspace" ? subMenu : undefined,
     });
   }
 
@@ -120,6 +128,8 @@ export const subNavigationAdmin = (
       icon: CommandLineStrokeIcon,
       href: `/w/${owner.sId}/a`,
       current: current === "developers",
+      subMenuLabel: current === "developers" ? subMenuLabel : undefined,
+      subMenu: current === "developers" ? subMenu : undefined,
     });
   }
 

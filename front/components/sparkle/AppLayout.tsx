@@ -4,9 +4,8 @@ import { Bars3Icon } from "@heroicons/react/20/solid";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import { Fragment, MouseEvent, ReactNode, useState } from "react";
+import { Fragment, useState } from "react";
 
-import { GoogleSignInButton } from "@app/components/Button";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -110,7 +109,7 @@ function NavigationBar({
           <div>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.label} className="flex grow">
+                <div key={nav.label} className="flex grow flex-col">
                   <Item
                     size="md"
                     selected={nav.current}
@@ -119,6 +118,29 @@ function NavigationBar({
                     className="grow px-4"
                     href={nav.href}
                   ></Item>
+                  {nav.subMenuLabel && (
+                    <div className="grow py-2 pl-14 pr-4 text-sm text-xs font-semibold uppercase text-slate-400">
+                      {nav.subMenuLabel}
+                    </div>
+                  )}
+                  {nav.subMenu && (
+                    <div className="flex flex-col mb-2">
+                      {nav.subMenu.map((nav) => {
+                        return (
+                          <div key={nav.label} className="flex grow">
+                            <Item
+                              size="sm"
+                              selected={nav.current}
+                              label={nav.label}
+                              icon={nav.icon}
+                              className="grow pl-14 pr-4"
+                              href={nav.href}
+                            ></Item>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

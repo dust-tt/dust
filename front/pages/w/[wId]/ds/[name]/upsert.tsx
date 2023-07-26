@@ -12,7 +12,10 @@ PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 import { ActionButton, Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationDataSource } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationDataSource,
+} from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
@@ -211,7 +214,12 @@ export default function DataSourceUpsert({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationDataSource(owner, dataSource, "documents")}
+      subNavigation={subNavigationAdmin(
+        owner,
+        "data_sources",
+        dataSource.name,
+        subNavigationDataSource(owner, dataSource, "documents")
+      )}
     >
       <div className="flex flex-col">
         <div className="space-y-6 divide-y divide-gray-200">
