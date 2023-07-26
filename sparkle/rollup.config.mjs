@@ -38,8 +38,9 @@ const config = {
     typescript({ tsconfig: "./tsconfig.json", outputToFilesystem: true }),
     postcss({
       plugins: [tailwindcss(), autoprefixer()],
-      inject: true,
-      extract: false,
+      inject: false,
+      extract: true,
+      minimize: true,
     }),
     json(),
   ],
