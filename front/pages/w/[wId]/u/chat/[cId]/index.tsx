@@ -637,7 +637,7 @@ function ChatMenu({
           className="flex flex-initial"
         />
       </div>
-      <div className="mt-8 flex grow h-0 min-h-full overflow-y-auto">
+      <div className="mt-8 flex h-0 min-h-full grow overflow-y-auto">
         <AppLayoutMenuChatHistory owner={owner} user={user} />
       </div>
     </div>

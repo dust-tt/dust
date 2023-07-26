@@ -66,7 +66,7 @@ export function AppLayoutMenuChatHistory({
         </div>
       </div>
       <div className="flex ">
-        <div className="flex w-full flex-col space-y-2">
+        <div className="flex w-full flex-col space-y-1">
           {sessions.length === 0
             ? null
             : sessions.map((s, i) => {

@@ -150,7 +150,7 @@ function NavigationBar({
           <a href=""></a>
         </div>
       </div>
-      <div className="mt-1 flex flex-col grow">{children}</div>
+      <div className="mt-1 flex grow flex-col">{children}</div>
     </div>
   );
 }
