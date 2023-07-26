@@ -21,11 +21,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   if (owner.role === "user") {
     void setUserMetadata(user, {
       key: "sticky_path",
-      value: `/w/${context.query.wId}/u`,
+      value: `/w/${context.query.wId}/u/chat`,
     });
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/u`,
+        destination: `/w/${context.query.wId}/u/chat`,
         permanent: false,
       },
     };
@@ -33,12 +33,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   void setUserMetadata(user, {
     key: "sticky_path",
-    value: `/w/${context.query.wId}/u`,
+    value: `/w/${context.query.wId}/u/chat`,
   });
 
   return {
     redirect: {
-      destination: `/w/${context.query.wId}/u`,
+      destination: `/w/${context.query.wId}/u/chat`,
       permanent: false,
     },
   };
