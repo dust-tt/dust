@@ -615,8 +615,6 @@ const COMMANDS: { cmd: string; description: string }[] = [
 ];
 
 function ChatMenu({
-  user,
-  owner,
   onNewConversation,
 }: {
   user: UserType | null;

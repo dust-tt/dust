@@ -150,7 +150,7 @@ function NavigationBar({
           <a href=""></a>
         </div>
       </div>
-      <div>{children}</div>
+      <div className="mt-1">{children}</div>
     </div>
   );
 }
@@ -181,7 +181,7 @@ export default function AppLayout({
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
-  navChildren: React.ReactNode;
+  navChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -247,7 +247,7 @@ export default function AppLayout({
                     subNavigation={subNavigation}
                     topNavigationCurrent={topNavigationCurrent}
                   >
-                    <div className="mt-1">{navChildren}</div>
+                    {navChildren && <div>{navChildren}</div>}
                   </NavigationBar>
                 </Dialog.Panel>
               </Transition.Child>
@@ -263,7 +263,7 @@ export default function AppLayout({
             subNavigation={subNavigation}
             topNavigationCurrent={topNavigationCurrent}
           >
-            <div className="mt-1">{navChildren}</div>
+            {navChildren && <div>{navChildren}</div>}
           </NavigationBar>
         </div>
 
