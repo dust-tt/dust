@@ -18,8 +18,8 @@ import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
-import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { Spinner } from "@app/components/Spinner";
 import { ChatHistory } from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
@@ -30,7 +30,6 @@ import {
   FeedbackHandler,
   MessageFeedback,
 } from "@app/components/use/chat/MessageFeedback";
-import MainTab from "@app/components/use/MainTab";
 import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
@@ -1119,36 +1118,35 @@ export default function AppChat({
     );
   }
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="assistant"
+    >
       <div className="flex h-full flex-col">
-        <div className="mt-2">
-          <MainTab currentTab="Chat" owner={owner} />
-        </div>
-
         {dataSources.length === 0 && (
-          <div className="">
-            <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
-              <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
-                <p>💬 Welcome to Chat!</p>
-                <p className="mt-8 italic text-violet-700">
-                  <span className="font-bold">Chat</span> is a conversational
-                  agent with access on your team's knowledge base.
+          <div className="divide-y divide-gray-200">
+            <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
+              <p>💬 Welcome to Chat!</p>
+              <p className="mt-8 italic text-violet-700">
+                <span className="font-bold">Chat</span> is a conversational
+                agent with access on your team's knowledge base.
+              </p>
+              {owner.role === "admin" ? (
+                <p className="mt-8">
+                  You need to set up at least one{" "}
+                  <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
+                    Data Source
+                  </Link>{" "}
+                  to activate Chat on your workspace.
                 </p>
-                {owner.role === "admin" ? (
-                  <p className="mt-8">
-                    You need to set up at least one{" "}
-                    <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
-                      Data Source
-                    </Link>{" "}
-                    to activate Chat on your workspace.
-                  </p>
-                ) : (
-                  <p className="mt-8">
-                    Contact the admin of your workspace to activate Chat for
-                    your team.
-                  </p>
-                )}
-              </div>
+              ) : (
+                <p className="mt-8">
+                  Contact the admin of your workspace to activate Chat for your
+                  team.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -1161,184 +1159,180 @@ export default function AppChat({
                 ref={scrollRef}
               >
                 <div className="max-h-0">
-                  <div className="mx-auto max-w-4xl px-6 py-2">
-                    {messages.length > 0 ? (
-                      <div>
-                        <div className="mx-auto my-4 flex max-w-xl flex-row items-center justify-center text-sm">
-                          <span className="font-bold">{title}</span>
-                          <span className="text-xs text-gray-600">
-                            {titleState === "new" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5 text-xs">
-                                new
-                              </span>
-                            )}
-                            {titleState === "writing" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                                writing...
-                              </span>
-                            )}
-                            {titleState === "saving" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                                <ClockIcon className="mr-0.5 h-3 w-3"></ClockIcon>
-                                saving
-                              </span>
-                            )}
-                            {titleState === "saved" && (
-                              <span className="ml-1 flex flex-row items-center rounded bg-gray-100 px-1 py-0.5">
-                                <CheckCircleIcon className="mr-0.5 h-3 w-3"></CheckCircleIcon>
-                                saved
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="text-sm">
-                          {messages.map((m, i) => {
-                            return m.role === "error" ? (
-                              <div key={i}>
-                                <div className="my-2 ml-12 flex flex-col">
-                                  <div className="flex-initial text-xs font-bold text-red-500">
-                                    Oops! An error occured (and the team has
-                                    been notified).
-                                  </div>
-                                  <div className="flex-initial text-xs text-gray-500">
-                                    <ul className="list-inside list-disc">
-                                      <li>
-                                        You can continue the conversation, this
-                                        error and your last message will be
-                                        removed from the conversation
-                                      </li>
-                                      <li>
-                                        Alternatively, restart a chat with the
-                                        `/new` command or by clicking{" "}
-                                        <Link
-                                          href={`/w/${owner.sId}/u/chat`}
-                                          className="text text-violet-500 hover:underline"
-                                        >
-                                          here
-                                        </Link>
-                                      </li>
-                                      <li>
-                                        Don't hesitate to reach out if the
-                                        problem persists.
-                                      </li>
-                                    </ul>
-                                  </div>
-                                  <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                                    {m.message}
-                                  </div>
+                  {messages.length > 0 ? (
+                    <div>
+                      <div className="flex flex-row items-center justify-center text-sm">
+                        <span className="font-bold">{title}</span>
+                        <span className="text-xs text-gray-600">
+                          {titleState === "new" && (
+                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5 text-xs">
+                              new
+                            </span>
+                          )}
+                          {titleState === "writing" && (
+                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
+                              writing...
+                            </span>
+                          )}
+                          {titleState === "saving" && (
+                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
+                              <ClockIcon className="mr-0.5 h-3 w-3"></ClockIcon>
+                              saving
+                            </span>
+                          )}
+                          {titleState === "saved" && (
+                            <span className="ml-1 flex flex-row items-center rounded bg-gray-100 px-1 py-0.5">
+                              <CheckCircleIcon className="mr-0.5 h-3 w-3"></CheckCircleIcon>
+                              saved
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        {messages.map((m, i) => {
+                          return m.role === "error" ? (
+                            <div key={i}>
+                              <div className="my-2 ml-12 flex flex-col">
+                                <div className="flex-initial text-xs font-bold text-red-500">
+                                  Oops! An error occured (and the team has been
+                                  notified).
+                                </div>
+                                <div className="flex-initial text-xs text-gray-500">
+                                  <ul className="list-inside list-disc">
+                                    <li>
+                                      You can continue the conversation, this
+                                      error and your last message will be
+                                      removed from the conversation
+                                    </li>
+                                    <li>
+                                      Alternatively, restart a chat with the
+                                      `/new` command or by clicking{" "}
+                                      <Link
+                                        href={`/w/${owner.sId}/u/chat`}
+                                        className="text text-violet-500 hover:underline"
+                                      >
+                                        here
+                                      </Link>
+                                    </li>
+                                    <li>
+                                      Don't hesitate to reach out if the problem
+                                      persists.
+                                    </li>
+                                  </ul>
+                                </div>
+                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                                  {m.message}
                                 </div>
                               </div>
-                            ) : (
-                              <div key={i} className="group">
-                                <MessageView
-                                  user={user}
-                                  message={m}
-                                  loading={false}
-                                  // isLatest={
-                                  //   !response && i === messages.length - 1
-                                  // }
-                                  isLatestRetrieval={isLatest("retrieval", i)}
-                                  readOnly={chatSession.readOnly}
-                                  feedback={
-                                    !chatSession.readOnly &&
-                                    m.role === "assistant" && {
-                                      handler: handleFeedback,
-                                      hover: response
-                                        ? true
-                                        : i !== messages.length - 1,
-                                    }
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                          {response ? (
-                            <div key={messages.length}>
+                            </div>
+                          ) : (
+                            <div key={i} className="group">
                               <MessageView
                                 user={user}
-                                message={response}
-                                loading={true}
-                                // isLatest={true}
-                                isLatestRetrieval={
-                                  response.role === "retrieval"
-                                }
+                                message={m}
+                                loading={false}
+                                // isLatest={
+                                //   !response && i === messages.length - 1
+                                // }
+                                isLatestRetrieval={isLatest("retrieval", i)}
                                 readOnly={chatSession.readOnly}
+                                feedback={
+                                  !chatSession.readOnly &&
+                                  m.role === "assistant" && {
+                                    handler: handleFeedback,
+                                    hover: response
+                                      ? true
+                                      : i !== messages.length - 1,
+                                  }
+                                }
                               />
                             </div>
-                          ) : null}
-                        </div>
+                          );
+                        })}
+                        {response ? (
+                          <div key={messages.length}>
+                            <MessageView
+                              user={user}
+                              message={response}
+                              loading={true}
+                              // isLatest={true}
+                              isLatestRetrieval={response.role === "retrieval"}
+                              readOnly={chatSession.readOnly}
+                            />
+                          </div>
+                        ) : null}
                       </div>
-                    ) : (
-                      <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                        <p>💬 Welcome to Chat!</p>
-                        <p className="mt-8">
-                          👩🏼‍🔬 This is an early exploration of a conversational
-                          assistant with context on your team's Slack & Notion.
-                          For each interaction, semantically relevant chunks of
-                          documents are retrieved and presented to Chat to help
-                          it answer your queries.
-                        </p>
-                        <p className="mt-4">
-                          📈 You should expect better performance on general,
-                          qualitative, and thematic questions. Precise or
-                          quantitative questions won't work as well.
-                        </p>
-                        <p className="mt-4">
-                          🔗 You can presume the last few answers are in context
-                          for your dialogue with Chat: don't hesitate to ask
-                          follow-up questions. Only the latest documents
-                          retrieved are visible to Chat. Context is limited so
-                          don't be surprised if Chat moves on after a while.
-                        </p>
-                        <p className="mt-4">
-                          🧞‍♂️ Please share feedback with us on what's working
-                          well and what else you would like Chat to do via Slack
-                          or email:{" "}
-                          <a href="mailto:team@dust.tt" className="font-bold">
-                            team@dust.tt
-                          </a>
-                        </p>
-                        <div className="mt-8 w-full">
-                          ⚙️ Available commands:
-                          <div className="pt-2">
-                            {COMMANDS.map((c, i) => {
-                              return (
-                                <div
-                                  key={i}
-                                  className={classNames("flex px-2 py-1")}
-                                >
-                                  <div className="flex w-24 flex-row">
-                                    <div className="flex flex-initial flex-col">
-                                      <div
-                                        className={classNames(
-                                          "flex flex-initial",
-                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                        )}
-                                      >
-                                        {c.cmd}
-                                      </div>
-                                      <div className="flex flex-1"></div>
+                    </div>
+                  ) : (
+                    <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
+                      <p>💬 Welcome to Chat!</p>
+                      <p className="mt-8">
+                        👩🏼‍🔬 This is an early exploration of a conversational
+                        assistant with context on your team's Slack & Notion.
+                        For each interaction, semantically relevant chunks of
+                        documents are retrieved and presented to Chat to help it
+                        answer your queries.
+                      </p>
+                      <p className="mt-4">
+                        📈 You should expect better performance on general,
+                        qualitative, and thematic questions. Precise or
+                        quantitative questions won't work as well.
+                      </p>
+                      <p className="mt-4">
+                        🔗 You can presume the last few answers are in context
+                        for your dialogue with Chat: don't hesitate to ask
+                        follow-up questions. Only the latest documents retrieved
+                        are visible to Chat. Context is limited so don't be
+                        surprised if Chat moves on after a while.
+                      </p>
+                      <p className="mt-4">
+                        🧞‍♂️ Please share feedback with us on what's working well
+                        and what else you would like Chat to do via Slack or
+                        email:{" "}
+                        <a href="mailto:team@dust.tt" className="font-bold">
+                          team@dust.tt
+                        </a>
+                      </p>
+                      <div className="mt-8 w-full">
+                        ⚙️ Available commands:
+                        <div className="pt-2">
+                          {COMMANDS.map((c, i) => {
+                            return (
+                              <div
+                                key={i}
+                                className={classNames("flex px-2 py-1")}
+                              >
+                                <div className="flex w-24 flex-row">
+                                  <div className="flex flex-initial flex-col">
+                                    <div
+                                      className={classNames(
+                                        "flex flex-initial",
+                                        "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
+                                      )}
+                                    >
+                                      {c.cmd}
                                     </div>
                                     <div className="flex flex-1"></div>
                                   </div>
-                                  <div className="ml-2 w-64 sm:w-max">
-                                    {c.description}
-                                  </div>
+                                  <div className="flex flex-1"></div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="w-full py-4">
-                          <ChatHistory
-                            owner={owner}
-                            user={user}
-                            limit={smallScreen ? 5 : 10}
-                          />
+                                <div className="ml-2 w-64 sm:w-max">
+                                  {c.description}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    )}
-                  </div>
+                      <div className="w-full py-4">
+                        <ChatHistory
+                          owner={owner}
+                          user={user}
+                          limit={smallScreen ? 5 : 10}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -4,10 +4,10 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import MainTab from "@app/components/admin/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -360,127 +360,118 @@ export default function DataSourcesView({
   });
 
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "data_sources")}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          {googleDrive && googleDrive.connector && (
-            <GoogleDriveFoldersPickerModal
-              owner={owner}
-              connectorId={googleDrive.connector.id}
-              isOpen={googleDrivePickerOpen}
-              setOpen={setGoogleDrivePickerOpen}
-            />
-          )}
+        <div className="divide-y divide-gray-200">
+          <div className="flex flex-col justify-between md:flex-row md:items-center">
+            <div className="">
+              <h1 className="text-base font-medium text-gray-900">
+                Data Sources
+              </h1>
 
-          <MainTab currentTab="Data Sources" owner={owner} />
-        </div>
-        <div className="">
-          <div className="mx-auto mt-8 max-w-4xl divide-y divide-gray-200 px-6">
-            <div className="mt-8 flex flex-col justify-between md:flex-row md:items-center">
-              <div className="">
-                <h1 className="text-base font-medium text-gray-900">
-                  Data Sources
-                </h1>
-
-                <p className="text-sm text-gray-500">
-                  Data Sources let you expose your data to Dust.
-                </p>
-              </div>
-              <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
-                {!readOnly && (
-                  <Link
-                    className="ml-auto"
-                    href={`/w/${owner.sId}/ds/new`}
-                    onClick={(e) => {
-                      // Enforce plan limits: DataSources count.
-                      if (
-                        owner.plan.limits.dataSources.count != -1 &&
-                        dataSources.length >=
-                          owner.plan.limits.dataSources.count
-                      ) {
-                        e.preventDefault();
-                        window.alert(
-                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                        );
-                        return;
-                      }
-                    }}
-                  >
-                    <Button>
-                      <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                      Create Data Source
-                    </Button>
-                  </Link>
+              <p className="text-sm text-gray-500">
+                Data Sources let you expose your data to Dust.
+              </p>
+            </div>
+            <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
+              {!readOnly && (
+                <Link
+                  className="ml-auto"
+                  href={`/w/${owner.sId}/ds/new`}
+                  onClick={(e) => {
+                    // Enforce plan limits: DataSources count.
+                    if (
+                      owner.plan.limits.dataSources.count != -1 &&
+                      dataSources.length >= owner.plan.limits.dataSources.count
+                    ) {
+                      e.preventDefault();
+                      window.alert(
+                        "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                      );
+                      return;
+                    }
+                  }}
+                >
+                  <Button>
+                    <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+                    Create Data Source
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+          <div className="my-4">
+            {dataSources.length == 0 ? (
+              <div className="mt-12 flex flex-col items-center justify-center pt-4 text-sm text-gray-500">
+                {readOnly ? (
+                  <>
+                    <p>
+                      Welcome to Dust Data Sources 🔎 This user has not created
+                      any data source yet 🙃
+                    </p>
+                    <p className="mt-2">
+                      Sign-in to create your own data sources.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>Welcome to Dust Data Sources 🔎</p>
+                    <p className="mt-2">
+                      Data sources let you upload documents to expose
+                      information to Dust.
+                    </p>
+                  </>
                 )}
               </div>
-            </div>
-            <div className="my-4">
-              {dataSources.length == 0 ? (
-                <div className="mt-12 flex flex-col items-center justify-center pt-4 text-sm text-gray-500">
-                  {readOnly ? (
-                    <>
-                      <p>
-                        Welcome to Dust Data Sources 🔎 This user has not
-                        created any data source yet 🙃
-                      </p>
-                      <p className="mt-2">
-                        Sign-in to create your own data sources.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p>Welcome to Dust Data Sources 🔎</p>
-                      <p className="mt-2">
-                        Data sources let you upload documents to expose
-                        information to Dust.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : null}
-              <ul role="list" className="pt-4">
-                {dataSources.map((ds) => (
-                  <li key={ds.name} className="px-2">
-                    <div className="py-4">
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href={`/w/${owner.sId}/ds/${ds.name}`}
-                          className="block"
+            ) : null}
+            <ul role="list" className="pt-4">
+              {dataSources.map((ds) => (
+                <li key={ds.name} className="px-2">
+                  <div className="py-4">
+                    <div className="flex items-center justify-between">
+                      <Link
+                        href={`/w/${owner.sId}/ds/${ds.name}`}
+                        className="block"
+                      >
+                        <p className="truncate text-base font-bold text-violet-600">
+                          {ds.name}
+                        </p>
+                      </Link>
+                      <div className="ml-2 flex flex-shrink-0">
+                        <p
+                          className={classNames(
+                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                            ds.visibility == "public"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          )}
                         >
-                          <p className="truncate text-base font-bold text-violet-600">
-                            {ds.name}
-                          </p>
-                        </Link>
-                        <div className="ml-2 flex flex-shrink-0">
-                          <p
-                            className={classNames(
-                              "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                              ds.visibility == "public"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            )}
-                          >
-                            {ds.visibility}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 sm:flex sm:justify-between">
-                        <div className="sm:flex">
-                          <p className="flex items-center text-sm text-gray-700">
-                            {ds.description}
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0"></div>
+                          {ds.visibility}
+                        </p>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    <div className="mt-2 sm:flex sm:justify-between">
+                      <div className="sm:flex">
+                        <p className="flex items-center text-sm text-gray-700">
+                          {ds.description}
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0"></div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-4xl space-y-4 divide-y divide-gray-200 px-6">
+      <div className="space-y-4 divide-y divide-gray-200">
         <div className="sm:flex sm:items-center">
           <div className="mt-8 sm:flex-auto">
             <h1 className="text-base font-medium text-gray-900">
@@ -494,6 +485,14 @@ export default function DataSourcesView({
         </div>
 
         <div className="mt-8 overflow-hidden">
+          {googleDrive && googleDrive.connector && (
+            <GoogleDriveFoldersPickerModal
+              owner={owner}
+              connectorId={googleDrive.connector.id}
+              isOpen={googleDrivePickerOpen}
+              setOpen={setGoogleDrivePickerOpen}
+            />
+          )}
           <ul role="list" className="mt-4">
             {localIntegrations.map((ds) => {
               return (

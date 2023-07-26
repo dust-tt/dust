@@ -1,6 +1,8 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -42,11 +44,14 @@ export default function AppExtractEventsCreate({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <ExtractEventSchemaForm
+    <AppLayout
       user={user}
       owner={owner}
-      readOnly={readOnly}
       gaTrackingId={gaTrackingId}
-    />
+      topNavigationCurrent="lab"
+      subNavigation={subNavigationLab(owner, "extract")}
+    >
+      <ExtractEventSchemaForm owner={owner} readOnly={readOnly} />
+    </AppLayout>
   );
 }

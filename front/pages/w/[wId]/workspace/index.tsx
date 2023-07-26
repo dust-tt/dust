@@ -4,9 +4,9 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
 import { mutate } from "swr";
 
-import MainTab from "@app/components/admin/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -189,14 +189,17 @@ export default function WorkspaceAdmin({
   };
 
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin(owner, "workspace")}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Workspace" owner={owner} />
-        </div>
         <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-6">
-            <div className="mt-8 space-y-4 divide-y divide-gray-200">
+          <div className="">
+            <div className="space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace settings
@@ -310,7 +313,7 @@ export default function WorkspaceAdmin({
                     </p>
                   </div>
                   <div className="mt-4">
-                    <div className="mt-2 flex items-center">
+                    <div className="mt-4 flex items-center">
                       <input
                         name="disableLabs"
                         type="checkbox"

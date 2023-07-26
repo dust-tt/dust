@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
-import MainTab from "@app/components/data_source/MainTab";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationDataSource } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -134,11 +134,10 @@ export default function DataSourceSettings({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      dataSource={dataSource}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationDataSource(owner, dataSource, "settings")}
     >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial" />
-        <MainTab currentTab="Settings" owner={owner} dataSource={dataSource} />
         {!managed ? (
           <StandardDataSourceSettings dataSource={dataSource} owner={owner} />
         ) : (
@@ -234,233 +233,223 @@ function StandardDataSourceSettings({
   };
 
   return (
-    <div className="">
-      <div className="mx-auto mt-8 max-w-4xl px-4">
-        <div className="mt-8 space-y-8 divide-y divide-gray-200">
-          <div className="space-y-8 divide-y divide-gray-200">
-            <div>
-              <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="dataSourceName"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    DataSource Name
-                  </label>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                      {owner.name}
-                      <ChevronRightIcon
-                        className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
-                        aria-hidden="true"
-                      />
-                    </span>
-                    <input
-                      type="text"
-                      name="name"
-                      id="dataSourceName"
-                      className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-none rounded-r-md border-gray-300 text-sm",
-                        "focus:border-gray-300 focus:ring-0"
-                      )}
-                      value={dataSource.name}
-                      readOnly={true}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Think GitHub repository names, short and memorable.
-                  </p>
-                </div>
-
-                <div className="sm:col-span-6">
-                  <div className="flex justify-between">
-                    <label
-                      htmlFor="dataSourceDescription"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Description
-                    </label>
-                    <div className="text-sm font-normal text-gray-400">
-                      optional
-                    </div>
-                  </div>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <input
-                      type="text"
-                      name="description"
-                      id="dataSourceDescription"
-                      className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
-                        "focus:border-violet-500 focus:ring-violet-500"
-                      )}
-                      value={dataSourceDescription}
-                      onChange={(e) => setDataSourceDescription(e.target.value)}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500">
-                    A good description will help others discover and understand
-                    the purpose of your Data Source.
-                  </p>
-                </div>
-
-                <div className="sm:col-span-6">
-                  <fieldset className="mt-2">
-                    <legend className="contents text-sm font-medium text-gray-700">
-                      Visibility
-                    </legend>
-                    <div className="mt-4 space-y-4">
-                      <div className="flex items-center">
-                        <input
-                          id="dataSourceVisibilityPublic"
-                          name="visibility"
-                          type="radio"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                          value="public"
-                          checked={dataSourceVisibility == "public"}
-                          onChange={(e) => {
-                            if (e.target.value != dataSourceVisibility) {
-                              setDataSourceVisibility(
-                                e.target.value as DataSourceVisibility
-                              );
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="dataSourceVisibilityPublic"
-                          className="ml-3 block text-sm font-medium text-gray-700"
-                        >
-                          Public
-                          <p className="mt-0 text-sm font-normal text-gray-500">
-                            Anyone on the Internet can discover and access your
-                            DataSource. Only you can edit.
-                          </p>
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          id="dataSourceVisibilityPrivate"
-                          name="visibility"
-                          type="radio"
-                          value="private"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                          checked={dataSourceVisibility == "private"}
-                          onChange={(e) => {
-                            if (e.target.value != dataSourceVisibility) {
-                              setDataSourceVisibility(
-                                e.target.value as DataSourceVisibility
-                              );
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="dataSourceVisibilityPrivate"
-                          className="ml-3 block text-sm font-medium text-gray-700"
-                        >
-                          Private
-                          <p className="mt-0 text-sm font-normal text-gray-500">
-                            Only you can see and edit the DataSource.
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  </fieldset>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                <div className="sm:col-span-6">
-                  <label
-                    htmlFor="embedder"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Embedder
-                  </label>
-                  <div className="mt-1 flex">
-                    <ModelPicker
-                      owner={owner}
-                      readOnly={true}
-                      model={{
-                        provider_id: dataSourceConfig.provider_id || "",
-                        model_id: dataSourceConfig.model_id || "",
-                      }}
-                      onModelUpdate={() => {
-                        // no-op
-                      }}
-                      chatOnly={false}
-                      embedOnly={true}
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-6">
-                  <div className="flex justify-between">
-                    <label
-                      htmlFor="dataSourceDescription"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Max Chunk Size
-                    </label>
-                  </div>
-                  <div className="mt-1 flex w-32 rounded-md shadow-sm">
-                    <input
-                      type="number"
-                      name="max_chunk_size"
-                      id="dataSourceMaxChunkSize"
-                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-gray-300 focus:ring-0"
-                      value={dataSourceConfig.max_chunk_size}
-                      readOnly={true}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between">
-                  <label
-                    htmlFor="upsertable"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Upload Rights
-                  </label>
-                </div>
-                <div className="mt-2 flex items-center">
-                  <input
-                    id="dataSourceUpsertable"
-                    name="upsertable"
-                    type="checkbox"
-                    className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
-                    checked={userUpsertable}
-                    onChange={(e) => setUserUpsertable(e.target.checked)}
+    <div className="space-y-8 divide-y divide-gray-200">
+      <div className="space-y-8 divide-y divide-gray-200">
+        <div>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+            <div className="sm:col-span-3">
+              <label
+                htmlFor="dataSourceName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                DataSource Name
+              </label>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
+                  {owner.name}
+                  <ChevronRightIcon
+                    className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
+                    aria-hidden="true"
                   />
-                  <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                    Users (non-builders) of your workspace can upload documents
-                    to the data source
-                  </p>
+                </span>
+                <input
+                  type="text"
+                  name="name"
+                  id="dataSourceName"
+                  className={classNames(
+                    "block w-full min-w-0 flex-1 rounded-none rounded-r-md border-gray-300 text-sm",
+                    "focus:border-gray-300 focus:ring-0"
+                  )}
+                  value={dataSource.name}
+                  readOnly={true}
+                />
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Think GitHub repository names, short and memorable.
+              </p>
+            </div>
+
+            <div className="sm:col-span-6">
+              <div className="flex justify-between">
+                <label
+                  htmlFor="dataSourceDescription"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Description
+                </label>
+                <div className="text-sm font-normal text-gray-400">
+                  optional
                 </div>
+              </div>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <input
+                  type="text"
+                  name="description"
+                  id="dataSourceDescription"
+                  className={classNames(
+                    "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
+                    "focus:border-violet-500 focus:ring-violet-500"
+                  )}
+                  value={dataSourceDescription}
+                  onChange={(e) => setDataSourceDescription(e.target.value)}
+                />
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                A good description will help others discover and understand the
+                purpose of your Data Source.
+              </p>
+            </div>
+
+            <div className="sm:col-span-6">
+              <fieldset className="mt-2">
+                <legend className="contents text-sm font-medium text-gray-700">
+                  Visibility
+                </legend>
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="dataSourceVisibilityPublic"
+                      name="visibility"
+                      type="radio"
+                      className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                      value="public"
+                      checked={dataSourceVisibility == "public"}
+                      onChange={(e) => {
+                        if (e.target.value != dataSourceVisibility) {
+                          setDataSourceVisibility(
+                            e.target.value as DataSourceVisibility
+                          );
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="dataSourceVisibilityPublic"
+                      className="ml-3 block text-sm font-medium text-gray-700"
+                    >
+                      Public
+                      <p className="mt-0 text-sm font-normal text-gray-500">
+                        Anyone on the Internet can discover and access your
+                        DataSource. Only you can edit.
+                      </p>
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      id="dataSourceVisibilityPrivate"
+                      name="visibility"
+                      type="radio"
+                      value="private"
+                      className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                      checked={dataSourceVisibility == "private"}
+                      onChange={(e) => {
+                        if (e.target.value != dataSourceVisibility) {
+                          setDataSourceVisibility(
+                            e.target.value as DataSourceVisibility
+                          );
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="dataSourceVisibilityPrivate"
+                      className="ml-3 block text-sm font-medium text-gray-700"
+                    >
+                      Private
+                      <p className="mt-0 text-sm font-normal text-gray-500">
+                        Only you can see and edit the DataSource.
+                      </p>
+                    </label>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+            <div className="sm:col-span-6">
+              <label
+                htmlFor="embedder"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Embedder
+              </label>
+              <div className="mt-1 flex">
+                <ModelPicker
+                  owner={owner}
+                  readOnly={true}
+                  model={{
+                    provider_id: dataSourceConfig.provider_id || "",
+                    model_id: dataSourceConfig.model_id || "",
+                  }}
+                  onModelUpdate={() => {
+                    // no-op
+                  }}
+                  chatOnly={false}
+                  embedOnly={true}
+                />
+              </div>
+            </div>
+
+            <div className="sm:col-span-6">
+              <div className="flex justify-between">
+                <label
+                  htmlFor="dataSourceDescription"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Max Chunk Size
+                </label>
+              </div>
+              <div className="mt-1 flex w-32 rounded-md shadow-sm">
+                <input
+                  type="number"
+                  name="max_chunk_size"
+                  id="dataSourceMaxChunkSize"
+                  className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-gray-300 focus:ring-0"
+                  value={dataSourceConfig.max_chunk_size}
+                  readOnly={true}
+                />
               </div>
             </div>
           </div>
-
-          <div className="flex pt-6">
-            <div className="flex">
-              <Button
-                onClick={handleUpdate}
-                disabled={isDeleting || isUpdating}
+          <div className="mt-4">
+            <div className="flex justify-between">
+              <label
+                htmlFor="upsertable"
+                className="block text-sm font-medium text-gray-700"
               >
-                {isUpdating ? "Updating..." : "Update"}
-              </Button>
+                Upload Rights
+              </label>
             </div>
-            <div className="flex-1"></div>
-            <div className="ml-2 flex">
-              <Button
-                onClick={handleDelete}
-                disabled={isDeleting || isUpdating}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </Button>
+            <div className="mt-2 flex items-center">
+              <input
+                id="dataSourceUpsertable"
+                name="upsertable"
+                type="checkbox"
+                className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                checked={userUpsertable}
+                onChange={(e) => setUserUpsertable(e.target.checked)}
+              />
+              <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                Users (non-builders) of your workspace can upload documents to
+                the data source
+              </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="flex pt-6">
+        <div className="flex">
+          <Button onClick={handleUpdate} disabled={isDeleting || isUpdating}>
+            {isUpdating ? "Updating..." : "Update"}
+          </Button>
+        </div>
+        <div className="flex-1"></div>
+        <div className="ml-2 flex">
+          <Button onClick={handleDelete} disabled={isDeleting || isUpdating}>
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
         </div>
       </div>
     </div>
@@ -609,44 +598,36 @@ function ManagedDataSourceSettings({
         />
       )}
 
-      <div className="">
-        <div className="mx-auto mt-8 max-w-4xl px-4">
-          <div className="-200 mt-8 space-y-8">
-            <div className="-200">
-              <div>
-                <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                  <div className="sm:col-span-3">
-                    <div className="flex flex-row items-center">
-                      <div className="mr-1 flex h-4 w-4 ">
-                        <img src={logo}></img>
-                      </div>
-                      <label
-                        htmlFor="dataSourceName"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        {dataSourceName} (managed - {total} documents)
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-row justify-between sm:col-span-6">
-                    <ManagedDataSourceStatus
-                      connector={connector}
-                      fetchConnectorError={fetchConnectorError}
-                    />
-
-                    <div className="flex flex-row">
-                      <Button
-                        onClick={() => {
-                          setShowPermissionModal(true);
-                        }}
-                      >
-                        Show permissions
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+          <div className="sm:col-span-3">
+            <div className="flex flex-row items-center">
+              <div className="mr-1 flex h-4 w-4 ">
+                <img src={logo}></img>
               </div>
+              <label
+                htmlFor="dataSourceName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                {dataSourceName} (managed - {total} documents)
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-row justify-between sm:col-span-6">
+            <ManagedDataSourceStatus
+              connector={connector}
+              fetchConnectorError={fetchConnectorError}
+            />
+
+            <div className="flex flex-row">
+              <Button
+                onClick={() => {
+                  setShowPermissionModal(true);
+                }}
+              >
+                Show permissions
+              </Button>
             </div>
           </div>
         </div>

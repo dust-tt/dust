@@ -1,5 +1,5 @@
+import { ChevronDownStrokeIcon } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
-import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -27,16 +27,8 @@ export default function WorkspacePicker({
           >
             {workspace ? (
               <>
-                <div
-                  className="text-base font-bold text-gray-800"
-                  onClick={(e) => {
-                    onWorkspaceUpdate(workspace);
-                    e.preventDefault();
-                  }}
-                >
-                  {workspace.name}
-                </div>
-                <ChevronDownIcon className="ml-1 mt-0.5 h-4 w-4 hover:text-gray-700" />
+                <div className="text-base text-slate-800">{workspace.name}</div>
+                <ChevronDownStrokeIcon className="ml-2 mt-0.5 h-4 w-4 hover:text-gray-700" />
               </>
             ) : (
               "Select workspace"
@@ -57,28 +49,12 @@ export default function WorkspacePicker({
                   {({ active }) => (
                     <span
                       className={classNames(
-                        active
-                          ? "font-semibold text-gray-900"
-                          : "text-gray-700",
-                        w.sId === workspace?.sId ? "font-semibold" : "",
-                        "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm"
+                        active ? "text-gray-900" : "text-gray-700",
+                        "block cursor-pointer whitespace-nowrap px-4 py-2 text-base"
                       )}
                       onClick={() => onWorkspaceUpdate(w)}
                     >
                       {w.name}
-                      {w.sId === workspace?.sId ? (
-                        <span
-                          className={classNames(
-                            "text-violet-600",
-                            "items-center pr-4"
-                          )}
-                        >
-                          <CheckIcon
-                            className="-mt-0.5 ml-2 inline h-3 w-3"
-                            aria-hidden="true"
-                          />
-                        </span>
-                      ) : null}
                     </span>
                   )}
                 </Menu.Item>

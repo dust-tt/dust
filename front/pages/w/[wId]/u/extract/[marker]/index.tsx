@@ -3,9 +3,9 @@ import React from "react";
 import { useState } from "react";
 import { mutate } from "swr";
 
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import MainTab from "@app/components/use/MainTab";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
@@ -95,15 +95,11 @@ export default function AppExtractEventsReadData({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      app={undefined}
-      dataSource={undefined}
+      topNavigationCurrent="lab"
+      subNavigation={subNavigationLab(owner, "extract")}
     >
       <div className="flex h-full flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Extract" owner={owner} />
-        </div>
-
-        <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div className="container">
           <div className="mb-10 divide-y divide-gray-200">
             <div className="pb-6">
               <h3 className="text-base font-medium leading-6 text-gray-900">
