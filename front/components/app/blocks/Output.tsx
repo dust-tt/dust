@@ -186,7 +186,7 @@ export function StringViewer({ value }: { value: any }) {
       <span>
         {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
         <span
-          className="cursor-pointer font-bold text-violet-600 hover:text-violet-500"
+          className="cursor-pointer font-bold text-action-600 hover:text-action-500"
           onClick={() => setExpanded(!expanded)}
         >
           show all

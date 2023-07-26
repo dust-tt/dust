@@ -192,7 +192,7 @@ export default function SettingsView({
                         "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
                         appNameError
                           ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                          : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                       )}
                       value={appName}
                       onChange={(e) => setAppName(e.target.value)}
@@ -217,7 +217,7 @@ export default function SettingsView({
                       type="text"
                       name="description"
                       id="appDescription"
-                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500"
+                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
                       value={appDescription}
                       onChange={(e) => setAppDescription(e.target.value)}
                     />
@@ -240,7 +240,7 @@ export default function SettingsView({
                           id="appVisibilityPublic"
                           name="visibility"
                           type="radio"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                           value="public"
                           checked={appVisibility == "public"}
                           onChange={(e) => {
@@ -266,7 +266,7 @@ export default function SettingsView({
                           name="visibility"
                           type="radio"
                           value="private"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                           checked={appVisibility == "private"}
                           onChange={(e) => {
                             if (e.target.value != appVisibility) {
@@ -290,7 +290,7 @@ export default function SettingsView({
                           name="visibility"
                           type="radio"
                           value="unlisted"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                           checked={appVisibility == "unlisted"}
                           onChange={(e) => {
                             if (e.target.value != appVisibility) {

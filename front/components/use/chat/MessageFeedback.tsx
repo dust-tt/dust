@@ -33,8 +33,8 @@ export function MessageFeedback({
         className={classNames(
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "positive"
-            ? "text-violet-800"
-            : "hover:text-violet-800",
+            ? "text-action-800"
+            : "hover:text-action-800",
           !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >
@@ -49,8 +49,8 @@ export function MessageFeedback({
         className={classNames(
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "negative"
-            ? "text-violet-800"
-            : "hover:text-violet-800",
+            ? "text-action-800"
+            : "hover:text-action-800",
           !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >

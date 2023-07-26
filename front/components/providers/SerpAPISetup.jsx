@@ -109,7 +109,7 @@ export default function SerpAPISetup({
                         engines). To use SerpAPI you must provide your API key.
                         It can be found{" "}
                         <a
-                          className="font-bold text-violet-600 hover:text-violet-500"
+                          className="font-bold text-action-600 hover:text-action-500"
                           href="https://serpapi.com/manage-api-key"
                           target="_blank"
                         >
@@ -124,7 +124,7 @@ export default function SerpAPISetup({
                     <div className="mt-6">
                       <input
                         type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
                         placeholder="SerpAPI API Key"
                         value={apiKey}
                         onChange={(e) => {

@@ -74,8 +74,8 @@ export function HighlightButton({
         "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
         disabled
           ? "border-gray-200 bg-white text-gray-300"
-          : "border-violet-600 bg-violet-600 text-white hover:bg-violet-500",
-        "shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+          : "border-action-600 bg-action-600 text-white hover:bg-action-500",
+        "shadow-sm focus:outline-none focus:ring-2 focus:ring-action-500 focus:ring-offset-2"
       )}
       onClick={onClick}
       disabled={disabled}

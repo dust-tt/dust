@@ -385,7 +385,7 @@ export default function DatasetView({
                 "block w-full min-w-0 flex-1 rounded-md sm:text-sm",
                 datasetNameError
                   ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                  : "border-gray-300 focus:border-action-500 focus:ring-action-500"
               )}
               value={datasetName}
               onChange={(e) => setDatasetName(e.target.value)}
@@ -409,7 +409,7 @@ export default function DatasetView({
               type="text"
               name="description"
               id="datasetDescription"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-action-500 focus:ring-action-500 sm:text-sm"
               value={datasetDescription || ""}
               onChange={(e) => setDatasetDescription(e.target.value)}
             />

@@ -231,7 +231,7 @@ export default function WorkspaceAdmin({
                             "block w-full min-w-0 flex-1 rounded-md text-sm",
                             workspaceNameError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                              : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                           )}
                           value={workspaceName}
                           onChange={(e) => setWorkspaceName(e.target.value)}
@@ -268,7 +268,7 @@ export default function WorkspaceAdmin({
                             "block w-full min-w-0 flex-1 rounded-md text-sm",
                             allowedDomainError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                              : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                           )}
                           value={allowedDomain || ""}
                           onChange={(e) => {
@@ -290,7 +290,7 @@ export default function WorkspaceAdmin({
                             <span className="block text-sm font-medium text-gray-700">
                               Invite link:{" "}
                               <a
-                                className="ml-1 text-violet-600"
+                                className="ml-1 text-action-600"
                                 href={inviteLink}
                               >
                                 {inviteLink}
@@ -317,7 +317,7 @@ export default function WorkspaceAdmin({
                       <input
                         name="disableLabs"
                         type="checkbox"
-                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                         checked={disableLabs}
                         onChange={(e) => setDisableLabs(e.target.checked)}
                       />
@@ -370,7 +370,7 @@ export default function WorkspaceAdmin({
                           "block w-full min-w-0 flex-1 rounded-md text-sm",
                           allowedDomainError
                             ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                            : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                            : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                         )}
                         value={inviteEmail || ""}
                         onChange={(e) => {
@@ -544,7 +544,7 @@ export default function WorkspaceAdmin({
                                                 {selected ? (
                                                   <span
                                                     className={classNames(
-                                                      "text-violet-600",
+                                                      "text-action-600",
                                                       "absolute inset-y-0 right-0 flex items-center pr-4"
                                                     )}
                                                   >

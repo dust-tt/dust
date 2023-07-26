@@ -471,7 +471,7 @@ export function DocumentView({
             }}
           >
             {pinned ? (
-              <BookmarkIconSolid className="h-4 w-4 text-violet-500" />
+              <BookmarkIconSolid className="h-4 w-4 text-action-500" />
             ) : (
               <BookmarkIcon className="h-4 w-4" />
             )}
@@ -715,7 +715,7 @@ export function TemplatesView({
                           <input
                             type="text"
                             name="templateTitle"
-                            className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                            className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
                             value={editingTemplateTitle}
                             onChange={(e) =>
                               setEditingTemplateTitle(e.target.value)
@@ -730,7 +730,7 @@ export function TemplatesView({
                           <div className="flex flex-1">
                             <TextareaAutosize
                               minRows={2}
-                              className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500"
+                              className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
                               value={editingTemplateInstructions}
                               placeholder={
                                 "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
@@ -899,7 +899,7 @@ export function TemplatesView({
           <span className="text-xs text-gray-400">Template: </span>
           <span
             className={classNames(
-              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-violet-500"
+              "ml-2 flex-shrink-0 cursor-pointer text-xs text-gray-600 hover:text-action-500"
             )}
             onClick={() => {
               setFormExpanded(true);
@@ -1384,7 +1384,7 @@ export default function AppGens({
                           href="https://www.loom.com/share/0a74052bef7a4a2cbe2d05b16c5e94cd?sid=6daef9c1-5ddf-4c36-9ae8-a267e25b49df"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-violet-600 hover:text-violet-700"
+                          className="text-action-600 hover:text-action-700"
                         >
                           Watch this video
                         </a>{" "}

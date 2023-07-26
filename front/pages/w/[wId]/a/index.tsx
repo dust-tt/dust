@@ -490,7 +490,7 @@ export default function Developers({
                         href={`/w/${owner.sId}/a/${app.sId}`}
                         className="block"
                       >
-                        <p className="truncate text-base font-bold text-violet-600">
+                        <p className="truncate text-base font-bold text-action-600">
                           {app.name}
                         </p>
                       </Link>

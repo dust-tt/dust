@@ -439,7 +439,7 @@ export default function DataSourcesView({
                         href={`/w/${owner.sId}/ds/${ds.name}`}
                         className="block"
                       >
-                        <p className="truncate text-base font-bold text-violet-600">
+                        <p className="truncate text-base font-bold text-action-600">
                           {ds.name}
                         </p>
                       </Link>
@@ -519,7 +519,7 @@ export default function DataSourcesView({
                             className={classNames(
                               "truncate text-base font-bold",
                               ds.connector
-                                ? "text-violet-600"
+                                ? "text-action-600"
                                 : "text-slate-400"
                             )}
                           >
@@ -530,7 +530,7 @@ export default function DataSourcesView({
                         <p
                           className={classNames(
                             "truncate text-base font-bold",
-                            ds.connector ? "text-violet-600" : "text-slate-400"
+                            ds.connector ? "text-action-600" : "text-slate-400"
                           )}
                         >
                           {ds.name}

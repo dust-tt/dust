@@ -202,7 +202,7 @@ export default function RunsView({
                       href={`/w/${owner.sId}/a/${app.sId}/runs/${run.run_id}`}
                       className="block"
                     >
-                      <p className="font-mono truncate text-base text-violet-600">
+                      <p className="font-mono truncate text-base text-action-500">
                         {run.run_id.slice(0, 8)}...
                         {run.run_id.slice(-8)}
                       </p>

@@ -251,7 +251,7 @@ export default function DataSourceUpsert({
                           "border-gray-300",
                           readOnly
                             ? "focus:border-gray-300 focus:ring-0"
-                            : "focus:border-violet-500 focus:ring-violet-500"
+                            : "focus:border-action-500 focus:ring-action-500"
                         )}
                         value={documentId}
                         onChange={(e) => setDocumentId(e.target.value)}
@@ -294,7 +294,7 @@ export default function DataSourceUpsert({
                             "border-gray-300",
                             readOnly
                               ? "focus:border-gray-300 focus:ring-0"
-                              : "focus:border-violet-500 focus:ring-violet-500"
+                              : "focus:border-action-500 focus:ring-action-500"
                           )}
                           value={tag}
                           onChange={(e) =>
@@ -382,7 +382,7 @@ export default function DataSourceUpsert({
                         "border-gray-300",
                         readOnly
                           ? "focus:border-gray-300 focus:ring-0"
-                          : "focus:border-violet-500 focus:ring-violet-500",
+                          : "focus:border-action-500 focus:ring-action-500",
                         downloading ? "text-gray-300" : ""
                       )}
                       disabled={downloading}
