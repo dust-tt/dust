@@ -11,6 +11,7 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { buildConnectionId } from "@app/lib/connector_connection_id";
 import {
   connectorIsUsingNango,
   ConnectorProvider,
@@ -282,14 +283,11 @@ export default function DataSourcesView({
           google_drive: nangoConfig.googleDriveConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
+        const newConnectionId = buildConnectionId(owner.sId, provider, suffix);
         const {
           connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } = suffix
-          ? await nango.auth(
-              nangoConnectorId,
-              `${provider}-${owner.sId}-${suffix}`
-            )
-          : await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoConnectorId, newConnectionId);
         connectionId = nangoConnectionId;
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
