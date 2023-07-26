@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Logo } from "sparkle";
 
+import "sparkle/dist/cjs/index.css";
+
 const meta = {
   title: "Assets/Logo",
   component: Logo,

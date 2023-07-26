@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.1.12",
+  "version": "0.1.14",
   "scripts": {
     "build": "rollup -c"
   },
@@ -29,14 +29,13 @@
     "prettier-plugin-tailwindcss": "^0.2.7",
     "rollup": "^3.26.2",
     "rollup-plugin-peer-deps-external": "^2.2.4",
-    "rollup-plugin-postcss": "^4.0.2"
+    "rollup-plugin-postcss": "^4.0.2",
+    "@tailwindcss/forms": "^0.5.3",
+    "tailwindcss": "^3.2.4",
+    "typescript": "^5.0.3"
   },
   "peerDependencies": {
-    "@tailwindcss/forms": "^0.5.3",
-    "react": "^18.2.0",
-    "typescript": "^5.0.3",
-    "react": "^18.2.0",
-    "tailwindcss": "^3.2.4"
+    "react": "^18.2.0"
   },
   "description": "Sparkle is Dust's Design System",
   "repository": {

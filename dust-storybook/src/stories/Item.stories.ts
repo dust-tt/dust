@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Item } from "sparkle";
-import { Cog6Tooth } from "sparkle/src/icons/mini";
+import { Cog6ToothIcon } from "sparkle";
+
+import "sparkle/dist/cjs/index.css";
 
 const meta = {
   title: "Atoms/Item",
@@ -14,7 +16,7 @@ export const BasicItem: Story = {
   args: {
     label: "Settings",
     size: "md",
-    icon: Cog6Tooth,
+    icon: Cog6ToothIcon,
     disabled: false,
     selected: false,
   },
