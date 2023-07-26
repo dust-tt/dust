@@ -1,10 +1,8 @@
-import "@dust-tt/sparkle/dist/cjs/index.css";
 import "@app/styles/global.css";
 
 import { SparkleContext } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
-import { MouseEvent, ReactNode } from "react";
 
 function NextLinkWrapper({
   key,
