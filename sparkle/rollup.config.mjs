@@ -10,14 +10,26 @@ import postcss from "rollup-plugin-postcss";
 import tailwindcss from "tailwindcss";
 import { fileURLToPath } from "url";
 
+let tsPluginOptions = {
+  tsconfig: "./tsconfig.json",
+  outputToFilesystem: true,
+};
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const pkg = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
 );
 
+let entryFile = "src/index.ts";
+tsPluginOptions.exclude = "src/index_with_tw_base.ts";
+if (process.env.INCLUDE_TW_BASE) {
+  entryFile = "src/index_with_tw_base.ts";
+  tsPluginOptions.exclude = "src/index.ts";
+}
+
 const config = {
-  input: "src/index.ts",
+  input: entryFile,
   output: [
     {
       file: pkg.main,
@@ -35,7 +47,7 @@ const config = {
     external(),
     resolve(),
     commonjs(),
-    typescript({ tsconfig: "./tsconfig.json", outputToFilesystem: true }),
+    typescript(tsPluginOptions),
     postcss({
       plugins: [tailwindcss(), autoprefixer()],
       inject: true,
