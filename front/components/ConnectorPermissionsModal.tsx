@@ -8,7 +8,11 @@ import {
 } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
 
-import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
+import {
+  ConnectorProvider,
+  ConnectorResourceType,
+  ConnectorType,
+} from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -31,6 +35,29 @@ const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
   github: "GitHub repositories",
 };
 
+export type IconComponentType =
+  | typeof DocumentTextIcon
+  | typeof FolderIcon
+  | typeof CircleStackIcon
+  | typeof ChatBubbleLeftRightIcon;
+
+function getIconForType(type: ConnectorResourceType): IconComponentType {
+  switch (type) {
+    case "file":
+      return DocumentTextIcon;
+    case "folder":
+      return FolderIcon;
+    case "database":
+      return CircleStackIcon;
+    case "channel":
+      return ChatBubbleLeftRightIcon;
+    default:
+      ((n: never) => {
+        throw new Error("Unreachable " + n);
+      })(type);
+  }
+}
+
 function PermissionTreeChildren({
   owner,
   dataSource,
@@ -43,6 +70,10 @@ function PermissionTreeChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions(owner, dataSource, parentId);
 
+  const [loadingByInternalId, setLoadingByInternalId] = useState<
+    Record<string, boolean>
+  >({});
+
   return (
     <div className="ml-2">
       <>
@@ -51,33 +82,32 @@ function PermissionTreeChildren({
         ) : (
           <div className="space-y-1">
             {resources.map((r) => {
+              const IconComponent = getIconForType(r.type);
+              const titlePrefix = r.type === "channel" ? "#" : "";
               return (
                 <div key={r.internalId}>
                   <div className="ml-1 flex flex-row items-center py-1 text-base">
-                    {r.type === "file" && (
-                      <>
-                        <DocumentTextIcon className="h-6 w-6 text-slate-300" />
-                        <span className="ml-2">{r.title}</span>
-                      </>
-                    )}
-                    {r.type === "database" && (
-                      <>
-                        <CircleStackIcon className="h-6 w-6 text-slate-300" />
-                        <span className="ml-2">{r.title}</span>
-                      </>
-                    )}
-                    {r.type === "folder" && (
-                      <>
-                        <FolderIcon className="h-6 w-6 text-slate-300" />
-                        <span className="ml-2">{r.title}</span>
-                      </>
-                    )}
-                    {r.type === "channel" && (
-                      <>
-                        <ChatBubbleLeftRightIcon className="h-6 w-6 text-slate-300" />
-                        <span className="ml-2">#{r.title}</span>
-                      </>
-                    )}
+                    <IconComponent className="h-6 w-6 text-slate-300" />
+                    <span className="ml-2">{`${titlePrefix}${r.title}`}</span>
+                    <input
+                      type="checkbox"
+                      className="ml-auto"
+                      disabled={!!loadingByInternalId[r.internalId]}
+                      checked={["read", "read_write"].includes(r.permission)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        // Optimistically update the UI.
+                        setLoadingByInternalId((prev) => ({
+                          ...prev,
+                          [r.internalId]: true,
+                        }));
+                        // make API call
+                        // if error, revert UI
+                        setLoadingByInternalId((prev) => ({
+                          ...prev,
+                          [r.internalId]: false,
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
               );
