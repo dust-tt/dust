@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Checkbox } from "sparkle";
 
-import "sparkle/dist/cjs/index.css";
-
 const meta = {
   title: "Atoms/Checkbox",
   component: Checkbox,
