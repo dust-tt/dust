@@ -11,7 +11,7 @@
     "storybook": "run-p -r watch:sparkle storybook:dev",
     "storybook:dev": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "watch:sparkle": "nodemon -e js,ts,tsx,css -w ../sparkle --ignore ../sparkle/dist -x \"cd ../sparkle && npm run build\""
+    "watch:sparkle": "nodemon -e js,ts,tsx,css -w ../sparkle --ignore ../sparkle/dist -x \"cd ../sparkle && npm run build:with-tw-base\""
   },
   "dependencies": {
     "mdx": "^0.2.3",

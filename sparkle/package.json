@@ -2,7 +2,8 @@
   "name": "@dust-tt/sparkle",
   "version": "0.1.21",
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true"
   },
   "main": "dist/cjs/index.js",
   "types": "dist/cjs/index.d.ts",
