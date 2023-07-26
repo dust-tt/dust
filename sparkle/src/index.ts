@@ -18,6 +18,9 @@ export { PageHeader };
 import { Icon } from "./components/Icon";
 export { Icon };
 
+import { IconButton } from "./components/IconButton";
+export { IconButton };
+
 import { Logo } from "./logo";
 export { Logo };
 
