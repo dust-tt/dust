@@ -491,8 +491,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-violet-800 group-hover:block",
-        confirmed ? "text-violet-800" : "hidden text-gray-400"
+        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block",
+        confirmed ? "text-action-800" : "hidden text-gray-400"
       )}
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
@@ -1235,7 +1235,7 @@ export default function AppChat({
                                       `/new` command or by clicking{" "}
                                       <Link
                                         href={`/w/${owner.sId}/u/chat`}
-                                        className="text text-violet-500 hover:underline"
+                                        className="text text-action-500 hover:underline"
                                       >
                                         here
                                       </Link>
@@ -1419,7 +1419,7 @@ export default function AppChat({
                         >
                           {!loading ? (
                             <ArrowRightCircleIcon
-                              className="h-5 w-5 cursor-pointer text-violet-500"
+                              className="h-5 w-5 cursor-pointer text-action-500"
                               onClick={() => {
                                 void handleSubmit();
                               }}

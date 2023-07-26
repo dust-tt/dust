@@ -63,7 +63,7 @@ export default function TimeRangePicker({
                         tr.id == timeRange.id
                           ? "hidden"
                           : "text-gray-600 ring-gray-400",
-                        "group relative w-full cursor-pointer whitespace-nowrap rounded-md bg-violet-50 px-2 py-0.5 text-left text-xs text-violet-800 shadow-sm hover:bg-violet-100"
+                        "group relative w-full cursor-pointer whitespace-nowrap rounded-md bg-action-50 px-2 py-0.5 text-left text-xs text-action-800 shadow-sm hover:bg-action-100"
                       )}
                     >
                       {tr.name}
@@ -76,7 +76,7 @@ export default function TimeRangePicker({
         </RadioGroup>
       </Transition>
       <div
-        className="group relative w-full cursor-pointer rounded-md bg-violet-200 py-0.5 pl-2 pr-2 text-left text-xs font-semibold text-violet-800"
+        className="group relative w-full cursor-pointer rounded-md bg-action-200 py-0.5 pl-2 pr-2 text-left text-xs font-semibold text-action-800"
         onClick={() => setOpen(!open)}
       >
         <span className="flex items-center">

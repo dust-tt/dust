@@ -143,7 +143,7 @@ export function ExtractEventSchemaForm({
       <div className="container">
         {readOnly && (
           <div
-            className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+            className="mb-10 rounded-md border-l-4 border-action-500 bg-action-100 p-4 text-action-700"
             role="alert"
           >
             <p className="font-bold">Read-only view</p>

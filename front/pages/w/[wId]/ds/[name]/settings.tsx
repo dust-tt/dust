@@ -300,7 +300,7 @@ function StandardDataSourceSettings({
                   id="dataSourceDescription"
                   className={classNames(
                     "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
-                    "focus:border-violet-500 focus:ring-violet-500"
+                    "focus:border-action-500 focus:ring-action-500"
                   )}
                   value={dataSourceDescription}
                   onChange={(e) => setDataSourceDescription(e.target.value)}
@@ -323,7 +323,7 @@ function StandardDataSourceSettings({
                       id="dataSourceVisibilityPublic"
                       name="visibility"
                       type="radio"
-                      className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                      className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                       value="public"
                       checked={dataSourceVisibility == "public"}
                       onChange={(e) => {
@@ -351,7 +351,7 @@ function StandardDataSourceSettings({
                       name="visibility"
                       type="radio"
                       value="private"
-                      className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                      className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                       checked={dataSourceVisibility == "private"}
                       onChange={(e) => {
                         if (e.target.value != dataSourceVisibility) {
@@ -438,7 +438,7 @@ function StandardDataSourceSettings({
                 id="dataSourceUpsertable"
                 name="upsertable"
                 type="checkbox"
-                className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                 checked={userUpsertable}
                 onChange={(e) => setUserUpsertable(e.target.checked)}
               />

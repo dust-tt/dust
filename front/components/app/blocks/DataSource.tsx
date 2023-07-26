@@ -216,7 +216,7 @@ export default function DataSource({
               <input
                 type="checkbox"
                 className={classNames(
-                  "ml-1 mr-4 h-4 w-4 rounded border-gray-300 bg-gray-100 text-violet-600 focus:ring-2 focus:ring-white",
+                  "ml-1 mr-4 h-4 w-4 rounded border-gray-300 bg-gray-100 text-action-600 focus:ring-2 focus:ring-white",
                   readOnly ? "" : "cursor-pointer"
                 )}
                 checked={block.spec.full_text || false}

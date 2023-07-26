@@ -236,7 +236,7 @@ export default function DataSourceView({
                               <img src={documentPoviderIconPath}></img>
                             </div>
                           ) : null}
-                          <p className="truncate text-base font-bold text-violet-600">
+                          <p className="truncate text-base font-bold text-action-600">
                             {displayNameByDocId[d.document_id]}
                           </p>
                         </div>
