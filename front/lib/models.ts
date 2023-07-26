@@ -725,6 +725,7 @@ export class ChatSession extends Model<
 
   declare sId: string;
   declare title?: string;
+  declare shared?: boolean;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]>;
@@ -753,6 +754,10 @@ ChatSession.init(
     },
     title: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    shared: {
+      type: DataTypes.BOOLEAN,
       allowNull: true,
     },
   },

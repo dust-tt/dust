@@ -78,6 +78,7 @@ export async function getChatSessions(
       sId: c.sId,
       title: c.title,
       messages: [],
+      shared: c.shared ? true : false,
     };
   });
 }
@@ -108,6 +109,7 @@ export async function getChatSession(
     created: chatSession.createdAt.getTime(),
     sId: chatSession.sId,
     title: chatSession.title,
+    shared: chatSession.shared ? true : false,
   };
 }
 
@@ -174,6 +176,7 @@ export async function upsertChatSession(
       created: chatSession.createdAt.getTime(),
       sId: chatSession.sId,
       title: chatSession.title,
+      shared: chatSession.shared ? true : false,
     };
   });
 }
@@ -254,6 +257,25 @@ export async function deleteChatSession(
     },
   });
   return nbRowsDestroyed === 1;
+}
+
+export async function updateChatSessionShared({
+  owner,
+  sId,
+  shared,
+}: {
+  owner: WorkspaceType;
+  sId: string;
+  shared: boolean;
+}): Promise<number[]> {
+  return await ChatSession.update(
+    {
+      shared,
+    },
+    {
+      where: { sId, workspaceId: owner.id },
+    }
+  );
 }
 
 export function userIsChatSessionOwner(

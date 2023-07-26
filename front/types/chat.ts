@@ -37,4 +37,5 @@ export type ChatSessionType = {
   sId: string;
   title?: string;
   messages?: ChatMessageType[];
+  shared: boolean;
 };

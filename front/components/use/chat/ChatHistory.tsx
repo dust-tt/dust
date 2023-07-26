@@ -1,5 +1,4 @@
 import { Menu } from "@headlessui/react";
-import { TrashIcon } from "@heroicons/react/20/solid";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -10,9 +9,10 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useChatSessions } from "@app/lib/swr";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { ChatSessionType } from "@app/types/chat";
+import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+import { ConversationHeader } from "./ConversationHeader";
 
 export function ChatHistory({
   owner,
@@ -177,36 +177,6 @@ export function ChatHistory({
     );
   }
 
-  const handleTrashClick = async (
-    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
-    chatSession: ChatSessionType
-  ) => {
-    event.stopPropagation();
-    const confirmed = window.confirm(
-      `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
-    );
-    if (confirmed) {
-      // call the delete API
-      const res = await fetch(
-        `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cId: chatSession.sId }),
-        }
-      );
-      if (res.ok) {
-        void mutateChatSessions();
-      } else {
-        const data = await res.json();
-        window.alert(`Error deleting chat: ${data.error.message}`);
-      }
-    }
-    return false;
-  };
-
   return (
     <div className="flex w-full flex-col">
       <ChatSwitcher />
@@ -217,27 +187,18 @@ export function ChatHistory({
               return (
                 <div
                   key={i}
-                  className="group flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:bg-gray-50"
+                  className="group flex w-full cursor-pointer flex-col rounded-md border px-2 py-2 hover:whitespace-nowrap hover:bg-gray-50 "
                   onClick={() => {
                     void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
                   }}
                 >
-                  <div className="flex flex-row items-center">
-                    <div className="flex flex-1">{s.title}</div>
-                    <div className="min-w-16 flex flex-initial">
-                      {user?.id === s.userId ? (
-                        <TrashIcon
-                          className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
-                          onClick={(e) => handleTrashClick(e, s)}
-                        ></TrashIcon>
-                      ) : (
-                        ""
-                      )}
-                      <span className="ml-2 text-xs italic text-gray-400">
-                        {timeAgoFrom(s.created)} ago
-                      </span>
-                    </div>
-                  </div>
+                  <ConversationHeader
+                    user={user}
+                    conversation={s}
+                    owner={owner}
+                    trashCallback={() => void mutateChatSessions()}
+                    shareCallback={() => void mutateChatSessions()}
+                  />
                 </div>
               );
             })}
