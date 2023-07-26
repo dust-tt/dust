@@ -1,6 +1,7 @@
 import { Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
+import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
 import { Fragment, MouseEvent, ReactNode, useState } from "react";
@@ -29,6 +30,8 @@ function NavigationBar({
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+
   return (
     <div className="flex grow flex-col border-r border-structure-200 bg-structure-50">
       <div className="mt-4 flex flex-col space-y-4">
@@ -81,6 +84,25 @@ function NavigationBar({
             )}
           </div>
         </div>
+
+        {user && user.workspaces.length > 1 ? (
+          <div className="flex flex-row items-center px-4">
+            <div className="font-normal text-slate-500">Workspace:</div>
+            <div className="flex-1"></div>
+            <div>
+              <WorkspacePicker
+                user={user}
+                workspace={owner}
+                readOnly={false}
+                onWorkspaceUpdate={(workspace) => {
+                  if (workspace.id !== owner.id) {
+                    void router.push(`/w/${workspace.sId}/u/chat`);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
         <div>
           <Tab tabs={topNavigation(owner, topNavigationCurrent)} />
         </div>
