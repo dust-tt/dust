@@ -6,7 +6,10 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -129,7 +132,12 @@ export default function CloneView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "settings")}
+      subNavigation={subNavigationAdmin(
+        owner,
+        "developers",
+        app.name,
+        subNavigationApp(owner, app, "settings")
+      )}
     >
       <div className="flex flex-1">
         <div className="space-y-8 divide-y divide-gray-200">

@@ -8,6 +8,7 @@ import {
   CommandLineStrokeIcon,
   DocumentTextStrokeIcon,
   FolderOpenStrokeIcon,
+  KeyStrokeIcon,
   MagnifyingGlassStrokeIcon,
   PaperAirplaneStrokeIcon,
 } from "@dust-tt/sparkle";
@@ -113,7 +114,7 @@ export const subNavigationAdmin = (
     nav.push({
       id: "workspace",
       label: "Workspace Settings",
-      icon: Cog6ToothStrokeIcon,
+      icon: KeyStrokeIcon,
       href: `/w/${owner.sId}/workspace`,
       current: current === "workspace",
       subMenuLabel: current === "workspace" ? subMenuLabel : undefined,

@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRuns } from "@app/lib/swr";
@@ -124,7 +127,12 @@ export default function RunsView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "runs")}
+      subNavigation={subNavigationAdmin(
+        owner,
+        "developers",
+        app.name,
+        subNavigationApp(owner, app, "runs")
+      )}
     >
       <div className="flex">
         <nav className="flex" aria-label="Tabs">

@@ -5,7 +5,10 @@ import Router from "next/router";
 
 import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationApp } from "@app/components/sparkle/navigation";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -91,7 +94,12 @@ export default function DatasetsView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationApp(owner, app, "datasets")}
+      subNavigation={subNavigationAdmin(
+        owner,
+        "developers",
+        app.name,
+        subNavigationApp(owner, app, "datasets")
+      )}
     >
       <div className="leadingflex flex-col">
         <div className="flex flex-1">
