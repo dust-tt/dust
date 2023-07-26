@@ -476,6 +476,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
 function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [tooltip, setTooltip] = useState<boolean>(false);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const handleClick = async () => {
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
@@ -492,8 +493,11 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
         confirmed ? "text-violet-800" : "hidden text-gray-400"
       )}
       onClick={handleClick}
-      onMouseEnter={() => void setTimeout(() => setTooltip(true), 1000)}
-      onMouseLeave={() => setTooltip(false)}
+      onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
+      onMouseLeave={() => {
+        timer && clearTimeout(timer);
+        setTooltip(false);
+      }}
     >
       {confirmed ? (
         <ClipboardDocumentCheckIconFull className="h-4 w-4" />
