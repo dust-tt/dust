@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { PageHeader, ChatBubbleBottomCenterTextIcon } from "sparkle";
 
-import "sparkle/dist/cjs/index.css";
-
 const meta = {
   title: "PageLayout/PageHeader",
   component: PageHeader,

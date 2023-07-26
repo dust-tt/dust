@@ -2,8 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Item } from "sparkle";
 import { Cog6ToothIcon } from "sparkle";
 
-import "sparkle/dist/cjs/index.css";
-
 const meta = {
   title: "Atoms/Item",
   component: Item,
