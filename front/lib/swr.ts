@@ -7,6 +7,7 @@ import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import { GetDataSourceAuthInfoResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/auth_info";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
@@ -271,6 +272,22 @@ export function useConnectorPermissions(
     resources: data ? data.resources : [],
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function useConnectorAuthInfo(
+  owner: WorkspaceType,
+  dataSource: DataSourceType
+) {
+  const autInfoFetcher: Fetcher<GetDataSourceAuthInfoResponseBody> = fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/auth_info`;
+  const { data, error } = useSWR(url, autInfoFetcher);
+
+  return {
+    authInfo: data,
+    isAuthInfoLoading: !error && !data,
+    isAuthInfoError: error,
   };
 }
 

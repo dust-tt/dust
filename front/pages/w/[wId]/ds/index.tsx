@@ -11,6 +11,7 @@ import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPic
 import { getDataSources } from "@app/lib/api/data_sources";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { buildConnectionId } from "@app/lib/connector_nango";
 import {
   connectorIsUsingNango,
   ConnectorProvider,
@@ -268,19 +269,6 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
-  function buildNangoConnectionName(
-    provider: ConnectorProvider,
-    suffix: string | null
-  ): string {
-    let connectionName = `${provider}-${owner.sId}`;
-    if (suffix) {
-      connectionName += `-${suffix}`;
-    }
-    const uId = client_side_new_id();
-    connectionName += `-${uId.slice(0, 10)}`;
-    return connectionName;
-  }
-
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -295,7 +283,11 @@ export default function DataSourcesView({
           google_drive: nangoConfig.googleDriveConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
-        const newConnectionName = buildNangoConnectionName(provider, suffix);
+        const newConnectionName = buildConnectionId(
+          owner.sId,
+          provider,
+          suffix
+        );
         const {
           connectionId: nangoConnectionId,
         }: { providerConfigKey: string; connectionId: string } =

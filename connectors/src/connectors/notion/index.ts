@@ -1,5 +1,6 @@
 import { Transaction } from "sequelize";
 
+import { ConnectorAuthInfo } from "@connectors/connectors";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -18,6 +19,7 @@ import { nango_client } from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import {
   ConnectorPermission,
@@ -295,4 +297,107 @@ export async function retrieveNotionConnectorPermissions(
   }));
 
   return new Ok(pageResources.concat(dbResources));
+}
+
+// We allow updating the connectionId of a Notion connector
+// ONLY if there is not change of workspace
+export async function updateNotionConnector(
+  connectorId: ModelId,
+  connectionId: string
+) {
+  if (!NANGO_NOTION_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err({
+      error: {
+        message: "Connector not found",
+        type: "connector_not_found",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  const connectionRes = await nango_client().getConnection(
+    NANGO_NOTION_CONNECTOR_ID,
+    c.connectionId,
+    false,
+    false
+  );
+  const newConnectionRes = await nango_client().getConnection(
+    NANGO_NOTION_CONNECTOR_ID,
+    connectionId,
+    false,
+    false
+  );
+
+  const workspaceId = connectionRes?.credentials?.raw?.workspace_id || null;
+  const newWorkspaceId =
+    newConnectionRes?.credentials?.raw?.workspace_id || null;
+
+  if (!workspaceId || !newWorkspaceId) {
+    return new Err({
+      error: {
+        message:
+          "Error retrieving connection workspace info to update connector",
+        type: "connector_update_error",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+  if (workspaceId !== newWorkspaceId) {
+    return new Err({
+      error: {
+        message: "Cannot change workspace of a Notion connector",
+        type: "connector_update_scope_unauthorized",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  await c.update({ connectionId });
+  return new Ok(c.id.toString());
+}
+
+export async function retrieveNotionConnectorAuthInfo(
+  connectorId: ModelId
+): Promise<Result<ConnectorAuthInfo, Error>> {
+  if (!NANGO_NOTION_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const connectionRes = await nango_client().getConnection(
+    NANGO_NOTION_CONNECTOR_ID,
+    c.connectionId,
+    false,
+    false
+  );
+
+  const workspaceId = connectionRes?.credentials?.raw?.workspace_id;
+  const workspaceName = connectionRes?.credentials?.raw?.workspace_name;
+
+  if (!workspaceId || !workspaceName) {
+    logger.error({ connectorId }, "Error retrieving connection workspace info");
+    return new Err(new Error("Error retrieving connection workspace info"));
+  }
+
+  return new Ok({
+    id: workspaceId,
+    name: workspaceName,
+    scope: "Workspace",
+  });
 }

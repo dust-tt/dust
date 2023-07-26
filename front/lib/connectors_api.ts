@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 export type ConnectorsAPIErrorResponse = {
   error: {
     message: string;
+    type?: string;
   };
 };
 
@@ -172,6 +173,42 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async updateConnector({
+    connectorId,
+    connectionId,
+  }: {
+    connectorId: string;
+    connectionId: string;
+  }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/update/${connectorId}`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          connectionId,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async getConnectorAuthInfo({
+    connectorId,
+  }: {
+    connectorId: string;
+  }): Promise<ConnectorsAPIResponse<any>> {
+    // @tododaph fix this
+    const url = `${CONNECTORS_API}/connectors/${connectorId}/auth_info`;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: getDefaultHeaders(),
+    });
+
+    return _resultFromResponse(res);
+  },
+
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
@@ -238,15 +275,22 @@ async function _resultFromResponse<T>(
       logger.error({ jsonError }, "Unexpected response from ConnectorAPI");
       return new Err(jsonError);
     } else {
-      logger.error(
-        { statusCode: response.status, statusText: response.statusText },
-        "Unexpected response from ConnectorAPI"
-      );
-      return new Err({
-        error: {
-          message: `Unexpected response status: ${response.status} ${response.statusText}`,
-        },
-      });
+      try {
+        const textError = await response.text();
+        const errorResponse = JSON.parse(textError);
+        return new Err(errorResponse);
+      } catch (error) {
+        logger.error(
+          { statusCode: response.status, statusText: response.statusText },
+          "Unexpected response from ConnectorAPI"
+        );
+        return new Err({
+          error: {
+            message: `Unexpected response status: ${response.status} ${response.statusText}`,
+            type: "unexpected_response",
+          },
+        });
+      }
     }
   }
   const jsonResponse = await response.json();

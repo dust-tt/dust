@@ -4,6 +4,8 @@ import express from "express";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import { getConnectorAuthInfoAPIHandler } from "@connectors/api/get_connector_auth_info";
+import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import {
   googleDriveGetFoldersAPIHandler,
   googleDriveSetFoldersAPIHandler,
@@ -11,13 +13,12 @@ import {
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
+import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
-
-import { getConnectorPermissionsAPIHandler } from "./api/get_connector_permissions";
 
 export function startServer(port: number) {
   const app = express();
@@ -43,11 +44,16 @@ export function startServer(port: number) {
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
+  app.post("/connectors/update/:connector_id/", getConnectorUpdateAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
+  );
+  app.get(
+    "/connectors/:connector_id/auth_info",
+    getConnectorAuthInfoAPIHandler
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);

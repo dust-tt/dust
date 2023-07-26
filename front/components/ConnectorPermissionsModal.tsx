@@ -9,7 +9,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 
 import { ConnectorProvider, ConnectorType } from "@app/lib/connectors_api";
-import { useConnectorPermissions } from "@app/lib/swr";
+import { useConnectorAuthInfo, useConnectorPermissions } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
@@ -126,6 +126,7 @@ export default function ConnectorPermissionsModal({
   const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
   );
+  const { authInfo } = useConnectorAuthInfo(owner, dataSource);
 
   useEffect(() => {
     if (connector.lastSyncSuccessfulTime)
@@ -169,9 +170,14 @@ export default function ConnectorPermissionsModal({
                         {CONNECTOR_TYPE_TO_NAME[connector.type]} permissions
                       </Dialog.Title>
                       {synchronizedTimeAgo && (
-                        <span className="text-gray-500">
+                        <p className="text-gray-500">
                           Last synchronized ~{synchronizedTimeAgo} ago
-                        </span>
+                        </p>
+                      )}
+                      {authInfo && (
+                        <p className="text-gray-500">
+                          {authInfo.scope} name: {authInfo.name}
+                        </p>
                       )}
                     </div>
                   </div>

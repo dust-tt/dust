@@ -13,6 +13,7 @@ import MainTab from "@app/components/data_source/MainTab";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { buildConnectionId } from "@app/lib/connector_nango";
 import {
   connectorIsUsingNango,
   ConnectorsAPI,
@@ -21,7 +22,7 @@ import {
 import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
-import { useDocuments } from "@app/lib/swr";
+import { useConnectorAuthInfo, useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -549,9 +550,9 @@ function ManagedDataSourceSettings({
     ? dataSource.connectorProvider.charAt(0).toUpperCase() +
       dataSource.connectorProvider.slice(1)
     : "";
-
   const { total } = useDocuments(owner, dataSource, 0, 0);
 
+  // @todo: When updating a permission we lost a potential suffix on the connectionId, fix it?
   const handleUpdatePermissions = async () => {
     if (!canUpdatePermissions) {
       window.alert(
@@ -574,8 +575,35 @@ function ManagedDataSourceSettings({
       }[provider];
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
+      const newConnectionId = buildConnectionId(owner.sId, provider, null);
+      await nango.auth(nangoConnectorId, newConnectionId);
 
-      await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ connectionId: newConnectionId }),
+        }
+      );
+      if (!res.ok) {
+        const jsonErr = await res.json();
+        const error = jsonErr.error;
+        let message =
+          "Failed to update the permissions of the Data Source (contact team@dust.tt for assistance)";
+
+        if (
+          error.type === "connector_update_scope_unauthorized" &&
+          provider === "notion"
+        ) {
+          message =
+            "You cannot select another workspace. Please create a new Data Source if you connected the wrong one.";
+        }
+        window.alert(message);
+      }
+
       if (connector && connector.type === "google_drive") {
         setGoogleDrivePickerOpen(true);
       }
