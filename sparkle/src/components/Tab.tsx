@@ -111,7 +111,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             className={
               tab.current
                 ? "flex gap-x-2"
-                : "duration-400 flex scale-100 transform gap-x-2 transition-transform ease-out group-hover:scale-110"
+                : "duration-400 flex translate-y-0 transform gap-x-2 transition-transform ease-out group-hover:-translate-y-0.5"
             }
           >
             {tab.icon && <tab.icon className={finalIconClasses} />}
