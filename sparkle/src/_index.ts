@@ -22,6 +22,15 @@ export { Logo };
 import { Checkbox } from "./components/Checkbox";
 export { Checkbox };
 
+import { IconButton } from "./components/IconButton";
+export { IconButton };
+
+import { IconToggleButton } from "./components/IconToggleButton";
+export { IconToggleButton };
+
+import { Tooltip } from "./components/Tooltip";
+export { Tooltip };
+
 import {
   ArrowUpOnSquare as ArrowUpOnSquareIcon,
   Beaker as BeakerIcon,
