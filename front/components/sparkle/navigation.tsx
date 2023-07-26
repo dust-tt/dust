@@ -6,9 +6,12 @@ import {
   Cog6ToothStrokeIcon,
   CommandLineStrokeIcon,
   DocumentTextStrokeIcon,
+  FolderOpenStrokeIcon,
   MagnifyingGlassStrokeIcon,
+  PaperAirplaneStrokeIcon,
 } from "@dust-tt/sparkle";
 
+import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -24,8 +27,8 @@ export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
-  | "use"
-  | "logs"
+  | "execute"
+  | "runs"
   | "settings";
 
 export type SparkleAppLayoutNavigation = {
@@ -146,6 +149,52 @@ export const subNavigationDataSource = (
       current: current === "settings",
     });
   }
+
+  return nav;
+};
+
+export const subNavigationApp = (
+  owner: WorkspaceType,
+  app: AppType,
+  current: SubNavigationAppId
+) => {
+  const nav: SparkleAppLayoutNavigation[] = [
+    {
+      id: "specification",
+      label: "Specification",
+      icon: CommandLineStrokeIcon,
+      href: `/w/${owner.sId}/a/${app.sId}`,
+      current: current === "specification",
+    },
+    {
+      id: "datasets",
+      label: "Datasets",
+      icon: DocumentTextStrokeIcon,
+      href: `/w/${owner.sId}/a/${app.sId}/datasets`,
+      current: current === "datasets",
+    },
+    {
+      id: "execute",
+      label: "Run",
+      icon: PaperAirplaneStrokeIcon,
+      href: `/w/${owner.sId}/a/${app.sId}/execute`,
+      current: current === "execute",
+    },
+    {
+      id: "runs",
+      label: "Logs",
+      icon: FolderOpenStrokeIcon,
+      href: `/w/${owner.sId}/a/${app.sId}/runs`,
+      current: current === "runs",
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Cog6ToothStrokeIcon,
+      href: `/w/${owner.sId}/a/${app.sId}/settings`,
+      current: current === "settings",
+    },
+  ];
 
   return nav;
 };
