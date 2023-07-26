@@ -79,7 +79,7 @@ export function AppLayoutMenuChatHistory({
                     }}
                   >
                     <div className="flex flex-row items-center">
-                      <div className="w-56 truncate text-ellipsis text-slate-600 hover:text-slate-800">
+                      <div className="w-64 truncate text-ellipsis text-slate-600 hover:text-slate-800">
                         {s.title}
                       </div>
                       {/**
