@@ -25,7 +25,6 @@ import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
-import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Spinner } from "@app/components/Spinner";
@@ -350,7 +349,7 @@ export function RetrievalsView({
   }, [message.retrievals]);
 
   return !(message.retrievals && message.retrievals.length === 0) ? (
-    <div className="ml-10 flex flex-col">
+    <div className="ml-12 flex flex-col">
       <div className="flex flex-row items-center">
         <div
           className={classNames(
@@ -451,7 +450,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
     return (
       <ReactMarkdown
         className={classNames(
-          "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
+          "pr-6 [&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
           "[&_p]:mb-2" /* p */,
           "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
         )}
@@ -493,8 +492,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block",
-        confirmed ? "text-action-800" : "hidden text-gray-400"
+        "absolute -top-1.5 right-0 mt-2 cursor-pointer cursor-pointer hover:text-action-600 group-hover:block",
+        confirmed ? "text-action-500" : "text-grey-400 hidden"
       )}
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
@@ -547,36 +546,44 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-3 flex flex-row items-start">
+        <div
+          className={classNames(
+            "my-2 flex flex-row items-start",
+            message.role === "user" ? "my-6" : ""
+          )}
+        >
           <div
             className={classNames(
-              "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-              "bg-gray-50"
+              "min-w-10 flex h-10 w-10 flex-initial rounded-xl",
+              "bg-structure-200"
             )}
           >
             {message.role === "assistant" ? (
-              <div className="flex flex-col items-center">
-                <div className="flex scale-50 pl-2">
-                  <PulseLogo animated={loading}></PulseLogo>
-                </div>
-              </div>
+              <Logo
+                shape="square"
+                type="colored-grey"
+                className={classNames(
+                  "mx-2 my-2 h-6 w-6",
+                  loading ? "animate-pulse" : ""
+                )}
+              ></Logo>
             ) : (
               <div className="flex">
                 {!readOnly && user?.image ? (
                   <img
-                    className="h-8 w-8 rounded-md"
+                    className="h-10 w-10 rounded-xl"
                     src={user?.image}
                     alt=""
                   />
                 ) : (
-                  <UserCircleIcon className="mx-1 my-1 h-6 w-6 text-gray-300"></UserCircleIcon>
+                  <UserCircleIcon className="mx-2 my-2 h-6 w-6 text-slate-500"></UserCircleIcon>
                 )}
               </div>
             )}
           </div>
           <div
             className={classNames(
-              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-2",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -1204,7 +1211,7 @@ export default function AppChat({
               title="Welcome to Assistant"
               icon={ChatBubbleBottomCenterTextIcon}
             />
-            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
               <div className="mb-8 text-lg font-bold">
                 Get started with{" "}
                 <Logo className="inline-block w-14 pb-1 pl-1"></Logo>
@@ -1250,7 +1257,7 @@ export default function AppChat({
         {canStartConversation && (
           <>
             <div className="flex-1">
-              <div className="pb-32">
+              <div className="-mt-4 pb-32">
                 {messages.length > 0 ? (
                   <div>
                     <div className="text-sm">
@@ -1317,7 +1324,7 @@ export default function AppChat({
                       title="Welcome to Assistant"
                       icon={ChatBubbleBottomCenterTextIcon}
                     />
-                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
                       <div className="mb-8 text-lg font-bold">
                         What can I use Assistant for?
                       </div>
