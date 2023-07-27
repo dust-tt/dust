@@ -281,6 +281,7 @@ export default function ConnectorPermissionsModal({
                         onClick={() => {
                           onEditPermission();
                         }}
+                        labelVisible={true}
                         label="Re-authorize"
                         type="tertiary"
                         size="xs"
@@ -292,12 +293,14 @@ export default function ConnectorPermissionsModal({
                     {Object.keys(updatedPermissionByInternalId).length ? (
                       <div className="flex gap-1">
                         <Button
+                          labelVisible={true}
                           onClick={closeModal}
                           label="Cancel"
                           type="secondary"
                           size="xs"
                         />
                         <Button
+                          labelVisible={true}
                           onClick={save}
                           label="Save"
                           type="primary"
