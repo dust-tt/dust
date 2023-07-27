@@ -15,19 +15,16 @@ import {
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import memoize from "lodash.memoize";
 import PQueue from "p-queue";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
-import {
-  deleteChannelFromConnectorsDb,
-  upsertSlackChannelInConnectorsDb,
-} from "@connectors/connectors/slack/lib/channels";
+import { upsertSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
-import { SlackMessages } from "@connectors/lib/models";
+import { SlackChannel, SlackMessages } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
   reportInitialSyncProgress,
@@ -428,7 +425,35 @@ export async function syncThreads(
 
   const promises = [];
   for (const threadTs of threadsTs) {
-    const p = queue.add(() => {
+    const p = queue.add(async () => {
+      // we first check if the bot still has read permissions on the channel
+      // there could be a race condition if we are in the middle of syncing a channel but
+      // the user revokes the bot's permissions
+      const channel = await SlackChannel.findOne({
+        where: {
+          connectorId: connectorId,
+          slackChannelId: channelId,
+        },
+      });
+
+      if (!channel) {
+        throw new Error(
+          `Could not find channel ${channelId} in connectors db for connector ${connectorId}`
+        );
+      }
+
+      if (!["read", "read_write"].includes(channel.permission)) {
+        logger.info(
+          {
+            connectorId,
+            channelId,
+            channelName,
+          },
+          "Channel is not indexed, skipping"
+        );
+        return;
+      }
+
       return syncThread(
         dataSourceConfig,
         slackAccessToken,
@@ -766,7 +791,23 @@ export function formatDateForThreadTitle(date: Date) {
 export async function getChannelsToGarbageCollect(
   slackAccessToken: string,
   connectorId: string
-) {
+): Promise<{
+  // either no longer visible to the integration, or bot no longer has read permission on
+  channelsToDeleteFromDataSource: string[];
+  // no longer visible to the integration (subset of channelsToDeleteFromDatasource)
+  channelsToDeleteFromConnectorsDb: string[];
+}> {
+  const channelsInConnectorsDb = await SlackChannel.findAll({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  const channelIdsWithoutReadPermission = new Set(
+    channelsInConnectorsDb
+      .filter((c) => !["read", "read_write"].includes(c.permission))
+      .map((c) => c.slackChannelId)
+  );
+
   const remoteChannels = new Set(
     (await getChannels(slackAccessToken))
       .filter((c) => c.id)
@@ -783,11 +824,21 @@ export async function getChannelsToGarbageCollect(
   });
 
   const localChannelsIds = localChannels.map((c) => c.channelId);
-  const channelsToDeleteLocally = localChannelsIds.filter((lc) => {
-    return remoteChannels.has(lc) === false;
-  });
 
-  return channelsToDeleteLocally;
+  const channelsToDeleteFromDataSource = localChannelsIds.filter((lc) => {
+    // we delete from the datasource content from channels that:
+    // - are no longer visible to our integration
+    // - the bot does not have read permission on
+    return !remoteChannels.has(lc) || channelIdsWithoutReadPermission.has(lc);
+  });
+  const channelsToDeleteFromConnectorsDb = channelsInConnectorsDb
+    .filter((c) => !remoteChannels.has(c.slackChannelId))
+    .map((c) => c.slackChannelId);
+
+  return {
+    channelsToDeleteFromDataSource,
+    channelsToDeleteFromConnectorsDb,
+  };
 }
 
 export async function deleteChannel(
@@ -819,13 +870,25 @@ export async function deleteChannel(
     { nbDeleted, channelId, connectorId },
     "Deleted documents from datasource while garbage collecting."
   );
+}
 
-  await deleteChannelFromConnectorsDb({
-    connectorId: parseInt(connectorId),
-    slackChannelId: channelId,
+export async function deleteChannelsFromConnectorDb(
+  channelsToDeleteFromConnectorsDb: string[],
+  connectorId: string
+) {
+  await SlackChannel.destroy({
+    where: {
+      connectorId: connectorId,
+      slackChannelId: {
+        [Op.in]: channelsToDeleteFromConnectorsDb,
+      },
+    },
   });
   logger.info(
-    { nbDeleted, channelId, connectorId },
-    "Deleted channel from connectors db while garbage collecting."
+    {
+      channelsToDeleteFromConnectorsDb,
+      connectorId,
+    },
+    "Deleted channels from connectors db while garbage collecting."
   );
 }
