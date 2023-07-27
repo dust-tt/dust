@@ -1,0 +1,20 @@
+name: Build & Lint (sparkle)
+
+on:
+  push:
+    paths:
+      - sparkle/**
+      - .github/workflows/build-and-lint-sparkle.yml
+
+jobs:
+  check-eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: "npm"
+          cache-dependency-path: ./sparkle/package-lock.json
+      - working-directory: sparkle
+        run: npm ci && npm run lint && npm run build

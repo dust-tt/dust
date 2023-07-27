@@ -1,6 +1,7 @@
 import { Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
@@ -86,7 +87,7 @@ function NavigationBar({
 
         {user && user.workspaces.length > 1 ? (
           <div className="flex flex-row items-center px-4">
-            <div className="font-normal text-slate-500">Workspace:</div>
+            <div className="text-sm text-slate-500">Workspace:</div>
             <div className="flex-1"></div>
             <div>
               <WorkspacePicker
@@ -178,6 +179,15 @@ export default function AppLayout({
 
   return (
     <>
+      <Head>
+        <title>{`Dust - ${owner.name}`}</title>
+        <link rel="shortcut icon" href="/static/favicon.png" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
+      </Head>
+
       <div className="light h-full">
         <Transition.Root show={sidebarOpen} as={Fragment}>
           <Dialog

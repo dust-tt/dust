@@ -1,4 +1,4 @@
-import { ChevronDownStrokeIcon } from "@dust-tt/sparkle";
+import { ChevronDownIcon } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
 
 import { classNames } from "@app/lib/utils";
@@ -20,15 +20,15 @@ export default function WorkspacePicker({
         <div>
           <Menu.Button
             className={classNames(
-              "inline-flex items-center rounded-md py-1 text-sm font-normal",
+              "inline-flex items-center rounded-md py-1 text-sm font-medium",
               workspace ? "px-0" : "border px-3",
               "focus:outline-none focus:ring-0"
             )}
           >
             {workspace ? (
               <>
-                <div className="text-base text-slate-800">{workspace.name}</div>
-                <ChevronDownStrokeIcon className="ml-2 mt-0.5 h-4 w-4 hover:text-gray-700" />
+                <div className="text-sm text-slate-800">{workspace.name}</div>
+                <ChevronDownIcon className="ml-2 mt-0.5 h-4 w-4 hover:text-gray-700" />
               </>
             ) : (
               "Select workspace"
@@ -50,7 +50,7 @@ export default function WorkspacePicker({
                     <span
                       className={classNames(
                         active ? "text-gray-900" : "text-gray-700",
-                        "block cursor-pointer whitespace-nowrap px-4 py-2 text-base"
+                        "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm"
                       )}
                       onClick={() => onWorkspaceUpdate(w)}
                     >

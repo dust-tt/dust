@@ -1,11 +1,4 @@
-import {
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-} from "@heroicons/react/24/outline";
-import {
-  HandThumbDownIcon as HTDIFull,
-  HandThumbUpIcon as HTUIFull,
-} from "@heroicons/react/24/solid";
+import { HandThumbDownSolidIcon, HandThumbUpSolidIcon } from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
@@ -33,15 +26,15 @@ export function MessageFeedback({
         className={classNames(
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "positive"
-            ? "text-action-800"
-            : "hover:text-action-800",
+            ? "text-action-500"
+            : "hover:text-action-600",
           !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >
         {message.feedback === "positive" ? (
-          <HTUIFull className="h-4 w-4"></HTUIFull>
+          <HandThumbUpSolidIcon className="h-4 w-4" />
         ) : (
-          <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
+          <HandThumbUpSolidIcon className="h-4 w-4" />
         )}
       </div>
       <div
@@ -49,15 +42,15 @@ export function MessageFeedback({
         className={classNames(
           "ml-2 cursor-pointer rounded-md p-px",
           message.feedback === "negative"
-            ? "text-action-800"
-            : "hover:text-action-800",
+            ? "text-action-500"
+            : "hover:text-action-600",
           !message.feedback && hover ? "invisible group-hover:visible" : ""
         )}
       >
         {message.feedback === "negative" ? (
-          <HTDIFull className="h-4 w-4"></HTDIFull>
+          <HandThumbDownSolidIcon className="h-4 w-4" />
         ) : (
-          <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
+          <HandThumbDownSolidIcon className="h-4 w-4" />
         )}
       </div>
     </div>

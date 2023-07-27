@@ -10,6 +10,7 @@ import {
   googleDriveSetFoldersAPIHandler,
 } from "@connectors/api/google_drive";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
+import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
@@ -49,6 +50,10 @@ export function startServer(port: number) {
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
+  );
+  app.post(
+    "/connectors/:connector_id/permissions",
+    setConnectorPermissionsAPIHandler
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);

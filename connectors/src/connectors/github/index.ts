@@ -15,6 +15,7 @@ import {
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import {
   ConnectorPermission,
   ConnectorResource,
@@ -43,6 +44,7 @@ export async function createGithubConnector(
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
+        defaultNewResourcePermission: "read_write",
       },
       { transaction }
     );
@@ -61,6 +63,64 @@ export async function createGithubConnector(
     await transaction.rollback();
     return new Err(err as Error);
   }
+}
+
+export async function updateGithubConnector(
+  connectorId: ModelId,
+  {
+    connectionId,
+    defaultNewResourcePermission,
+  }: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
+): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err({
+      error: {
+        message: "Connector not found",
+        type: "connector_not_found",
+      },
+    });
+  }
+
+  if (defaultNewResourcePermission) {
+    logger.error(
+      { connectorId, defaultNewResourcePermission },
+      "Cannot update defaultNewResourcePermission of a Github Data Source"
+    );
+    return new Err({
+      error: {
+        type: "connector_update_unauthorized",
+        message:
+          "Cannot update defaultNewResourcePermission of a Github Data Source",
+      },
+    });
+  }
+
+  if (connectionId) {
+    const oldGithubInstallationId = c.connectionId;
+    const newGithubInstallationId = connectionId;
+
+    if (oldGithubInstallationId !== newGithubInstallationId) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change the Installation Id of a Github Data Source",
+        },
+      });
+    }
+
+    await c.update({ connectionId });
+  }
+
+  return new Ok(c.id.toString());
 }
 
 export async function stopGithubConnector(

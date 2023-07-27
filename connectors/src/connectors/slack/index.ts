@@ -2,7 +2,11 @@ import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 import { Transaction } from "sequelize";
 
-import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import {
+  launchSlackBotJoinedWorkflow,
+  launchSlackGarbageCollectWorkflow,
+  launchSlackSyncWorkflow,
+} from "@connectors/connectors/slack/temporal/client.js";
 import {
   Connector,
   ModelId,
@@ -75,6 +79,7 @@ export async function createSlackConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
+          defaultNewResourcePermission: "read_write",
         },
         { transaction: t }
       );
@@ -84,7 +89,6 @@ export async function createSlackConnector(
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
           botEnabled: false,
-          defaultChannelPermission: "read_write",
         },
         { transaction: t }
       );
@@ -110,7 +114,13 @@ export async function createSlackConnector(
 
 export async function updateSlackConnector(
   connectorId: ModelId,
-  connectionId: string
+  {
+    connectionId,
+    defaultNewResourcePermission,
+  }: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
@@ -146,24 +156,35 @@ export async function updateSlackConnector(
     } as ConnectorsAPIErrorResponse);
   }
 
-  const newConnectionRes = await nango_client().getConnection(
-    NANGO_SLACK_CONNECTOR_ID,
-    connectionId,
-    false,
-    false
-  );
-  const newTeamId = newConnectionRes?.team?.id || null;
+  const updateParams: Parameters<typeof c.update>[0] = {};
 
-  if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
-    return new Err({
-      error: {
-        type: "connector_update_unauthorized",
-        message: "Cannot change the Slack Team of a Data Source",
-      },
-    } as ConnectorsAPIErrorResponse);
+  if (connectionId) {
+    const newConnectionRes = await nango_client().getConnection(
+      NANGO_SLACK_CONNECTOR_ID,
+      connectionId,
+      false,
+      false
+    );
+    const newTeamId = newConnectionRes?.team?.id || null;
+
+    if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change the Slack Team of a Data Source",
+        },
+      } as ConnectorsAPIErrorResponse);
+    }
+
+    updateParams.connectionId = connectionId;
   }
 
-  await c.update({ connectionId });
+  if (defaultNewResourcePermission) {
+    updateParams.defaultNewResourcePermission = defaultNewResourcePermission;
+  }
+
+  await c.update(updateParams);
+
   return new Ok(c.id.toString());
 }
 
@@ -347,8 +368,7 @@ export async function setSlackConnectorPermissions(
   const q = new PQueue({ concurrency: 10 });
   const promises: Promise<void>[] = [];
 
-  const tx = await sequelize_conn.transaction();
-
+  let shouldGarbageCollect = false;
   for (const [id, permission] of Object.entries(permissions)) {
     const channel = channels[id];
     if (!channel) {
@@ -361,22 +381,49 @@ export async function setSlackConnectorPermissions(
 
     promises.push(
       q.add(async () => {
-        await channel.update(
-          {
-            permission: permission,
-          },
-          { transaction: tx }
-        );
+        const oldPermission = channel.permission;
+        if (oldPermission === permission) {
+          return;
+        }
+        await channel.update({
+          permission: permission,
+        });
+
+        if (
+          !["read", "read_write"].includes(oldPermission) &&
+          ["read", "read_write"].includes(permission)
+        ) {
+          // handle read permission enabled
+          const res = await launchSlackBotJoinedWorkflow(
+            connectorId.toString(),
+            channel.slackChannelId
+          );
+          if (res.isErr()) {
+            throw res.error;
+          }
+        }
+        if (
+          ["read", "read_write"].includes(oldPermission) &&
+          !["read", "read_write"].includes(permission)
+        ) {
+          // handle read permission disabled
+          shouldGarbageCollect = true;
+        }
       })
     );
   }
 
   try {
     await Promise.all(promises);
-    await tx.commit();
   } catch (e) {
-    await tx.rollback();
     return new Err(e as Error);
+  }
+
+  if (shouldGarbageCollect) {
+    const res = await launchSlackGarbageCollectWorkflow(connectorId.toString());
+    if (res.isErr()) {
+      return res;
+    }
   }
 
   return new Ok(undefined);

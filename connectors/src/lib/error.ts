@@ -6,6 +6,7 @@ export type APIErrorType =
   | "connector_configuration_not_found"
   | "connector_update_error"
   | "connector_update_unauthorized"
+  | "connector_oauth_target_mismatch"
   | "not_found";
 
 export type APIError = {

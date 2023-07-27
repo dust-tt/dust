@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -8,6 +11,19 @@ import {
 } from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+// TODO (@fontanierh): camelCase -> snake_case
+const PostManagedDataSourceSettingsRequestBodySchema = t.type({
+  connectionId: t.union([t.string, t.null, t.undefined]),
+  defaultNewResourcePermission: t.union([
+    t.literal("read"),
+    t.literal("read_write"),
+    t.literal("write"),
+    t.literal("none"),
+    t.undefined,
+    t.null,
+  ]),
+});
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -59,27 +75,37 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (!req.body || !(typeof req.body.connectionId == "string")) {
+      const bodyValidation =
+        PostManagedDataSourceSettingsRequestBodySchema.decode(req.body);
+
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { connectionId: string }.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
+      const { connectionId, defaultNewResourcePermission } =
+        bodyValidation.right;
+
       const updateRes = await ConnectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
-        connectionId: req.body.connectionId,
+        params: {
+          connectionId,
+          defaultNewResourcePermission,
+        },
       });
 
       if (updateRes.isErr()) {
         const errorRes = updateRes as { error: ConnectorsAPIErrorResponse };
         const error = errorRes.error.error;
 
-        if (error.type === "connector_update_unauthorized") {
+        if (error.type === "connector_oauth_target_mismatch") {
           return apiError(req, res, {
             api_error: {
               type: error.type,

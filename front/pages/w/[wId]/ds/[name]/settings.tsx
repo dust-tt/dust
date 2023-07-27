@@ -592,9 +592,23 @@ function ManagedDataSourceSettings({
         setGoogleDrivePickerOpen(true);
       }
     } else if (provider === "github") {
-      await githubAuth(githubAppUrl).catch((e) => {
+      const installationId = await githubAuth(githubAppUrl).catch((e) => {
         console.error(e);
       });
+
+      if (!installationId) {
+        window.alert(
+          "Failed to update the Github permissions. Please contact-us at team@dust.tt"
+        );
+      } else {
+        const updateRes = await updateConnectorConnectionId(
+          installationId,
+          provider
+        );
+        if (updateRes.error) {
+          window.alert(updateRes.error);
+        }
+      }
     }
   };
 
@@ -620,7 +634,7 @@ function ManagedDataSourceSettings({
     const jsonErr = await res.json();
     const error = jsonErr.error;
 
-    if (error.type === "connector_update_unauthorized") {
+    if (error.type === "connector_oauth_target_mismatch") {
       if (provider === "slack") {
         return {
           success: false,
@@ -632,6 +646,13 @@ function ManagedDataSourceSettings({
           success: false,
           error:
             "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+        };
+      }
+      if (provider === "github") {
+        return {
+          success: false,
+          error:
+            "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
         };
       }
     }

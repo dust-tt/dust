@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -6,14 +9,34 @@ import { ConnectorResource, ConnectorsAPI } from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+const SetConnectorPermissionsRequestBodySchema = t.type({
+  resources: t.array(
+    t.type({
+      internal_id: t.string,
+      permission: t.union([
+        t.literal("none"),
+        t.literal("read"),
+        t.literal("write"),
+        t.literal("read_write"),
+      ]),
+    })
+  ),
+});
+
 export type GetDataSourcePermissionsResponseBody = {
   resources: ConnectorResource[];
+};
+
+export type SetDataSourcePermissionsResponseBody = {
+  success: true;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetDataSourcePermissionsResponseBody | ReturnedAPIErrorType | void
+    | GetDataSourcePermissionsResponseBody
+    | ReturnedAPIErrorType
+    | SetDataSourcePermissionsResponseBody
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -82,12 +105,74 @@ async function handler(
       });
       return;
 
+    case "POST":
+      if (!dataSource.connectorId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "data_source_not_managed",
+            message: "The data source you requested is not managed.",
+          },
+        });
+      }
+
+      const body = req.body;
+      if (!body) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Missing required parameters. Required: resources",
+          },
+        });
+      }
+
+      const bodyValidation = SetConnectorPermissionsRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+          status_code: 400,
+        });
+      }
+
+      const { resources } = bodyValidation.right;
+
+      const connectorsRes = await ConnectorsAPI.setConnectorPermissions({
+        connectorId: dataSource.connectorId,
+        resources: resources.map((r) => ({
+          internalId: r.internal_id,
+          permission: r.permission,
+        })),
+      });
+
+      if (connectorsRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `An error occurred while setting the data source permissions.`,
+          },
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+      });
+      return;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+
 import { Button, Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -19,9 +20,40 @@ export const Primary: Story = {
   },
 };
 
+export const IconOnlyPlusTooltip: Story = {
+  args: {
+    type: "primary",
+    size: "xs",
+    label: "Settings",
+    labelVisible: false,
+    icon: Cog6ToothIcon,
+    disabled: false,
+  },
+};
+
+export const PrimaryWarning: Story = {
+  args: {
+    type: "primaryWarning",
+    size: "xs",
+    label: "Settings",
+    icon: Cog6ToothIcon,
+    disabled: false,
+  },
+};
+
 export const Secondary: Story = {
   args: {
     type: "secondary",
+    size: "sm",
+    label: "Settings",
+    icon: Cog6ToothIcon,
+    disabled: false,
+  },
+};
+
+export const SecondaryWarning: Story = {
+  args: {
+    type: "secondaryWarning",
     size: "sm",
     label: "Settings",
     icon: Cog6ToothIcon,

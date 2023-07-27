@@ -7,6 +7,7 @@ import {
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   stopGithubConnector,
+  updateGithubConnector,
 } from "@connectors/connectors/github";
 import {
   cleanupGoogleDriveConnector,
@@ -59,7 +60,10 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 
 type ConnectorUpdater = (
   connectorId: ModelId,
-  connectionId: string
+  params: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
@@ -68,9 +72,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: updateSlackConnector,
   notion: updateNotionConnector,
-  github: async (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  github: updateGithubConnector,
   google_drive: async (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
