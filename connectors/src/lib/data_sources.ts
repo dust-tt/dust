@@ -14,7 +14,7 @@ if (!FRONT_API) {
 export const MAX_DOCUMENT_TXT_LEN = 750000;
 
 type UpsertContext = {
-  sync_type?: "full" | "incremental";
+  sync_type: "batch" | "incremental";
 };
 
 type UpsertToDataSourceParams = {
@@ -25,7 +25,7 @@ type UpsertToDataSourceParams = {
   timestampMs?: number;
   tags?: string[];
   loggerArgs?: Record<string, string | number>;
-  upsertContext?: UpsertContext;
+  upsertContext: UpsertContext;
 };
 
 type UpsertToDataSourceRetryOptions = {
@@ -72,7 +72,7 @@ async function _upsertToDatasource({
   timestampMs,
   tags,
   loggerArgs = {},
-  upsertContext = {},
+  upsertContext,
 }: UpsertToDataSourceParams) {
   const localLogger = logger.child({
     ...loggerArgs,

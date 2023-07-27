@@ -85,7 +85,8 @@ export async function githubUpsertIssueActivity(
   login: string,
   issueNumber: number,
   dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isBatchSync = false
 ) {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -143,6 +144,9 @@ export async function githubUpsertIssueActivity(
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
   });
 
   const connector = await Connector.findOne({
@@ -181,7 +185,8 @@ export async function githubUpsertDiscussionActivity(
   login: string,
   discussionNumber: number,
   dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isBatchSync: boolean
 ) {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -265,6 +270,9 @@ export async function githubUpsertDiscussionActivity(
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
   });
 
   const connector = await Connector.findOne({

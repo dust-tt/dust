@@ -305,7 +305,8 @@ export async function syncMultipleNoNThreaded(
         channelName,
         startTsMs,
         getWeekEnd(new Date(startTsMs)).getTime(),
-        connectorId
+        connectorId,
+        true // isBatchSync
       )
     );
     promises.push(p);
@@ -320,7 +321,8 @@ export async function syncNonThreaded(
   channelName: string,
   startTsMs: number,
   endTsMs: number,
-  connectorId: string
+  connectorId: string,
+  isBatchSync = false
 ) {
   const client = getSlackClient(slackAccessToken);
   const nextCursor: string | undefined = undefined;
@@ -410,6 +412,9 @@ export async function syncNonThreaded(
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
   });
 }
 
@@ -460,7 +465,8 @@ export async function syncThreads(
         channelId,
         channelName,
         threadTs,
-        connectorId
+        connectorId,
+        true // isBatchSync
       );
     });
     promises.push(p);
@@ -474,7 +480,8 @@ export async function syncThread(
   channelId: string,
   channelName: string,
   threadTs: string,
-  connectorId: string
+  connectorId: string,
+  isBatchSync = false
 ) {
   const client = getSlackClient(slackAccessToken);
 
@@ -551,6 +558,9 @@ export async function syncThread(
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
   });
 }
 

@@ -209,7 +209,8 @@ export async function notionUpsertPageActivity(
   pageId: string,
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isFullSync: boolean
 ) {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
@@ -268,6 +269,9 @@ export async function notionUpsertPageActivity(
       retries: 3,
       delayBetweenRetriesMs: 500,
       loggerArgs,
+      upsertContext: {
+        sync_type: isFullSync ? "batch" : "incremental",
+      },
     });
   } else {
     localLogger.info("Skipping page without body");

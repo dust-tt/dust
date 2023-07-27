@@ -172,7 +172,8 @@ export async function githubRepoSyncWorkflow(
             repoLogin,
             issueNumber,
             dataSourceConfig,
-            loggerArgs
+            loggerArgs,
+            true // isBatchSync
           )
         )
       );
@@ -199,7 +200,8 @@ export async function githubRepoSyncWorkflow(
             repoLogin,
             discussionNumber,
             dataSourceConfig,
-            loggerArgs
+            loggerArgs,
+            true // isBatchSync
           )
         )
       );
@@ -295,7 +297,8 @@ export async function githubDiscussionSyncWorkflow(
       repoLogin,
       discussionNumber,
       dataSourceConfig,
-      { ...loggerArgs, debounceCount }
+      { ...loggerArgs, debounceCount },
+      false // isBatchSync
     );
 
     await githubSaveSuccessSyncActivity(dataSourceConfig);
