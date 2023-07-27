@@ -8,6 +8,7 @@ import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
+import { GetManagedDataSourceDefaultNewResourcePermissionResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions/default";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -271,6 +272,26 @@ export function useConnectorPermissions(
     resources: data ? data.resources : [],
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function useConnectorDefaultNewResourcePermission(
+  owner: WorkspaceType,
+  dataSource: DataSourceType
+) {
+  const defaultNewResourcePermissionFetcher: Fetcher<GetManagedDataSourceDefaultNewResourcePermissionResponseBody> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions/default`;
+
+  const { data, error } = useSWR(url, defaultNewResourcePermissionFetcher);
+
+  return {
+    defaultNewResourcePermission: data
+      ? data.default_new_resource_permission
+      : null,
+    isDefaultNewResourcePermissionLoading: !error && !data,
+    isDefaultNewResourcePermissionError: error,
   };
 }
 

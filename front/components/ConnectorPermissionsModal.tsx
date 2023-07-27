@@ -12,6 +12,7 @@ import {
   FolderIcon,
 } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
+import { mutate } from "swr";
 
 import {
   ConnectorPermission,
@@ -19,7 +20,10 @@ import {
   ConnectorResourceType,
   ConnectorType,
 } from "@app/lib/connectors_api";
-import { useConnectorPermissions } from "@app/lib/swr";
+import {
+  useConnectorDefaultNewResourcePermission,
+  useConnectorPermissions,
+} from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
@@ -198,35 +202,82 @@ export default function ConnectorPermissionsModal({
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
     useState<Record<string, ConnectorPermission>>({});
 
+  const {
+    defaultNewResourcePermission,
+    isDefaultNewResourcePermissionLoading,
+    isDefaultNewResourcePermissionError,
+  } = useConnectorDefaultNewResourcePermission(owner, dataSource);
+
+  const [
+    automaticallyIncludeNewResources,
+    setAutomaticallyIncludeNewResources,
+  ] = useState<null | boolean>(null);
+
   function closeModal() {
     setOpen(false);
     setTimeout(() => {
       setUpdatedPermissionByInternalId({});
+      setAutomaticallyIncludeNewResources(null);
     }, 300);
   }
 
   async function save() {
     try {
-      const r = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            resources: Object.keys(updatedPermissionByInternalId).map(
-              (internalId) => ({
-                internal_id: internalId,
-                permission: updatedPermissionByInternalId[internalId],
-              })
-            ),
-          }),
-        }
-      );
+      if (Object.keys(updatedPermissionByInternalId).length) {
+        const r = await fetch(
+          `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              resources: Object.keys(updatedPermissionByInternalId).map(
+                (internalId) => ({
+                  internal_id: internalId,
+                  permission: updatedPermissionByInternalId[internalId],
+                })
+              ),
+            }),
+          }
+        );
 
-      if (!r.ok) {
-        window.alert("Failed to save permissions");
+        if (!r.ok) {
+          window.alert("An unexpected error occurred");
+        }
+
+        await mutate(
+          `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
+        );
+      }
+
+      if (automaticallyIncludeNewResources !== null) {
+        const newPermission = automaticallyIncludeNewResources
+          ? "read_write"
+          : "write";
+
+        if (newPermission !== defaultNewResourcePermission) {
+          const r = await fetch(
+            `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                defaultNewResourcePermission: newPermission,
+              }),
+            }
+          );
+
+          if (!r.ok) {
+            window.alert("An unexpected error occurred");
+          }
+
+          await mutate(
+            `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions/default`
+          );
+        }
       }
     } catch (e) {
       console.error(e);
@@ -289,7 +340,8 @@ export default function ConnectorPermissionsModal({
                     </div>
                   </div>
                   <div>
-                    {Object.keys(updatedPermissionByInternalId).length ? (
+                    {Object.keys(updatedPermissionByInternalId).length ||
+                    automaticallyIncludeNewResources !== null ? (
                       <div className="flex gap-1">
                         <Button
                           onClick={closeModal}
@@ -311,29 +363,59 @@ export default function ConnectorPermissionsModal({
                     )}
                   </div>
                 </div>
-                <div>
-                  <div className="mt-16">
-                    <div className="px-2 text-sm text-gray-500">
-                      Dust has access to the following{" "}
-                      {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                {!isDefaultNewResourcePermissionLoading &&
+                defaultNewResourcePermission ? (
+                  <>
+                    <div className=" mt-8 flex flex-row">
+                      <span className="ml-2 text-sm text-gray-500">
+                        Automatically include new{" "}
+                        {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                      </span>
+                      <div className="flex-grow">
+                        <Checkbox
+                          className="ml-auto"
+                          onChange={(checked) => {
+                            setAutomaticallyIncludeNewResources(checked);
+                          }}
+                          checked={
+                            automaticallyIncludeNewResources ??
+                            ["read", "read_write"].includes(
+                              defaultNewResourcePermission
+                            )
+                          }
+                        />
+                      </div>
                     </div>
+                    <div>
+                      <div className="mt-16">
+                        <div className="px-2 text-sm text-gray-500">
+                          Dust has access to the following{" "}
+                          {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-16 mt-8">
+                      <PermissionTree
+                        owner={owner}
+                        dataSource={dataSource}
+                        canUpdatePermissions={PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
+                          connector.type
+                        )}
+                        onPermissionUpdate={({ internalId, permission }) => {
+                          setUpdatedPermissionByInternalId((prev) => ({
+                            ...prev,
+                            [internalId]: permission,
+                          }));
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : null}
+                {isDefaultNewResourcePermissionError && (
+                  <div className="text-red-300">
+                    An unexpected error occurred
                   </div>
-                </div>
-                <div className="mb-16 mt-8">
-                  <PermissionTree
-                    owner={owner}
-                    dataSource={dataSource}
-                    canUpdatePermissions={PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-                      connector.type
-                    )}
-                    onPermissionUpdate={({ internalId, permission }) => {
-                      setUpdatedPermissionByInternalId((prev) => ({
-                        ...prev,
-                        [internalId]: permission,
-                      }));
-                    }}
-                  />
-                </div>
+                )}
               </Dialog.Panel>
             </Transition.Child>
           </div>

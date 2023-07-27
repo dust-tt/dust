@@ -27,16 +27,6 @@ const _getConnectorUpdateAPIHandler = async (
     });
   }
 
-  if (!req.body.connectionId) {
-    return apiError(req, res, {
-      api_error: {
-        type: "invalid_request_error",
-        message: `Missing required parameters. Required : connectionId`,
-      },
-      status_code: 400,
-    });
-  }
-
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
