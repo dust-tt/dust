@@ -7,6 +7,7 @@ import {
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   stopGithubConnector,
+  updateGithubConnector,
 } from "@connectors/connectors/github";
 import {
   cleanupGoogleDriveConnector,
@@ -68,9 +69,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
 > = {
   slack: updateSlackConnector,
   notion: updateNotionConnector,
-  github: async (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  github: updateGithubConnector,
   google_drive: async (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },

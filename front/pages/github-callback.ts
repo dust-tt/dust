@@ -14,7 +14,7 @@ export default function Complete() {
     window.opener &&
       window.opener.postMessage(
         {
-          type: "installed",
+          type: "installed_or_updated",
           installationId: queryString["installation_id"],
         },
         window.location.origin
