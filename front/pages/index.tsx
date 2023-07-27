@@ -281,9 +281,9 @@ export default function Home({
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-4">
+                <div className="mx-auto overflow-hidden ">
                   <img
-                    className="mx-auto w-[400px]"
+                    className="mx-auto w-[500px] rotate-6"
                     src="/static/landing_data_sources.png"
                   />
                 </div>
