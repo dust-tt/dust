@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronDownStrokeIcon } from "@dust-tt/sparkle";
+import { ChevronDownIcon } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
 
 import { classNames } from "@app/lib/utils";
