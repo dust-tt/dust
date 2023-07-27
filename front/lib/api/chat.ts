@@ -54,10 +54,11 @@ export async function getChatSessions(
   const where = workspaceScope
     ? {
         workspaceId: owner.id,
-        [Op.or]: [
+        shared: true,
+        /*[Op.or]: [
           { userId: { [Op.ne]: user.id } },
           { userId: { [Op.is]: null } },
-        ],
+        ],*/
       }
     : {
         workspaceId: owner.id,

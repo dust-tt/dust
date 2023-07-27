@@ -601,10 +601,14 @@ export function MessageView({
 function ChatMenu({
   owner,
   sessions,
+  workspaceScope,
+  setWorkspaceScope,
   onNewConversation,
 }: {
   owner: WorkspaceType;
   sessions: ChatSessionType[];
+  workspaceScope: boolean;
+  setWorkspaceScope: (b: boolean) => void;
   onNewConversation: () => void;
 }) {
   const router = useRouter();
@@ -623,14 +627,19 @@ function ChatMenu({
       <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
         <div className="flex grow flex-col">
           <div className="flex flex-row items-center">
-            <div className="px-8 py-4 text-xs uppercase text-slate-400">
-              Past Conversations
+            <div
+              className="cursor-pointer px-8 py-4 text-xs uppercase text-slate-400 hover:font-bold hover:text-slate-800"
+              onClick={() => setWorkspaceScope(!workspaceScope)}
+            >
+              {workspaceScope
+                ? "Workspace conversations"
+                : "Past Conversations"}
             </div>
           </div>
           <div className="flex ">
             <div className="flex w-full flex-col space-y-1">
               {sessions.length === 0
-                ? null
+                ? "No conversations yet."
                 : sessions.map((s) => {
                     return (
                       <Item
@@ -667,6 +676,7 @@ export default function AppChat({
   const [title, setTitle] = useState<string>(
     chatSession.title || "New Conversation"
   );
+  const [workspaceScope, setWorkspaceScope] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
@@ -1126,7 +1136,7 @@ export default function AppChat({
   const { sessions, mutateChatSessions } = useChatSessions(owner, {
     limit: 256,
     offset: 0,
-    workspaceScope: false,
+    workspaceScope,
   });
 
   const handleDelete = async () => {
@@ -1197,6 +1207,8 @@ export default function AppChat({
         <ChatMenu
           owner={owner}
           sessions={sessions}
+          workspaceScope={workspaceScope}
+          setWorkspaceScope={setWorkspaceScope}
           onNewConversation={handleNew}
         />
       }

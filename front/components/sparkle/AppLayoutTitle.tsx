@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, Tooltip } from "@dust-tt/sparkle";
 import {
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
@@ -36,12 +36,14 @@ export function AppLayoutTitle({
       )}
       {onShare && (
         <div className="flex flex-initial text-red-800">
-          <Button
-            type={shared ? "tertiary" : "primary"}
-            label={shared ? "Unshare" : "Share"}
-            icon={shared ? ArrowDownOnSquareIcon : ArrowUpOnSquareIcon}
-            onClick={onShare}
-          />
+          <Tooltip label={"Shared! Link to conversation copied to clipboard."}>
+            <Button
+              type={shared ? "tertiary" : "primary"}
+              label={shared ? "Unshare" : "Share"}
+              icon={shared ? ArrowDownOnSquareIcon : ArrowUpOnSquareIcon}
+              onClick={onShare}
+            />
+          </Tooltip>
         </div>
       )}
     </div>
