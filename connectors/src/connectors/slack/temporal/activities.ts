@@ -403,14 +403,14 @@ export async function syncNonThreaded(
     messageTs: undefined,
     documentId: documentId,
   });
-  await upsertToDatasource(
+  await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    text,
-    sourceUrl,
-    createdAt,
-    tags
-  );
+    documentText: text,
+    documentUrl: sourceUrl,
+    timestampMs: createdAt,
+    tags,
+  });
 }
 
 export async function syncThreads(
@@ -544,14 +544,14 @@ export async function syncThread(
     messageTs: threadTs,
     documentId: documentId,
   });
-  await upsertToDatasource(
+  await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    text,
-    sourceUrl,
-    createdAt,
-    tags
-  );
+    documentText: text,
+    documentUrl: sourceUrl,
+    timestampMs: createdAt,
+    tags,
+  });
 }
 
 async function processMessageForMentions(

@@ -315,14 +315,14 @@ async function syncOneFile(
   });
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
-    await upsertToDatasource(
+    await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      documentContent,
-      file.webViewLink,
-      file.updatedAtMs,
-      tags
-    );
+      documentText: documentContent,
+      documentUrl: file.webViewLink,
+      timestampMs: file.updatedAtMs,
+      tags,
+    });
   } else {
     logger.info(
       {

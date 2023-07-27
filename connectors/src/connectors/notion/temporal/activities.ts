@@ -258,17 +258,17 @@ export async function notionUpsertPageActivity(
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
-    await upsertToDatasource(
+    await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      parsedPage.rendered,
-      parsedPage.url,
-      parsedPage.updatedTime,
-      getTagsForPage(parsedPage),
-      3,
-      500,
-      loggerArgs
-    );
+      documentText: parsedPage.rendered,
+      documentUrl: parsedPage.url,
+      timestampMs: parsedPage.updatedTime,
+      tags: getTagsForPage(parsedPage),
+      retries: 3,
+      delayBetweenRetriesMs: 500,
+      loggerArgs,
+    });
   } else {
     localLogger.info("Skipping page without body");
   }
