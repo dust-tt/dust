@@ -162,6 +162,7 @@ export default function AppLayout({
   subNavigation,
   gaTrackingId,
   navChildren,
+  titleChildren,
   children,
 }: {
   user: UserType | null;
@@ -170,6 +171,7 @@ export default function AppLayout({
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
   navChildren?: React.ReactNode;
+  titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -256,18 +258,31 @@ export default function AppLayout({
         </div>
 
         <div className="mt-0 h-full flex-1 lg:pl-80">
-          <div className="absolute left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
-            <button
-              type="button"
-              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <span className="sr-only">Open sidebar</span>
-              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-            </button>
+          {/* Title bar with mobile sidebar opener and possible childrens. */}
+          <div
+            className={classNames(
+              "fixed left-0 right-0 top-0 z-40 flex h-16 flex-row lg:left-80",
+              "bg-white/30 backdrop-blur-md"
+            )}
+          >
+            <div className="absolute left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
+              <button
+                type="button"
+                className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <span className="sr-only">Open sidebar</span>
+                <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="grow">
+              <div className="mx-auto h-full max-w-4xl grow px-6">
+                {titleChildren && titleChildren}
+              </div>
+            </div>
           </div>
-          <main className="h-full pb-10 pt-4">
-            <div className="mx-auto mt-8 h-full max-w-4xl px-6">{children}</div>
+          <main className="h-full pt-16">
+            <div className="mx-auto h-full max-w-4xl px-6">{children}</div>
           </main>
         </div>
       </div>
