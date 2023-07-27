@@ -79,6 +79,7 @@ export async function createSlackConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
+          defaultNewResourcePermission: "read_write",
         },
         { transaction: t }
       );
@@ -88,7 +89,6 @@ export async function createSlackConnector(
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
           botEnabled: false,
-          defaultChannelPermission: "read_write",
         },
         { transaction: t }
       );

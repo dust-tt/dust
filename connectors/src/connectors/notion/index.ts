@@ -60,6 +60,7 @@ export async function createNotionConnector(
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
+        defaultNewResourcePermission: "read_write",
       },
       { transaction }
     );

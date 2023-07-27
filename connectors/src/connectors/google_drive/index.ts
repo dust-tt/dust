@@ -57,6 +57,7 @@ export async function createGoogleDriveConnector(
             workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
             workspaceId: dataSourceConfig.workspaceId,
             dataSourceName: dataSourceConfig.dataSourceName,
+            defaultNewResourcePermission: "read_write",
           },
           { transaction: t }
         );
