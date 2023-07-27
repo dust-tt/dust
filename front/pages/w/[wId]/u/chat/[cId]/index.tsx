@@ -1205,7 +1205,7 @@ export default function AppChat({
           <>
             <div className="flex-1">
               <div className="" ref={scrollRef}>
-                <div className="max-h-0">
+                <div className="pb-36">
                   {messages.length > 0 ? (
                     <div>
                       <div className="text-sm">
