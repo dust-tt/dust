@@ -16,6 +16,7 @@ import {
 } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { buildConnectionId } from "@app/lib/connector_connection_id";
 import {
   connectorIsUsingNango,
   ConnectorsAPI,
@@ -553,6 +554,7 @@ function ManagedDataSourceSettings({
 
   const { total } = useDocuments(owner, dataSource, 0, 0);
 
+  // @todo: When updating a permission we lost a potential suffix on the connectionId name. Fix it?
   const handleUpdatePermissions = async () => {
     if (!canUpdatePermissions) {
       window.alert(
@@ -576,7 +578,17 @@ function ManagedDataSourceSettings({
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-      await nango.auth(nangoConnectorId, `${provider}-${owner.sId}`);
+      const newConnectionId = buildConnectionId(owner.sId, provider, null);
+      await nango.auth(nangoConnectorId, newConnectionId);
+
+      const updateRes = await updateConnectorConnectionId(
+        newConnectionId,
+        provider
+      );
+      if (updateRes.error) {
+        window.alert(updateRes.error);
+      }
+
       if (connector && connector.type === "google_drive") {
         setGoogleDrivePickerOpen(true);
       }
@@ -585,6 +597,42 @@ function ManagedDataSourceSettings({
         console.error(e);
       });
     }
+  };
+
+  const updateConnectorConnectionId = async (
+    newConnectionId: string,
+    provider: string
+  ) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ connectionId: newConnectionId }),
+      }
+    );
+
+    if (res.ok) {
+      return { success: true, error: null };
+    }
+
+    let errorMessage =
+      "Failed to update the permissions of the Data Source (contact team@dust.tt for assistance)";
+
+    const jsonErr = await res.json();
+    const error = jsonErr.error;
+
+    if (
+      error.type === "connector_update_unauthorized" &&
+      provider === "notion"
+    ) {
+      errorMessage =
+        "Failed to update the permissions of the Data Source: You cannot select another Notion workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong workspace.";
+    }
+
+    return { success: false, error: errorMessage };
   };
 
   return (

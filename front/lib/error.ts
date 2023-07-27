@@ -38,7 +38,9 @@ export type APIErrorType =
   | "template_not_found"
   | "chat_message_not_found"
   | "event_schema_not_found"
-  | "extracted_event_not_found";
+  | "extracted_event_not_found"
+  | "connector_update_error"
+  | "connector_update_unauthorized";
 
 export type APIError = {
   type: APIErrorType;
