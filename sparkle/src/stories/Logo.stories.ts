@@ -10,6 +10,34 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const BasicLogo: Story = {
-  args: {},
+export const LogoFullColor: Story = {
+  args: {
+    shape: "full",
+    type: "full-color",
+    className: "w-32",
+  },
+};
+
+export const LogoColoredGrey: Story = {
+  args: {
+    shape: "full",
+    type: "colored-grey",
+    className: "w-32",
+  },
+};
+
+export const LogoSquareFullColor: Story = {
+  args: {
+    shape: "square",
+    type: "full-color",
+    className: "w-32",
+  },
+};
+
+export const LogoSquareColoredGrey: Story = {
+  args: {
+    shape: "square",
+    type: "colored-grey",
+    className: "w-32",
+  },
 };
