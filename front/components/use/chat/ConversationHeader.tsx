@@ -4,7 +4,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/solid";
 
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { ChatSessionType } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -74,17 +74,20 @@ const handleShareClick = async ({
     return false;
   }
 };
+export type ConversationHeaderType = "history-view" | "conversation-view";
 
 export function ConversationHeader({
   user,
   conversation,
   owner,
+  headerType,
   trashCallback,
   shareCallback,
 }: {
   user: UserType | null;
   conversation: ChatSessionType;
   owner: WorkspaceType;
+  headerType: ConversationHeaderType;
   trashCallback: () => void;
   shareCallback: () => void;
 }) {
@@ -95,14 +98,19 @@ export function ConversationHeader({
       </div>
       {user?.id === conversation.userId ? (
         <>
-          {conversation.shared && (
+          {conversation.shared && headerType !== "conversation-view" && (
             <div className="min-w-32 flex flex-initial group-hover:hidden">
               <ArrowUpOnSquareIcon className="h-4 w-4" />
             </div>
           )}
-          <div className="min-w-32 hidden flex-initial group-hover:flex">
+          <div
+            className={classNames(
+              "min-w-32 flex-initial",
+              headerType === "history-view" ? "hidden group-hover:flex" : "flex"
+            )}
+          >
             <div
-              className="ml-1 flex rounded border p-1 hover:border-violet-800 hover:text-violet-800"
+              className="ml-1 flex cursor-pointer rounded border p-1 hover:border-violet-800 hover:text-violet-800"
               onClick={(event) =>
                 handleTrashClick({
                   event,
@@ -115,7 +123,7 @@ export function ConversationHeader({
               <TrashIcon className="h-4 w-4" />
             </div>
             <div
-              className="ml-1 flex flex-row rounded border p-1 hover:border-violet-800 hover:text-violet-800"
+              className="ml-1 flex cursor-pointer flex-row rounded border p-1 hover:border-violet-800 hover:text-violet-800"
               onClick={(event) =>
                 handleShareClick({
                   event,

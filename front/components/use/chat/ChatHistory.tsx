@@ -196,6 +196,7 @@ export function ChatHistory({
                     user={user}
                     conversation={s}
                     owner={owner}
+                    headerType="history-view"
                     trashCallback={() => void mutateChatSessions()}
                     shareCallback={() => void mutateChatSessions()}
                   />

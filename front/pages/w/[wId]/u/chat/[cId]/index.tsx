@@ -1,9 +1,7 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
-  CheckCircleIcon,
   ClipboardDocumentListIcon,
-  ClockIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -51,10 +49,12 @@ import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
+  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { ConversationHeader } from "@app/components/use/chat/ConversationHeader";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -77,12 +77,8 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
-  chatSession: {
-    sId: string;
-    title: string | null;
-    messages: ChatMessageType[];
-    readOnly: boolean;
-  };
+  chatSession: ChatSessionType;
+  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -151,11 +147,14 @@ export const getServerSideProps: GetServerSideProps<{
         workspaceDataSources: dataSources,
         prodCredentials,
         chatSession: {
+          id: -1,
+          userId: -1,
+          created: -1,
           sId: cId,
-          title: null,
+          shared: false,
           messages: [],
-          readOnly: false,
         },
+        readOnly: false,
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -166,12 +165,8 @@ export const getServerSideProps: GetServerSideProps<{
         owner,
         workspaceDataSources: dataSources,
         prodCredentials,
-        chatSession: {
-          sId: cId,
-          title: chatSession.title || null,
-          messages: chatSession.messages || [],
-          readOnly: user?.id !== chatSession.userId,
-        },
+        chatSession,
+        readOnly: user?.id !== chatSession.userId,
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -620,6 +615,7 @@ export default function AppChat({
   workspaceDataSources,
   prodCredentials,
   chatSession,
+  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -631,6 +627,7 @@ export default function AppChat({
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
+  const [shared, setShared] = useState<boolean>(chatSession.shared || false);
   const [titleState, setTitleState] = useState<
     "new" | "writing" | "saving" | "saved"
   >(chatSession.title ? "saved" : "new");
@@ -1165,31 +1162,19 @@ export default function AppChat({
                     {messages.length > 0 ? (
                       <div>
                         <div className="mx-auto my-4 flex max-w-xl flex-row items-center justify-center text-sm">
-                          <span className="font-bold">{title}</span>
-                          <span className="text-xs text-gray-600">
-                            {titleState === "new" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5 text-xs">
-                                new
-                              </span>
-                            )}
-                            {titleState === "writing" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                                writing...
-                              </span>
-                            )}
-                            {titleState === "saving" && (
-                              <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                                <ClockIcon className="mr-0.5 h-3 w-3"></ClockIcon>
-                                saving
-                              </span>
-                            )}
-                            {titleState === "saved" && (
-                              <span className="ml-1 flex flex-row items-center rounded bg-gray-100 px-1 py-0.5">
-                                <CheckCircleIcon className="mr-0.5 h-3 w-3"></CheckCircleIcon>
-                                saved
-                              </span>
-                            )}
-                          </span>
+                          <ConversationHeader
+                            user={user}
+                            conversation={chatSession}
+                            owner={owner}
+                            headerType="conversation-view"
+                            trashCallback={async () => {
+                              router.push(`/w/${owner.sId}/u/chat`);
+                            }}
+                            shareCallback={async () => {
+                              chatSession.shared = !chatSession.shared;
+                              setShared(chatSession.shared);
+                            }}
+                          />
                         </div>
                         <div className="text-sm">
                           {messages.map((m, i) => {
@@ -1238,9 +1223,9 @@ export default function AppChat({
                                   //   !response && i === messages.length - 1
                                   // }
                                   isLatestRetrieval={isLatest("retrieval", i)}
-                                  readOnly={chatSession.readOnly}
+                                  readOnly={readOnly}
                                   feedback={
-                                    !chatSession.readOnly &&
+                                    !readOnly &&
                                     m.role === "assistant" && {
                                       handler: handleFeedback,
                                       hover: response
@@ -1262,7 +1247,7 @@ export default function AppChat({
                                 isLatestRetrieval={
                                   response.role === "retrieval"
                                 }
-                                readOnly={chatSession.readOnly}
+                                readOnly={readOnly}
                               />
                             </div>
                           ) : null}
@@ -1342,7 +1327,7 @@ export default function AppChat({
                 </div>
               </div>
             </div>
-            {!chatSession.readOnly && (
+            {!readOnly && (
               <div className="z-50 w-full flex-initial border bg-white text-sm">
                 <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
                   <div className="mb-1 mt-2">
