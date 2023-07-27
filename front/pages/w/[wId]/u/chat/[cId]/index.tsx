@@ -1,7 +1,11 @@
 import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CloudArrowDownIcon,
   Item,
+  Logo,
+  PageHeader,
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
@@ -600,10 +604,12 @@ function ChatMenu({
   owner,
   sessions,
   onNewConversation,
+  canStartConversation,
 }: {
   owner: WorkspaceType;
   sessions: ChatSessionType[];
   onNewConversation: () => void;
+  canStartConversation: boolean;
 }) {
   const router = useRouter();
 
@@ -612,6 +618,7 @@ function ChatMenu({
       <div className="flex flex-row px-2">
         <div className="flex grow"></div>
         <Button
+          disabled={!canStartConversation}
           labelVisible={true}
           label="New Conversation"
           icon={ChatBubbleBottomCenterPlusIcon}
@@ -669,6 +676,13 @@ export default function AppChat({
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
+  const [canStartConversation, setCanStartConversation] = useState<boolean>(
+    workspaceDataSources.length > 0
+  );
+
+  useEffect(() => {
+    setCanStartConversation(workspaceDataSources.length > 0);
+  }, [workspaceDataSources]);
 
   useEffect(() => {
     setTitle(chatSession.title || "New Conversation");
@@ -1163,6 +1177,7 @@ export default function AppChat({
           owner={owner}
           sessions={sessions}
           onNewConversation={handleNew}
+          canStartConversation={canStartConversation}
         />
       }
       titleChildren={
@@ -1182,37 +1197,57 @@ export default function AppChat({
         )
       }
     >
-      <div className="flex h-full flex-col">
-        {dataSources.length === 0 && (
-          <div className="divide-y divide-gray-200">
-            <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>💬 Welcome</p>
-              <p className="mt-8 italic">
-                <span className="font-bold">Dust</span> is a conversational
-                agent with access on your team's knowledge.
+      <div className="flex flex-col">
+        {!canStartConversation && (
+          <>
+            <PageHeader
+              title="Welcome to Assistant"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+              <div className="mb-8 text-lg font-bold">
+                Get started with{" "}
+                <Logo className="inline-block w-14 pb-1 pl-1"></Logo>
+              </div>
+              <p className="my-4 text-sm text-element-800">
+                <span className="font-bold italic">Assistant</span> can help you
+                with a wide range of tasks. It can answer your questions on
+                various topics, generic or specific to your company. It is
+                particularly good at writing texts and can help you draft and
+                edit documents, generate ideas, answer questions.
               </p>
               {owner.role === "admin" ? (
-                <p className="mt-8">
-                  You need to set up at least one{" "}
-                  <Link
-                    className="font-bold text-action-500"
-                    href={`/w/${owner.sId}/ds`}
-                  >
-                    Data Source
-                  </Link>{" "}
-                  to activate it on your workspace.
-                </p>
+                <>
+                  <p className="my-4 text-sm text-element-800">
+                    Start by setting up a{" "}
+                    <span className="font-bold italic">Data Source</span> to
+                    activate Assistant.
+                  </p>
+                  <div className="pt-4 text-center">
+                    <Button
+                      type={"primary"}
+                      icon={CloudArrowDownIcon}
+                      label="Set up your first Data Source"
+                      onClick={() => {
+                        void router.push(`/w/${owner.sId}/ds`);
+                      }}
+                    />
+                  </div>
+                </>
               ) : (
-                <p className="mt-8">
-                  Contact the admin of your workspace to activate Chat for your
-                  team.
-                </p>
+                <>
+                  <p className="my-4 text-sm text-element-800">
+                    To get started, contact the admin of your workspace to set
+                    up a <span className="font-bold italic">Data Source</span>{" "}
+                    to activate Assistant.
+                  </p>
+                </>
               )}
             </div>
-          </div>
+          </>
         )}
 
-        {dataSources.length > 0 && (
+        {canStartConversation && (
           <>
             <div className="flex-1">
               <div className="pb-32">
@@ -1222,25 +1257,18 @@ export default function AppChat({
                       {messages.map((m, i) => {
                         return m.role === "error" ? (
                           <div key={i}>
-                            <div className="my-2 ml-12 flex flex-col">
-                              <div className="flex-initial text-xs font-bold text-red-500">
-                                Oops! An error occured (and the team has been
-                                notified).
+                            <div className="my-1 ml-10 flex flex-col">
+                              <div className="flex-initial text-sm font-bold text-red-500">
+                                Oops. An error occured and the team has been
+                                notified.
                               </div>
-                              <div className="flex-initial text-xs text-gray-500">
-                                <ul className="list-inside list-disc">
-                                  <li>
-                                    You can continue the conversation, this
-                                    error and your last message will be removed
-                                    from the conversation
-                                  </li>
-                                  <li>
-                                    Don't hesitate to reach out if the problem
-                                    persists.
-                                  </li>
-                                </ul>
+                              <div className="my-1 flex-initial text-sm text-gray-500">
+                                You can safely continue the conversation, this
+                                error and your last message will be removed from
+                                the conversation. Don't hesitate to reach out if
+                                the problem persists.
                               </div>
-                              <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                              <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
                                 {m.message}
                               </div>
                             </div>
@@ -1284,17 +1312,28 @@ export default function AppChat({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-                    <p>💬 Welcome</p>
-                    <p className="mt-8">
-                      <span className="font-bold">Dust</span> is a
-                      conversational assistant with context on your team's
-                      knowledge. For each interaction, relevant pieces of
-                      documents are retrieved from you entire team's knowledge
-                      and presented to the Assistant to help it answer your
-                      queries.
-                    </p>
-                  </div>
+                  <>
+                    <PageHeader
+                      title="Welcome to Assistant"
+                      icon={ChatBubbleBottomCenterTextIcon}
+                    />
+                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+                      <div className="mb-8 text-lg font-bold">
+                        What can I use Assistant for?
+                      </div>
+                      <p className="my-4 text-sm text-element-800">
+                        <span className="font-bold italic">Assistant</span> can
+                        help you with a wide range of tasks. It can answer your
+                        questions on various topics, generic or specific to your
+                        company. It is particularly good at writing texts and
+                        can help you draft and edit documents, generate ideas,
+                        answer questions.
+                      </p>
+                      <p className="mt-4 text-center text-sm font-medium text-element-800">
+                        Simply start typing to get started with Assistant.
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
