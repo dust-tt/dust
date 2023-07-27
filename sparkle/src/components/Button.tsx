@@ -6,7 +6,12 @@ import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
 type ButtonProps = {
-  type?: "primary" | "secondary" | "tertiary";
+  type?:
+    | "primary"
+    | "primaryWarning"
+    | "secondary"
+    | "secondaryWarning"
+    | "tertiary";
   size?: "xs" | "sm" | "md";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
@@ -47,6 +52,18 @@ const typeClasses = {
         "dark:active:s-bg-action-600-dark dark:active:s-border-action-700-dark",
     },
   },
+  primaryWarning: {
+    base: "s-text-white s-bg-warning-500 s-border-warning-600",
+    hover: "hover:s-bg-warning-400 hover:s-border-warning-500",
+    active: "active:s-bg-warning-600 active:s-border-warning-700",
+    dark: {
+      base: "dark:s-bg-warning-500-dark dark:s-border-warning-600-dark",
+      hover:
+        "dark:hover:s-bg-warning-500-dark dark:hover:s-border-warning-500-dark",
+      active:
+        "dark:active:s-bg-warning-600-dark dark:active:s-border-warning-700-dark",
+    },
+  },
   secondary: {
     base: "s-text-action-500 s-border-structure-300 s-bg-structure-0",
     hover: "hover:s-bg-action-50 hover:s-border-action-300",
@@ -57,6 +74,18 @@ const typeClasses = {
         "dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
       active:
         "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
+    },
+  },
+  secondaryWarning: {
+    base: "s-text-warning-500 s-border-structure-300 s-bg-structure-0",
+    hover: "hover:s-bg-warning-50 hover:s-border-warning-300",
+    active: "active:s-bg-warning-100 active:s-border-warning-500",
+    dark: {
+      base: "dark:s-text-warning-500-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
+      hover:
+        "dark:hover:s-bg-warning-50-dark dark:hover:s-border-warning-300-dark",
+      active:
+        "dark:active:s-bg-warning-100-dark dark:active:s-border-warning-500-dark",
     },
   },
   tertiary: {
