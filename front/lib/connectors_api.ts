@@ -263,11 +263,24 @@ async function _resultFromResponse<T>(
       try {
         const textError = await response.text();
         const errorResponse = JSON.parse(textError);
+
+        const errorMessage = errorResponse?.error?.message;
+        const errorType = errorResponse?.error?.type;
+
+        if (typeof errorMessage !== "string" || typeof errorType !== "string") {
+          throw new Error("Unexpected response from ConnectorAPI");
+        }
+
         logger.error(
           { errorResponse },
           "Unexpected response from ConnectorAPI"
         );
-        return new Err(errorResponse);
+        return new Err({
+          error: {
+            message: errorMessage,
+            type: errorType,
+          },
+        });
       } catch (error) {
         logger.error(
           { statusCode: response.status, statusText: response.statusText },
