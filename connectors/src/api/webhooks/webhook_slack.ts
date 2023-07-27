@@ -254,7 +254,38 @@ const _webhookSlackAPIHandler = async (
           } else if (req.body.event?.ts) {
             const ts = req.body.event.ts;
             const results = await Promise.all(
-              slackConfigurations.map((c) => {
+              slackConfigurations.map(async (c) => {
+                const slackChannel = await SlackChannel.findOne({
+                  where: {
+                    connectorId: c.connectorId,
+                    slackChannelId: channel,
+                  },
+                });
+                if (!slackChannel) {
+                  logger.error(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                    "Could not find Slack channel in DB"
+                  );
+                  return new Err(
+                    new Error(
+                      `Could not find Slack channel ${channel} in DB for connector ${c.connectorId}`
+                    )
+                  );
+                }
+                if (!["read", "read_write"].includes(slackChannel.permission)) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                      permission: slackChannel.permission,
+                    },
+                    "Ignoring message because channel permission is not read or read_write"
+                  );
+                  return new Ok(undefined);
+                }
                 return launchSlackSyncOneMessageWorkflow(
                   c.connectorId.toString(),
                   channel,
