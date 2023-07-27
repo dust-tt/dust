@@ -618,21 +618,28 @@ function ManagedDataSourceSettings({
       return { success: true, error: null };
     }
 
-    let errorMessage =
-      "Failed to update the permissions of the Data Source (contact team@dust.tt for assistance)";
-
     const jsonErr = await res.json();
     const error = jsonErr.error;
 
-    if (
-      error.type === "connector_update_unauthorized" &&
-      provider === "notion"
-    ) {
-      errorMessage =
-        "Failed to update the permissions of the Data Source: You cannot select another Notion workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong workspace.";
+    if (error.type === "connector_update_unauthorized") {
+      if (provider === "slack") {
+        return {
+          success: false,
+          error: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
+        };
+      }
+      if (provider === "notion") {
+        return {
+          success: false,
+          error:
+            "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+        };
+      }
     }
-
-    return { success: false, error: errorMessage };
+    return {
+      success: false,
+      error: `Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)`,
+    };
   };
 
   return (

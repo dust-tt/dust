@@ -28,6 +28,7 @@ import {
   createSlackConnector,
   retrieveSlackConnectorPermissions,
   setSlackConnectorPermissions,
+  updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
@@ -65,9 +66,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorUpdater
 > = {
-  slack: async (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  slack: updateSlackConnector,
   notion: updateNotionConnector,
   github: async (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
