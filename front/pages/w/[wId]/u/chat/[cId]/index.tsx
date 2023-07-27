@@ -684,12 +684,11 @@ export default function AppChat({
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (window && window.scrollTo) {
+      window.scrollTo(0, document.body.scrollHeight);
     }
   }, [messages, response]);
 
@@ -1204,89 +1203,87 @@ export default function AppChat({
         {dataSources.length > 0 && (
           <>
             <div className="flex-1">
-              <div className="" ref={scrollRef}>
-                <div className="max-h-0">
-                  {messages.length > 0 ? (
-                    <div>
-                      <div className="text-sm">
-                        {messages.map((m, i) => {
-                          return m.role === "error" ? (
-                            <div key={i}>
-                              <div className="my-2 ml-12 flex flex-col">
-                                <div className="flex-initial text-xs font-bold text-red-500">
-                                  Oops! An error occured (and the team has been
-                                  notified).
-                                </div>
-                                <div className="flex-initial text-xs text-gray-500">
-                                  <ul className="list-inside list-disc">
-                                    <li>
-                                      You can continue the conversation, this
-                                      error and your last message will be
-                                      removed from the conversation
-                                    </li>
-                                    <li>
-                                      Don't hesitate to reach out if the problem
-                                      persists.
-                                    </li>
-                                  </ul>
-                                </div>
-                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                                  {m.message}
-                                </div>
+              <div className="pb-32">
+                {messages.length > 0 ? (
+                  <div>
+                    <div className="text-sm">
+                      {messages.map((m, i) => {
+                        return m.role === "error" ? (
+                          <div key={i}>
+                            <div className="my-2 ml-12 flex flex-col">
+                              <div className="flex-initial text-xs font-bold text-red-500">
+                                Oops! An error occured (and the team has been
+                                notified).
+                              </div>
+                              <div className="flex-initial text-xs text-gray-500">
+                                <ul className="list-inside list-disc">
+                                  <li>
+                                    You can continue the conversation, this
+                                    error and your last message will be removed
+                                    from the conversation
+                                  </li>
+                                  <li>
+                                    Don't hesitate to reach out if the problem
+                                    persists.
+                                  </li>
+                                </ul>
+                              </div>
+                              <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                                {m.message}
                               </div>
                             </div>
-                          ) : (
-                            <div key={i} className="group">
-                              <MessageView
-                                user={user}
-                                message={m}
-                                loading={false}
-                                // isLatest={
-                                //   !response && i === messages.length - 1
-                                // }
-                                isLatestRetrieval={isLatest("retrieval", i)}
-                                readOnly={readOnly}
-                                feedback={
-                                  !readOnly &&
-                                  m.role === "assistant" && {
-                                    handler: handleFeedback,
-                                    hover: response
-                                      ? true
-                                      : i !== messages.length - 1,
-                                  }
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                        {response ? (
-                          <div key={messages.length}>
+                          </div>
+                        ) : (
+                          <div key={i} className="group">
                             <MessageView
                               user={user}
-                              message={response}
-                              loading={true}
-                              // isLatest={true}
-                              isLatestRetrieval={response.role === "retrieval"}
+                              message={m}
+                              loading={false}
+                              // isLatest={
+                              //   !response && i === messages.length - 1
+                              // }
+                              isLatestRetrieval={isLatest("retrieval", i)}
                               readOnly={readOnly}
+                              feedback={
+                                !readOnly &&
+                                m.role === "assistant" && {
+                                  handler: handleFeedback,
+                                  hover: response
+                                    ? true
+                                    : i !== messages.length - 1,
+                                }
+                              }
                             />
                           </div>
-                        ) : null}
-                      </div>
+                        );
+                      })}
+                      {response ? (
+                        <div key={messages.length}>
+                          <MessageView
+                            user={user}
+                            message={response}
+                            loading={true}
+                            // isLatest={true}
+                            isLatestRetrieval={response.role === "retrieval"}
+                            readOnly={readOnly}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                  ) : (
-                    <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-                      <p>💬 Welcome</p>
-                      <p className="mt-8">
-                        <span className="font-bold">Dust</span> is a
-                        conversational assistant with context on your team's
-                        knowledge. For each interaction, relevant pieces of
-                        documents are retrieved from you entire team's knowledge
-                        and presented to the Assistant to help it answer your
-                        queries.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
+                    <p>💬 Welcome</p>
+                    <p className="mt-8">
+                      <span className="font-bold">Dust</span> is a
+                      conversational assistant with context on your team's
+                      knowledge. For each interaction, relevant pieces of
+                      documents are retrieved from you entire team's knowledge
+                      and presented to the Assistant to help it answer your
+                      queries.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
