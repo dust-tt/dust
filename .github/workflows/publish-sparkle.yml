@@ -1,4 +1,4 @@
-name: Deploy Sparkle
+name: Publish Sparkle
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
           cache-dependency-path: ./sparkle/package-lock.json
           registry-url: "https://registry.npmjs.org"
 
-      - working-directory: front
+      - working-directory: sparkle
         run: npm ci && npm run build && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
