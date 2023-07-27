@@ -180,6 +180,10 @@ export default function Home({
           property="og:image"
           content="/static/og_image.png"
         />
+        <link
+          rel="stylesheet"
+          href="https://use.typekit.net/lzv1deb.css"
+        ></link>
       </Head>
 
       <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 overflow-hidden">
@@ -188,10 +192,10 @@ export default function Home({
 
       <main className="z-10 mx-4">
         <div className="grid grid-cols-5 gap-1">
-          <div className="col-span-2 text-left">
+          <div className="col-span-2 text-left font-objektiv">
             <Logo className="mx-4 h-24 w-auto" />
           </div>
-          <div className="col-span-3 mr-2 mt-8 text-right">
+          <div className="col-span-3 mr-2 mt-8 text-right font-objektiv">
             <GoogleSignInButton
               onClick={() =>
                 signIn("google", {
@@ -207,7 +211,7 @@ export default function Home({
             </GoogleSignInButton>
 
             {!(router.query.signIn && router.query.signIn !== "github") && (
-              <div className="ml-32 mt-1 text-xs text-gray-500">
+              <div className="ml-32 mt-1 font-objektiv font-objektiv text-xs text-gray-500">
                 or{" "}
                 <span
                   className="cursor-pointer hover:font-bold"
@@ -225,8 +229,8 @@ export default function Home({
         </div>
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           <div className="grid grid-cols-1">
-            <p className="mt-16 text-6xl font-bold tracking-tighter text-gray-800">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent sm:text-6xl md:text-8xl">
+            <p className="mt-16 font-objektiv font-objektiv text-6xl font-bold tracking-tighter text-gray-800">
+              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text font-objektiv text-6xl text-8xl text-transparent sm:font-objektiv md:font-objektiv">
                 Secure AI assistant
               </span>{" "}
               <br />
@@ -237,7 +241,7 @@ export default function Home({
 
           <div className="h-10"></div>
 
-          <div className="grid grid-cols-1 gap-4 text-2xl text-gray-700 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 font-objektiv font-objektiv text-2xl text-gray-700 md:grid-cols-2 lg:grid-cols-3">
             <p className="rounded font-light lg:col-span-2">
               AI is changing the way we work and is a competitive advantage
               for&nbsp;smart teams that harness its&nbsp;potential effectively.
@@ -256,14 +260,16 @@ export default function Home({
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
                     GPT-4 and your internal knowledge,{" "}
-                    <span className="bg-brand text-white">combined</span>
+                    <span className="bg-brand font-objektiv text-white">
+                      combined
+                    </span>
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
                     Use Dust for unified and safe access to GPT-4.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
                     Connect Dust to your team’s data and break down knowledge
                     silos with always up-to-date answers in a chat UI.
                   </p>
@@ -285,17 +291,17 @@ export default function Home({
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
                     Get your teams{" "}
-                    <span className="bg-brand text-white">
+                    <span className="bg-brand font-objektiv text-white">
                       up to speed on AI
                     </span>
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
                     Let your team share prompts and conversations to ramp up on
                     the potential of generative AI for their tasks.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
                     Get suggestions from Dust on documentation updates and
                     improvements based on ongoing internal conversations and
                     decisions.
@@ -318,13 +324,13 @@ export default function Home({
             <div className="md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
                     Build your own{" "}
-                    <span className="bg-brand text-white">
+                    <span className="bg-brand font-objektiv text-white">
                       powerful workflows
                     </span>
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
                     Build custom Large Language Model apps on top of your
                     company data. Let Dust assist you with the details of
                     working with LLMs as you adapt them to your specific needs.
@@ -354,8 +360,8 @@ export default function Home({
           <div className="h-20"></div>
 
           <div className="grid grid-cols-1">
-            <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
+            <p className="font-objektiv text-4xl font-bold">
+              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text font-objektiv text-transparent">
                 Our product constitution
               </span>
             </p>
@@ -406,7 +412,7 @@ export default function Home({
           <div className="h-32"></div>
         </div>
 
-        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center text-sm text-gray-400">
+        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv font-objektiv text-sm text-gray-400">
           Dust © 2022-2023 –{" "}
           <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
             Legal
