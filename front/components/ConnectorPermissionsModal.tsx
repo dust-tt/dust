@@ -263,68 +263,52 @@ export default function ConnectorPermissionsModal({
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
               <Dialog.Panel className="relative max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pb-4 text-left shadow-xl transition-all sm:p-6 lg:w-1/2">
-                <div>
-                  <div className="flex flex-row justify-between">
-                    <div className="mt-3 flex-initial sm:mt-5">
-                      <Dialog.Title
-                        as="h3"
-                        className="text-xl font-semibold leading-6 text-gray-900"
-                      >
-                        {CONNECTOR_TYPE_TO_NAME[connector.type]} permissions
-                      </Dialog.Title>
-                      {synchronizedTimeAgo && (
-                        <span className="text-gray-500">
-                          Last synchronized ~{synchronizedTimeAgo} ago
-                        </span>
-                      )}
-                      <div className="mt-1 flex flex-initial">
-                        <Button
-                          onClick={() => {
-                            onEditPermission();
-                          }}
-                          label="Re-authorize"
-                          type="tertiary"
-                          size="xs"
-                          icon={Cog6ToothIcon}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      {Object.keys(updatedPermissionByInternalId).length ? (
-                        <div className="flex flex-row gap-1">
-                          <Button
-                            onClick={closeModal}
-                            label="Cancel"
-                            type="secondary"
-                            size="xs"
-                          />
-                          <Button
-                            onClick={save}
-                            label="Save"
-                            type="primary"
-                            size="xs"
-                          />
-                        </div>
-                      ) : (
-                        <div onClick={closeModal} className="cursor-pointer">
-                          <XCircleIcon className="h-6 w-6 text-gray-500" />
-                        </div>
-                      )}
+                <div className="flex items-start justify-between sm:mt-5">
+                  <div>
+                    <Dialog.Title
+                      as="h3"
+                      className="text-xl font-semibold leading-6 text-gray-900"
+                    >
+                      {CONNECTOR_TYPE_TO_NAME[connector.type]} permissions
+                    </Dialog.Title>
+                    {synchronizedTimeAgo && (
+                      <span className="text-gray-500">
+                        Last synchronized ~{synchronizedTimeAgo} ago
+                      </span>
+                    )}
+                    <div className="mt-4">
+                      <Button
+                        onClick={() => {
+                          onEditPermission();
+                        }}
+                        label="Re-authorize"
+                        type="tertiary"
+                        size="xs"
+                        icon={Cog6ToothIcon}
+                      />
                     </div>
                   </div>
-                </div>
-                <div className=" mt-8 flex flex-row">
-                  <span className="ml-2 text-sm text-gray-500">
-                    Automatically include new{" "}
-                    {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
-                  </span>
-                  <div className="flex-grow">
-                    <Checkbox
-                      className="ml-auto cursor-not-allowed"
-                      disabled={true}
-                      checked={true}
-                      onChange={() => null}
-                    />
+                  <div>
+                    {Object.keys(updatedPermissionByInternalId).length ? (
+                      <div className="flex gap-1">
+                        <Button
+                          onClick={closeModal}
+                          label="Cancel"
+                          type="secondary"
+                          size="xs"
+                        />
+                        <Button
+                          onClick={save}
+                          label="Save"
+                          type="primary"
+                          size="xs"
+                        />
+                      </div>
+                    ) : (
+                      <div onClick={closeModal} className="cursor-pointer">
+                        <XCircleIcon className="h-6 w-6 text-gray-500" />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
