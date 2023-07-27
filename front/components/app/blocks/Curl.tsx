@@ -205,6 +205,7 @@ export default function Curl({
                 )}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.headers_code}
                   language="js"
@@ -233,6 +234,7 @@ export default function Curl({
                 )}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.body_code}
                   language="js"

@@ -128,6 +128,7 @@ export default function Deploy({
                         Run as API Endpoint
                       </Dialog.Title>
                       <CodeEditor
+                        data-color-mode="light"
                         readOnly={true}
                         value={`$ ${cURLRequest(false)}`}
                         language="shell"

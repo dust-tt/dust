@@ -397,6 +397,7 @@ export default function DataSource({
                 }}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.query}
                   language="jinja2"

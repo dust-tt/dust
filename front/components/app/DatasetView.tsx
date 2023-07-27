@@ -548,6 +548,7 @@ export default function DatasetView({
                         >
                           {datasetTypes[datasetKeys.indexOf(k)] === "object" ? (
                             <CodeEditor
+                              data-color-mode="light"
                               readOnly={readOnly}
                               value={
                                 typeof d[k] === "string"

@@ -482,6 +482,7 @@ export default function LLM({
                 }}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.prompt}
                   language="jinja2"

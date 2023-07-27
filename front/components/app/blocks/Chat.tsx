@@ -358,6 +358,7 @@ export default function Chat({
                 }}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.instructions}
                   language="jinja2"
@@ -388,6 +389,7 @@ export default function Chat({
                 )}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.messages_code}
                   language="js"
@@ -439,6 +441,7 @@ export default function Chat({
                     )}
                   >
                     <CodeEditor
+                      data-color-mode="light"
                       readOnly={readOnly}
                       value={block.spec.functions_code}
                       language="js"

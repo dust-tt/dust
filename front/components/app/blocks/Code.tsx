@@ -83,6 +83,7 @@ export default function Code({
                 }}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.code}
                   language="js"
