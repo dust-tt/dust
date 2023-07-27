@@ -19,7 +19,8 @@ export function AppLayoutTitle({
       {onDelete && (
         <div className="flex flex-initial text-red-800">
           <Button
-            type="tertiary"
+            labelVisible={false}
+            type="secondaryWarning"
             label="Delete"
             icon={TrashIcon}
             onClick={onDelete}
