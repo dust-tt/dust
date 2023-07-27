@@ -163,7 +163,7 @@ export default function Home({
   return (
     <>
       <Head>
-        <title>Dust - Build Smarter Teams with AI</title>
+        <title>Dust - Smarter Teams with AI</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
         <meta
           id="meta-description"
@@ -227,10 +227,10 @@ export default function Home({
           <div className="grid grid-cols-1">
             <p className="mt-16 text-6xl font-bold tracking-tighter text-gray-800">
               <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent sm:text-6xl md:text-8xl">
-                Smarter Teams
+                Secure AI assistant
               </span>{" "}
               <br />
-              with safe generative&nbsp;AI
+              with your company’s&nbsp;knowledge
               <br />
             </p>
           </div>
@@ -239,16 +239,116 @@ export default function Home({
 
           <div className="grid grid-cols-1 gap-4 text-2xl text-gray-700 md:grid-cols-2 lg:grid-cols-3">
             <p className="rounded font-light lg:col-span-2">
-              AI is changing the way we work.
-              <br />
-              Harnessing its potential swiftly and effectively is
-              a&nbsp;key&nbsp;competitive advantage for&nbsp;any&nbsp;company.
+              AI is changing the way we work and is a competitive advantage
+              for&nbsp;smart teams that harness its&nbsp;potential effectively.
             </p>
-            <p className="rounded font-light lg:col-span-2 lg:pr-8">
-              With Dust, get all the might of large language models
-              in&nbsp;a&nbsp;user-friendly&nbsp;package, while&nbsp;ensuring
-              the&nbsp;safety of your&nbsp;company's&nbsp;data.
+            <p className="rounded font-light lg:col-span-2">
+              Dust is an AI assistant that safely brings the best large language
+              models, continuously updated company knowledge, powerful
+              collaboration applications, and an&nbsp;extensible platform
+              to&nbsp;your team’s&nbsp;fingertips.
             </p>
+          </div>
+        </div>
+
+        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          <div className="mt-32">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
+                <div className="mt-2 flex-initial">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    GPT-4 and your internal knowledge,{" "}
+                    <span className="bg-brand text-white">combined</span>
+                  </div>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Use Dust for unified and safe access to GPT-4.
+                  </p>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Connect Dust to your team’s data and break down knowledge
+                    silos with always up-to-date answers in a chat UI.
+                  </p>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-4">
+                  <img
+                    className="mx-auto w-[400px]"
+                    src="/static/landing_data_sources.png"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
+                <div className="mt-2 flex-initial">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Get your teams{" "}
+                    <span className="bg-brand text-white">
+                      up to speed on AI
+                    </span>
+                  </div>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Let your team share prompts and conversations to ramp up on
+                    the potential of generative AI for their tasks.
+                  </p>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Get suggestions from Dust on documentation updates and
+                    improvements based on ongoing internal conversations and
+                    decisions.
+                  </p>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[400px]"
+                    src="/static/landing_chat.png"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <div className="md:grid md:grid-cols-8">
+              <div className="flex flex-col md:col-span-4 md:pr-8">
+                <div className="mt-2 flex-initial">
+                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
+                    Build your own{" "}
+                    <span className="bg-brand text-white">
+                      powerful workflows
+                    </span>
+                  </div>
+                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
+                    Build custom Large Language Model apps on top of your
+                    company data. Let Dust assist you with the details of
+                    working with LLMs as you adapt them to your specific needs.
+                  </p>
+                  <div className="mt-6">
+                    <Link href="https://docs.dust.tt">
+                      <Button>
+                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                        View Documentation
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+                <div className="flex flex-1"></div>
+              </div>
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                  <img
+                    className="mx-auto w-[400px]"
+                    src="/static/landing_block.png"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="h-20"></div>
@@ -300,176 +400,6 @@ export default function Home({
                 We're building with large language models in mind from the
                 ground up, rather than sprinkling them here and&nbsp;there.
               </p>
-            </div>
-          </div>
-
-          <div className="h-20"></div>
-
-          <div className="grid grid-cols-1">
-            <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
-                The secret sauce
-              </span>
-            </p>
-
-            <div className="h-6"></div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <p className="text-2xl font-bold tracking-tighter text-gray-700 lg:col-span-2">
-                The experience{" "}
-                <span className="bg-brand text-white">
-                  to build the right product
-                </span>
-              </p>
-              <p className="rounded font-light lg:col-span-2">
-                Great things happen when technical skills, operational
-                excellence and passion for&nbsp;simple, empathetic user
-                experience come&nbsp;together.
-              </p>
-              <p className="rounded font-light lg:col-span-2">
-                Our team combines engineering, product and design experiences
-                from leading companies like{" "}
-                <b>
-                  <i>Alan</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Artefact</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Aurora Innovation</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>BlaBlaCar</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>OpenAI</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Stripe</i>
-                </b>{" "}
-                and&nbsp;
-                <b>
-                  <i>Withings</i>
-                </b>
-                .
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          <div className="mt-32">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Internal data{" "}
-                    <span className="bg-brand text-white">
-                      vectorized, not rasterized
-                    </span>
-                  </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Bring your internal data in context with fully managed
-                    semantic search engines to expose it to large language
-                    models apps.
-                  </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Safely connect Notion, Slack, etc… as continuously updated
-                    embeddings.
-                  </p>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-4">
-                  <img
-                    className="mx-auto w-[400px]"
-                    src="/static/landing_data_sources.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Smart{" "}
-                    <span className="bg-brand text-white">
-                      read and write tools
-                    </span>
-                  </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Disentangle how information is created and stored from where
-                    and how it's consumed by your team.
-                  </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Find tailored answers to your questions rather than a list
-                    of documents. Stay updated on projects in just as many
-                    bullet points as you have time for. Make your notes and
-                    memos crisp, compelling, and consistent with the team
-                    lexicon and tone of voice.
-                  </p>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
-                  <img
-                    className="mx-auto w-[400px]"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Your own{" "}
-                    <span className="bg-brand text-white">
-                      powerful workflows
-                    </span>
-                  </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Build custom Large Language Model apps with the models of
-                    your choice and your own data sources. Tweak, evaluate and
-                    maintain them in a visual interface that assists you with
-                    the intricacies of prompting and chaining stochastic models.
-                  </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Deploy your own apps internally either with a GUI or via
-                    API.
-                  </p>
-                  <div className="mt-6">
-                    <Link href="https://docs.dust.tt">
-                      <Button>
-                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                        View Documentation
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
-                  <img
-                    className="mx-auto w-[400px]"
-                    src="/static/landing_block.png"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
