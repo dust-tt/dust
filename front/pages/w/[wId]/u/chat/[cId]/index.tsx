@@ -1,14 +1,12 @@
 import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
+  Item,
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
-  ArrowRightCircleIcon,
-  CheckCircleIcon,
   ClipboardDocumentListIcon,
-  ClockIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -25,16 +23,12 @@ import remarkGfm from "remark-gfm";
 
 import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Spinner } from "@app/components/Spinner";
-import {
-  AppLayoutMenuChatHistory,
-  ChatHistory,
-} from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
 } from "@app/components/use/chat/ChatTimeRangePicker";
-import { AppLayoutChatTitle } from "@app/components/use/chat/ChatTitle";
 import {
   FeedbackHandler,
   MessageFeedback,
@@ -54,6 +48,7 @@ import {
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
+import { useChatSessions } from "@app/lib/swr";
 import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
@@ -603,13 +598,15 @@ export function MessageView({
 
 function ChatMenu({
   owner,
-  user,
+  sessions,
   onNewConversation,
 }: {
   owner: WorkspaceType;
-  user: UserType | null;
+  sessions: ChatSessionType[];
   onNewConversation: () => void;
 }) {
+  const router = useRouter();
+
   return (
     <div className="flex grow flex-col">
       <div className="flex flex-row px-2">
@@ -622,7 +619,31 @@ function ChatMenu({
         />
       </div>
       <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
-        <AppLayoutMenuChatHistory owner={owner} user={user} />
+        <div className="flex grow flex-col">
+          <div className="flex flex-row items-center">
+            <div className="px-8 py-4 text-xs uppercase text-slate-400">
+              Past Conversations
+            </div>
+          </div>
+          <div className="flex ">
+            <div className="flex w-full flex-col space-y-1">
+              {sessions.length === 0
+                ? null
+                : sessions.map((s) => {
+                    return (
+                      <Item
+                        key={s.sId}
+                        size="md"
+                        selected={router.query.cId === s.sId}
+                        label={s.title || ""}
+                        className="pl-8 pr-4"
+                        href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                      ></Item>
+                    );
+                  })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -644,18 +665,13 @@ export default function AppChat({
   const [title, setTitle] = useState<string>(
     chatSession.title || "New Conversation"
   );
-  const [smallScreen, setSmallScreen] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
-  const [titleState, setTitleState] = useState<
-    "new" | "writing" | "saving" | "saved"
-  >(chatSession.title ? "saved" : "new");
 
   useEffect(() => {
     setTitle(chatSession.title || "New Conversation");
     setMessages(chatSession.messages || []);
-    setTitleState(chatSession.title ? "saved" : "new");
     inputRef.current?.focus();
   }, [chatSession]);
 
@@ -672,7 +688,6 @@ export default function AppChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setSmallScreen(window.innerWidth < 640);
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -1071,14 +1086,10 @@ export default function AppChat({
 
     // Update title and save the conversation.
     void (async () => {
-      setTitleState("writing");
       const t = await updateTitle(title, m);
-      setTitleState("saving");
-      const r = await upsertChatSession(t);
-      if (r) {
-        setTitleState("saved");
-      }
+      await upsertChatSession(t);
     })();
+
     setLoading(false);
   };
 
@@ -1107,6 +1118,40 @@ export default function AppChat({
       })()
     );
   }
+
+  const { sessions, mutateChatSessions } = useChatSessions(owner, {
+    limit: 256,
+    offset: 0,
+    workspaceScope: false,
+  });
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
+    );
+    if (confirmed) {
+      // call the delete API
+      const res = await fetch(
+        `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cId: chatSession.sId }),
+        }
+      );
+      if (res.ok) {
+        void mutateChatSessions();
+      } else {
+        const data = await res.json();
+        window.alert(`Error deleting chat: ${data.error.message}`);
+      }
+      void handleNew();
+    }
+    return false;
+  };
+
   return (
     <AppLayout
       user={user}
@@ -1114,17 +1159,15 @@ export default function AppChat({
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
       navChildren={
-        <ChatMenu owner={owner} user={user} onNewConversation={handleNew} />
+        <ChatMenu
+          owner={owner}
+          sessions={sessions}
+          onNewConversation={handleNew}
+        />
       }
       titleChildren={
         messages.length > 0 && (
-          <AppLayoutChatTitle
-            owner={owner}
-            user={user}
-            session={chatSession}
-            title={title}
-            titleState={titleState}
-          />
+          <AppLayoutTitle title={title} onDelete={handleDelete} />
         )
       }
     >
