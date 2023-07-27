@@ -492,8 +492,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block cursor-pointer",
-        confirmed ? "text-action-800" : "hidden text-gray-400"
+        "absolute -top-1.5 right-0 mt-2 cursor-pointer cursor-pointer hover:text-action-600 group-hover:block",
+        confirmed ? "text-action-500" : "text-grey-400 hidden"
       )}
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
