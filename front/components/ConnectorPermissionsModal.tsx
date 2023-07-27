@@ -221,6 +221,10 @@ export default function ConnectorPermissionsModal({
     }, 300);
   }
 
+  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
+    connector.type
+  );
+
   async function save() {
     try {
       if (Object.keys(updatedPermissionByInternalId).length) {
@@ -369,26 +373,28 @@ export default function ConnectorPermissionsModal({
                 {!isDefaultNewResourcePermissionLoading &&
                 defaultNewResourcePermission ? (
                   <>
-                    <div className=" mt-8 flex flex-row">
-                      <span className="ml-2 text-sm text-gray-500">
-                        Automatically include new{" "}
-                        {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
-                      </span>
-                      <div className="flex-grow">
-                        <Checkbox
-                          className="ml-auto"
-                          onChange={(checked) => {
-                            setAutomaticallyIncludeNewResources(checked);
-                          }}
-                          checked={
-                            automaticallyIncludeNewResources ??
-                            ["read", "read_write"].includes(
-                              defaultNewResourcePermission
-                            )
-                          }
-                        />
+                    {canUpdatePermissions ? (
+                      <div className=" mt-8 flex flex-row">
+                        <span className="ml-2 text-sm text-gray-500">
+                          Automatically include new{" "}
+                          {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                        </span>
+                        <div className="flex-grow">
+                          <Checkbox
+                            className="ml-auto"
+                            onChange={(checked) => {
+                              setAutomaticallyIncludeNewResources(checked);
+                            }}
+                            checked={
+                              automaticallyIncludeNewResources ??
+                              ["read", "read_write"].includes(
+                                defaultNewResourcePermission
+                              )
+                            }
+                          />
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
                     <div>
                       <div className="mt-16">
                         <div className="px-2 text-sm text-gray-500">
@@ -401,9 +407,7 @@ export default function ConnectorPermissionsModal({
                       <PermissionTree
                         owner={owner}
                         dataSource={dataSource}
-                        canUpdatePermissions={PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-                          connector.type
-                        )}
+                        canUpdatePermissions={canUpdatePermissions}
                         onPermissionUpdate={({ internalId, permission }) => {
                           setUpdatedPermissionByInternalId((prev) => ({
                             ...prev,
