@@ -12,7 +12,11 @@ import {
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
-import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import {
+  Connector,
+  SlackChannel,
+  SlackConfiguration,
+} from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -203,7 +207,38 @@ const _webhookSlackAPIHandler = async (
           if (req.body.event?.thread_ts) {
             const thread_ts = req.body.event.thread_ts;
             const results = await Promise.all(
-              slackConfigurations.map((c) => {
+              slackConfigurations.map(async (c) => {
+                const slackChannel = await SlackChannel.findOne({
+                  where: {
+                    connectorId: c.connectorId,
+                    slackChannelId: channel,
+                  },
+                });
+                if (!slackChannel) {
+                  logger.error(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                    "Could not find Slack channel in DB"
+                  );
+                  return new Err(
+                    new Error(
+                      `Could not find Slack channel ${channel} in DB for connector ${c.connectorId}`
+                    )
+                  );
+                }
+                if (!["read", "read_write"].includes(slackChannel.permission)) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                      permission: slackChannel.permission,
+                    },
+                    "Ignoring message because channel permission is not read or read_write"
+                  );
+                  return new Ok(undefined);
+                }
                 return launchSlackSyncOneThreadWorkflow(
                   c.connectorId.toString(),
                   channel,
