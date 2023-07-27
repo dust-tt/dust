@@ -612,6 +612,7 @@ function ChatMenu({
       <div className="flex flex-row px-2">
         <div className="flex grow"></div>
         <Button
+          labelVisible={true}
           label="New Conversation"
           icon={ChatBubbleBottomCenterPlusIcon}
           onClick={onNewConversation}
@@ -1166,7 +1167,18 @@ export default function AppChat({
       }
       titleChildren={
         messages.length > 0 && (
-          <AppLayoutTitle title={title} onDelete={handleDelete} />
+          <AppLayoutTitle
+            title={title}
+            onDelete={handleDelete}
+            // action={{
+            //   label: "Share",
+            //   labelVisible: true,
+            //   icon: ArrowUpOnSquareIcon,
+            //   onAction: () => {
+            //     console.log("Share!");
+            //   },
+            // }}
+          />
         )
       }
     >
