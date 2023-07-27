@@ -350,7 +350,7 @@ export function RetrievalsView({
   }, [message.retrievals]);
 
   return !(message.retrievals && message.retrievals.length === 0) ? (
-    <div className="ml-10 flex flex-col">
+    <div className="ml-12 flex flex-col">
       <div className="flex flex-row items-center">
         <div
           className={classNames(
@@ -547,36 +547,39 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-3 flex flex-row items-start">
+        <div className="my-2 flex flex-row items-start">
           <div
             className={classNames(
-              "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-              "bg-gray-50"
+              "min-w-10 flex h-10 w-10 flex-initial rounded-xl",
+              "bg-structure-200"
             )}
           >
             {message.role === "assistant" ? (
-              <div className="flex flex-col items-center">
-                <div className="flex scale-50 pl-2">
-                  <PulseLogo animated={loading}></PulseLogo>
-                </div>
-              </div>
+              <Logo
+                shape="square"
+                type="colored-grey"
+                className={classNames(
+                  "mx-2 my-2 h-6 w-6",
+                  loading ? "animate-pulse" : ""
+                )}
+              ></Logo>
             ) : (
               <div className="flex">
                 {!readOnly && user?.image ? (
                   <img
-                    className="h-8 w-8 rounded-md"
+                    className="h-10 w-10 rounded-xl"
                     src={user?.image}
                     alt=""
                   />
                 ) : (
-                  <UserCircleIcon className="mx-1 my-1 h-6 w-6 text-gray-300"></UserCircleIcon>
+                  <UserCircleIcon className="mx-2 my-2 h-6 w-6 text-slate-500"></UserCircleIcon>
                 )}
               </div>
             )}
           </div>
           <div
             className={classNames(
-              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-2",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -1204,7 +1207,7 @@ export default function AppChat({
               title="Welcome to Assistant"
               icon={ChatBubbleBottomCenterTextIcon}
             />
-            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
               <div className="mb-8 text-lg font-bold">
                 Get started with{" "}
                 <Logo className="inline-block w-14 pb-1 pl-1"></Logo>
@@ -1317,7 +1320,7 @@ export default function AppChat({
                       title="Welcome to Assistant"
                       icon={ChatBubbleBottomCenterTextIcon}
                     />
-                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-3 drop-shadow-2xl">
+                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
                       <div className="mb-8 text-lg font-bold">
                         What can I use Assistant for?
                       </div>
