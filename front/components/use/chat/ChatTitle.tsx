@@ -16,7 +16,7 @@ export function AppLayoutChatTitle({
 }) {
   return (
     <div className="flex h-full flex-row items-center">
-      <div className="flex flex-initial font-bold">{title}</div>
+      <div className="px-10 lg:px-0 flex flex-initial font-bold truncate">{title}</div>
     </div>
   );
 }

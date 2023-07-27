@@ -1278,7 +1278,7 @@ export default function AppChat({
                           }}
                           autoFocus={true}
                         />
-                        <div className={classNames("-ml-8 flex flex-col z-10")}>
+                        <div className={classNames("z-10 -ml-8 flex flex-col")}>
                           {!loading ? (
                             <PaperAirplaneSolidIcon
                               className="my-auto h-5 w-5 cursor-pointer text-action-500"
