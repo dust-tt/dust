@@ -14,7 +14,10 @@ import {
   NotionPage,
   sequelize_conn,
 } from "@connectors/lib/models";
-import { nango_client } from "@connectors/lib/nango_client";
+import {
+  nango_client,
+  nangoDeleteConnection,
+} from "@connectors/lib/nango_client";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -99,9 +102,10 @@ export async function updateNotionConnector(
     } as ConnectorsAPIErrorResponse);
   }
 
+  const oldConnectionId = c.connectionId;
   const connectionRes = await nango_client().getConnection(
     NANGO_NOTION_CONNECTOR_ID,
-    c.connectionId,
+    oldConnectionId,
     false,
     false
   );
@@ -134,6 +138,15 @@ export async function updateNotionConnector(
   }
 
   await c.update({ connectionId });
+  nangoDeleteConnection(oldConnectionId, NANGO_NOTION_CONNECTOR_ID).catch(
+    (e) => {
+      logger.error(
+        { error: e, oldConnectionId },
+        "Error deleting old Nango connection"
+      );
+    }
+  );
+
   return new Ok(c.id.toString());
 }
 
