@@ -1,3 +1,4 @@
+import { Item } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
 import {
   ChevronDownIcon,
@@ -12,7 +13,78 @@ import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { ConversationHeader } from "./ConversationHeader";
+export function AppLayoutMenuChatHistory({
+  owner,
+  user,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+}) {
+  const router = useRouter();
+  const { sessions, mutateChatSessions } = useChatSessions(owner, {
+    limit: 256,
+    offset: 0,
+    workspaceScope: false,
+  });
+
+  // const handleTrashClick = async (
+  //   event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+  //   chatSession: ChatSessionType
+  // ) => {
+  //   event.stopPropagation();
+  //   const confirmed = window.confirm(
+  //     `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
+  //   );
+  //   if (confirmed) {
+  //     // call the delete API
+  //     const res = await fetch(
+  //       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+  //       {
+  //         method: "DELETE",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({ cId: chatSession.sId }),
+  //       }
+  //     );
+  //     if (res.ok) {
+  //       void mutateChatSessions();
+  //     } else {
+  //       const data = await res.json();
+  //       window.alert(`Error deleting chat: ${data.error.message}`);
+  //     }
+  //   }
+  //   return false;
+  // };
+
+  return (
+    <div className="flex grow flex-col">
+      <div className="flex flex-row items-center">
+        <div className="px-8 py-4 text-xs uppercase text-slate-400">
+          Past Conversations
+        </div>
+      </div>
+      <div className="flex ">
+        <div className="flex w-full flex-col space-y-1">
+          {sessions.length === 0
+            ? null
+            : sessions.map((s, i) => {
+                return (
+                  <Item
+                    key={s.sId}
+                    size="md"
+                    selected={router.query.cId === s.sId}
+                    label={s.title || ""}
+                    className="pl-8 pr-4"
+                    href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                  ></Item>
+                );
+              })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ChatHistory({
   owner,

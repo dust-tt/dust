@@ -1,7 +1,10 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import MainTab from "@app/components/app/MainTab";
-import AppLayout from "@app/components/AppLayout";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
@@ -82,20 +85,20 @@ export default function Specification({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout user={user} owner={owner} app={app} gaTrackingId={gaTrackingId}>
-      <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab app={app} currentTab="Specification" owner={owner} />
-        </div>
-        <div className="w-max-4xl mx-auto">
-          <div className="flex flex-auto">
-            <div className="my-8 flex flex-auto flex-col">
-              <div className="font-mono whitespace-pre text-[13px] text-gray-700">
-                {specification}
-              </div>
-            </div>
-          </div>
-        </div>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "specification" }),
+      })}
+    >
+      <div className="font-mono whitespace-pre text-[13px] text-gray-700">
+        {specification}
       </div>
     </AppLayout>
   );

@@ -128,6 +128,7 @@ export default function Deploy({
                         Run as API Endpoint
                       </Dialog.Title>
                       <CodeEditor
+                        data-color-mode="light"
                         readOnly={true}
                         value={`$ ${cURLRequest(false)}`}
                         language="shell"
@@ -150,7 +151,7 @@ export default function Deploy({
                                 href={`/w/${owner.sId}/a`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                  "text-violet-600"
+                                  "text-action-600"
                                 )}
                               >
                                 Manage your API keys
@@ -163,7 +164,7 @@ export default function Deploy({
                                 href={`/w/${owner.sId}/a`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                  "text-violet-600"
+                                  "text-action-600"
                                 )}
                               >
                                 Create an API key

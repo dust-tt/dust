@@ -106,6 +106,7 @@ export function While({
                 )}
               >
                 <CodeEditor
+                  data-color-mode="light"
                   readOnly={readOnly}
                   value={block.spec.condition_code}
                   language="js"

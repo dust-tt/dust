@@ -1,3 +1,4 @@
+import { Logo } from "@dust-tt/sparkle";
 import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
@@ -10,7 +11,6 @@ import p5Types from "p5";
 import { ParsedUrlQuery } from "querystring";
 
 import { Button, GoogleSignInButton } from "@app/components/Button";
-import { Logo } from "@app/components/Logo";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -28,7 +28,6 @@ export const getServerSideProps: GetServerSideProps<{
   const user = await getUserFromSession(session);
 
   if (user && user.workspaces.length > 0) {
-    // TODO(spolu): persist latest workspace in session?
     let url = `/w/${user.workspaces[0].sId}`;
 
     const m = await getUserMetadata(user, "sticky_path");
@@ -188,52 +187,9 @@ export default function Home({
       </div>
 
       <main className="z-10 mx-4">
-        <div className="relative isolate -mx-4 -mb-2 flex items-center gap-x-6 overflow-hidden bg-gray-50 px-6 py-2.5 sm:px-3.5 sm:before:flex-1">
-          <div
-            className="absolute left-[max(-7rem,calc(50%-52rem))] top-1/2 -z-10 -translate-y-1/2 transform-gpu blur-2xl"
-            aria-hidden="true"
-          >
-            <div
-              className="aspect-[577/310] w-[36.0625rem] bg-gradient-to-r from-[#ff80b5] to-[#9089fc] opacity-30"
-              style={{
-                clipPath:
-                  "polygon(74.8% 41.9%, 97.2% 73.2%, 100% 34.9%, 92.5% 0.4%, 87.5% 0%, 75% 28.6%, 58.5% 54.6%, 50.1% 56.8%, 46.9% 44%, 48.3% 17.4%, 24.7% 53.9%, 0% 27.9%, 11.9% 74.2%, 24.9% 54.1%, 68.6% 100%, 74.8% 41.9%)",
-              }}
-            ></div>
-          </div>
-          <div
-            className="absolute left-[max(45rem,calc(50%+8rem))] top-1/2 -z-10 -translate-y-1/2 transform-gpu blur-2xl"
-            aria-hidden="true"
-          >
-            <div
-              className="aspect-[577/310] w-[36.0625rem] bg-gradient-to-r from-[#ff80b5] to-[#9089fc] opacity-30"
-              style={{
-                clipPath:
-                  "polygon(74.8% 41.9%, 97.2% 73.2%, 100% 34.9%, 92.5% 0.4%, 87.5% 0%, 75% 28.6%, 58.5% 54.6%, 50.1% 56.8%, 46.9% 44%, 48.3% 17.4%, 24.7% 53.9%, 0% 27.9%, 11.9% 74.2%, 24.9% 54.1%, 68.6% 100%, 74.8% 41.9%)",
-              }}
-            ></div>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <p className="text-center text-sm leading-6 text-gray-900">
-              <strong className="font-semibold">
-                🥳 Announcing our seed round
-              </strong>{" "}
-              led by Sequoia&nbsp;Capital
-              <a
-                href="https://blog.dust.tt/2023-06-27-announcing-seed"
-                className="ml-2 inline-block flex-none rounded-full bg-gray-900 px-3.5 py-1 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
-                target="_blank"
-              >
-                Read more
-              </a>
-            </p>
-          </div>
-          <div className="flex flex-1 justify-end"></div>
-        </div>
-
         <div className="grid grid-cols-5 gap-1">
           <div className="col-span-2 text-left">
-            <Logo />
+            <Logo className="mx-4 h-24 w-auto" />
           </div>
           <div className="col-span-3 mr-2 mt-8 text-right">
             <GoogleSignInButton
@@ -269,8 +225,8 @@ export default function Home({
         </div>
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           <div className="grid grid-cols-1">
-            <p className="mt-32 text-6xl font-bold tracking-tighter text-gray-800 sm:mt-16">
-              <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent sm:text-6xl md:text-8xl">
+            <p className="mt-16 text-6xl font-bold tracking-tighter text-gray-800">
+              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent sm:text-6xl md:text-8xl">
                 Smarter Teams
               </span>{" "}
               <br />
@@ -299,7 +255,7 @@ export default function Home({
 
           <div className="grid grid-cols-1">
             <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
                 Our product constitution
               </span>
             </p>
@@ -351,7 +307,7 @@ export default function Home({
 
           <div className="grid grid-cols-1">
             <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
                 The secret sauce
               </span>
             </p>
@@ -361,7 +317,7 @@ export default function Home({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <p className="text-2xl font-bold tracking-tighter text-gray-700 lg:col-span-2">
                 The experience{" "}
-                <span className="bg-green-400 text-white">
+                <span className="bg-brand text-white">
                   to build the right product
                 </span>
               </p>
@@ -413,7 +369,7 @@ export default function Home({
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Internal data{" "}
-                    <span className="bg-green-400 text-white">
+                    <span className="bg-brand text-white">
                       vectorized, not rasterized
                     </span>
                   </div>
@@ -446,7 +402,7 @@ export default function Home({
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Smart{" "}
-                    <span className="bg-green-400 text-white">
+                    <span className="bg-brand text-white">
                       read and write tools
                     </span>
                   </div>
@@ -481,7 +437,7 @@ export default function Home({
                 <div className="mt-2 flex-initial">
                   <div className="text-2xl font-bold tracking-tighter text-gray-700">
                     Your own{" "}
-                    <span className="bg-green-400 text-white">
+                    <span className="bg-brand text-white">
                       powerful workflows
                     </span>
                   </div>

@@ -5,10 +5,13 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import MainTab from "@app/components/app/MainTab";
 import SpecRunView from "@app/components/app/SpecRunView";
-import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -135,89 +138,93 @@ export default function AppRun({
   };
 
   return (
-    <AppLayout user={user} app={app} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "runs" }),
+      })}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab app={app} currentTab="Specification" owner={owner} />
-        </div>
-        <div className="mx-auto mt-4 w-full max-w-5xl">
-          <div className="mx-2 sm:mx-4 lg:mx-8">
-            <div className="mb-4 mt-6 flex flex-row items-center justify-between space-x-2 text-sm">
-              <div className="flex flex-col items-start">
-                <div className="flex items-center">
-                  <span>
-                    Viewing run:{" "}
-                    <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
-                      {run.run_id}
-                    </span>
-                    <span className="font-mono ml-1 text-gray-600 sm:hidden">
-                      {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
-                    </span>
-                  </span>
-                </div>
-                {run.app_hash ? (
-                  <div className="flex items-center text-xs italic text-gray-400">
-                    <span>
-                      Specification Hash:{" "}
-                      <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
-                        {run.app_hash}
-                      </span>
-                      <span className="font-mono ml-1 text-gray-400 sm:hidden">
-                        {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
-                      </span>
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <p className="flex items-center text-xs text-gray-400">
-                {savedRunId !== run.run_id ? (
-                  <>
-                    {" "}
-                    <ActionButton onClick={restore} disabled={isLoading}>
-                      <ArrowLeftCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                      {isLoading ? "Restoring..." : "Restore"}
-                    </ActionButton>
-                  </>
-                ) : (
-                  <>
-                    {" "}
-                    <ActionButton disabled={true}>
-                      <CheckCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                      Latest version
-                    </ActionButton>
-                  </>
-                )}
-              </p>
+        <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
+          <div className="flex flex-col items-start">
+            <div className="flex items-center">
+              <span>
+                Viewing run:{" "}
+                <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
+                  {run.run_id}
+                </span>
+                <span className="font-mono ml-1 text-gray-600 sm:hidden">
+                  {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
+                </span>
+              </span>
             </div>
+            {run.app_hash ? (
+              <div className="flex items-center text-xs italic text-gray-400">
+                <span>
+                  Specification Hash:{" "}
+                  <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
+                    {run.app_hash}
+                  </span>
+                  <span className="font-mono ml-1 text-gray-400 sm:hidden">
+                    {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
+                  </span>
+                </span>
+              </div>
+            ) : null}
           </div>
-          <div className="mx-2 flex flex-auto flex-col sm:mx-4 lg:mx-8">
-            <SpecRunView
-              owner={owner}
-              app={app}
-              readOnly={true}
-              spec={spec}
-              run={run}
-              runRequested={false}
-              handleSetBlock={() => {
-                // no-op
-              }}
-              handleDeleteBlock={() => {
-                // no-op
-              }}
-              handleMoveBlockUp={() => {
-                // no-op
-              }}
-              handleMoveBlockDown={() => {
-                // no-op
-              }}
-              handleNewBlock={() => {
-                // no-op
-              }}
-            />
-          </div>
+          <p className="flex items-center text-xs text-gray-400">
+            {savedRunId !== run.run_id ? (
+              <>
+                {" "}
+                <ActionButton onClick={restore} disabled={isLoading}>
+                  <ArrowLeftCircleIcon className="-ml-1 mr-1 h-5 w-5" />
+                  {isLoading ? "Restoring..." : "Restore"}
+                </ActionButton>
+              </>
+            ) : (
+              <>
+                {" "}
+                <ActionButton disabled={true}>
+                  <CheckCircleIcon className="-ml-1 mr-1 h-5 w-5" />
+                  Latest version
+                </ActionButton>
+              </>
+            )}
+          </p>
         </div>
-        <div className="mt-4"></div>
       </div>
+      <div className="mt-2 flex flex-auto flex-col">
+        <SpecRunView
+          owner={owner}
+          app={app}
+          readOnly={true}
+          spec={spec}
+          run={run}
+          runRequested={false}
+          handleSetBlock={() => {
+            // no-op
+          }}
+          handleDeleteBlock={() => {
+            // no-op
+          }}
+          handleMoveBlockUp={() => {
+            // no-op
+          }}
+          handleMoveBlockDown={() => {
+            // no-op
+          }}
+          handleNewBlock={() => {
+            // no-op
+          }}
+        />
+      </div>
+      <div className="mt-4"></div>
     </AppLayout>
   );
 }

@@ -1,4 +1,5 @@
 import React, { ComponentType } from "react";
+
 import { Icon } from "./Icon";
 
 interface IconProps {
@@ -8,12 +9,14 @@ interface IconProps {
 }
 
 export function PageHeader({ title, icon, description }: IconProps) {
-  const iconClasses = "w-8 h-8 text-brand";
-  const titleClasses = "text-2xl font-bold text-element-800 self-stretch";
+  const iconClasses = "s-w-8 s-h-8 s-text-brand";
+  const titleClasses =
+    "s-text-2xl s-font-bold s-text-element-800 s-self-stretch";
   const descriptionClasses =
-    "text-sm font-normal text-element-700 self-stretch";
+    "s-text-sm s-font-normal s-text-element-700 s-self-stretch";
+
   return (
-    <div className="inline-flex shrink grow basis-0 flex-col items-start justify-start gap-1">
+    <div className="s-inline-flex s-shrink s-grow s-basis-0 s-flex-col s-items-start s-justify-start s-gap-1">
       <Icon IconComponent={icon} className={iconClasses} />
       <div className={titleClasses}>{title}</div>
       <div className={descriptionClasses}>{description}</div>

@@ -1,9 +1,9 @@
+import { DocumentTextIcon } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import {
   ChatBubbleLeftRightIcon,
   CircleStackIcon,
   Cog6ToothIcon,
-  DocumentTextIcon,
   FolderIcon,
 } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";

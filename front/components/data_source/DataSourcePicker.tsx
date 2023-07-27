@@ -71,7 +71,7 @@ export default function DataSourcePicker({
         {readOnly ? (
           name ? (
             <Link href={`/${owner.sId}/ds/${name}`}>
-              <div className="text-sm font-bold text-violet-600">{name}</div>
+              <div className="text-sm font-bold text-action-500">{name}</div>
             </Link>
           ) : (
             "No DataSource"
@@ -92,7 +92,7 @@ export default function DataSourcePicker({
                 {name && name.length > 0 ? (
                   <>
                     <Link href={`/w/${owner.sId}/ds/${name}`}>
-                      <div className="mr-1 text-sm font-bold text-violet-600">
+                      <div className="mr-1 text-sm font-bold text-action-500">
                         {name}
                       </div>
                     </Link>

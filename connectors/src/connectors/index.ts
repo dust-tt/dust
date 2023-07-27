@@ -21,12 +21,14 @@ import {
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
   stopNotionConnector,
+  updateNotionConnector,
 } from "@connectors/connectors/notion";
 import {
   cleanupSlackConnector,
   createSlackConnector,
   retrieveSlackConnectorPermissions,
   setSlackConnectorPermissions,
+  updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
@@ -34,6 +36,7 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import {
   ConnectorPermission,
   ConnectorResource,
@@ -52,6 +55,25 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   notion: createNotionConnector,
   github: createGithubConnector,
   google_drive: createGoogleDriveConnector,
+};
+
+type ConnectorUpdater = (
+  connectorId: ModelId,
+  connectionId: string
+) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
+
+export const UPDATE_CONNECTOR_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorUpdater
+> = {
+  slack: updateSlackConnector,
+  notion: updateNotionConnector,
+  github: async (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
+  google_drive: async (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
 };
 
 type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;

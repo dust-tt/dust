@@ -5,9 +5,12 @@ import Router from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
-import MainTab from "@app/components/app/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { ActionButton } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -142,44 +145,50 @@ export default function ViewDatasetView({
   };
 
   return (
-    <AppLayout user={user} owner={owner} app={app} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "datasets" }),
+      })}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab app={app} currentTab="Datasets" owner={owner} />
-        </div>
-        <div className="mx-auto mt-4 w-full max-w-5xl">
-          <div className="flex flex-1">
-            <div className="mb-8 w-full px-4 sm:px-6">
-              <div className="mt-4 space-y-6 divide-y divide-gray-200">
-                <DatasetView
-                  readOnly={readOnly}
-                  datasets={[] as DatasetType[]}
-                  dataset={updatedDataset}
-                  onUpdate={(
-                    initializing: boolean,
-                    valid: boolean,
-                    currentDatasetInEditor: DatasetType
-                  ) => {
-                    if (!readOnly) {
-                      onUpdate(initializing, valid, currentDatasetInEditor);
-                    }
-                  }}
-                  nameDisabled={true}
-                />
+        <div className="flex flex-1">
+          <div className="mb-8 w-full">
+            <div className="space-y-6 divide-y divide-gray-200">
+              <DatasetView
+                readOnly={readOnly}
+                datasets={[] as DatasetType[]}
+                dataset={updatedDataset}
+                onUpdate={(
+                  initializing: boolean,
+                  valid: boolean,
+                  currentDatasetInEditor: DatasetType
+                ) => {
+                  if (!readOnly) {
+                    onUpdate(initializing, valid, currentDatasetInEditor);
+                  }
+                }}
+                nameDisabled={true}
+              />
 
-                {readOnly ? null : (
-                  <div className="flex flex-row pt-6">
-                    <div className="flex-initial">
-                      <ActionButton
-                        disabled={disable || loading}
-                        onClick={() => handleSubmit()}
-                      >
-                        Update
-                      </ActionButton>
-                    </div>
+              {readOnly ? null : (
+                <div className="flex flex-row pt-6">
+                  <div className="flex-initial">
+                    <ActionButton
+                      disabled={disable || loading}
+                      onClick={() => handleSubmit()}
+                    >
+                      Update
+                    </ActionButton>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

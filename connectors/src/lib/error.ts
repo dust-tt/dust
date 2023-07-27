@@ -4,6 +4,8 @@ export type APIErrorType =
   | "invalid_request_error"
   | "connector_not_found"
   | "connector_configuration_not_found"
+  | "connector_update_error"
+  | "connector_update_unauthorized"
   | "not_found";
 
 export type APIError = {

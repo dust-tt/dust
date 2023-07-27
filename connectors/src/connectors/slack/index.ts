@@ -18,6 +18,7 @@ import {
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import {
   ConnectorPermission,
@@ -105,6 +106,65 @@ export async function createSlackConnector(
   }
 
   return new Ok(res.value.id.toString());
+}
+
+export async function updateSlackConnector(
+  connectorId: ModelId,
+  connectionId: string
+): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+  if (!NANGO_SLACK_CONNECTOR_ID) {
+    throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err({
+      error: {
+        message: "Connector not found",
+        type: "connector_not_found",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  const currentSlackConfig = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!currentSlackConfig) {
+    logger.error({ connectorId }, "Slack configuration not found");
+    return new Err({
+      error: {
+        message: "Slack configuration not found",
+        type: "connector_not_found",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  const newConnectionRes = await nango_client().getConnection(
+    NANGO_SLACK_CONNECTOR_ID,
+    connectionId,
+    false,
+    false
+  );
+  const newTeamId = newConnectionRes?.team?.id || null;
+
+  if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
+    return new Err({
+      error: {
+        type: "connector_update_unauthorized",
+        message: "Cannot change the Slack Team of a Data Source",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  await c.update({ connectionId });
+  return new Ok(c.id.toString());
 }
 
 export async function cleanupSlackConnector(

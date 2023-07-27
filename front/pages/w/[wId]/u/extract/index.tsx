@@ -12,9 +12,9 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
-import MainTab from "@app/components/use/MainTab";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useEventSchemas } from "@app/lib/swr";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -62,18 +62,14 @@ export default function AppExtractEvents({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      app={undefined}
-      dataSource={undefined}
+      topNavigationCurrent="lab"
+      subNavigation={subNavigationLab({ owner, current: "extract" })}
     >
       <div className="flex h-full flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Extract" owner={owner} />
-        </div>
-
-        <div className="container mx-auto my-10 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div className="container">
           {readOnly && (
             <div
-              className="mb-10 rounded-md border-l-4 border-violet-500 bg-violet-100 p-4 text-violet-700"
+              className="mb-10 rounded-md border-l-4 border-action-500 bg-action-100 p-4 text-action-700"
               role="alert"
             >
               <p className="font-bold">Read-only view</p>

@@ -4,9 +4,9 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
 import { mutate } from "swr";
 
-import MainTab from "@app/components/admin/MainTab";
-import AppLayout from "@app/components/AppLayout";
 import { Button } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -189,14 +189,17 @@ export default function WorkspaceAdmin({
   };
 
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+    >
       <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab currentTab="Workspace" owner={owner} />
-        </div>
         <div className="flex flex-1">
-          <div className="mx-auto max-w-4xl px-6">
-            <div className="mt-8 space-y-4 divide-y divide-gray-200">
+          <div className="">
+            <div className="space-y-4 divide-y divide-gray-200">
               <div>
                 <h3 className="text-base font-medium leading-6 text-gray-900">
                   Workspace settings
@@ -228,7 +231,7 @@ export default function WorkspaceAdmin({
                             "block w-full min-w-0 flex-1 rounded-md text-sm",
                             workspaceNameError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                              : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                           )}
                           value={workspaceName}
                           onChange={(e) => setWorkspaceName(e.target.value)}
@@ -265,7 +268,7 @@ export default function WorkspaceAdmin({
                             "block w-full min-w-0 flex-1 rounded-md text-sm",
                             allowedDomainError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                              : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                           )}
                           value={allowedDomain || ""}
                           onChange={(e) => {
@@ -287,7 +290,7 @@ export default function WorkspaceAdmin({
                             <span className="block text-sm font-medium text-gray-700">
                               Invite link:{" "}
                               <a
-                                className="ml-1 text-violet-600"
+                                className="ml-1 text-action-600"
                                 href={inviteLink}
                               >
                                 {inviteLink}
@@ -310,11 +313,11 @@ export default function WorkspaceAdmin({
                     </p>
                   </div>
                   <div className="mt-4">
-                    <div className="mt-2 flex items-center">
+                    <div className="mt-4 flex items-center">
                       <input
                         name="disableLabs"
                         type="checkbox"
-                        className="h-4 w-4 cursor-pointer border-gray-300 text-violet-600 focus:ring-violet-500"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
                         checked={disableLabs}
                         onChange={(e) => setDisableLabs(e.target.checked)}
                       />
@@ -367,7 +370,7 @@ export default function WorkspaceAdmin({
                           "block w-full min-w-0 flex-1 rounded-md text-sm",
                           allowedDomainError
                             ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                            : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                            : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                         )}
                         value={inviteEmail || ""}
                         onChange={(e) => {
@@ -541,7 +544,7 @@ export default function WorkspaceAdmin({
                                                 {selected ? (
                                                   <span
                                                     className={classNames(
-                                                      "text-violet-600",
+                                                      "text-action-600",
                                                       "absolute inset-y-0 right-0 flex items-center pr-4"
                                                     )}
                                                   >

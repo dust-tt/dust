@@ -9,11 +9,14 @@ import { useRef, useState } from "react";
 import { mutate } from "swr";
 
 import Deploy from "@app/components/app/Deploy";
-import MainTab from "@app/components/app/MainTab";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
-import AppLayout from "@app/components/AppLayout";
 import { ActionButton, Button } from "@app/components/Button";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  subNavigationAdmin,
+  subNavigationApp,
+} from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -295,167 +298,169 @@ export default function AppView({
   };
 
   return (
-    <AppLayout user={user} owner={owner} app={app} gaTrackingId={gaTrackingId}>
-      <div className="flex flex-col">
-        <div className="mt-2 flex flex-initial">
-          <MainTab app={app} currentTab="Specification" owner={owner} />
-        </div>
-        <div className="mx-auto mt-4 flex w-full max-w-5xl flex-auto">
-          <div className="mx-2 flex flex-auto flex-col sm:mx-4 lg:mx-8">
-            <div className="my-4 flex flex-auto flex-row items-center space-x-2">
-              <div className="flex-initial">
-                <NewBlock
-                  disabled={readOnly}
-                  onClick={async (blockType) => {
-                    await handleNewBlock(null, blockType);
-                  }}
-                  spec={spec}
-                  direction="down"
-                  small={false}
-                />
-              </div>
-              <div className="flex-initial">
-                <ActionButton
-                  disabled={
-                    !runnable || runRequested || run?.status.run == "running"
-                  }
-                  onClick={() => handleRun()}
-                >
-                  <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                  {runRequested || run?.status.run == "running"
-                    ? "Running"
-                    : "Run"}
-                </ActionButton>
-              </div>
-              {runError ? (
-                <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
-                  {(() => {
-                    switch (runError.code) {
-                      case "invalid_specification_error":
-                        return `Specification error: ${runError.message}`;
-                      default:
-                        return `Error: ${runError.message}`;
-                    }
-                  })()}
-                </div>
-              ) : null}
-              {readOnly && user ? (
-                <div className="flex-initial">
-                  <Link href={`/w/${owner.sId}/a/${app.sId}/clone`}>
-                    <ActionButton>
-                      <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                      Clone
-                    </ActionButton>
-                  </Link>
-                </div>
-              ) : null}
-              <div className="flex-1"></div>
-              {!readOnly ? (
-                <div className="hidden flex-initial sm:block">
-                  <Link
-                    href="https://docs.dust.tt"
-                    target="_blank"
-                    className="mr-2"
-                  >
-                    <Button>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      Documentation
-                    </Button>
-                  </Link>
-                </div>
-              ) : null}
-              {!readOnly && run ? (
-                <div className="flex-initial">
-                  <Deploy
-                    disabled={readOnly || !(run?.status.run == "succeeded")}
-                    owner={owner}
-                    app={app}
-                    run={run}
-                    spec={spec}
-                    url={url}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <SpecRunView
-              owner={owner}
-              app={app}
-              readOnly={readOnly}
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "developers",
+        subMenuLabel: app.name,
+        subMenu: subNavigationApp({ owner, app, current: "specification" }),
+      })}
+    >
+      <div className="flex flex-auto flex-col">
+        <div className="mb-4 flex flex-auto flex-row items-center space-x-2">
+          <div className="flex-initial">
+            <NewBlock
+              disabled={readOnly}
+              onClick={async (blockType) => {
+                await handleNewBlock(null, blockType);
+              }}
               spec={spec}
-              run={run}
-              runRequested={runRequested}
-              handleSetBlock={handleSetBlock}
-              handleDeleteBlock={handleDeleteBlock}
-              handleMoveBlockUp={handleMoveBlockUp}
-              handleMoveBlockDown={handleMoveBlockDown}
-              handleNewBlock={handleNewBlock}
+              direction="down"
+              small={false}
             />
+          </div>
+          <div className="flex-initial">
+            <ActionButton
+              disabled={
+                !runnable || runRequested || run?.status.run == "running"
+              }
+              onClick={() => handleRun()}
+            >
+              <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
+              {runRequested || run?.status.run == "running" ? "Running" : "Run"}
+            </ActionButton>
+          </div>
+          {runError ? (
+            <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
+              {(() => {
+                switch (runError.code) {
+                  case "invalid_specification_error":
+                    return `Specification error: ${runError.message}`;
+                  default:
+                    return `Error: ${runError.message}`;
+                }
+              })()}
+            </div>
+          ) : null}
+          {readOnly && user ? (
+            <div className="flex-initial">
+              <Link href={`/w/${owner.sId}/a/${app.sId}/clone`}>
+                <ActionButton>
+                  <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
+                  Clone
+                </ActionButton>
+              </Link>
+            </div>
+          ) : null}
+          <div className="flex-1"></div>
+          {!readOnly ? (
+            <div className="hidden flex-initial sm:block">
+              <Link
+                href="https://docs.dust.tt"
+                target="_blank"
+                className="mr-2"
+              >
+                <Button>
+                  <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                  Documentation
+                </Button>
+              </Link>
+            </div>
+          ) : null}
+          {!readOnly && run ? (
+            <div className="flex-initial">
+              <Deploy
+                disabled={readOnly || !(run?.status.run == "succeeded")}
+                owner={owner}
+                app={app}
+                run={run}
+                spec={spec}
+                url={url}
+              />
+            </div>
+          ) : null}
+        </div>
 
-            {spec.length == 0 ? (
-              <div className="mx-auto mt-8 text-sm text-gray-400">
-                <p className="">Welcome to your new Dust app.</p>
-                <p className="mt-4">To get started:</p>
-                <p className="mt-2">
-                  <Link
-                    href="https://docs.dust.tt/quickstart"
-                    target="_blank"
-                    className="mr-2"
-                  >
-                    <Button>
-                      <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                      Follow the QuickStart Guide
-                    </Button>
-                  </Link>
-                </p>
-                <p className="mt-2">...or add your first block!</p>
-              </div>
-            ) : null}
+        <SpecRunView
+          owner={owner}
+          app={app}
+          readOnly={readOnly}
+          spec={spec}
+          run={run}
+          runRequested={runRequested}
+          handleSetBlock={handleSetBlock}
+          handleDeleteBlock={handleDeleteBlock}
+          handleMoveBlockUp={handleMoveBlockUp}
+          handleMoveBlockDown={handleMoveBlockDown}
+          handleNewBlock={handleNewBlock}
+        />
 
-            {spec.length > 2 && !readOnly ? (
-              <div className="my-4 flex flex-row items-center space-x-2">
-                <div className="flex">
-                  <NewBlock
-                    disabled={readOnly}
-                    onClick={async (blockType) => {
-                      await handleNewBlock(null, blockType);
-                    }}
-                    spec={spec}
-                    direction="up"
-                    small={false}
-                  />
-                </div>
-                <div className="flex">
-                  <ActionButton
-                    disabled={
-                      !runnable || runRequested || run?.status.run == "running"
-                    }
-                    onClick={() => handleRun()}
-                  >
-                    <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                    {runRequested || run?.status.run == "running"
-                      ? "Running"
-                      : "Run"}
-                  </ActionButton>
-                </div>
-                {runError ? (
-                  <div className="flex px-2 text-sm text-sm font-bold text-red-400">
-                    {(() => {
-                      switch (runError.code) {
-                        case "invalid_specification_error":
-                          return `Specification error: ${runError.message}`;
-                        default:
-                          return `Error: ${runError.message}`;
-                      }
-                    })()}
-                  </div>
-                ) : null}
+        {spec.length == 0 ? (
+          <div className="mx-auto mt-8 text-sm text-gray-400">
+            <p className="">Welcome to your new Dust app.</p>
+            <p className="mt-4">To get started:</p>
+            <p className="mt-2">
+              <Link
+                href="https://docs.dust.tt/quickstart"
+                target="_blank"
+                className="mr-2"
+              >
+                <Button>
+                  <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                  Follow the QuickStart Guide
+                </Button>
+              </Link>
+            </p>
+            <p className="mt-2">...or add your first block!</p>
+          </div>
+        ) : null}
+
+        {spec.length > 2 && !readOnly ? (
+          <div className="my-4 flex flex-row items-center space-x-2">
+            <div className="flex">
+              <NewBlock
+                disabled={readOnly}
+                onClick={async (blockType) => {
+                  await handleNewBlock(null, blockType);
+                }}
+                spec={spec}
+                direction="up"
+                small={false}
+              />
+            </div>
+            <div className="flex">
+              <ActionButton
+                disabled={
+                  !runnable || runRequested || run?.status.run == "running"
+                }
+                onClick={() => handleRun()}
+              >
+                <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
+                {runRequested || run?.status.run == "running"
+                  ? "Running"
+                  : "Run"}
+              </ActionButton>
+            </div>
+            {runError ? (
+              <div className="flex px-2 text-sm text-sm font-bold text-red-400">
+                {(() => {
+                  switch (runError.code) {
+                    case "invalid_specification_error":
+                      return `Specification error: ${runError.message}`;
+                    default:
+                      return `Error: ${runError.message}`;
+                  }
+                })()}
               </div>
             ) : null}
           </div>
-        </div>
-        <div ref={bottomRef} className="mt-4"></div>
+        ) : null}
       </div>
+      <div ref={bottomRef} className="mt-4"></div>
     </AppLayout>
   );
 }

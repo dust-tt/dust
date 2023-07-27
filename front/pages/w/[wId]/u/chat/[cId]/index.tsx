@@ -1,3 +1,8 @@
+import {
+  Button,
+  ChatBubbleBottomCenterPlusIcon,
+  PaperAirplaneSolidIcon,
+} from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -16,19 +21,22 @@ import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
-import AppLayout from "@app/components/AppLayout";
 import { PulseLogo } from "@app/components/Logo";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { Spinner } from "@app/components/Spinner";
-import { ChatHistory } from "@app/components/use/chat/ChatHistory";
+import {
+  AppLayoutMenuChatHistory,
+  ChatHistory,
+} from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
 } from "@app/components/use/chat/ChatTimeRangePicker";
+import { AppLayoutChatTitle } from "@app/components/use/chat/ChatTitle";
 import {
   FeedbackHandler,
   MessageFeedback,
 } from "@app/components/use/chat/MessageFeedback";
-import MainTab from "@app/components/use/MainTab";
 import { runActionStreamed } from "@app/lib/actions/client";
 import {
   cloneBaseConfig,
@@ -147,9 +155,8 @@ export const getServerSideProps: GetServerSideProps<{
         workspaceDataSources: dataSources,
         prodCredentials,
         chatSession: {
-          id: -1,
-          userId: -1,
-          created: -1,
+          id: 0,
+          userId: user?.id || 0,
           sId: cId,
           shared: false,
           messages: [],
@@ -486,8 +493,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-violet-800 group-hover:block",
-        confirmed ? "text-violet-800" : "hidden text-gray-400"
+        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block",
+        confirmed ? "text-action-800" : "hidden text-gray-400"
       )}
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
@@ -540,7 +547,7 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-2 flex flex-row items-start">
+        <div className="my-3 flex flex-row items-start">
           <div
             className={classNames(
               "min-w-6 flex h-8 w-8 flex-initial rounded-md",
@@ -569,7 +576,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word relative  ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -593,21 +600,32 @@ export function MessageView({
   );
 }
 
-const COMMANDS: { cmd: string; description: string }[] = [
-  {
-    cmd: "/new",
-    description: "Starts a new conversation",
-  },
-  {
-    cmd: "/follow-up",
-    description:
-      "Forces the assistant to answer *whithout* querying the data sources",
-  },
-  {
-    cmd: "/retrieve",
-    description: "Forces the assistant to *only* query the data sources",
-  },
-];
+function ChatMenu({
+  owner,
+  user,
+  onNewConversation,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+  onNewConversation: () => void;
+}) {
+  return (
+    <div className="flex grow flex-col">
+      <div className="flex flex-row px-2">
+        <div className="flex grow"></div>
+        <Button
+          label="New Conversation"
+          icon={ChatBubbleBottomCenterPlusIcon}
+          onClick={onNewConversation}
+          className="flex flex-initial"
+        />
+      </div>
+      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
+        <AppLayoutMenuChatHistory owner={owner} user={user} />
+      </div>
+    </div>
+  );
+}
 
 export default function AppChat({
   user,
@@ -622,7 +640,9 @@ export default function AppChat({
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [title, setTitle] = useState<string>(chatSession.title || "Chat");
+  const [title, setTitle] = useState<string>(
+    chatSession.title || "New Conversation"
+  );
   const [smallScreen, setSmallScreen] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
@@ -633,7 +653,7 @@ export default function AppChat({
   >(chatSession.title ? "saved" : "new");
 
   useEffect(() => {
-    setTitle(chatSession.title || "Chat");
+    setTitle(chatSession.title || "New Conversation");
     setMessages(chatSession.messages || []);
     setTitleState(chatSession.title ? "saved" : "new");
     inputRef.current?.focus();
@@ -647,10 +667,6 @@ export default function AppChat({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
-  const [commands, setCommands] = useState<
-    { cmd: string; description: string }[]
-  >([]);
-  const [commandsSelect, setCommandsSelect] = useState<number>(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -664,30 +680,6 @@ export default function AppChat({
 
   const handleInputUpdate = (input: string) => {
     setInput(input);
-    if (input.startsWith("/") && input.split(" ").length === 1) {
-      setCommands(COMMANDS.filter((c) => c.cmd.startsWith(input)));
-      setCommandsSelect(0);
-    } else {
-      setCommands([]);
-      setCommandsSelect(0);
-    }
-  };
-
-  const handleSelectCommand = () => {
-    if (commandsSelect >= 0 && commandsSelect < commands.length) {
-      if (commands[commandsSelect].cmd === "/new") {
-        if (loading) {
-          return;
-        }
-        setCommands([]);
-        setCommandsSelect(0);
-        return handleNew();
-      }
-      setInput(commands[commandsSelect].cmd + " ");
-      setCommands([]);
-      setCommandsSelect(0);
-      inputRef.current?.focus();
-    }
   };
 
   const handleSwitchDataSourceSelection = (name: string) => {
@@ -1116,36 +1108,52 @@ export default function AppChat({
     );
   }
   return (
-    <AppLayout user={user} owner={owner} gaTrackingId={gaTrackingId}>
+    <AppLayout
+      user={user}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="assistant"
+      navChildren={
+        <ChatMenu owner={owner} user={user} onNewConversation={handleNew} />
+      }
+      titleChildren={
+        messages.length > 0 && (
+          <AppLayoutChatTitle
+            owner={owner}
+            user={user}
+            session={chatSession}
+            title={title}
+            titleState={titleState}
+          />
+        )
+      }
+    >
       <div className="flex h-full flex-col">
-        <div className="mt-2">
-          <MainTab currentTab="Chat" owner={owner} />
-        </div>
-
         {dataSources.length === 0 && (
-          <div className="">
-            <div className="mx-auto mt-8 max-w-2xl divide-y divide-gray-200 px-6">
-              <div className="mt-16 flex flex-col items-center justify-center text-sm text-gray-500">
-                <p>💬 Welcome to Chat!</p>
-                <p className="mt-8 italic text-violet-700">
-                  <span className="font-bold">Chat</span> is a conversational
-                  agent with access on your team's knowledge base.
+          <div className="divide-y divide-gray-200">
+            <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
+              <p>💬 Welcome</p>
+              <p className="mt-8 italic">
+                <span className="font-bold">Dust</span> is a conversational
+                agent with access on your team's knowledge.
+              </p>
+              {owner.role === "admin" ? (
+                <p className="mt-8">
+                  You need to set up at least one{" "}
+                  <Link
+                    className="font-bold text-action-500"
+                    href={`/w/${owner.sId}/ds`}
+                  >
+                    Data Source
+                  </Link>{" "}
+                  to activate it on your workspace.
                 </p>
-                {owner.role === "admin" ? (
-                  <p className="mt-8">
-                    You need to set up at least one{" "}
-                    <Link className="font-bold" href={`/w/${owner.sId}/ds`}>
-                      Data Source
-                    </Link>{" "}
-                    to activate Chat on your workspace.
-                  </p>
-                ) : (
-                  <p className="mt-8">
-                    Contact the admin of your workspace to activate Chat for
-                    your team.
-                  </p>
-                )}
-              </div>
+              ) : (
+                <p className="mt-8">
+                  Contact the admin of your workspace to activate Chat for your
+                  team.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -1153,241 +1161,109 @@ export default function AppChat({
         {dataSources.length > 0 && (
           <>
             <div className="flex-1">
-              <div
-                className="h-full max-h-full grow-0 overflow-y-auto"
-                ref={scrollRef}
-              >
+              <div className="" ref={scrollRef}>
                 <div className="max-h-0">
-                  <div className="mx-auto max-w-4xl px-6 py-2">
-                    {messages.length > 0 ? (
-                      <div>
-                        <div className="mx-auto my-4 flex max-w-xl flex-row items-center justify-center text-sm">
-                          <ConversationHeader
-                            user={user}
-                            conversation={chatSession}
-                            owner={owner}
-                            headerType="conversation-view"
-                            trashCallback={async () => {
-                              router.push(`/w/${owner.sId}/u/chat`);
-                            }}
-                            shareCallback={async () => {
-                              chatSession.shared = !chatSession.shared;
-                              setShared(chatSession.shared);
-                            }}
-                          />
-                        </div>
-                        <div className="text-sm">
-                          {messages.map((m, i) => {
-                            return m.role === "error" ? (
-                              <div key={i}>
-                                <div className="my-2 ml-12 flex flex-col">
-                                  <div className="flex-initial text-xs font-bold text-red-500">
-                                    Oops! An error occured (and the team has
-                                    been notified).
-                                  </div>
-                                  <div className="flex-initial text-xs text-gray-500">
-                                    <ul className="list-inside list-disc">
-                                      <li>
-                                        You can continue the conversation, this
-                                        error and your last message will be
-                                        removed from the conversation
-                                      </li>
-                                      <li>
-                                        Alternatively, restart a chat with the
-                                        `/new` command or by clicking{" "}
-                                        <Link
-                                          href={`/w/${owner.sId}/u/chat`}
-                                          className="text text-violet-500 hover:underline"
-                                        >
-                                          here
-                                        </Link>
-                                      </li>
-                                      <li>
-                                        Don't hesitate to reach out if the
-                                        problem persists.
-                                      </li>
-                                    </ul>
-                                  </div>
-                                  <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                                    {m.message}
-                                  </div>
+                  {messages.length > 0 ? (
+                    <div>
+                      <div className="text-base">
+                        {messages.map((m, i) => {
+                          return m.role === "error" ? (
+                            <div key={i}>
+                              <div className="my-2 ml-12 flex flex-col">
+                                <div className="flex-initial text-xs font-bold text-red-500">
+                                  Oops! An error occured (and the team has been
+                                  notified).
+                                </div>
+                                <div className="flex-initial text-xs text-gray-500">
+                                  <ul className="list-inside list-disc">
+                                    <li>
+                                      You can continue the conversation, this
+                                      error and your last message will be
+                                      removed from the conversation
+                                    </li>
+                                    <li>
+                                      Don't hesitate to reach out if the problem
+                                      persists.
+                                    </li>
+                                  </ul>
+                                </div>
+                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
+                                  {m.message}
                                 </div>
                               </div>
-                            ) : (
-                              <div key={i} className="group">
-                                <MessageView
-                                  user={user}
-                                  message={m}
-                                  loading={false}
-                                  // isLatest={
-                                  //   !response && i === messages.length - 1
-                                  // }
-                                  isLatestRetrieval={isLatest("retrieval", i)}
-                                  readOnly={readOnly}
-                                  feedback={
-                                    !readOnly &&
-                                    m.role === "assistant" && {
-                                      handler: handleFeedback,
-                                      hover: response
-                                        ? true
-                                        : i !== messages.length - 1,
-                                    }
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                          {response ? (
-                            <div key={messages.length}>
+                            </div>
+                          ) : (
+                            <div key={i} className="group">
                               <MessageView
                                 user={user}
-                                message={response}
-                                loading={true}
-                                // isLatest={true}
-                                isLatestRetrieval={
-                                  response.role === "retrieval"
-                                }
+                                message={m}
+                                loading={false}
+                                // isLatest={
+                                //   !response && i === messages.length - 1
+                                // }
+                                isLatestRetrieval={isLatest("retrieval", i)}
                                 readOnly={readOnly}
+                                feedback={
+                                  !readOnly &&
+                                  m.role === "assistant" && {
+                                    handler: handleFeedback,
+                                    hover: response
+                                      ? true
+                                      : i !== messages.length - 1,
+                                  }
+                                }
                               />
                             </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center text-sm text-gray-500">
-                        <p>💬 Welcome to Chat!</p>
-                        <p className="mt-8">
-                          👩🏼‍🔬 This is an early exploration of a conversational
-                          assistant with context on your team's Slack & Notion.
-                          For each interaction, semantically relevant chunks of
-                          documents are retrieved and presented to Chat to help
-                          it answer your queries.
-                        </p>
-                        <p className="mt-4">
-                          📈 You should expect better performance on general,
-                          qualitative, and thematic questions. Precise or
-                          quantitative questions won't work as well.
-                        </p>
-                        <p className="mt-4">
-                          🔗 You can presume the last few answers are in context
-                          for your dialogue with Chat: don't hesitate to ask
-                          follow-up questions. Only the latest documents
-                          retrieved are visible to Chat. Context is limited so
-                          don't be surprised if Chat moves on after a while.
-                        </p>
-                        <p className="mt-4">
-                          🧞‍♂️ Please share feedback with us on what's working
-                          well and what else you would like Chat to do via Slack
-                          or email:{" "}
-                          <a href="mailto:team@dust.tt" className="font-bold">
-                            team@dust.tt
-                          </a>
-                        </p>
-                        <div className="mt-8 w-full">
-                          ⚙️ Available commands:
-                          <div className="pt-2">
-                            {COMMANDS.map((c, i) => {
-                              return (
-                                <div
-                                  key={i}
-                                  className={classNames("flex px-2 py-1")}
-                                >
-                                  <div className="flex w-24 flex-row">
-                                    <div className="flex flex-initial flex-col">
-                                      <div
-                                        className={classNames(
-                                          "flex flex-initial",
-                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                        )}
-                                      >
-                                        {c.cmd}
-                                      </div>
-                                      <div className="flex flex-1"></div>
-                                    </div>
-                                    <div className="flex flex-1"></div>
-                                  </div>
-                                  <div className="ml-2 w-64 sm:w-max">
-                                    {c.description}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          );
+                        })}
+                        {response ? (
+                          <div key={messages.length}>
+                            <MessageView
+                              user={user}
+                              message={response}
+                              loading={true}
+                              // isLatest={true}
+                              isLatestRetrieval={response.role === "retrieval"}
+                              readOnly={readOnly}
+                            />
                           </div>
-                        </div>
-                        <div className="w-full py-4">
-                          <ChatHistory
-                            owner={owner}
-                            user={user}
-                            limit={smallScreen ? 5 : 10}
-                          />
-                        </div>
+                        ) : null}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
+                      <p>💬 Welcome</p>
+                      <p className="mt-8">
+                        <span className="font-bold">Dust</span> is a
+                        conversational assistant with context on your team's
+                        knowledge. For each interaction, relevant pieces of
+                        documents are retrieved from you entire team's knowledge
+                        and presented to the Assistant to help it answer your
+                        queries.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Input fixed panel */}
             {!readOnly && (
-              <div className="z-50 w-full flex-initial border bg-white text-sm">
-                <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-                  <div className="mb-1 mt-2">
+              <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial bg-white lg:left-80">
+                <div className="mx-auto max-w-4xl px-6">
+                  {/* Input bar  */}
+                  <div className="">
                     <div className="flex flex-row items-center">
-                      <div className="flex flex-1 flex-row items-end">
-                        {commands.length > 0 && (
-                          <div className="absolute mb-12 pr-7">
-                            <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
-                              {commands.map((c, i) => {
-                                return (
-                                  <div
-                                    key={i}
-                                    className={classNames(
-                                      "flex cursor-pointer flex-row rounded-sm px-2 py-2",
-                                      i === commandsSelect
-                                        ? "bg-gray-100"
-                                        : "bg-white"
-                                    )}
-                                    onMouseEnter={() => {
-                                      setCommandsSelect(i);
-                                    }}
-                                    onClick={() => {
-                                      void handleSelectCommand();
-                                    }}
-                                  >
-                                    <div className="flex w-24 flex-row">
-                                      <div
-                                        className={classNames(
-                                          "flex flex-initial",
-                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                        )}
-                                      >
-                                        {c.cmd}
-                                      </div>
-                                      <div className="flex flex-1"></div>
-                                    </div>
-                                    <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
-                                      {c.description}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
+                      <div className="flex flex-1 flex-row items-end items-stretch">
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={
-                            (smallScreen
-                              ? ""
-                              : `Ask anything about \`${owner.name}\`.`) +
-                            "Press ⏎ to submit, shift+⏎ for next line"
-                          }
+                          placeholder={"Ask a question"}
                           className={classNames(
-                            "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                            "rounded-sm",
-                            "border",
-                            "border-slate-200 focus:border-slate-300 focus:ring-0",
+                            "flex w-full resize-none bg-white font-normal ring-0 focus:ring-0",
+                            "rounded-sm rounded-xl border-2",
+                            "border-action-200 text-element-800 drop-shadow-2xl focus:border-action-300 focus:ring-0",
                             "placeholder-gray-400",
-                            "pr-7"
+                            "px-3 py-3 pr-8"
                           )}
                           value={input}
                           onChange={(e) => {
@@ -1395,52 +1271,23 @@ export default function AppChat({
                           }}
                           ref={inputRef}
                           onKeyDown={(e) => {
-                            if (commands.length > 0) {
-                              if (e.key === "ArrowUp") {
-                                setCommandsSelect(
-                                  commandsSelect > 0
-                                    ? commandsSelect - 1
-                                    : commandsSelect
-                                );
-                                e.preventDefault();
-                              }
-                              if (e.key === "ArrowDown") {
-                                setCommandsSelect(
-                                  commandsSelect < commands.length - 1
-                                    ? commandsSelect + 1
-                                    : commandsSelect
-                                );
-                                e.preventDefault();
-                              }
-                              if (e.key === "Enter") {
-                                void handleSelectCommand();
-                                e.preventDefault();
-                              }
-                            } else if (
-                              e.key === "Enter" &&
-                              !loading &&
-                              !e.shiftKey
-                            ) {
+                            if (e.key === "Enter" && !loading && !e.shiftKey) {
                               void handleSubmit();
                               e.preventDefault();
                             }
                           }}
                           autoFocus={true}
                         />
-                        <div
-                          className={classNames(
-                            "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                          )}
-                        >
+                        <div className={classNames("z-10 -ml-8 flex flex-col")}>
                           {!loading ? (
-                            <ArrowRightCircleIcon
-                              className="h-5 w-5 cursor-pointer text-violet-500"
+                            <PaperAirplaneSolidIcon
+                              className="my-auto h-5 w-5 cursor-pointer text-action-500"
                               onClick={() => {
                                 void handleSubmit();
                               }}
                             />
                           ) : (
-                            <div className="mb-1 ml-1">
+                            <div className="my-auto mb-3.5 ml-1 h-4 w-4">
                               <Spinner />
                             </div>
                           )}
@@ -1448,7 +1295,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
+                  <div className="mb-8 mt-4 flex flex-row flex-wrap items-center text-xs">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>

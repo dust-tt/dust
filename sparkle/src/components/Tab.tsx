@@ -23,18 +23,18 @@ type TabProps = {
 
 const tabClasses = {
   default: {
-    base: "text-element-800 border-transparent cursor-pointer",
-    hover: "hover:text-action-500",
+    base: "s-text-element-800 s-border-transparent s-cursor-pointer",
+    hover: "hover:s-text-action-500",
     dark: {
-      base: "dark:text-element-700-dark",
-      hover: "dark:hover:text-action-600-dark",
+      base: "dark:s-text-element-700-dark",
+      hover: "dark:hover:s-text-action-600-dark",
     },
   },
   selected: {
-    base: "border-action-500 text-action-500 cursor-default",
+    base: "s-border-action-500 s-text-action-500 s-cursor-default",
     hover: "",
     dark: {
-      base: "dark:border-action-500-dark dark:text-action-500-dark",
+      base: "dark:s-border-action-500-dark dark:s-text-action-500-dark",
       hover: "",
     },
   },
@@ -42,18 +42,18 @@ const tabClasses = {
 
 const iconClasses = {
   default: {
-    base: "text-element-600",
-    hover: "group-hover:text-action-400",
+    base: "s-text-element-600",
+    hover: "group-hover:s-text-action-400",
     dark: {
-      base: "dark:text-element-600-dark",
-      hover: "dark:group-hover:text-action-500-dark",
+      base: "dark:s-text-element-600-dark",
+      hover: "dark:group-hover:s-text-action-500-dark",
     },
   },
   selected: {
-    base: "text-action-500",
+    base: "s-text-action-500",
     hover: "",
     dark: {
-      base: "dark:text-action-500-dark",
+      base: "dark:s-text-action-500-dark",
       hover: "",
     },
   },
@@ -61,7 +61,7 @@ const iconClasses = {
 
 const tabSizingClasses = {
   hug: "",
-  expand: "flex-1",
+  expand: "s-flex-1",
 };
 
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
@@ -77,7 +77,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "group justify-center flex text-sm font-semibold px-4 py-3 border-b-2 transition-colors duration-400 whitespace-nowrap select-none",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-border-b-2 s-transition-colors s-duration-400 s-whitespace-nowrap s-select-none",
         tabStateClasses.base,
         tabStateClasses.hover,
         tabStateClasses.dark.base,
@@ -87,7 +87,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
 
       const finalIconClasses = classNames(
-        "h-5 w-5 transition-colors duration-400",
+        "s-h-5 s-w-5 s-transition-colors s-duration-400",
         iconStateClasses.base,
         iconStateClasses.hover,
         iconStateClasses.dark.base,
@@ -110,8 +110,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
           <div
             className={
               tab.current
-                ? "flex gap-x-2"
-                : "duration-400 flex scale-100 transform gap-x-2 transition-transform ease-out group-hover:scale-110"
+                ? "s-flex s-gap-x-2"
+                : "s-duration-400 s-flex s-translate-y-0 s-transform s-gap-x-2 s-transition-transform s-ease-out group-hover:-s-translate-y-0.5"
             }
           >
             {tab.icon && <tab.icon className={finalIconClasses} />}
@@ -122,8 +122,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
     });
 
   return (
-    <div className="border-b border-structure-200 dark:border-structure-200-dark">
-      <nav className="-mb-px flex space-x-0" aria-label="Tabs">
+    <div className="s-border-b s-border-structure-200 dark:s-border-structure-200-dark">
+      <nav className="-s-mb-px s-flex s-space-x-0" aria-label="Tabs">
         {renderTabs()}
       </nav>
     </div>
