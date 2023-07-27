@@ -1204,7 +1204,7 @@ export default function AppChat({
         )
       }
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col pt-4">
         {!canStartConversation && (
           <>
             <PageHeader
