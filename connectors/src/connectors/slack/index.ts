@@ -2,7 +2,11 @@ import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 import { Transaction } from "sequelize";
 
-import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import {
+  launchSlackBotJoinedWorkflow,
+  launchSlackGarbageCollectWorkflow,
+  launchSlackSyncWorkflow,
+} from "@connectors/connectors/slack/temporal/client.js";
 import {
   Connector,
   ModelId,
@@ -347,8 +351,7 @@ export async function setSlackConnectorPermissions(
   const q = new PQueue({ concurrency: 10 });
   const promises: Promise<void>[] = [];
 
-  const tx = await sequelize_conn.transaction();
-
+  let shouldGarbageCollect = false;
   for (const [id, permission] of Object.entries(permissions)) {
     const channel = channels[id];
     if (!channel) {
@@ -361,22 +364,49 @@ export async function setSlackConnectorPermissions(
 
     promises.push(
       q.add(async () => {
-        await channel.update(
-          {
-            permission: permission,
-          },
-          { transaction: tx }
-        );
+        const oldPermission = channel.permission;
+        if (oldPermission === permission) {
+          return;
+        }
+        await channel.update({
+          permission: permission,
+        });
+
+        if (
+          !["read", "read_write"].includes(oldPermission) &&
+          ["read", "read_write"].includes(permission)
+        ) {
+          // handle read permission enabled
+          const res = await launchSlackBotJoinedWorkflow(
+            connectorId.toString(),
+            channel.slackChannelId
+          );
+          if (res.isErr()) {
+            throw res.error;
+          }
+        }
+        if (
+          ["read", "read_write"].includes(oldPermission) &&
+          !["read", "read_write"].includes(permission)
+        ) {
+          // handle read permission disabled
+          shouldGarbageCollect = true;
+        }
       })
     );
   }
 
   try {
     await Promise.all(promises);
-    await tx.commit();
   } catch (e) {
-    await tx.rollback();
     return new Err(e as Error);
+  }
+
+  if (shouldGarbageCollect) {
+    const res = await launchSlackGarbageCollectWorkflow(connectorId.toString());
+    if (res.isErr()) {
+      return res;
+    }
   }
 
   return new Ok(undefined);

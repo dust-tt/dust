@@ -75,18 +75,3 @@ export async function upsertSlackChannelInConnectorsDb({
     permission: channel.permission,
   };
 }
-
-export async function deleteChannelFromConnectorsDb({
-  slackChannelId,
-  connectorId,
-}: {
-  slackChannelId: string;
-  connectorId: number;
-}): Promise<void> {
-  await SlackChannel.destroy({
-    where: {
-      connectorId,
-      slackChannelId,
-    },
-  });
-}
