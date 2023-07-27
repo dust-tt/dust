@@ -10,7 +10,8 @@ import { signIn } from "next-auth/react";
 import p5Types from "p5";
 import { ParsedUrlQuery } from "querystring";
 
-import { Button, GoogleSignInButton } from "@app/components/Button";
+import { GoogleSignInButton } from "@app/components/Button";
+import { Button } from "@dust-tt/sparkle";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -263,8 +264,8 @@ export default function Home({
         <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           <div className="mt-32">
             <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="flex flex-col text-left md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
+              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
+                <div className="mt-2">
                   <div className="font-objektiv text-2xl font-bold tracking-tighter text-red-400">
                     GPT-4 and all your internal knowledge, <br />
                     <span className="text-5xl text-rose-200">combined</span>.
@@ -283,7 +284,7 @@ export default function Home({
               <div className="mt-8 md:col-span-4 md:mt-0">
                 <div className="mx-auto overflow-hidden ">
                   <img
-                    className="mx-auto w-[500px] rotate-6"
+                    className="mx-auto w-[500px] rotate-2"
                     src="/static/landing_data_sources.png"
                   />
                 </div>
@@ -293,7 +294,15 @@ export default function Home({
 
           <div className="mt-16">
             <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
+              <div className="mt-8 md:col-span-4 md:mt-0">
+                <div className="mx-auto">
+                  <img
+                    className="mx-auto w-[500px] -rotate-2"
+                    src="/static/landing_chat.png"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="font-objektiv text-2xl font-bold tracking-tighter text-emerald-500">
                     Get your teams <br />
@@ -314,20 +323,12 @@ export default function Home({
                 </div>
                 <div className="flex flex-1"></div>
               </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
-                  <img
-                    className="mx-auto w-[400px]"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
           <div className="mt-16">
             <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
+              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="font-objektiv text-2xl font-bold tracking-tighter text-blue-500">
                     Build your own <br />
@@ -343,19 +344,20 @@ export default function Home({
                   </p>
                   <div className="mt-6">
                     <Link href="https://docs.dust.tt">
-                      <Button>
-                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                        View Documentation
-                      </Button>
+                      <Button
+                        type="tertiary"
+                        size="sm"
+                        label="View Documentation"
+                      />
                     </Link>
                   </div>
                 </div>
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                <div className="mx-auto">
                   <img
-                    className="mx-auto w-[400px]"
+                    className="mx-auto w-[500px] rotate-2"
                     src="/static/landing_block.png"
                   />
                 </div>
@@ -363,52 +365,56 @@ export default function Home({
             </div>
           </div>
 
-          <div className="h-20"></div>
+          <div className="h-32"></div>
 
           <div className="grid grid-cols-1">
-            <p className="font-objektiv text-4xl font-bold">
-              <span className="font-objektiv text-red-400 text-transparent">
-                Our product constitution
-              </span>
+            <p className="font-objektiv text-3xl font-bold text-red-400">
+              Our product
+              <br />
+              <span className="text-5xl text-rose-300">constitution</span>
             </p>
           </div>
 
           <div className="h-6"></div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="font-medium">
+              <p className="font-semibold text-slate-100">
                 Augmenting humans, not&nbsp;replacing&nbsp;them
               </p>
               <div className="h-2"></div>
-              <p className="font-regular">
+              <p className="font-regular text-slate-500">
                 We're optimistic about making work life better for smart people.
                 We're building R2-D2, not Skynet.
               </p>
             </div>
             <div>
-              <p className="font-medium">
+              <p className="font-semibold text-slate-100">
                 Uncompromising on data security & privacy
               </p>
               <div className="h-2"></div>
-              <p className="font-regular">
+              <p className="font-regular text-slate-500">
                 We aspire to define standards rather than simply abide by
                 the&nbsp;existing ones.
               </p>
             </div>
             <div>
-              <p className="font-medium">Hard problems over hype</p>
+              <p className="font-semibold text-slate-100">
+                Hard problems over hype
+              </p>
               <div className="h-2"></div>
-              <p className="font-regular">
+              <p className="font-regular text-slate-500">
                 There's more to do than wrapping GPT into a chat UI. We're in
                 this to solve hard problems on user experience and product
                 quality.
               </p>
             </div>
             <div>
-              <p className="font-medium">Building with an&nbsp;AI&nbsp;core</p>
+              <p className="font-semibold text-slate-100">
+                Building with an&nbsp;AI&nbsp;core
+              </p>
               <div className="h-2"></div>
-              <p className="font-regular">
+              <p className="font-regular text-slate-500">
                 We're building with large language models in mind from the
                 ground up, rather than sprinkling them here and&nbsp;there.
               </p>
