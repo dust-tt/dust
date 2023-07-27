@@ -82,10 +82,31 @@ export async function createNotionConnector(
 
 export async function updateNotionConnector(
   connectorId: ModelId,
-  connectionId: string
+  {
+    connectionId,
+    newDefaultNewResourcePermission,
+  }: {
+    connectionId?: NangoConnectionId | null;
+    newDefaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   if (!NANGO_NOTION_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  if (newDefaultNewResourcePermission) {
+    logger.error(
+      { connectorId, newDefaultNewResourcePermission },
+      "Cannot change defaultNewResourcePermission of a Notion connector"
+    );
+
+    return new Err({
+      error: {
+        type: "connector_update_unauthorized",
+        message:
+          "Cannot change defaultNewResourcePermission of a Notion connector",
+      },
+    });
   }
 
   const c = await Connector.findOne({
@@ -103,50 +124,52 @@ export async function updateNotionConnector(
     } as ConnectorsAPIErrorResponse);
   }
 
-  const oldConnectionId = c.connectionId;
-  const connectionRes = await nango_client().getConnection(
-    NANGO_NOTION_CONNECTOR_ID,
-    oldConnectionId,
-    false,
-    false
-  );
-  const newConnectionRes = await nango_client().getConnection(
-    NANGO_NOTION_CONNECTOR_ID,
-    connectionId,
-    false,
-    false
-  );
+  if (connectionId) {
+    const oldConnectionId = c.connectionId;
+    const connectionRes = await nango_client().getConnection(
+      NANGO_NOTION_CONNECTOR_ID,
+      oldConnectionId,
+      false,
+      false
+    );
+    const newConnectionRes = await nango_client().getConnection(
+      NANGO_NOTION_CONNECTOR_ID,
+      connectionId,
+      false,
+      false
+    );
 
-  const workspaceId = connectionRes?.credentials?.raw?.workspace_id || null;
-  const newWorkspaceId =
-    newConnectionRes?.credentials?.raw?.workspace_id || null;
+    const workspaceId = connectionRes?.credentials?.raw?.workspace_id || null;
+    const newWorkspaceId =
+      newConnectionRes?.credentials?.raw?.workspace_id || null;
 
-  if (!workspaceId || !newWorkspaceId) {
-    return new Err({
-      error: {
-        type: "connector_update_error",
-        message: "Error retrieving nango connection info to update connector",
-      },
-    } as ConnectorsAPIErrorResponse);
-  }
-  if (workspaceId !== newWorkspaceId) {
-    return new Err({
-      error: {
-        type: "connector_update_unauthorized",
-        message: "Cannot change workspace of a Notion connector",
-      },
-    } as ConnectorsAPIErrorResponse);
-  }
-
-  await c.update({ connectionId });
-  nangoDeleteConnection(oldConnectionId, NANGO_NOTION_CONNECTOR_ID).catch(
-    (e) => {
-      logger.error(
-        { error: e, oldConnectionId },
-        "Error deleting old Nango connection"
-      );
+    if (!workspaceId || !newWorkspaceId) {
+      return new Err({
+        error: {
+          type: "connector_update_error",
+          message: "Error retrieving nango connection info to update connector",
+        },
+      } as ConnectorsAPIErrorResponse);
     }
-  );
+    if (workspaceId !== newWorkspaceId) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change workspace of a Notion connector",
+        },
+      } as ConnectorsAPIErrorResponse);
+    }
+
+    await c.update({ connectionId });
+    nangoDeleteConnection(oldConnectionId, NANGO_NOTION_CONNECTOR_ID).catch(
+      (e) => {
+        logger.error(
+          { error: e, oldConnectionId },
+          "Error deleting old Nango connection"
+        );
+      }
+    );
+  }
 
   return new Ok(c.id.toString());
 }

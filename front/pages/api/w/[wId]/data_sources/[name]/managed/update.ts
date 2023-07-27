@@ -72,14 +72,16 @@ async function handler(
 
       const updateRes = await ConnectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
-        connectionId: req.body.connectionId,
+        params: {
+          connectionId: req.body.connectionId,
+        },
       });
 
       if (updateRes.isErr()) {
         const errorRes = updateRes as { error: ConnectorsAPIErrorResponse };
         const error = errorRes.error.error;
 
-        if (error.type === "connector_update_unauthorized") {
+        if (error.type === "connector_oauth_target_mismatch") {
           return apiError(req, res, {
             api_error: {
               type: error.type,

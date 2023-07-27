@@ -119,7 +119,7 @@ Connector.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "read_write",
-    }
+    },
   },
   {
     sequelize: sequelize_conn,

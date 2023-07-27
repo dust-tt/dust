@@ -6,7 +6,8 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorUpdateReqBody = {
-  connectionId: string;
+  connectionId?: string | null;
+  defaultNewResourcePermission?: string | null;
 };
 type ConnectorUpdateResBody =
   | { connectorId: string }
@@ -48,13 +49,17 @@ const _getConnectorUpdateAPIHandler = async (
   }
 
   const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[connector.type];
-  const updateRes = await connectorUpdater(connector.id, req.body.connectionId);
+
+  const updateRes = await connectorUpdater(connector.id, {
+    connectionId: req.body.connectionId,
+    defaultNewResourcePermission: req.body.defaultNewResourcePermission,
+  });
 
   if (updateRes.isErr()) {
     const errorRes = updateRes as { error: ConnectorsAPIErrorResponse };
     const error = errorRes.error.error;
 
-    if (error.type === "connector_update_unauthorized") {
+    if (error.type === "connector_oauth_target_mismatch") {
       return apiError(req, res, {
         api_error: {
           type: error.type,
