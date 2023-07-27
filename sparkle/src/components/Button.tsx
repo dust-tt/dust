@@ -16,7 +16,7 @@ type ButtonProps = {
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   label: string;
-  labelVisible: boolean;
+  labelVisible?: boolean;
   icon?: ComponentType;
   className?: string;
 };

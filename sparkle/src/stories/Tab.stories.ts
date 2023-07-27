@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
+
 import { Tab } from "../index_with_tw_base";
 import {
-  ChatBubbleBottomCenterTextIcon,
   BeakerIcon,
+  ChatBubbleBottomCenterTextIcon,
   Cog6ToothIcon,
 } from "../index_with_tw_base";
 

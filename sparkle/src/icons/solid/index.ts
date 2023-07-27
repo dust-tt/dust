@@ -1,6 +1,6 @@
 export { default as ArrowUpOnSquare } from "./ArrowUpOnSquare";
-export { default as BeakerPlus } from "./BeakerPlus";
 export { default as Beaker } from "./Beaker";
+export { default as BeakerPlus } from "./BeakerPlus";
 export { default as ChatBubbleBottomCenterPlus } from "./ChatBubbleBottomCenterPlus";
 export { default as ChatBubbleBottomCenterText } from "./ChatBubbleBottomCenterText";
 export { default as ChatBubbleLeftRight } from "./ChatBubbleLeftRight";
