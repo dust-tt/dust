@@ -40,7 +40,8 @@ export type APIErrorType =
   | "event_schema_not_found"
   | "extracted_event_not_found"
   | "connector_update_error"
-  | "connector_update_unauthorized";
+  | "connector_update_unauthorized"
+  | "connector_oauth_target_mismatch";
 
 export type APIError = {
   type: APIErrorType;

@@ -79,6 +79,7 @@ export async function createSlackConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
+          defaultNewResourcePermission: "read_write",
         },
         { transaction: t }
       );
@@ -88,7 +89,6 @@ export async function createSlackConnector(
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
           botEnabled: false,
-          defaultChannelPermission: "read_write",
         },
         { transaction: t }
       );
@@ -114,7 +114,13 @@ export async function createSlackConnector(
 
 export async function updateSlackConnector(
   connectorId: ModelId,
-  connectionId: string
+  {
+    connectionId,
+    defaultNewResourcePermission,
+  }: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
@@ -150,24 +156,35 @@ export async function updateSlackConnector(
     } as ConnectorsAPIErrorResponse);
   }
 
-  const newConnectionRes = await nango_client().getConnection(
-    NANGO_SLACK_CONNECTOR_ID,
-    connectionId,
-    false,
-    false
-  );
-  const newTeamId = newConnectionRes?.team?.id || null;
+  const updateParams: Parameters<typeof c.update>[0] = {};
 
-  if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
-    return new Err({
-      error: {
-        type: "connector_update_unauthorized",
-        message: "Cannot change the Slack Team of a Data Source",
-      },
-    } as ConnectorsAPIErrorResponse);
+  if (connectionId) {
+    const newConnectionRes = await nango_client().getConnection(
+      NANGO_SLACK_CONNECTOR_ID,
+      connectionId,
+      false,
+      false
+    );
+    const newTeamId = newConnectionRes?.team?.id || null;
+
+    if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change the Slack Team of a Data Source",
+        },
+      } as ConnectorsAPIErrorResponse);
+    }
+
+    updateParams.connectionId = connectionId;
   }
 
-  await c.update({ connectionId });
+  if (defaultNewResourcePermission) {
+    updateParams.defaultNewResourcePermission = defaultNewResourcePermission;
+  }
+
+  await c.update(updateParams);
+
   return new Ok(c.id.toString());
 }
 

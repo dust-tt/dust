@@ -46,6 +46,8 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+
+  defaultNewResourcePermission: ConnectorPermission;
 };
 
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
@@ -97,10 +99,13 @@ export const ConnectorsAPI = {
 
   async updateConnector({
     connectorId,
-    connectionId,
+    params: { connectionId, defaultNewResourcePermission },
   }: {
     connectorId: string;
-    connectionId: string;
+    params: {
+      connectionId?: string | null;
+      defaultNewResourcePermission?: ConnectorPermission | null;
+    };
   }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/update/${connectorId}`,
@@ -109,6 +114,7 @@ export const ConnectorsAPI = {
         headers: getDefaultHeaders(),
         body: JSON.stringify({
           connectionId,
+          defaultNewResourcePermission,
         }),
       }
     );

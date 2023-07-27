@@ -634,7 +634,7 @@ function ManagedDataSourceSettings({
     const jsonErr = await res.json();
     const error = jsonErr.error;
 
-    if (error.type === "connector_update_unauthorized") {
+    if (error.type === "connector_oauth_target_mismatch") {
       if (provider === "slack") {
         return {
           success: false,
