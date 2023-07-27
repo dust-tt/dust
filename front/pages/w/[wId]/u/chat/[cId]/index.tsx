@@ -612,6 +612,7 @@ function ChatMenu({
       <div className="flex flex-row px-2">
         <div className="flex grow"></div>
         <Button
+          labelVisible={true}
           label="New Conversation"
           icon={ChatBubbleBottomCenterPlusIcon}
           onClick={onNewConversation}
