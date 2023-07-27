@@ -13,6 +13,8 @@ import { useChatSessions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
+import { ConversationHeader } from "./ConversationHeader";
+
 export function AppLayoutMenuChatHistory({
   owner,
   user,

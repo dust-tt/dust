@@ -24,7 +24,7 @@ type TabProps = {
 const tabClasses = {
   default: {
     base: "s-text-element-800 s-border-transparent s-cursor-pointer",
-    hover: "hover:s-text-action-500",
+    hover: "hover:s-text-action-500 hover:s-border-action-300",
     dark: {
       base: "dark:s-text-element-700-dark",
       hover: "dark:hover:s-text-action-600-dark",
@@ -77,7 +77,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-border-b-2 s-transition-colors s-duration-400 s-whitespace-nowrap s-select-none",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
         tabStateClasses.base,
         tabStateClasses.hover,
         tabStateClasses.dark.base,
