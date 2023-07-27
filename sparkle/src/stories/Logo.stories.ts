@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+
 import { Logo } from "../index_with_tw_base";
 
 const meta = {

@@ -2,10 +2,12 @@
   "name": "@dust-tt/sparkle",
   "version": "0.1.24",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
     "storybook": "storybook dev -p 6006 --debug-webpack",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "format:check": "prettier --check .",
+    "lint": "eslint ."
   },
   "main": "dist/cjs/index.js",
   "types": "dist/cjs/index.d.ts",
