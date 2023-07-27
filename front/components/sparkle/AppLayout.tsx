@@ -86,7 +86,7 @@ function NavigationBar({
 
         {user && user.workspaces.length > 1 ? (
           <div className="flex flex-row items-center px-4">
-            <div className="font-normal text-slate-500">Workspace:</div>
+            <div className="text-sm text-slate-500">Workspace:</div>
             <div className="flex-1"></div>
             <div>
               <WorkspacePicker

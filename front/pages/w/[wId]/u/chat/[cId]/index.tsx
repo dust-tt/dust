@@ -626,14 +626,14 @@ function ChatMenu({
             </div>
           </div>
           <div className="flex ">
-            <div className="flex w-full flex-col space-y-1">
+            <div className="flex w-full flex-col">
               {sessions.length === 0
                 ? null
                 : sessions.map((s) => {
                     return (
                       <Item
                         key={s.sId}
-                        size="md"
+                        size="sm"
                         selected={router.query.cId === s.sId}
                         label={s.title || ""}
                         className="pl-8 pr-4"
@@ -1208,7 +1208,7 @@ export default function AppChat({
                 <div className="max-h-0">
                   {messages.length > 0 ? (
                     <div>
-                      <div className="text-base">
+                      <div className="text-sm">
                         {messages.map((m, i) => {
                           return m.role === "error" ? (
                             <div key={i}>
@@ -1302,7 +1302,7 @@ export default function AppChat({
                           minRows={1}
                           placeholder={"Ask a question"}
                           className={classNames(
-                            "flex w-full resize-none bg-white font-normal ring-0 focus:ring-0",
+                            "flex w-full resize-none bg-white text-base ring-0 focus:ring-0",
                             "rounded-sm rounded-xl border-2",
                             "border-action-200 text-element-800 drop-shadow-2xl focus:border-action-300 focus:ring-0",
                             "placeholder-gray-400",
