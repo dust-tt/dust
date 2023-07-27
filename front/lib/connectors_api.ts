@@ -271,10 +271,6 @@ async function _resultFromResponse<T>(
           throw new Error("Unexpected response from ConnectorAPI");
         }
 
-        logger.error(
-          { errorResponse },
-          "Unexpected response from ConnectorAPI"
-        );
         return new Err({
           error: {
             message: errorMessage,
