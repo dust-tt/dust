@@ -186,9 +186,11 @@ export default function Home({
         ></link>
       </Head>
 
-      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 overflow-hidden">
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+
+      {/* <div className="absolute bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
         <Cloud />
-      </div>
+      </div> */}
 
       <main className="z-10 mx-4">
         <div className="grid grid-cols-5 gap-1">
@@ -211,7 +213,7 @@ export default function Home({
             </GoogleSignInButton>
 
             {!(router.query.signIn && router.query.signIn !== "github") && (
-              <div className="ml-32 mt-1 font-objektiv font-objektiv text-xs text-gray-500">
+              <div className="ml-32 mt-1 font-objektiv text-xs text-slate-300">
                 or{" "}
                 <span
                   className="cursor-pointer hover:font-bold"
@@ -227,10 +229,13 @@ export default function Home({
             )}
           </div>
         </div>
+
+        <div className="h-44"></div>
+
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           <div className="grid grid-cols-1">
-            <p className="mt-16 font-objektiv font-objektiv text-6xl font-bold tracking-tighter text-gray-800">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text font-objektiv text-6xl text-8xl text-transparent sm:font-objektiv md:font-objektiv">
+            <p className="mt-16 font-objektiv text-6xl font-bold tracking-tighter text-slate-50">
+              <span className="font-objektiv text-6xl text-red-400 sm:font-objektiv md:font-objektiv">
                 Secure AI assistant
               </span>{" "}
               <br />
@@ -241,12 +246,12 @@ export default function Home({
 
           <div className="h-10"></div>
 
-          <div className="grid grid-cols-1 gap-4 font-objektiv font-objektiv text-2xl text-gray-700 md:grid-cols-2 lg:grid-cols-3">
-            <p className="rounded font-light lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-300 md:grid-cols-2 lg:grid-cols-3">
+            <p className="font-regular lg:col-span-2">
               AI is changing the way we work and is a competitive advantage
               for&nbsp;smart teams that harness its&nbsp;potential effectively.
             </p>
-            <p className="rounded font-light lg:col-span-2">
+            <p className="font-regular lg:col-span-2">
               Dust is an AI assistant that safely brings the best large language
               models, continuously updated company knowledge, powerful
               collaboration applications, and an&nbsp;extensible platform
@@ -257,21 +262,20 @@ export default function Home({
 
         <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
           <div className="mt-32">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
+            <div className="gap-8 md:grid md:grid-cols-8">
+              <div className="flex flex-col text-left md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
-                    GPT-4 and your internal knowledge,{" "}
-                    <span className="bg-brand font-objektiv text-white">
-                      combined
-                    </span>
+                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-red-400">
+                    GPT-4 and all your internal knowledge, <br />
+                    <span className="text-5xl text-rose-200">combined</span>.
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
+                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
                     Use Dust for unified and safe access to GPT-4.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
+                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
                     Connect Dust to your team’s data and break down knowledge
-                    silos with always up-to-date answers in a chat UI.
+                    silos with always up-to-date answers
+                    in&nbsp;a&nbsp;chat&nbsp;UI.
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
@@ -288,20 +292,21 @@ export default function Home({
           </div>
 
           <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
+            <div className="gap-8 md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
-                    Get your teams{" "}
-                    <span className="bg-brand font-objektiv text-white">
-                      up to speed on AI
-                    </span>
+                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-emerald-500">
+                    Get your teams <br />
+                    <span className="text-5xl text-green-300">
+                      up to speed
+                    </span>{" "}
+                    on AI.
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
+                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
                     Let your team share prompts and conversations to ramp up on
                     the potential of generative AI for their tasks.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
+                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
                     Get suggestions from Dust on documentation updates and
                     improvements based on ongoing internal conversations and
                     decisions.
@@ -321,16 +326,17 @@ export default function Home({
           </div>
 
           <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
+            <div className="gap-8 md:grid md:grid-cols-8">
               <div className="flex flex-col md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="font-objektiv font-objektiv text-2xl font-bold tracking-tighter text-gray-700">
-                    Build your own{" "}
-                    <span className="bg-brand font-objektiv text-white">
+                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-blue-500">
+                    Build your own <br />
+                    <span className="text-5xl text-sky-300">
                       powerful workflows
                     </span>
+                    .
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 font-objektiv text-lg font-light">
+                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
                     Build custom Large Language Model apps on top of your
                     company data. Let Dust assist you with the details of
                     working with LLMs as you adapt them to your specific needs.
@@ -361,7 +367,7 @@ export default function Home({
 
           <div className="grid grid-cols-1">
             <p className="font-objektiv text-4xl font-bold">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text font-objektiv text-transparent">
+              <span className="font-objektiv text-red-400 text-transparent">
                 Our product constitution
               </span>
             </p>
@@ -375,7 +381,7 @@ export default function Home({
                 Augmenting humans, not&nbsp;replacing&nbsp;them
               </p>
               <div className="h-2"></div>
-              <p className="font-light">
+              <p className="font-regular">
                 We're optimistic about making work life better for smart people.
                 We're building R2-D2, not Skynet.
               </p>
@@ -385,7 +391,7 @@ export default function Home({
                 Uncompromising on data security & privacy
               </p>
               <div className="h-2"></div>
-              <p className="font-light">
+              <p className="font-regular">
                 We aspire to define standards rather than simply abide by
                 the&nbsp;existing ones.
               </p>
@@ -393,7 +399,7 @@ export default function Home({
             <div>
               <p className="font-medium">Hard problems over hype</p>
               <div className="h-2"></div>
-              <p className="font-light">
+              <p className="font-regular">
                 There's more to do than wrapping GPT into a chat UI. We're in
                 this to solve hard problems on user experience and product
                 quality.
@@ -402,7 +408,7 @@ export default function Home({
             <div>
               <p className="font-medium">Building with an&nbsp;AI&nbsp;core</p>
               <div className="h-2"></div>
-              <p className="font-light">
+              <p className="font-regular">
                 We're building with large language models in mind from the
                 ground up, rather than sprinkling them here and&nbsp;there.
               </p>
@@ -412,7 +418,7 @@ export default function Home({
           <div className="h-32"></div>
         </div>
 
-        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv font-objektiv text-sm text-gray-400">
+        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv text-sm text-gray-400">
           Dust © 2022-2023 –{" "}
           <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
             Legal
