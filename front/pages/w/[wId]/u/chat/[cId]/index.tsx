@@ -25,7 +25,6 @@ import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
-import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Spinner } from "@app/components/Spinner";
@@ -451,7 +450,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
     return (
       <ReactMarkdown
         className={classNames(
-          "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
+          "pr-6 [&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
           "[&_p]:mb-2" /* p */,
           "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
         )}
@@ -493,7 +492,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block",
+        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block cursor-pointer",
         confirmed ? "text-action-800" : "hidden text-gray-400"
       )}
       onClick={handleClick}
