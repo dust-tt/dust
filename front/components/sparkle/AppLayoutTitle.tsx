@@ -14,6 +14,7 @@ export function AppLayoutTitle({
     labelVisible: boolean;
     icon?: ComponentType;
     onAction: () => void;
+    buttonType?: "primary" | "secondary" | "secondaryWarning" | "tertiary";
   };
 }) {
   return (
@@ -40,7 +41,7 @@ export function AppLayoutTitle({
           <div className="flex flex-initial">
             <Button
               labelVisible={action.labelVisible}
-              type="secondary"
+              type={action.buttonType || "secondary"}
               label={action.label}
               icon={action.icon}
               onClick={action.onAction}

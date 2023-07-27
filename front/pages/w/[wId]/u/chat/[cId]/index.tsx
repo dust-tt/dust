@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
+  ArrowDownOnSquareIcon,
   ClipboardDocumentListIcon,
   DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
@@ -1242,12 +1243,13 @@ export default function AppChat({
             title={title}
             onDelete={handleDelete}
             action={{
-              label: "Share",
+              label: shared ? "Unshare" : "Share",
               labelVisible: true,
-              icon: ArrowUpOnSquareIcon,
+              icon: shared ? ArrowDownOnSquareIcon : ArrowUpOnSquareIcon,
               onAction: () => {
-                console.log("Share!");
+                void handleShareClick({ conversation: chatSession, owner });
               },
+              buttonType: shared ? "secondary" : "primary",
             }}
           />
         )
