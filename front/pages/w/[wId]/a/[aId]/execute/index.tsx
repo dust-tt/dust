@@ -319,6 +319,7 @@ function ExecuteInput({
       >
         {inputType === "object" ? (
           <CodeEditor
+            data-color-mode="light"
             value={
               typeof inputValue === "string"
                 ? inputValue
