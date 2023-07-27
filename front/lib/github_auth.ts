@@ -6,7 +6,7 @@ export async function githubAuth(githubAppUrl: string): Promise<string> {
     const popupMessageEventListener = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
 
-      if (event.data.type === "installed") {
+      if (event.data.type === "installed_or_updated") {
         authComplete = true;
         resolve(event.data.installationId);
         window.removeEventListener("message", popupMessageEventListener);
