@@ -40,6 +40,7 @@ const _getConnector = async (
     lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
     firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
     firstSyncProgress: connector.firstSyncProgress,
+    defaultNewResourcePermission: connector.defaultNewResourcePermission,
   });
 };
 

@@ -46,6 +46,8 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+
+  defaultNewResourcePermission: ConnectorPermission;
 };
 
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";

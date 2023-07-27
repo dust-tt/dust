@@ -96,6 +96,7 @@ const _createConnectorAPIHandler = async (
       lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
       firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: connector.firstSyncProgress,
+      defaultNewResourcePermission: connector.defaultNewResourcePermission,
     });
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");

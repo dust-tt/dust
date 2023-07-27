@@ -1,3 +1,5 @@
+import { ConnectorPermission } from "@connectors/types/resources";
+
 const CONNECTOR_PROVIDERS = [
   "slack",
   "notion",
@@ -22,4 +24,6 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+
+  defaultNewResourcePermission: ConnectorPermission;
 };
