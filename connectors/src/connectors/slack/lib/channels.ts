@@ -2,7 +2,6 @@ import {
   Connector,
   sequelize_conn,
   SlackChannel,
-  SlackConfiguration,
 } from "@connectors/lib/models";
 import { ConnectorPermission } from "@connectors/types/resources";
 
