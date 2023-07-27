@@ -1375,7 +1375,7 @@ export default function AppChat({
                             (smallScreen
                               ? ""
                               : `Ask anything about \`${owner.name}\`.`) +
-                            "Press ⏎ to submit, shift+⏎ for next line"
+                            " Press ⏎ to submit, shift+⏎ for next line"
                           }
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
