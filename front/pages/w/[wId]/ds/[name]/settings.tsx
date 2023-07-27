@@ -554,7 +554,6 @@ function ManagedDataSourceSettings({
 
   const { total } = useDocuments(owner, dataSource, 0, 0);
 
-  // @todo: When updating a permission we lost a potential suffix on the connectionId name. Fix it?
   const handleUpdatePermissions = async () => {
     if (!canUpdatePermissions) {
       window.alert(
@@ -578,7 +577,7 @@ function ManagedDataSourceSettings({
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
-      const newConnectionId = buildConnectionId(owner.sId, provider, null);
+      const newConnectionId = buildConnectionId(owner.sId, provider);
       await nango.auth(nangoConnectorId, newConnectionId);
 
       const updateRes = await updateConnectorConnectionId(
