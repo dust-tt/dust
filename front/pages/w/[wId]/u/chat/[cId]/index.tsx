@@ -547,7 +547,12 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-2 flex flex-row items-start">
+        <div
+          className={classNames(
+            "my-2 flex flex-row items-start",
+            message.role === "user" ? "my-6" : ""
+          )}
+        >
           <div
             className={classNames(
               "min-w-10 flex h-10 w-10 flex-initial rounded-xl",
