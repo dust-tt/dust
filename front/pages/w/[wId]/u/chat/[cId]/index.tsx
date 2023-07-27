@@ -22,7 +22,10 @@ import remarkGfm from "remark-gfm";
 import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Spinner } from "@app/components/Spinner";
-import { ChatHistory } from "@app/components/use/chat/ChatHistory";
+import {
+  AppLayoutMenuChatHistory,
+  ChatHistory,
+} from "@app/components/use/chat/ChatHistory";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
@@ -615,20 +618,28 @@ const COMMANDS: { cmd: string; description: string }[] = [
 ];
 
 function ChatMenu({
+  owner,
+  user,
   onNewConversation,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
+  user: UserType | null;
   onNewConversation: () => void;
 }) {
   return (
-    <div className="flex flex-row px-2">
-      <div className="flex grow"></div>
-      <Button
-        label="New Conversation"
-        icon={ChatBubbleBottomCenterPlusIcon}
-        onClick={onNewConversation}
-      />
+    <div className="flex grow flex-col">
+      <div className="flex flex-row px-2">
+        <div className="flex grow"></div>
+        <Button
+          label="New Conversation"
+          icon={ChatBubbleBottomCenterPlusIcon}
+          onClick={onNewConversation}
+          className="flex flex-initial"
+        />
+      </div>
+      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
+        <AppLayoutMenuChatHistory owner={owner} user={user} />
+      </div>
     </div>
   );
 }
@@ -1364,7 +1375,7 @@ export default function AppChat({
                             (smallScreen
                               ? ""
                               : `Ask anything about \`${owner.name}\`.`) +
-                            "Press ⏎ to submit, shift+⏎ for next line"
+                            " Press ⏎ to submit, shift+⏎ for next line"
                           }
                           className={classNames(
                             "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
