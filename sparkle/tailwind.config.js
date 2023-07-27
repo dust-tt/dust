@@ -6,7 +6,7 @@ module.exports = {
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     fontFamily: {
-      roboto: ["Roboto", "sans-serif"],
+      sans: ["'darkmode-off-cc'", "'darkmode-on-cc'", "sans-serif"],
     },
     extend: {
       colors: {
