@@ -1,3 +1,4 @@
+import { Item } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
 import { TrashIcon } from "@heroicons/react/20/solid";
 import {
@@ -28,35 +29,35 @@ export function AppLayoutMenuChatHistory({
     workspaceScope: false,
   });
 
-  const handleTrashClick = async (
-    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
-    chatSession: ChatSessionType
-  ) => {
-    event.stopPropagation();
-    const confirmed = window.confirm(
-      `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
-    );
-    if (confirmed) {
-      // call the delete API
-      const res = await fetch(
-        `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cId: chatSession.sId }),
-        }
-      );
-      if (res.ok) {
-        void mutateChatSessions();
-      } else {
-        const data = await res.json();
-        window.alert(`Error deleting chat: ${data.error.message}`);
-      }
-    }
-    return false;
-  };
+  // const handleTrashClick = async (
+  //   event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+  //   chatSession: ChatSessionType
+  // ) => {
+  //   event.stopPropagation();
+  //   const confirmed = window.confirm(
+  //     `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
+  //   );
+  //   if (confirmed) {
+  //     // call the delete API
+  //     const res = await fetch(
+  //       `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+  //       {
+  //         method: "DELETE",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({ cId: chatSession.sId }),
+  //       }
+  //     );
+  //     if (res.ok) {
+  //       void mutateChatSessions();
+  //     } else {
+  //       const data = await res.json();
+  //       window.alert(`Error deleting chat: ${data.error.message}`);
+  //     }
+  //   }
+  //   return false;
+  // };
 
   return (
     <div className="flex grow flex-col">
@@ -71,32 +72,14 @@ export function AppLayoutMenuChatHistory({
             ? null
             : sessions.map((s, i) => {
                 return (
-                  <div
-                    key={i}
-                    className="group flex w-full cursor-pointer flex-col px-8 py-2 hover:bg-gray-50"
-                    onClick={() => {
-                      void router.push(`/w/${owner.sId}/u/chat/${s.sId}`);
-                    }}
-                  >
-                    <div className="flex flex-row items-center">
-                      <div className="w-64 truncate text-ellipsis text-slate-600 hover:text-slate-800">
-                        {s.title}
-                      </div>
-                      {/**
-                      <div className="flex grow"></div>
-                      <div className="min-w-16 flex flex-initial">
-                        {user?.id === s.userId ? (
-                          <TrashIcon
-                            className="ml-1 hidden h-4 w-4 hover:text-violet-800 group-hover:inline-block"
-                            onClick={(e) => handleTrashClick(e, s)}
-                          ></TrashIcon>
-                        ) : (
-                          ""
-                        )}
-                      </div>
-                       */}
-                    </div>
-                  </div>
+                  <Item
+                    key={s.sId}
+                    size="md"
+                    selected={router.query.cId === s.sId}
+                    label={s.title || ""}
+                    className="pl-8 pr-4"
+                    href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                  ></Item>
                 );
               })}
         </div>
