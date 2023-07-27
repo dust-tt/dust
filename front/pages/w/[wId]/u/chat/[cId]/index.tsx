@@ -1258,7 +1258,7 @@ export default function AppChat({
         {canStartConversation && (
           <>
             <div className="flex-1">
-              <div className="pb-32">
+              <div className="pb-32 -mt-4">
                 {messages.length > 0 ? (
                   <div>
                     <div className="text-sm">
