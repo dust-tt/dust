@@ -12,6 +12,8 @@ steps:
       - .
     secretEnv: ["DEPOT_TOKEN"]
 
+timeout: 600s
+
 availableSecrets:
   secretManager:
     - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
