@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { IconToggleButton, Cog6ToothIcon } from "sparkle";
+import { IconToggleButton, Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/IconToggleButton",

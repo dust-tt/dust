@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Tooltip } from "sparkle";
+import { Tooltip } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Tooltip",

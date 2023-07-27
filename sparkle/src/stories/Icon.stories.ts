@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Icon, ChatBubbleBottomCenterTextIcon } from "sparkle";
+import { Icon, ChatBubbleBottomCenterTextIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Icon",

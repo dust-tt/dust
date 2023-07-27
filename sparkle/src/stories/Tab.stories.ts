@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Tab } from "sparkle";
+import { Tab } from "../index_with_tw_base";
 import {
   ChatBubbleBottomCenterTextIcon,
   BeakerIcon,
   Cog6ToothIcon,
-} from "sparkle";
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Tab",

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Checkbox } from "sparkle";
+import { Checkbox } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Checkbox",
