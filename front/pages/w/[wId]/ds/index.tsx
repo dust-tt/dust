@@ -283,7 +283,7 @@ export default function DataSourcesView({
           google_drive: nangoConfig.googleDriveConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
-        const newConnectionId = buildConnectionId(owner.sId, provider, suffix);
+        const newConnectionId = buildConnectionId(owner.sId, provider);
         const {
           connectionId: nangoConnectionId,
         }: { providerConfigKey: string; connectionId: string } =
