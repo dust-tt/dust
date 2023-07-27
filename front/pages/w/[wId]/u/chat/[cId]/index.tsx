@@ -548,7 +548,7 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-2 flex flex-row items-start">
+        <div className="my-3 flex flex-row items-start">
           <div
             className={classNames(
               "min-w-6 flex h-8 w-8 flex-initial rounded-md",
@@ -577,7 +577,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word relative  ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -1252,7 +1252,7 @@ export default function AppChat({
               <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial bg-white lg:left-80">
                 <div className="mx-auto max-w-4xl px-6">
                   {/* Input bar  */}
-                  <div className="mb-2">
+                  <div className="">
                     <div className="flex flex-row items-center">
                       <div className="flex flex-1 flex-row items-end items-stretch">
                         <TextareaAutosize
@@ -1261,9 +1261,9 @@ export default function AppChat({
                           className={classNames(
                             "flex w-full resize-none bg-white font-normal ring-0 focus:ring-0",
                             "rounded-sm rounded-xl border-2",
-                            "border-action-200 text-element-800 focus:border-action-300 focus:ring-0",
+                            "border-action-200 text-element-800 drop-shadow-2xl focus:border-action-300 focus:ring-0",
                             "placeholder-gray-400",
-                            "px-2 py-2 pr-7"
+                            "px-3 py-3 pr-8"
                           )}
                           value={input}
                           onChange={(e) => {
@@ -1278,7 +1278,7 @@ export default function AppChat({
                           }}
                           autoFocus={true}
                         />
-                        <div className={classNames("-ml-8 flex flex-col")}>
+                        <div className={classNames("-ml-8 flex flex-col z-10")}>
                           {!loading ? (
                             <PaperAirplaneSolidIcon
                               className="my-auto h-5 w-5 cursor-pointer text-action-500"
@@ -1287,7 +1287,7 @@ export default function AppChat({
                               }}
                             />
                           ) : (
-                            <div className="my-auto mb-2.5 ml-1 h-4 w-4">
+                            <div className="my-auto mb-3.5 ml-1 h-4 w-4">
                               <Spinner />
                             </div>
                           )}
@@ -1295,7 +1295,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4 flex flex-row flex-wrap items-center text-xs">
+                  <div className="mb-8 mt-4 flex flex-row flex-wrap items-center text-xs">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>
