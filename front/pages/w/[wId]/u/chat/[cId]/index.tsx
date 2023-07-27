@@ -674,6 +674,7 @@ export default function AppChat({
 
   useEffect(() => {
     setTitle(chatSession.title || "New Conversation");
+    setShared(chatSession.shared || false);
     setMessages(chatSession.messages || []);
     inputRef.current?.focus();
   }, [chatSession]);
@@ -1155,6 +1156,37 @@ export default function AppChat({
     return false;
   };
 
+  const handleShareClick = async ({
+    conversation,
+    owner,
+  }: {
+    conversation: ChatSessionType;
+    owner: WorkspaceType;
+  }) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${conversation.sId}/shared`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cId: conversation.sId,
+          shared: !conversation.shared,
+        }),
+      }
+    );
+    if (res.ok) {
+      void mutateChatSessions();
+      conversation.shared = !conversation.shared;
+      setShared(conversation.shared);
+    } else {
+      const data = await res.json();
+      window.alert(`Error sharing chat: ${data.error.message}`);
+      return false;
+    }
+  };
+
   return (
     <AppLayout
       user={user}
@@ -1170,7 +1202,17 @@ export default function AppChat({
       }
       titleChildren={
         messages.length > 0 && (
-          <AppLayoutTitle title={title} onDelete={handleDelete} />
+          <AppLayoutTitle
+            title={title}
+            shared={shared}
+            onDelete={handleDelete}
+            onShare={() =>
+              handleShareClick({
+                conversation: chatSession,
+                owner,
+              })
+            }
+          />
         )
       }
     >

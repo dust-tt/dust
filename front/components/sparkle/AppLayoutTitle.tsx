@@ -1,12 +1,20 @@
 import { Button } from "@dust-tt/sparkle";
-import { TrashIcon } from "@heroicons/react/24/solid";
+import {
+  ArrowDownOnSquareIcon,
+  ArrowUpOnSquareIcon,
+  TrashIcon,
+} from "@heroicons/react/24/solid";
 
 export function AppLayoutTitle({
   title,
+  shared,
   onDelete,
+  onShare,
 }: {
   title: string;
+  shared: boolean;
   onDelete?: () => void;
+  onShare?: () => void;
 }) {
   return (
     <div className="flex h-full flex-row items-center">
@@ -23,6 +31,16 @@ export function AppLayoutTitle({
             label="Delete"
             icon={TrashIcon}
             onClick={onDelete}
+          />
+        </div>
+      )}
+      {onShare && (
+        <div className="flex flex-initial text-red-800">
+          <Button
+            type={shared ? "tertiary" : "primary"}
+            label={shared ? "Unshare" : "Share"}
+            icon={shared ? ArrowDownOnSquareIcon : ArrowUpOnSquareIcon}
+            onClick={onShare}
           />
         </div>
       )}
