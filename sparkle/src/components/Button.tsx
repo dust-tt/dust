@@ -3,6 +3,7 @@ import React, { ComponentType, MouseEvent } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { Tooltip } from "./Tooltip";
 
 type ButtonProps = {
   type?: "primary" | "secondary" | "tertiary";
@@ -10,6 +11,7 @@ type ButtonProps = {
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   label: string;
+  labelVisible: boolean;
   icon?: ComponentType;
   className?: string;
 };
@@ -77,6 +79,7 @@ export function Button({
   size = "sm",
   onClick,
   disabled = false,
+  labelVisible = true,
   label,
   icon,
   className = "",
@@ -97,7 +100,7 @@ export function Button({
   const iconClasses = classNames(iconSizeClasses[size]);
   const finalContainerClasses = classNames(containerClasses[size]);
 
-  return (
+  return labelVisible ? (
     <button
       type="button"
       className={buttonClasses}
@@ -108,5 +111,17 @@ export function Button({
       {icon && <Icon IconComponent={icon} className={iconClasses} />}
       <div className={finalContainerClasses}>{label}</div>
     </button>
+  ) : (
+    <Tooltip label={label}>
+      <button
+        type="button"
+        className={buttonClasses}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+      >
+        {icon && <Icon IconComponent={icon} className={iconClasses} />}
+      </button>
+    </Tooltip>
   );
 }

@@ -10,11 +10,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const BasicItem: Story = {
+export const ItemMD: Story = {
   args: {
     label: "Settings",
     size: "md",
     icon: Cog6ToothIcon,
+    disabled: false,
+    selected: false,
+  },
+};
+
+export const ItemSM: Story = {
+  args: {
+    label: "Settings",
+    size: "sm",
+    icon: Cog6ToothIcon,
+    disabled: false,
+    selected: false,
+  },
+};
+
+export const ItemWithoutIcon: Story = {
+  args: {
+    label: "Conversation about Dust's origines",
+    size: "sm",
     disabled: false,
     selected: false,
   },

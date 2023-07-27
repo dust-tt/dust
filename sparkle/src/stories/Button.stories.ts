@@ -19,6 +19,17 @@ export const Primary: Story = {
   },
 };
 
+export const IconOnlyPlusTooltip: Story = {
+  args: {
+    type: "primary",
+    size: "xs",
+    label: "Settings",
+    labelVisible: false,
+    icon: Cog6ToothIcon,
+    disabled: false,
+  },
+};
+
 export const Secondary: Story = {
   args: {
     type: "secondary",
