@@ -1,4 +1,8 @@
-import { Button, ChatBubbleBottomCenterPlusIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChatBubbleBottomCenterPlusIcon,
+  PaperAirplaneSolidIcon,
+} from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   ArrowRightCircleIcon,
@@ -30,6 +34,7 @@ import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
 } from "@app/components/use/chat/ChatTimeRangePicker";
+import { AppLayoutChatTitle } from "@app/components/use/chat/ChatTitle";
 import {
   FeedbackHandler,
   MessageFeedback,
@@ -54,6 +59,7 @@ import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
+  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
@@ -80,12 +86,8 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
-  chatSession: {
-    sId: string;
-    title: string | null;
-    messages: ChatMessageType[];
-    readOnly: boolean;
-  };
+  chatSession: ChatSessionType;
+  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -154,11 +156,13 @@ export const getServerSideProps: GetServerSideProps<{
         workspaceDataSources: dataSources,
         prodCredentials,
         chatSession: {
+          id: 0,
+          userId: user?.id || 0,
           sId: cId,
-          title: null,
+          created: Date.now(),
           messages: [],
-          readOnly: false,
         },
+        readOnly: false,
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -169,12 +173,8 @@ export const getServerSideProps: GetServerSideProps<{
         owner,
         workspaceDataSources: dataSources,
         prodCredentials,
-        chatSession: {
-          sId: cId,
-          title: chatSession.title || null,
-          messages: chatSession.messages || [],
-          readOnly: user?.id !== chatSession.userId,
-        },
+        chatSession,
+        readOnly: user?.id !== chatSession.userId,
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -601,22 +601,6 @@ export function MessageView({
   );
 }
 
-const COMMANDS: { cmd: string; description: string }[] = [
-  {
-    cmd: "/new",
-    description: "Starts a new conversation",
-  },
-  {
-    cmd: "/follow-up",
-    description:
-      "Forces the assistant to answer *whithout* querying the data sources",
-  },
-  {
-    cmd: "/retrieve",
-    description: "Forces the assistant to *only* query the data sources",
-  },
-];
-
 function ChatMenu({
   owner,
   user,
@@ -650,13 +634,16 @@ export default function AppChat({
   workspaceDataSources,
   prodCredentials,
   chatSession,
+  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   const prodAPI = new DustAPI(prodCredentials);
 
-  const [title, setTitle] = useState<string>(chatSession.title || "Chat");
+  const [title, setTitle] = useState<string>(
+    chatSession.title || "New Conversation"
+  );
   const [smallScreen, setSmallScreen] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
@@ -666,7 +653,7 @@ export default function AppChat({
   >(chatSession.title ? "saved" : "new");
 
   useEffect(() => {
-    setTitle(chatSession.title || "Chat");
+    setTitle(chatSession.title || "New Conversation");
     setMessages(chatSession.messages || []);
     setTitleState(chatSession.title ? "saved" : "new");
     inputRef.current?.focus();
@@ -680,10 +667,6 @@ export default function AppChat({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
-  const [commands, setCommands] = useState<
-    { cmd: string; description: string }[]
-  >([]);
-  const [commandsSelect, setCommandsSelect] = useState<number>(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -697,30 +680,6 @@ export default function AppChat({
 
   const handleInputUpdate = (input: string) => {
     setInput(input);
-    if (input.startsWith("/") && input.split(" ").length === 1) {
-      setCommands(COMMANDS.filter((c) => c.cmd.startsWith(input)));
-      setCommandsSelect(0);
-    } else {
-      setCommands([]);
-      setCommandsSelect(0);
-    }
-  };
-
-  const handleSelectCommand = () => {
-    if (commandsSelect >= 0 && commandsSelect < commands.length) {
-      if (commands[commandsSelect].cmd === "/new") {
-        if (loading) {
-          return;
-        }
-        setCommands([]);
-        setCommandsSelect(0);
-        return handleNew();
-      }
-      setInput(commands[commandsSelect].cmd + " ");
-      setCommands([]);
-      setCommandsSelect(0);
-      inputRef.current?.focus();
-    }
   };
 
   const handleSwitchDataSourceSelection = (name: string) => {
@@ -1157,6 +1116,17 @@ export default function AppChat({
       navChildren={
         <ChatMenu owner={owner} user={user} onNewConversation={handleNew} />
       }
+      titleChildren={
+        messages.length > 0 && (
+          <AppLayoutChatTitle
+            owner={owner}
+            user={user}
+            session={chatSession}
+            title={title}
+            titleState={titleState}
+          />
+        )
+      }
     >
       <div className="flex h-full flex-col">
         {dataSources.length === 0 && (
@@ -1191,41 +1161,11 @@ export default function AppChat({
         {dataSources.length > 0 && (
           <>
             <div className="flex-1">
-              <div
-                className="h-full max-h-full grow-0 overflow-y-auto"
-                ref={scrollRef}
-              >
+              <div className="" ref={scrollRef}>
                 <div className="max-h-0">
                   {messages.length > 0 ? (
                     <div>
-                      <div className="flex flex-row items-center justify-center text-sm">
-                        <span className="font-bold">{title}</span>
-                        <span className="text-xs text-gray-600">
-                          {titleState === "new" && (
-                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5 text-xs">
-                              new
-                            </span>
-                          )}
-                          {titleState === "writing" && (
-                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                              writing...
-                            </span>
-                          )}
-                          {titleState === "saving" && (
-                            <span className="ml-1 flex items-center rounded bg-gray-200 px-1 py-0.5">
-                              <ClockIcon className="mr-0.5 h-3 w-3"></ClockIcon>
-                              saving
-                            </span>
-                          )}
-                          {titleState === "saved" && (
-                            <span className="ml-1 flex flex-row items-center rounded bg-gray-100 px-1 py-0.5">
-                              <CheckCircleIcon className="mr-0.5 h-3 w-3"></CheckCircleIcon>
-                              saved
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="mt-8 text-sm">
+                      <div className="text-base">
                         {messages.map((m, i) => {
                           return m.role === "error" ? (
                             <div key={i}>
@@ -1240,16 +1180,6 @@ export default function AppChat({
                                       You can continue the conversation, this
                                       error and your last message will be
                                       removed from the conversation
-                                    </li>
-                                    <li>
-                                      Alternatively, restart a chat with the
-                                      `/new` command or by clicking{" "}
-                                      <Link
-                                        href={`/w/${owner.sId}/u/chat`}
-                                        className="text text-action-500 hover:underline"
-                                      >
-                                        here
-                                      </Link>
                                     </li>
                                     <li>
                                       Don't hesitate to reach out if the problem
@@ -1272,9 +1202,9 @@ export default function AppChat({
                                 //   !response && i === messages.length - 1
                                 // }
                                 isLatestRetrieval={isLatest("retrieval", i)}
-                                readOnly={chatSession.readOnly}
+                                readOnly={readOnly}
                                 feedback={
-                                  !chatSession.readOnly &&
+                                  !readOnly &&
                                   m.role === "assistant" && {
                                     handler: handleFeedback,
                                     hover: response
@@ -1294,7 +1224,7 @@ export default function AppChat({
                               loading={true}
                               // isLatest={true}
                               isLatestRetrieval={response.role === "retrieval"}
-                              readOnly={chatSession.readOnly}
+                              readOnly={readOnly}
                             />
                           </div>
                         ) : null}
@@ -1311,79 +1241,29 @@ export default function AppChat({
                         and presented to the Assistant to help it answer your
                         queries.
                       </p>
-                      <div className="w-full py-8">
-                        <ChatHistory
-                          owner={owner}
-                          user={user}
-                          limit={smallScreen ? 5 : 10}
-                        />
-                      </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            {!chatSession.readOnly && (
-              <div className="z-50 w-full flex-initial border bg-white text-sm">
-                <div className="mx-auto mt-8 max-w-2xl px-6 xl:max-w-4xl xl:px-12">
-                  <div className="mb-1 mt-2">
+
+            {/* Input fixed panel */}
+            {!readOnly && (
+              <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial bg-white lg:left-80">
+                <div className="mx-auto max-w-4xl px-6">
+                  {/* Input bar  */}
+                  <div className="mb-2">
                     <div className="flex flex-row items-center">
-                      <div className="flex flex-1 flex-row items-end">
-                        {commands.length > 0 && (
-                          <div className="absolute mb-12 pr-7">
-                            <div className="flex flex-col rounded-sm border bg-white px-2 py-2">
-                              {commands.map((c, i) => {
-                                return (
-                                  <div
-                                    key={i}
-                                    className={classNames(
-                                      "flex cursor-pointer flex-row rounded-sm px-2 py-2",
-                                      i === commandsSelect
-                                        ? "bg-gray-100"
-                                        : "bg-white"
-                                    )}
-                                    onMouseEnter={() => {
-                                      setCommandsSelect(i);
-                                    }}
-                                    onClick={() => {
-                                      void handleSelectCommand();
-                                    }}
-                                  >
-                                    <div className="flex w-24 flex-row">
-                                      <div
-                                        className={classNames(
-                                          "flex flex-initial",
-                                          "rounded bg-gray-200 px-2 py-0.5 text-xs font-bold text-slate-800"
-                                        )}
-                                      >
-                                        {c.cmd}
-                                      </div>
-                                      <div className="flex flex-1"></div>
-                                    </div>
-                                    <div className="ml-2 w-48 truncate pr-2 italic text-gray-500 sm:w-max">
-                                      {c.description}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
+                      <div className="flex flex-1 flex-row items-end items-stretch">
                         <TextareaAutosize
                           minRows={1}
-                          placeholder={
-                            (smallScreen
-                              ? ""
-                              : `Ask anything about \`${owner.name}\`.`) +
-                            " Press ⏎ to submit, shift+⏎ for next line"
-                          }
+                          placeholder={"Ask a question"}
                           className={classNames(
-                            "block w-full resize-none bg-slate-50 px-2 py-2 text-[13px] font-normal ring-0 focus:ring-0",
-                            "rounded-sm",
-                            "border",
-                            "border-slate-200 focus:border-slate-300 focus:ring-0",
+                            "flex w-full resize-none bg-white font-normal ring-0 focus:ring-0",
+                            "rounded-sm rounded-xl border-2",
+                            "border-action-200 text-element-800 focus:border-action-300 focus:ring-0",
                             "placeholder-gray-400",
-                            "pr-7"
+                            "px-2 py-2 pr-7"
                           )}
                           value={input}
                           onChange={(e) => {
@@ -1391,52 +1271,23 @@ export default function AppChat({
                           }}
                           ref={inputRef}
                           onKeyDown={(e) => {
-                            if (commands.length > 0) {
-                              if (e.key === "ArrowUp") {
-                                setCommandsSelect(
-                                  commandsSelect > 0
-                                    ? commandsSelect - 1
-                                    : commandsSelect
-                                );
-                                e.preventDefault();
-                              }
-                              if (e.key === "ArrowDown") {
-                                setCommandsSelect(
-                                  commandsSelect < commands.length - 1
-                                    ? commandsSelect + 1
-                                    : commandsSelect
-                                );
-                                e.preventDefault();
-                              }
-                              if (e.key === "Enter") {
-                                void handleSelectCommand();
-                                e.preventDefault();
-                              }
-                            } else if (
-                              e.key === "Enter" &&
-                              !loading &&
-                              !e.shiftKey
-                            ) {
+                            if (e.key === "Enter" && !loading && !e.shiftKey) {
                               void handleSubmit();
                               e.preventDefault();
                             }
                           }}
                           autoFocus={true}
                         />
-                        <div
-                          className={classNames(
-                            "-ml-7 mb-2 flex-initial pb-0.5 font-normal"
-                          )}
-                        >
+                        <div className={classNames("-ml-8 flex flex-col")}>
                           {!loading ? (
-                            <ArrowRightCircleIcon
-                              className="h-5 w-5 cursor-pointer text-action-500"
+                            <PaperAirplaneSolidIcon
+                              className="my-auto h-5 w-5 cursor-pointer text-action-500"
                               onClick={() => {
                                 void handleSubmit();
                               }}
                             />
                           ) : (
-                            <div className="mb-1 ml-1">
+                            <div className="my-auto mb-2.5 ml-1 h-4 w-4">
                               <Spinner />
                             </div>
                           )}
