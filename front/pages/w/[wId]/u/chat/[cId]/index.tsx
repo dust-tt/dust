@@ -1214,6 +1214,11 @@ export default function AppChat({
       void mutateChatSessions();
       conversation.shared = !conversation.shared;
       setShared(conversation.shared);
+      if (conversation.shared) {
+        navigator.clipboard.writeText(
+          `${window.location.origin}/w/${owner.sId}/u/chat/${conversation.sId}`
+        );
+      }
     } else {
       const data = await res.json();
       window.alert(`Error sharing chat: ${data.error.message}`);
