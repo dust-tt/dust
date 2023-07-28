@@ -85,7 +85,8 @@ export async function githubUpsertIssueActivity(
   login: string,
   issueNumber: number,
   dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isBatchSync = false
 ) {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -133,17 +134,20 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
   // TODO: last commentor, last comment date, issue labels (as tags)
-  await upsertToDatasource(
+  await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    renderedIssue,
-    issue.url,
-    issue.createdAt.getTime(),
-    tags,
-    3,
-    500,
-    { ...loggerArgs, provider: "github" }
-  );
+    documentText: renderedIssue,
+    documentUrl: issue.url,
+    timestampMs: issue.createdAt.getTime(),
+    tags: tags,
+    retries: 3,
+    delayBetweenRetriesMs: 500,
+    loggerArgs: { ...loggerArgs, provider: "github" },
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
+  });
 
   const connector = await Connector.findOne({
     where: {
@@ -181,7 +185,8 @@ export async function githubUpsertDiscussionActivity(
   login: string,
   discussionNumber: number,
   dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isBatchSync: boolean
 ) {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -255,17 +260,20 @@ export async function githubUpsertDiscussionActivity(
     `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
-  await upsertToDatasource(
+  await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    renderedDiscussion,
-    discussion.url,
-    new Date(discussion.createdAt).getTime(),
+    documentText: renderedDiscussion,
+    documentUrl: discussion.url,
+    timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    3,
-    500,
-    { ...loggerArgs, provider: "github" }
-  );
+    retries: 3,
+    delayBetweenRetriesMs: 500,
+    loggerArgs: { ...loggerArgs, provider: "github" },
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
+  });
 
   const connector = await Connector.findOne({
     where: {

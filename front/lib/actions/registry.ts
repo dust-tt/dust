@@ -176,57 +176,19 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "doc-tracker": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "a48139b64b",
-      appHash:
-        "8fbdd063ae0e45ced9dcb5771200b171f1987124c4b7671a66d8eef5e4a1d9ac",
-    },
-    config: {
-      SUGGEST_CHANGES: {
-        provider_id: "openai",
-        model_id: "gpt-4-0613",
-        use_cache: false,
-        function_call: "suggest_changes",
-      },
-      SEMANTIC_SEARCH: {
-        data_sources: [],
-        top_k: 8,
-        filter: {
-          tags: {
-            in: ["__DUST_TRACKED"],
-            not: null,
-          },
-          timestamp: null,
-        },
-        use_cache: false,
-        full_text: true,
-      },
-      SUMMARIZE_INCOMING_DOC: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
-        function_call: "return_summary",
-        use_cache: false,
-      },
-    },
-  },
   "doc-tracker-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "4180309c80",
       appHash:
-        "48f73c1e4edb35f7d2422b07483700dab0140ded9fc5125248c17a5df6d1db18",
+        "8adcc9ae33a63cc735c9a23a97d7bffe658c6ef2400fc997e61e8817f611a1f8",
     },
     config: {
       SEMANTIC_SEARCH: {
         data_sources: [],
-        top_k: 8,
+        top_k: 20,
         filter: {
-          tags: {
-            in: ["__DUST_TRACKED"],
-            not: null,
-          },
+          tags: null,
           timestamp: null,
         },
         use_cache: false,
@@ -240,7 +202,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "76b40f14fb",
       appHash:
-        "3e59e6d02fe60e120c285851a850649378c803d36e7e6e9f4cab72d291e1a258",
+        "93877e16b59a07eff3b4f154b8f568f172d6a463f27bd3bcbf5f6aa264216163",
     },
     config: {
       SUGGEST_CHANGES: {

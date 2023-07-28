@@ -13,32 +13,38 @@ if (!FRONT_API) {
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
 
-export async function upsertToDatasource(
-  dataSourceConfig: DataSourceConfig,
-  documentId: string,
-  documentText: string,
-  documentUrl?: string,
-  timestampMs?: number,
-  tags?: string[],
+type UpsertContext = {
+  sync_type: "batch" | "incremental";
+};
+
+type UpsertToDataSourceParams = {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+  documentText: string;
+  documentUrl?: string;
+  timestampMs?: number;
+  tags?: string[];
+  loggerArgs?: Record<string, string | number>;
+  upsertContext: UpsertContext;
+};
+
+type UpsertToDataSourceRetryOptions = {
+  retries?: number;
+  delayBetweenRetriesMs?: number;
+};
+
+export async function upsertToDatasource({
   retries = 10,
-  delayBetweenRetriesMs = 500,
-  loggerArgs: Record<string, string | number> = {}
-) {
+  delayBetweenRetriesMs = 1000,
+  ...params
+}: UpsertToDataSourceParams & UpsertToDataSourceRetryOptions) {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
   }
   const errors = [];
   for (let i = 0; i < retries; i++) {
     try {
-      return await _upsertToDatasource(
-        dataSourceConfig,
-        documentId,
-        documentText,
-        documentUrl,
-        timestampMs,
-        tags,
-        loggerArgs
-      );
+      return await _upsertToDatasource(params);
     } catch (e) {
       const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
       logger.warn(
@@ -58,15 +64,16 @@ export async function upsertToDatasource(
   throw new Error(errors.join("\n"));
 }
 
-async function _upsertToDatasource(
-  dataSourceConfig: DataSourceConfig,
-  documentId: string,
-  documentText: string,
-  documentUrl?: string,
-  timestamp?: number,
-  tags?: string[],
-  loggerArgs: Record<string, string | number> = {}
-) {
+async function _upsertToDatasource({
+  dataSourceConfig,
+  documentId,
+  documentText,
+  documentUrl,
+  timestampMs,
+  tags,
+  loggerArgs = {},
+  upsertContext,
+}: UpsertToDataSourceParams) {
   const localLogger = logger.child({
     ...loggerArgs,
     documentId,
@@ -90,9 +97,10 @@ async function _upsertToDatasource(
   const dustRequestPayload = {
     text: documentText,
     source_url: documentUrl,
-    timestamp,
+    timestamp: timestampMs,
     tags,
     light_document_output: true,
+    upsert_context: upsertContext,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

@@ -209,7 +209,8 @@ export async function notionUpsertPageActivity(
   pageId: string,
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number,
-  loggerArgs: Record<string, string | number>
+  loggerArgs: Record<string, string | number>,
+  isFullSync: boolean
 ) {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
@@ -258,17 +259,20 @@ export async function notionUpsertPageActivity(
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
-    await upsertToDatasource(
+    await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      parsedPage.rendered,
-      parsedPage.url,
-      parsedPage.updatedTime,
-      getTagsForPage(parsedPage),
-      3,
-      500,
-      loggerArgs
-    );
+      documentText: parsedPage.rendered,
+      documentUrl: parsedPage.url,
+      timestampMs: parsedPage.updatedTime,
+      tags: getTagsForPage(parsedPage),
+      retries: 3,
+      delayBetweenRetriesMs: 500,
+      loggerArgs,
+      upsertContext: {
+        sync_type: isFullSync ? "batch" : "incremental",
+      },
+    });
   } else {
     localLogger.info("Skipping page without body");
   }
