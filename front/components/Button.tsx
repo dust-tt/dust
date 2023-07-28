@@ -96,7 +96,7 @@ export function GoogleSignInButton({
       type="button"
       className={classNames(
         "inline-flex items-center rounded-md border  px-3 py-1 text-sm leading-6 shadow-sm" +
-          "border-gray-700 bg-white font-roboto text-gray-800 hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2"
+          "font-roboto border-gray-700 bg-white text-gray-800 hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2"
       )}
       onClick={onClick}
     >

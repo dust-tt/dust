@@ -1,5 +1,5 @@
 import { Logo } from "@dust-tt/sparkle";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import Head from "next/head";
@@ -11,7 +11,6 @@ import p5Types from "p5";
 import { ParsedUrlQuery } from "querystring";
 
 import { GoogleSignInButton } from "@app/components/Button";
-import { Button } from "@dust-tt/sparkle";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
