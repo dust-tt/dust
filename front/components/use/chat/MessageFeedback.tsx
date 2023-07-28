@@ -30,13 +30,13 @@ export function MessageFeedback({
       )}
     >
       <IconButton
-        type={message.feedback === "positive" ? "primary" : "secondary"}
+        type={message.feedback === "positive" ? "primary" : "tertiary"}
         icon={HandThumbUpSolidIcon}
         onClick={() => feedbackHandler(message, "positive")}
         className="ml-1"
       />
       <IconButton
-        type={message.feedback === "negative" ? "primary" : "secondary"}
+        type={message.feedback === "negative" ? "primary" : "tertiary"}
         icon={HandThumbDownSolidIcon}
         onClick={() => feedbackHandler(message, "negative")}
         className="ml-1"
