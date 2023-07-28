@@ -186,7 +186,9 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       SEMANTIC_SEARCH: {
         data_sources: [],
-        top_k: 20,
+        // top k will probably need to be
+        // proportional to the number of documents
+        top_k: 128,
         filter: {
           tags: null,
           timestamp: null,
