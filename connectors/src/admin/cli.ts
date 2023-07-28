@@ -281,12 +281,19 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
           type: args.provider,
         },
       });
+      let fromTs: number | null = null;
+      if (args.fromTs) {
+        fromTs = parseInt(args.fromTs as string, 10);
+      }
       for (const connector of connectors) {
         await throwOnError(
-          SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id.toString(), null)
+          SYNC_CONNECTOR_BY_TYPE[connector.type](
+            connector.id.toString(),
+            fromTs
+          )
         );
         console.log(
-          `Triggered sync for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName}`
+          `Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
         );
       }
       return;
