@@ -8,7 +8,8 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      roboto: ["Roboto", "sans-serif"],
+      //roboto: ["Roboto", "sans-serif"],
+      objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
       colors: {
