@@ -36,9 +36,11 @@ export async function callDocTrackerSuggestChangesAction(
 const DocTrackerSuggestChangesActionValueSchema = t.union([
   t.type({
     match: t.literal(false),
+    reason: t.string,
   }),
   t.type({
     match: t.literal(true),
     suggested_changes: t.string,
+    reason: t.string,
   }),
 ]);
