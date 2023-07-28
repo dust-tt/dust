@@ -138,7 +138,7 @@ export async function updateSlackConnector(
         message: "Connector not found",
         type: "connector_not_found",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
   const currentSlackConfig = await SlackConfiguration.findOne({
@@ -153,7 +153,7 @@ export async function updateSlackConnector(
         message: "Slack configuration not found",
         type: "connector_not_found",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
   const updateParams: Parameters<typeof c.update>[0] = {};
@@ -173,7 +173,7 @@ export async function updateSlackConnector(
           type: "connector_oauth_target_mismatch",
           message: "Cannot change the Slack Team of a Data Source",
         },
-      } as ConnectorsAPIErrorResponse);
+      });
     }
 
     updateParams.connectionId = connectionId;
