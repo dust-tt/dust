@@ -16,7 +16,7 @@ export { PageHeader };
 import { Icon } from "./components/Icon";
 export { Icon };
 
-import { Logo } from "./logo";
+import { Logo } from "./logo/Logo";
 export { Logo };
 
 import { Checkbox } from "./components/Checkbox";

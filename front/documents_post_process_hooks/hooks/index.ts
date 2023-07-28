@@ -6,6 +6,7 @@ import {
 import { extractEventPostProcessHook } from "@app/documents_post_process_hooks/hooks/extract_event";
 import { Authenticator } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { UpsertContext } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/documents/[documentId]";
 
 export const DOCUMENTS_POST_PROCESS_HOOK_TYPES = [
   "document_tracker_update_tracked_documents",
@@ -26,6 +27,7 @@ export type DocumentsPostProcessHookOnUpsertParams = {
   documentText: string;
   documentHash: string;
   dataSourceConnectorProvider: ConnectorProvider | null;
+  upsertContext?: UpsertContext;
 };
 
 export type DocumentsPostProcessHookOnDeleteParams = {

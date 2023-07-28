@@ -46,6 +46,8 @@ export class Connector extends Model<
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
   declare lastGCTime: Date | null;
+
+  declare defaultNewResourcePermission: ConnectorPermission;
 }
 
 Connector.init(
@@ -113,6 +115,11 @@ Connector.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    defaultNewResourcePermission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "read_write",
+    },
   },
   {
     sequelize: sequelize_conn,
@@ -131,7 +138,7 @@ export class SlackConfiguration extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
-  declare defaultChannelPermission: ConnectorPermission;
+  // declare defaultChannelPermission: ConnectorPermission;
 }
 
 SlackConfiguration.init(
@@ -159,11 +166,6 @@ SlackConfiguration.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    defaultChannelPermission: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "read_write",
     },
   },
   {

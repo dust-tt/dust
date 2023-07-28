@@ -1,3 +1,5 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -44,6 +46,15 @@ export type UpsertDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
   data_source: DataSourceType;
 };
+
+const UpsertContextSchema = t.type({
+  sync_type: t.union([
+    t.literal("batch"),
+    t.literal("incremental"),
+    t.undefined,
+  ]),
+});
+export type UpsertContext = t.TypeOf<typeof UpsertContextSchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -296,6 +307,15 @@ async function handler(
         data_source: dataSource,
       });
 
+      const upsertContextValidation = UpsertContextSchema.decode(
+        req.body.upsert_context
+      );
+
+      let upsertContext: UpsertContext | undefined = undefined;
+      if (!isLeft(upsertContextValidation)) {
+        upsertContext = upsertContextValidation.right;
+      }
+
       const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
         auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
@@ -304,6 +324,7 @@ async function handler(
         documentHash: upsertRes.value.document.hash,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
         documentSourceUrl: sourceUrl || undefined,
+        upsertContext,
       });
 
       // TODO: parallel.

@@ -35,16 +35,28 @@ const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
 
-export async function shouldDocumentTrackerSuggestChangesRun({
-  auth,
-  dataSourceName,
-  documentId,
-  dataSourceConnectorProvider,
-  verb,
-}: DocumentsPostProcessHookFilterParams): Promise<boolean> {
-  if (verb !== "upsert") {
+export async function shouldDocumentTrackerSuggestChangesRun(
+  params: DocumentsPostProcessHookFilterParams
+): Promise<boolean> {
+  if (params.verb !== "upsert") {
     logger.info(
       "document_tracker_suggest_changes post process hook should only run for upsert."
+    );
+    return false;
+  }
+
+  const {
+    upsertContext,
+    auth,
+    dataSourceName,
+    documentId,
+    dataSourceConnectorProvider,
+  } = params;
+  const isBatchSync = upsertContext?.sync_type === "batch";
+
+  if (isBatchSync) {
+    logger.info(
+      "document_tracker_suggest_changes post process hook should not run for batch sync."
     );
     return false;
   }
@@ -249,8 +261,27 @@ export async function documentTrackerSuggestChangesOnUpsert({
     localLogger.warn("No documents found.");
     return;
   }
+
+  const retrievedTrackedDocuments = retrievalResult.filter((r) =>
+    r.tags.includes("DUST_TRACKED")
+  );
+
+  if (!retrievedTrackedDocuments.length) {
+    localLogger.info(
+      "No tracked documents retrieved, not calling doc tracker suggest changes action."
+    );
+    return;
+  }
+
+  localLogger.info(
+    {
+      retrievedTrackedDocumentsCount: retrievedTrackedDocuments.length,
+    },
+    "Retrieved tracked documents."
+  );
+
   // TODO: maybe not just look at top1, look at top 3 chunks and do on multiple docs if needed
-  const top1 = retrievalResult[0];
+  const top1 = retrievedTrackedDocuments[0];
   const score = top1.chunks[0].score;
 
   if (score < RETRIEVAL_MIN_SCORE) {

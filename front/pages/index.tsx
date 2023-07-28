@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Logo } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -9,7 +10,6 @@ import { signIn } from "next-auth/react";
 import { ParsedUrlQuery } from "querystring";
 
 import { GoogleSignInButton } from "@app/components/Button";
-import { Button } from "@dust-tt/sparkle";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 

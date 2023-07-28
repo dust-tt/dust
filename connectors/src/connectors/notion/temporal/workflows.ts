@@ -166,6 +166,7 @@ export async function notionSyncWorkflow(
                   notionAccessToken,
                   batch,
                   runTimestamp,
+                  isInitialSync || forceResync || isGargageCollectionRun,
                 ],
                 parentClosePolicy:
                   ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -251,7 +252,8 @@ export async function notionSyncResultPageWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   pageIds: string[],
-  runTimestamp: number
+  runTimestamp: number,
+  isBatchSync = false
 ) {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
@@ -272,7 +274,8 @@ export async function notionSyncResultPageWorkflow(
           pageId,
           dataSourceConfig,
           runTimestamp,
-          loggerArgs
+          loggerArgs,
+          isBatchSync
         )
       )
     );

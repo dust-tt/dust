@@ -1,0 +1,25 @@
+name: Publish Sparkle
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish_sparkle
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: "npm"
+          cache-dependency-path: ./sparkle/package-lock.json
+          registry-url: "https://registry.npmjs.org"
+
+      - working-directory: sparkle
+        run: npm ci && npm run build && npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -60,7 +60,10 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 
 type ConnectorUpdater = (
   connectorId: ModelId,
-  connectionId: string
+  params: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<

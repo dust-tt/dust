@@ -1,11 +1,8 @@
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-} from "@heroicons/react/24/outline";
-import {
-  HandThumbDownIcon as HTDIFull,
-  HandThumbUpIcon as HTUIFull,
-} from "@heroicons/react/24/solid";
+  IconButton,
+} from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
@@ -26,40 +23,23 @@ export function MessageFeedback({
 }) {
   return (
     <div
-      className={classNames("flex-end flex h-2 flex-row-reverse text-gray-400")}
+      className={classNames(
+        "flex-end flex flex-row-reverse pt-2 text-gray-400",
+        !message.feedback && hover ? "invisible group-hover:visible" : ""
+      )}
     >
-      <div
+      <IconButton
+        type={message.feedback === "positive" ? "primary" : "tertiary"}
+        icon={HandThumbUpIcon}
         onClick={() => feedbackHandler(message, "positive")}
-        className={classNames(
-          "ml-2 cursor-pointer rounded-md p-px",
-          message.feedback === "positive"
-            ? "text-action-800"
-            : "hover:text-action-800",
-          !message.feedback && hover ? "invisible group-hover:visible" : ""
-        )}
-      >
-        {message.feedback === "positive" ? (
-          <HTUIFull className="h-4 w-4"></HTUIFull>
-        ) : (
-          <HandThumbUpIcon className="h-4 w-4"></HandThumbUpIcon>
-        )}
-      </div>
-      <div
+        className="ml-1"
+      />
+      <IconButton
+        type={message.feedback === "negative" ? "primary" : "tertiary"}
+        icon={HandThumbDownIcon}
         onClick={() => feedbackHandler(message, "negative")}
-        className={classNames(
-          "ml-2 cursor-pointer rounded-md p-px",
-          message.feedback === "negative"
-            ? "text-action-800"
-            : "hover:text-action-800",
-          !message.feedback && hover ? "invisible group-hover:visible" : ""
-        )}
-      >
-        {message.feedback === "negative" ? (
-          <HTDIFull className="h-4 w-4"></HTDIFull>
-        ) : (
-          <HandThumbDownIcon className="h-4 w-4"></HandThumbDownIcon>
-        )}
-      </div>
+        className="ml-1"
+      />
     </div>
   );
 }

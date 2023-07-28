@@ -44,6 +44,7 @@ export async function createGithubConnector(
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
+        defaultNewResourcePermission: "read_write",
       },
       { transaction }
     );
@@ -66,7 +67,13 @@ export async function createGithubConnector(
 
 export async function updateGithubConnector(
   connectorId: ModelId,
-  connectionId: string
+  {
+    connectionId,
+    defaultNewResourcePermission,
+  }: {
+    connectionId?: string | null;
+    defaultNewResourcePermission?: ConnectorPermission | null;
+  }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   const c = await Connector.findOne({
     where: {
@@ -80,22 +87,39 @@ export async function updateGithubConnector(
         message: "Connector not found",
         type: "connector_not_found",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
-  const oldGithubInstallationId = c.connectionId;
-  const newGithubInstallationId = connectionId;
-
-  if (oldGithubInstallationId !== newGithubInstallationId) {
+  if (defaultNewResourcePermission) {
+    logger.error(
+      { connectorId, defaultNewResourcePermission },
+      "Cannot update defaultNewResourcePermission of a Github Data Source"
+    );
     return new Err({
       error: {
         type: "connector_update_unauthorized",
-        message: "Cannot change the Installation Id of a Github Data Source",
+        message:
+          "Cannot update defaultNewResourcePermission of a Github Data Source",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
-  await c.update({ connectionId });
+  if (connectionId) {
+    const oldGithubInstallationId = c.connectionId;
+    const newGithubInstallationId = connectionId;
+
+    if (oldGithubInstallationId !== newGithubInstallationId) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change the Installation Id of a Github Data Source",
+        },
+      });
+    }
+
+    await c.update({ connectionId });
+  }
+
   return new Ok(c.id.toString());
 }
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { IconToggleButton, Cog6ToothIcon } from "../index_with_tw_base";
+
+import { Cog6ToothIcon,IconToggleButton } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/IconToggleButton",

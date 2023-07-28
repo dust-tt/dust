@@ -1,18 +1,19 @@
 import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CheckCircleIcon,
+  ClipboardIcon,
+  CloudArrowDownIcon,
+  IconButton,
   Item,
+  Logo,
+  PageHeader,
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  ClipboardDocumentListIcon,
-  DocumentDuplicateIcon,
-} from "@heroicons/react/24/outline";
-import {
-  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconFull,
-  UserCircleIcon,
-} from "@heroicons/react/24/solid";
+import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -21,7 +22,6 @@ import { ReactMarkdown } from "react-markdown/lib/react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
-import { PulseLogo } from "@app/components/Logo";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Spinner } from "@app/components/Spinner";
@@ -346,7 +346,7 @@ export function RetrievalsView({
   }, [message.retrievals]);
 
   return !(message.retrievals && message.retrievals.length === 0) ? (
-    <div className="ml-10 flex flex-col">
+    <div className="ml-12 flex flex-col">
       <div className="flex flex-row items-center">
         <div
           className={classNames(
@@ -445,27 +445,34 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   // Avoid rendering the markdown all the time: only for assistant messages
   if (message.role === "assistant" && message.message) {
     return (
-      <ReactMarkdown
-        className={classNames(
-          "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
-          "[&_p]:mb-2" /* p */,
-          "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+      <div className="w-full">
+        {message.role === "assistant" && message.message ? (
+          <CopyToClipboardElement message={message} />
+        ) : (
+          ""
         )}
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a({ href, children }) {
-            return (
-              <Link href={href ? href : ""} target="_blank">
-                <span className="text-blue-600 hover:underline">
-                  {children}
-                </span>
-              </Link>
-            );
-          },
-        }}
-      >
-        {message.message || ""}
-      </ReactMarkdown>
+        <ReactMarkdown
+          className={classNames(
+            "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
+            "[&_p]:mb-2" /* p */,
+            "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+          )}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a({ href, children }) {
+              return (
+                <Link href={href ? href : ""} target="_blank">
+                  <span className="text-blue-600 hover:underline">
+                    {children}
+                  </span>
+                </Link>
+              );
+            },
+          }}
+        >
+          {message.message || ""}
+        </ReactMarkdown>
+      </div>
     );
   }
   return <span>{message.message}</span>;
@@ -473,50 +480,22 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
 
 function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
-  const [tooltip, setTooltip] = useState<boolean>(false);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const handleClick = async () => {
-    // cancel tooltip display if user clicks before tooltip appears
-    timer && clearTimeout(timer);
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
-    setTooltip(false);
     void setTimeout(() => {
       setConfirmed(false);
     }, 1000);
   };
 
   return (
-    <div
-      className={classNames(
-        "absolute -top-1.5 right-0 mt-2 hover:text-action-800 group-hover:block",
-        confirmed ? "text-action-800" : "hidden text-gray-400"
-      )}
-      onClick={handleClick}
-      onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
-      onMouseLeave={() => {
-        // in case user left before tooltip appears, cancel timer
-        timer && clearTimeout(timer);
-        setTooltip(false);
-      }}
-    >
-      {confirmed ? (
-        <ClipboardDocumentCheckIconFull className="h-4 w-4" />
-      ) : (
-        <ClipboardDocumentListIcon className="h-4 w-4" />
-      )}
-      {tooltip ? (
-        <div
-          className="absolute bottom-4 right-0 w-max rounded border bg-white px-1 py-1"
-          onMouseEnter={() => void setTimeout(() => setTooltip(false), 200)}
-        >
-          <span className="font-normal text-gray-600">
-            Copy message to clipboard
-          </span>
-        </div>
-      ) : (
-        ""
-      )}
+    <div className="invisible float-right group-hover:visible">
+      <IconButton
+        type="tertiary"
+        tooltip="Copy message to clipboard"
+        icon={confirmed ? CheckCircleIcon : ClipboardIcon}
+        onClick={handleClick}
+      />
     </div>
   );
 }
@@ -543,45 +522,48 @@ export function MessageView({
           <RetrievalsView message={message} isLatest={isLatestRetrieval} />
         </div>
       ) : (
-        <div className="my-3 flex flex-row items-start">
+        <div
+          className={classNames(
+            "my-2 flex flex-row items-start",
+            message.role === "user" ? "my-6" : ""
+          )}
+        >
           <div
             className={classNames(
-              "min-w-6 flex h-8 w-8 flex-initial rounded-md",
-              "bg-gray-50"
+              "min-w-10 flex h-10 w-10 flex-initial rounded-xl",
+              "bg-structure-200"
             )}
           >
             {message.role === "assistant" ? (
-              <div className="flex flex-col items-center">
-                <div className="flex scale-50 pl-2">
-                  <PulseLogo animated={loading}></PulseLogo>
-                </div>
-              </div>
+              <Logo
+                shape="square"
+                type="colored-grey"
+                className={classNames(
+                  "mx-2 my-2 h-6 w-6",
+                  loading ? "animate-pulse" : ""
+                )}
+              ></Logo>
             ) : (
               <div className="flex">
                 {!readOnly && user?.image ? (
                   <img
-                    className="h-8 w-8 rounded-md"
+                    className="h-10 w-10 rounded-xl"
                     src={user?.image}
                     alt=""
                   />
                 ) : (
-                  <UserCircleIcon className="mx-1 my-1 h-6 w-6 text-gray-300"></UserCircleIcon>
+                  <UserCircleIcon className="mx-2 my-2 h-6 w-6 text-slate-500"></UserCircleIcon>
                 )}
               </div>
             )}
           </div>
           <div
             className={classNames(
-              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-1",
+              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-2",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
             {toMarkdown(message)}
-            {message.role === "assistant" && message.message ? (
-              <CopyToClipboardElement message={message} />
-            ) : (
-              ""
-            )}
           </div>
           {feedback && (
             <MessageFeedback
@@ -600,10 +582,12 @@ function ChatMenu({
   owner,
   sessions,
   onNewConversation,
+  canStartConversation,
 }: {
   owner: WorkspaceType;
   sessions: ChatSessionType[];
   onNewConversation: () => void;
+  canStartConversation: boolean;
 }) {
   const router = useRouter();
 
@@ -612,6 +596,8 @@ function ChatMenu({
       <div className="flex flex-row px-2">
         <div className="flex grow"></div>
         <Button
+          disabled={!canStartConversation}
+          labelVisible={true}
           label="New Conversation"
           icon={ChatBubbleBottomCenterPlusIcon}
           onClick={onNewConversation}
@@ -668,6 +654,13 @@ export default function AppChat({
   const [messages, setMessages] = useState<ChatMessageType[]>(
     chatSession.messages || []
   );
+  const [canStartConversation, setCanStartConversation] = useState<boolean>(
+    workspaceDataSources.length > 0
+  );
+
+  useEffect(() => {
+    setCanStartConversation(workspaceDataSources.length > 0);
+  }, [workspaceDataSources]);
 
   useEffect(() => {
     setTitle(chatSession.title || "New Conversation");
@@ -678,18 +671,17 @@ export default function AppChat({
   const [dataSources, setDataSources] = useState(workspaceDataSources);
   // for testing, engs & dust users  have "auto" as default; others have "all"
   const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
-    isDevelopmentOrDustWorkspace(owner) ? timeRanges[4] : timeRanges[3]
+    timeRanges[4]
   );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ChatMessageType | null>(null);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (window && window.scrollTo) {
+      window.scrollTo(0, document.body.scrollHeight);
     }
   }, [messages, response]);
 
@@ -1163,130 +1155,164 @@ export default function AppChat({
           owner={owner}
           sessions={sessions}
           onNewConversation={handleNew}
+          canStartConversation={canStartConversation}
         />
       }
       titleChildren={
         messages.length > 0 && (
-          <AppLayoutTitle title={title} onDelete={handleDelete} />
+          <AppLayoutTitle
+            title={title}
+            onDelete={handleDelete}
+            // action={{
+            //   label: "Share",
+            //   labelVisible: true,
+            //   icon: ArrowUpOnSquareIcon,
+            //   onAction: () => {
+            //     console.log("Share!");
+            //   },
+            // }}
+          />
         )
       }
     >
-      <div className="flex h-full flex-col">
-        {dataSources.length === 0 && (
-          <div className="divide-y divide-gray-200">
-            <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>💬 Welcome</p>
-              <p className="mt-8 italic">
-                <span className="font-bold">Dust</span> is a conversational
-                agent with access on your team's knowledge.
+      <div className="flex flex-col pt-4">
+        {!canStartConversation && (
+          <>
+            <PageHeader
+              title="Welcome to Assistant"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
+              <div className="mb-8 text-lg font-bold">
+                Get started with{" "}
+                <Logo className="inline-block w-14 pb-1 pl-1"></Logo>
+              </div>
+              <p className="my-4 text-sm text-element-800">
+                <span className="font-bold italic">Assistant</span> can help you
+                with a wide range of tasks. It can answer your questions on
+                various topics, generic or specific to your company. It is
+                particularly good at writing texts and can help you draft and
+                edit documents, generate ideas, answer questions.
               </p>
               {owner.role === "admin" ? (
-                <p className="mt-8">
-                  You need to set up at least one{" "}
-                  <Link
-                    className="font-bold text-action-500"
-                    href={`/w/${owner.sId}/ds`}
-                  >
-                    Data Source
-                  </Link>{" "}
-                  to activate it on your workspace.
-                </p>
+                <>
+                  <p className="my-4 text-sm text-element-800">
+                    Start by setting up a{" "}
+                    <span className="font-bold italic">Data Source</span> to
+                    activate Assistant.
+                  </p>
+                  <div className="pt-4 text-center">
+                    <Button
+                      type={"primary"}
+                      icon={CloudArrowDownIcon}
+                      label="Set up your first Data Source"
+                      onClick={() => {
+                        void router.push(`/w/${owner.sId}/ds`);
+                      }}
+                    />
+                  </div>
+                </>
               ) : (
-                <p className="mt-8">
-                  Contact the admin of your workspace to activate Chat for your
-                  team.
-                </p>
+                <>
+                  <p className="my-4 text-sm text-element-800">
+                    To get started, contact the admin of your workspace to set
+                    up a <span className="font-bold italic">Data Source</span>{" "}
+                    to activate Assistant.
+                  </p>
+                </>
               )}
             </div>
-          </div>
+          </>
         )}
 
-        {dataSources.length > 0 && (
+        {canStartConversation && (
           <>
             <div className="flex-1">
-              <div className="" ref={scrollRef}>
-                <div className="max-h-0">
-                  {messages.length > 0 ? (
-                    <div>
-                      <div className="text-sm">
-                        {messages.map((m, i) => {
-                          return m.role === "error" ? (
-                            <div key={i}>
-                              <div className="my-2 ml-12 flex flex-col">
-                                <div className="flex-initial text-xs font-bold text-red-500">
-                                  Oops! An error occured (and the team has been
-                                  notified).
-                                </div>
-                                <div className="flex-initial text-xs text-gray-500">
-                                  <ul className="list-inside list-disc">
-                                    <li>
-                                      You can continue the conversation, this
-                                      error and your last message will be
-                                      removed from the conversation
-                                    </li>
-                                    <li>
-                                      Don't hesitate to reach out if the problem
-                                      persists.
-                                    </li>
-                                  </ul>
-                                </div>
-                                <div className="ml-1 flex-initial border-l-4 border-gray-200 pl-1 text-xs italic text-gray-400">
-                                  {m.message}
-                                </div>
+              <div className="-mt-4 pb-32">
+                {messages.length > 0 ? (
+                  <div>
+                    <div className="text-sm">
+                      {messages.map((m, i) => {
+                        return m.role === "error" ? (
+                          <div key={i}>
+                            <div className="my-1 ml-10 flex flex-col">
+                              <div className="flex-initial text-sm font-bold text-red-500">
+                                Oops. An error occured and the team has been
+                                notified.
+                              </div>
+                              <div className="my-1 flex-initial text-sm text-gray-500">
+                                You can safely continue the conversation, this
+                                error and your last message will be removed from
+                                the conversation. Don't hesitate to reach out if
+                                the problem persists.
+                              </div>
+                              <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
+                                {m.message}
                               </div>
                             </div>
-                          ) : (
-                            <div key={i} className="group">
-                              <MessageView
-                                user={user}
-                                message={m}
-                                loading={false}
-                                // isLatest={
-                                //   !response && i === messages.length - 1
-                                // }
-                                isLatestRetrieval={isLatest("retrieval", i)}
-                                readOnly={readOnly}
-                                feedback={
-                                  !readOnly &&
-                                  m.role === "assistant" && {
-                                    handler: handleFeedback,
-                                    hover: response
-                                      ? true
-                                      : i !== messages.length - 1,
-                                  }
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                        {response ? (
-                          <div key={messages.length}>
+                          </div>
+                        ) : (
+                          <div key={i} className="group">
                             <MessageView
                               user={user}
-                              message={response}
-                              loading={true}
-                              // isLatest={true}
-                              isLatestRetrieval={response.role === "retrieval"}
+                              message={m}
+                              loading={false}
+                              // isLatest={
+                              //   !response && i === messages.length - 1
+                              // }
+                              isLatestRetrieval={isLatest("retrieval", i)}
                               readOnly={readOnly}
+                              feedback={
+                                !readOnly &&
+                                m.role === "assistant" && {
+                                  handler: handleFeedback,
+                                  hover: response
+                                    ? true
+                                    : i !== messages.length - 1,
+                                }
+                              }
                             />
                           </div>
-                        ) : null}
-                      </div>
+                        );
+                      })}
+                      {response ? (
+                        <div key={messages.length}>
+                          <MessageView
+                            user={user}
+                            message={response}
+                            loading={true}
+                            // isLatest={true}
+                            isLatestRetrieval={response.role === "retrieval"}
+                            readOnly={readOnly}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                  ) : (
-                    <div className="mt-8 flex flex-col items-center justify-center text-sm text-gray-500">
-                      <p>💬 Welcome</p>
-                      <p className="mt-8">
-                        <span className="font-bold">Dust</span> is a
-                        conversational assistant with context on your team's
-                        knowledge. For each interaction, relevant pieces of
-                        documents are retrieved from you entire team's knowledge
-                        and presented to the Assistant to help it answer your
-                        queries.
+                  </div>
+                ) : (
+                  <>
+                    <PageHeader
+                      title="Welcome to Assistant"
+                      icon={ChatBubbleBottomCenterTextIcon}
+                    />
+                    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
+                      <div className="mb-8 text-lg font-bold">
+                        What can I use Assistant for?
+                      </div>
+                      <p className="my-4 text-sm text-element-800">
+                        <span className="font-bold italic">Assistant</span> can
+                        help you with a wide range of tasks. It can answer your
+                        questions on various topics, generic or specific to your
+                        company. It is particularly good at writing texts and
+                        can help you draft and edit documents, generate ideas,
+                        answer questions.
+                      </p>
+                      <p className="mt-4 text-center text-sm font-medium text-element-800">
+                        Simply start typing to get started with Assistant.
                       </p>
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
