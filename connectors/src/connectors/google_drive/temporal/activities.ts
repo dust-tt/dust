@@ -302,7 +302,6 @@ async function syncOneFile(
     } else if (file.mimeType === "application/pdf") {
       const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
       try {
-        // const buffer = Buffer.from(res.data, "binary");
         if (res.data instanceof ArrayBuffer) {
           await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
         }
