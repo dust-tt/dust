@@ -2,21 +2,18 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
+  CheckCircleIcon,
+  ClipboardIcon,
   CloudArrowDownIcon,
+  IconButton,
   Item,
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  ClipboardDocumentListIcon,
-  DocumentDuplicateIcon,
-} from "@heroicons/react/24/outline";
-import {
-  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconFull,
-  UserCircleIcon,
-} from "@heroicons/react/24/solid";
+import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -448,27 +445,34 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   // Avoid rendering the markdown all the time: only for assistant messages
   if (message.role === "assistant" && message.message) {
     return (
-      <ReactMarkdown
-        className={classNames(
-          "pr-6 [&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
-          "[&_p]:mb-2" /* p */,
-          "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+      <div className="w-full">
+        {message.role === "assistant" && message.message ? (
+          <CopyToClipboardElement message={message} />
+        ) : (
+          ""
         )}
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a({ href, children }) {
-            return (
-              <Link href={href ? href : ""} target="_blank">
-                <span className="text-blue-600 hover:underline">
-                  {children}
-                </span>
-              </Link>
-            );
-          },
-        }}
-      >
-        {message.message || ""}
-      </ReactMarkdown>
+        <ReactMarkdown
+          className={classNames(
+            "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
+            "[&_p]:mb-2" /* p */,
+            "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+          )}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a({ href, children }) {
+              return (
+                <Link href={href ? href : ""} target="_blank">
+                  <span className="text-blue-600 hover:underline">
+                    {children}
+                  </span>
+                </Link>
+              );
+            },
+          }}
+        >
+          {message.message || ""}
+        </ReactMarkdown>
+      </div>
     );
   }
   return <span>{message.message}</span>;
@@ -476,50 +480,22 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
 
 function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
-  const [tooltip, setTooltip] = useState<boolean>(false);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const handleClick = async () => {
-    // cancel tooltip display if user clicks before tooltip appears
-    timer && clearTimeout(timer);
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
-    setTooltip(false);
     void setTimeout(() => {
       setConfirmed(false);
     }, 1000);
   };
 
   return (
-    <div
-      className={classNames(
-        "absolute -top-1.5 right-0 mt-2 cursor-pointer cursor-pointer hover:text-action-600 group-hover:block",
-        confirmed ? "text-action-500" : "text-grey-400 hidden"
-      )}
-      onClick={handleClick}
-      onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
-      onMouseLeave={() => {
-        // in case user left before tooltip appears, cancel timer
-        timer && clearTimeout(timer);
-        setTooltip(false);
-      }}
-    >
-      {confirmed ? (
-        <ClipboardDocumentCheckIconFull className="h-4 w-4" />
-      ) : (
-        <ClipboardDocumentListIcon className="h-4 w-4" />
-      )}
-      {tooltip ? (
-        <div
-          className="absolute bottom-4 right-0 w-max rounded border bg-white px-1 py-1"
-          onMouseEnter={() => void setTimeout(() => setTooltip(false), 200)}
-        >
-          <span className="font-normal text-gray-600">
-            Copy message to clipboard
-          </span>
-        </div>
-      ) : (
-        ""
-      )}
+    <div className="invisible float-right group-hover:visible">
+      <IconButton
+        type="tertiary"
+        tooltip="Copy message to clipboard"
+        icon={confirmed ? CheckCircleIcon : ClipboardIcon}
+        onClick={handleClick}
+      />
     </div>
   );
 }
@@ -588,11 +564,6 @@ export function MessageView({
             )}
           >
             {toMarkdown(message)}
-            {message.role === "assistant" && message.message ? (
-              <CopyToClipboardElement message={message} />
-            ) : (
-              ""
-            )}
           </div>
           {feedback && (
             <MessageFeedback
