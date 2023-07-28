@@ -2,9 +2,12 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
+  CheckCircleIcon,
+  ClipboardIcon,
   ClipboardSolidIcon,
   ClipboardStrokeIcon,
   CloudArrowDownIcon,
+  IconButton,
   IconToggleButton,
   Item,
   Logo,
@@ -490,10 +493,10 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
 
   return (
     <div className="invisible float-right group-hover:visible">
-      <IconToggleButton
-        type="secondary"
+      <IconButton
+        type="tertiary"
         tooltip="Copy message to clipboard"
-        icon={confirmed ? ClipboardSolidIcon : ClipboardStrokeIcon}
+        icon={confirmed ? CheckCircleIcon : ClipboardIcon}
         onClick={handleClick}
       />
     </div>

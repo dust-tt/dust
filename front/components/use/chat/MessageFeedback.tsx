@@ -1,6 +1,6 @@
 import {
-  HandThumbDownSolidIcon,
-  HandThumbUpSolidIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   IconButton,
 } from "@dust-tt/sparkle";
 
@@ -24,19 +24,19 @@ export function MessageFeedback({
   return (
     <div
       className={classNames(
-        "flex-end flex h-2 flex-row-reverse pt-2 text-gray-400",
+        "flex-end flex flex-row-reverse pt-2 text-gray-400",
         !message.feedback && hover ? "invisible group-hover:visible" : ""
       )}
     >
       <IconButton
         type={message.feedback === "positive" ? "primary" : "tertiary"}
-        icon={HandThumbUpSolidIcon}
+        icon={HandThumbUpIcon}
         onClick={() => feedbackHandler(message, "positive")}
         className="ml-1"
       />
       <IconButton
         type={message.feedback === "negative" ? "primary" : "tertiary"}
-        icon={HandThumbDownSolidIcon}
+        icon={HandThumbDownIcon}
         onClick={() => feedbackHandler(message, "negative")}
         className="ml-1"
       />
