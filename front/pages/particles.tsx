@@ -1,8 +1,7 @@
-import React, { useEffect } from "react";
+import { useEffect, RefObject } from "react";
 import * as THREE from "three";
-//import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-let scrollBehaviour: boolean = false;
+let hasScrollBehavior: boolean = true;
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -16,25 +15,18 @@ let colorsArray = [
 let originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles
 let numParticles = 10000; // number of particles
-let particleSize = 0.02; // Size of the particles
+let particleSize = 0.015; // Size of the particles
 let geometricObjectSize = 1.5;
 let rotationActive = true; // Activate the rotation of the scene
 let speed = 0.1;
-let postExplosionSpeed = 0.05;
+let postExplosionSpeed = 0.1;
 // Center of the animation
 let sceneFocusX = 0;
 let sceneFocusY = 0;
 let sceneFocusZ = 0;
 let currentShape = 0; // 0 = cube, 1 = sphere, etc...
-let totalShapes = 2;
+let totalShapes = 4;
 let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
-
-const shapes = [
-  { yPosition: 800, shapeNumber: 0 },
-  { yPosition: 1200, shapeNumber: 1 },
-];
-//let controls: OrbitControls;
-let isDragging = false;
 
 function init() {
   scene = new THREE.Scene();
@@ -90,14 +82,6 @@ function init() {
   // });
   // controls.enableDamping = true; // enable inertia
   // controls.dampingFactor = 0.1; // the inertia factor
-
-  //window.addEventListener('click', onClick, false); // for desktop browsers
-  //window.addEventListener('touchend', onClick, false); // for mobile browsers
-  window.addEventListener("keydown", onKeydown, false);
-  window.addEventListener("resize", onWindowResize, false);
-  if (scrollBehaviour) {
-    window.addEventListener("scroll", onScroll, false);
-  }
 }
 
 function onWindowResize() {
@@ -123,35 +107,6 @@ function onKeydown(event: KeyboardEvent) {
 
   if (currentShape != previousShape) {
     calculateTargetPositions(); // Only calculate target positions when the shape changes
-  }
-}
-
-function onClick(event: MouseEvent) {
-  if (!isDragging && explode) {
-    let previousShape = currentShape;
-    currentShape = (currentShape + 1) % totalShapes;
-
-    if (currentShape != previousShape) {
-      calculateTargetPositions(); // Only calculate target positions when the shape changes
-    }
-  }
-  isDragging = false;
-}
-
-function onScroll(event: Event) {
-  const scrollPosition = window.scrollY || document.documentElement.scrollTop;
-
-  for (let i = 0; i < shapes.length; i++) {
-    if (
-      scrollPosition >= shapes[i].yPosition &&
-      (i === shapes.length - 1 || scrollPosition < shapes[i + 1].yPosition)
-    ) {
-      if (currentShape !== shapes[i].shapeNumber) {
-        currentShape = shapes[i].shapeNumber;
-        calculateTargetPositions();
-      }
-      break;
-    }
   }
 }
 
@@ -250,6 +205,9 @@ function calculateTargetPositions() {
     let targetPositionX = 0,
       targetPositionY = 0,
       targetPositionZ = 0,
+      ix,
+      iy,
+      iz,
       phi,
       theta,
       radius;
@@ -271,13 +229,34 @@ function calculateTargetPositions() {
         //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
         break;
       case 1: // sphere
-        radius = geometricObjectSize;
+        radius = geometricObjectSize * 1.5;
         phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
         theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
 
         targetPositionX = radius * Math.cos(theta) * Math.sin(phi);
         targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
         targetPositionZ = radius * Math.cos(phi);
+        break;
+      case 2: // Bigger sphere
+        radius = geometricObjectSize * 4;
+        phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
+        theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
+
+        targetPositionX = radius * Math.cos(theta) * Math.sin(phi);
+        targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
+        targetPositionZ = radius * Math.cos(phi);
+        break;
+      case 3: // cube
+        let cubeSize = geometricObjectSize * 12; // size of the cube
+        let particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
+
+        ix = i % particlesPerSide; // index along x-axis
+        iy = Math.floor((i / particlesPerSide) % particlesPerSide); // index along y-axis
+        iz = Math.floor(i / (particlesPerSide * particlesPerSide)); // index along z-axis
+
+        targetPositionX = (ix * cubeSize) / particlesPerSide - cubeSize / 2;
+        targetPositionY = (iy * cubeSize) / particlesPerSide - cubeSize / 2;
+        targetPositionZ = (iz * cubeSize) / particlesPerSide - cubeSize / 2;
         break;
     }
 
@@ -299,27 +278,74 @@ function calculateTargetPositions() {
   }
 }
 
-export default function ThreeComponent() {
+type ParticulesComponentProps = {
+  scrollRef1: RefObject<HTMLDivElement>;
+  scrollRef2: RefObject<HTMLDivElement>;
+  scrollRef3: RefObject<HTMLDivElement>;
+};
+
+export default function Particules({
+  scrollRef1,
+  scrollRef2,
+  scrollRef3,
+}: ParticulesComponentProps) {
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // check if window is defined
       init();
       calculateTargetPositions();
       animate();
     }
 
-    // componentWillUnmount equivalent
+    const onScroll = (event: Event) => {
+      const offset = window.innerHeight / 2;
+      const yPositions = [
+        0,
+        scrollRef1.current?.offsetTop || 0,
+        scrollRef2.current?.offsetTop || 0,
+        scrollRef3.current?.offsetTop || 0,
+      ];
+
+      const scrollPosition =
+        window.scrollY || document.documentElement.scrollTop;
+
+      for (let i = 0; i < totalShapes; i++) {
+        if (
+          scrollPosition + offset >= yPositions[i] &&
+          (i === totalShapes - 1 || scrollPosition + offset < yPositions[i + 1])
+        ) {
+          if (currentShape !== i) {
+            currentShape = i;
+            calculateTargetPositions();
+          }
+          break;
+        }
+      }
+
+      // console.log(
+      //   "currentShape",
+      //   currentShape,
+      //   "window.scrollY",
+      //   window.scrollY,
+      //   "window.innerHeight",
+      //   window.innerHeight,
+      //   "yPositions",
+      //   yPositions
+      // );
+    };
+
+    window.addEventListener("keydown", onKeydown, false);
+    window.addEventListener("resize", onWindowResize, false);
+    if (hasScrollBehavior) {
+      window.addEventListener("scroll", onScroll, false);
+    }
+
     return () => {
-      // Clean up THREE.js and event listeners here
-      // For example:
       window.removeEventListener("keydown", onKeydown, false);
       window.removeEventListener("resize", onWindowResize, false);
-      window.removeEventListener("scroll", onScroll, false);
-      //controls.dispose();
-      //scene.dispose();
+      //window.removeEventListener("scroll", onScroll, false);
       renderer.dispose();
     };
-  }, []); // Make sure to use empty dependency array to run this hook only once
+  }, []);
 
   return (
     <div id="canvas-container">

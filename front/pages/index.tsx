@@ -59,19 +59,18 @@ export default function Home({
   const [logoY, setLogoY] = useState<number>(0);
   const logoRef = useRef<HTMLDivElement | null>(null);
 
+  const scrollRef1 = useRef<HTMLDivElement | null>(null);
+  const scrollRef2 = useRef<HTMLDivElement | null>(null);
+  const scrollRef3 = useRef<HTMLDivElement | null>(null);
+
+  // y positions state for particles
+  const [yPositions, setYPositions] = useState<number[]>([0, 500, 1000, 0]);
+
   useEffect(() => {
-    const onScroll = () => {
-      if (logoRef.current) {
-        const logoPosition =
-          logoRef.current.getBoundingClientRect().top + window.scrollY;
-        setLogoY(logoPosition);
-        console.log(logoPosition);
-      }
-    };
-    window.addEventListener("scroll", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-    };
+    if (logoRef.current) {
+      const logoPosition = logoRef.current.offsetTop;
+      setLogoY(logoPosition);
+    }
   }, []);
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
@@ -148,7 +147,11 @@ export default function Home({
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
       {/* Particle system */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
-        <Particles />
+        <Particles
+          scrollRef1={scrollRef1}
+          scrollRef2={scrollRef2}
+          scrollRef3={scrollRef3}
+        />
       </div>
 
       <main className="z-10 mx-6">
@@ -158,8 +161,8 @@ export default function Home({
             <div ref={logoRef}>
               <Logo className="h-[48px] w-[192px] px-1" />
             </div>
-            <p className="mt-16 font-objektiv text-6xl font-bold tracking-tighter text-slate-50">
-              <span className="font-objektiv text-6xl text-red-400 sm:font-objektiv md:font-objektiv">
+            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
+              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
                 Secure AI assistant
               </span>{" "}
               <br />
@@ -184,19 +187,25 @@ export default function Home({
           </div>
         </div>
 
-        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div
+          ref={scrollRef1}
+          className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl"
+        >
           <div className="mt-32">
             <div className="gap-8 md:grid md:grid-cols-8">
               <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div className="mt-2">
-                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-red-400">
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-red-400 md:text-2xl">
                     GPT-4 and all your internal knowledge, <br />
-                    <span className="text-5xl text-rose-200">combined</span>.
+                    <span className="text-3xl text-rose-200 md:text-5xl">
+                      combined
+                    </span>
+                    .
                   </div>
-                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
                     Use Dust for unified and safe access to GPT-4.
                   </p>
-                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
                     Connect Dust to your team’s data and break down knowledge
                     silos with always up-to-date answers
                     in&nbsp;a&nbsp;chat&nbsp;UI.
@@ -215,22 +224,22 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-16">
+          <div ref={scrollRef2} className="mt-16">
             <div className="gap-8 md:grid md:grid-cols-8">
               <div className="order-1 flex flex-col justify-center self-center text-left md:order-2 md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-emerald-500">
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-emerald-500 md:text-2xl">
                     Get your teams <br />
-                    <span className="text-5xl text-green-300">
+                    <span className="text-3xl text-green-300 md:text-5xl">
                       up to speed
                     </span>{" "}
                     on AI.
                   </div>
-                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
                     Let your team share prompts and conversations to ramp up on
                     the potential of generative AI for their tasks.
                   </p>
-                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
                     Get suggestions from Dust on documentation updates and
                     improvements based on ongoing internal conversations and
                     decisions.
@@ -249,18 +258,18 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-16">
+          <div ref={scrollRef3} className="mt-16">
             <div className="gap-8 md:grid md:grid-cols-8">
               <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="font-objektiv text-2xl font-bold tracking-tighter text-blue-500">
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-blue-500 md:text-2xl">
                     Build your own <br />
-                    <span className="text-5xl text-sky-300">
+                    <span className="text-3xl text-sky-300 md:text-5xl">
                       powerful workflows
                     </span>
                     .
                   </div>
-                  <p className="font-regular mt-4 font-objektiv text-lg text-slate-300">
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
                     Build custom Large Language Model apps on top of your
                     company data. Let Dust assist you with the details of
                     working with LLMs as you adapt them to your specific needs.
@@ -294,7 +303,9 @@ export default function Home({
             <p className="font-objektiv text-3xl font-bold text-red-400">
               Our product
               <br />
-              <span className="text-5xl text-rose-300">constitution</span>
+              <span className="text-3xl text-rose-300 md:text-5xl">
+                constitution
+              </span>
             </p>
           </div>
 
