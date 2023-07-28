@@ -240,7 +240,7 @@ export default function Home({
                 Secure AI assistant
               </span>{" "}
               <br />
-              with your company’s&nbsp;knowledge
+              with your company’s knowledge
               <br />
             </p>
           </div>
