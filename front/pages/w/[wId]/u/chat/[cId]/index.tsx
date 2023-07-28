@@ -448,27 +448,34 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
   // Avoid rendering the markdown all the time: only for assistant messages
   if (message.role === "assistant" && message.message) {
     return (
-      <ReactMarkdown
-        className={classNames(
-          "pr-6 [&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
-          "[&_p]:mb-2" /* p */,
-          "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+      <div className="w-full">
+        {message.role === "assistant" && message.message ? (
+          <CopyToClipboardElement message={message} />
+        ) : (
+          ""
         )}
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a({ href, children }) {
-            return (
-              <Link href={href ? href : ""} target="_blank">
-                <span className="text-blue-600 hover:underline">
-                  {children}
-                </span>
-              </Link>
-            );
-          },
-        }}
-      >
-        {message.message || ""}
-      </ReactMarkdown>
+        <ReactMarkdown
+          className={classNames(
+            "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
+            "[&_p]:mb-2" /* p */,
+            "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+          )}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a({ href, children }) {
+              return (
+                <Link href={href ? href : ""} target="_blank">
+                  <span className="text-blue-600 hover:underline">
+                    {children}
+                  </span>
+                </Link>
+              );
+            },
+          }}
+        >
+          {message.message || ""}
+        </ReactMarkdown>
+      </div>
     );
   }
   return <span>{message.message}</span>;
@@ -492,8 +499,8 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div
       className={classNames(
-        "absolute -top-1.5 right-0 mt-2 cursor-pointer cursor-pointer hover:text-action-600 group-hover:block",
-        confirmed ? "text-action-500" : "text-grey-400 hidden"
+        "float-right -mt-2 block cursor-pointer cursor-pointer hover:text-action-600 group-hover:visible",
+        confirmed ? "text-action-500" : "text-grey-400 invisible"
       )}
       onClick={handleClick}
       onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
@@ -588,11 +595,6 @@ export function MessageView({
             )}
           >
             {toMarkdown(message)}
-            {message.role === "assistant" && message.message ? (
-              <CopyToClipboardElement message={message} />
-            ) : (
-              ""
-            )}
           </div>
           {feedback && (
             <MessageFeedback
