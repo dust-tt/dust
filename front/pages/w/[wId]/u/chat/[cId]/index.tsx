@@ -700,7 +700,7 @@ export default function AppChat({
   const [dataSources, setDataSources] = useState(workspaceDataSources);
   // for testing, engs & dust users  have "auto" as default; others have "all"
   const [selectedTimeRange, setSelectedTimeRange] = useState<ChatTimeRange>(
-    isDevelopmentOrDustWorkspace(owner) ? timeRanges[4] : timeRanges[3]
+    timeRanges[4]
   );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
