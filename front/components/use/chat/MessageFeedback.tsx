@@ -3,7 +3,6 @@ import {
   HandThumbUpSolidIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
