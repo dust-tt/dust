@@ -167,12 +167,6 @@ SlackConfiguration.init(
       allowNull: false,
       defaultValue: false,
     },
-    // @ts-expect-error TODO: remove once code deployed
-    defaultChannelPermission: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "read_write",
-    },
   },
   {
     sequelize: sequelize_conn,
