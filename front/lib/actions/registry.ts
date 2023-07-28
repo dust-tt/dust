@@ -181,17 +181,14 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "4180309c80",
       appHash:
-        "48f73c1e4edb35f7d2422b07483700dab0140ded9fc5125248c17a5df6d1db18",
+        "8adcc9ae33a63cc735c9a23a97d7bffe658c6ef2400fc997e61e8817f611a1f8",
     },
     config: {
       SEMANTIC_SEARCH: {
         data_sources: [],
-        top_k: 8,
+        top_k: 20,
         filter: {
-          tags: {
-            in: ["__DUST_TRACKED"],
-            not: null,
-          },
+          tags: null,
           timestamp: null,
         },
         use_cache: false,
