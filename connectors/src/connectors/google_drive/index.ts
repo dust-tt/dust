@@ -14,6 +14,7 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import {
   ConnectorPermission,
   ConnectorResource,
@@ -90,6 +91,85 @@ export async function createGoogleDriveConnector(
     );
     return new Err(new Error("Error creating Google Drive connector"));
   }
+}
+
+export async function updateGoogleDriveConnector(
+  connectorId: ModelId,
+  {
+    connectionId,
+  }: {
+    connectionId?: NangoConnectionId | null;
+  }
+): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
+    throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID not set");
+  }
+
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err({
+      error: {
+        message: "Connector not found",
+        type: "connector_not_found",
+      },
+    } as ConnectorsAPIErrorResponse);
+  }
+
+  // Ideally we want to check that the Google Project ID is the same as the one from the connector
+  // I couln't find an easy way to access it from the googleapis library
+  // Workaround is checking the domain of the user who is updating the connector
+  if (connectionId) {
+    const oldConnectionId = c.connectionId;
+    const currentDriveClient = await getDriveClient(oldConnectionId);
+    const currentDriveUser = await currentDriveClient.about.get({
+      fields: "user",
+    });
+    const currentUserEmail = currentDriveUser.data?.user?.emailAddress || "";
+    const currentDriveUserDomain = currentUserEmail.split("@")[1];
+
+    const newDriveClient = await getDriveClient(connectionId);
+    const newDriveUser = await newDriveClient.about.get({
+      fields: "user",
+    });
+    const newDriveUserEmail = newDriveUser.data?.user?.emailAddress || "";
+    const newDriveUserDomain = newDriveUserEmail.split("@")[1];
+
+    if (!currentDriveUserDomain || !newDriveUserDomain) {
+      return new Err({
+        error: {
+          type: "connector_update_error",
+          message: "Error retrieving google drive info to update connector",
+        },
+      });
+    }
+
+    if (currentDriveUserDomain !== newDriveUserDomain) {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change domain of a Google Drive connector",
+        },
+      });
+    }
+
+    await c.update({ connectionId });
+    nangoDeleteConnection(
+      oldConnectionId,
+      NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+    ).catch((e) => {
+      logger.error(
+        { error: e, oldConnectionId },
+        "Error deleting old Nango connection"
+      );
+    });
+  }
+
+  return new Ok(c.id.toString());
 }
 
 export async function cleanupGoogleDriveConnector(

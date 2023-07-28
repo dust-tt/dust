@@ -13,6 +13,7 @@ import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
   retrieveGoogleDriveConnectorPermissions,
+  updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
@@ -73,9 +74,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   slack: updateSlackConnector,
   notion: updateNotionConnector,
   github: updateGithubConnector,
-  google_drive: async (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  google_drive: updateGoogleDriveConnector,
 };
 
 type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;

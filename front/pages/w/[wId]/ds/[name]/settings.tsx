@@ -655,6 +655,13 @@ function ManagedDataSourceSettings({
             "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
         };
       }
+      if (provider === "google_drive") {
+        return {
+          success: false,
+          error:
+            "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
+        };
+      }
     }
     return {
       success: false,
