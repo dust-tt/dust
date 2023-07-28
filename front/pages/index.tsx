@@ -294,15 +294,7 @@ export default function Home({
 
           <div className="mt-16">
             <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto">
-                  <img
-                    className="mx-auto w-[500px] -rotate-2"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
+              <div className="order-1 flex flex-col justify-center self-center text-left md:order-2 md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
                   <div className="font-objektiv text-2xl font-bold tracking-tighter text-emerald-500">
                     Get your teams <br />
@@ -322,6 +314,14 @@ export default function Home({
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
+              </div>
+              <div className="order-2 mt-8 md:order-1 md:col-span-4 md:mt-0">
+                <div className="mx-auto">
+                  <img
+                    className="mx-auto w-[500px] -rotate-2"
+                    src="/static/landing_chat.png"
+                  />
+                </div>
               </div>
             </div>
           </div>
