@@ -16,10 +16,10 @@ let originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles
 let numParticles = 10000; // number of particles
 let particleSize = 0.015; // Size of the particles
-let geometricObjectSize = 1.5;
+let geometricObjectSize = 1.25;
 let rotationActive = true; // Activate the rotation of the scene
 let speed = 0.1;
-let postExplosionSpeed = 0.1;
+let postExplosionSpeed = 0.03;
 // Center of the animation
 let sceneFocusX = 0;
 let sceneFocusY = 0;
@@ -113,9 +113,9 @@ function onKeydown(event: KeyboardEvent) {
 function animate() {
   requestAnimationFrame(animate);
   if (rotationActive) {
-    particleSystem.rotation.x += 0.001;
-    particleSystem.rotation.y += 0.0001;
-    particleSystem.rotation.z += 0.001;
+    particleSystem.rotation.x += 0.0002;
+    particleSystem.rotation.y += 0.00005;
+    particleSystem.rotation.z += 0.0002;
   }
   if (!explode) {
     animateImplode();
