@@ -33,7 +33,7 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "gens" | "extract";
+export type SubNavigationLabId = "gens" | "extract" | "track";
 
 export type SparkleAppLayoutNavigation = {
   id:
@@ -277,6 +277,16 @@ export const subNavigationLab = ({
       icon: BeakerStrokeIcon,
       href: `/w/${owner.sId}/u/extract`,
       current: current === "extract",
+    });
+  }
+
+  if (isDevelopmentOrDustWorkspace(owner)) {
+    nav.push({
+      id: "track",
+      label: "Track",
+      icon: BeakerStrokeIcon,
+      href: `/w/${owner.sId}/u/track`,
+      current: current === "track",
     });
   }
 
