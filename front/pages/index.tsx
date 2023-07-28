@@ -1,3 +1,4 @@
+import React, { useEffect, useState, useRef } from "react";
 import { Logo } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -13,6 +14,7 @@ import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
 import Particles from "./particles";
+import ScrollingHeader from "./scrollingHeader";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -54,6 +56,23 @@ export default function Home({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [logoY, setLogoY] = useState<number>(0);
+  const logoRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (logoRef.current) {
+        const logoPosition =
+          logoRef.current.getBoundingClientRect().top + window.scrollY;
+        setLogoY(logoPosition);
+        console.log(logoPosition);
+      }
+    };
+    window.addEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
     let callbackUrl = "/api/login";
@@ -90,38 +109,16 @@ export default function Home({
           href="https://use.typekit.net/lzv1deb.css"
         ></link>
       </Head>
-
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
-
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
-        <Particles />
-      </div>
-
-      <main className="z-10 mx-4">
-        <div className="grid grid-cols-5 gap-1">
-          <div className="col-span-2 text-left font-objektiv">
-            <Logo className="mx-4 h-24 w-auto" />
-          </div>
-          <div className="col-span-3 mr-2 mt-8 text-right font-objektiv">
-            <GoogleSignInButton
-              onClick={() =>
-                signIn("google", {
-                  callbackUrl: getCallbackUrl(router.query),
-                })
-              }
-            >
-              <img
-                src="/static/google_white_32x32.png"
-                className="ml-1 h-4 w-4"
-              />
-              <span className="ml-2 mr-1">Sign in with Google</span>
-            </GoogleSignInButton>
-
+      <ScrollingHeader showItemY={logoY}>
+        <div className="flex h-full w-full items-center px-4">
+          <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
+          <div className="flex-grow" />
+          <div className="flex items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
-              <div className="ml-32 mt-1 font-objektiv text-xs text-slate-300">
-                or{" "}
+              <div className="font-regular font-objektiv text-xs text-slate-400">
+                Sign in with{" "}
                 <span
-                  className="cursor-pointer hover:font-bold"
+                  className="cursor-pointer font-bold hover:text-blue-400"
                   onClick={() => {
                     void signIn("github", {
                       callbackUrl: getCallbackUrl(router.query),
@@ -129,16 +126,38 @@ export default function Home({
                   }}
                 >
                   GitHub
-                </span>
+                </span>{" "}
+                or
               </div>
             )}
+            <GoogleSignInButton
+              onClick={() =>
+                signIn("google", {
+                  callbackUrl: getCallbackUrl(router.query),
+                })
+              }
+            >
+              <img src="/static/google_white_32x32.png" className="h-4 w-4" />
+              <span className="ml-2 mr-1">Sign in with Google</span>
+            </GoogleSignInButton>
           </div>
         </div>
+      </ScrollingHeader>
 
+      {/* Keeping the background dark */}
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+      {/* Particle system */}
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
+        <Particles />
+      </div>
+
+      <main className="z-10 mx-6">
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          <div style={{ height: "30vh" }}></div>
+          <div style={{ height: "40vh" }}></div>
           <div className="grid grid-cols-1">
-            <Logo className="h-[48px] w-[192px] px-1" />
+            <div ref={logoRef}>
+              <Logo className="h-[48px] w-[192px] px-1" />
+            </div>
             <p className="mt-16 font-objektiv text-6xl font-bold tracking-tighter text-slate-50">
               <span className="font-objektiv text-6xl text-red-400 sm:font-objektiv md:font-objektiv">
                 Secure AI assistant
@@ -186,9 +205,9 @@ export default function Home({
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden ">
+                <div className="z-10mx-auto overflow-hidden ">
                   <img
-                    className="mx-auto w-[500px] rotate-2"
+                    className="z-10 mx-auto w-[500px] rotate-2"
                     src="/static/landing_data_sources.png"
                   />
                 </div>

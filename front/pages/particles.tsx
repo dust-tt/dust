@@ -95,7 +95,9 @@ function init() {
   //window.addEventListener('touchend', onClick, false); // for mobile browsers
   window.addEventListener("keydown", onKeydown, false);
   window.addEventListener("resize", onWindowResize, false);
-  window.addEventListener("scroll", onScroll, false);
+  if (scrollBehaviour) {
+    window.addEventListener("scroll", onScroll, false);
+  }
 }
 
 function onWindowResize() {
@@ -312,9 +314,7 @@ export default function ThreeComponent() {
       // For example:
       window.removeEventListener("keydown", onKeydown, false);
       window.removeEventListener("resize", onWindowResize, false);
-      if (scrollBehaviour) {
-        window.removeEventListener("scroll", onScroll, false);
-      }
+      window.removeEventListener("scroll", onScroll, false);
       //controls.dispose();
       //scene.dispose();
       renderer.dispose();
