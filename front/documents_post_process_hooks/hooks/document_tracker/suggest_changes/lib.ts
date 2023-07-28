@@ -35,16 +35,28 @@ const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
 
-export async function shouldDocumentTrackerSuggestChangesRun({
-  auth,
-  dataSourceName,
-  documentId,
-  dataSourceConnectorProvider,
-  verb,
-}: DocumentsPostProcessHookFilterParams): Promise<boolean> {
-  if (verb !== "upsert") {
+export async function shouldDocumentTrackerSuggestChangesRun(
+  params: DocumentsPostProcessHookFilterParams
+): Promise<boolean> {
+  if (params.verb !== "upsert") {
     logger.info(
       "document_tracker_suggest_changes post process hook should only run for upsert."
+    );
+    return false;
+  }
+
+  const {
+    upsertContext,
+    auth,
+    dataSourceName,
+    documentId,
+    dataSourceConnectorProvider,
+  } = params;
+  const isBatchSync = upsertContext?.sync_type === "batch";
+
+  if (isBatchSync) {
+    logger.info(
+      "document_tracker_suggest_changes post process hook should not run for batch sync."
     );
     return false;
   }

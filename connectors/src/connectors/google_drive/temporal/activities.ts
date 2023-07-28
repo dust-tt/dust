@@ -217,7 +217,8 @@ export async function syncFiles(
             connectorId,
             authCredentials,
             dataSourceConfig,
-            file
+            file,
+            true // isBatchSync
           );
         }
       });
@@ -234,7 +235,8 @@ async function syncOneFile(
   connectorId: ModelId,
   oauth2client: OAuth2Client,
   dataSourceConfig: DataSourceConfig,
-  file: GoogleDriveFileType
+  file: GoogleDriveFileType,
+  isBatchSync = false
 ) {
   let documentContent: string | undefined = undefined;
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
@@ -315,14 +317,17 @@ async function syncOneFile(
   });
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
-    await upsertToDatasource(
+    await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      documentContent,
-      file.webViewLink,
-      file.updatedAtMs,
-      tags
-    );
+      documentText: documentContent,
+      documentUrl: file.webViewLink,
+      timestampMs: file.updatedAtMs,
+      tags,
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+    });
   } else {
     logger.info(
       {
