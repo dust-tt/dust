@@ -2,12 +2,11 @@ import {
   HandThumbDownSolidIcon,
   HandThumbUpSolidIcon,
   IconButton,
-  IconToggleButton,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
-import { useState } from "react";
 
 export type FeedbackHandler = (
   message: ChatMessageType,
@@ -23,9 +22,6 @@ export function MessageFeedback({
   feedbackHandler: FeedbackHandler;
   hover: boolean;
 }) {
-  const [feedback, setFeedback] = useState<MessageFeedbackStatus>(
-    message.feedback || null
-  );
   return (
     <div
       className={classNames(

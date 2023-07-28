@@ -2,24 +2,18 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
+  ClipboardSolidIcon,
+  ClipboardStrokeIcon,
   CloudArrowDownIcon,
   IconToggleButton,
   Item,
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
-  ClipboardStrokeIcon,
-  ClipboardSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  ClipboardDocumentListIcon,
-  DocumentDuplicateIcon,
-} from "@heroicons/react/24/outline";
-import {
-  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconFull,
-  UserCircleIcon,
-} from "@heroicons/react/24/solid";
+import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
