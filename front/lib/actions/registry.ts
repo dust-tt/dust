@@ -176,41 +176,6 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "doc-tracker": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "a48139b64b",
-      appHash:
-        "8fbdd063ae0e45ced9dcb5771200b171f1987124c4b7671a66d8eef5e4a1d9ac",
-    },
-    config: {
-      SUGGEST_CHANGES: {
-        provider_id: "openai",
-        model_id: "gpt-4-0613",
-        use_cache: false,
-        function_call: "suggest_changes",
-      },
-      SEMANTIC_SEARCH: {
-        data_sources: [],
-        top_k: 8,
-        filter: {
-          tags: {
-            in: ["__DUST_TRACKED"],
-            not: null,
-          },
-          timestamp: null,
-        },
-        use_cache: false,
-        full_text: true,
-      },
-      SUMMARIZE_INCOMING_DOC: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
-        function_call: "return_summary",
-        use_cache: false,
-      },
-    },
-  },
   "doc-tracker-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
