@@ -128,7 +128,7 @@ function Cloud() {
 
       if (p) {
         p5.strokeWeight(1.0);
-        p5.stroke("#F0FDF4");
+        p5.stroke("#1E3263");
         p5.line(particle.pos.x, particle.pos.y, p.pos.x, p.pos.y);
       }
 
@@ -138,7 +138,7 @@ function Cloud() {
     // Then, draw all ellipses
     for (const particle of particles) {
       p5.noStroke();
-      p5.fill("#A7F3D0");
+      p5.fill("#1D4ED8");
       p5.ellipse(particle.pos.x, particle.pos.y, 5, 5);
     }
   };
@@ -189,9 +189,9 @@ export default function Home({
 
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
 
-      {/* <div className="absolute bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
+      <div className="absolute bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
         <Cloud />
-      </div> */}
+      </div>
 
       <main className="z-10 mx-4">
         <div className="grid grid-cols-5 gap-1">
@@ -424,7 +424,7 @@ export default function Home({
           <div className="h-32"></div>
         </div>
 
-        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv text-sm text-gray-400">
+        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv text-sm text-slate-500">
           Dust © 2022-2023 –{" "}
           <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
             Legal
