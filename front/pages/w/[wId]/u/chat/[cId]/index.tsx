@@ -489,7 +489,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   };
 
   return (
-    <div className="invisible float-right -mt-2 group-hover:visible">
+    <div className="invisible float-right group-hover:visible">
       <IconToggleButton
         type="secondary"
         tooltip="Copy message to clipboard"
