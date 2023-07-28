@@ -1,31 +1,31 @@
-import { useEffect, RefObject } from "react";
+import { RefObject, useEffect } from "react";
 import * as THREE from "three";
 
-let hasScrollBehavior: boolean = true;
+const hasScrollBehavior = true;
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let particleSystem: THREE.Points;
-let backgroundColor = 0x1e293b;
-let colorsArray = [
+const backgroundColor = 0x1e293b;
+const colorsArray = [
   0x059669, 0x4ade80, 0xf87171, 0xf9a8d4, 0x7dd3fc, 0x3b82f6, 0xfbbf24,
 ];
 
-let originalSpread = 25; // the random position of Particules at start
+const originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles
-let numParticles = 10000; // number of particles
-let particleSize = 0.015; // Size of the particles
-let geometricObjectSize = 1.25;
-let rotationActive = true; // Activate the rotation of the scene
+const numParticles = 10000; // number of particles
+const particleSize = 0.015; // Size of the particles
+const geometricObjectSize = 1.25;
+const rotationActive = true; // Activate the rotation of the scene
 let speed = 0.1;
-let postExplosionSpeed = 0.03;
+const postExplosionSpeed = 0.03;
 // Center of the animation
-let sceneFocusX = 0;
-let sceneFocusY = 0;
-let sceneFocusZ = 0;
+const sceneFocusX = 0;
+const sceneFocusY = 0;
+const sceneFocusZ = 0;
 let currentShape = 0; // 0 = cube, 1 = sphere, etc...
-let totalShapes = 4;
+const totalShapes = 4;
 let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
 
 function init() {
@@ -45,16 +45,16 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById("canvas-container")!.appendChild(renderer.domElement);
 
-  let geometry = new THREE.BufferGeometry();
-  let vertices = [];
-  let colors = [];
+  const geometry = new THREE.BufferGeometry();
+  const vertices = [];
+  const colors = [];
   for (let i = 0; i < numParticles; i++) {
     vertices.push(
       THREE.MathUtils.randFloatSpread(originalSpread), // x
       THREE.MathUtils.randFloatSpread(originalSpread), // y
       THREE.MathUtils.randFloatSpread(originalSpread) // z
     );
-    let color = new THREE.Color(
+    const color = new THREE.Color(
       colorsArray[Math.floor(Math.random() * colorsArray.length)]
     );
     colors.push(color.r, color.g, color.b);
@@ -65,7 +65,7 @@ function init() {
   );
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 
-  let material = new THREE.PointsMaterial({
+  const material = new THREE.PointsMaterial({
     size: particleSize, // Particles size
     vertexColors: true,
   });
@@ -94,7 +94,7 @@ function onWindowResize() {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  let previousShape = currentShape;
+  const previousShape = currentShape;
 
   switch (event.keyCode) {
     case 37: // left arrow key
@@ -127,21 +127,21 @@ function animate() {
 }
 
 function animateImplode() {
-  let positions = particleSystem.geometry.attributes.position.array;
+  const positions = particleSystem.geometry.attributes.position.array;
   let allParticlesInside = true; // initially assume that all particles are inside the sphere, only used to start the original explosion
 
   for (let i = 0; i < positions.length; i += 3) {
-    let targetPositionX = sceneFocusX;
-    let targetPositionY = sceneFocusY;
-    let targetPositionZ = sceneFocusZ;
-    let currentPositionX = positions[i];
-    let currentPositionY = positions[i + 1];
-    let currentPositionZ = positions[i + 2];
-    let distanceX = currentPositionX - targetPositionX;
-    let distanceY = currentPositionY - targetPositionY;
-    let distanceZ = currentPositionZ - targetPositionZ;
+    const targetPositionX = sceneFocusX;
+    const targetPositionY = sceneFocusY;
+    const targetPositionZ = sceneFocusZ;
+    const currentPositionX = positions[i];
+    const currentPositionY = positions[i + 1];
+    const currentPositionZ = positions[i + 2];
+    const distanceX = currentPositionX - targetPositionX;
+    const distanceY = currentPositionY - targetPositionY;
+    const distanceZ = currentPositionZ - targetPositionZ;
 
-    let distance3D = Math.sqrt(
+    const distance3D = Math.sqrt(
       distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ
     );
 
@@ -152,7 +152,7 @@ function animateImplode() {
     } else {
       allParticlesInside = false;
 
-      let force =
+      const force =
         (distance3D * speed) / (distance3D * distance3D + Number.EPSILON); // Movement speed
 
       positions[i] -= force * distanceX;
@@ -168,24 +168,24 @@ function animateImplode() {
 }
 
 function animateExplode() {
-  let positions = particleSystem.geometry.attributes.position.array;
+  const positions = particleSystem.geometry.attributes.position.array;
 
   for (let i = 0; i < positions.length; i += 3) {
-    let targetPosition = targetPositions[i / 3]; // Retrieve the pre-calculated target position for this particle
+    const targetPosition = targetPositions[i / 3]; // Retrieve the pre-calculated target position for this particle
 
-    let currentPositionX = positions[i];
-    let currentPositionY = positions[i + 1];
-    let currentPositionZ = positions[i + 2];
-    let distanceX = targetPosition.x - currentPositionX;
-    let distanceY = targetPosition.y - currentPositionY;
-    let distanceZ = targetPosition.z - currentPositionZ;
+    const currentPositionX = positions[i];
+    const currentPositionY = positions[i + 1];
+    const currentPositionZ = positions[i + 2];
+    const distanceX = targetPosition.x - currentPositionX;
+    const distanceY = targetPosition.y - currentPositionY;
+    const distanceZ = targetPosition.z - currentPositionZ;
 
-    let distance3D = Math.sqrt(
+    const distance3D = Math.sqrt(
       distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ
     );
 
     if (distance3D > speed) {
-      let force =
+      const force =
         (distance3D * speed) / (distance3D * distance3D + Number.EPSILON); // Movement speed
       positions[i] += force * distanceX;
       positions[i + 1] += force * distanceY;
@@ -214,13 +214,13 @@ function calculateTargetPositions() {
 
     switch (currentShape) {
       case 0: // grid
-        let gridSize = 16;
-        let gridNum = 48;
-        let gridSpacing = gridSize / gridNum; // spacing between particles in the grid
+        const gridSize = 16;
+        const gridNum = 48;
+        const gridSpacing = gridSize / gridNum; // spacing between particles in the grid
 
         // Calculate indices along x and y axis
-        let gridX = i % gridNum;
-        let gridY = Math.floor(i / 3 / gridNum) % gridNum;
+        const gridX = i % gridNum;
+        const gridY = Math.floor(i / 3 / gridNum) % gridNum;
 
         // Calculate positions so that the grid is centered at the origin
         targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
@@ -247,8 +247,8 @@ function calculateTargetPositions() {
         targetPositionZ = radius * Math.cos(phi);
         break;
       case 3: // cube
-        let cubeSize = geometricObjectSize * 12; // size of the cube
-        let particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
+        const cubeSize = geometricObjectSize * 12; // size of the cube
+        const particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
 
         ix = i % particlesPerSide; // index along x-axis
         iy = Math.floor((i / particlesPerSide) % particlesPerSide); // index along y-axis

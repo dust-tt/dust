@@ -1,4 +1,3 @@
-import React, { useEffect, useState, useRef } from "react";
 import { Logo } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -8,6 +7,7 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { ParsedUrlQuery } from "querystring";
+import React, { useEffect, useRef, useState } from "react";
 
 import { GoogleSignInButton } from "@app/components/Button";
 import { getUserMetadata } from "@app/lib/api/user";
@@ -62,9 +62,6 @@ export default function Home({
   const scrollRef1 = useRef<HTMLDivElement | null>(null);
   const scrollRef2 = useRef<HTMLDivElement | null>(null);
   const scrollRef3 = useRef<HTMLDivElement | null>(null);
-
-  // y positions state for particles
-  const [yPositions, setYPositions] = useState<number[]>([0, 500, 1000, 0]);
 
   useEffect(() => {
     if (logoRef.current) {
