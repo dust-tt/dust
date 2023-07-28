@@ -10,11 +10,10 @@ import { ParsedUrlQuery } from "querystring";
 import React, { useEffect, useRef, useState } from "react";
 
 import { GoogleSignInButton } from "@app/components/Button";
+import Particles from "@app/components/home/particles";
+import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-
-import Particles from "./particles";
-import ScrollingHeader from "./scrollingHeader";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
