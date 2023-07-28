@@ -3,10 +3,13 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowDownIcon,
+  IconToggleButton,
   Item,
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
+  ClipboardStrokeIcon,
+  ClipboardSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
@@ -483,50 +486,22 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
 
 function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
-  const [tooltip, setTooltip] = useState<boolean>(false);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const handleClick = async () => {
-    // cancel tooltip display if user clicks before tooltip appears
-    timer && clearTimeout(timer);
     await navigator.clipboard.writeText(message.message as string);
     setConfirmed(true);
-    setTooltip(false);
     void setTimeout(() => {
       setConfirmed(false);
     }, 1000);
   };
 
   return (
-    <div
-      className={classNames(
-        "float-right -mt-2 block cursor-pointer cursor-pointer hover:text-action-600 group-hover:visible",
-        confirmed ? "text-action-500" : "text-grey-400 invisible"
-      )}
-      onClick={handleClick}
-      onMouseEnter={() => setTimer(setTimeout(() => setTooltip(true), 1000))}
-      onMouseLeave={() => {
-        // in case user left before tooltip appears, cancel timer
-        timer && clearTimeout(timer);
-        setTooltip(false);
-      }}
-    >
-      {confirmed ? (
-        <ClipboardDocumentCheckIconFull className="h-4 w-4" />
-      ) : (
-        <ClipboardDocumentListIcon className="h-4 w-4" />
-      )}
-      {tooltip ? (
-        <div
-          className="absolute bottom-4 right-0 w-max rounded border bg-white px-1 py-1"
-          onMouseEnter={() => void setTimeout(() => setTooltip(false), 200)}
-        >
-          <span className="font-normal text-gray-600">
-            Copy message to clipboard
-          </span>
-        </div>
-      ) : (
-        ""
-      )}
+    <div className="invisible float-right -mt-2 group-hover:visible">
+      <IconToggleButton
+        type="secondary"
+        tooltip="Copy message to clipboard"
+        icon={confirmed ? ClipboardSolidIcon : ClipboardStrokeIcon}
+        onClick={handleClick}
+      />
     </div>
   );
 }
