@@ -8,6 +8,7 @@ import {
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
@@ -641,34 +642,67 @@ function ChatMenu({
           className="flex flex-initial"
         />
       </div>
-      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
+      <div className="mt-4 flex h-0 min-h-full grow">
         <div className="flex grow flex-col">
           <div className="flex flex-row items-center">
-            <div
-              className="cursor-pointer px-8 py-4 text-xs uppercase text-slate-400 hover:font-bold hover:text-slate-800"
-              onClick={() => setWorkspaceScope(!workspaceScope)}
-            >
-              {workspaceScope
-                ? "Workspace conversations"
-                : "Past Conversations"}
+            <div className="cursor-pointer py-4 pl-8 text-xs uppercase text-slate-400">
+              Past Conversations:
+              <span
+                className={
+                  // capitalization handled this way because tooltip cannot
+                  // accept className="normal-case" yet
+                  "normal-case"
+                }
+              >
+                <Tooltip label="Personal conversations">
+                  <span
+                    className={classNames(
+                      "ml-2 mr-1 cursor-pointer normal-case hover:font-bold hover:text-slate-800",
+                      !workspaceScope ? "font-bold text-slate-800" : ""
+                    )}
+                    onClick={() => setWorkspaceScope(false)}
+                  >
+                    MINE
+                  </span>
+                </Tooltip>
+                {" | "}
+                <Tooltip label="Conversations shared by others">
+                  <span
+                    className={classNames(
+                      "mx-1 cursor-pointer normal-case hover:font-bold hover:text-slate-800",
+                      workspaceScope ? "font-bold text-slate-800" : ""
+                    )}
+                    onClick={() => setWorkspaceScope(true)}
+                  >
+                    WORKSPACE
+                  </span>
+                </Tooltip>
+              </span>
             </div>
           </div>
-          <div className="flex ">
+          <div className="flex overflow-y-auto">
             <div className="flex w-full flex-col">
-              {sessions.length === 0
-                ? "No conversations yet."
-                : sessions.map((s) => {
-                    return (
-                      <Item
-                        key={s.sId}
-                        size="sm"
-                        selected={router.query.cId === s.sId}
-                        label={s.title || ""}
-                        className="pl-8 pr-4"
-                        href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                      ></Item>
-                    );
-                  })}
+              {sessions.length === 0 ? (
+                <Item
+                  size="sm"
+                  label="No conversations yet."
+                  className="pl-8 pr-4"
+                  disabled={true}
+                />
+              ) : (
+                sessions.map((s) => {
+                  return (
+                    <Item
+                      key={s.sId}
+                      size="sm"
+                      selected={router.query.cId === s.sId}
+                      label={s.title || ""}
+                      className="pl-8 pr-4"
+                      href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                    ></Item>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
