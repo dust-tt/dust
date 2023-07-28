@@ -1,7 +1,13 @@
-import { HandThumbDownSolidIcon, HandThumbUpSolidIcon } from "@dust-tt/sparkle";
+import {
+  HandThumbDownSolidIcon,
+  HandThumbUpSolidIcon,
+  IconButton,
+  IconToggleButton,
+} from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
 import { ChatMessageType, MessageFeedbackStatus } from "@app/types/chat";
+import { useState } from "react";
 
 export type FeedbackHandler = (
   message: ChatMessageType,
@@ -17,42 +23,28 @@ export function MessageFeedback({
   feedbackHandler: FeedbackHandler;
   hover: boolean;
 }) {
+  const [feedback, setFeedback] = useState<MessageFeedbackStatus>(
+    message.feedback || null
+  );
   return (
     <div
-      className={classNames("flex-end flex h-2 flex-row-reverse text-gray-400")}
+      className={classNames(
+        "flex-end flex h-2 flex-row-reverse text-gray-400",
+        !message.feedback && hover ? "invisible group-hover:visible" : ""
+      )}
     >
-      <div
+      <IconButton
+        type={message.feedback === "positive" ? "primary" : "secondary"}
+        icon={HandThumbUpSolidIcon}
         onClick={() => feedbackHandler(message, "positive")}
-        className={classNames(
-          "ml-2 cursor-pointer rounded-md p-px",
-          message.feedback === "positive"
-            ? "text-action-500"
-            : "hover:text-action-600",
-          !message.feedback && hover ? "invisible group-hover:visible" : ""
-        )}
-      >
-        {message.feedback === "positive" ? (
-          <HandThumbUpSolidIcon className="h-4 w-4" />
-        ) : (
-          <HandThumbUpSolidIcon className="h-4 w-4" />
-        )}
-      </div>
-      <div
+        className="ml-1"
+      />
+      <IconButton
+        type={message.feedback === "negative" ? "primary" : "secondary"}
+        icon={HandThumbDownSolidIcon}
         onClick={() => feedbackHandler(message, "negative")}
-        className={classNames(
-          "ml-2 cursor-pointer rounded-md p-px",
-          message.feedback === "negative"
-            ? "text-action-500"
-            : "hover:text-action-600",
-          !message.feedback && hover ? "invisible group-hover:visible" : ""
-        )}
-      >
-        {message.feedback === "negative" ? (
-          <HandThumbDownSolidIcon className="h-4 w-4" />
-        ) : (
-          <HandThumbDownSolidIcon className="h-4 w-4" />
-        )}
-      </div>
+        className="ml-1"
+      />
     </div>
   );
 }
