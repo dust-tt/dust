@@ -25,7 +25,8 @@
     "**/*.tsx",
     "**/*.jsx",
     "**/*.js",
-    "./.eslintrc.js"
+    "./.eslintrc.js",
+    "node_modules/three/src/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

@@ -1,13 +1,10 @@
 import { Logo } from "@dust-tt/sparkle";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import dynamic from "next/dynamic";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
-import p5Types from "p5";
 import { ParsedUrlQuery } from "querystring";
 
 import { GoogleSignInButton } from "@app/components/Button";
@@ -15,10 +12,7 @@ import { Button } from "@dust-tt/sparkle";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
-// Will only import `react-p5` on client-side
-const Sketch = dynamic(() => import("react-p5").then((mod) => mod.default), {
-  ssr: false,
-});
+import Particles from "./particles";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -55,96 +49,6 @@ export const getServerSideProps: GetServerSideProps<{
     props: { gaTrackingId: GA_TRACKING_ID },
   };
 };
-
-const particuleNum = 60;
-
-class Particle {
-  pos: p5Types.Vector;
-  vel: p5Types.Vector;
-  acc: p5Types.Vector;
-  angle: number;
-  radius: number;
-
-  constructor(p5: p5Types) {
-    this.pos = p5.createVector(
-      p5.random(p5.windowWidth * 2) - p5.windowWidth / 2,
-      p5.random(p5.windowHeight)
-    );
-    this.vel = p5.createVector(p5.random(-1, 1), p5.random(-1, 1));
-    this.acc = p5.createVector();
-    this.angle = p5.random(p5.TWO_PI);
-    this.radius = p5.random(30, 120);
-  }
-
-  applyForce(force: p5Types.Vector) {
-    this.acc.add(force);
-  }
-
-  update(p5: p5Types) {
-    let percent = p5.millis() / 10000;
-    if (percent > 1) {
-      percent = 1;
-    }
-    const center = p5.createVector(
-      p5.windowWidth / 2,
-      (1 * p5.windowHeight) / 3
-    );
-    const circlingForce = p5.createVector(
-      p5.cos(this.angle),
-      p5.sin(this.angle)
-    );
-    circlingForce.mult(this.radius * percent);
-    center.add(circlingForce);
-    const attractionForce = center.sub(this.pos);
-    attractionForce.normalize();
-    attractionForce.mult(0.005 * percent);
-    this.applyForce(attractionForce);
-    this.angle += 0.01;
-    this.vel.add(this.acc);
-    this.pos.add(this.vel);
-    this.acc.mult(0);
-    this.vel.limit(3);
-  }
-}
-
-function Cloud() {
-  const particles: Particle[] = [];
-
-  const setup = (p5: p5Types, canvasParentRef: Element) => {
-    p5.createCanvas(p5.windowWidth, p5.windowHeight).parent(canvasParentRef);
-    p5.frameRate(30);
-    for (let i = 0; i < particuleNum; i++) {
-      particles.push(new Particle(p5));
-    }
-  };
-
-  const draw = (p5: p5Types) => {
-    p5.clear();
-    let p: Particle | null = particles[particles.length - 1];
-
-    // First, update all particles and draw all lines
-    for (const particle of particles) {
-      particle.update(p5);
-
-      if (p) {
-        p5.strokeWeight(1.0);
-        p5.stroke("#1E3263");
-        p5.line(particle.pos.x, particle.pos.y, p.pos.x, p.pos.y);
-      }
-
-      p = particle;
-    }
-
-    // Then, draw all ellipses
-    for (const particle of particles) {
-      p5.noStroke();
-      p5.fill("#1D4ED8");
-      p5.ellipse(particle.pos.x, particle.pos.y, 5, 5);
-    }
-  };
-
-  return <Sketch setup={setup} draw={draw} />;
-}
 
 export default function Home({
   gaTrackingId,
@@ -189,8 +93,8 @@ export default function Home({
 
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
 
-      <div className="absolute bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
-        <Cloud />
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
+        <Particles />
       </div>
 
       <main className="z-10 mx-4">
@@ -231,10 +135,10 @@ export default function Home({
           </div>
         </div>
 
-        <div className="h-44"></div>
-
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          <div style={{ height: "30vh" }}></div>
           <div className="grid grid-cols-1">
+            <Logo className="h-[48px] w-[192px] px-1" />
             <p className="mt-16 font-objektiv text-6xl font-bold tracking-tighter text-slate-50">
               <span className="font-objektiv text-6xl text-red-400 sm:font-objektiv md:font-objektiv">
                 Secure AI assistant
@@ -247,7 +151,7 @@ export default function Home({
 
           <div className="h-10"></div>
 
-          <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-300 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-400 md:grid-cols-2 lg:grid-cols-3">
             <p className="font-regular lg:col-span-2">
               AI is changing the way we work and is a competitive advantage
               for&nbsp;smart teams that harness its&nbsp;potential effectively.
