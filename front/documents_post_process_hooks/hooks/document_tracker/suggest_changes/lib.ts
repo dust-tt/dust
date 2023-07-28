@@ -261,8 +261,27 @@ export async function documentTrackerSuggestChangesOnUpsert({
     localLogger.warn("No documents found.");
     return;
   }
+
+  const retrievedTrackedDocuments = retrievalResult.filter((r) =>
+    r.tags.includes("DUST_TRACKED")
+  );
+
+  if (!retrievedTrackedDocuments.length) {
+    localLogger.info(
+      "No tracked documents retrieved, not calling doc tracker suggest changes action."
+    );
+    return;
+  }
+
+  localLogger.info(
+    {
+      retrievedTrackedDocumentsCount: retrievedTrackedDocuments.length,
+    },
+    "Retrieved tracked documents."
+  );
+
   // TODO: maybe not just look at top1, look at top 3 chunks and do on multiple docs if needed
-  const top1 = retrievalResult[0];
+  const top1 = retrievedTrackedDocuments[0];
   const score = top1.chunks[0].score;
 
   if (score < RETRIEVAL_MIN_SCORE) {
