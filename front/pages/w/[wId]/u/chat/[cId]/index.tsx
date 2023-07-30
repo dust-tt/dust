@@ -683,7 +683,7 @@ export default function AppChat({
     if (window && window.scrollTo) {
       window.scrollTo(0, document.body.scrollHeight);
     }
-  }, [messages, response]);
+  }, [messages.length, response]);
 
   const handleInputUpdate = (input: string) => {
     setInput(input);
