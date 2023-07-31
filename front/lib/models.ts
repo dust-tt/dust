@@ -1176,7 +1176,7 @@ export class DocumentTrackerChangeSuggestion extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare suggestion: string;
-  declare suggestionTitle?: string | null;
+  declare reason?: string | null;
   declare status: "pending" | "done" | "rejected";
 
   declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
@@ -1194,7 +1194,9 @@ DocumentTrackerChangeSuggestion.init(
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
     suggestion: { type: DataTypes.TEXT, allowNull: false },
+    //@ts-expect-error TODO remove once propagated
     suggestionTitle: { type: DataTypes.TEXT, allowNull: true },
+    reason: { type: DataTypes.TEXT, allowNull: true },
     status: {
       type: DataTypes.STRING,
       allowNull: false,
