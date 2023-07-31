@@ -320,17 +320,6 @@ export default function Particules({
           break;
         }
       }
-
-      // console.log(
-      //   "currentShape",
-      //   currentShape,
-      //   "window.scrollY",
-      //   window.scrollY,
-      //   "window.innerHeight",
-      //   window.innerHeight,
-      //   "yPositions",
-      //   yPositions
-      // );
     };
 
     window.addEventListener("keydown", onKeydown, false);
