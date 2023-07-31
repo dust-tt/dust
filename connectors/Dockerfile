@@ -1,11 +1,18 @@
+
+# start installing poppler tools for pdf text extraction
+FROM node:18.15.0 as build
+ 
+WORKDIR /tmp/
+COPY ./admin/docker_build/install_poppler_tools.sh ./
+RUN chmod +x ./install_poppler_tools.sh
+RUN ./install_poppler_tools.sh
+# end installing poppler tools
+
 FROM node:18.15.0 as connectors
 
-
-RUN  apt-get update && apt-get \
- 
- install -y \
- # needed for pdf-to-text npm package
- poppler-utils 
+ENV LD_LIBRARY_PATH=/usr/local/lib
+COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
+COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
 WORKDIR /app
 
