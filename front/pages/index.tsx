@@ -190,7 +190,10 @@ export default function Home({
           <div className="mt-32">
             <div className="gap-8 md:grid md:grid-cols-8">
               <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
-                <div className="mt-2">
+                <div
+                  className="mt-2"
+                  style={{ filter: "drop-shadow(0 10px 8px rgb(0 0 0 / 0.3))" }}
+                >
                   <div className="font-objektiv text-xl font-bold tracking-tighter text-red-400 md:text-2xl">
                     GPT-4 and all your internal knowledge, <br />
                     <span className="text-3xl text-rose-200 md:text-5xl">
