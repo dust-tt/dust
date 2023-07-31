@@ -117,7 +117,7 @@ export async function updateGoogleDriveConnector(
         message: "Connector not found",
         type: "connector_not_found",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
   // Ideally we want to check that the Google Project ID is the same as the one from the connector
