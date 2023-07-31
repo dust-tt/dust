@@ -263,7 +263,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   }
 
   const retrievedTrackedDocuments = retrievalResult.filter((r) =>
-    r.tags.includes("DUST_TRACKED")
+    r.tags.includes("__DUST_TRACKED")
   );
 
   if (!retrievedTrackedDocuments.length) {
