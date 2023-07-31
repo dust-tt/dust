@@ -25,6 +25,7 @@
     "autoprefixer": "^10.4.7",
     "clsx": "^1.2.0",
     "dd-trace": "^3.16.0",
+    "@dust-tt/sparkle": "0.1.26",
     "focus-visible": "^5.2.0",
     "framer-motion": "7.8.1",
     "mdast-util-to-string": "^3.1.0",
