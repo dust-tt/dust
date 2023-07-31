@@ -3,7 +3,6 @@ import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
 import os from "os";
 import PQueue from "p-queue";
-// @ts-expect-error no types provided for pdf-to-text
 import pdfUtil from "pdf-to-text";
 
 import {
@@ -307,7 +306,7 @@ async function syncOneFile(
         }
 
         const pdfTextData: string = await new Promise((resolve, reject) => {
-          pdfUtil.pdfToText(pdf_path, (err: Error, data: string) => {
+          pdfUtil.pdfToText(pdf_path, (err, data) => {
             if (err) {
               return reject(err);
             } else {
