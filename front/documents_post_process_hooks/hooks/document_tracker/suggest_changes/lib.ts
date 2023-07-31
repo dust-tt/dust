@@ -263,7 +263,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   }
 
   const retrievedTrackedDocuments = retrievalResult.filter((r) =>
-    r.tags.includes("DUST_TRACKED")
+    r.tags.includes("__DUST_TRACKED")
   );
 
   if (!retrievedTrackedDocuments.length) {
@@ -306,6 +306,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   }
 
   const suggestedChanges = suggestChangesResult.suggested_changes;
+  const reason = suggestChangesResult.reason;
   const matchedDsName = top1.data_source_id;
   const matchedDocId = top1.document_id;
   const matchedDocUrl = top1.source_url;
@@ -379,6 +380,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
         sourceDocumentId: documentId,
         suggestion: suggestedChanges,
         status: "pending",
+        reason,
       })
     )
   );

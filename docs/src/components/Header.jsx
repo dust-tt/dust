@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 import { Button } from "@/components/Button";
-import { Logo } from "@/components/Logo";
+import { Logo } from "@dust-tt/sparkle";
 import {
   MobileNavigation,
   useIsInsideMobileNavigation,
@@ -60,7 +60,7 @@ export const Header = forwardRef(function Header({ className }, ref) {
       <div className="flex items-center gap-5 lg:hidden">
         <MobileNavigation />
         <Link href="https://dust.tt" aria-label="Home">
-          <Logo className="h-6" />
+          <Logo className="-ml-8 h-4 w-32" />
         </Link>
       </div>
       <div className="flex flex-1" />

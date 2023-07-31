@@ -46,7 +46,6 @@ import {
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
 import { client_side_new_id } from "@app/lib/utils";
@@ -689,7 +688,7 @@ export default function AppChat({
     if (window && window.scrollTo) {
       window.scrollTo(0, document.body.scrollHeight);
     }
-  }, [messages, response]);
+  }, [messages.length, response]);
 
   const handleInputUpdate = (input: string) => {
     setInput(input);
