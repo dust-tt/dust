@@ -363,11 +363,11 @@ export default function Home({
             Legal
           </Link>
           {" - "}
-          <Link href="https://www.notion.so/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084">
+          <Link href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084">
             Website Privacy
           </Link>
           {" - "}
-          <Link href="https://www.notion.so/Platform-Privacy-Policy-37ceefcd8442428d99a5a062d4d310c5#c75510c896ec4d248a191d088555043d">
+          <Link href="https://dust-tt.notion.site/Platform-Privacy-Policy-37ceefcd8442428d99a5a062d4d310c5?pvs=4">
             Platform Privacy
           </Link>
           {" - "}
