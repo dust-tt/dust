@@ -121,7 +121,7 @@ export async function updateNotionConnector(
         message: "Connector not found",
         type: "connector_not_found",
       },
-    } as ConnectorsAPIErrorResponse);
+    });
   }
 
   if (connectionId) {
@@ -149,7 +149,7 @@ export async function updateNotionConnector(
           type: "connector_update_error",
           message: "Error retrieving nango connection info to update connector",
         },
-      } as ConnectorsAPIErrorResponse);
+      });
     }
     if (workspaceId !== newWorkspaceId) {
       return new Err({
@@ -157,7 +157,7 @@ export async function updateNotionConnector(
           type: "connector_oauth_target_mismatch",
           message: "Cannot change workspace of a Notion connector",
         },
-      } as ConnectorsAPIErrorResponse);
+      });
     }
 
     await c.update({ connectionId });

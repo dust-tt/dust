@@ -1,23 +1,19 @@
 import { Logo } from "@dust-tt/sparkle";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import dynamic from "next/dynamic";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
-import p5Types from "p5";
 import { ParsedUrlQuery } from "querystring";
+import React, { useEffect, useRef, useState } from "react";
 
-import { Button, GoogleSignInButton } from "@app/components/Button";
+import { GoogleSignInButton } from "@app/components/Button";
+import Particles from "@app/components/home/particles";
+import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-
-// Will only import `react-p5` on client-side
-const Sketch = dynamic(() => import("react-p5").then((mod) => mod.default), {
-  ssr: false,
-});
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -55,100 +51,23 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-const particuleNum = 60;
-
-class Particle {
-  pos: p5Types.Vector;
-  vel: p5Types.Vector;
-  acc: p5Types.Vector;
-  angle: number;
-  radius: number;
-
-  constructor(p5: p5Types) {
-    this.pos = p5.createVector(
-      p5.random(p5.windowWidth * 2) - p5.windowWidth / 2,
-      p5.random(p5.windowHeight)
-    );
-    this.vel = p5.createVector(p5.random(-1, 1), p5.random(-1, 1));
-    this.acc = p5.createVector();
-    this.angle = p5.random(p5.TWO_PI);
-    this.radius = p5.random(30, 120);
-  }
-
-  applyForce(force: p5Types.Vector) {
-    this.acc.add(force);
-  }
-
-  update(p5: p5Types) {
-    let percent = p5.millis() / 10000;
-    if (percent > 1) {
-      percent = 1;
-    }
-    const center = p5.createVector(
-      p5.windowWidth / 2,
-      (1 * p5.windowHeight) / 3
-    );
-    const circlingForce = p5.createVector(
-      p5.cos(this.angle),
-      p5.sin(this.angle)
-    );
-    circlingForce.mult(this.radius * percent);
-    center.add(circlingForce);
-    const attractionForce = center.sub(this.pos);
-    attractionForce.normalize();
-    attractionForce.mult(0.005 * percent);
-    this.applyForce(attractionForce);
-    this.angle += 0.01;
-    this.vel.add(this.acc);
-    this.pos.add(this.vel);
-    this.acc.mult(0);
-    this.vel.limit(3);
-  }
-}
-
-function Cloud() {
-  const particles: Particle[] = [];
-
-  const setup = (p5: p5Types, canvasParentRef: Element) => {
-    p5.createCanvas(p5.windowWidth, p5.windowHeight).parent(canvasParentRef);
-    p5.frameRate(30);
-    for (let i = 0; i < particuleNum; i++) {
-      particles.push(new Particle(p5));
-    }
-  };
-
-  const draw = (p5: p5Types) => {
-    p5.clear();
-    let p: Particle | null = particles[particles.length - 1];
-
-    // First, update all particles and draw all lines
-    for (const particle of particles) {
-      particle.update(p5);
-
-      if (p) {
-        p5.strokeWeight(1.0);
-        p5.stroke("#F0FDF4");
-        p5.line(particle.pos.x, particle.pos.y, p.pos.x, p.pos.y);
-      }
-
-      p = particle;
-    }
-
-    // Then, draw all ellipses
-    for (const particle of particles) {
-      p5.noStroke();
-      p5.fill("#A7F3D0");
-      p5.ellipse(particle.pos.x, particle.pos.y, 5, 5);
-    }
-  };
-
-  return <Sketch setup={setup} draw={draw} />;
-}
-
 export default function Home({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [logoY, setLogoY] = useState<number>(0);
+  const logoRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollRef1 = useRef<HTMLDivElement | null>(null);
+  const scrollRef2 = useRef<HTMLDivElement | null>(null);
+  const scrollRef3 = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (logoRef.current) {
+      const logoPosition = logoRef.current.offsetTop;
+      setLogoY(logoPosition);
+    }
+  }, []);
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
     let callbackUrl = "/api/login";
@@ -163,7 +82,7 @@ export default function Home({
   return (
     <>
       <Head>
-        <title>Dust - Build Smarter Teams with AI</title>
+        <title>Dust - Smarter Teams with AI</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
         <meta
           id="meta-description"
@@ -180,37 +99,21 @@ export default function Home({
           property="og:image"
           content="/static/og_image.png"
         />
+        <link
+          rel="stylesheet"
+          href="https://use.typekit.net/lzv1deb.css"
+        ></link>
       </Head>
-
-      <div className="absolute bottom-0 left-0 right-0 top-0 -z-50 overflow-hidden">
-        <Cloud />
-      </div>
-
-      <main className="z-10 mx-4">
-        <div className="grid grid-cols-5 gap-1">
-          <div className="col-span-2 text-left">
-            <Logo className="mx-4 h-24 w-auto" />
-          </div>
-          <div className="col-span-3 mr-2 mt-8 text-right">
-            <GoogleSignInButton
-              onClick={() =>
-                signIn("google", {
-                  callbackUrl: getCallbackUrl(router.query),
-                })
-              }
-            >
-              <img
-                src="/static/google_white_32x32.png"
-                className="ml-1 h-4 w-4"
-              />
-              <span className="ml-2 mr-1">Sign in with Google</span>
-            </GoogleSignInButton>
-
+      <ScrollingHeader showItemY={logoY}>
+        <div className="flex h-full w-full items-center px-4">
+          <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
+          <div className="flex-grow" />
+          <div className="flex items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
-              <div className="ml-32 mt-1 text-xs text-gray-500">
-                or{" "}
+              <div className="font-regular font-objektiv text-xs text-slate-400">
+                Sign in with{" "}
                 <span
-                  className="cursor-pointer hover:font-bold"
+                  className="cursor-pointer font-bold hover:text-blue-400"
                   onClick={() => {
                     void signIn("github", {
                       callbackUrl: getCallbackUrl(router.query),
@@ -218,177 +121,101 @@ export default function Home({
                   }}
                 >
                   GitHub
-                </span>
+                </span>{" "}
+                or
               </div>
             )}
+            <GoogleSignInButton
+              onClick={() =>
+                signIn("google", {
+                  callbackUrl: getCallbackUrl(router.query),
+                })
+              }
+            >
+              <img src="/static/google_white_32x32.png" className="h-4 w-4" />
+              <span className="ml-2 mr-1">Sign in with Google</span>
+            </GoogleSignInButton>
           </div>
         </div>
+      </ScrollingHeader>
+
+      {/* Keeping the background dark */}
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+      {/* Particle system */}
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
+        <Particles
+          scrollRef1={scrollRef1}
+          scrollRef2={scrollRef2}
+          scrollRef3={scrollRef3}
+        />
+      </div>
+
+      <main className="z-10 mx-6">
         <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+          <div style={{ height: "40vh" }}></div>
           <div className="grid grid-cols-1">
-            <p className="mt-16 text-6xl font-bold tracking-tighter text-gray-800">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent sm:text-6xl md:text-8xl">
-                Smarter Teams
+            <div ref={logoRef}>
+              <Logo className="h-[48px] w-[192px] px-1" />
+            </div>
+            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
+              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+                Secure AI assistant
               </span>{" "}
               <br />
-              with safe generative&nbsp;AI
+              with your company’s knowledge
               <br />
             </p>
           </div>
 
           <div className="h-10"></div>
 
-          <div className="grid grid-cols-1 gap-4 text-2xl text-gray-700 md:grid-cols-2 lg:grid-cols-3">
-            <p className="rounded font-light lg:col-span-2">
-              AI is changing the way we work.
-              <br />
-              Harnessing its potential swiftly and effectively is
-              a&nbsp;key&nbsp;competitive advantage for&nbsp;any&nbsp;company.
+          <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-400 md:grid-cols-2 lg:grid-cols-3">
+            <p className="font-regular lg:col-span-2">
+              AI is changing the way we work and is a competitive advantage
+              for&nbsp;smart teams that harness its&nbsp;potential effectively.
             </p>
-            <p className="rounded font-light lg:col-span-2 lg:pr-8">
-              With Dust, get all the might of large language models
-              in&nbsp;a&nbsp;user-friendly&nbsp;package, while&nbsp;ensuring
-              the&nbsp;safety of your&nbsp;company's&nbsp;data.
+            <p className="font-regular lg:col-span-2">
+              Dust is an AI assistant that safely brings the best large language
+              models, continuously updated company knowledge, powerful
+              collaboration applications, and an&nbsp;extensible platform
+              to&nbsp;your team’s&nbsp;fingertips.
             </p>
-          </div>
-
-          <div className="h-20"></div>
-
-          <div className="grid grid-cols-1">
-            <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
-                Our product constitution
-              </span>
-            </p>
-          </div>
-
-          <div className="h-6"></div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="font-medium">
-                Augmenting humans, not&nbsp;replacing&nbsp;them
-              </p>
-              <div className="h-2"></div>
-              <p className="font-light">
-                We're optimistic about making work life better for smart people.
-                We're building R2-D2, not Skynet.
-              </p>
-            </div>
-            <div>
-              <p className="font-medium">
-                Uncompromising on data security & privacy
-              </p>
-              <div className="h-2"></div>
-              <p className="font-light">
-                We aspire to define standards rather than simply abide by
-                the&nbsp;existing ones.
-              </p>
-            </div>
-            <div>
-              <p className="font-medium">Hard problems over hype</p>
-              <div className="h-2"></div>
-              <p className="font-light">
-                There's more to do than wrapping GPT into a chat UI. We're in
-                this to solve hard problems on user experience and product
-                quality.
-              </p>
-            </div>
-            <div>
-              <p className="font-medium">Building with an&nbsp;AI&nbsp;core</p>
-              <div className="h-2"></div>
-              <p className="font-light">
-                We're building with large language models in mind from the
-                ground up, rather than sprinkling them here and&nbsp;there.
-              </p>
-            </div>
-          </div>
-
-          <div className="h-20"></div>
-
-          <div className="grid grid-cols-1">
-            <p className="text-4xl font-bold">
-              <span className="bg-gradient-to-r from-action-700 to-action-500 bg-clip-text text-transparent">
-                The secret sauce
-              </span>
-            </p>
-
-            <div className="h-6"></div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <p className="text-2xl font-bold tracking-tighter text-gray-700 lg:col-span-2">
-                The experience{" "}
-                <span className="bg-brand text-white">
-                  to build the right product
-                </span>
-              </p>
-              <p className="rounded font-light lg:col-span-2">
-                Great things happen when technical skills, operational
-                excellence and passion for&nbsp;simple, empathetic user
-                experience come&nbsp;together.
-              </p>
-              <p className="rounded font-light lg:col-span-2">
-                Our team combines engineering, product and design experiences
-                from leading companies like{" "}
-                <b>
-                  <i>Alan</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Artefact</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Aurora Innovation</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>BlaBlaCar</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>OpenAI</i>
-                </b>
-                ,{" "}
-                <b>
-                  <i>Stripe</i>
-                </b>{" "}
-                and&nbsp;
-                <b>
-                  <i>Withings</i>
-                </b>
-                .
-              </p>
-            </div>
           </div>
         </div>
 
-        <div className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div
+          ref={scrollRef1}
+          className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl"
+        >
           <div className="mt-32">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Internal data{" "}
-                    <span className="bg-brand text-white">
-                      vectorized, not rasterized
+            <div className="gap-8 md:grid md:grid-cols-8">
+              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
+                <div
+                  className="mt-2"
+                  style={{ filter: "drop-shadow(0 10px 8px rgb(0 0 0 / 0.3))" }}
+                >
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-red-400 md:text-2xl">
+                    GPT-4 and all your internal knowledge, <br />
+                    <span className="text-3xl text-rose-200 md:text-5xl">
+                      combined
                     </span>
+                    .
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Bring your internal data in context with fully managed
-                    semantic search engines to expose it to large language
-                    models apps.
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
+                    Use Dust for unified and safe access to GPT-4.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Safely connect Notion, Slack, etc… as continuously updated
-                    embeddings.
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
+                    Connect Dust to your team’s data and break down knowledge
+                    silos with always up-to-date answers
+                    in&nbsp;a&nbsp;chat&nbsp;UI.
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-4">
+                <div className="z-10mx-auto overflow-hidden ">
                   <img
-                    className="mx-auto w-[400px]"
+                    className="z-10 mx-auto w-[500px] rotate-2"
                     src="/static/landing_data_sources.png"
                   />
                 </div>
@@ -396,34 +223,33 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
+          <div ref={scrollRef2} className="mt-16">
+            <div className="gap-8 md:grid md:grid-cols-8">
+              <div className="order-1 flex flex-col justify-center self-center text-left md:order-2 md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Smart{" "}
-                    <span className="bg-brand text-white">
-                      read and write tools
-                    </span>
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-emerald-500 md:text-2xl">
+                    Get your teams <br />
+                    <span className="text-3xl text-green-300 md:text-5xl">
+                      up to speed
+                    </span>{" "}
+                    on AI.
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Disentangle how information is created and stored from where
-                    and how it's consumed by your team.
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
+                    Let your team share prompts and conversations to ramp up on
+                    the potential of generative AI for their tasks.
                   </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Find tailored answers to your questions rather than a list
-                    of documents. Stay updated on projects in just as many
-                    bullet points as you have time for. Make your notes and
-                    memos crisp, compelling, and consistent with the team
-                    lexicon and tone of voice.
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
+                    Get suggestions from Dust on documentation updates and
+                    improvements based on ongoing internal conversations and
+                    decisions.
                   </p>
                 </div>
                 <div className="flex flex-1"></div>
               </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+              <div className="order-2 mt-8 md:order-1 md:col-span-4 md:mt-0">
+                <div className="mx-auto">
                   <img
-                    className="mx-auto w-[400px]"
+                    className="mx-auto w-[500px] -rotate-2"
                     src="/static/landing_chat.png"
                   />
                 </div>
@@ -431,41 +257,38 @@ export default function Home({
             </div>
           </div>
 
-          <div className="mt-16">
-            <div className="md:grid md:grid-cols-8">
-              <div className="flex flex-col md:col-span-4 md:pr-8">
+          <div ref={scrollRef3} className="mt-16">
+            <div className="gap-8 md:grid md:grid-cols-8">
+              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div className="mt-2 flex-initial">
-                  <div className="text-2xl font-bold tracking-tighter text-gray-700">
-                    Your own{" "}
-                    <span className="bg-brand text-white">
+                  <div className="font-objektiv text-xl font-bold tracking-tighter text-blue-500 md:text-2xl">
+                    Build your own <br />
+                    <span className="text-3xl text-sky-300 md:text-5xl">
                       powerful workflows
                     </span>
+                    .
                   </div>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Build custom Large Language Model apps with the models of
-                    your choice and your own data sources. Tweak, evaluate and
-                    maintain them in a visual interface that assists you with
-                    the intricacies of prompting and chaining stochastic models.
-                  </p>
-                  <p className="mt-4 bg-white bg-opacity-50 text-lg font-light">
-                    Deploy your own apps internally either with a GUI or via
-                    API.
+                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
+                    Build custom Large Language Model apps on top of your
+                    company data. Let Dust assist you with the details of
+                    working with LLMs as you adapt them to your specific needs.
                   </p>
                   <div className="mt-6">
                     <Link href="https://docs.dust.tt">
-                      <Button>
-                        <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                        View Documentation
-                      </Button>
+                      <Button
+                        type="tertiary"
+                        size="sm"
+                        label="View Documentation"
+                      />
                     </Link>
                   </div>
                 </div>
                 <div className="flex flex-1"></div>
               </div>
               <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto overflow-hidden rounded-lg border border-violet-200 bg-white px-2 py-2">
+                <div className="mx-auto">
                   <img
-                    className="mx-auto w-[400px]"
+                    className="mx-auto w-[500px] rotate-2"
                     src="/static/landing_block.png"
                   />
                 </div>
@@ -474,9 +297,67 @@ export default function Home({
           </div>
 
           <div className="h-32"></div>
+
+          <div className="grid grid-cols-1">
+            <p className="font-objektiv text-3xl font-bold text-red-400">
+              Our product
+              <br />
+              <span className="text-3xl text-rose-300 md:text-5xl">
+                constitution
+              </span>
+            </p>
+          </div>
+
+          <div className="h-6"></div>
+
+          <div className="grid gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="font-semibold text-slate-100">
+                Augmenting humans, not&nbsp;replacing&nbsp;them
+              </p>
+              <div className="h-2"></div>
+              <p className="font-regular text-slate-500">
+                We're optimistic about making work life better for smart people.
+                We're building R2-D2, not Skynet.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-100">
+                Uncompromising on data security & privacy
+              </p>
+              <div className="h-2"></div>
+              <p className="font-regular text-slate-500">
+                We aspire to define standards rather than simply abide by
+                the&nbsp;existing ones.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-100">
+                Hard problems over hype
+              </p>
+              <div className="h-2"></div>
+              <p className="font-regular text-slate-500">
+                There's more to do than wrapping GPT into a chat UI. We're in
+                this to solve hard problems on user experience and product
+                quality.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-100">
+                Building with an&nbsp;AI&nbsp;core
+              </p>
+              <div className="h-2"></div>
+              <p className="font-regular text-slate-500">
+                We're building with large language models in mind from the
+                ground up, rather than sprinkling them here and&nbsp;there.
+              </p>
+            </div>
+          </div>
+
+          <div className="h-32"></div>
         </div>
 
-        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center text-sm text-gray-400">
+        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv text-sm text-slate-500">
           Dust © 2022-2023 –{" "}
           <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
             Legal
