@@ -56,10 +56,8 @@ export function IconToggleButton({
   tooltip,
   icon,
   className = "",
-  selected: isSelected = false,
+  selected = false,
 }: IconToggleButtonProps) {
-  const [selected, setSelected] = useState(isSelected);
-
   const iconGroup = iconClasses[type];
   const finalIconClasses = classNames(
     className,
@@ -86,7 +84,6 @@ export function IconToggleButton({
       className={finalIconClasses}
       onClick={(e) => {
         if (!disabled) {
-          setSelected(!selected); // Toggle selected state
           onClick?.(e); // Run passed onClick event
         }
       }}
