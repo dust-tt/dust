@@ -2,6 +2,7 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   IconButton,
+  IconToggleButton,
 } from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
@@ -28,17 +29,19 @@ export function MessageFeedback({
         !message.feedback && hover ? "invisible group-hover:visible" : ""
       )}
     >
-      <IconButton
-        type={message.feedback === "positive" ? "primary" : "tertiary"}
+      <IconToggleButton
+        type="tertiary"
         icon={HandThumbUpIcon}
         onClick={() => feedbackHandler(message, "positive")}
         className="ml-1"
+        selected={message.feedback === "positive"}
       />
-      <IconButton
-        type={message.feedback === "negative" ? "primary" : "tertiary"}
+      <IconToggleButton
+        type="tertiary"
         icon={HandThumbDownIcon}
         onClick={() => feedbackHandler(message, "negative")}
         className="ml-1"
+        selected={message.feedback === "negative"}
       />
     </div>
   );
