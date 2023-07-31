@@ -454,7 +454,10 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
           className={classNames(
             "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
             "[&_p]:mb-2" /* p */,
-            "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */
+            "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5" /* code */,
+            /* long unbreakable code lines  shouldn't push right-side ui outside
+            view*/
+            "overflow-x-auto"
           )}
           remarkPlugins={[remarkGfm]}
           components={{
@@ -558,7 +561,10 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word relative ml-2 flex flex-1 flex-col whitespace-pre-wrap pt-2",
+              "break-word flex-colwhitespace-pre-wrap relative ml-2 flex flex-1 pt-2",
+              /* long unbreakable code lines  shouldn't push right-side ui
+            outside view*/
+              "overflow-hidden",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
