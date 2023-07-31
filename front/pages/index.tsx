@@ -363,8 +363,12 @@ export default function Home({
             Legal
           </Link>
           {" - "}
-          <Link href="https://dust-tt.notion.site/Privacy-1a329ca7b8e349e88b5ec3277fe35189">
-            Privacy
+          <Link href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084">
+            Website Privacy
+          </Link>
+          {" - "}
+          <Link href="https://dust-tt.notion.site/Platform-Privacy-Policy-37ceefcd8442428d99a5a062d4d310c5?pvs=4">
+            Platform Privacy
           </Link>
           {" - "}
           <Link href="https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb">
