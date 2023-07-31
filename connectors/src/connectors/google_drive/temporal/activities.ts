@@ -1,6 +1,9 @@
+import fs from "fs/promises";
 import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
+import os from "os";
 import PQueue from "p-queue";
+import pdfUtil from "pdf-to-text";
 
 import {
   deleteFromDataSource,
@@ -42,7 +45,7 @@ const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
 };
 // Deactivated CSV for now 20230721 (spolu)
 // const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "text/csv"];
-const MIME_TYPES_TO_DOWNLOAD = ["text/plain"];
+const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "application/pdf"];
 const MIME_TYPES_TO_SYNC = [
   ...MIME_TYPES_TO_DOWNLOAD,
   ...Object.keys(MIME_TYPES_TO_EXPORT),
@@ -258,10 +261,15 @@ async function syncOneFile(
 
     let res;
     try {
-      res = await drive.files.get({
-        fileId: file.id,
-        alt: "media",
-      });
+      res = await drive.files.get(
+        {
+          fileId: file.id,
+          alt: "media",
+        },
+        {
+          responseType: "arraybuffer",
+        }
+      );
     } catch (e) {
       const maybeErrorWithCode = e as { code: string };
       if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
@@ -285,8 +293,32 @@ async function syncOneFile(
         `Error downloading Google document. status_code: ${res.status}. status_text: ${res.statusText}`
       );
     }
-    if (typeof res.data === "string") {
-      documentContent = res.data;
+
+    if (file.mimeType === "text/plain") {
+      if (res.data instanceof ArrayBuffer) {
+        documentContent = Buffer.from(res.data).toString("utf-8");
+      }
+    } else if (file.mimeType === "application/pdf") {
+      const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
+      try {
+        if (res.data instanceof ArrayBuffer) {
+          await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
+        }
+
+        const pdfTextData: string = await new Promise((resolve, reject) => {
+          pdfUtil.pdfToText(pdf_path, (err, data) => {
+            if (err) {
+              return reject(err);
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        documentContent = pdfTextData;
+      } finally {
+        await fs.unlink(pdf_path);
+      }
     }
   } else {
     // We do not support this file type
