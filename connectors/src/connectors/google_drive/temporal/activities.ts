@@ -316,6 +316,19 @@ async function syncOneFile(
         });
 
         documentContent = pdfTextData;
+      } catch (err) {
+        logger.warn(
+          {
+            error: err,
+            file_id: file.id,
+            mimeType: file.mimeType,
+            title: file.name,
+          },
+          `Error while converting PDF to text`
+        );
+        // we don't know what to do with PDF files that fails to be converted to text.
+        // So we log the error and skip the file.
+        return;
       } finally {
         await fs.unlink(pdf_path);
       }
