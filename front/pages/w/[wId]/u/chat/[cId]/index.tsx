@@ -1,4 +1,5 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
@@ -38,7 +39,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
   getSession,
@@ -47,7 +47,7 @@ import {
 } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
-import { useChatSessions } from "@app/lib/swr";
+import { useChatSession, useChatSessions } from "@app/lib/swr";
 import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
@@ -80,7 +80,6 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
-  chatSession: ChatSessionType;
   readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
@@ -139,40 +138,16 @@ export const getServerSideProps: GetServerSideProps<{
     }
   });
 
-  const cId = context.params?.cId as string;
-  const chatSession = await getChatSessionWithMessages(auth, cId);
-
-  if (!chatSession) {
-    return {
-      props: {
-        user,
-        owner,
-        workspaceDataSources: dataSources,
-        prodCredentials,
-        chatSession: {
-          id: 0,
-          userId: user?.id || 0,
-          sId: cId,
-          created: Date.now(),
-          messages: [],
-        },
-        readOnly: false,
-        gaTrackingId: GA_TRACKING_ID,
-      },
-    };
-  } else {
-    return {
-      props: {
-        user,
-        owner,
-        workspaceDataSources: dataSources,
-        prodCredentials,
-        chatSession,
-        readOnly: user?.id !== chatSession.userId,
-        gaTrackingId: GA_TRACKING_ID,
-      },
-    };
-  }
+  return {
+    props: {
+      user,
+      owner,
+      workspaceDataSources: dataSources,
+      prodCredentials,
+      readOnly: false,
+      gaTrackingId: GA_TRACKING_ID,
+    },
+  };
 };
 
 const providerFromDocument = (document: ChatRetrievedDocumentType) => {
@@ -645,19 +620,24 @@ export default function AppChat({
   owner,
   workspaceDataSources,
   prodCredentials,
-  chatSession,
   readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   const prodAPI = new DustAPI(prodCredentials);
+  const chatSessionId = router.query.cId as string;
+
+  const { chatSession, mutateChatSession } = useChatSession(
+    owner,
+    chatSessionId
+  );
 
   const [title, setTitle] = useState<string>(
-    chatSession.title || "New Conversation"
+    chatSession?.title || "New Conversation"
   );
   const [messages, setMessages] = useState<ChatMessageType[]>(
-    chatSession.messages || []
+    chatSession?.messages || []
   );
   const [canStartConversation, setCanStartConversation] = useState<boolean>(
     workspaceDataSources.length > 0
@@ -668,8 +648,8 @@ export default function AppChat({
   }, [workspaceDataSources]);
 
   useEffect(() => {
-    setTitle(chatSession.title || "New Conversation");
-    setMessages(chatSession.messages || []);
+    setTitle(chatSession?.title || "New Conversation");
+    setMessages(chatSession?.messages || []);
     inputRef.current?.focus();
   }, [chatSession]);
 
@@ -763,7 +743,7 @@ export default function AppChat({
   ): Promise<boolean> => {
     // Upsert new message by making a REST call to the backend.
     const res = await fetch(
-      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      `/api/w/${owner.sId}/use/chats/${chatSessionId}/messages/${message.sId}`,
       {
         method: "POST",
         headers: {
@@ -784,7 +764,7 @@ export default function AppChat({
   const deleteMessage = async (message: ChatMessageType) => {
     // Delete message by making a REST call to the backend.
     const res = await fetch(
-      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}`,
+      `/api/w/${owner.sId}/use/chats/${chatSessionId}/messages/${message.sId}`,
       {
         method: "DELETE",
       }
@@ -804,7 +784,7 @@ export default function AppChat({
   ): Promise<boolean> => {
     // Update message feedback by making a REST call to the backend.
     const res = await fetch(
-      `/api/w/${owner.sId}/use/chats/${chatSession.sId}/messages/${message.sId}/feedback`,
+      `/api/w/${owner.sId}/use/chats/${chatSessionId}/messages/${message.sId}/feedback`,
       {
         method: "POST",
         headers: {
@@ -823,18 +803,15 @@ export default function AppChat({
   };
 
   const upsertChatSession = async (title: string) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-        }),
-      }
-    );
+    const res = await fetch(`/api/w/${owner.sId}/use/chats/${chatSessionId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title,
+      }),
+    });
     if (res.ok) {
       return true;
     } else {
@@ -1124,18 +1101,18 @@ export default function AppChat({
 
   const handleDelete = async () => {
     const confirmed = window.confirm(
-      `After deletion, the conversation "${chatSession.title}" cannot be recovered. Delete the conversation?`
+      `After deletion, the conversation "${chatSession?.title}" cannot be recovered. Delete the conversation?`
     );
     if (confirmed) {
       // call the delete API
       const res = await fetch(
-        `/api/w/${owner.sId}/use/chats/${chatSession.sId}`,
+        `/api/w/${owner.sId}/use/chats/${chatSessionId}`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ cId: chatSession.sId }),
+          body: JSON.stringify({ cId: chatSessionId }),
         }
       );
       if (res.ok) {
@@ -1147,6 +1124,22 @@ export default function AppChat({
       void handleNew();
     }
     return false;
+  };
+
+  const handleToggleConversationVisibility = async () => {
+    const res = await fetch(`/api/w/${owner.sId}/use/chats/${chatSessionId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        visibility:
+          chatSession?.visibility === "private" ? "workspace" : "private",
+      }),
+    });
+    if (res.ok) {
+      void mutateChatSession();
+    }
   };
 
   return (
@@ -1169,14 +1162,22 @@ export default function AppChat({
             readOnly={readOnly}
             title={title}
             onDelete={handleDelete}
-            // action={{
-            //   label: "Share",
-            //   labelVisible: true,
-            //   icon: ArrowUpOnSquareIcon,
-            //   onAction: () => {
-            //     console.log("Share!");
-            //   },
-            // }}
+            action={{
+              label: "Copy Link",
+              labelVisible: false,
+              icon: ArrowUpOnSquareIcon,
+              onAction: () => {
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}/w/${owner.sId}/u/chat/${chatSessionId}`
+                );
+              },
+            }}
+            toggle={{
+              labelChecked: "Private",
+              labelUnchecked: "Workspace",
+              onToggle: handleToggleConversationVisibility,
+              isChecked: chatSession?.visibility !== "workspace",
+            }}
           />
         )
       }

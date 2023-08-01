@@ -37,4 +37,7 @@ export type ChatSessionType = {
   sId: string;
   title?: string;
   messages?: ChatMessageType[];
+  visibility: string;
 };
+
+export type ChatSessionVisibility = "private" | "workspace";

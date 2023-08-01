@@ -29,6 +29,19 @@ const chatSessionCreateSchema: JSONSchemaType<{
   },
 };
 
+const chatSessionUpdateSchema: JSONSchemaType<{
+  visibility: "private" | "workspace";
+}> = {
+  type: "object",
+  properties: {
+    visibility: {
+      type: "string",
+      enum: ["private", "workspace"],
+    },
+  },
+  required: ["visibility"],
+};
+
 export type ChatSessionResponseBody = {
   session: ChatSessionType;
 };
@@ -95,7 +108,34 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await upsertChatSession(auth, cId, s.title || null);
+      const session = await upsertChatSession(auth, cId, s.title || null, null);
+
+      res.status(200).json({
+        session,
+      });
+      return;
+    }
+
+    case "PATCH": {
+      if (!(typeof req.query.cId === "string")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid query parameters, `cId` (string) is required.",
+          },
+        });
+      }
+
+      const cId = req.query.cId;
+
+      const pRes = parse_payload(chatSessionUpdateSchema, req.body);
+      if (pRes.isErr()) {
+        res.status(400).end();
+        return;
+      }
+      const s = pRes.value;
+      const session = await upsertChatSession(auth, cId, null, s.visibility);
 
       res.status(200).json({
         session,
@@ -166,7 +206,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET or POST or PATCH is expected.",
         },
       });
   }

@@ -7,6 +7,7 @@ import {
   ChatMessageType,
   ChatRetrievedDocumentType,
   ChatSessionType,
+  ChatSessionVisibility,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
@@ -78,6 +79,7 @@ export async function getChatSessions(
       sId: c.sId,
       title: c.title,
       messages: [],
+      visibility: c.visibility,
     };
   });
 }
@@ -108,13 +110,15 @@ export async function getChatSession(
     created: chatSession.createdAt.getTime(),
     sId: chatSession.sId,
     title: chatSession.title,
+    visibility: chatSession.visibility,
   };
 }
 
 export async function upsertChatSession(
   auth: Authenticator,
   sId: string,
-  title: string | null
+  title: string | null,
+  visibility: ChatSessionVisibility | null
 ): Promise<ChatSessionType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -135,6 +139,7 @@ export async function upsertChatSession(
         workspaceId: owner.id,
         userId: user?.id,
         title: title ? title : undefined,
+        visibility: visibility ? visibility : "private",
       },
       transaction: t,
     });
@@ -146,6 +151,9 @@ export async function upsertChatSession(
         { transaction: t }
       );
     }
+    if (visibility && chatSession.visibility !== visibility) {
+      await chatSession.update({ visibility: visibility }, { transaction: t });
+    }
 
     const loggerArgs = {
       workspace: {
@@ -155,6 +163,7 @@ export async function upsertChatSession(
       userId: user?.id,
       chatSessionId: chatSession.id,
       chatSessionCreated: created,
+      visibility: visibility,
     };
     logger.info(loggerArgs, "Chat Session upserted");
 
@@ -174,6 +183,7 @@ export async function upsertChatSession(
       created: chatSession.createdAt.getTime(),
       sId: chatSession.sId,
       title: chatSession.title,
+      visibility: chatSession.visibility,
     };
   });
 }
@@ -749,7 +759,7 @@ export async function* newChat(
   }
 
   const sId = newChatSessionId();
-  const session = await upsertChatSession(auth, sId, null);
+  const session = await upsertChatSession(auth, sId, null, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
   for (const m of messages) {
@@ -786,7 +796,7 @@ export async function* newChat(
     for (const t of run.traces) {
       if (t[0][1] === "OUTPUT") {
         const title = (t[1][0][0].value as { title: string }).title;
-        const session = await upsertChatSession(auth, sId, title);
+        const session = await upsertChatSession(auth, sId, title, null);
         yield {
           type: "chat_session_update",
           session,
