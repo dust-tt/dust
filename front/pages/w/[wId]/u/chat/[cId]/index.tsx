@@ -25,6 +25,7 @@ import remarkGfm from "remark-gfm";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { subNavigationAssistant } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
@@ -556,19 +557,13 @@ export function MessageView({
   );
 }
 
-function ChatMenu({
-  owner,
-  sessions,
+function ChatNewConversation({
   onNewConversation,
   canStartConversation,
 }: {
-  owner: WorkspaceType;
-  sessions: ChatSessionType[];
   onNewConversation: () => void;
   canStartConversation: boolean;
 }) {
-  const router = useRouter();
-
   return (
     <div className="flex grow flex-col">
       <div className="flex flex-row px-2">
@@ -582,30 +577,43 @@ function ChatMenu({
           className="flex flex-initial"
         />
       </div>
-      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
-        <div className="flex grow flex-col">
-          <div className="flex flex-row items-center">
-            <div className="px-8 py-4 text-xs uppercase text-slate-400">
-              Past Conversations
-            </div>
+    </div>
+  );
+}
+
+function ChatMenu({
+  owner,
+  sessions,
+}: {
+  owner: WorkspaceType;
+  sessions: ChatSessionType[];
+}) {
+  const router = useRouter();
+
+  return (
+    <div className="flex grow flex-col">
+      <div className="flex grow flex-col">
+        <div className="flex flex-row items-center">
+          <div className="px-8 py-4 text-xs uppercase text-slate-400">
+            Past Conversations
           </div>
-          <div className="flex ">
-            <div className="flex w-full flex-col">
-              {sessions.length === 0
-                ? null
-                : sessions.map((s) => {
-                    return (
-                      <Item
-                        key={s.sId}
-                        size="sm"
-                        selected={router.query.cId === s.sId}
-                        label={s.title || ""}
-                        className="pl-8 pr-4"
-                        href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                      ></Item>
-                    );
-                  })}
-            </div>
+        </div>
+        <div className="flex ">
+          <div className="flex w-full flex-col">
+            {sessions.length === 0
+              ? null
+              : sessions.map((s) => {
+                  return (
+                    <Item
+                      key={s.sId}
+                      size="sm"
+                      selected={router.query.cId === s.sId}
+                      label={s.title || ""}
+                      className="pl-8 pr-4"
+                      href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                    ></Item>
+                  );
+                })}
           </div>
         </div>
       </div>
@@ -1151,14 +1159,17 @@ export default function AppChat({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
-      navChildren={
-        <ChatMenu
-          owner={owner}
-          sessions={sessions}
+      topNavigationChildren={
+        <ChatNewConversation
           onNewConversation={handleNew}
           canStartConversation={canStartConversation}
         />
       }
+      subNavigation={subNavigationAssistant({
+        owner,
+        current: readOnly ? "workspace_sessions" : "private_sessions",
+      })}
+      navChildren={<ChatMenu owner={owner} sessions={sessions} />}
       titleChildren={
         messages.length > 0 && (
           <AppLayoutTitle
