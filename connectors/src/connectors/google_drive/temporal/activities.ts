@@ -316,13 +316,21 @@ async function syncOneFile(
         });
 
         documentContent = pdfTextData;
+        logger.info(
+          {
+            file_id: file.id,
+            mimeType: file.mimeType,
+            title: file.name,
+          },
+          `Successfully converted PDF to text`
+        );
       } catch (err) {
         logger.warn(
           {
             error: err,
             file_id: file.id,
             mimeType: file.mimeType,
-            title: file.name,
+            filename: file.name,
           },
           `Error while converting PDF to text`
         );
