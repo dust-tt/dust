@@ -3,7 +3,6 @@ import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
 import os from "os";
 import PQueue from "p-queue";
-import pdfUtil from "pdf-to-text";
 
 import {
   deleteFromDataSource,
@@ -23,6 +22,7 @@ import memoize from "lodash.memoize";
 import { literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { dpdf2text } from "@connectors/lib/dpdf2text";
 import {
   Connector,
   GoogleDriveFiles,
@@ -305,15 +305,7 @@ async function syncOneFile(
           await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
         }
 
-        const pdfTextData: string = await new Promise((resolve, reject) => {
-          pdfUtil.pdfToText(pdf_path, (err, data) => {
-            if (err) {
-              return reject(err);
-            } else {
-              resolve(data);
-            }
-          });
-        });
+        const pdfTextData = await dpdf2text(pdf_path);
 
         documentContent = pdfTextData;
         logger.info(
