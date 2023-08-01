@@ -6,9 +6,15 @@ module.exports = removeImports({
   async redirects() {
     return [
       {
-        source: "/privacy",
+        source: "/website-privacy",
         destination:
-          "https://dust-tt.notion.site/Privacy-1a329ca7b8e349e88b5ec3277fe35189",
+          "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084",
+        permanent: true,
+      },
+      {
+        source: "/platform-privacy",
+        destination:
+          "https://dust-tt.notion.site/Platform-Privacy-Policy-37ceefcd8442428d99a5a062d4d310c5?pvs=4",
         permanent: true,
       },
       {
