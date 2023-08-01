@@ -80,7 +80,6 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
-  readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -144,7 +143,6 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       workspaceDataSources: dataSources,
       prodCredentials,
-      readOnly: false,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -620,7 +618,6 @@ export default function AppChat({
   owner,
   workspaceDataSources,
   prodCredentials,
-  readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -632,6 +629,10 @@ export default function AppChat({
     owner,
     chatSessionId
   );
+
+  const readOnly = chatSession?.userId
+    ? chatSession?.userId !== user?.id
+    : false;
 
   const [title, setTitle] = useState<string>(
     chatSession?.title || "New Conversation"
@@ -1101,7 +1102,9 @@ export default function AppChat({
 
   const handleDelete = async () => {
     const confirmed = window.confirm(
-      `After deletion, the conversation "${chatSession?.title}" cannot be recovered. Delete the conversation?`
+      `After deletion, the conversation "${
+        chatSession?.title || "[Untitled]"
+      }" cannot be recovered. Delete the conversation?`
     );
     if (confirmed) {
       // call the delete API
