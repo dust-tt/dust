@@ -36,7 +36,7 @@ import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
 
-const FILES_SYNC_CONCURRENCY = 3;
+const FILES_SYNC_CONCURRENCY = 5;
 const FILES_GC_CONCURRENCY = 3;
 
 const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
