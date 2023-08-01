@@ -44,6 +44,27 @@ const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
   github: "GitHub repositories",
 };
 
+const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
+  ConnectorProvider,
+  string | null
+> = {
+  slack:
+    "Dust is currently invited to the channels below. Select if data from those channels should be synchronized or not.",
+  notion: null,
+  google_drive: null,
+  github: null,
+};
+
+const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
+  ConnectorProvider,
+  string | null
+> = {
+  slack: "Automatically synchronize data from channels Dust is invited to:",
+  notion: null,
+  google_drive: null,
+  github: null,
+};
+
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
 ]);
@@ -225,6 +246,18 @@ export default function ConnectorPermissionsModal({
     connector.type
   );
 
+  const resourceListTitleText =
+    CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT[connector.type] ??
+    `Dust has access to the following ${
+      CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]
+    }:`;
+
+  const defaultPermissionTitleText =
+    CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT[connector.type] ??
+    `Automatically include new ${
+      CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]
+    }:`;
+
   async function save() {
     try {
       if (Object.keys(updatedPermissionByInternalId).length) {
@@ -376,8 +409,7 @@ export default function ConnectorPermissionsModal({
                     {canUpdatePermissions ? (
                       <div className=" mt-8 flex flex-row">
                         <span className="ml-2 text-sm text-gray-500">
-                          Automatically include new{" "}
-                          {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                          {defaultPermissionTitleText}
                         </span>
                         <div className="flex-grow">
                           <Checkbox
@@ -398,8 +430,7 @@ export default function ConnectorPermissionsModal({
                     <div>
                       <div className="mt-16">
                         <div className="px-2 text-sm text-gray-500">
-                          Dust has access to the following{" "}
-                          {CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]}:
+                          {resourceListTitleText}
                         </div>
                       </div>
                     </div>
