@@ -1166,6 +1166,7 @@ export default function AppChat({
       titleChildren={
         messages.length > 0 && (
           <AppLayoutTitle
+            readOnly={readOnly}
             title={title}
             onDelete={handleDelete}
             // action={{

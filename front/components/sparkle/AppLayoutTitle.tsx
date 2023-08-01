@@ -3,10 +3,12 @@ import { TrashIcon } from "@heroicons/react/24/solid";
 import { ComponentType } from "react";
 
 export function AppLayoutTitle({
+  readOnly,
   title,
   onDelete,
   action,
 }: {
+  readOnly?: boolean;
   title: string;
   onDelete?: () => void;
   action?: {
@@ -25,7 +27,7 @@ export function AppLayoutTitle({
       </div>
       <div className="flex flex-1"></div>
       <div className="-ml-8 flex flex-initial space-x-1 lg:ml-0">
-        {onDelete && (
+        {!readOnly && onDelete && (
           <div className="flex flex-initial">
             <Button
               labelVisible={false}
@@ -36,7 +38,7 @@ export function AppLayoutTitle({
             />
           </div>
         )}
-        {action && (
+        {!readOnly && action && (
           <div className="flex flex-initial">
             <Button
               labelVisible={action.labelVisible}
