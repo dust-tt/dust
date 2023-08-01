@@ -285,7 +285,7 @@ export const subNavigationLab = ({
   return nav;
 };
 
-export const subNavigationAssistant = ({
+export const subNavigationChat = ({
   owner,
   current,
 }: {

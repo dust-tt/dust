@@ -25,7 +25,7 @@ import remarkGfm from "remark-gfm";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAssistant } from "@app/components/sparkle/navigation";
+import { subNavigationChat } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
 import TimeRangePicker, {
   ChatTimeRange,
@@ -1165,7 +1165,7 @@ export default function AppChat({
           canStartConversation={canStartConversation}
         />
       }
-      subNavigation={subNavigationAssistant({
+      subNavigation={subNavigationChat({
         owner,
         current: readOnly ? "workspace_sessions" : "private_sessions",
       })}

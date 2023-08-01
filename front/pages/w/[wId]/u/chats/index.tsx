@@ -9,14 +9,14 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAssistant } from "@app/components/sparkle/navigation";
+import { subNavigationChat } from "@app/components/sparkle/navigation";
 import {
   Authenticator,
   getSession,
   getUserFromSession,
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
-import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
+import { DustAPI } from "@app/lib/dust_api";
 import { useChatSessions } from "@app/lib/swr";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -120,7 +120,7 @@ export default function AppChatWorkspaceConversations({
           canStartConversation={hasManagedDatasources}
         />
       }
-      subNavigation={subNavigationAssistant({
+      subNavigation={subNavigationChat({
         owner,
         current: "workspace_sessions",
       })}
@@ -145,8 +145,8 @@ export default function AppChatWorkspaceConversations({
                       label={s.title || ""}
                       className="w-full"
                       href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                    ></Item>
-                    <div className="my-4 border-t border-gray-200"></div>
+                    />
+                    <div className="my-4 border-t border-gray-200" />
                   </div>
                 );
               })
