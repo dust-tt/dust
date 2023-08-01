@@ -1,13 +1,7 @@
 import { spawn } from "child_process";
 
-export async function dpdf2text(pdf_path: string): Promise<string> {
-  const args: string[] = [];
-
-  args.push("-layout");
-  args.push("-enc");
-  args.push("UTF-8");
-  args.push(pdf_path);
-  args.push("-");
+export async function dpdf2text(pdfPath: string): Promise<string> {
+  const args: string[] = ["-layout", "-enc", "UTF-8", pdfPath, "-"];
 
   return new Promise((resolve, reject) => {
     const child = spawn("pdftotext", args);
