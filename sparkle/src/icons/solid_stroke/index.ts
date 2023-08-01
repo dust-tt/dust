@@ -28,5 +28,7 @@ export { default as Plus } from "./Plus";
 export { default as QuestionMarkCircle } from "./QuestionMarkCircle";
 export { default as Server } from "./Server";
 export { default as Square3Stack3D } from "./Square3Stack3D";
+export { default as Trash } from "./Trash";
+export { default as UserGroup } from "./UserGroup";
 export { default as XCircle } from "./XCircle";
 export { default as XMark } from "./XMark";
