@@ -22,7 +22,7 @@ const {
   NODE_ENV,
 } = process.env;
 
-export type RoleType = "admin" | "builder" | "user" | "none";
+export type RoleType = "admin" | "builder" | "user" | "none" | "super_user";
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -230,6 +230,7 @@ export class Authenticator {
           // Not available from this method
           image: null,
           workspaces: [],
+          isDustSuperUser: false,
         }
       : null;
   }
@@ -315,6 +316,7 @@ export async function getUserFromSession(
         plan: planForWorkspace(w),
       };
     }),
+    isDustSuperUser: user.isDustSuperUser,
   };
 }
 

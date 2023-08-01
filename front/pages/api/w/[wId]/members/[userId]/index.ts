@@ -118,6 +118,7 @@ async function handler(
         name: user.name,
         image: null,
         workspaces: [w],
+        isDustSuperUser: user.isDustSuperUser,
       };
 
       res.status(200).json({ member });

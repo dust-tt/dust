@@ -1,5 +1,6 @@
 import useSWR, { Fetcher } from "swr";
 
+import { GetWorkspacesResponseBody } from "@app/pages/api/super-user/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
@@ -308,5 +309,20 @@ export function useExtractedEvents(owner: WorkspaceType, marker: string) {
     events: data ? data.events : [],
     isEventsLoading: !error && !data,
     isEventsError: error,
+  };
+}
+
+export function useSuperUserWorkspaces() {
+  const workspacesFetcher: Fetcher<GetWorkspacesResponseBody> = fetcher;
+
+  const { data, error } = useSWR(
+    `api/super-user/workspaces`,
+    workspacesFetcher
+  );
+
+  return {
+    workspaces: data ? data.workspaces : [],
+    isWorkspacesLoading: !error && !data,
+    isWorkspacesError: error,
   };
 }
