@@ -11,6 +11,8 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentIcon,
   DocumentDuplicateIcon,
   UserIcon,
   UsersIcon,
@@ -469,8 +471,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
     <div className="invisible float-right group-hover:visible">
       <IconButton
         type="tertiary"
-        tooltip="Copy message to clipboard"
-        icon={confirmed ? CheckCircleIcon : ClipboardIcon}
+        icon={confirmed ? ClipboardDocumentCheckIcon : ClipboardDocumentIcon}
         onClick={handleClick}
       />
     </div>
