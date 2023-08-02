@@ -13,7 +13,11 @@ import {
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentDuplicateIcon,
+  UserIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -1176,19 +1180,11 @@ export default function AppChat({
             readOnly={readOnly}
             title={title}
             onDelete={handleDelete}
-            action={{
-              label: "Copy Link",
-              labelVisible: false,
-              icon: ArrowUpOnSquareIcon,
-              onAction: () => {
-                void navigator.clipboard.writeText(
-                  `${window.location.origin}/w/${owner.sId}/u/chat/${chatSessionId}`
-                );
-              },
-            }}
             toggle={{
               labelChecked: "Private",
               labelUnchecked: "Workspace",
+              iconChecked: <UserIcon className="s-h-5 s-w-5" />,
+              iconUnchecked: <UsersIcon className="s-h-5 s-w-5" />,
               onToggle: handleToggleConversationVisibility,
               isChecked: chatSession?.visibility !== "workspace",
             }}
