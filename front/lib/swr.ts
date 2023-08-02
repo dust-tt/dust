@@ -312,11 +312,32 @@ export function useExtractedEvents(owner: WorkspaceType, marker: string) {
   };
 }
 
-export function useSuperUserWorkspaces() {
+export function useSuperUserWorkspaces({
+  upgraded,
+  search,
+  disabled,
+  limit,
+}: {
+  upgraded?: boolean;
+  search?: string;
+  disabled?: boolean;
+  limit?: number;
+} = {}) {
   const workspacesFetcher: Fetcher<GetWorkspacesResponseBody> = fetcher;
 
+  const queryParams = [
+    upgraded !== undefined ? `upgraded=${upgraded}` : null,
+    search ? `search=${search}` : null,
+    limit ? `limit=${limit}` : null,
+  ].filter((q) => q);
+
+  let query = "";
+  if (queryParams.length > 0) {
+    query = `?${queryParams.join("&")}`;
+  }
+
   const { data, error } = useSWR(
-    `api/super-user/workspaces`,
+    disabled ? null : `api/super-user/workspaces${query}`,
     workspacesFetcher
   );
 

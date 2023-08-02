@@ -1,5 +1,5 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import React from "react";
+import React, { ChangeEvent, useState } from "react";
 
 import SuperUserNavbar from "@app/components/super-user/SuperUserNavbar";
 import { getSession, getUserFromSession } from "@app/lib/auth";
@@ -37,46 +37,77 @@ export const getServerSideProps: GetServerSideProps<{
 const Dashboard = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
-  const { workspaces, isWorkspacesLoading, isWorkspacesError } =
-    useSuperUserWorkspaces();
+  const {
+    workspaces: upgradedWorkspaces,
+    isWorkspacesLoading: isUpgradedWorkspacesLoading,
+    isWorkspacesError: isUpgradedWorkspacesError,
+  } = useSuperUserWorkspaces({ upgraded: true });
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const searchDisabled = searchTerm.trim().length < 3;
+
+  const {
+    workspaces: searchResults,
+    isWorkspacesLoading: isSearchResultsLoading,
+    isWorkspacesError: isSearchResultsError,
+  } = useSuperUserWorkspaces({
+    search: searchTerm,
+    upgraded: false,
+    disabled: searchDisabled,
+    limit: 10,
+  });
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
 
   return (
     <div className="min-h-screen bg-structure-50">
       <SuperUserNavbar />
       <div className="flex-grow p-6">
         <>
-          <h1 className="text-2xl font-bold">Workspaces</h1>
-          <table className="mt-4 min-w-full text-left text-sm font-light">
-            <thead className="items-center border font-medium">
-              <tr>
-                <th scope="col" className="border px-4 py-4">
-                  Workspace Name
-                </th>
-                <th scope="col" className="border px-4 py-4">
-                  Workspace ID
-                </th>
-                <th scope="col" className="border px-4 py-4">
-                  Plan
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {!isWorkspacesLoading &&
-                workspaces.map((ws) => (
-                  <tr key={ws.id} className="border">
-                    <td className="border px-4 py-4 text-sm text-gray-500">
-                      {ws.name}
-                    </td>
-                    <td className="border px-4 py-4 text-sm text-gray-500">
-                      {ws.id}
-                    </td>
-                    <td className="border px-4 py-4 text-sm text-gray-500">
-                      {`${JSON.stringify(ws.plan, null, 2)}`}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <h1 className="mb-4 text-2xl font-bold">Upgraded Workspaces</h1>
+          <ul className="space-y-4">
+            {!isUpgradedWorkspacesLoading &&
+              !isUpgradedWorkspacesError &&
+              upgradedWorkspaces.map((ws) => (
+                <li
+                  key={ws.id}
+                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
+                >
+                  <h2 className="text-xl font-semibold">{ws.name}</h2>
+                  <p className="text-sm text-gray-500">ID: {ws.id}</p>
+                </li>
+              ))}
+          </ul>
+          <h1 className="mb-4 mt-8 text-2xl font-bold">Free Workspaces</h1>
+          <input
+            className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            type="text"
+            placeholder="Search"
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+          {isSearchResultsLoading && !searchDisabled && (
+            <p>Loading search results...</p>
+          )}
+          {isSearchResultsError && (
+            <p>An error occurred while fetching search results.</p>
+          )}
+          {!isSearchResultsLoading && !isSearchResultsError && (
+            <ul className="mt-4 space-y-4">
+              {searchResults.map((ws) => (
+                <li
+                  key={ws.id}
+                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
+                >
+                  <h2 className="text-xl font-semibold">{ws.name}</h2>
+                  <p className="text-sm text-gray-500">ID: {ws.id}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       </div>
     </div>

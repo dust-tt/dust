@@ -147,7 +147,7 @@ export class Workspace extends Model<
   declare name: string;
   declare description?: string;
   declare allowedDomain?: string;
-  declare plan?: string;
+  declare plan?: string | null;
   declare disableLabs?: boolean;
 }
 Workspace.init(
