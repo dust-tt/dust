@@ -1,5 +1,6 @@
 import useSWR, { Fetcher } from "swr";
 
+import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
@@ -308,5 +309,41 @@ export function useExtractedEvents(owner: WorkspaceType, marker: string) {
     events: data ? data.events : [],
     isEventsLoading: !error && !data,
     isEventsError: error,
+  };
+}
+
+export function usePokeWorkspaces({
+  upgraded,
+  search,
+  disabled,
+  limit,
+}: {
+  upgraded?: boolean;
+  search?: string;
+  disabled?: boolean;
+  limit?: number;
+} = {}) {
+  const workspacesFetcher: Fetcher<GetWorkspacesResponseBody> = fetcher;
+
+  const queryParams = [
+    upgraded !== undefined ? `upgraded=${upgraded}` : null,
+    search ? `search=${search}` : null,
+    limit ? `limit=${limit}` : null,
+  ].filter((q) => q);
+
+  let query = "";
+  if (queryParams.length > 0) {
+    query = `?${queryParams.join("&")}`;
+  }
+
+  const { data, error } = useSWR(
+    disabled ? null : `api/poke/workspaces${query}`,
+    workspacesFetcher
+  );
+
+  return {
+    workspaces: data ? data.workspaces : [],
+    isWorkspacesLoading: !error && !data,
+    isWorkspacesError: error,
   };
 }

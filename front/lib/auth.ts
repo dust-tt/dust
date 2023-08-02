@@ -230,6 +230,7 @@ export class Authenticator {
           // Not available from this method
           image: null,
           workspaces: [],
+          isDustSuperUser: false,
         }
       : null;
   }
@@ -315,6 +316,7 @@ export async function getUserFromSession(
         plan: planForWorkspace(w),
       };
     }),
+    isDustSuperUser: user.isDustSuperUser,
   };
 }
 

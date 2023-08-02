@@ -57,6 +57,7 @@ export async function getMembers(auth: Authenticator): Promise<UserType[]> {
       name: u.name,
       image: null,
       workspaces: [{ ...owner, role }],
+      isDustSuperUser: u.isDustSuperUser,
     };
   });
 }

@@ -33,6 +33,8 @@ export class User extends Model<
   declare username: string;
   declare email: string;
   declare name: string;
+
+  declare isDustSuperUser: CreationOptional<boolean>;
 }
 User.init(
   {
@@ -69,6 +71,11 @@ User.init(
     },
     name: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    isDustSuperUser: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
       allowNull: false,
     },
   },
@@ -140,7 +147,7 @@ export class Workspace extends Model<
   declare name: string;
   declare description?: string;
   declare allowedDomain?: string;
-  declare plan?: string;
+  declare plan?: string | null;
   declare disableLabs?: boolean;
 }
 Workspace.init(
