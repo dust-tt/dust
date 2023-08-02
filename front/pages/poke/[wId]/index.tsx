@@ -101,7 +101,7 @@ const WorkspacePage = ({
     }
   };
 
-  const looksFullyUpgraded =
+  const isFullyUpgraded =
     workspace.plan?.limits.dataSources.count === -1 &&
     workspace.plan?.limits.dataSources.documents.count === -1 &&
     workspace.plan?.limits.dataSources.documents.sizeMb === -1 &&
@@ -114,13 +114,13 @@ const WorkspacePage = ({
         <>
           <h1 className="mb-4 text-2xl font-bold">{workspace.name}</h1>
           <h2 className="text-md mb-4 font-bold">Plan:</h2>
-          {looksFullyUpgraded ? (
+          {isFullyUpgraded ? (
             <p className="mb-4 text-green-600">
-              This workspace looks fully upgraded.
+              This workspace is fully upgraded.
             </p>
           ) : (
             <p className="mb-4 text-red-600">
-              This workspace does not look fully upgraded.
+              This workspace is not fully upgraded.
             </p>
           )}
           <JsonViewer value={workspace.plan} rootName={false} />
@@ -129,13 +129,13 @@ const WorkspacePage = ({
               label="Downgrade"
               type="secondaryWarning"
               onClick={onDowngrade}
-              disabled={!looksFullyUpgraded}
+              disabled={!isFullyUpgraded}
             />
             <Button
               label="Upgrade"
               type="secondary"
               onClick={onUpgrade}
-              disabled={looksFullyUpgraded}
+              disabled={isFullyUpgraded}
             />
           </div>
         </>
