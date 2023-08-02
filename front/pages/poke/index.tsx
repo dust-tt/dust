@@ -1,9 +1,9 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { ChangeEvent, useState } from "react";
 
-import SuperUserNavbar from "@app/components/super-user/SuperUserNavbar";
+import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-import { useSuperUserWorkspaces } from "@app/lib/swr";
+import { usePokeWorkspaces } from "@app/lib/swr";
 import { UserType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
@@ -41,7 +41,7 @@ const Dashboard = (
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,
     isWorkspacesError: isUpgradedWorkspacesError,
-  } = useSuperUserWorkspaces({ upgraded: true });
+  } = usePokeWorkspaces({ upgraded: true });
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -51,7 +51,7 @@ const Dashboard = (
     workspaces: searchResults,
     isWorkspacesLoading: isSearchResultsLoading,
     isWorkspacesError: isSearchResultsError,
-  } = useSuperUserWorkspaces({
+  } = usePokeWorkspaces({
     search: searchTerm,
     upgraded: false,
     disabled: searchDisabled,
@@ -64,7 +64,7 @@ const Dashboard = (
 
   return (
     <div className="min-h-screen bg-structure-50">
-      <SuperUserNavbar />
+      <PokeNavbar />
       <div className="flex-grow p-6">
         <>
           <h1 className="mb-4 text-2xl font-bold">Upgraded Workspaces</h1>

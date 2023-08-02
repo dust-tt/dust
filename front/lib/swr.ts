@@ -1,6 +1,6 @@
 import useSWR, { Fetcher } from "swr";
 
-import { GetWorkspacesResponseBody } from "@app/pages/api/super-user/workspaces";
+import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
@@ -312,7 +312,7 @@ export function useExtractedEvents(owner: WorkspaceType, marker: string) {
   };
 }
 
-export function useSuperUserWorkspaces({
+export function usePokeWorkspaces({
   upgraded,
   search,
   disabled,
@@ -337,7 +337,7 @@ export function useSuperUserWorkspaces({
   }
 
   const { data, error } = useSWR(
-    disabled ? null : `api/super-user/workspaces${query}`,
+    disabled ? null : `api/poke/workspaces${query}`,
     workspacesFetcher
   );
 
