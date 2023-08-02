@@ -1,19 +1,20 @@
 import {
-  ArrowUpOnSquareIcon,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
   CheckCircleIcon,
   ClipboardIcon,
   CloudArrowDownIcon,
   IconButton,
-  Item,
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentDuplicateIcon,
+  UserIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import remarkGfm from "remark-gfm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Spinner } from "@app/components/Spinner";
+import { ChatSidebarMenu } from "@app/components/use/chat/ChatSidebarMenu";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
@@ -552,63 +554,6 @@ export function MessageView({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ChatMenu({
-  owner,
-  sessions,
-  onNewConversation,
-  canStartConversation,
-}: {
-  owner: WorkspaceType;
-  sessions: ChatSessionType[];
-  onNewConversation: () => void;
-  canStartConversation: boolean;
-}) {
-  const router = useRouter();
-
-  return (
-    <div className="flex grow flex-col">
-      <div className="flex flex-row px-2">
-        <div className="flex grow"></div>
-        <Button
-          disabled={!canStartConversation}
-          labelVisible={true}
-          label="New Conversation"
-          icon={ChatBubbleBottomCenterPlusIcon}
-          onClick={onNewConversation}
-          className="flex flex-initial"
-        />
-      </div>
-      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
-        <div className="flex grow flex-col">
-          <div className="flex flex-row items-center">
-            <div className="px-8 py-4 text-xs uppercase text-slate-400">
-              Past Conversations
-            </div>
-          </div>
-          <div className="flex ">
-            <div className="flex w-full flex-col">
-              {sessions.length === 0
-                ? null
-                : sessions.map((s) => {
-                    return (
-                      <Item
-                        key={s.sId}
-                        size="sm"
-                        selected={router.query.cId === s.sId}
-                        label={s.title || ""}
-                        className="pl-8 pr-4"
-                        href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                      ></Item>
-                    );
-                  })}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1152,11 +1097,11 @@ export default function AppChat({
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
       navChildren={
-        <ChatMenu
+        <ChatSidebarMenu
           owner={owner}
           sessions={sessions}
-          onNewConversation={handleNew}
           canStartConversation={canStartConversation}
+          readOnly={readOnly}
         />
       }
       titleChildren={
@@ -1165,19 +1110,11 @@ export default function AppChat({
             readOnly={readOnly}
             title={title}
             onDelete={handleDelete}
-            action={{
-              label: "Copy Link",
-              labelVisible: false,
-              icon: ArrowUpOnSquareIcon,
-              onAction: () => {
-                void navigator.clipboard.writeText(
-                  `${window.location.origin}/w/${owner.sId}/u/chat/${chatSessionId}`
-                );
-              },
-            }}
             toggle={{
               labelChecked: "Private",
               labelUnchecked: "Workspace",
+              iconChecked: <UserIcon className="s-h-5 s-w-5" />,
+              iconUnchecked: <UsersIcon className="s-h-5 s-w-5" />,
               onToggle: handleToggleConversationVisibility,
               isChecked: chatSession?.visibility !== "workspace",
             }}

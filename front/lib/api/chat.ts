@@ -55,10 +55,7 @@ export async function getChatSessions(
   const where = workspaceScope
     ? {
         workspaceId: owner.id,
-        [Op.or]: [
-          { userId: { [Op.ne]: user.id } },
-          { userId: { [Op.is]: null } },
-        ],
+        visibility: "workspace",
       }
     : {
         workspaceId: owner.id,

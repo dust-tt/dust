@@ -23,6 +23,8 @@ export function AppLayoutTitle({
   toggle?: {
     labelChecked: string;
     labelUnchecked: string;
+    iconChecked: React.JSX.Element;
+    iconUnchecked: React.JSX.Element;
     onToggle: () => void;
     isChecked: boolean;
   };
@@ -75,7 +77,12 @@ export function AppLayoutTitle({
                     : "s-opacity-50"
                 )}
               >
-                {toggle.labelChecked}
+                <span className="lg:flex">
+                  <span className="hidden lg:inline">
+                    {toggle.labelChecked}
+                  </span>
+                  <span className="lg:hidden">{toggle.iconChecked}</span>
+                </span>
               </span>
               <span
                 className={classNames(
@@ -85,7 +92,12 @@ export function AppLayoutTitle({
                     : "s-opacity-50"
                 )}
               >
-                {toggle.labelUnchecked}
+                <span className="lg:flex">
+                  <span className="hidden lg:inline">
+                    {toggle.labelUnchecked}
+                  </span>
+                  <span className="lg:hidden">{toggle.iconUnchecked}</span>
+                </span>
               </span>
             </label>
           </>
