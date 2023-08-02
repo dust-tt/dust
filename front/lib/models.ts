@@ -8,7 +8,7 @@ import {
   Sequelize,
 } from "sequelize";
 
-import { MessageFeedbackStatus } from "@app/types/chat";
+import { ChatSessionVisibility, MessageFeedbackStatus } from "@app/types/chat";
 import { EventSchemaPropertyType, EventSchemaStatus } from "@app/types/extract";
 
 import { ConnectorProvider } from "./connectors_api";
@@ -732,6 +732,7 @@ export class ChatSession extends Model<
 
   declare sId: string;
   declare title?: string;
+  declare visibility: ChatSessionVisibility;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]>;
@@ -761,6 +762,11 @@ ChatSession.init(
     title: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    visibility: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "private",
     },
   },
   {

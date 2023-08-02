@@ -14,7 +14,10 @@ import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invi
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import { GetChatSessionsResponseBody } from "@app/pages/api/w/[wId]/use/chats";
+import {
+  GetChatSessionResponseBody,
+  GetChatSessionsResponseBody,
+} from "@app/pages/api/w/[wId]/use/chats";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/[marker]/events/[eId]";
 import { AppType } from "@app/types/app";
@@ -221,6 +224,21 @@ export function useChatSessions(
     isChatSessionsLoading: !error && !data,
     isChatSessionsError: error,
     mutateChatSessions: mutate,
+  };
+}
+
+export function useChatSession(owner: WorkspaceType, cId: string) {
+  const runsFetcher: Fetcher<GetChatSessionResponseBody> = fetcher;
+  const { data, error, mutate } = useSWR(
+    `/api/w/${owner.sId}/use/chats/${cId}`,
+    runsFetcher
+  );
+
+  return {
+    chatSession: data ? data.session : undefined,
+    isChatSessionsLoading: !error && !data,
+    isChatSessionsError: error,
+    mutateChatSession: mutate,
   };
 }
 

@@ -70,6 +70,7 @@ type ChatSessionType = {
   sId: string;
   title?: string;
   messages?: ChatMessageType[];
+  visibility: string;
 };
 
 // Event sent when the session is initially created.
