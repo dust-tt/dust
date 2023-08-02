@@ -119,8 +119,8 @@ const WorkspacePage = ({
               This workspace is fully upgraded.
             </p>
           ) : (
-            <p className="mb-4 text-red-600">
-              This workspace is not fully upgraded.
+            <p className="mb-4 text-green-600">
+              This workspace is not upgraded.
             </p>
           )}
           <JsonViewer value={workspace.plan} rootName={false} />
