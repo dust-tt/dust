@@ -280,7 +280,7 @@ function TextField({
           name={name}
           id={name}
           className={classNames(
-            "block w-full min-w-0 flex-1 rounded-md text-sm",
+            "block w-full min-w-0 flex-1 rounded-md border border-gray-300 bg-structure-50 p-1 text-sm",
             error
               ? "border-red-500 focus:ring-red-500"
               : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
@@ -370,7 +370,7 @@ function PropertiesFields({
                   name={`type-${index}`}
                   id={`type-${index}`}
                   className={classNames(
-                    "w-full rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500",
+                    "w-full rounded-md border border-gray-300 bg-structure-50 p-1 text-sm focus:border-violet-500 focus:ring-violet-500",
                     readOnly ? "text-gray-400" : ""
                   )}
                   onChange={(e) => {
