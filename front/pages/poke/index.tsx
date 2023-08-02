@@ -67,21 +67,7 @@ const Dashboard = (
       <PokeNavbar />
       <div className="flex-grow p-6">
         <>
-          <h1 className="mb-4 text-2xl font-bold">Upgraded Workspaces</h1>
-          <ul className="space-y-4">
-            {!isUpgradedWorkspacesLoading &&
-              !isUpgradedWorkspacesError &&
-              upgradedWorkspaces.map((ws) => (
-                <li
-                  key={ws.id}
-                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
-                >
-                  <h2 className="text-xl font-semibold">{ws.name}</h2>
-                  <p className="text-sm text-gray-500">ID: {ws.id}</p>
-                </li>
-              ))}
-          </ul>
-          <h1 className="mb-4 mt-8 text-2xl font-bold">Free Workspaces</h1>
+          <h1 className="mb-4 text-2xl font-bold">Free Workspaces</h1>
           <input
             className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
             type="text"
@@ -103,11 +89,25 @@ const Dashboard = (
                   className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
                 >
                   <h2 className="text-xl font-semibold">{ws.name}</h2>
-                  <p className="text-sm text-gray-500">ID: {ws.id}</p>
+                  <p className="text-sm text-gray-500">sId: {ws.sId}</p>
                 </li>
               ))}
             </ul>
           )}
+          <h1 className="mb-4 mt-8 text-2xl font-bold">Upgraded Workspaces</h1>
+          <ul className="space-y-4">
+            {!isUpgradedWorkspacesLoading &&
+              !isUpgradedWorkspacesError &&
+              upgradedWorkspaces.map((ws) => (
+                <li
+                  key={ws.id}
+                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
+                >
+                  <h2 className="text-xl font-semibold">{ws.name}</h2>
+                  <p className="text-sm text-gray-500">sId: {ws.sId}</p>
+                </li>
+              ))}
+          </ul>
         </>
       </div>
     </div>
