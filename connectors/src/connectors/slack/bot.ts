@@ -75,6 +75,17 @@ export async function botAnswerMessageWithErrorHandling(
       text: errorMessage,
       thread_ts: slackMessageTs,
     });
+  } else {
+    logger.info(
+      {
+        slackTeamId: slackTeamId,
+        slackChannel: slackChannel,
+        slackUserId: slackUserId,
+        slackMessageTs: slackMessageTs,
+        message: message,
+      },
+      `Successfully answered to Slack Chat Bot message`
+    );
   }
 
   return res;
