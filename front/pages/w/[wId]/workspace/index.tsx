@@ -228,7 +228,7 @@ export default function WorkspaceAdmin({
                           name="name"
                           id="appName"
                           className={classNames(
-                            "block w-full min-w-0 flex-1 rounded-md text-sm",
+                            "block w-full min-w-0 flex-1 rounded-md border bg-structure-50 p-1 text-sm",
                             workspaceNameError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                               : "border-gray-300 focus:border-action-500 focus:ring-action-500"
@@ -265,7 +265,7 @@ export default function WorkspaceAdmin({
                           name="alowedDomain"
                           id="allowedDomain"
                           className={classNames(
-                            "block w-full min-w-0 flex-1 rounded-md text-sm",
+                            "block w-full min-w-0 flex-1 rounded-md border bg-structure-50 p-1 text-sm",
                             allowedDomainError
                               ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                               : "border-gray-300 focus:border-action-500 focus:ring-action-500"
@@ -367,7 +367,7 @@ export default function WorkspaceAdmin({
                         name="inviteEmail"
                         id="inviteEmail"
                         className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md text-sm",
+                          "block w-full min-w-0 flex-1 rounded-md border bg-structure-50 p-1 text-sm",
                           allowedDomainError
                             ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                             : "border-gray-300 focus:border-action-500 focus:ring-action-500"

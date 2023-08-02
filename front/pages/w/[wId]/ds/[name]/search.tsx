@@ -173,7 +173,7 @@ export default function DataSourceView({
               autoComplete="off"
               name="search_query"
               id="search_query"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
+              className="block w-full min-w-0 flex-1 rounded-md border border-gray-300 bg-structure-50 p-1 text-sm focus:border-action-500 focus:ring-action-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setSearchQuery(e.currentTarget.value);

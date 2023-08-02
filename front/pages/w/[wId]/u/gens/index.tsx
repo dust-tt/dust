@@ -715,7 +715,7 @@ export function TemplatesView({
                           <input
                             type="text"
                             name="templateTitle"
-                            className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
+                            className="block w-full rounded-md border border-gray-300 bg-structure-50 p-1 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
                             value={editingTemplateTitle}
                             onChange={(e) =>
                               setEditingTemplateTitle(e.target.value)
@@ -730,7 +730,7 @@ export function TemplatesView({
                           <div className="flex flex-1">
                             <TextareaAutosize
                               minRows={2}
-                              className="w-full resize-none rounded-md border-gray-300 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
+                              className="w-full resize-none rounded-md border border-gray-300 bg-structure-50 p-1 text-sm shadow-sm focus:border-action-500 focus:ring-action-500"
                               value={editingTemplateInstructions}
                               placeholder={
                                 "Specific instructions for generating text (eg: follow a template, achieve a particular task, ...)"
@@ -1501,7 +1501,7 @@ export default function AppGens({
                     <div className="flex flex-col">
                       <input
                         type="text"
-                        className="border-1 text-md rounded-md border-gray-200 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                        className="border-1 text-md rounded-md border  border-gray-300 bg-structure-50 p-1 px-1 py-1 hover:border-gray-300 focus:border-gray-300 focus:ring-0"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => {
@@ -1612,7 +1612,7 @@ export default function AppGens({
                         <div className="flex flex-initial">
                           <input
                             type="number"
-                            className="border-1 w-16 rounded-md border-gray-100 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
+                            className="border-1 w-16 rounded-md border border-gray-300 bg-structure-50 p-1 px-2 py-1 text-sm hover:border-gray-300 focus:border-gray-300 focus:ring-0"
                             value={top_k}
                             placeholder="Number of results"
                             onChange={(e) => setTopK(Number(e.target.value))}
