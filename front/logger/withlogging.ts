@@ -18,7 +18,7 @@ export const withLogging = (handler: any) => {
         {
           method: req.method,
           url: req.url,
-          duration: `${elapsed} ms`,
+          durationMs: elapsed,
           error: err,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
