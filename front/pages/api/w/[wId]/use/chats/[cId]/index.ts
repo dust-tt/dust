@@ -128,6 +128,28 @@ async function handler(
       }
 
       const cId = req.query.cId;
+      const session = await getChatSessionWithMessages(auth, cId);
+
+      if (!session) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "chat_session_not_found",
+            message: "The chat session was not found.",
+          },
+        });
+      }
+
+      const user = auth.user();
+      if (!user?.id || user.id !== session.userId) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "chat_session_auth_error",
+            message: "The chat session can only be udpated by its author.",
+          },
+        });
+      }
 
       const pRes = parse_payload(chatSessionUpdateSchema, req.body);
       if (pRes.isErr()) {
@@ -135,10 +157,15 @@ async function handler(
         return;
       }
       const s = pRes.value;
-      const session = await upsertChatSession(auth, cId, null, s.visibility);
+      const updatedSession = await upsertChatSession(
+        auth,
+        cId,
+        null,
+        s.visibility
+      );
 
       res.status(200).json({
-        session,
+        session: updatedSession,
       });
       return;
     }
@@ -181,6 +208,17 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "Invalid query parameters, `cId` (string) is required.",
+          },
+        });
+      }
+
+      const user = auth.user();
+      if (!user?.id || user.id !== session.userId) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "chat_session_auth_error",
+            message: "The chat session can only be deleted by its author.",
           },
         });
       }
