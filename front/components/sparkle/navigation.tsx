@@ -34,7 +34,6 @@ export type SubNavigationAppId =
   | "runs"
   | "settings";
 export type SubNavigationLabId = "gens" | "extract";
-export type SubNavigationChatId = "private_sessions" | "workspace_sessions";
 
 export type SparkleAppLayoutNavigation = {
   id:
@@ -42,8 +41,7 @@ export type SparkleAppLayoutNavigation = {
     | SubNavigationAdminId
     | SubNavigationDataSourceId
     | SubNavigationAppId
-    | SubNavigationLabId
-    | SubNavigationChatId;
+    | SubNavigationLabId;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
@@ -282,31 +280,5 @@ export const subNavigationLab = ({
     });
   }
 
-  return nav;
-};
-
-export const subNavigationChat = ({
-  owner,
-  current,
-}: {
-  owner: WorkspaceType;
-  current: SubNavigationChatId;
-}) => {
-  const nav: SparkleAppLayoutNavigation[] = [
-    {
-      id: "workspace_sessions",
-      label: "Workspace conversations",
-      icon: ChatBubbleBottomCenterTextIcon,
-      href: `/w/${owner.sId}/u/chats`,
-      current: current === "workspace_sessions",
-    },
-    {
-      id: "private_sessions",
-      label: "Private conversations",
-      icon: ChatBubbleBottomCenterTextIcon,
-      href: `/w/${owner.sId}/u/chat`,
-      current: current === "private_sessions",
-    },
-  ];
   return nav;
 };

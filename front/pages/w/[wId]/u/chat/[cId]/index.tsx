@@ -1,13 +1,10 @@
 import {
-  ArrowUpOnSquareIcon,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
   CheckCircleIcon,
   ClipboardIcon,
   CloudArrowDownIcon,
   IconButton,
-  Item,
   Logo,
   PageHeader,
   PaperAirplaneSolidIcon,
@@ -29,8 +26,8 @@ import remarkGfm from "remark-gfm";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationChat } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
+import { ChatSidebarMenu } from "@app/components/use/chat/ChatSidebarMenu";
 import TimeRangePicker, {
   ChatTimeRange,
   timeRanges,
@@ -557,70 +554,6 @@ export function MessageView({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ChatNewConversation({
-  onNewConversation,
-  canStartConversation,
-}: {
-  onNewConversation: () => void;
-  canStartConversation: boolean;
-}) {
-  return (
-    <div className="flex grow flex-col">
-      <div className="flex flex-row px-2">
-        <div className="flex grow"></div>
-        <Button
-          disabled={!canStartConversation}
-          labelVisible={true}
-          label="New Conversation"
-          icon={ChatBubbleBottomCenterPlusIcon}
-          onClick={onNewConversation}
-          className="flex flex-initial"
-        />
-      </div>
-    </div>
-  );
-}
-
-function ChatMenu({
-  owner,
-  sessions,
-}: {
-  owner: WorkspaceType;
-  sessions: ChatSessionType[];
-}) {
-  const router = useRouter();
-
-  return (
-    <div className="flex grow flex-col">
-      <div className="flex grow flex-col">
-        <div className="flex flex-row items-center">
-          <div className="px-8 py-4 text-xs uppercase text-slate-400">
-            Past Conversations
-          </div>
-        </div>
-        <div className="flex ">
-          <div className="flex w-full flex-col">
-            {sessions.length === 0
-              ? null
-              : sessions.map((s) => {
-                  return (
-                    <Item
-                      key={s.sId}
-                      size="sm"
-                      selected={router.query.cId === s.sId}
-                      label={s.title || ""}
-                      className="pl-8 pr-4"
-                      href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                    ></Item>
-                  );
-                })}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1163,17 +1096,14 @@ export default function AppChat({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
-      topNavigationChildren={
-        <ChatNewConversation
-          onNewConversation={handleNew}
+      navChildren={
+        <ChatSidebarMenu
+          owner={owner}
+          sessions={sessions}
           canStartConversation={canStartConversation}
+          readOnly={readOnly}
         />
       }
-      subNavigation={subNavigationChat({
-        owner,
-        current: readOnly ? "workspace_sessions" : "private_sessions",
-      })}
-      navChildren={<ChatMenu owner={owner} sessions={sessions} />}
       titleChildren={
         messages.length > 0 && (
           <AppLayoutTitle

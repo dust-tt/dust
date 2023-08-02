@@ -21,14 +21,12 @@ function NavigationBar({
   user,
   owner,
   topNavigationCurrent,
-  topNavigationChildren,
   subNavigation,
   children,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
   topNavigationCurrent: TopNavigationId;
-  topNavigationChildren?: React.ReactNode;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   children: React.ReactNode;
 }) {
@@ -108,7 +106,6 @@ function NavigationBar({
         <div>
           <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
         </div>
-        {topNavigationChildren && <div>{topNavigationChildren}</div>}
         {subNavigation && (
           <div>
             {subNavigation.map((nav) => {
@@ -163,7 +160,6 @@ export default function AppLayout({
   user,
   owner,
   topNavigationCurrent,
-  topNavigationChildren,
   subNavigation,
   gaTrackingId,
   navChildren,
@@ -173,7 +169,6 @@ export default function AppLayout({
   user: UserType | null;
   owner: WorkspaceType;
   topNavigationCurrent: TopNavigationId;
-  topNavigationChildren?: React.ReactNode;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
   navChildren?: React.ReactNode;
@@ -251,7 +246,6 @@ export default function AppLayout({
                     owner={owner}
                     subNavigation={subNavigation}
                     topNavigationCurrent={topNavigationCurrent}
-                    topNavigationChildren={topNavigationChildren}
                   >
                     {navChildren && navChildren}
                   </NavigationBar>
@@ -268,7 +262,6 @@ export default function AppLayout({
             owner={owner}
             subNavigation={subNavigation}
             topNavigationCurrent={topNavigationCurrent}
-            topNavigationChildren={topNavigationChildren}
           >
             {navChildren && navChildren}
           </NavigationBar>

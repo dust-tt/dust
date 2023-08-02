@@ -1,6 +1,4 @@
 import {
-  Button,
-  ChatBubbleBottomCenterPlusIcon,
   ChatBubbleBottomCenterTextIcon,
   Item,
   PageHeader,
@@ -9,7 +7,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationChat } from "@app/components/sparkle/navigation";
+import { ChatSidebarMenu } from "@app/components/use/chat/ChatSidebarMenu";
 import {
   Authenticator,
   getSession,
@@ -66,30 +64,6 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-function ChatNewConversation({
-  onNewConversation,
-  canStartConversation,
-}: {
-  onNewConversation: () => void;
-  canStartConversation: boolean;
-}) {
-  return (
-    <div className="flex grow flex-col">
-      <div className="flex flex-row px-2">
-        <div className="flex grow"></div>
-        <Button
-          disabled={!canStartConversation}
-          labelVisible={true}
-          label="New Conversation"
-          icon={ChatBubbleBottomCenterPlusIcon}
-          onClick={onNewConversation}
-          className="flex flex-initial"
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function AppChatWorkspaceConversations({
   user,
   owner,
@@ -101,12 +75,15 @@ export default function AppChatWorkspaceConversations({
   const { sessions } = useChatSessions(owner, {
     limit: 256,
     offset: 0,
-    workspaceScope: true,
+    workspaceScope: false,
   });
 
-  const handleNew = async () => {
-    void router.push(`/w/${owner.sId}/u/chat`);
-  };
+  const useWorkspaceSessions = useChatSessions(owner, {
+    limit: 256,
+    offset: 0,
+    workspaceScope: true,
+  });
+  const workspaceSessions = useWorkspaceSessions.sessions;
 
   return (
     <AppLayout
@@ -114,16 +91,14 @@ export default function AppChatWorkspaceConversations({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistant"
-      topNavigationChildren={
-        <ChatNewConversation
-          onNewConversation={handleNew}
+      navChildren={
+        <ChatSidebarMenu
+          owner={owner}
+          sessions={sessions}
           canStartConversation={hasManagedDatasources}
+          readOnly={true} // We're on the workspace page
         />
       }
-      subNavigation={subNavigationChat({
-        owner,
-        current: "workspace_sessions",
-      })}
     >
       <div className="pt-4">
         <>
@@ -132,12 +107,12 @@ export default function AppChatWorkspaceConversations({
             icon={ChatBubbleBottomCenterTextIcon}
           />
           <div className="mt-16">
-            {sessions.length === 0 ? (
+            {workspaceSessions.length === 0 ? (
               <p className="text-sm">
                 No conversations were yet shared for the workspace!
               </p>
             ) : (
-              sessions.map((s) => {
+              workspaceSessions.map((s) => {
                 return (
                   <div key={s.sId}>
                     <Item
