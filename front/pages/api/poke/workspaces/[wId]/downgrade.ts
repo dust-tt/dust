@@ -10,13 +10,13 @@ import { Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
-export type BumpWorkspaceResponseBody = {
+export type DowngradeWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<BumpWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<DowngradeWorkspaceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const user = await getUserFromSession(session);
