@@ -576,9 +576,10 @@ export default function AppChat({
     chatSessionId
   );
 
-  const readOnly = chatSession?.userId
-    ? chatSession?.userId !== user?.id
-    : false;
+  let readOnly = true;
+  if (chatSession?.userId && user?.id && chatSession.userId === user.id) {
+    readOnly = false;
+  }
 
   const [title, setTitle] = useState<string>(
     chatSession?.title || "New Conversation"
