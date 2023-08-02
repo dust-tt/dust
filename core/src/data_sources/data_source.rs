@@ -840,6 +840,7 @@ impl DataSource {
             None => None,
         };
 
+        let start_search_points_time = utils::now();
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
@@ -855,7 +856,14 @@ impl DataSource {
                 read_consistency: None,
             })
             .await?;
+        utils::done(&format!(
+                "Finished searching Qdrant documents : collection_name={}, duration={}ms, results_count={}",
+                self.qdrant_collection(),
+                utils::now() - start_search_points_time,
+                results.result.len()
+            ));
 
+        let time_chunk_start = utils::now();
         let chunks = results
             .result
             .iter()
@@ -901,6 +909,13 @@ impl DataSource {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        utils::done(&format!(
+            "Finished chunking documents : collection_name={}, duration={}ms, chunk_length={}",
+            self.qdrant_collection(),
+            utils::now() - time_chunk_start,
+            chunks.len(),
+        ));
+
         // get a list of unique document_id
         let document_ids = chunks
             .iter()
@@ -914,6 +929,7 @@ impl DataSource {
         };
 
         // Retrieve the documents from the store.
+        let time_store_start = utils::now();
         let documents = stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
@@ -959,8 +975,16 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
+        utils::done(&format!(
+                "Finished fetching documents from the store : collection_name={}, duration={}ms, document_len={}",
+                self.qdrant_collection(),
+                utils::now() - time_store_start,
+                documents.len(),
+            ));
+
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
+        let time_qdrant_scroll_time = utils::now();
         let mut documents = match target_document_tokens {
             Some(target) => {
                 stream::iter(documents)
@@ -1141,6 +1165,12 @@ impl DataSource {
                 })
                 .collect::<Vec<_>>(),
         };
+        utils::done(&format!(
+            "Finished scrolling documents : collection_name={}, duration={}ms, results_count={}",
+            self.qdrant_collection(),
+            utils::now() - time_qdrant_scroll_time,
+            documents.len(),
+        ));
 
         // Sort the documents by the score of the first chunk (guaranteed ordered).
         documents.sort_by(|a, b| {
