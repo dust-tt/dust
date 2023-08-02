@@ -60,6 +60,9 @@ const WorkspacePage = ({
   const router = useRouter();
 
   const onUpgrade = async () => {
+    if (!window.confirm("Are you sure you want to upgrade this workspace?")) {
+      return;
+    }
     try {
       const r = await fetch(`/api/poke/workspaces/${workspace.sId}/upgrade`, {
         method: "POST",
@@ -78,6 +81,9 @@ const WorkspacePage = ({
   };
 
   const onDowngrade = async () => {
+    if (!window.confirm("Are you sure you want to downgrade this workspace?")) {
+      return;
+    }
     try {
       const r = await fetch(`/api/poke/workspaces/${workspace.sId}/downgrade`, {
         method: "POST",
@@ -123,8 +129,14 @@ const WorkspacePage = ({
               label="Downgrade"
               type="secondaryWarning"
               onClick={onDowngrade}
+              disabled={!looksFullyUpgraded}
             />
-            <Button label="Upgrade" type="secondary" onClick={onUpgrade} />
+            <Button
+              label="Upgrade"
+              type="secondary"
+              onClick={onUpgrade}
+              disabled={looksFullyUpgraded}
+            />
           </div>
         </>
       </div>
