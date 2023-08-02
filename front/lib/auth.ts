@@ -22,7 +22,7 @@ const {
   NODE_ENV,
 } = process.env;
 
-export type RoleType = "admin" | "builder" | "user" | "none" | "super_user";
+export type RoleType = "admin" | "builder" | "user" | "none";
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
