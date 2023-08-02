@@ -1250,9 +1250,8 @@ export default function AppChat({
                         <span className="font-bold italic">Assistant</span> can
                         help you with a wide range of tasks. It can answer your
                         questions on various topics, generic or specific to your
-                        company. It is particularly good at writing texts and
-                        can help you draft and edit documents, generate ideas,
-                        answer questions.
+                        company. It can help you draft and edit documents,
+                        generate ideas, answer questions…
                       </p>
                       <p className="mt-4 text-center text-sm font-medium text-element-800">
                         Simply start typing to get started with Assistant.
