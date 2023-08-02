@@ -1,8 +1,6 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  CheckCircleIcon,
-  ClipboardIcon,
   CloudArrowDownIcon,
   IconButton,
   Logo,
@@ -58,13 +56,12 @@ import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
-  ChatSessionType,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { GA_TRACKING_ID = "" } = process.env;
+const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
@@ -86,6 +83,7 @@ export const getServerSideProps: GetServerSideProps<{
   isNewChat: boolean;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
+  url: string;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -153,6 +151,7 @@ export const getServerSideProps: GetServerSideProps<{
       isNewChat: chatSession === null,
       workspaceDataSources: dataSources,
       prodCredentials,
+      url: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -474,7 +473,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   };
 
   return (
-    <div className="invisible float-right group-hover:visible">
+    <div className="invisible float-right hover:cursor-pointer group-hover:visible">
       <IconButton
         type="tertiary"
         icon={confirmed ? ClipboardDocumentCheckIcon : ClipboardDocumentIcon}
@@ -570,6 +569,7 @@ export default function AppChat({
   owner,
   workspaceDataSources,
   prodCredentials,
+  url,
   gaTrackingId,
   isNewChat,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -1122,6 +1122,7 @@ export default function AppChat({
           <AppLayoutTitle
             readOnly={readOnly}
             title={title}
+            shareLink={`${url}/w/${owner.sId}/u/chat/${chatSessionId}`}
             onDelete={handleDelete}
             toggle={{
               labelChecked: "Private",

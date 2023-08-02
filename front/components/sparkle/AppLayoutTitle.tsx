@@ -2,17 +2,20 @@ import { Button } from "@dust-tt/sparkle";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import React, { ComponentType } from "react";
 
+import { CopyLinkToClipboard } from "@app/components/CopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
 export function AppLayoutTitle({
   readOnly,
   title,
+  shareLink,
   onDelete,
   action,
   toggle,
 }: {
   readOnly?: boolean;
   title: string;
+  shareLink?: string;
   onDelete?: () => void;
   action?: {
     label: string;
@@ -32,9 +35,17 @@ export function AppLayoutTitle({
   return (
     <div className="flex h-full flex-row items-center">
       <div className="flex flex-initial">
-        <div className="w-48 flex-initial overflow-hidden truncate px-10 font-bold sm:w-96 lg:w-auto lg:px-0">
-          {title}
-        </div>
+        {shareLink ? (
+          <CopyLinkToClipboard link={shareLink}>
+            <span className="mr-1 w-48 flex-initial overflow-hidden truncate pl-10 font-bold sm:w-96 lg:w-auto lg:px-0">
+              {title}
+            </span>
+          </CopyLinkToClipboard>
+        ) : (
+          <span className="mr-1 w-48 flex-initial overflow-hidden truncate pl-10 font-bold sm:w-96 lg:w-auto lg:px-0">
+            {title}
+          </span>
+        )}
       </div>
       <div className="flex flex-1"></div>
       <div className="-ml-8 flex flex-initial space-x-1 lg:ml-0">
