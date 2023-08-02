@@ -1,4 +1,5 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import React, { ChangeEvent, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -84,13 +85,12 @@ const Dashboard = (
           {!isSearchResultsLoading && !isSearchResultsError && (
             <ul className="mt-4 space-y-4">
               {searchResults.map((ws) => (
-                <li
-                  key={ws.id}
-                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
-                >
-                  <h2 className="text-xl font-semibold">{ws.name}</h2>
-                  <p className="text-sm text-gray-500">sId: {ws.sId}</p>
-                </li>
+                <Link href={`/poke/${ws.sId}`} key={ws.id}>
+                  <li className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100">
+                    <h2 className="text-xl font-semibold">{ws.name}</h2>
+                    <p className="text-sm text-gray-500">sId: {ws.sId}</p>
+                  </li>
+                </Link>
               ))}
             </ul>
           )}
@@ -99,13 +99,12 @@ const Dashboard = (
             {!isUpgradedWorkspacesLoading &&
               !isUpgradedWorkspacesError &&
               upgradedWorkspaces.map((ws) => (
-                <li
-                  key={ws.id}
-                  className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100"
-                >
-                  <h2 className="text-xl font-semibold">{ws.name}</h2>
-                  <p className="text-sm text-gray-500">sId: {ws.sId}</p>
-                </li>
+                <Link href={`/poke/${ws.sId}`} key={ws.id}>
+                  <li className="rounded-lg bg-white p-4 shadow transition-colors duration-200 hover:bg-gray-100">
+                    <h2 className="text-xl font-semibold">{ws.name}</h2>
+                    <p className="text-sm text-gray-500">sId: {ws.sId}</p>
+                  </li>
+                </Link>
               ))}
           </ul>
         </>
