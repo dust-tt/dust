@@ -1,6 +1,7 @@
-import { Button, Tooltip } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -215,7 +216,19 @@ const WorkspacePage = ({
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       <div className="flex-grow p-6">
-        <h1 className="mb-8 text-2xl font-bold">{workspace.name}</h1>
+        <h1 className="mb-8 text-2xl font-bold">
+          {workspace.name}{" "}
+          <span>
+            <Link
+              href={`https://metabase.dust.tt/question/18-poke-workspace-members?sId=${workspace.sId}`}
+              target="_blank"
+              className="text-xs text-action-400"
+            >
+              view members
+            </Link>
+          </span>
+        </h1>
+
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
