@@ -237,17 +237,13 @@ const WorkspacePage = ({
                   onClick={onDowngrade}
                   disabled={!isFullyUpgraded || workspaceHasManagedDataSources}
                 />
-                <Tooltip
-                  label={"delete managed data sources first"}
-                  position="below"
-                >
-                  <Button
-                    label="Upgrade"
-                    type="secondary"
-                    onClick={onUpgrade}
-                    disabled={isFullyUpgraded}
-                  />
-                </Tooltip>
+
+                <Button
+                  label="Upgrade"
+                  type="secondary"
+                  onClick={onUpgrade}
+                  disabled={isFullyUpgraded}
+                />
               </div>
             </div>
             {isFullyUpgraded && workspaceHasManagedDataSources && (
