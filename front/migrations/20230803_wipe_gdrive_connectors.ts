@@ -19,7 +19,7 @@ async function main() {
   console.log("fetching gdrive data sources");
   const ds = await DataSource.findAll({
     where: {
-      connectorProvider: "google-drive",
+      connectorProvider: "google_drive",
     },
   });
   console.log(`found ${ds.length} gdrive data sources`);
