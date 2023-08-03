@@ -145,7 +145,6 @@ async function handler(
         await Promise.all(
           chunk.map((f) => {
             return (async () => {
-              console.log(`Deleting file: ${f.name}`);
               await f.delete();
             })();
           })
