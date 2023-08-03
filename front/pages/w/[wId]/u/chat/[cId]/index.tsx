@@ -43,6 +43,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
+import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
   getSession,
@@ -82,6 +83,7 @@ type DataSource = {
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  isNewChat: boolean;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
   gaTrackingId: string;
@@ -141,10 +143,14 @@ export const getServerSideProps: GetServerSideProps<{
     }
   });
 
+  const cId = context.params?.cId as string;
+  const chatSession = await getChatSessionWithMessages(auth, cId);
+
   return {
     props: {
       user,
       owner,
+      isNewChat: chatSession === null,
       workspaceDataSources: dataSources,
       prodCredentials,
       gaTrackingId: GA_TRACKING_ID,
@@ -565,16 +571,18 @@ export default function AppChat({
   workspaceDataSources,
   prodCredentials,
   gaTrackingId,
+  isNewChat,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   const prodAPI = new DustAPI(prodCredentials);
   const chatSessionId = router.query.cId as string;
 
-  const { chatSession, mutateChatSession } = useChatSession(
+  const { chatSession, mutateChatSession } = useChatSession({
     owner,
-    chatSessionId
-  );
+    cId: chatSessionId,
+    disabled: isNewChat,
+  });
 
   let readOnly = true;
   if (
