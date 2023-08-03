@@ -35,3 +35,8 @@ main {
     content: "";
   }
 }
+
+/* Override the default focus styles for input[type="text"] */
+input[type="text"]:focus {
+  outline: none;
+}
