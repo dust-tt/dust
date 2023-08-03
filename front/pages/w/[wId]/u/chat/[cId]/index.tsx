@@ -78,9 +78,9 @@ type DataSource = {
 };
 
 export const getServerSideProps: GetServerSideProps<{
+  chatSessionId: string;
   user: UserType | null;
   owner: WorkspaceType;
-  isNewChat: boolean;
   workspaceDataSources: DataSource[];
   prodCredentials: DustAPICredentials;
   url: string;
@@ -142,13 +142,12 @@ export const getServerSideProps: GetServerSideProps<{
   });
 
   const cId = context.params?.cId as string;
-  const chatSession = await getChatSessionWithMessages(auth, cId);
 
   return {
     props: {
+      chatSessionId: cId,
       user,
       owner,
-      isNewChat: chatSession === null,
       workspaceDataSources: dataSources,
       prodCredentials,
       url: URL,
@@ -565,23 +564,21 @@ export function MessageView({
 }
 
 export default function AppChat({
+  chatSessionId,
   user,
   owner,
   workspaceDataSources,
   prodCredentials,
   url,
   gaTrackingId,
-  isNewChat,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   const prodAPI = new DustAPI(prodCredentials);
-  const chatSessionId = router.query.cId as string;
 
   const { chatSession, mutateChatSession } = useChatSession({
     owner,
     cId: chatSessionId,
-    disabled: isNewChat,
   });
 
   let readOnly = true;
@@ -1021,6 +1018,8 @@ export default function AppChat({
     void (async () => {
       const t = await updateTitle(title, m);
       await upsertChatSession(t);
+      void mutateChatSession();
+      void mutateChatSessions();
     })();
 
     setLoading(false);

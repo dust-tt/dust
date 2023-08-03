@@ -43,7 +43,7 @@ const chatSessionUpdateSchema: JSONSchemaType<{
 };
 
 export type ChatSessionResponseBody = {
-  session: ChatSessionType;
+  session: ChatSessionType | null;
 };
 
 async function handler(
@@ -186,13 +186,7 @@ async function handler(
       const session = await getChatSessionWithMessages(auth, cId);
 
       if (!session) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "chat_session_not_found",
-            message: "The chat session was not found.",
-          },
-        });
+        return res.status(200).json({ session: null });
       }
 
       res.status(200).json({
