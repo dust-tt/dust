@@ -8,7 +8,7 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
+const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export type DeleteDataSourceResponseBody = {
   success: true;
@@ -48,7 +48,16 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Could not find the service account for GCP.",
+            message: "Could not find the service account for GCP config.",
+          },
+        });
+      }
+      if (!DUST_DATA_SOURCES_BUCKET) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not find the datasource bucket config.",
           },
         });
       }
