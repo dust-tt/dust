@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, Tooltip } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -201,6 +201,10 @@ const WorkspacePage = ({
     }
   };
 
+  const workspaceHasManagedDataSources = dataSources.some(
+    (ds) => !!ds.connectorProvider
+  );
+
   const isFullyUpgraded =
     workspace.plan?.limits.dataSources.count === -1 &&
     workspace.plan?.limits.dataSources.documents.count === -1 &&
@@ -225,20 +229,34 @@ const WorkspacePage = ({
               </p>
             )}
             <JsonViewer value={workspace.plan} rootName={false} />
-            <div className="mt-4 flex-row">
-              <Button
-                label="Downgrade"
-                type="secondaryWarning"
-                onClick={onDowngrade}
-                disabled={!isFullyUpgraded}
-              />
-              <Button
-                label="Upgrade"
-                type="secondary"
-                onClick={onUpgrade}
-                disabled={isFullyUpgraded}
-              />
+            <div>
+              <div className="mt-4 flex-row">
+                <Button
+                  label="Downgrade"
+                  type="secondaryWarning"
+                  onClick={onDowngrade}
+                  disabled={!isFullyUpgraded || workspaceHasManagedDataSources}
+                />
+                <Tooltip
+                  label={"delete managed data sources first"}
+                  position="below"
+                >
+                  <Button
+                    label="Upgrade"
+                    type="secondary"
+                    onClick={onUpgrade}
+                    disabled={isFullyUpgraded}
+                  />
+                </Tooltip>
+              </div>
             </div>
+            {isFullyUpgraded && workspaceHasManagedDataSources && (
+              <span className="mx-2 w-1/3">
+                <p className="mb-4 text-sm text-warning ">
+                  Delete managed data sources before downgrading.
+                </p>
+              </span>
+            )}
           </div>
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
