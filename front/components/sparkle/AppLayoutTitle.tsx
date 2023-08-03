@@ -1,8 +1,8 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, CheckCircleIcon } from "@dust-tt/sparkle";
+import { LinkIcon } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
-import React, { ComponentType } from "react";
+import React, { ComponentType, useState } from "react";
 
-import { CopyLinkToClipboard } from "@app/components/CopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
 export function AppLayoutTitle({
@@ -32,19 +32,34 @@ export function AppLayoutTitle({
     isChecked: boolean;
   };
 }) {
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
+  const handleClick = async () => {
+    await navigator.clipboard.writeText(shareLink || "");
+    setCopyLinkSuccess(true);
+    setTimeout(() => {
+      setCopyLinkSuccess(false);
+    }, 1000);
+  };
+
   return (
     <div className="flex h-full flex-row items-center">
-      <div className="flex flex-initial">
+      <div className="flex flex-initial pl-10 font-bold">
         {shareLink ? (
-          <CopyLinkToClipboard link={shareLink}>
-            <span className="mr-1 w-48 flex-initial overflow-hidden truncate pl-10 font-bold sm:w-96 lg:w-auto lg:px-0">
+          <a onClick={handleClick} className="block hover:cursor-pointer">
+            <div className="inline-block w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0">
               {title}
-            </span>
-          </CopyLinkToClipboard>
+              &nbsp;
+              {copyLinkSuccess ? (
+                <CheckCircleIcon className="inline-block h-5 w-5 text-action-500" />
+              ) : (
+                <LinkIcon className="inline-block h-5 w-5 text-gray-300 hover:text-action-500" />
+              )}
+            </div>
+          </a>
         ) : (
-          <span className="mr-1 w-48 flex-initial overflow-hidden truncate pl-10 font-bold sm:w-96 lg:w-auto lg:px-0">
+          <div className="w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0">
             {title}
-          </span>
+          </div>
         )}
       </div>
       <div className="flex flex-1"></div>
