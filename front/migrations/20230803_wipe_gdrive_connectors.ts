@@ -16,21 +16,29 @@ async function main() {
     logging: false,
   });
 
+  console.log("fetching gdrive data sources");
   const ds = await DataSource.findAll({
     where: {
       connectorProvider: "google-drive",
     },
   });
+  console.log(`found ${ds.length} gdrive data sources`);
 
   for (const d of ds) {
+    console.log(`processing ${d.name}`);
     const connectorId = d.connectorId;
+    console.log(
+      `deleting google_drive_files files from connectors db for connector ${connectorId}`
+    );
     await connectors_sequelize.query(
       `DELETE FROM google_drive_files WHERE "connectorId" = ${connectorId}`
     );
+    console.log(`deleting data source ${d.name} from core`);
     await CoreAPI.deleteDataSource({
       projectId: d.dustAPIProjectId,
       dataSourceName: d.name,
     });
+    console.log(`creating data source ${d.name} in core`);
     await CoreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
       dataSourceId: d.name,
