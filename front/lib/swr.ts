@@ -230,15 +230,13 @@ export function useChatSessions(
 export function useChatSession({
   owner,
   cId,
-  disabled,
 }: {
   owner: WorkspaceType;
   cId: string;
-  disabled?: boolean;
 }) {
   const runsFetcher: Fetcher<GetChatSessionResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
-    disabled ? null : `/api/w/${owner.sId}/use/chats/${cId}`,
+    `/api/w/${owner.sId}/use/chats/${cId}`,
     runsFetcher
   );
 
