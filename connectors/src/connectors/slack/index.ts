@@ -312,11 +312,17 @@ export async function retrieveSlackConnectorPermissions(
     logger.error({ connectorId }, "Slack configuration not found");
     return new Err(new Error("Slack configuration not found"));
   }
+
   const slackChannels = await SlackChannel.findAll({
     where: {
       connectorId: connectorId,
     },
+    order: [
+      ["createdAt", "DESC"],
+      ["slackChannelName", "ASC"],
+    ],
   });
+
   const resources: ConnectorResource[] = slackChannels.map((ch) => ({
     provider: "slack",
     internalId: ch.slackChannelId,
