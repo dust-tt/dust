@@ -1,3 +1,4 @@
+import { Storage } from "@google-cloud/storage";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
@@ -6,6 +7,8 @@ import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export type DeleteDataSourceResponseBody = {
   success: true;
@@ -40,6 +43,25 @@ async function handler(
 
   switch (req.method) {
     case "DELETE":
+      if (!SERVICE_ACCOUNT) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not find the service account for GCP config.",
+          },
+        });
+      }
+      if (!DUST_DATA_SOURCES_BUCKET) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not find the datasource bucket config.",
+          },
+        });
+      }
+
       const { wId } = req.query;
       if (!wId || typeof wId !== "string") {
         return apiError(req, res, {
@@ -112,7 +134,32 @@ async function handler(
 
       await dataSource.destroy();
 
-      // TODO SHOULD WE SCRUB ?!
+      const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+
+      const [files] = await storage
+        .bucket(DUST_DATA_SOURCES_BUCKET)
+        .getFiles({ prefix: dustAPIProjectId });
+
+      const chunkSize = 32;
+      const chunks = [];
+      for (let i = 0; i < files.length; i += chunkSize) {
+        chunks.push(files.slice(i, i + chunkSize));
+      }
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        if (!chunk) {
+          continue;
+        }
+        await Promise.all(
+          chunk.map((f) => {
+            return (async () => {
+              await f.delete();
+            })();
+          })
+        );
+      }
+
       return res.status(200).json({ success: true });
 
     default:
