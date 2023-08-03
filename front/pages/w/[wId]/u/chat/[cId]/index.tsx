@@ -577,7 +577,10 @@ export default function AppChat({
   );
 
   let readOnly = true;
-  if (chatSession?.userId && user?.id && chatSession.userId === user.id) {
+  if (
+    !chatSession ||
+    (chatSession?.userId && user?.id && chatSession.userId === user.id)
+  ) {
     readOnly = false;
   }
 
