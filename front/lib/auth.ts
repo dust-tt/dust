@@ -49,14 +49,14 @@ export class Authenticator {
    *
    * @param session any NextAuth session
    * @param wId string target workspace id
-   * @param superUser boolean if true, will return an admin role for the user if the user is a
+   * @param asSuperUser boolean if true, will return an admin role for the user if the user is a
    * superuser
    * @returns Promise<Authenticator>
    */
   static async fromSession(
     session: any,
     wId: string,
-    superUser = false
+    asSuperUser = false
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
@@ -83,7 +83,7 @@ export class Authenticator {
     let role = "none" as RoleType;
 
     if (user && workspace) {
-      if (superUser && user.isDustSuperUser) {
+      if (asSuperUser && user.isDustSuperUser) {
         role = "admin";
       } else {
         const membership = await Membership.findOne({
