@@ -46,7 +46,12 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const auth = await Authenticator.fromSession(session, wId);
+  const auth = await Authenticator.fromSession(
+    session,
+    wId,
+    true // superUser
+  );
+
   const workspace = auth.workspace();
 
   if (!workspace) {
