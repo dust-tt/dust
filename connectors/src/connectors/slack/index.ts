@@ -317,7 +317,10 @@ export async function retrieveSlackConnectorPermissions(
     where: {
       connectorId: connectorId,
     },
-    order: [["createdAt", "DESC"]],
+    order: [
+      ["createdAt", "DESC"],
+      ["slackChannelName", "ASC"],
+    ],
   });
 
   const resources: ConnectorResource[] = slackChannels.map((ch) => ({
