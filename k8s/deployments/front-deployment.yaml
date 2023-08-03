@@ -38,7 +38,7 @@ spec:
             - name: cert-volume
               mountPath: /etc/certs
             - name: service-account-volume
-              mountPath: /etc/service-account
+              mountPath: /etc/service-accounts
 
           resources:
             requests:
@@ -55,4 +55,4 @@ spec:
             secretName: temporal-front-cert
         - name: service-account-volume
           secret:
-            secretName: service-account-secret
+            secretName: gcp-service-account-secret
