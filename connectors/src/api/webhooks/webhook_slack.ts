@@ -215,18 +215,14 @@ const _webhookSlackAPIHandler = async (
                   },
                 });
                 if (!slackChannel) {
-                  logger.error(
+                  logger.info(
                     {
                       connectorId: c.connectorId,
                       slackChannelId: channel,
                     },
-                    "Could not find Slack channel in DB"
+                    "Skipping wehbook: Slack channel not yet in DB"
                   );
-                  return new Err(
-                    new Error(
-                      `Could not find Slack channel ${channel} in DB for connector ${c.connectorId}`
-                    )
-                  );
+                  return new Ok(undefined);
                 }
                 if (!["read", "read_write"].includes(slackChannel.permission)) {
                   logger.info(
@@ -262,18 +258,14 @@ const _webhookSlackAPIHandler = async (
                   },
                 });
                 if (!slackChannel) {
-                  logger.error(
+                  logger.info(
                     {
                       connectorId: c.connectorId,
                       slackChannelId: channel,
                     },
-                    "Could not find Slack channel in DB"
+                    "Skipping wehbook: Slack channel not yet in DB"
                   );
-                  return new Err(
-                    new Error(
-                      `Could not find Slack channel ${channel} in DB for connector ${c.connectorId}`
-                    )
-                  );
+                  return new Ok(undefined);
                 }
                 if (!["read", "read_write"].includes(slackChannel.permission)) {
                   logger.info(
