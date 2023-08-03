@@ -44,8 +44,9 @@ const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.presentation": "text/plain",
 };
 // Deactivated CSV for now 20230721 (spolu)
-// const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "text/csv"];
-const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "application/pdf"];
+// Deactivated PDF for now 20230803 (fontanierh)
+// const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "text/csv", "application/pdf"];
+const MIME_TYPES_TO_DOWNLOAD = ["text/plain"];
 const MIME_TYPES_TO_SYNC = [
   ...MIME_TYPES_TO_DOWNLOAD,
   ...Object.keys(MIME_TYPES_TO_EXPORT),
