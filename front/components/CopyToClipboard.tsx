@@ -10,7 +10,7 @@ export function CopyLinkToClipboard({
   const handleClick = async () => {
     await navigator.clipboard.writeText(link);
     setConfirmed(true);
-    void setTimeout(() => {
+    setTimeout(() => {
       setConfirmed(false);
     }, 1000);
   };
