@@ -581,6 +581,8 @@ export default function AppChat({
     cId: chatSessionId,
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   let readOnly = true;
   if (
     !chatSession ||
@@ -915,18 +917,17 @@ export default function AppChat({
     newMessage: ChatMessageType
   ): Promise<void> => {
     if (!newMessage.sId) newMessage.sId = client_side_new_id();
-    if (newMessage.role !== "error") await upsertNewMessage(newMessage);
+    await upsertNewMessage(newMessage);
     messages.push(newMessage);
     setMessages(messages);
     setResponse(null);
   };
 
-  async function filterErrorMessages(m: ChatMessageType[]): Promise<void> {
-    // remove last message if it's an error, and the previous messages until the
-    // last user message, included
-    if (m.length === 0 || m[m.length - 1].role !== "error") return;
-    let message = m.pop(); // remove error message which has not been stored
-    while (m.length > 0 && (message = m.pop())?.role !== "user")
+  async function deleteLastUnprocessedMessages(
+    messages: ChatMessageType[]
+  ): Promise<void> {
+    let message = null;
+    while (messages.length > 0 && (message = messages.pop())?.role !== "user")
       await deleteMessage(message as ChatMessageType); // remove messages until last user message
     if (message?.role === "user") await deleteMessage(message); // also remove last user message
   }
@@ -950,12 +951,14 @@ export default function AppChat({
       processedInput = input.substring("/follow-up".length).trim();
     }
 
-    // clone messages add new message to the end
     const m = [...messages];
-    // error messages and messages that caused them are removed from the conversation
-    // to avoid the assistant to get confused. They are not persisted in the database,
-    // since that happens only later on after successful run of the assistant.
-    await filterErrorMessages(m);
+
+    // If there was an error, we want to delete the last User message + failed retrievals because it was not processed
+    if (error !== null) {
+      await deleteLastUnprocessedMessages(m);
+      setError(null);
+    }
+
     const userMessage: ChatMessageType = {
       sId: client_side_new_id(),
       role: "user",
@@ -1008,10 +1011,7 @@ export default function AppChat({
       }
     } catch (e: any) {
       console.log("ERROR", e.message);
-      await updateMessages(m, {
-        role: "error",
-        message: e.message,
-      } as ChatMessageType);
+      setError(e.message);
     }
 
     // Update title and save the conversation.
@@ -1193,25 +1193,7 @@ export default function AppChat({
                   <div>
                     <div className="text-sm">
                       {messages.map((m, i) => {
-                        return m.role === "error" ? (
-                          <div key={i}>
-                            <div className="my-1 ml-10 flex flex-col">
-                              <div className="flex-initial text-sm font-bold text-red-500">
-                                Oops. An error occured and the team has been
-                                notified.
-                              </div>
-                              <div className="my-1 flex-initial text-sm text-gray-500">
-                                You can safely continue the conversation, this
-                                error and your last message will be removed from
-                                the conversation. Don't hesitate to reach out if
-                                the problem persists.
-                              </div>
-                              <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
-                                {m.message}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
+                        return (
                           <div key={i} className="group">
                             <MessageView
                               user={user}
@@ -1247,6 +1229,23 @@ export default function AppChat({
                           />
                         </div>
                       ) : null}
+                      {error !== null && (
+                        <div className="my-1 ml-10 flex flex-col">
+                          <div className="flex-initial text-sm font-bold text-red-500">
+                            Oops. An error occured and the team has been
+                            notified.
+                          </div>
+                          <div className="my-1 flex-initial text-sm text-gray-500">
+                            You can safely continue the conversation, this error
+                            and your last message will be removed from the
+                            conversation. Don't hesitate to reach out if the
+                            problem persists.
+                          </div>
+                          <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
+                            {error}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
