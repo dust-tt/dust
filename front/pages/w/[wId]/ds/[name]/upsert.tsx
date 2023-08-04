@@ -247,7 +247,7 @@ export default function DataSourceUpsert({
                         id="document"
                         readOnly={readOnly}
                         className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md border border-gray-300 bg-structure-50 p-1 text-sm",
+                          "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
                           "border-gray-300",
                           readOnly
                             ? "focus:border-gray-300 focus:ring-0"
@@ -290,7 +290,8 @@ export default function DataSourceUpsert({
                           id="document"
                           readOnly={readOnly}
                           className={classNames(
-                            "block w-full min-w-0 flex-1 rounded-md border border-gray-300 bg-structure-50 p-1 text-sm",
+                            "block w-full min-w-0 flex-1 rounded-md text-sm",
+                            "border-gray-300",
                             readOnly
                               ? "focus:border-gray-300 focus:ring-0"
                               : "focus:border-action-500 focus:ring-action-500"

@@ -173,7 +173,7 @@ export default function DataSourceNew({
                         name="name"
                         id="dataSourceName"
                         className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-none rounded-r-md border border-gray-300 bg-structure-50 p-1 text-sm",
+                          "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
                           dataSourceNameError
                             ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                             : "border-gray-300 focus:border-action-500 focus:ring-action-500"
@@ -204,7 +204,7 @@ export default function DataSourceNew({
                         type="text"
                         name="description"
                         id="dataSourceDescription"
-                        className="block w-full min-w-0 flex-1 rounded-md border border-gray-300  bg-structure-50 p-1 text-sm focus:border-action-500 focus:ring-action-500"
+                        className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
                         value={dataSourceDescription}
                         onChange={(e) =>
                           setDataSourceDescription(e.target.value)
