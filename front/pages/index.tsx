@@ -14,6 +14,7 @@ import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
+import LayeredImages from "@app/components/home/layeredImages";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -218,6 +219,17 @@ export default function Home({
                     className="z-10 mx-auto w-[500px] rotate-2"
                     src="/static/landing_data_sources.png"
                   />
+                  <div className="h-[500px] w-[500px]">
+                    <LayeredImages
+                      imagePaths={[
+                        "/static/landing_data_sources_a.png",
+                        "/static/landing_data_sources_b.png",
+                        "/static/landing_data_sources_c.png",
+                      ]}
+                      imageScale={1.2}
+                      zMax={1}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
