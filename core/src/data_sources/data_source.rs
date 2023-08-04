@@ -856,12 +856,13 @@ impl DataSource {
                 read_consistency: None,
             })
             .await?;
+
         utils::done(&format!(
-                "Finished searching Qdrant documents : collection_name={}, duration={}ms, results_count={}",
-                self.qdrant_collection(),
-                utils::now() - start_search_points_time,
-                results.result.len()
-            ));
+            "DSSTAT Finished searching Qdrant documents: collection_name={}, duration={}ms, results_count={}",
+            self.qdrant_collection(),
+            utils::now() - start_search_points_time,
+            results.result.len()
+        ));
 
         let time_chunk_start = utils::now();
         let chunks = results
@@ -910,7 +911,7 @@ impl DataSource {
             .collect::<Result<Vec<_>>>()?;
 
         utils::done(&format!(
-            "Finished chunking documents : collection_name={}, duration={}ms, chunk_length={}",
+            "DSSTAT Finished chunking documents: collection_name={}, duration={}ms, chunk_length={}",
             self.qdrant_collection(),
             utils::now() - time_chunk_start,
             chunks.len(),
@@ -976,11 +977,11 @@ impl DataSource {
             .await?;
 
         utils::done(&format!(
-                "Finished fetching documents from the store : collection_name={}, duration={}ms, document_len={}",
-                self.qdrant_collection(),
-                utils::now() - time_store_start,
-                documents.len(),
-            ));
+            "DSSTAT Finished fetching documents from the store: collection_name={}, duration={}ms, document_len={}",
+            self.qdrant_collection(),
+            utils::now() - time_store_start,
+            documents.len(),
+        ));
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
@@ -1165,8 +1166,9 @@ impl DataSource {
                 })
                 .collect::<Vec<_>>(),
         };
+
         utils::done(&format!(
-            "Finished scrolling documents : collection_name={}, duration={}ms, results_count={}",
+            "DSSTAT Finished scrolling documents: collection_name={}, duration={}ms, results_count={}",
             self.qdrant_collection(),
             utils::now() - time_qdrant_scroll_time,
             documents.len(),
