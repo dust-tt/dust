@@ -1283,16 +1283,28 @@ export default function AppChat({
                     <div className="flex flex-row items-center">
                       <div className="flex flex-1 flex-row items-end items-stretch">
                         <TextareaAutosize
+                          disabled={true} // to delete
                           minRows={1}
-                          placeholder={"Ask a question"}
+                          // placeholder={"Ask a question"}
+                          placeholder={
+                            "Assistant is undergoing scheduled maintenance and will be back shortly."
+                          }
                           className={classNames(
                             "flex w-full resize-none bg-white text-base ring-0 focus:ring-0",
                             "rounded-sm rounded-xl border-2",
-                            "border-action-200 text-element-800 drop-shadow-2xl focus:border-action-300 focus:ring-0",
+                            "text-orange-500", // to delete
+                            "text-sm font-medium", // to delete
+                            // "border-action-200",
+                            "border-structure-500", // to delete
+                            // "text-element-800",
+                            " drop-shadow-2xl focus:border-action-300 focus:ring-0",
                             "placeholder-gray-400",
                             "px-3 py-3 pr-8"
                           )}
-                          value={input}
+                          // value={input}
+                          value={
+                            "🚧 Assistant is undergoing scheduled maintenance. Continuing or starting new conversations will be back shortly."
+                          }
                           onChange={(e) => {
                             handleInputUpdate(e.target.value);
                           }}
@@ -1306,7 +1318,7 @@ export default function AppChat({
                           autoFocus={true}
                         />
                         <div className={classNames("z-10 -ml-8 flex flex-col")}>
-                          {!loading ? (
+                          {/* {!loading ? (
                             <PaperAirplaneSolidIcon
                               className="my-auto h-5 w-5 cursor-pointer text-action-500"
                               onClick={() => {
@@ -1317,7 +1329,7 @@ export default function AppChat({
                             <div className="my-auto mb-3.5 ml-1 h-4 w-4">
                               <Spinner />
                             </div>
-                          )}
+                          )} */}
                         </div>
                       </div>
                     </div>
