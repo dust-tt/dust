@@ -923,7 +923,7 @@ export default function AppChat({
     setResponse(null);
   };
 
-  async function deleteLastUnprocessedMessages(
+  async function deleteLastUnprocessedUserMessageAndRetrievals(
     messages: ChatMessageType[]
   ): Promise<void> {
     let message = null;
@@ -955,7 +955,7 @@ export default function AppChat({
 
     // If there was an error, we want to delete the last User message + failed retrievals because it was not processed
     if (error !== null) {
-      await deleteLastUnprocessedMessages(m);
+      await deleteLastUnprocessedUserMessageAndRetrievals(m);
       setError(null);
     }
 
