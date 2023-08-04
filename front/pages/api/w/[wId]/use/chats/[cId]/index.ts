@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteChatSession,
+  getChatSession,
   getChatSessionWithMessages,
   upsertChatSession,
 } from "@app/lib/api/chat";
@@ -87,20 +88,19 @@ async function handler(
     });
   }
 
+  if (!(typeof req.query.cId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `cId` (string) is required.",
+      },
+    });
+  }
+  const cId = req.query.cId;
+
   switch (req.method) {
     case "POST": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
-
-      const cId = req.query.cId;
-
       const pRes = parse_payload(chatSessionCreateSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
@@ -108,29 +108,22 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await upsertChatSession(auth, cId, s.title || null, null);
+      const chatSession = await upsertChatSession(
+        auth,
+        cId,
+        s.title || null,
+        null
+      );
 
       res.status(200).json({
-        session,
+        session: chatSession,
       });
       return;
     }
 
     case "PATCH": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
-
-      const cId = req.query.cId;
-      const session = await getChatSessionWithMessages(auth, cId);
-
-      if (!session) {
+      const chatSession = await getChatSession(auth, cId);
+      if (!chatSession) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -141,7 +134,7 @@ async function handler(
       }
 
       const user = auth.user();
-      if (!user?.id || user.id !== session.userId) {
+      if (!user?.id || user.id !== chatSession.userId) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -171,63 +164,55 @@ async function handler(
     }
 
     case "GET": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
+      const chatSession = await getChatSessionWithMessages(auth, cId);
 
-      const cId = req.query.cId;
-
-      const session = await getChatSessionWithMessages(auth, cId);
-
-      if (!session) {
+      if (!chatSession) {
         return res.status(200).json({ session: null });
       }
 
       res.status(200).json({
-        session,
+        session: chatSession,
       });
       return;
     }
 
     case "DELETE": {
-      if (!(typeof req.query.cId === "string")) {
+      const user = auth.user();
+      const chatSession = await getChatSession(auth, cId);
+
+      if (!chatSession) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 404,
           api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
+            type: "chat_session_not_found",
+            message:
+              "There was a problem retrieving the conversation to delete.",
           },
         });
       }
 
-      const user = auth.user();
-      if (!user?.id || user.id !== session.userId) {
+      if (!user?.id || user.id !== chatSession.userId) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "chat_session_auth_error",
-            message: "The chat session can only be deleted by its author.",
+            message: "The conversation can only be deleted by its author.",
           },
         });
       }
 
-      if (await deleteChatSession(auth, req.query.cId)) {
+      if (await deleteChatSession(auth, cId)) {
         res.status(200).json({
           session,
         });
         return;
       }
+
       return apiError(req, res, {
-        status_code: 404,
+        status_code: 500,
         api_error: {
-          type: "chat_session_not_found",
-          message: "The chat session is not yours or was not found.",
+          type: "internal_server_error",
+          message: "Couldn't delete the conversation.",
         },
       });
     }
@@ -238,7 +223,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST or PATCH is expected.",
+            "The method passed is not supported, GET or POST or PATCH or DELETE is expected.",
         },
       });
   }
