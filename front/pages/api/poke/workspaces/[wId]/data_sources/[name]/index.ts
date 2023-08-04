@@ -114,7 +114,7 @@ async function handler(
       await dataSource.destroy();
 
       await launchScrubDataSourceWorkflow({
-        workspaceId: workspace.sId,
+        wId: workspace.sId,
         dustAPIProjectId,
       });
 

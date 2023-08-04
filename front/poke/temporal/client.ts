@@ -3,10 +3,10 @@ import { getTemporalClient } from "@app/lib/temporal";
 import { scrubDataSourceWorkflow } from "./workflows";
 
 export async function launchScrubDataSourceWorkflow({
-  workspaceId,
+  wId,
   dustAPIProjectId,
 }: {
-  workspaceId: string;
+  wId: string;
   dustAPIProjectId: string;
 }) {
   const client = await getTemporalClient();
@@ -18,6 +18,6 @@ export async function launchScrubDataSourceWorkflow({
       },
     ],
     taskQueue: "poke-queue",
-    workflowId: `poke-${workspaceId}-scrub-data-source-${dustAPIProjectId}`,
+    workflowId: `poke-${wId}-scrub-data-source-${dustAPIProjectId}`,
   });
 }
