@@ -18,6 +18,6 @@ export async function launchScrubDataSourceWorkflow({
       },
     ],
     taskQueue: "poke-queue",
-    workflowId: `scrub-data-source-${workspaceId}-${dustAPIProjectId}`,
+    workflowId: `poke-${workspaceId}-scrub-data-source-${dustAPIProjectId}`,
   });
 }
