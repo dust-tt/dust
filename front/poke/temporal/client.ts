@@ -55,5 +55,18 @@ export async function listPokeWorkflowsForWorkspace({
     });
   }
 
-  return executions;
+  // sort by start time (desc)
+  // if no start time, add to the end
+  return executions.sort((a, b) => {
+    if (!a.startTime && !b.startTime) {
+      return 0;
+    }
+    if (!a.startTime) {
+      return 1;
+    }
+    if (!b.startTime) {
+      return -1;
+    }
+    return b.startTime.getTime() - a.startTime.getTime();
+  });
 }
