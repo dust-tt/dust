@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteChatSession,
+  getChatSession,
   getChatSessionWithMessages,
   upsertChatSession,
 } from "@app/lib/api/chat";
@@ -207,27 +208,42 @@ async function handler(
       }
 
       const user = auth.user();
-      if (!user?.id || user.id !== session.userId) {
+      const chatSessionId = req.query.cId;
+      const chatSession = await getChatSession(auth, chatSessionId);
+
+      if (!chatSession) {
         return apiError(req, res, {
-          status_code: 403,
+          status_code: 404,
           api_error: {
-            type: "chat_session_auth_error",
-            message: "The chat session can only be deleted by its author.",
+            type: "chat_session_not_found",
+            message:
+              "There was a problem retrieving the conversation to delete.",
           },
         });
       }
 
-      if (await deleteChatSession(auth, req.query.cId)) {
+      if (!user?.id || user.id !== chatSession.userId) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "chat_session_auth_error",
+            message: "The conversation can only be deleted by its author.",
+          },
+        });
+      }
+
+      if (await deleteChatSession(auth, chatSessionId)) {
         res.status(200).json({
           session,
         });
         return;
       }
+
       return apiError(req, res, {
-        status_code: 404,
+        status_code: 500,
         api_error: {
-          type: "chat_session_not_found",
-          message: "The chat session is not yours or was not found.",
+          type: "internal_server_error",
+          message: "Couldn't delete the conversation.",
         },
       });
     }
@@ -238,7 +254,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST or PATCH is expected.",
+            "The method passed is not supported, GET or POST or PATCH or DELETE is expected.",
         },
       });
   }
