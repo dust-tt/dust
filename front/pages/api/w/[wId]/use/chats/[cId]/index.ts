@@ -88,20 +88,19 @@ async function handler(
     });
   }
 
+  if (!(typeof req.query.cId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `cId` (string) is required.",
+      },
+    });
+  }
+  const cId = req.query.cId;
+
   switch (req.method) {
     case "POST": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
-
-      const cId = req.query.cId;
-
       const pRes = parse_payload(chatSessionCreateSchema, req.body);
       if (pRes.isErr()) {
         res.status(400).end();
@@ -109,29 +108,22 @@ async function handler(
       }
       const s = pRes.value;
 
-      const session = await upsertChatSession(auth, cId, s.title || null, null);
+      const chatSession = await upsertChatSession(
+        auth,
+        cId,
+        s.title || null,
+        null
+      );
 
       res.status(200).json({
-        session,
+        session: chatSession,
       });
       return;
     }
 
     case "PATCH": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
-
-      const cId = req.query.cId;
-      const session = await getChatSessionWithMessages(auth, cId);
-
-      if (!session) {
+      const chatSession = await getChatSession(auth, cId);
+      if (!chatSession) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -142,7 +134,7 @@ async function handler(
       }
 
       const user = auth.user();
-      if (!user?.id || user.id !== session.userId) {
+      if (!user?.id || user.id !== chatSession.userId) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -172,44 +164,21 @@ async function handler(
     }
 
     case "GET": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
+      const chatSession = await getChatSessionWithMessages(auth, cId);
 
-      const cId = req.query.cId;
-
-      const session = await getChatSessionWithMessages(auth, cId);
-
-      if (!session) {
+      if (!chatSession) {
         return res.status(200).json({ session: null });
       }
 
       res.status(200).json({
-        session,
+        session: chatSession,
       });
       return;
     }
 
     case "DELETE": {
-      if (!(typeof req.query.cId === "string")) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters, `cId` (string) is required.",
-          },
-        });
-      }
-
       const user = auth.user();
-      const chatSessionId = req.query.cId;
-      const chatSession = await getChatSession(auth, chatSessionId);
+      const chatSession = await getChatSession(auth, cId);
 
       if (!chatSession) {
         return apiError(req, res, {
@@ -232,7 +201,7 @@ async function handler(
         });
       }
 
-      if (await deleteChatSession(auth, chatSessionId)) {
+      if (await deleteChatSession(auth, cId)) {
         res.status(200).json({
           session,
         });
