@@ -215,7 +215,6 @@ export async function syncFiles(
   const subfolders = filesToSync
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((file) => file.id);
-  console.log("folder to expand", subfolders);
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   await Promise.all(
     filesToSync.map((file) => {
@@ -839,12 +838,4 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
     await googleDriveFile.destroy();
   }
   return;
-}
-
-export async function testActivity(i: number, queue: number[]) {
-  console.log("testActivity", i, queue);
-
-  return new Promise((resolve) => {
-    setTimeout(resolve, 2000);
-  });
 }
