@@ -165,9 +165,13 @@ export async function syncFiles(
   connectorId: ModelId,
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
+  folderId: string,
   nextPageToken?: string
-) {
-  const foldersIds = await getFoldersToSync(connectorId);
+): Promise<{
+  nextPageToken: string | null;
+  count: number;
+  subfolders: string[];
+}> {
   const authCredentials = await getAuthObject(nangoConnectionId);
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
@@ -177,6 +181,7 @@ export async function syncFiles(
     supportsAllDrives: true,
     fields:
       "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+    q: `'${folderId}' in parents`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
@@ -207,31 +212,29 @@ export async function syncFiles(
           : undefined,
       };
     });
+  const subfolders = filesToSync
+    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
+    .map((file) => file.id);
+  console.log("folder to expand", subfolders);
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
-        const shouldSync = await objectIsInFolder(
+        await syncOneFile(
+          connectorId,
           authCredentials,
-          file.id,
-          foldersIds
+          dataSourceConfig,
+          file,
+          true // isBatchSync
         );
-        if (shouldSync) {
-          await syncOneFile(
-            connectorId,
-            authCredentials,
-            dataSourceConfig,
-            file,
-            true // isBatchSync
-          );
-        }
       });
     })
   );
 
   return {
-    nextPageToken: res.data.nextPageToken,
+    nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count: res.data.files.length,
+    subfolders: subfolders,
   };
 }
 
@@ -836,4 +839,12 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
     await googleDriveFile.destroy();
   }
   return;
+}
+
+export async function testActivity(i: number, queue: number[]) {
+  console.log("testActivity", i, queue);
+
+  return new Promise((resolve) => {
+    setTimeout(resolve, 2000);
+  });
 }

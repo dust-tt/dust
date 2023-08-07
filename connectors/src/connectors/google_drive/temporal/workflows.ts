@@ -19,6 +19,7 @@ const {
   getDrivesIds,
   incrementalSync,
   garbageCollector,
+  getFoldersToSync,
   renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
@@ -53,26 +54,36 @@ export async function googleDriveFullSync(
     signaled = false;
     let totalCount = 0;
     let nextPageToken: string | undefined = undefined;
-    do {
-      if (signaled) {
-        console.log(
-          "Folders selection changed, should start the sync all over again."
-        );
-        break;
+    let foldersToBrowse: string[] = await getFoldersToSync(connectorId);
+    while (foldersToBrowse.length > 0) {
+      const folderId = foldersToBrowse.pop();
+      if (!folderId) {
+        throw new Error("folderId should be defined");
       }
-      const res = await syncFiles(
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        nextPageToken
-      );
-      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
-      totalCount += res.count;
-      await reportInitialSyncProgress(
-        connectorId,
-        `Synced ${totalCount} files`
-      );
-    } while (nextPageToken);
+      do {
+        if (signaled) {
+          console.log(
+            "Folders selection changed, should start the sync all over again."
+          );
+          break;
+        }
+        const res = await syncFiles(
+          connectorId,
+          nangoConnectionId,
+          dataSourceConfig,
+          folderId,
+          nextPageToken
+        );
+        nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+        totalCount += res.count;
+        foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+
+        await reportInitialSyncProgress(
+          connectorId,
+          `Synced ${totalCount} files`
+        );
+      } while (nextPageToken);
+    }
   }
   await syncSucceeded(connectorId);
 
