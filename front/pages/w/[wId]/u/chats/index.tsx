@@ -4,7 +4,6 @@ import {
   PageHeader,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { ChatSidebarMenu } from "@app/components/use/chat/ChatSidebarMenu";
@@ -70,8 +69,6 @@ export default function AppChatWorkspaceConversations({
   hasManagedDatasources,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
   const { sessions } = useChatSessions(owner, {
     limit: 256,
     offset: 0,

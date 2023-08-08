@@ -41,7 +41,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { getChatSessionWithMessages } from "@app/lib/api/chat";
 import {
   Authenticator,
   getSession,

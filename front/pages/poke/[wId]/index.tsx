@@ -225,8 +225,7 @@ const WorkspacePage = ({
           {workspace.name}{" "}
           <span>
             <Link
-              href={`https://metabase.dust.tt/question/18-poke-workspace-members?sId=${workspace.sId}`}
-              target="_blank"
+              href={`/poke/${workspace.sId}/memberships`}
               className="text-xs text-action-400"
             >
               view members

@@ -43,7 +43,10 @@ function init() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById("canvas-container")!.appendChild(renderer.domElement);
+  const container = document.getElementById("canvas-container");
+  if (container) {
+    container.appendChild(renderer.domElement);
+  }
 
   const geometry = new THREE.BufferGeometry();
   const vertices = [];
@@ -266,16 +269,16 @@ function calculateTargetPositions() {
       z: targetPositionZ + sceneFocusZ,
     });
   }
-  let aDuration, RotateX, RotateY;
-  if (!explode) {
-    aDuration = 4.5;
-    RotateX = 4;
-    RotateY = 2;
-  } else {
-    aDuration = 1.5;
-    RotateX = 2;
-    RotateY = 0;
-  }
+  // let aDuration, RotateX, RotateY;
+  // if (!explode) {
+  //   aDuration = 4.5;
+  //   RotateX = 4;
+  //   RotateY = 2;
+  // } else {
+  //   aDuration = 1.5;
+  //   RotateX = 2;
+  //   RotateY = 0;
+  // }
 }
 
 type ParticulesComponentProps = {
@@ -296,7 +299,7 @@ export default function Particules({
       animate();
     }
 
-    const onScroll = (event: Event) => {
+    const onScroll = () => {
       const offset = window.innerHeight / 2;
       const yPositions = [
         0,
