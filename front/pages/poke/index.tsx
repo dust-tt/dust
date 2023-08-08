@@ -36,6 +36,7 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 const Dashboard = (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   const {

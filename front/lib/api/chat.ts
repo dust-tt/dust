@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";

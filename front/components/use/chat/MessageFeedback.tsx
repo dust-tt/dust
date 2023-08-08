@@ -1,7 +1,6 @@
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  IconButton,
   IconToggleButton,
 } from "@dust-tt/sparkle";
 
