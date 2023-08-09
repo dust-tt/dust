@@ -10,20 +10,15 @@ import {
   launchRunPostDeleteHooksWorkflow,
   launchRunPostUpsertHooksWorkflow,
 } from "@app/documents_post_process_hooks/temporal/client";
-import {
-  credentialsFromProviders,
-  dustManagedCredentials,
-} from "@app/lib/api/credentials";
+import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Provider } from "@app/lib/models";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
-import { CredentialsType } from "@app/types/provider";
 
 export const config = {
   api: {
@@ -265,18 +260,8 @@ async function handler(
         });
       }
 
-      let credentials: CredentialsType | null = null;
-      if (keyRes.value.isSystem) {
-        // Dust managed credentials: system API key (managed data source).
-        credentials = dustManagedCredentials();
-      } else {
-        const providers = await Provider.findAll({
-          where: {
-            workspaceId: keyRes.value.workspaceId,
-          },
-        });
-        credentials = credentialsFromProviders(providers);
-      }
+      // Dust managed credentials: all data sources.
+      const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
       const upsertRes = await CoreAPI.upsertDataSourceDocument({
