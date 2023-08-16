@@ -603,7 +603,9 @@ function parsePropertyText(
     case "last_edited_time":
       return property.last_edited_time;
     case "title":
-      return property.title.map((t) => t.plain_text).join(" ");
+      return property.title
+        ? property.title.map((t) => t.plain_text).join(" ")
+        : null;
     case "rich_text":
       return property.rich_text.map((t) => t.plain_text).join(" ");
     case "people":
