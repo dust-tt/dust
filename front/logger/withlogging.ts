@@ -49,7 +49,8 @@ export const withLogging = (handler: any) => {
 
     const tags = [
       `method:${req.method}`,
-      `url:${req.url}`,
+      // Removed due to high cardinality
+      // `url:${req.url}`,
       `status_code:${res.statusCode}`,
     ];
 
