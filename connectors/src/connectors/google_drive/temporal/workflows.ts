@@ -17,7 +17,6 @@ import { newFoldersSelectionSignal, newWebhookSignal } from "./signals";
 const {
   syncFiles,
   getDrivesIds,
-  incrementalSync,
   garbageCollector,
   renewWebhooks,
   populateSyncTokens,
@@ -25,6 +24,10 @@ const {
   getLastGCTime,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
+});
+
+const { incrementalSync } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "120 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
