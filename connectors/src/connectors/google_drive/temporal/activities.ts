@@ -92,7 +92,7 @@ export async function getAuthObject(
   const res: NangoGetConnectionRes = await nango_client().getConnection(
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
     nangoConnectionId,
-    true,
+    false,
     true
   );
   const oauth2Client = new google.auth.OAuth2();
