@@ -1134,7 +1134,7 @@ export default function AppChat({
         )
       }
     >
-      <div className="flex flex-col pt-4">
+      <>
         {!canStartConversation && (
           <>
             <PageHeader
@@ -1187,65 +1187,62 @@ export default function AppChat({
         {canStartConversation && (
           <>
             <div className="flex-1">
-              <div className="-mt-4 pb-32">
+              <div className="pb-32">
                 {messages.length > 0 ? (
-                  <div>
-                    <div className="text-sm">
-                      {messages.map((m, i) => {
-                        return (
-                          <div key={i} className="group">
-                            <MessageView
-                              user={user}
-                              message={m}
-                              loading={false}
-                              // isLatest={
-                              //   !response && i === messages.length - 1
-                              // }
-                              isLatestRetrieval={isLatest("retrieval", i)}
-                              readOnly={readOnly}
-                              feedback={
-                                !readOnly &&
-                                m.role === "assistant" && {
-                                  handler: handleFeedback,
-                                  hover: response
-                                    ? true
-                                    : i !== messages.length - 1,
-                                }
-                              }
-                            />
-                          </div>
-                        );
-                      })}
-                      {response ? (
-                        <div key={messages.length}>
+                  <div className="text-sm">
+                    {messages.map((m, i) => {
+                      return (
+                        <div key={i} className="group">
                           <MessageView
                             user={user}
-                            message={response}
-                            loading={true}
-                            // isLatest={true}
-                            isLatestRetrieval={response.role === "retrieval"}
+                            message={m}
+                            loading={false}
+                            // isLatest={
+                            //   !response && i === messages.length - 1
+                            // }
+                            isLatestRetrieval={isLatest("retrieval", i)}
                             readOnly={readOnly}
+                            feedback={
+                              !readOnly &&
+                              m.role === "assistant" && {
+                                handler: handleFeedback,
+                                hover: response
+                                  ? true
+                                  : i !== messages.length - 1,
+                              }
+                            }
                           />
                         </div>
-                      ) : null}
-                      {error !== null && (
-                        <div className="my-1 ml-10 flex flex-col">
-                          <div className="flex-initial text-sm font-bold text-red-500">
-                            Oops. An error occured and the team has been
-                            notified.
-                          </div>
-                          <div className="my-1 flex-initial text-sm text-gray-500">
-                            You can safely continue the conversation, this error
-                            and your last message will be removed from the
-                            conversation. Don't hesitate to reach out if the
-                            problem persists.
-                          </div>
-                          <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
-                            {error}
-                          </div>
+                      );
+                    })}
+                    {response ? (
+                      <div key={messages.length}>
+                        <MessageView
+                          user={user}
+                          message={response}
+                          loading={true}
+                          // isLatest={true}
+                          isLatestRetrieval={response.role === "retrieval"}
+                          readOnly={readOnly}
+                        />
+                      </div>
+                    ) : null}
+                    {error !== null && (
+                      <div className="my-1 ml-10 flex flex-col">
+                        <div className="flex-initial text-sm font-bold text-red-500">
+                          Oops. An error occured and the team has been notified.
                         </div>
-                      )}
-                    </div>
+                        <div className="my-1 flex-initial text-sm text-gray-500">
+                          You can safely continue the conversation, this error
+                          and your last message will be removed from the
+                          conversation. Don't hesitate to reach out if the
+                          problem persists.
+                        </div>
+                        <div className="mt-1 flex-initial border-l-4 border-gray-200 pl-2 text-sm italic text-gray-400">
+                          {error}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -1378,7 +1375,7 @@ export default function AppChat({
             )}
           </>
         )}
-      </div>
+      </>
     </AppLayout>
   );
 }
