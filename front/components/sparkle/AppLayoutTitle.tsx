@@ -44,34 +44,28 @@ export function AppLayoutTitle({
   return (
     <div className="flex h-full flex-row items-center">
       <div className="flex flex-initial pl-10 font-bold">
-        {shareLink ? (
-          <div
-            onClick={() => {
-              if (shareLink) {
-                void handleClick();
-              }
-            }}
-            className={classNames(
-              "w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0",
-              shareLink && "cursor-pointer"
-            )}
-          >
-            <span>{title}</span>
-            {shareLink && (
-              <span className="pl-1">
-                {copyLinkSuccess ? (
-                  <CheckCircleIcon className="inline-block h-4 w-4 text-action-500" />
-                ) : (
-                  <LinkIcon className="inline-block h-4 w-4 text-gray-300 hover:text-action-500" />
-                )}
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0">
-            {title}
-          </div>
-        )}
+        <div
+          onClick={() => {
+            if (shareLink) {
+              void handleClick();
+            }
+          }}
+          className={classNames(
+            "w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0",
+            shareLink ? "cursor-pointer" : ""
+          )}
+        >
+          <span>{title}</span>
+          {shareLink && (
+            <span className="pl-1">
+              {copyLinkSuccess ? (
+                <CheckCircleIcon className="inline-block h-4 w-4 text-action-500" />
+              ) : (
+                <LinkIcon className="inline-block h-4 w-4 text-gray-300 hover:text-action-500" />
+              )}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex flex-1"></div>
       <div className="-ml-8 hidden flex-initial space-x-1 lg:ml-0 lg:flex">
