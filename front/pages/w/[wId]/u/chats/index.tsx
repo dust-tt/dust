@@ -97,34 +97,30 @@ export default function AppChatWorkspaceConversations({
         />
       }
     >
-      <div className="pt-4">
-        <>
-          <PageHeader
-            title="Workspace conversations"
-            icon={ChatBubbleBottomCenterTextIcon}
-          />
-          <div className="mt-16">
-            {workspaceSessions.length === 0 ? (
-              <p className="text-sm">
-                No conversations were yet shared for the workspace!
-              </p>
-            ) : (
-              workspaceSessions.map((s) => {
-                return (
-                  <div key={s.sId}>
-                    <Item
-                      size="md"
-                      label={s.title || ""}
-                      className="w-full"
-                      href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                    />
-                    <div className="my-4 border-t border-gray-200" />
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </>
+      <PageHeader
+        title="Workspace conversations"
+        icon={ChatBubbleBottomCenterTextIcon}
+      />
+      <div className="mt-16">
+        {workspaceSessions.length === 0 ? (
+          <p className="text-sm">
+            No conversations were yet shared for the workspace!
+          </p>
+        ) : (
+          workspaceSessions.map((s) => {
+            return (
+              <div key={s.sId}>
+                <Item
+                  size="md"
+                  label={s.title || ""}
+                  className="w-full"
+                  href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                />
+                <div className="my-4 border-t border-gray-200" />
+              </div>
+            );
+          })
+        )}
       </div>
     </AppLayout>
   );
