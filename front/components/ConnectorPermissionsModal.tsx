@@ -118,6 +118,14 @@ function PermissionTreeChildren({
     Record<string, boolean>
   >({});
 
+  if (isResourcesError) {
+    return (
+      <div className="text-red-300">
+        Failed to retrieve permissions likely due to a revoked authorization.
+      </div>
+    );
+  }
+
   return (
     <div className="ml-2">
       <>
@@ -160,7 +168,6 @@ function PermissionTreeChildren({
             })}
           </div>
         )}
-        {isResourcesError && <div className="text-red-300">Failed to load</div>}
       </>
     </div>
   );

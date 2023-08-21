@@ -25,8 +25,20 @@ import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
-export const fetcher = (...args: Parameters<typeof fetch>) =>
-  fetch(...args).then((res) => res.json());
+export const fetcher = async (...args: Parameters<typeof fetch>) =>
+  fetch(...args).then(async (res) => {
+    if (res.status >= 300) {
+      const errorText = await res.text();
+      console.error(
+        "Error returned by the front API: ",
+        res.status,
+        res.headers,
+        errorText
+      );
+      throw new Error(errorText);
+    }
+    return res.json();
+  });
 
 export function useDatasets(owner: WorkspaceType, app: AppType) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
