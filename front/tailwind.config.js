@@ -1,5 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-// @ts-ignore complex bugs arise when fixing this; delaying until later
 const colors = require("tailwindcss/colors");
 
 module.exports = {
