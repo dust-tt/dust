@@ -27,9 +27,14 @@ import { WorkspaceType } from "@app/types/user";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
-    if (res.status >= 300) { 
+    if (res.status >= 300) {
       const errorText = await res.text();
-      console.error('Error returned by the front API: ', res.status, res.headers, errorText);
+      console.error(
+        "Error returned by the front API: ",
+        res.status,
+        res.headers,
+        errorText
+      );
       throw new Error(errorText);
     }
     return res.json();
