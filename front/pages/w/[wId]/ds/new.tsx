@@ -64,6 +64,8 @@ export default function DataSourceNew({
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
+  const [assistantDefaultSelected, setAssistantDefaultSelected] =
+    useState(true);
 
   const [dataSourceDescription, setDataSourceDescription] = useState("");
   const [dataSourceVisibility, setDataSourceVisibility] = useState(
@@ -117,6 +119,7 @@ export default function DataSourceNew({
         name: dataSourceName,
         description: dataSourceDescription,
         visibility: dataSourceVisibility,
+        assistantDefaultSelected,
       }),
     });
     if (res.ok) {
@@ -278,6 +281,36 @@ export default function DataSourceNew({
                         </div>
                       </div>
                     </fieldset>
+                  </div>
+                  <div className="mt-2 sm:col-span-6">
+                    <div className="flex justify-between">
+                      <label
+                        htmlFor="assistantDefaultSelected"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Automatically select this Data Source for Assistant
+                        queries
+                      </label>
+                    </div>
+                    <div className="mt-2 flex items-center">
+                      <input
+                        id="assistantDefaultSelected"
+                        name="assistantDefaultSected"
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                        checked={assistantDefaultSelected}
+                        onChange={(e) =>
+                          setAssistantDefaultSelected(e.target.checked)
+                        }
+                      />
+                      <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                        The assistant will use the DataSource by default when
+                        answering questions. Users can still choose not to use
+                        the DataSource for a given conversation with the
+                        assistant by clicking on the DataSource's icon below the
+                        chat input.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

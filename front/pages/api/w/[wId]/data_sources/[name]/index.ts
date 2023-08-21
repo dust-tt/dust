@@ -79,6 +79,7 @@ async function handler(
           connectorId: dataSource.connectorId,
           connectorProvider: dataSource.connectorProvider,
           userUpsertable: dataSource.userUpsertable,
+          assistantDefaultSelected: dataSource.assistantDefaultSelected,
         },
       });
       return;
@@ -109,7 +110,8 @@ async function handler(
         !req.body ||
         !(typeof req.body.description == "string") ||
         !(typeof req.body.userUpsertable == "boolean") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["public", "private"].includes(req.body.visibility) ||
+        !(typeof req.body.assistantDefaultSelected == "boolean")
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -127,6 +129,7 @@ async function handler(
         description,
         visibility: req.body.visibility,
         userUpsertable: req.body.userUpsertable,
+        assistantDefaultSelected: req.body.assistantDefaultSelected,
       });
 
       return res.status(200).json({
@@ -135,6 +138,7 @@ async function handler(
           name: ds.name,
           description: ds.description,
           visibility: ds.visibility,
+          assistantDefaultSelected: ds.assistantDefaultSelected,
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
           connectorId: ds.connectorId,

@@ -114,26 +114,19 @@ export const getServerSideProps: GetServerSideProps<{
       name: ds.name,
       description: ds.description,
       provider: ds.connectorProvider || "none",
-      selected: ds.connectorProvider ? true : false,
+      selected: ds.assistantDefaultSelected,
     };
   });
 
-  // Select Data Sources if none are managed.
-  if (!dataSources.some((ds) => ds.provider !== "none")) {
-    for (const ds of dataSources) {
-      ds.selected = true;
-    }
-  }
-
   // Manged first, then alphabetically
   dataSources.sort((a, b) => {
-    if (a.provider === "none") {
-      return b.provider === "none" ? 0 : 1;
+    if (a.provider === "none" && b.provider !== "none") {
+      return 1;
     }
-    if (b.provider === "none") {
+    if (a.provider !== "none" && b.provider === "none") {
       return -1;
     }
-    if (a.provider < b.provider) {
+    if (a.name < b.name) {
       return -1;
     } else {
       return 1;

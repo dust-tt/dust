@@ -65,14 +65,15 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["public", "private"].includes(req.body.visibility) ||
+        !(typeof req.body.assistantDefaultSelected == "boolean")
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { name, description, provider_id, model_id, max_chunk_size, visibility }.",
+              "The request body is invalid, expects { name, description, provider_id, model_id, max_chunk_size, visibility, assistantDefaultSelected }.",
           },
         });
       }
@@ -154,6 +155,7 @@ async function handler(
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
+        assistantDefaultSelected: req.body.assistantDefaultSelected,
         userUpsertable: req.body.userUpsertable,
       });
 
@@ -166,6 +168,7 @@ async function handler(
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
           userUpsertable: ds.userUpsertable,
+          assistantDefaultSelected: ds.assistantDefaultSelected,
         },
       });
       return;
