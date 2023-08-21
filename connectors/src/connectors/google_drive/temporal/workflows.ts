@@ -18,10 +18,12 @@ const {
   syncFiles,
   getDrivesIds,
   garbageCollector,
+  getFoldersToSync,
   renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
   getLastGCTime,
+  cleanupDedupList,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -56,26 +58,46 @@ export async function googleDriveFullSync(
     signaled = false;
     let totalCount = 0;
     let nextPageToken: string | undefined = undefined;
-    do {
+    const runId = `${new Date().getTime()}`;
+    let foldersToBrowse: string[] = await getFoldersToSync(connectorId);
+
+    while (foldersToBrowse.length > 0) {
+      const folderId = foldersToBrowse.pop();
+      if (!folderId) {
+        throw new Error("folderId should be defined");
+      }
       if (signaled) {
         console.log(
-          "Folders selection changed, should start the sync all over again."
+          "Folders selection changed, should start the sync all over again. (1)"
         );
         break;
       }
-      const res = await syncFiles(
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        nextPageToken
-      );
-      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
-      totalCount += res.count;
-      await reportInitialSyncProgress(
-        connectorId,
-        `Synced ${totalCount} files`
-      );
-    } while (nextPageToken);
+      do {
+        if (signaled) {
+          console.log(
+            "Folders selection changed, should start the sync all over again. (2)"
+          );
+          break;
+        }
+        const res = await syncFiles(
+          connectorId,
+          nangoConnectionId,
+          dataSourceConfig,
+          folderId,
+          runId,
+          nextPageToken
+        );
+        nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+        totalCount += res.count;
+        foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+
+        await reportInitialSyncProgress(
+          connectorId,
+          `Synced ${totalCount} files`
+        );
+      } while (nextPageToken);
+    }
+    await cleanupDedupList(connectorId, runId);
   }
   await syncSucceeded(connectorId);
 

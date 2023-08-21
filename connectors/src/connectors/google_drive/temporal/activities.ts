@@ -25,6 +25,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import {
   Connector,
+  GoogleDriveBFSDedup,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -165,9 +166,33 @@ export async function syncFiles(
   connectorId: ModelId,
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
+  driveFolderId: string,
+  runId: string,
   nextPageToken?: string
-) {
-  const foldersIds = await getFoldersToSync(connectorId);
+): Promise<{
+  nextPageToken: string | null;
+  count: number;
+  subfolders: string[];
+}> {
+  if (nextPageToken === undefined) {
+    // On the first page of a folder id, we can check if we already visited it
+    const visitedFolder = await GoogleDriveBFSDedup.findOne({
+      where: {
+        connectorId: connectorId,
+        driveFolderId: driveFolderId,
+        runId: runId,
+      },
+    });
+    if (visitedFolder) {
+      return { nextPageToken: null, count: 0, subfolders: [] };
+    } else {
+      await GoogleDriveBFSDedup.create({
+        connectorId: connectorId,
+        driveFolderId: driveFolderId,
+        runId: runId,
+      });
+    }
+  }
   const authCredentials = await getAuthObject(nangoConnectionId);
   const drive = await getDriveClient(authCredentials);
   const res = await drive.files.list({
@@ -177,6 +202,7 @@ export async function syncFiles(
     supportsAllDrives: true,
     fields:
       "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+    q: `'${driveFolderId}' in parents`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
@@ -207,31 +233,28 @@ export async function syncFiles(
           : undefined,
       };
     });
+  const subfolders = filesToSync
+    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
+    .map((file) => file.id);
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
-        const shouldSync = await objectIsInFolder(
+        await syncOneFile(
+          connectorId,
           authCredentials,
-          file.id,
-          foldersIds
+          dataSourceConfig,
+          file,
+          true // isBatchSync
         );
-        if (shouldSync) {
-          await syncOneFile(
-            connectorId,
-            authCredentials,
-            dataSourceConfig,
-            file,
-            true // isBatchSync
-          );
-        }
       });
     })
   );
 
   return {
-    nextPageToken: res.data.nextPageToken,
+    nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count: res.data.files.length,
+    subfolders: subfolders,
   };
 }
 
@@ -836,4 +859,17 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
     await googleDriveFile.destroy();
   }
   return;
+}
+
+// When exploring the Google Drive API, we need to keep track of the folders
+// we already explored. This is done by storing the folderId in a table.
+// This function clean-up the list of folders already visited on previous instances
+// of the full sync workflow.
+export async function cleanupDedupList(connectorId: ModelId, runId: string) {
+  await GoogleDriveBFSDedup.destroy({
+    where: {
+      connectorId: connectorId,
+      runId: { [Op.not]: runId },
+    },
+  });
 }
