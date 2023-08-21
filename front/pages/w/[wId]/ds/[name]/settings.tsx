@@ -132,7 +132,6 @@ export default function DataSourceSettings({
   canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId && !!connector;
-  console.log("dataSource: " + JSON.stringify(dataSource));
 
   return (
     <AppLayout
