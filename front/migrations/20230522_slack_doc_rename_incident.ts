@@ -67,6 +67,7 @@ async function main() {
           throw new Error("Failed to create Core DataSource");
         }
 
+        // @ts-expect-error missing field that did not exist at the time of the migration
         let dataSource = await DataSource.create({
           name: dataSourceName,
           description: dataSourceDescription,

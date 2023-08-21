@@ -600,6 +600,7 @@ export class DataSource extends Model<
   declare name: string;
   declare description?: string;
   declare visibility: "public" | "private";
+  declare assistantDefaultSelected: boolean;
   declare config?: string;
   declare dustAPIProjectId: string;
   declare connectorId?: string;
@@ -635,6 +636,11 @@ DataSource.init(
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    assistantDefaultSelected: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     config: {
       type: DataTypes.TEXT,

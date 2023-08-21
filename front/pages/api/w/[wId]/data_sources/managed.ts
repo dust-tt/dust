@@ -193,6 +193,7 @@ async function handler(
         config: JSON.stringify(dustDataSource.value.data_source.config),
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
+        assistantDefaultSelected: true,
       });
 
       const connectorsRes = await ConnectorsAPI.createConnector(
@@ -248,6 +249,7 @@ async function handler(
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
           userUpsertable: false,
+          assistantDefaultSelected: true,
         },
         connector: connectorsRes.value,
       });

@@ -44,6 +44,7 @@ export async function getDataSource(
     connectorId: dataSource.connectorId,
     connectorProvider: dataSource.connectorProvider,
     userUpsertable: dataSource.userUpsertable,
+    assistantDefaultSelected: dataSource.assistantDefaultSelected,
   };
 }
 
@@ -82,6 +83,7 @@ export async function getDataSources(
       connectorId: dataSource.connectorId,
       connectorProvider: dataSource.connectorProvider,
       userUpsertable: dataSource.userUpsertable,
+      assistantDefaultSelected: dataSource.assistantDefaultSelected,
     };
   });
 }

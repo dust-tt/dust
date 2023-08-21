@@ -8,6 +8,7 @@ export type DataSourceType = {
   name: string;
   description?: string;
   visibility: DataSourceVisibility;
+  assistantDefaultSelected: boolean;
   config?: string;
   dustAPIProjectId: string;
   connectorId?: string;
