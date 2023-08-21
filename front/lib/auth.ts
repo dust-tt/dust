@@ -20,6 +20,7 @@ const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
   NODE_ENV,
+  DUST_API = "https://dust.tt",
 } = process.env;
 
 export type RoleType = "admin" | "builder" | "user" | "none";
@@ -496,7 +497,7 @@ export async function prodAPICredentialsForOwner(
     throw new Error("NODE_ENV is not defined");
   }
 
-  if (NODE_ENV === "development") {
+  if (NODE_ENV === "development" && !DUST_API.startsWith("http://localhost")) {
     if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
       throw new Error("DUST_DEVELOPMENT_SYSTEM_API_KEY is not defined");
     }
