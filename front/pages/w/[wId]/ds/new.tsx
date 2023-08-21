@@ -288,7 +288,7 @@ export default function DataSourceNew({
                         htmlFor="assistantDefaultSelected"
                         className="block text-sm font-medium text-gray-700"
                       >
-                        Automatically select this Data Source for Assistant
+                        Automatically select this DataSource for Assistant
                         queries
                       </label>
                     </div>

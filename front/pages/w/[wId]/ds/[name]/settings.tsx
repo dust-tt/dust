@@ -386,7 +386,7 @@ function StandardDataSourceSettings({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Automatically select this Data Source for Assistant queries
+                  Automatically select this DataSource for Assistant queries
                 </label>
               </div>
               <div className="mt-2 flex items-center">
