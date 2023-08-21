@@ -25,11 +25,13 @@ import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
-import { HTTPError } from "./error";
-
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
-    if (res.status >= 299) throw new HTTPError(await res.text(), res.status);
+    if (res.status >= 300) { 
+      const errorText = await res.text();
+      console.error('Error returned by the front API: ', res.status, res.headers, errorText);
+      throw new Error(errorText);
+    }
     return res.json();
   });
 

@@ -119,7 +119,11 @@ function PermissionTreeChildren({
   >({});
 
   if (isResourcesError) {
-    return <div className="text-red-300">Failed to load</div>;
+    return (
+      <div className="text-red-300">
+        Failed to retrieve permissions likely due to a revoked authorization.
+      </div>
+    );
   }
 
   return (
