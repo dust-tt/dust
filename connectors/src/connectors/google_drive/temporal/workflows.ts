@@ -24,6 +24,7 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   getLastGCTime,
+  cleanupDedupList,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -54,18 +55,14 @@ export async function googleDriveFullSync(
     signaled = false;
     let totalCount = 0;
     let nextPageToken: string | undefined = undefined;
+    const runId = `${new Date().getTime()}`;
     let foldersToBrowse: string[] = await getFoldersToSync(connectorId);
-    const foldersVisited: Set<string> = new Set();
+
     while (foldersToBrowse.length > 0) {
       const folderId = foldersToBrowse.pop();
       if (!folderId) {
         throw new Error("folderId should be defined");
       }
-      if (foldersVisited.has(folderId)) {
-        console.log("folder already visited, skipping", folderId);
-        continue;
-      }
-      foldersVisited.add(folderId);
       if (signaled) {
         console.log(
           "Folders selection changed, should start the sync all over again. (1)"
@@ -84,6 +81,7 @@ export async function googleDriveFullSync(
           nangoConnectionId,
           dataSourceConfig,
           folderId,
+          runId,
           nextPageToken
         );
         nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
@@ -96,6 +94,7 @@ export async function googleDriveFullSync(
         );
       } while (nextPageToken);
     }
+    await cleanupDedupList(connectorId, runId);
   }
   await syncSucceeded(connectorId);
 
