@@ -27,8 +27,6 @@ export async function launchNotionSyncWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const nangoConnectionId = connector.connectionId;
-
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
@@ -42,12 +40,7 @@ export async function launchNotionSyncWorkflow(
   }
 
   await client.workflow.start(notionSyncWorkflow, {
-    args: [
-      dataSourceConfig,
-      nangoConnectionId,
-      startFromTs || undefined,
-      forceResync,
-    ],
+    args: [dataSourceConfig, startFromTs || undefined, forceResync],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
   });

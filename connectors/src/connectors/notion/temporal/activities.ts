@@ -381,26 +381,38 @@ export async function saveStartSyncActivity(
 }
 
 export async function getInitialWorkflowParamsActivity(
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  dataSourceConfig: DataSourceConfig
 ): Promise<{
   notionAccessToken: string;
   shouldGargageCollect: boolean;
 }> {
   return {
-    notionAccessToken: await getNotionAccessToken(nangoConnectionId),
+    notionAccessToken: await getNotionAccessToken(dataSourceConfig),
     shouldGargageCollect: await shouldGarbageCollect(dataSourceConfig),
   };
 }
 
 export async function getNotionAccessToken(
-  nangoConnectionId: string
+  dataSourceConfig: DataSourceConfig
 ): Promise<string> {
   const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 
   if (!NANGO_NOTION_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
+
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const nangoConnectionId = connector.connectionId;
 
   const notionAccessToken = (await nango_client().getToken(
     NANGO_NOTION_CONNECTOR_ID,
@@ -583,7 +595,7 @@ export async function garbageCollectActivity(
   if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
-  const notionAccessToken = await getNotionAccessToken(connector.connectionId);
+  const notionAccessToken = await getNotionAccessToken(dataSourceConfig);
 
   const pagesToDelete = await NotionPage.findAll({
     where: {
