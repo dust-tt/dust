@@ -124,39 +124,49 @@ export async function updateGoogleDriveConnector(
   // I couln't find an easy way to access it from the googleapis library
   // Workaround is checking the domain of the user who is updating the connector
   if (connectionId) {
+    try {
+      const oldConnectionId = c.connectionId;
+      const currentDriveClient = await getDriveClient(oldConnectionId);
+      const currentDriveUser = await currentDriveClient.about.get({
+        fields: "user",
+      });
+      const currentUserEmail = currentDriveUser.data?.user?.emailAddress || "";
+      const currentDriveUserDomain = currentUserEmail.split("@")[1];
+
+      const newDriveClient = await getDriveClient(connectionId);
+      const newDriveUser = await newDriveClient.about.get({
+        fields: "user",
+      });
+      const newDriveUserEmail = newDriveUser.data?.user?.emailAddress || "";
+      const newDriveUserDomain = newDriveUserEmail.split("@")[1];
+
+      if (!currentDriveUserDomain || !newDriveUserDomain) {
+        return new Err({
+          error: {
+            type: "connector_update_error",
+            message: "Error retrieving google drive info to update connector",
+          },
+        });
+      }
+
+      if (currentDriveUserDomain !== newDriveUserDomain) {
+        return new Err({
+          error: {
+            type: "connector_oauth_target_mismatch",
+            message: "Cannot change domain of a Google Drive connector",
+          },
+        });
+      }
+    } catch (e) {
+      logger.error(
+        {
+          error: e,
+        },
+        `Error checking Google domain of user who is updating the connector - lets update the connector regardless`
+      );
+    }
+
     const oldConnectionId = c.connectionId;
-    const currentDriveClient = await getDriveClient(oldConnectionId);
-    const currentDriveUser = await currentDriveClient.about.get({
-      fields: "user",
-    });
-    const currentUserEmail = currentDriveUser.data?.user?.emailAddress || "";
-    const currentDriveUserDomain = currentUserEmail.split("@")[1];
-
-    const newDriveClient = await getDriveClient(connectionId);
-    const newDriveUser = await newDriveClient.about.get({
-      fields: "user",
-    });
-    const newDriveUserEmail = newDriveUser.data?.user?.emailAddress || "";
-    const newDriveUserDomain = newDriveUserEmail.split("@")[1];
-
-    if (!currentDriveUserDomain || !newDriveUserDomain) {
-      return new Err({
-        error: {
-          type: "connector_update_error",
-          message: "Error retrieving google drive info to update connector",
-        },
-      });
-    }
-
-    if (currentDriveUserDomain !== newDriveUserDomain) {
-      return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change domain of a Google Drive connector",
-        },
-      });
-    }
-
     await c.update({ connectionId });
     nangoDeleteConnection(
       oldConnectionId,
