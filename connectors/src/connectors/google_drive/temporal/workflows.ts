@@ -137,15 +137,16 @@ export async function googleDriveIncrementalSync(
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
     const drivesIds = await getDrivesIds(nangoConnectionId);
     for (const googleDrive of drivesIds) {
-      let changeCount: number | undefined = undefined;
+      let nextPageToken: undefined | string = undefined;
       do {
-        changeCount = await incrementalSync(
+        nextPageToken = await incrementalSync(
           connectorId,
           nangoConnectionId,
           dataSourceConfig,
-          googleDrive.id
+          googleDrive.id,
+          nextPageToken
         );
-      } while (changeCount && changeCount > 0);
+      } while (nextPageToken);
     }
   }
 
