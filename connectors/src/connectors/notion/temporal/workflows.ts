@@ -38,7 +38,7 @@ const {
 
 // soft limit on the number of iterations of the loop that should be ran in a single workflow
 // before "continuing as new" to avoid hitting the workflow log size limit
-const MAX_ITERATIONS_PER_WORKFLOW = 50;
+const MAX_ITERATIONS_PER_WORKFLOW = 32;
 
 // Notion's "last edited" timestamp is precise to the minute
 const SYNC_PERIOD_DURATION_MS = 60_000;
