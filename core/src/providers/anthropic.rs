@@ -216,6 +216,10 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
+        builder = match builder.header("anthropic-version", "2023-06-01") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
 
         let body = json!({
             "model": self.id.clone(),
@@ -246,19 +250,16 @@ impl AnthropicLLM {
         let mut stream = client.stream();
 
         let mut final_response: Option<Response> = None;
-        let mut streamed_length = 0;
+        let mut completion = String::new();
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
                     Some(es::SSE::Comment(comment)) => {
                         println!("UNEXPECTED COMMENT {}", comment);
                     }
-                    Some(es::SSE::Event(event)) => match event.data.as_str() {
-                        "[DONE]" => {
-                            println!("DONE");
-                            break 'stream;
-                        }
-                        _ => {
+                    Some(es::SSE::Event(event)) => match event.event_type.as_str() {
+                        "completion" => {
+                            // println!("RESPONSE {} {}", event.event_type, event.data);
                             let response: Response = match serde_json::from_str(event.data.as_str())
                             {
                                 Ok(response) => response,
@@ -271,20 +272,38 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                             };
-                            let completion_to_stream = &response.completion[streamed_length..];
 
-                            if completion_to_stream.len() > 0 {
+                            match response.stop_reason {
+                                Some(stop_reason) => {
+                                    final_response = Some(Response {
+                                        completion,
+                                        stop_reason: Some(stop_reason),
+                                        stop: response.stop.clone(),
+                                    });
+                                    break 'stream;
+                                }
+                                None => (),
+                            }
+
+                            completion.push_str(response.completion.as_str());
+
+                            if response.completion.len() > 0 {
                                 let _ = event_sender.send(json!({
                                     "type":"tokens",
                                     "content": {
-                                        "text":completion_to_stream
+                                        "text":response.completion,
                                     }
 
                                 }));
                             }
-                            streamed_length = response.completion.len();
+
                             final_response = Some(response.clone());
                         }
+                        "error" => {
+                            Err(anyhow!("Streaming error from Anthropic: {:?}", event.data))?;
+                            break 'stream;
+                        }
+                        _ => (),
                     },
                     None => {
                         println!("UNEXPECTED NONE");
@@ -323,6 +342,7 @@ impl AnthropicLLM {
             .uri(self.uri()?)
             .header("Content-Type", "application/json")
             .header("X-API-Key", api_key)
+            .header("anthropic-version", "2023-06-01")
             .body(Body::from(
                 json!({
                     "model": self.id.clone(),
@@ -645,12 +665,12 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-v1` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-v1"));
+        let mut llm = self.llm(String::from("claude-instant-1.2"));
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm

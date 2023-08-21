@@ -97,12 +97,14 @@ impl APIState {
 
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
+                    let now = std::time::Instant::now();
                     match app.0.run(app.1, store, qdrant_client, None).await {
                         Ok(()) => {
                             utils::done(&format!(
-                                "Run `{}` for app version `{}` finished",
+                                "Run finished: run=`{}` app_version=`{}` elapsed=`{} ms`",
                                 app.0.run_ref().unwrap().run_id(),
                                 app.0.hash(),
+                                now.elapsed().as_millis(),
                             ));
                         }
                         Err(e) => {
@@ -775,15 +777,17 @@ async fn runs_create_stream(
 
             // Start a task that will run the app in the background.
             tokio::task::spawn(async move {
+                let now = std::time::Instant::now();
                 match app
                     .run(credentials, store, qdrant_client, Some(tx.clone()))
                     .await
                 {
                     Ok(()) => {
                         utils::done(&format!(
-                            "Run `{}` for app version `{}` finished",
+                            "Run finished: run=`{}` app_version=`{}` elapsed=`{} ms`",
                             app.run_ref().unwrap().run_id(),
                             app.hash(),
+                            now.elapsed().as_millis(),
                         ));
                     }
                     Err(e) => {

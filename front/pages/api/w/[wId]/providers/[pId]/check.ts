@@ -121,11 +121,12 @@ async function handler(
               method: "POST",
               headers: {
                 "x-api-key": config.api_key,
+                "anthropic-version": "2023-06-01",
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 prompt: "\n\nHuman: 👋\n\nAssistant:",
-                model: "claude-instant-v1",
+                model: "claude-instant-1.2",
                 max_tokens_to_sample: 1,
                 stop_sequences: [],
               }),

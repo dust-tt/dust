@@ -773,7 +773,7 @@ impl App {
             if errors.len() > 0 {
                 errors.iter().for_each(|e| utils::error(e.as_str()));
                 utils::done(&format!(
-                    "Run `{}` for app version `{}` stored",
+                    "Run stored: run=`{}` app_version=`{}`",
                     &run_id,
                     self.run.as_ref().unwrap().app_hash(),
                 ));
@@ -977,7 +977,7 @@ impl App {
             .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
             .await?;
         utils::done(&format!(
-            "Run `{}` for app version `{}` stored",
+            "Run stored: run=`{}` app_version=`{}`",
             &run_id,
             self.hash(),
         ));
