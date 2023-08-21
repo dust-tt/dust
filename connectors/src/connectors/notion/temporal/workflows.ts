@@ -61,7 +61,6 @@ function preProcessTimestampForNotion(ts: number) {
 
 export async function notionSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string,
   startFromTs?: number,
   forceResync = false
 ) {
@@ -74,7 +73,7 @@ export async function notionSyncWorkflow(
   setHandler(getLastSyncPeriodTsQuery, () => lastSyncedPeriodTs);
 
   const { notionAccessToken, shouldGargageCollect: isGargageCollectionRun } =
-    await getInitialWorkflowParamsActivity(dataSourceConfig, nangoConnectionId);
+    await getInitialWorkflowParamsActivity(dataSourceConfig);
 
   const isInitialSync = !lastSyncedPeriodTs;
 
@@ -242,7 +241,6 @@ export async function notionSyncWorkflow(
 
   await continueAsNew<typeof notionSyncWorkflow>(
     dataSourceConfig,
-    nangoConnectionId,
     // Cannot actually be undefined, but TS doesn't know that.
     lastSyncedPeriodTs ?? undefined
   );
