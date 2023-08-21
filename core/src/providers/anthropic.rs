@@ -216,6 +216,10 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
+        builder = match builder.header("anthropic-version", "2023-06-01") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
 
         let body = json!({
             "model": self.id.clone(),
@@ -323,6 +327,7 @@ impl AnthropicLLM {
             .uri(self.uri()?)
             .header("Content-Type", "application/json")
             .header("X-API-Key", api_key)
+            .header("anthropic-version", "2023-06-01")
             .body(Body::from(
                 json!({
                     "model": self.id.clone(),
@@ -645,12 +650,12 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-v1` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-v1"));
+        let mut llm = self.llm(String::from("claude-instant-1.2"));
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm
