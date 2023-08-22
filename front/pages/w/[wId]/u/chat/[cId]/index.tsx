@@ -427,8 +427,8 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
           className={classNames(
             "[&_ol]:list-decimal [&_ol]:whitespace-normal [&_ol]:pl-4 [&_ul]:whitespace-normal [&_ul]:pl-4" /* ol, ul */,
             "[&_p]:mb-2" /* p */,
-            "[&_code]:bg-action-50 [&_code]:py-0.5 [&_code]:whitespace-pre-wrap" /* code */,
-            "[&_pre]:bg-action-50 [&_pre]:py-1 [&_pre]:px-2" /* pre */,
+            "[&_code]:whitespace-pre-wrap [&_code]:bg-action-50 [&_code]:py-0.5" /* code */,
+            "[&_pre]:bg-action-50 [&_pre]:px-2 [&_pre]:py-1" /* pre */
           )}
           remarkPlugins={[remarkGfm]}
           components={{
@@ -531,7 +531,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "break-word whitespace-pre-wrap relative ml-2 flex flex-1 pt-2",
+              "break-word relative ml-2 flex flex-1 whitespace-pre-wrap pt-2",
               /* long unbreakable code lines  shouldn't push right-side ui
             outside view*/
               "overflow-hidden",
