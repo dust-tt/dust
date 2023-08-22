@@ -1,10 +1,12 @@
 import {
+  continueAsNew,
   executeChild,
   ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
   startChild,
+  workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
@@ -95,6 +97,14 @@ export async function googleDriveFullSync(
           connectorId,
           `Synced ${totalCount} files`
         );
+        if (workflowInfo().historyLength > 4000) {
+          await continueAsNew<typeof googleDriveFullSync>(
+            connectorId,
+            nangoConnectionId,
+            dataSourceConfig,
+            garbageCollect
+          );
+        }
       } while (nextPageToken);
     }
     await cleanupDedupList(connectorId, runId);
