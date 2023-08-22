@@ -96,40 +96,41 @@ async function handler(
         });
       }
 
-      if (dataSource.connectorId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Managed data sources cannot be updated.",
-          },
-        });
-      }
-
       if (
-        !req.body ||
-        !(typeof req.body.description == "string") ||
-        !(typeof req.body.userUpsertable == "boolean") ||
-        !["public", "private"].includes(req.body.visibility) ||
-        !(typeof req.body.assistantDefaultSelected == "boolean")
+        dataSource.connectorId &&
+        (Object.keys(req.body).length > 1 ||
+          req.body.assistantDefaultSelected === undefined ||
+          typeof req.body.assistantDefaultSelected !== "boolean")
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { description, visibility }.",
+              "Only the assistantDefaultSelected setting can be updated for managed data sources, which must be boolean.",
+          },
+        });
+      } else if (
+        !dataSource.connectorId &&
+        (!req.body ||
+          !(typeof req.body.description == "string") ||
+          !(typeof req.body.userUpsertable == "boolean") ||
+          !["public", "private"].includes(req.body.visibility) ||
+          !(typeof req.body.assistantDefaultSelected == "boolean"))
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { description, visibility, assistantDefaultSelected, userUpsertable }.",
           },
         });
       }
 
-      const description = req.body.description ? req.body.description : null;
-
       const ds = await dataSourceModel.update({
-        description,
-        visibility: req.body.visibility,
-        userUpsertable: req.body.userUpsertable,
-        assistantDefaultSelected: req.body.assistantDefaultSelected,
+        ...req.body,
+        description: req.body.description || null,
       });
 
       return res.status(200).json({

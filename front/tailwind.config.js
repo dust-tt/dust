@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
+const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 
 module.exports = {
   content: [
