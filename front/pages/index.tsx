@@ -367,9 +367,7 @@ export default function Home({
           {" - "}
           <Link href="/platform-privacy">Platform Privacy</Link>
           {" - "}
-          <Link href="https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb">
-            Terms
-          </Link>
+          <Link href="/terms">Terms</Link>
           {" - "}
           <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
             Cookies
