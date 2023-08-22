@@ -2,13 +2,13 @@ import React, { ComponentType } from "react";
 
 import { Icon } from "./Icon";
 
-interface IconProps {
+interface PageHeaderProps {
   title: string;
   description?: string;
   icon?: ComponentType<{ className?: string }>;
 }
 
-export function PageHeader({ title, icon, description }: IconProps) {
+export function PageHeader({ title, icon, description }: PageHeaderProps) {
   const iconClasses = "s-w-8 s-h-8 s-text-brand";
   const titleClasses =
     "s-text-2xl s-font-bold s-text-element-800 s-self-stretch";

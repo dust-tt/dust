@@ -5,7 +5,7 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
-type ButtonProps = {
+export type ButtonProps = {
   type?:
     | "primary"
     | "primaryWarning"
@@ -114,7 +114,7 @@ export function Button({
   className = "",
 }: ButtonProps) {
   const buttonClasses = classNames(
-    "s-inline-flex s-items-center s-border s-transition-all s-ease-out s-duration-400 s-box-border s-rounded-full s-scale-95 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none",
+    "s-inline-flex s-items-center s-border s-transition-all s-ease-out s-duration-400 s-box-border s-rounded-full s-scale-95 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none s-whitespace-nowrap",
     sizeClasses[size],
     typeClasses[type]?.base,
     typeClasses[type]?.hover,

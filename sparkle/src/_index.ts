@@ -13,6 +13,9 @@ export { Item };
 import { PageHeader } from "./components/PageHeader";
 export { PageHeader };
 
+import { SectionHeader } from "./components/SectionHeader";
+export { SectionHeader };
+
 import { Icon } from "./components/Icon";
 export { Icon };
 
