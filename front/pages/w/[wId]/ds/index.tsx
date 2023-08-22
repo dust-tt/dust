@@ -344,7 +344,7 @@ export default function DataSourcesView({
       }
     } catch (e) {
       window.alert(`Failed to enable ${provider} data source`);
-      console.error(e);
+      console.error(`Failed to enable ${provider} data source`, e);
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
