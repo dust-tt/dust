@@ -1,10 +1,12 @@
 import {
+  continueAsNew,
   executeChild,
   ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
   startChild,
+  workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
@@ -12,7 +14,7 @@ import { ModelId } from "@connectors/lib/models";
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { newFoldersSelectionSignal, newWebhookSignal } from "./signals";
+import { newWebhookSignal } from "./signals";
 
 const {
   syncFiles,
@@ -42,63 +44,55 @@ export async function googleDriveFullSync(
   connectorId: ModelId,
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
-  garbageCollect = true
+  garbageCollect = true,
+  foldersToBrowse: string[] | undefined = undefined,
+  totalCount = 0
 ) {
-  // signal handler to restart the sync if the folders selection changes.
-  let signaled = false;
-  setHandler(newFoldersSelectionSignal, () => {
-    console.log("Folders changed, should sync again.");
-    signaled = true;
-  });
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
-  while (signaled) {
-    signaled = false;
-    let totalCount = 0;
-    let nextPageToken: string | undefined = undefined;
-    const runId = `${new Date().getTime()}`;
-    let foldersToBrowse: string[] = await getFoldersToSync(connectorId);
-
-    while (foldersToBrowse.length > 0) {
-      const folderId = foldersToBrowse.pop();
-      if (!folderId) {
-        throw new Error("folderId should be defined");
-      }
-      if (signaled) {
-        console.log(
-          "Folders selection changed, should start the sync all over again. (1)"
-        );
-        break;
-      }
-      do {
-        if (signaled) {
-          console.log(
-            "Folders selection changed, should start the sync all over again. (2)"
-          );
-          break;
-        }
-        const res = await syncFiles(
-          connectorId,
-          nangoConnectionId,
-          dataSourceConfig,
-          folderId,
-          runId,
-          nextPageToken
-        );
-        nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
-        totalCount += res.count;
-        foldersToBrowse = foldersToBrowse.concat(res.subfolders);
-
-        await reportInitialSyncProgress(
-          connectorId,
-          `Synced ${totalCount} files`
-        );
-      } while (nextPageToken);
-    }
-    await cleanupDedupList(connectorId, runId);
+  let nextPageToken: string | undefined = undefined;
+  const runId = `${new Date().getTime()}`;
+  if (foldersToBrowse === undefined) {
+    foldersToBrowse = await getFoldersToSync(connectorId);
   }
+
+  while (foldersToBrowse.length > 0) {
+    const folderId = foldersToBrowse.pop();
+    if (!folderId) {
+      throw new Error("folderId should be defined");
+    }
+    do {
+      const res = await syncFiles(
+        connectorId,
+        nangoConnectionId,
+        dataSourceConfig,
+        folderId,
+        runId,
+        nextPageToken
+      );
+      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+      totalCount += res.count;
+      foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+
+      await reportInitialSyncProgress(
+        connectorId,
+        `Synced ${totalCount} files`
+      );
+    } while (nextPageToken);
+    if (workflowInfo().historyLength > 10) {
+      await continueAsNew<typeof googleDriveFullSync>(
+        connectorId,
+        nangoConnectionId,
+        dataSourceConfig,
+        garbageCollect,
+        foldersToBrowse,
+        totalCount
+      );
+    }
+  }
+  await cleanupDedupList(connectorId, runId);
   await syncSucceeded(connectorId);
 
   if (garbageCollect) {

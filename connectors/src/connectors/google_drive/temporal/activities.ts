@@ -37,8 +37,8 @@ import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
 
-const FILES_SYNC_CONCURRENCY = 3;
-const FILES_GC_CONCURRENCY = 3;
+const FILES_SYNC_CONCURRENCY = 10;
+const FILES_GC_CONCURRENCY = 5;
 
 const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
@@ -194,14 +194,20 @@ export async function syncFiles(
   }
   const authCredentials = await getAuthObject(nangoConnectionId);
   const drive = await getDriveClient(authCredentials);
+  const mimeTypesSearchString = MIME_TYPES_TO_SYNC.concat(
+    "application/vnd.google-apps.folder"
+  )
+    .map((mimeType) => `mimeType='${mimeType}'`)
+    .join(" or ");
+  console.log("mimeTypesSearchString", mimeTypesSearchString);
   const res = await drive.files.list({
     corpora: "allDrives",
-    pageSize: 100,
+    pageSize: 200,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
       "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
-    q: `'${driveFolderId}' in parents`,
+    q: `'${driveFolderId}' in parents and (${mimeTypesSearchString})`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
@@ -236,10 +242,10 @@ export async function syncFiles(
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((file) => file.id);
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
-  await Promise.all(
+  const results = await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
-        await syncOneFile(
+        return await syncOneFile(
           connectorId,
           authCredentials,
           dataSourceConfig,
@@ -249,10 +255,9 @@ export async function syncFiles(
       });
     })
   );
-
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
-    count: res.data.files.length,
+    count: results.filter((r) => r).length,
     subfolders: subfolders,
   };
 }
@@ -263,7 +268,7 @@ async function syncOneFile(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveFileType,
   isBatchSync = false
-) {
+): Promise<boolean> {
   let documentContent: string | undefined = undefined;
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
@@ -306,7 +311,7 @@ async function syncOneFile(
           },
           `File too big to be downloaded. Skipping`
         );
-        return;
+        return false;
       }
       throw e;
     }
@@ -351,14 +356,14 @@ async function syncOneFile(
         );
         // we don't know what to do with PDF files that fails to be converted to text.
         // So we log the error and skip the file.
-        return;
+        return false;
       } finally {
         await fs.unlink(pdf_path);
       }
     }
   } else {
     // We do not support this file type
-    return;
+    return false;
   }
   //Adding the title of the file to the beginning of the document
   documentContent = `$title:${file.name}\n\n${documentContent}`;
@@ -396,6 +401,8 @@ async function syncOneFile(
         sync_type: isBatchSync ? "batch" : "incremental",
       },
     });
+
+    return true;
   } else {
     logger.info(
       {
@@ -407,6 +414,8 @@ async function syncOneFile(
       `Document too big to be upserted. Skipping`
     );
   }
+
+  return false;
 }
 
 async function getParents(
