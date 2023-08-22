@@ -343,7 +343,9 @@ export default function DataSourcesView({
         );
       }
     } catch (e) {
-      window.alert(`Failed to enable ${provider} data source: ${e}`);
+      window.alert(
+        `Failed to enable ${provider} data source: ${JSON.stringify(e)}`
+      );
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
