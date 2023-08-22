@@ -746,6 +746,8 @@ impl DataSource {
         }
         let store = store.clone();
 
+        let time_embedding_start = utils::now();
+
         let r = EmbedderRequest::new(
             self.config.provider_id,
             &self.config.model_id,
@@ -754,6 +756,11 @@ impl DataSource {
         );
         let v = r.execute(credentials).await?;
         assert!(v.len() == 1);
+
+        utils::done(&format!(
+            "DSSTAT Finished embedding query: duration={}ms",
+            utils::now() - time_embedding_start,
+        ));
 
         // Construct the filters for the search query if specified.
         let f = match filter {
@@ -840,7 +847,7 @@ impl DataSource {
             None => None,
         };
 
-        let start_search_points_time = utils::now();
+        let time_search_start = utils::now();
         let results = qdrant_client
             .search_points(&qdrant::SearchPoints {
                 collection_name: self.qdrant_collection(),
@@ -860,7 +867,7 @@ impl DataSource {
         utils::done(&format!(
             "DSSTAT Finished searching Qdrant documents: collection_name={}, duration={}ms, results_count={}",
             self.qdrant_collection(),
-            utils::now() - start_search_points_time,
+            utils::now() - time_search_start,
             results.result.len()
         ));
 
@@ -985,7 +992,7 @@ impl DataSource {
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
-        let time_qdrant_scroll_time = utils::now();
+        let time_qdrant_scroll_start = utils::now();
         let mut documents = match target_document_tokens {
             Some(target) => {
                 stream::iter(documents)
@@ -1170,7 +1177,7 @@ impl DataSource {
         utils::done(&format!(
             "DSSTAT Finished scrolling documents: collection_name={}, duration={}ms, results_count={}",
             self.qdrant_collection(),
-            utils::now() - time_qdrant_scroll_time,
+            utils::now() - time_qdrant_scroll_start,
             documents.len(),
         ));
 
@@ -1184,10 +1191,11 @@ impl DataSource {
         });
 
         utils::done(&format!(
-            "Searched sata source: data_source_id={} document_count={} chunk_count={}",
+            "Searched data source: data_source_id={} document_count={} chunk_count={} duration={}ms",
             self.data_source_id,
             documents.len(),
             documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
+            utils::now() - time_embedding_start,
         ));
 
         Ok(documents)
