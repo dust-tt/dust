@@ -532,9 +532,6 @@ export function MessageView({
           <div
             className={classNames(
               "break-word relative ml-2 flex flex-1 whitespace-pre-wrap pt-2",
-              /* long unbreakable code lines  shouldn't push right-side ui
-            outside view*/
-              "overflow-hidden",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
