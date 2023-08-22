@@ -81,7 +81,7 @@ export async function googleDriveFullSync(
         `Synced ${totalCount} files`
       );
     } while (nextPageToken);
-    if (workflowInfo().historyLength > 10) {
+    if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveFullSync>(
         connectorId,
         nangoConnectionId,
