@@ -359,6 +359,7 @@ impl App {
 
         // for (_, name, block) in &self.blocks {
         while block_idx < self.blocks.len() {
+            let time_block_start = utils::now();
             let (_, name, block) = &self.blocks[block_idx];
 
             // Special pre-processing of the input block, injects data as input and build
@@ -726,11 +727,12 @@ impl App {
 
             utils::info(
                 format!(
-                    "Execution block `{} {}`: {} success(es) {} error(s)",
+                    "Execution block `{} {}`: successes={} errors={} duration={}ms",
                     block.block_type().to_string(),
                     name,
                     success,
-                    errors.len()
+                    errors.len(),
+                    utils::now() - time_block_start,
                 )
                 .as_str(),
             );

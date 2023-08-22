@@ -102,7 +102,6 @@ export async function getAuthObject(
     scope: res.credentials.raw.scope,
     token_type: res.credentials.raw.token_type,
     expiry_date: new Date(res.credentials.expires_at).getTime(),
-    refresh_token: res.credentials.refresh_token,
   });
 
   return oauth2Client;
