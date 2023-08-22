@@ -1,8 +1,13 @@
-import { CloudArrowDownIcon, PageHeader } from "@dust-tt/sparkle";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import {
+  CloudArrowDownIcon,
+  PageHeader,
+  PlusIcon,
+  SectionHeader,
+} from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { Button } from "@app/components/Button";
@@ -359,6 +364,8 @@ export default function DataSourcesView({
     return integration.connectorProvider === "google_drive";
   });
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -370,22 +377,16 @@ export default function DataSourcesView({
       <PageHeader
         title="Data Sources"
         icon={CloudArrowDownIcon}
-        description="Make your assistant smarter. Set and manage the data it can access and use."
+        description="Set and manage the data Dust can access and use."
       />
 
-      <div className="space-y-4">
-        <div className="sm:flex sm:items-center">
-          <div className="mt-8 sm:flex-auto">
-            <h1 className="text-lg font-bold text-element-900">
-              Managed Data Sources
-            </h1>
-            <p className="mt-2 text-sm text-element-800">
-              Continuously synchronized with the products you use.
-            </p>
-          </div>
-        </div>
+      <div>
+        <SectionHeader
+          title="Managed Data Sources"
+          description="Empower Dust with instant and automatic data updates by connecting your company's online knownledge bases."
+        />
 
-        <div className="mt-8">
+        <div>
           {googleDrive && googleDrive.connector && (
             <GoogleDriveFoldersPickerModal
               owner={owner}
@@ -520,67 +521,36 @@ export default function DataSourcesView({
       </div>
 
       <div className="flex flex-col">
-        <div className="divide-y divide-gray-200">
-          <div className="flex flex-col justify-between md:flex-row md:items-center">
-            <div className="">
-              <h1 className="text-base font-medium text-gray-900">
-                Static data Sources
-              </h1>
-              <p className="text-sm text-gray-500">
-                Data Sources let you expose your data to Dust.
-              </p>
-            </div>
-            <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
-              {!readOnly && (
-                <Link
-                  className="ml-auto"
-                  href={`/w/${owner.sId}/ds/new`}
-                  onClick={(e) => {
+        <SectionHeader
+          title="Custom Data Sources"
+          description="Lets you expose custom data to Dust."
+          action={
+            !readOnly
+              ? {
+                  label: "Add a new Data Source",
+                  type: "secondary",
+                  icon: PlusIcon,
+                  onClick: () => {
                     // Enforce plan limits: DataSources count.
                     if (
                       owner.plan.limits.dataSources.count != -1 &&
                       dataSources.length >= owner.plan.limits.dataSources.count
                     ) {
-                      e.preventDefault();
                       window.alert(
                         "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
                       );
                       return;
+                    } else {
+                      void router.push(`/w/${owner.sId}/ds/new`);
                     }
-                  }}
-                >
-                  <Button>
-                    <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                    Create Data Source
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
+                  },
+                }
+              : undefined
+          }
+        />
+
+        <div className="divide-y divide-gray-200">
           <div className="my-4">
-            {dataSources.length == 0 ? (
-              <div className="mt-12 flex flex-col items-center justify-center pt-4 text-sm text-gray-500">
-                {readOnly ? (
-                  <>
-                    <p>
-                      Welcome to Dust Data Sources 🔎 This user has not created
-                      any data source yet 🙃
-                    </p>
-                    <p className="mt-2">
-                      Sign-in to create your own data sources.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>Welcome to Dust Data Sources 🔎</p>
-                    <p className="mt-2">
-                      Data sources let you upload documents to expose
-                      information to Dust.
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : null}
             <ul role="list" className="pt-4">
               {dataSources.map((ds) => (
                 <li key={ds.name} className="px-2">
