@@ -132,6 +132,40 @@ export default function DataSourceSettings({
   canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId && !!connector;
+  const [isUpdating, setIsUpdating] = useState(false);
+  const router = useRouter();
+
+  const handleUpdate = async (
+    settings:
+      | {
+          description: string;
+          visibility: DataSourceVisibility;
+          userUpsertable: boolean;
+          assistantDefaultSelected: boolean;
+        }
+      | { assistantDefaultSelected: boolean }
+  ) => {
+    setIsUpdating(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      }
+    );
+    if (res.ok) {
+      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+    } else {
+      setIsUpdating(false);
+      const err = (await res.json()) as { error: APIError };
+      window.alert(
+        `Failed to update the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+      );
+    }
+  };
 
   return (
     <AppLayout
@@ -152,7 +186,17 @@ export default function DataSourceSettings({
     >
       <div className="flex flex-col">
         {!managed ? (
-          <StandardDataSourceSettings dataSource={dataSource} owner={owner} />
+          <StandardDataSourceSettings
+            dataSource={dataSource}
+            owner={owner}
+            handleUpdate={(settings: {
+              description: string;
+              visibility: DataSourceVisibility;
+              userUpsertable: boolean;
+              assistantDefaultSelected: boolean;
+            }) => handleUpdate(settings)}
+            isUpdating={isUpdating}
+          />
         ) : (
           <ManagedDataSourceSettings
             dataSource={dataSource}
@@ -162,6 +206,10 @@ export default function DataSourceSettings({
             nangoConfig={nangoConfig}
             githubAppUrl={githubAppUrl}
             canUpdatePermissions={canUpdatePermissions}
+            handleUpdate={(settings: { assistantDefaultSelected: boolean }) =>
+              handleUpdate(settings)
+            }
+            isUpdating={isUpdating}
           />
         )}
       </div>
@@ -172,9 +220,18 @@ export default function DataSourceSettings({
 function StandardDataSourceSettings({
   owner,
   dataSource,
+  handleUpdate,
+  isUpdating,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
+  handleUpdate: (settings: {
+    description: string;
+    visibility: DataSourceVisibility;
+    userUpsertable: boolean;
+    assistantDefaultSelected: boolean;
+  }) => Promise<void>;
+  isUpdating: boolean;
 }) {
   const dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
@@ -193,7 +250,6 @@ function StandardDataSourceSettings({
   );
 
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const router = useRouter();
 
@@ -219,34 +275,6 @@ function StandardDataSourceSettings({
       return true;
     } else {
       return false;
-    }
-  };
-
-  const handleUpdate = async () => {
-    setIsUpdating(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          description: dataSourceDescription,
-          visibility: dataSourceVisibility,
-          userUpsertable: userUpsertable,
-          assistantDefaultSelected: assistantDefaultSelected,
-        }),
-      }
-    );
-    if (res.ok) {
-      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
-    } else {
-      setIsUpdating(false);
-      const err = (await res.json()) as { error: APIError };
-      window.alert(
-        `Failed to update the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
-      );
     }
   };
 
@@ -487,7 +515,17 @@ function StandardDataSourceSettings({
 
       <div className="flex pt-6">
         <div className="flex">
-          <Button onClick={handleUpdate} disabled={isDeleting || isUpdating}>
+          <Button
+            onClick={() =>
+              handleUpdate({
+                description: dataSourceDescription,
+                visibility: dataSourceVisibility,
+                userUpsertable,
+                assistantDefaultSelected,
+              })
+            }
+            disabled={isDeleting || isUpdating}
+          >
             {isUpdating ? "Updating..." : "Update"}
           </Button>
         </div>
@@ -559,6 +597,8 @@ function ManagedDataSourceSettings({
   nangoConfig,
   githubAppUrl,
   canUpdatePermissions,
+  handleUpdate,
+  isUpdating,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -572,7 +612,14 @@ function ManagedDataSourceSettings({
   };
   githubAppUrl: string;
   canUpdatePermissions: boolean;
+  handleUpdate: (settings: {
+    assistantDefaultSelected: boolean;
+  }) => Promise<void>;
+  isUpdating: boolean;
 }) {
+  const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
+    dataSource.assistantDefaultSelected
+  );
   const logo = getProviderLogoPathForDataSource(dataSource);
   if (!logo) {
     throw new Error(`No logo for data source ${dataSource.name}`);
@@ -756,6 +803,46 @@ function ManagedDataSourceSettings({
                 Show permissions
               </Button>
             </div>
+          </div>
+          <div className="mt-2 sm:col-span-6">
+            <div className="flex justify-between">
+              <label
+                htmlFor="assistantDefaultSelected"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Automatically select this DataSource for Assistant queries
+              </label>
+            </div>
+            <div className="mt-2 flex items-center">
+              <input
+                id="assistantDefaultSelected"
+                name="assistantDefaultSected"
+                type="checkbox"
+                className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                checked={assistantDefaultSelected}
+                onChange={(e) => setAssistantDefaultSelected(e.target.checked)}
+              />
+              <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                The assistant will use the DataSource by default when answering
+                questions. Users can still choose not to use the DataSource for
+                a given conversation with the assistant by clicking on the
+                DataSource's icon below the chat input.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex pt-6">
+          <div className="flex">
+            <Button
+              onClick={() =>
+                handleUpdate({
+                  assistantDefaultSelected,
+                })
+              }
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Updating..." : "Update"}
+            </Button>
           </div>
         </div>
       </div>
