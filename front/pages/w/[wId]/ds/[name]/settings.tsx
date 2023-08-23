@@ -1,3 +1,4 @@
+import { Button, Checkbox } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -6,14 +7,11 @@ import { useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
-import { Button } from "@app/components/Button";
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  subNavigationAdmin,
-  subNavigationDataSource,
-} from "@app/components/sparkle/navigation";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -133,6 +131,7 @@ export default function DataSourceSettings({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId && !!connector;
   const [isUpdating, setIsUpdating] = useState(false);
+
   const router = useRouter();
 
   const handleUpdate = async (
@@ -176,13 +175,15 @@ export default function DataSourceSettings({
       subNavigation={subNavigationAdmin({
         owner,
         current: "data_sources",
-        subMenuLabel: dataSource.name,
-        subMenu: subNavigationDataSource({
-          owner,
-          dataSource,
-          current: "settings",
-        }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title="Data Source Settings"
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+          }}
+        />
+      }
     >
       <div className="flex flex-col">
         {!managed ? (
@@ -238,15 +239,8 @@ function StandardDataSourceSettings({
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
   );
-  const [dataSourceVisibility, setDataSourceVisibility] = useState(
-    dataSource.visibility
-  );
   const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
     dataSource.assistantDefaultSelected
-  );
-
-  const [userUpsertable, setUserUpsertable] = useState(
-    dataSource.userUpsertable
   );
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -341,73 +335,11 @@ function StandardDataSourceSettings({
                 />
               </div>
               <p className="mt-2 text-sm text-gray-500">
-                A good description will help others discover and understand the
+                A good description will help users discover and understand the
                 purpose of your Data Source.
               </p>
             </div>
 
-            <div className="sm:col-span-6">
-              <fieldset className="mt-2">
-                <legend className="contents text-sm font-medium text-gray-700">
-                  Visibility
-                </legend>
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      id="dataSourceVisibilityPublic"
-                      name="visibility"
-                      type="radio"
-                      className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                      value="public"
-                      checked={dataSourceVisibility == "public"}
-                      onChange={(e) => {
-                        if (e.target.value != dataSourceVisibility) {
-                          setDataSourceVisibility(
-                            e.target.value as DataSourceVisibility
-                          );
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="dataSourceVisibilityPublic"
-                      className="ml-3 block text-sm font-medium text-gray-700"
-                    >
-                      Public
-                      <p className="mt-0 text-sm font-normal text-gray-500">
-                        Anyone on the Internet can discover and access your
-                        DataSource. Only you can edit.
-                      </p>
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      id="dataSourceVisibilityPrivate"
-                      name="visibility"
-                      type="radio"
-                      value="private"
-                      className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                      checked={dataSourceVisibility == "private"}
-                      onChange={(e) => {
-                        if (e.target.value != dataSourceVisibility) {
-                          setDataSourceVisibility(
-                            e.target.value as DataSourceVisibility
-                          );
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="dataSourceVisibilityPrivate"
-                      className="ml-3 block text-sm font-medium text-gray-700"
-                    >
-                      Private
-                      <p className="mt-0 text-sm font-normal text-gray-500">
-                        Only you can see and edit the DataSource.
-                      </p>
-                    </label>
-                  </div>
-                </div>
-              </fieldset>
-            </div>
             <div className="mt-2 sm:col-span-6">
               <div className="flex justify-between">
                 <label
@@ -418,15 +350,9 @@ function StandardDataSourceSettings({
                 </label>
               </div>
               <div className="mt-2 flex items-center">
-                <input
-                  id="assistantDefaultSelected"
-                  name="assistantDefaultSected"
-                  type="checkbox"
-                  className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                <Checkbox
                   checked={assistantDefaultSelected}
-                  onChange={(e) =>
-                    setAssistantDefaultSelected(e.target.checked)
-                  }
+                  onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
                   The assistant will use the DataSource by default when
@@ -440,7 +366,7 @@ function StandardDataSourceSettings({
         </div>
 
         <div>
-          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-12">
             <div className="sm:col-span-6">
               <label
                 htmlFor="embedder"
@@ -474,40 +400,9 @@ function StandardDataSourceSettings({
                   Max Chunk Size
                 </label>
               </div>
-              <div className="mt-1 flex w-32 rounded-md shadow-sm">
-                <input
-                  type="number"
-                  name="max_chunk_size"
-                  id="dataSourceMaxChunkSize"
-                  className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-gray-300 focus:ring-0"
-                  value={dataSourceConfig.max_chunk_size}
-                  readOnly={true}
-                />
+              <div className="mt-1 flex text-sm font-medium">
+                {dataSourceConfig.max_chunk_size}
               </div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex justify-between">
-              <label
-                htmlFor="upsertable"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Upload Rights
-              </label>
-            </div>
-            <div className="mt-2 flex items-center">
-              <input
-                id="dataSourceUpsertable"
-                name="upsertable"
-                type="checkbox"
-                className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                checked={userUpsertable}
-                onChange={(e) => setUserUpsertable(e.target.checked)}
-              />
-              <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                Users (non-builders) of your workspace can upload documents to
-                the data source
-              </p>
             </div>
           </div>
         </div>
@@ -516,24 +411,37 @@ function StandardDataSourceSettings({
       <div className="flex pt-6">
         <div className="flex">
           <Button
-            onClick={() =>
-              handleUpdate({
-                description: dataSourceDescription,
-                visibility: dataSourceVisibility,
-                userUpsertable,
-                assistantDefaultSelected,
-              })
-            }
+            type="secondaryWarning"
+            onClick={handleDelete}
             disabled={isDeleting || isUpdating}
-          >
-            {isUpdating ? "Updating..." : "Update"}
-          </Button>
+            label={isDeleting ? "Deleting..." : "Delete"}
+          />
         </div>
         <div className="flex-1"></div>
         <div className="ml-2 flex">
-          <Button onClick={handleDelete} disabled={isDeleting || isUpdating}>
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
+          <Button
+            type="tertiary"
+            onClick={() => {
+              void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+            }}
+            disabled={isDeleting || isUpdating}
+            label={"Cancel"}
+          />
+        </div>
+        <div className="ml-2 flex">
+          <Button
+            type="secondary"
+            onClick={() => {
+              void handleUpdate({
+                description: dataSourceDescription,
+                visibility: "private",
+                userUpsertable: false,
+                assistantDefaultSelected,
+              });
+            }}
+            disabled={isDeleting || isUpdating}
+            label={isUpdating ? "Updating..." : "Update"}
+          />
         </div>
       </div>
     </div>
@@ -617,6 +525,8 @@ function ManagedDataSourceSettings({
   }) => Promise<void>;
   isUpdating: boolean;
 }) {
+  const router = useRouter();
+
   const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
     dataSource.assistantDefaultSelected
   );
@@ -796,12 +706,12 @@ function ManagedDataSourceSettings({
 
             <div className="flex flex-row">
               <Button
+                type="tertiary"
                 onClick={() => {
                   setShowPermissionModal(true);
                 }}
-              >
-                Show permissions
-              </Button>
+                label="Show permissions"
+              ></Button>
             </div>
           </div>
           <div className="mt-2 sm:col-span-6">
@@ -814,13 +724,9 @@ function ManagedDataSourceSettings({
               </label>
             </div>
             <div className="mt-2 flex items-center">
-              <input
-                id="assistantDefaultSelected"
-                name="assistantDefaultSected"
-                type="checkbox"
-                className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+              <Checkbox
                 checked={assistantDefaultSelected}
-                onChange={(e) => setAssistantDefaultSelected(e.target.checked)}
+                onChange={(checked) => setAssistantDefaultSelected(checked)}
               />
               <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
                 The assistant will use the DataSource by default when answering
@@ -831,18 +737,29 @@ function ManagedDataSourceSettings({
             </div>
           </div>
         </div>
-        <div className="flex pt-6">
-          <div className="flex">
+        <div className="flex">
+          <div className="flex flex-1"></div>
+          <div className="ml-2 flex">
             <Button
-              onClick={() =>
-                handleUpdate({
-                  assistantDefaultSelected,
-                })
-              }
+              type="tertiary"
+              onClick={() => {
+                void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+              }}
               disabled={isUpdating}
-            >
-              {isUpdating ? "Updating..." : "Update"}
-            </Button>
+              label={"Cancel"}
+            />
+          </div>
+          <div className="ml-2 flex">
+            <Button
+              type="secondary"
+              onClick={() => {
+                void handleUpdate({
+                  assistantDefaultSelected,
+                });
+              }}
+              disabled={isUpdating}
+              label={isUpdating ? "Updating..." : "Update"}
+            />
           </div>
         </div>
       </div>

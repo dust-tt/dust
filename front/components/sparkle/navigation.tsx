@@ -9,13 +9,11 @@ import {
   DocumentTextStrokeIcon,
   FolderOpenStrokeIcon,
   KeyStrokeIcon,
-  MagnifyingGlassStrokeIcon,
   PaperAirplaneStrokeIcon,
 } from "@dust-tt/sparkle";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
-import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 /**
@@ -139,55 +137,6 @@ export const subNavigationAdmin = ({
       current: current === "developers",
       subMenuLabel: current === "developers" ? subMenuLabel : undefined,
       subMenu: current === "developers" ? subMenu : undefined,
-    });
-  }
-
-  return nav;
-};
-
-export const subNavigationDataSource = ({
-  owner,
-  dataSource,
-  current,
-}: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
-  current: SubNavigationDataSourceId;
-}) => {
-  const nav: SparkleAppLayoutNavigation[] = [
-    {
-      id: "documents",
-      label: "Documents",
-      icon: DocumentTextStrokeIcon,
-      href: `/w/${owner.sId}/ds/${dataSource.name}`,
-      current: current === "documents",
-    },
-  ];
-
-  if (
-    owner.role === "user" ||
-    owner.role === "builder" ||
-    owner.role === "admin"
-  ) {
-    nav.push({
-      id: "search",
-      label: "Search",
-      icon: MagnifyingGlassStrokeIcon,
-      href: `/w/${owner.sId}/ds/${dataSource.name}/search`,
-      current: current === "search",
-    });
-  }
-
-  if (
-    owner.role === "admin" ||
-    (owner.role === "builder" && !dataSource.connectorProvider)
-  ) {
-    nav.push({
-      id: "settings",
-      label: "Settings",
-      icon: Cog6ToothStrokeIcon,
-      href: `/w/${owner.sId}/ds/${dataSource.name}/settings`,
-      current: current === "settings",
     });
   }
 

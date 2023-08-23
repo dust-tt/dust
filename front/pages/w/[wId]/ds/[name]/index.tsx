@@ -1,15 +1,18 @@
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+  Button,
+  Cog6ToothIcon,
+  PlusIcon,
+  SectionHeader,
+} from "@dust-tt/sparkle";
+import { TrashIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ActionButton, Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  subNavigationAdmin,
-  subNavigationDataSource,
-} from "@app/components/sparkle/navigation";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import {
@@ -85,6 +88,8 @@ export default function DataSourceView({
 
   const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
+  const router = useRouter();
+
   useEffect(
     () =>
       setDisplayNameByDocId(
@@ -133,22 +138,32 @@ export default function DataSourceView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "data_sources",
-        subMenuLabel: dataSource.name,
-        subMenu: subNavigationDataSource({
-          owner,
-          dataSource,
-          current: "documents",
-        }),
       })}
     >
       <div className="flex flex-col">
-        <div className="flex flex-row">
+        <SectionHeader
+          title={`Manage ${dataSource.name}`}
+          description="This page lets you introspect and manually upload documents to your data source."
+          action={{
+            label: "Settings",
+            type: "tertiary",
+            icon: Cog6ToothIcon,
+            onClick: () => {
+              void router.push(
+                `/w/${owner.sId}/ds/${dataSource.name}/settings`
+              );
+            },
+          }}
+        />
+
+        <div className="mt-16 flex flex-row">
           <div className="flex flex-1">
             <div className="flex flex-col">
               <div className="flex flex-row">
                 <div className="flex flex-initial">
                   <div className="flex">
                     <Button
+                      type="tertiary"
                       disabled={offset < limit}
                       onClick={() => {
                         if (offset >= limit) {
@@ -157,26 +172,25 @@ export default function DataSourceView({
                           setOffset(0);
                         }
                       }}
-                    >
-                      Previous
-                    </Button>
+                      label="Previous"
+                    />
                   </div>
                   <div className="ml-2 flex">
                     <Button
+                      type="tertiary"
+                      label="Next"
                       disabled={offset + limit >= total}
                       onClick={() => {
                         if (offset + limit < total) {
                           setOffset(offset + limit);
                         }
                       }}
-                    >
-                      Next
-                    </Button>
+                    />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
+              <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
                 {total > 0 && (
                   <span>
                     Showing documents {offset + 1} - {last} of {total} documents
@@ -188,27 +202,27 @@ export default function DataSourceView({
           {readOnly && !dataSource.userUpsertable ? null : (
             <div className="">
               <div className="mt-0 flex-none">
-                <Link
-                  href={`/w/${owner.sId}/ds/${dataSource.name}/upsert`}
-                  onClick={(e) => {
+                <Button
+                  type="secondary"
+                  icon={PlusIcon}
+                  label="Document"
+                  onClick={() => {
                     // Enforce plan limits: DataSource documents count.
                     if (
                       owner.plan.limits.dataSources.documents.count != -1 &&
                       total >= owner.plan.limits.dataSources.documents.count
                     ) {
-                      e.preventDefault();
                       window.alert(
                         "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
                       );
                       return;
+                    } else {
+                      void router.push(
+                        `/w/${owner.sId}/ds/${dataSource.name}/upsert`
+                      );
                     }
                   }}
-                >
-                  <ActionButton>
-                    <PlusIcon className="-ml-1 mr-1 h-4 w-4" />
-                    Upload Document
-                  </ActionButton>
-                </Link>
+                />
               </div>
             </div>
           )}
@@ -247,7 +261,7 @@ export default function DataSourceView({
                             <div className="flex flex-1"></div>
                             <div className="flex flex-initial">
                               <TrashIcon
-                                className="hidden h-4 w-4 text-gray-400 hover:text-red-700 group-hover:block"
+                                className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block"
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   await handleDelete(d.document_id);
@@ -277,21 +291,10 @@ export default function DataSourceView({
             ))}
             {documents.length == 0 ? (
               <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                {readOnly ? (
-                  <>
-                    <p>No documents found for this Data Source.</p>
-                    <p className="mt-2">
-                      Sign-in to create your own Data Source.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>No documents found for this Data Source.</p>
-                    <p className="mt-2">
-                      You can upload documents manually or by API.
-                    </p>
-                  </>
-                )}
+                <p>No documents found for this Data Source.</p>
+                <p className="mt-2">
+                  You can upload documents manually or by API.
+                </p>
               </div>
             ) : null}
           </ul>
