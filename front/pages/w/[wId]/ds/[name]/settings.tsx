@@ -135,12 +135,16 @@ export default function DataSourceSettings({
   const [isUpdating, setIsUpdating] = useState(false);
   const router = useRouter();
 
-  const handleUpdate = async (settings: {
-    description?: string;
-    visibility?: DataSourceVisibility;
-    userUpsertable?: boolean;
-    assistantDefaultSelected: boolean;
-  }) => {
+  const handleUpdate = async (
+    settings:
+      | {
+          description: string;
+          visibility: DataSourceVisibility;
+          userUpsertable: boolean;
+          assistantDefaultSelected: boolean;
+        }
+      | { assistantDefaultSelected: boolean }
+  ) => {
     setIsUpdating(true);
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
@@ -185,7 +189,12 @@ export default function DataSourceSettings({
           <StandardDataSourceSettings
             dataSource={dataSource}
             owner={owner}
-            handleUpdate={handleUpdate}
+            handleUpdate={(settings: {
+              description: string;
+              visibility: DataSourceVisibility;
+              userUpsertable: boolean;
+              assistantDefaultSelected: boolean;
+            }) => handleUpdate(settings)}
             isUpdating={isUpdating}
           />
         ) : (

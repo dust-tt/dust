@@ -96,42 +96,51 @@ async function handler(
         });
       }
 
-      if (
-        dataSource.connectorId &&
-        (Object.keys(req.body).length > 1 ||
-          req.body.assistantDefaultSelected === undefined ||
-          typeof req.body.assistantDefaultSelected !== "boolean")
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Only the assistantDefaultSelected setting can be updated for managed data sources, which must be boolean.",
-          },
+      let ds: DataSourceType;
+      if (dataSource.connectorId) {
+        // managed data source
+        if (
+          !req.body ||
+          typeof req.body.assistantDefaultSelected !== "boolean" ||
+          Object.keys(req.body).length !== 1
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Only the assistantDefaultSelected setting can be updated for managed data sources, which must be boolean.",
+            },
+          });
+        }
+        ds = await dataSourceModel.update({
+          assistantDefaultSelected: req.body.assistantDefaultSelected,
         });
-      } else if (
-        !dataSource.connectorId &&
-        (!req.body ||
+      } else {
+        // non-managed data source
+        if (
+          !req.body ||
           !(typeof req.body.description == "string") ||
           !(typeof req.body.userUpsertable == "boolean") ||
           !["public", "private"].includes(req.body.visibility) ||
-          !(typeof req.body.assistantDefaultSelected == "boolean"))
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { description, visibility, assistantDefaultSelected, userUpsertable }.",
-          },
+          !(typeof req.body.assistantDefaultSelected == "boolean")
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The request body is invalid, expects { description, visibility, assistantDefaultSelected, userUpsertable }.",
+            },
+          });
+        }
+        ds = await dataSourceModel.update({
+          description: req.body.description || null,
+          visibility: req.body.visibility,
+          assistantDefaultSelected: req.body.assistantDefaultSelected,
+          userUpsertable: req.body.userUpsertable,
         });
       }
-
-      const ds = await dataSourceModel.update({
-        ...req.body,
-        description: req.body.description || null,
-      });
 
       return res.status(200).json({
         dataSource: {
