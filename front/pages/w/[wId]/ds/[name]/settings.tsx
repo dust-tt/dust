@@ -206,7 +206,9 @@ export default function DataSourceSettings({
             nangoConfig={nangoConfig}
             githubAppUrl={githubAppUrl}
             canUpdatePermissions={canUpdatePermissions}
-            handleUpdate={handleUpdate}
+            handleUpdate={(settings: { assistantDefaultSelected: boolean }) =>
+              handleUpdate(settings)
+            }
             isUpdating={isUpdating}
           />
         )}
