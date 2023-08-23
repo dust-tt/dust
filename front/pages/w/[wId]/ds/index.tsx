@@ -1,5 +1,7 @@
 import {
+  Button,
   CloudArrowDownIcon,
+  Cog6ToothIcon,
   PageHeader,
   PlusIcon,
   SectionHeader,
@@ -10,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { Button } from "@app/components/Button";
 import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -405,53 +406,77 @@ export default function DataSourcesView({
                   }
                   className="px-2 py-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      {ds.logoPath ? (
-                        <div className="mr-1 flex h-4 w-4 flex-initial">
-                          <img src={ds.logoPath}></img>
-                        </div>
-                      ) : null}
-                      {ds.connector ? (
-                        <Link
-                          href={`/w/${owner.sId}/ds/${ds.dataSourceName}`}
-                          className="block"
-                        >
-                          <p
+                  <div className="flex items-start">
+                    {ds.logoPath ? (
+                      <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
+                        <img src={ds.logoPath}></img>
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-col">
+                      <div className="flex flex-col sm:flex-row sm:items-center">
+                        {ds.connector ? (
+                          <Link
+                            href={`/w/${owner.sId}/ds/${ds.dataSourceName}`}
+                            className="flex"
+                          >
+                            <span
+                              className={classNames(
+                                "text-sm font-bold text-element-900"
+                              )}
+                            >
+                              {ds.name}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span
                             className={classNames(
-                              "truncate text-base font-bold",
-                              ds.connector
-                                ? "text-action-600"
-                                : "text-slate-400"
+                              "text-sm font-bold text-element-900"
                             )}
                           >
                             {ds.name}
-                          </p>
-                        </Link>
-                      ) : (
-                        <p
-                          className={classNames(
-                            "truncate text-base font-bold",
-                            ds.connector ? "text-action-600" : "text-slate-400"
-                          )}
-                        >
-                          {ds.name}
-                        </p>
-                      )}
+                          </span>
+                        )}
+
+                        {ds && ds.connector && (
+                          <div className="text-sm text-element-700 sm:ml-2">
+                            {ds.fetchConnectorError ? (
+                              <span className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
+                                errored
+                              </span>
+                            ) : (
+                              <>
+                                {!ds.connector.lastSyncSuccessfulTime ? (
+                                  <span>
+                                    Synchronizing
+                                    {ds.connector?.firstSyncProgress
+                                      ? ` (${ds.connector?.firstSyncProgress})`
+                                      : null}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="">
+                                      Last Sync ~ {ds.synchronizedAgo} ago
+                                    </span>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-sm text-element-700">
+                        blabllablalsk dadjk askd jaklsdj
+                      </div>
                     </div>
+                    <div className="flex flex-1"></div>
                     <div>
                       {(() => {
-                        if (ds.fetchConnectorError) {
-                          return (
-                            <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
-                              errored
-                            </p>
-                          );
-                        }
-
                         if (!ds || !ds.connector) {
                           return (
                             <Button
+                              type="secondary"
+                              icon={CloudArrowDownIcon}
                               disabled={
                                 !ds.isBuilt ||
                                 isLoadingByProvider[
@@ -473,41 +498,36 @@ export default function DataSourcesView({
                                       );
                                     }
                               }
-                            >
-                              {!ds.isBuilt
-                                ? "Coming soon"
-                                : !isLoadingByProvider[
-                                    ds.connectorProvider as ConnectorProvider
-                                  ] && !ds.fetchConnectorError
-                                ? "Connect"
-                                : "Connecting..."}
-                            </Button>
-                          );
-                        }
-
-                        if (!ds.connector?.lastSyncSuccessfulTime) {
-                          return (
-                            <div className="flex-col justify-items-end text-right">
-                              <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
-                                Synchronizing
-                                {ds.connector?.firstSyncProgress
-                                  ? ` (${ds.connector?.firstSyncProgress})`
-                                  : null}
-                              </p>
-                            </div>
+                              label={
+                                !ds.isBuilt
+                                  ? "Coming soon"
+                                  : !isLoadingByProvider[
+                                      ds.connectorProvider as ConnectorProvider
+                                    ] && !ds.fetchConnectorError
+                                  ? "Activate"
+                                  : "Connecting..."
+                              }
+                            />
                           );
                         } else {
                           return (
-                            <>
-                              <div className="flex-col justify-items-end text-right">
-                                <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
-                                  Synchronized
-                                </p>
-                                <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
-                                  {ds.synchronizedAgo} ago
-                                </p>
-                              </div>
-                            </>
+                            <Button
+                              type="secondary"
+                              icon={Cog6ToothIcon}
+                              disabled={
+                                !ds.isBuilt ||
+                                isLoadingByProvider[
+                                  ds.connectorProvider as ConnectorProvider
+                                ] ||
+                                !isAdmin
+                              }
+                              onClick={() => {
+                                void router.push(
+                                  `/w/${owner.sId}/ds/${ds.dataSourceName}`
+                                );
+                              }}
+                              label="Manage"
+                            />
                           );
                         }
                       })()}
@@ -549,47 +569,46 @@ export default function DataSourcesView({
           }
         />
 
-        <div className="divide-y divide-gray-200">
-          <div className="my-4">
-            <ul role="list" className="pt-4">
-              {dataSources.map((ds) => (
-                <li key={ds.name} className="px-2">
-                  <div className="py-4">
-                    <div className="flex items-center justify-between">
+        <div className="my-4">
+          <ul role="list" className="mt-4 divide-y divide-structure-200">
+            {dataSources.map((ds) => (
+              <li key={ds.name} className="px-2">
+                <div className="py-4">
+                  <div className="flex items-start">
+                    <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
+                      <CloudArrowDownIcon className="h-5 w-5 text-element-600" />
+                    </div>
+                    <div className="fexl flex-col">
                       <Link
                         href={`/w/${owner.sId}/ds/${ds.name}`}
-                        className="block"
+                        className="flex"
                       >
-                        <p className="truncate text-base font-bold text-action-600">
+                        <p className="truncate text-sm font-bold text-element-900">
                           {ds.name}
                         </p>
                       </Link>
-                      <div className="ml-2 flex flex-shrink-0">
-                        <p
-                          className={classNames(
-                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            ds.visibility == "public"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          )}
-                        >
-                          {ds.visibility}
-                        </p>
+                      <div className="mt-2 text-sm text-element-700">
+                        {ds.description}
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-700">
-                          {ds.description}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0"></div>
+
+                    <div className="flex flex-1"></div>
+
+                    <div>
+                      <Button
+                        type="secondary"
+                        icon={Cog6ToothIcon}
+                        onClick={() => {
+                          void router.push(`/w/${owner.sId}/ds/${ds.name}`);
+                        }}
+                        label="Manage"
+                      />
                     </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </AppLayout>

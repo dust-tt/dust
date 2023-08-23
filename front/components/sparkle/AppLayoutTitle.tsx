@@ -1,4 +1,9 @@
-import { Button, CheckCircleIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckCircleIcon,
+  IconButton,
+  XCircleStrokeIcon,
+} from "@dust-tt/sparkle";
 import { LinkIcon } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import React, { ComponentType, useState } from "react";
@@ -134,6 +139,30 @@ export function AppLayoutTitle({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+export function AppLayoutSimpleCloseTitle({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-row items-center">
+      <div className="flex flex-initial font-bold">
+        <div
+          className={classNames(
+            "w-48 overflow-hidden truncate pl-10 sm:w-96 sm:pl-0 lg:w-auto lg:px-0"
+          )}
+        >
+          <span>{title}</span>
+        </div>
+      </div>
+      <div className="flex flex-1"></div>
+      <IconButton type="secondary" onClick={onClose} icon={XCircleStrokeIcon} />
     </div>
   );
 }
