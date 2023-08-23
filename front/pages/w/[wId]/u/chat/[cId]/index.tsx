@@ -95,7 +95,10 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     return {
-      notFound: true,
+      redirect: {
+        destination: "/",
+        permanent: false,
+      },
     };
   }
 
