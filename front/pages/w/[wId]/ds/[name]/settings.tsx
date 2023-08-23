@@ -525,6 +525,8 @@ function ManagedDataSourceSettings({
   }) => Promise<void>;
   isUpdating: boolean;
 }) {
+  const router = useRouter();
+
   const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
     dataSource.assistantDefaultSelected
   );

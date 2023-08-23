@@ -47,7 +47,8 @@ type DataSourceIntegration = {
   fetchConnectorError: boolean;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider;
-  logoPath?: string;
+  logoPath: string;
+  description: string;
   synchronizedAgo?: string | null;
   setupWithSuffix: string | null;
 };
@@ -58,6 +59,7 @@ const DATA_SOURCE_INTEGRATIONS: {
     connectorProvider: ConnectorProvider;
     isBuilt: boolean;
     logoPath: string;
+    description: string;
   };
 } = {
   notion: {
@@ -65,24 +67,32 @@ const DATA_SOURCE_INTEGRATIONS: {
     connectorProvider: "notion",
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
+    description:
+      "Allow Dust access to authorised parts of your copmpany's Notion workspace, by top-level pages.",
   },
   slack: {
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
+    description:
+      "Allow Dust access to authorised parts of your copmpany's Slack, channel by channel.",
   },
   github: {
     name: "GitHub",
     connectorProvider: "github",
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
+    description:
+      "Allow Dust access to authorised parts of your copmpany's Github, repository by repository. Dust access Issues, Discussions and Pull Requests threads. Dust does not access code.",
   },
   google_drive: {
     name: "Google Drive™",
     connectorProvider: "google_drive",
     isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
+    description:
+      "Allow Dust access to authorised parts of your copmpany's Google Drive, by shared drives and folders.",
   },
 };
 
@@ -407,11 +417,13 @@ export default function DataSourcesView({
                   className="px-2 py-4"
                 >
                   <div className="flex items-start">
-                    {ds.logoPath ? (
-                      <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                        <img src={ds.logoPath}></img>
-                      </div>
-                    ) : null}
+                    <div className="min-w-5 flex">
+                      {ds.logoPath ? (
+                        <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
+                          <img src={ds.logoPath}></img>
+                        </div>
+                      ) : null}
+                    </div>
 
                     <div className="flex flex-col">
                       <div className="flex flex-col sm:flex-row sm:items-center">
@@ -466,7 +478,7 @@ export default function DataSourcesView({
                         )}
                       </div>
                       <div className="mt-2 text-sm text-element-700">
-                        blabllablalsk dadjk askd jaklsdj
+                        {ds.description}
                       </div>
                     </div>
                     <div className="flex flex-1"></div>
@@ -475,7 +487,7 @@ export default function DataSourcesView({
                         if (!ds || !ds.connector) {
                           return (
                             <Button
-                              type="secondary"
+                              type="primary"
                               icon={CloudArrowDownIcon}
                               disabled={
                                 !ds.isBuilt ||
