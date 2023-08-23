@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, Checkbox } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -350,15 +350,9 @@ function StandardDataSourceSettings({
                 </label>
               </div>
               <div className="mt-2 flex items-center">
-                <input
-                  id="assistantDefaultSelected"
-                  name="assistantDefaultSected"
-                  type="checkbox"
-                  className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                <Checkbox
                   checked={assistantDefaultSelected}
-                  onChange={(e) =>
-                    setAssistantDefaultSelected(e.target.checked)
-                  }
+                  onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
                   The assistant will use the DataSource by default when
@@ -728,13 +722,9 @@ function ManagedDataSourceSettings({
               </label>
             </div>
             <div className="mt-2 flex items-center">
-              <input
-                id="assistantDefaultSelected"
-                name="assistantDefaultSected"
-                type="checkbox"
-                className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+              <Checkbox
                 checked={assistantDefaultSelected}
-                onChange={(e) => setAssistantDefaultSelected(e.target.checked)}
+                onChange={(checked) => setAssistantDefaultSelected(checked)}
               />
               <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
                 The assistant will use the DataSource by default when answering
@@ -745,9 +735,21 @@ function ManagedDataSourceSettings({
             </div>
           </div>
         </div>
-        <div className="flex pt-6">
-          <div className="flex">
+        <div className="flex">
+          <div className="flex flex-1"></div>
+          <div className="ml-2 flex">
             <Button
+              type="tertiary"
+              onClick={() => {
+                void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+              }}
+              disabled={isUpdating}
+              label={"Cancel"}
+            />
+          </div>
+          <div className="ml-2 flex">
+            <Button
+              type="secondary"
               onClick={() => {
                 void handleUpdate({
                   assistantDefaultSelected,
