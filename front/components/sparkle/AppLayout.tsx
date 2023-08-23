@@ -269,7 +269,7 @@ export default function AppLayout({
 
         <div className="mt-0 h-full flex-1 lg:pl-80">
           {/* Title bar with mobile sidebar opener and possible childrens. */}
-          <div className="fixed left-0 top-0 z-50 flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
+          <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
             <button
               type="button"
               className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
@@ -281,7 +281,7 @@ export default function AppLayout({
           </div>
           <div
             className={classNames(
-              "fixed left-0 right-0 top-0 z-40 flex h-16 flex-row lg:left-80",
+              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row lg:left-80",
               "bg-white/30 backdrop-blur-md",
               titleChildren ? "fixed" : "lg:hidden"
             )}
