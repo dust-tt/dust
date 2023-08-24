@@ -1,15 +1,17 @@
-import { PlusIcon } from "@heroicons/react/20/solid";
 import {
-  ArrowRightCircleIcon,
-  EyeIcon,
-  EyeSlashIcon,
-} from "@heroicons/react/24/outline";
+  Button,
+  CommandLineIcon,
+  PageHeader,
+  PlusIcon,
+  SectionHeader,
+} from "@dust-tt/sparkle";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState } from "react";
 import { mutate } from "swr";
 
-import { Button } from "@app/components/Button";
 import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
@@ -109,102 +111,93 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
   };
 
   return (
-    <div className="space-y-4 divide-y divide-gray-200">
-      <div className="flex flex-col justify-between md:flex-row md:items-center">
-        <div className="">
-          <h1 className="text-base font-medium text-gray-900">
-            Secret API Keys
-          </h1>
-
-          <p className="text-sm text-gray-500">
-            Secrets used to communicate between your servers and Dust. Do not
-            share them with anyone. Do not use them in client-side or browser
-            code.
-          </p>
-        </div>
-        <div className="mr-2 mt-2 whitespace-nowrap  md:ml-12">
-          <Button
-            onClick={async () => {
-              await handleGenerate();
-            }}
-          >
-            <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-            Create Secret API Key
-          </Button>
-        </div>
-      </div>
-      <ul role="list" className="pt-4">
-        {keys.map((key) => (
-          <li key={key.secret} className="px-2 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <p
-                  className={classNames(
-                    "font-mono truncate text-sm text-slate-700"
-                  )}
-                >
-                  {isRevealed[key.secret] ? (
-                    <>
-                      {key.secret}
-                      {key.status == "active" ? (
-                        <EyeSlashIcon
-                          className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                          onClick={() => {
-                            setIsRevealed({
-                              ...isRevealed,
-                              [key.secret]: false,
-                            });
-                          }}
-                        />
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      sk-...{key.secret.slice(-5)}
-                      {key.status == "active" ? (
-                        <EyeIcon
-                          className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                          onClick={() => {
-                            setIsRevealed({
-                              ...isRevealed,
-                              [key.secret]: true,
-                            });
-                          }}
-                        />
-                      ) : null}
-                    </>
-                  )}
-                </p>
-                <div className="ml-2 mt-0.5 flex flex-shrink-0">
+    <>
+      <SectionHeader
+        title="Secret API Keys"
+        description="Secrets used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
+        action={{
+          label: "Create Secret API Key",
+          type: "tertiary",
+          onClick: async () => {
+            await handleGenerate();
+          },
+          icon: PlusIcon,
+        }}
+      />
+      <div className="space-y-4 divide-y divide-gray-200">
+        <ul role="list" className="pt-4">
+          {keys.map((key) => (
+            <li key={key.secret} className="px-2 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <p
                     className={classNames(
-                      "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                      key.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "ml-6 bg-gray-100 text-gray-800"
+                      "font-mono truncate text-sm text-slate-700"
                     )}
                   >
-                    {key.status === "active" ? "active" : "revoked"}
+                    {isRevealed[key.secret] ? (
+                      <>
+                        {key.secret}
+                        {key.status == "active" ? (
+                          <EyeSlashIcon
+                            className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                            onClick={() => {
+                              setIsRevealed({
+                                ...isRevealed,
+                                [key.secret]: false,
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        sk-...{key.secret.slice(-5)}
+                        {key.status == "active" ? (
+                          <EyeIcon
+                            className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                            onClick={() => {
+                              setIsRevealed({
+                                ...isRevealed,
+                                [key.secret]: true,
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </>
+                    )}
                   </p>
+                  <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                    <p
+                      className={classNames(
+                        "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                        key.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : "ml-6 bg-gray-100 text-gray-800"
+                      )}
+                    >
+                      {key.status === "active" ? "active" : "revoked"}
+                    </p>
+                  </div>
                 </div>
+                {key.status === "active" ? (
+                  <div>
+                    <Button
+                      type="secondaryWarning"
+                      disabled={key.status != "active"}
+                      onClick={async () => {
+                        await handleRevoke(key);
+                      }}
+                      label="Revoke"
+                    />
+                  </div>
+                ) : null}
               </div>
-              {key.status === "active" ? (
-                <div>
-                  <Button
-                    disabled={key.status != "active"}
-                    onClick={async () => {
-                      await handleRevoke(key);
-                    }}
-                  >
-                    Revoke
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }
 
@@ -288,158 +281,144 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         config={configs["browserlessapi"] ? configs["browserlessapi"] : null}
       />
 
-      <div className="">
-        <div className="space-y-4 divide-y divide-gray-200">
-          <div className="sm:flex sm:items-center">
-            <div className="mt-8 sm:flex-auto">
-              <h1 className="text-base font-medium text-gray-900">
-                Model Providers
-              </h1>
-
-              <p className="text-sm text-gray-500">
-                Model providers available to your apps. These providers are not
-                required to run our assistant apps, only your own custom large
-                language model apps.
-              </p>
-            </div>
-          </div>
-
-          <ul role="list" className="">
-            {modelProviders.map((provider) => (
-              <li key={provider.providerId} className="px-2 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+      <>
+        <SectionHeader
+          title="Model Providers"
+          description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
+        />
+        <ul role="list" className="pt-4">
+          {modelProviders.map((provider) => (
+            <li key={provider.providerId} className="px-2 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <p
+                    className={classNames(
+                      "truncate text-base font-bold",
+                      configs[provider.providerId]
+                        ? "text-slate-700"
+                        : "text-slate-400"
+                    )}
+                  >
+                    {provider.name}
+                  </p>
+                  <div className="ml-2 mt-0.5 flex flex-shrink-0">
                     <p
                       className={classNames(
-                        "truncate text-base font-bold",
+                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                         configs[provider.providerId]
-                          ? "text-slate-700"
-                          : "text-slate-400"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
                       )}
                     >
-                      {provider.name}
+                      {configs[provider.providerId] ? "enabled" : "disabled"}
                     </p>
-                    <div className="ml-2 mt-0.5 flex flex-shrink-0">
-                      <p
-                        className={classNames(
-                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                          configs[provider.providerId]
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        )}
-                      >
-                        {configs[provider.providerId] ? "enabled" : "disabled"}
-                      </p>
-                    </div>
                   </div>
-                  <div>
-                    <Button
-                      disabled={!provider.built}
-                      onClick={() => {
-                        switch (provider.providerId) {
-                          case "openai":
-                            setOpenAIOpen(true);
-                            break;
-                          case "cohere":
-                            setCohereOpen(true);
-                            break;
-                          case "ai21":
-                            setAI21Open(true);
-                            break;
-                          case "azure_openai":
-                            setAzureOpenAIOpen(true);
-                            break;
-                          case "anthropic":
-                            setAnthropicOpen(true);
-                            break;
-                        }
-                      }}
-                    >
-                      {configs[provider.providerId]
+                </div>
+                <div>
+                  <Button
+                    type={
+                      configs[provider.providerId] ? "tertiary" : "secondary"
+                    }
+                    disabled={!provider.built}
+                    onClick={() => {
+                      switch (provider.providerId) {
+                        case "openai":
+                          setOpenAIOpen(true);
+                          break;
+                        case "cohere":
+                          setCohereOpen(true);
+                          break;
+                        case "ai21":
+                          setAI21Open(true);
+                          break;
+                        case "azure_openai":
+                          setAzureOpenAIOpen(true);
+                          break;
+                        case "anthropic":
+                          setAnthropicOpen(true);
+                          break;
+                      }
+                    }}
+                    label={
+                      configs[provider.providerId]
                         ? "Edit"
                         : provider.built
                         ? "Set up"
-                        : "Coming Soon"}
-                    </Button>
-                  </div>
+                        : "Coming Soon"
+                    }
+                  />
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+              </div>
+            </li>
+          ))}
+        </ul>
 
-        <div className="space-y-4 divide-y divide-gray-200">
-          <div className="sm:flex sm:items-center">
-            <div className="mt-8 sm:flex-auto">
-              <h1 className="text-base font-medium text-gray-900">
-                Service Providers
-              </h1>
+        <SectionHeader
+          title="Service Providers"
+          description="Service providers enable your apps to query external data or write to external services."
+        />
 
-              <p className="text-sm text-gray-500">
-                Service providers enable your apps to query external data or
-                write to external services.
-              </p>
-            </div>
-          </div>
-
-          <ul role="list" className="">
-            {serviceProviders.map((provider) => (
-              <li key={provider.providerId} className="px-2 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+        <ul role="list" className="pt-4">
+          {serviceProviders.map((provider) => (
+            <li key={provider.providerId} className="px-2 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <p
+                    className={classNames(
+                      "truncate text-base font-bold",
+                      configs[provider.providerId]
+                        ? "text-slate-700"
+                        : "text-slate-400"
+                    )}
+                  >
+                    {provider.name}
+                  </p>
+                  <div className="ml-2 mt-0.5 flex flex-shrink-0">
                     <p
                       className={classNames(
-                        "truncate text-base font-bold",
+                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                         configs[provider.providerId]
-                          ? "text-slate-700"
-                          : "text-slate-400"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
                       )}
                     >
-                      {provider.name}
+                      {configs[provider.providerId] ? "enabled" : "disabled"}
                     </p>
-                    <div className="ml-2 mt-0.5 flex flex-shrink-0">
-                      <p
-                        className={classNames(
-                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                          configs[provider.providerId]
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        )}
-                      >
-                        {configs[provider.providerId] ? "enabled" : "disabled"}
-                      </p>
-                    </div>
                   </div>
-                  <div>
-                    <Button
-                      disabled={!provider.built}
-                      onClick={() => {
-                        switch (provider.providerId) {
-                          case "serpapi":
-                            setSerpapiOpen(true);
-                            break;
-                          case "serper":
-                            setSerperOpen(true);
-                            break;
-                          case "browserlessapi":
-                            setBrowserlessapiOpen(true);
-                            break;
-                        }
-                      }}
-                    >
-                      {configs[provider.providerId]
+                </div>
+                <div>
+                  <Button
+                    disabled={!provider.built}
+                    type={
+                      configs[provider.providerId] ? "tertiary" : "secondary"
+                    }
+                    onClick={() => {
+                      switch (provider.providerId) {
+                        case "serpapi":
+                          setSerpapiOpen(true);
+                          break;
+                        case "serper":
+                          setSerperOpen(true);
+                          break;
+                        case "browserlessapi":
+                          setBrowserlessapiOpen(true);
+                          break;
+                      }
+                    }}
+                    label={
+                      configs[provider.providerId]
                         ? "Edit"
                         : provider.built
                         ? "Set up"
-                        : "Coming Soon"}
-                    </Button>
-                  </div>
+                        : "Coming Soon"
+                    }
+                  />
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </>
     </>
   );
 }
@@ -451,6 +430,8 @@ export default function Developers({
   apps,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -459,106 +440,90 @@ export default function Developers({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "developers" })}
     >
+      <PageHeader
+        title="Developers Tools"
+        icon={CommandLineIcon}
+        description="Design and deploy custom large language model apps with access to your Data Sources and other Service Providers."
+      />
       <div className="flex flex-col">
-        <div className="space-y-4 divide-y divide-gray-200">
-          <div className="flex flex-col justify-between md:flex-row md:items-center">
-            <div>
-              <h1 className="text-base font-medium text-gray-900">Apps</h1>
+        <SectionHeader
+          title="Apps"
+          description="Your Large Language Model apps."
+          action={{
+            label: "Create App",
+            type: "tertiary",
+            onClick: async () => {
+              void router.push(`/w/${owner.sId}/a/new`);
+            },
+            icon: PlusIcon,
+          }}
+        />
 
-              <p className="text-sm text-gray-500">
-                Your Large Language Model apps.
-              </p>
-            </div>
-            <div className="mr-2 mt-2 whitespace-nowrap md:ml-12">
-              {!readOnly && (
-                <Link href={`/w/${owner.sId}/a/new`}>
-                  <Button>
-                    <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                    Create App
-                  </Button>
-                </Link>
+        <ul role="list" className="pt-4">
+          {apps.map((app) => (
+            <li key={app.sId} className="px-2">
+              <div className="py-4">
+                <div className="flex items-center justify-between">
+                  <Link href={`/w/${owner.sId}/a/${app.sId}`} className="block">
+                    <p className="truncate text-base font-bold text-action-600">
+                      {app.name}
+                    </p>
+                  </Link>
+                  <div className="ml-2 flex flex-shrink-0">
+                    <p
+                      className={classNames(
+                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                        app.visibility == "public"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      )}
+                    >
+                      {app.visibility}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 sm:flex sm:justify-between">
+                  <div className="sm:flex">
+                    <p className="flex items-center text-sm text-gray-700">
+                      {app.description}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                    <p>{app.sId}</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))}
+          {apps.length == 0 ? (
+            <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
+              {readOnly ? (
+                <>
+                  <p>
+                    Welcome to Dust 🔥 This user has not created any app yet 🙃
+                  </p>
+                  <p className="mt-2">Sign-in to create your own apps.</p>
+                </>
+              ) : (
+                <>
+                  <p>Welcome to the Dust developer platform 🔥</p>
+                  <p className="mt-2">
+                    Setup your Providers (below) or create your first app to get
+                    started.
+                  </p>
+                  <p className="mt-6">
+                    You can also visit our developer documentation:
+                  </p>
+                  <p className="mt-2">
+                    <Link href="https://docs.dust.tt" target="_blank">
+                      <Button type="tertiary" label="View Documentation" />
+                    </Link>
+                  </p>
+                </>
               )}
             </div>
-          </div>
-          <div className="my-4">
-            <ul role="list" className="pt-4">
-              {apps.map((app) => (
-                <li key={app.sId} className="px-2">
-                  <div className="py-4">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/w/${owner.sId}/a/${app.sId}`}
-                        className="block"
-                      >
-                        <p className="truncate text-base font-bold text-action-600">
-                          {app.name}
-                        </p>
-                      </Link>
-                      <div className="ml-2 flex flex-shrink-0">
-                        <p
-                          className={classNames(
-                            "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            app.visibility == "public"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          )}
-                        >
-                          {app.visibility}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-700">
-                          {app.description}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                        <p>{app.sId}</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-              {apps.length == 0 ? (
-                <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
-                  {readOnly ? (
-                    <>
-                      <p>
-                        Welcome to Dust 🔥 This user has not created any app yet
-                        🙃
-                      </p>
-                      <p className="mt-2">Sign-in to create your own apps.</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>Welcome to the Dust developer platform 🔥</p>
-                      <p className="mt-2">
-                        Setup your Providers (below) or create your first app to
-                        get started.
-                      </p>
-                      <p className="mt-6">
-                        You can also visit our developer documentation:
-                      </p>
-                      <p className="mt-2">
-                        <Link
-                          href="https://docs.dust.tt"
-                          target="_blank"
-                          className="mr-2"
-                        >
-                          <Button>
-                            <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                            View Documentation
-                          </Button>
-                        </Link>
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </ul>
-          </div>
-        </div>
+          ) : null}
+        </ul>
         {!readOnly ? <Providers owner={owner} /> : null}
         {!readOnly ? <APIKeys owner={owner} /> : null}
       </div>
