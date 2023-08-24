@@ -115,12 +115,10 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 function StandardDataSourceView({
-  user,
   owner,
   readOnly,
   dataSource,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
   dataSource: DataSourceType;
@@ -348,16 +346,23 @@ function StandardDataSourceView({
 }
 
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
+  notion: "Top-level Notion pages and databases Dust has access to:",
+  google_drive: "Google Drive folders and files Dust has access to:",
+  slack: "Slack channels Dust has access to:",
+  github: "GitHub repositories Dust has access to:",
+};
+
+const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
+  slack: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
   notion:
-    "Explore the top-level Notion pages and databases Dust has access to:",
+    "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+  github:
+    "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
   google_drive:
-    "Explore the Google Drive folders and files Dust has access to:",
-  slack: "Explore the Slack channels Dust has access to:",
-  github: "Explore the GitHub repositories Dust has access to:",
+    "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
 };
 
 function ManagedDataSourceView({
-  user,
   owner,
   readOnly,
   dataSource,
@@ -365,7 +370,6 @@ function ManagedDataSourceView({
   nangoConfig,
   githubAppUrl,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
   dataSource: DataSourceType;
@@ -471,33 +475,10 @@ function ManagedDataSourceView({
     const error = jsonErr.error;
 
     if (error.type === "connector_oauth_target_mismatch") {
-      if (provider === "slack") {
-        return {
-          success: false,
-          error: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
-        };
-      }
-      if (provider === "notion") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
-        };
-      }
-      if (provider === "github") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
-        };
-      }
-      if (provider === "google_drive") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
-        };
-      }
+      return {
+        success: false,
+        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      };
     }
     return {
       success: false,
@@ -527,7 +508,7 @@ function ManagedDataSourceView({
       )}
       <div className="flex flex-col gap-8">
         <SectionHeader
-          title={`${DATA_SOURCE_INTEGRATIONS[connectorProvider].name} Permissions`}
+          title={`Managed ${DATA_SOURCE_INTEGRATIONS[connectorProvider].name} Data Source`}
           description={
             synchronizedTimeAgo
               ? `Last Sync ~ ${synchronizedTimeAgo}`
@@ -548,21 +529,35 @@ function ManagedDataSourceView({
                 }
           }
         />
-        <div className="flex flex-row items-center justify-between">
-          <div className="text-sm text-element-900">
-            {CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
+        <div className="flex flex-row">
+          <div className="flex flex-1"></div>
+          <div className="flex">
+            <Button
+              label="Search"
+              type="secondary"
+              onClick={() => {
+                void router.push(
+                  `/w/${owner.sId}/ds/${dataSource.name}/search`
+                );
+              }}
+            />
           </div>
-          <Button
-            label="Edit permissions"
-            type="secondary"
-            onClick={() => {
-              if (connectorProvider === "slack") {
-                setShowPermissionModal(true);
-              } else {
-                void handleUpdatePermissions();
-              }
-            }}
-          />
+          <div className="flex">
+            <Button
+              label="Edit permissions"
+              type="secondary"
+              onClick={() => {
+                if (connectorProvider === "slack") {
+                  setShowPermissionModal(true);
+                } else {
+                  void handleUpdatePermissions();
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="text-sm text-element-900">
+          {CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
         </div>
 
         <div>
@@ -601,7 +596,6 @@ export default function DataSourceView({
       {dataSource.connectorId && connector ? (
         <ManagedDataSourceView
           {...{
-            user,
             owner,
             readOnly,
             dataSource,
@@ -611,7 +605,7 @@ export default function DataSourceView({
           }}
         />
       ) : (
-        <StandardDataSourceView {...{ user, owner, readOnly, dataSource }} />
+        <StandardDataSourceView {...{ owner, readOnly, dataSource }} />
       )}
     </AppLayout>
   );
