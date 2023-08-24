@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@types/minimist": "^1.2.2",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@types/node": "^20.5.3",
+    "minimist": "^1.2.8"
+  }
+}
