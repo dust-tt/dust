@@ -1,6 +1,4 @@
-import React, { MouseEvent, ComponentType } from "react";
-
-import { Icon } from "./Icon";
+import React, { ComponentType, MouseEvent } from "react";
 
 import {
   noHrefLink,
@@ -8,6 +6,8 @@ import {
   SparkleContextLinkType,
 } from "@sparkle/context";
 import { classNames } from "@sparkle/lib/utils";
+
+import { Icon } from "./Icon";
 
 type TabProps = {
   tabs: Array<{
