@@ -1,6 +1,6 @@
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
-import { Transaction } from "sequelize";
+import { Op, Transaction } from "sequelize";
 
 import {
   launchSlackBotJoinedWorkflow,
@@ -284,7 +284,8 @@ export async function cleanupSlackConnector(
 
 export async function retrieveSlackConnectorPermissions(
   connectorId: ModelId,
-  parentInternalId: string | null
+  parentInternalId: string | null,
+  filterPermission: ConnectorPermission | null
 ): Promise<Result<ConnectorResource[], Error>> {
   if (parentInternalId) {
     return new Err(
@@ -313,10 +314,29 @@ export async function retrieveSlackConnectorPermissions(
     return new Err(new Error("Slack configuration not found"));
   }
 
+  let permissionToFilter: ConnectorPermission[] = [];
+
+  switch (filterPermission) {
+    case "read":
+      permissionToFilter = ["read", "read_write"];
+      break;
+    case "write":
+      permissionToFilter = ["write", "read_write"];
+      break;
+    case "read_write":
+      permissionToFilter = ["read_write"];
+      break;
+  }
+
   const slackChannels = await SlackChannel.findAll({
-    where: {
-      connectorId: connectorId,
-    },
+    where: filterPermission
+      ? {
+          connectorId: connectorId,
+          permission: { [Op.or]: permissionToFilter },
+        }
+      : {
+          connectorId: connectorId,
+        },
     order: [
       ["createdAt", "DESC"],
       ["slackChannelName", "ASC"],

@@ -53,7 +53,7 @@ type DataSourceIntegration = {
   setupWithSuffix: string | null;
 };
 
-const DATA_SOURCE_INTEGRATIONS: {
+export const DATA_SOURCE_INTEGRATIONS: {
   [key in ConnectorProvider]: {
     name: string;
     connectorProvider: ConnectorProvider;

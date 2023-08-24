@@ -1,8 +1,10 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -78,6 +80,8 @@ export default function DataSourceView({
 
   const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
+  const router = useRouter();
+
   useEffect(
     () =>
       setDisplayNameByDocId(
@@ -147,17 +151,17 @@ export default function DataSourceView({
         owner,
         current: "data_sources",
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title="Search documents"
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+          }}
+        />
+      }
     >
       <div className="flex flex-col">
         <div className="sm:col-span-6">
-          <div className="flex justify-between">
-            <label
-              htmlFor="appDescription"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Search Documents
-            </label>
-          </div>
           <div className="mt-1 flex rounded-md shadow-sm">
             <input
               type="text"

@@ -25,6 +25,8 @@ import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
 
+import { ConnectorPermission } from "./connectors_api";
+
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
     if (res.status >= 300) {
@@ -293,14 +295,18 @@ export function useEventSchemas(owner: WorkspaceType) {
 export function useConnectorPermissions(
   owner: WorkspaceType,
   dataSource: DataSourceType,
-  parentId: string | null
+  parentId: string | null,
+  filterPermission: ConnectorPermission | null
 ) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`;
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?source=client`;
   if (parentId) {
-    url += `?parentId=${parentId}`;
+    url += `&parentId=${parentId}`;
+  }
+  if (filterPermission) {
+    url += `&filterPermission=${filterPermission}`;
   }
 
   const { data, error } = useSWR(url, permissionsFetcher);

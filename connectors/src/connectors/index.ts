@@ -144,7 +144,8 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
 
 type ConnectorPermissionRetriever = (
   connectorId: ModelId,
-  parentInternalId: string | null
+  parentInternalId: string | null,
+  filterPermission: ConnectorPermission | null
 ) => Promise<Result<ConnectorResource[], Error>>;
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<

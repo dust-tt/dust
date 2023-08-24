@@ -76,8 +76,6 @@ const _deleteConnectorAPIHandler = async (
 
     await connector.destroy({ transaction: t });
 
-    await t.commit();
-
     return res.json({
       success: true,
     });
