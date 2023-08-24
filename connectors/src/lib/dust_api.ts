@@ -14,7 +14,6 @@ type DataSourceType = {
   dustAPIProjectId: string;
   connectorId?: string;
   connectorProvider?: ConnectorProvider;
-  userUpsertable: boolean;
 };
 
 const { DUST_API = "https://dust.tt" } = process.env;

@@ -139,7 +139,6 @@ export default function DataSourceSettings({
       | {
           description: string;
           visibility: DataSourceVisibility;
-          userUpsertable: boolean;
           assistantDefaultSelected: boolean;
         }
       | { assistantDefaultSelected: boolean }
@@ -193,7 +192,6 @@ export default function DataSourceSettings({
             handleUpdate={(settings: {
               description: string;
               visibility: DataSourceVisibility;
-              userUpsertable: boolean;
               assistantDefaultSelected: boolean;
             }) => handleUpdate(settings)}
             isUpdating={isUpdating}
@@ -229,7 +227,6 @@ function StandardDataSourceSettings({
   handleUpdate: (settings: {
     description: string;
     visibility: DataSourceVisibility;
-    userUpsertable: boolean;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
   isUpdating: boolean;
@@ -248,7 +245,7 @@ function StandardDataSourceSettings({
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this DataSource?")) {
+    if (window.confirm("Are you sure you want to delete this Data Source?")) {
       setIsDeleting(true);
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
@@ -282,7 +279,7 @@ function StandardDataSourceSettings({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                DataSource Name
+                Data Source Name
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
@@ -346,7 +343,7 @@ function StandardDataSourceSettings({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Automatically select this DataSource for Assistant queries
+                  Automatically select this Data Source for Assistant queries
                 </label>
               </div>
               <div className="mt-2 flex items-center">
@@ -355,9 +352,9 @@ function StandardDataSourceSettings({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  The assistant defaults to using the DataSource for answers.
+                  The assistant defaults to using the Data Source for answers.
                   However, users can opt out for a conversation by clicking the
-                  DataSource icon below the chat input.
+                  Data Source icon below the chat input.
                 </p>
               </div>
             </div>
@@ -434,7 +431,6 @@ function StandardDataSourceSettings({
               void handleUpdate({
                 description: dataSourceDescription,
                 visibility: "private",
-                userUpsertable: false,
                 assistantDefaultSelected,
               });
             }}
@@ -719,7 +715,7 @@ function ManagedDataSourceSettings({
                 htmlFor="assistantDefaultSelected"
                 className="block text-sm font-medium text-gray-700"
               >
-                Automatically select this DataSource for Assistant queries
+                Automatically select this Data Source for Assistant queries
               </label>
             </div>
             <div className="mt-2 flex items-center">
@@ -728,9 +724,9 @@ function ManagedDataSourceSettings({
                 onChange={(checked) => setAssistantDefaultSelected(checked)}
               />
               <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                The assistant defaults to using the DataSource for answers.
+                The assistant defaults to using the Data Source for answers.
                 However, users can opt out for a conversation by clicking the
-                DataSource icon below the chat input.
+                Data Source icon below the chat input.
               </p>
             </div>
           </div>
