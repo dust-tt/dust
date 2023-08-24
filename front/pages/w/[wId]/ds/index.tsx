@@ -68,7 +68,7 @@ const DATA_SOURCE_INTEGRATIONS: {
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
     description:
-      "Allow Dust access to authorised parts of your copmpany's Notion workspace, by top-level pages.",
+      "Grant Dust access to authorized sections of your company's Notion workspace, organized by top-level pages. Dust doesn't synchronize external files shared within a Notion page.",
   },
   slack: {
     name: "Slack",
@@ -76,7 +76,7 @@ const DATA_SOURCE_INTEGRATIONS: {
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
     description:
-      "Allow Dust access to authorised parts of your copmpany's Slack, channel by channel.",
+      "Grant Dust access to authorized channels in your company's Slack on a channel-by-channel basis. Dust doesn't synchronize external files shared within a Slack channel.",
   },
   github: {
     name: "GitHub",
@@ -84,7 +84,7 @@ const DATA_SOURCE_INTEGRATIONS: {
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
     description:
-      "Allow Dust access to authorised parts of your copmpany's Github, repository by repository. Dust access Issues, Discussions and Pull Requests threads. Dust does not access code.",
+      "Grant Dust access to authorized sections of your company's GitHub, on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Dust does not access code.",
   },
   google_drive: {
     name: "Google Drive™",
@@ -92,7 +92,7 @@ const DATA_SOURCE_INTEGRATIONS: {
     isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
     description:
-      "Allow Dust access to authorised parts of your copmpany's Google Drive, by shared drives and folders.",
+      "Grant Dust access to authorized sections of your company's Google Drive, selected by shared drives and folders. Supported files include GDocs, GSlides, and .txt files, each with a limit of <750KB of extracted text.",
   },
 };
 
@@ -388,13 +388,13 @@ export default function DataSourcesView({
       <PageHeader
         title="Data Sources"
         icon={CloudArrowDownIcon}
-        description="Set and manage the data Dust can access and use."
+        description="Control the data Dust has access to and how it's used."
       />
 
       <div>
         <SectionHeader
           title="Managed Data Sources"
-          description="Empower Dust with instant and automatic data updates by connecting your company's online knownledge bases."
+          description="Give Dust real-time data updates by linking your company's online knowledge bases."
         />
 
         <div>
