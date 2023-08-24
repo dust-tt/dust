@@ -355,10 +355,9 @@ function StandardDataSourceSettings({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  The assistant will use the DataSource by default when
-                  answering questions. Users can still choose not to use the
-                  DataSource for a given conversation with the assistant by
-                  clicking on the DataSource's icon below the chat input.
+                  The assistant defaults to using the DataSource for answers.
+                  However, users can opt out for a conversation by clicking the
+                  DataSource icon below the chat input.
                 </p>
               </div>
             </div>
@@ -729,10 +728,9 @@ function ManagedDataSourceSettings({
                 onChange={(checked) => setAssistantDefaultSelected(checked)}
               />
               <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                The assistant will use the DataSource by default when answering
-                questions. Users can still choose not to use the DataSource for
-                a given conversation with the assistant by clicking on the
-                DataSource's icon below the chat input.
+                The assistant defaults to using the DataSource for answers.
+                However, users can opt out for a conversation by clicking the
+                DataSource icon below the chat input.
               </p>
             </div>
           </div>

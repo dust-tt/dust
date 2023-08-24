@@ -143,7 +143,7 @@ export default function DataSourceView({
       <div className="flex flex-col">
         <SectionHeader
           title={`Manage ${dataSource.name}`}
-          description="This page lets you introspect and manually upload documents to your data source."
+          description="Use this page to view and upload documents to your data source."
           action={{
             label: "Settings",
             type: "tertiary",
