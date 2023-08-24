@@ -1,28 +1,25 @@
-import React, { ComponentType } from "react";
+import React, { ComponentType, CSSProperties } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
-interface IconProps {
+export interface IconProps {
   IconComponent?: ComponentType<{ className?: string }>;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
 
 const IconSizes = {
-  xs: "16",
-  sm: "20",
-  md: "24",
-  lg: "32",
+  xs: "s-h-4 s-w-4",
+  sm: "s-h-5 s-w-5",
+  md: "s-h-6 s-w-6",
+  lg: "s-h-8 s-w-8",
 };
 
 export function Icon({
   IconComponent,
-  size = "md",
+  size = "sm",
   className = "",
 }: IconProps) {
   return IconComponent ? (
-    <IconComponent
-      className={classNames(className)}
-      style={{ width: IconSizes[size] + "px", height: IconSizes[size] + "px" }}
-    />
+    <IconComponent className={(classNames(className), IconSizes[size])} />
   ) : null;
 }

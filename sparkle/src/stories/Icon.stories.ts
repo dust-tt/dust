@@ -10,9 +10,34 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const BasicIcon: Story = {
+export const IconSM: Story = {
   args: {
     IconComponent: ChatBubbleBottomCenterTextIcon,
-    className: "text-action-500",
+    className: "s-text-action-800",
+    size: "sm",
+  },
+};
+
+export const IconXS: Story = {
+  args: {
+    IconComponent: ChatBubbleBottomCenterTextIcon,
+    className: "s-text-brand",
+    size: "xs",
+  },
+};
+
+export const IconMD: Story = {
+  args: {
+    IconComponent: ChatBubbleBottomCenterTextIcon,
+    className: "s-text-element-800",
+    size: "md",
+  },
+};
+
+export const IconLG: Story = {
+  args: {
+    IconComponent: ChatBubbleBottomCenterTextIcon,
+    className: "s-text-brand",
+    size: "lg",
   },
 };
